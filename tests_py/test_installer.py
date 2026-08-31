@@ -70,5 +70,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
                          for name in names)
     assert f"{root}/Makefile" in names
     assert f"{root}/COPYING" in names
-    assert not any("/.git" in name or "/build/" in name or "/dist/" in name
+    assert f"{root}/.github/workflows/release.yml" in names
+    assert not any("/.git/" in name or name.endswith("/.git")
+                   or "/build/" in name or "/dist/" in name
                    or "/work/" in name for name in names)
