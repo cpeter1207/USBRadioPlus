@@ -562,7 +562,7 @@ static void menu_rxvoice(void)
 	char str[100];
 
 	for (;;) {
-		printf("Live RX level display. Press any key to continue to the setting prompt.\n");
+		printf("Live RX level display. Press Enter to continue to the setting prompt.\n");
 		if (astgetresp(COMMAND_PREFIX "tune menu-support b")) {
 			break;
 		}
@@ -774,7 +774,7 @@ static void menu_txtone(int keying)
  */
 static void menu_view_status(void)
 {
-	printf("Live COS, CTCSS, and PTT status. Press any key to return.\n");
+	printf("Live COS, CTCSS, and PTT status. Press Enter to return.\n");
 	astgetresp(COMMAND_PREFIX "tune menu-support v");
 }
 
@@ -1177,12 +1177,12 @@ int main(int argc, char *argv[])
 		printf("P) Print Current Parameter Values\n");
 		printf("O) Options Menu\n");
 		printf("C) Configure Audio Processing\n");
-		printf("R) View live RX audio statistics (press any key to return)\n");
+		printf("R) View live RX audio statistics (press Enter to return)\n");
 		printf("S) Swap Current USB device with another USB device\n");
 		printf("T) Use PTT and test tone during TX level adjustments (currently '%s')\n", (keying) ? "enabled" : "disabled");
-		printf("V) View live COS, CTCSS, and PTT status (press any key to return)\n");
+		printf("V) View live COS, CTCSS, and PTT status (press Enter to return)\n");
 		printf("W) Save current parameter values\n");
-		printf("X) View live TX audio statistics (press any key to return)\n");
+		printf("X) View live TX audio statistics (press Enter to return)\n");
 		printf("0) Exit\n");
 		printf("\nPlease enter your selection now: ");
 
@@ -1298,7 +1298,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'r': /* display receive audio statistics */
 		case 'R':
-			printf("Live RX audio statistics. Press any key to return.\n");
+			printf("Live RX audio statistics. Press Enter to return.\n");
 			astgetresp(COMMAND_PREFIX "tune menu-support y");
 			break;
 		case 's': /* swap usb device with another device */
@@ -1322,7 +1322,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'x': /* display transmit audio statistics */
 		case 'X':
-			printf("Live TX audio statistics. Press any key to return.\n");
+			printf("Live TX audio statistics. Press Enter to return.\n");
 			astgetresp(COMMAND_PREFIX "tune menu-support z");
 			break;
 		default:

@@ -219,10 +219,10 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert '"splatter_filter_enabled": "yes"' in processing
     assert 'groups.remove("Filters")' in processing
     assert 'groups.remove("Lookahead")' in processing
-    for wording in ("Live RX level display. Press any key",
-                    "Live COS, CTCSS, and PTT status. Press any key",
-                    "Live RX audio statistics. Press any key",
-                    "Live TX audio statistics. Press any key",
+    for wording in ("Live RX level display. Press Enter",
+                    "Live COS, CTCSS, and PTT status. Press Enter",
+                    "Live RX audio statistics. Press Enter",
+                    "Live TX audio statistics. Press Enter",
                     "0) Back", "0) Exit"):
         assert wording in tune
     assert 'L) Change TX Soft Limiter Setpoint' in tune
