@@ -28,6 +28,7 @@ def test_rnnoise_is_a_companion_shared_library_package():
 
 def test_repository_workflow_builds_and_verifies_all_targets():
     workflow = read(".github/workflows/packages.yml")
+    release = read(".github/workflows/release.yml")
     for required in (
         "container: debian:${{ matrix.debian }}",
         "ubuntu-24.04-arm",
@@ -41,3 +42,5 @@ def test_repository_workflow_builds_and_verifies_all_targets():
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()
+    assert "uses: ./.github/workflows/packages.yml" in release
+    assert "source_ref: ${{ needs.release.outputs.tag_name }}" in release

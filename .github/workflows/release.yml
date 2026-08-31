@@ -23,6 +23,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: release
@@ -30,6 +32,8 @@ concurrency:
 
 jobs:
   release:
+    outputs:
+      tag_name: ${{ steps.release_metadata.outputs.tag_name }}
     runs-on: ubuntu-latest
     container: debian:12
     timeout-minutes: 45
@@ -68,6 +72,7 @@ jobs:
           ./scripts/install-build-deps.sh
 
       - name: Validate release inputs
+        id: release_metadata
         shell: bash
         run: |
           set -euo pipefail
@@ -82,6 +87,7 @@ jobs:
           ASSET_BASENAME="usbradioplus-$ASSET_VERSION.tar.xz"
           git check-ref-format "refs/tags/$TAG_NAME"
           printf 'TAG_NAME=%s\n' "$TAG_NAME" >> "$GITHUB_ENV"
+          printf 'tag_name=%s\n' "$TAG_NAME" >> "$GITHUB_OUTPUT"
           printf 'ASSET_BASENAME=%s\n' "$ASSET_BASENAME" >> "$GITHUB_ENV"
           git fetch --tags --force origin
           if git rev-parse --verify --quiet "refs/tags/$TAG_NAME"; then
@@ -159,3 +165,11 @@ jobs:
           git add VERSION
           git commit -m "Start $NEXT_VERSION development"
           git push origin HEAD:main
+
+  packages:
+    needs: release
+    uses: ./.github/workflows/packages.yml
+    with:
+      source_ref: ${{ needs.release.outputs.tag_name }}
+      package_version: ${{ inputs.release_version }}
+    secrets: inherit

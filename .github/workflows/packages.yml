@@ -1,7 +1,26 @@
 name: Publish Debian packages
 
 on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      package_version:
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Git ref to package
+        default: main
+        required: true
+        type: string
+      package_version:
+        description: Package version; blank uses VERSION
+        default: ""
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -38,6 +57,8 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates git
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref }}
       - name: Trust workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Install ASL3 repository and package tools
@@ -55,7 +76,10 @@ jobs:
       - name: Build RNNoise companion packages
         run: |
           set -eux
-          git clone --depth 1 --branch v0.2 https://github.com/xiph/rnnoise.git /tmp/rnnoise-0.2
+          wget -qO /tmp/rnnoise.tar.gz \
+            https://github.com/xiph/rnnoise/releases/download/v0.2/rnnoise-0.2.tar.gz
+          echo '90fce4b00b9ff24c08dbfe31b82ffd43bae383d85c5535676d28b0a2b11c0d37  /tmp/rnnoise.tar.gz' | sha256sum -c -
+          tar -C /tmp -xzf /tmp/rnnoise.tar.gz
           cp -a packaging/rnnoise/debian /tmp/rnnoise-0.2/
           cd /tmp/rnnoise-0.2
           dch --newversion "0.2-1.deb${{ matrix.debian }}" \
@@ -66,7 +90,9 @@ jobs:
       - name: Build USBRadioPlus package
         run: |
           set -eux
-          dch --newversion "$(cat VERSION)-1.deb${{ matrix.debian }}" \
+          package_version='${{ inputs.package_version }}'
+          test -n "$package_version" || package_version=$(cat VERSION)
+          dch --newversion "$package_version-1.deb${{ matrix.debian }}" \
             --distribution "${{ matrix.suite }}" "Build for Debian ${{ matrix.debian }}."
           dpkg-buildpackage -b -us -uc
           lintian --fail-on error ../usbradioplus_*.changes
