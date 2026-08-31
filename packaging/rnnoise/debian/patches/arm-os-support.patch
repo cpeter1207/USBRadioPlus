@@ -1,0 +1,26 @@
+Description: Restore support definitions required by the ARM NEON implementation
+ RNNoise 0.2 vec_neon.h references the Opus support types and macros, but the
+ release archive omits the corresponding header. Provide the bounded subset
+ used by that file so native arm64 builds retain NEON acceleration.
+Author: USBRadioPlus contributors
+Forwarded: not-needed
+Last-Update: 2026-08-30
+--- /dev/null
++++ b/src/os_support.h
+@@ -0,0 +1,16 @@
++#ifndef RNNOISE_OS_SUPPORT_H
++#define RNNOISE_OS_SUPPORT_H
++
++#include <stdint.h>
++#include <string.h>
++
++typedef int8_t opus_int8;
++typedef int32_t opus_int32;
++
++#ifndef OPUS_INLINE
++#define OPUS_INLINE inline
++#endif
++
++#define OPUS_CLEAR(dst, count) memset((dst), 0, sizeof(*(dst)) * (count))
++
++#endif
