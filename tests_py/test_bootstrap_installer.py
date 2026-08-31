@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import shutil
 import subprocess
+import tempfile
 
 import pytest
 
@@ -19,8 +20,11 @@ def write_command(directory, name, body):
 def run_detection(tmp_path, suite, architecture, asl_version, *arguments):
     if not shutil.which("sh"):
         pytest.skip("POSIX shell is not available")
-    commands = tmp_path / "bin"
-    commands.mkdir()
+    # ASL nodes commonly mount /tmp noexec. Put executable command doubles on
+    # the source filesystem so the tests exercise fixtures instead of the host.
+    test_root = ROOT / "build" / "installer-tests"
+    test_root.mkdir(parents=True, exist_ok=True)
+    commands = Path(tempfile.mkdtemp(prefix=f"{tmp_path.name}-", dir=test_root))
     os_release = tmp_path / "os-release"
     os_release.write_text(
         f"ID=debian\nVERSION_CODENAME={suite}\n", encoding="utf-8"

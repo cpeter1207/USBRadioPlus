@@ -324,7 +324,7 @@ def edit_text_setting(source, key):
     if key == "stage_order":
         prompt = "Comma-separated expander, agc, compressor, limiter"
     else:
-        prompt = "One of: disabled, highpass, notch"
+        prompt = "One of: disabled, highpass, notch, comb"
     try:
         entered = input(f"New {label} ({prompt}) [{current}]: ").strip().lower()
     except (EOFError, KeyboardInterrupt):

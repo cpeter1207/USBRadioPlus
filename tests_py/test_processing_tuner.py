@@ -42,3 +42,8 @@ def test_fixed_filters_have_a_dedicated_menu():
                 "splatter_filter_highpass_hz", "splatter_filter_lowpass_hz",
                 "post_limiter_lowpass_enabled", "post_limiter_lowpass_hz"):
         assert settings[key][5] == "Filters"
+
+
+def test_receive_filter_prompt_lists_every_valid_mode():
+    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    assert "One of: disabled, highpass, notch, comb" in source
