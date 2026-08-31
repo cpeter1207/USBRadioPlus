@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE) all
+
+override_dh_auto_test:
+	$(MAKE) check
+
+override_dh_auto_install:
+	$(MAKE) DESTDIR=$(CURDIR)/debian/usbradioplus prefix=/usr \
+		asteriskmoduledir=/usr/lib/asterisk/modules install
+
+override_dh_auto_clean:
+	$(MAKE) clean
+

@@ -11,6 +11,10 @@ with suitable test equipment.
 
 ## Build and install
 
+Signed Debian packages for Intel PCs (`amd64`) and 64-bit Raspberry Pi systems
+(`arm64`) are available for Debian 12 and 13 from the project package site.
+See [INSTALL.md](INSTALL.md) for the repository setup commands.
+
 Download the release tarball to the node, then run:
 
 ```text

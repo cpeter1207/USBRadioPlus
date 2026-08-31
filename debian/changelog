@@ -1,0 +1,6 @@
+usbradioplus (0.1.0~alpha2-1) unstable; urgency=medium
+
+  * Initial Debian packaging.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sun, 30 Aug 2026 21:00:00 -0500
+

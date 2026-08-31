@@ -1,0 +1,222 @@
+name: Publish Debian packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: debian-repository
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - debian: "12"
+            suite: bookworm
+            runner: ubuntu-24.04
+          - debian: "12"
+            suite: bookworm
+            runner: ubuntu-24.04-arm
+          - debian: "13"
+            suite: trixie
+            runner: ubuntu-24.04
+          - debian: "13"
+            suite: trixie
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container: debian:${{ matrix.debian }}
+    steps:
+      - name: Install checkout tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates git
+      - uses: actions/checkout@v5
+      - name: Trust workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Install ASL3 repository and package tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y wget devscripts \
+            debhelper dh-autoreconf build-essential pkg-config python3-pytest \
+            lintian libsamplerate0-dev libavfilter-dev libavutil-dev \
+            libasound2-dev libusb-dev libusb-1.0-0-dev
+          wget -qO /tmp/asl-repo.deb \
+            "https://repo.allstarlink.org/public/asl-apt-repos.deb${{ matrix.debian }}_all.deb"
+          dpkg -i /tmp/asl-repo.deb
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y asl3-asterisk-dev
+      - name: Build RNNoise companion packages
+        run: |
+          set -eux
+          git clone --depth 1 --branch v0.2 https://github.com/xiph/rnnoise.git /tmp/rnnoise-0.2
+          cp -a packaging/rnnoise/debian /tmp/rnnoise-0.2/
+          cd /tmp/rnnoise-0.2
+          dch --newversion "0.2-1.deb${{ matrix.debian }}" \
+            --distribution "${{ matrix.suite }}" "Build for Debian ${{ matrix.debian }}."
+          dpkg-buildpackage -b -us -uc
+          lintian --fail-on error ../rnnoise_*.changes
+          dpkg -i ../librnnoise0_*.deb ../librnnoise-dev_*.deb
+      - name: Build USBRadioPlus package
+        run: |
+          set -eux
+          dch --newversion "$(cat VERSION)-1.deb${{ matrix.debian }}" \
+            --distribution "${{ matrix.suite }}" "Build for Debian ${{ matrix.debian }}."
+          dpkg-buildpackage -b -us -uc
+          lintian --fail-on error ../usbradioplus_*.changes
+          mkdir -p package-output
+          cp ../librnnoise0_*.deb ../librnnoise-dev_*.deb \
+            ../usbradioplus_*.deb package-output/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.suite }}-${{ runner.arch }}
+          path: package-output/*.deb
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: packages-*
+          path: incoming
+          merge-multiple: true
+      - name: Install repository tools
+        run: sudo apt-get update && sudo apt-get install -y reprepro gnupg
+      - name: Import signing key
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          test -n "$APT_SIGNING_KEY"
+          printf '%s' "$APT_SIGNING_KEY" | gpg --batch --import
+      - name: Build signed repository
+        env:
+          SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+        run: |
+          set -eux
+          rm -rf public
+          mkdir -p public/conf
+          git fetch origin apt-repository || true
+          if git show-ref --verify --quiet refs/remotes/origin/apt-repository; then
+            git archive origin/apt-repository | tar -x -C public
+            find public/pool -name '*.deb' -exec cp -t incoming {} + 2>/dev/null || true
+          fi
+          rm -rf public/dists public/pool public/db public/conf
+          mkdir -p public/conf
+          cp packaging/repository/index.html packaging/repository/usbradioplus-archive-keyring.gpg public/
+          for suite in bookworm trixie; do
+            cat >> public/conf/distributions <<EOF
+          Origin: USBRadioPlus
+          Label: USBRadioPlus
+          Codename: $suite
+          Suite: $suite
+          Architectures: amd64 arm64
+          Components: main
+          Description: USBRadioPlus alpha packages for ASL3
+          SignWith: $SIGNING_FINGERPRINT
+
+          EOF
+          done
+          for package in incoming/*.deb; do
+            case "$package" in
+              *.deb12_*) suite=bookworm ;;
+              *.deb13_*) suite=trixie ;;
+              *) echo "Cannot select suite for $package" >&2; exit 1 ;;
+            esac
+            reprepro -b public includedeb "$suite" "$package"
+          done
+          reprepro -b public export
+          cp -a public site
+          rm -rf site/conf site/db
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Save repository snapshot
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git switch --orphan apt-repository
+          git rm -rf .
+          cp -a public/. .
+          touch .nojekyll
+          git add .
+          git commit -m "Publish USBRadioPlus $(cat VERSION 2>/dev/null || echo packages)"
+          git push --force origin HEAD:apt-repository
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  verify:
+    needs: deploy
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - debian: "12"
+            suite: bookworm
+            runner: ubuntu-24.04
+          - debian: "12"
+            suite: bookworm
+            runner: ubuntu-24.04-arm
+          - debian: "13"
+            suite: trixie
+            runner: ubuntu-24.04
+          - debian: "13"
+            suite: trixie
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container: debian:${{ matrix.debian }}
+    steps:
+      - name: Install from the published signed repository
+        run: |
+          set -eux
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl
+          curl -fsSLo /tmp/asl-repo.deb \
+            "https://repo.allstarlink.org/public/asl-apt-repos.deb${{ matrix.debian }}_all.deb"
+          dpkg -i /tmp/asl-repo.deb
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y asl3-asterisk
+          mkdir -p /tmp/config-before
+          cp -a /etc/asterisk/modules.conf /etc/asterisk/rpt.conf /tmp/config-before/ 2>/dev/null || true
+          install -d -m 0755 /etc/apt/keyrings
+          for attempt in 1 2 3 4 5; do
+            curl -fsSLo /etc/apt/keyrings/usbradioplus.gpg \
+              https://cpeter1207.github.io/USBRadioPlus/usbradioplus-archive-keyring.gpg && break
+            sleep 10
+          done
+          printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/usbradioplus.gpg] https://cpeter1207.github.io/USBRadioPlus ${{ matrix.suite }} main' \
+            > /etc/apt/sources.list.d/usbradioplus.list
+          for attempt in 1 2 3 4 5; do apt-get update && break; sleep 10; done
+          apt-cache policy usbradioplus
+          DEBIAN_FRONTEND=noninteractive apt-get install -y usbradioplus
+          test -f /usr/lib/asterisk/modules/chan_usbradioplus.so
+          test -x /usr/sbin/usbradioplus-tune
+          test -f /usr/share/man/man7/usbradioplus.7.gz
+          cmp -s /tmp/config-before/modules.conf /etc/asterisk/modules.conf 2>/dev/null || \
+            test ! -e /tmp/config-before/modules.conf
+          cmp -s /tmp/config-before/rpt.conf /etc/asterisk/rpt.conf 2>/dev/null || \
+            test ! -e /tmp/config-before/rpt.conf
+          dpkg-query -W -f='${Package} ${Version} ${Architecture}\n' \
+            usbradioplus librnnoise0

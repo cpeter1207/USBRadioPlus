@@ -18,10 +18,9 @@ Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
 `asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
 `libusb-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
-`librnnoise-dev`, `python3`, and `python3-pytest`. Debian 12 does not currently
-provide `librnnoise-dev` in its standard archive, so an ASL package repository
-must provide it or RNNoise must be packaged separately before USBRadioPlus can
-be accepted as a policy-compliant Debian package. The interactive source-install
+`librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
+publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
+USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
 
 Set `SOURCE_DATE_EPOCH` when producing the upstream archive. The `dist` target
@@ -30,9 +29,10 @@ the archive into a temporary directory, builds and tests it, and performs a
 staged installation. The build and tests do not write to the home directory or
 contact the network.
 
-The upstream project intentionally does not ship a placeholder `debian/`
-directory. Add it when the package maintainer, distribution, changelog version,
-and exact dependency versions are known; avoid speculative package metadata.
+The `debian/` directory builds the `usbradioplus` binary package. Companion
+RNNoise packaging is under `packaging/rnnoise/`. GitHub Actions builds both
+packages natively for Debian 12 and 13 on amd64 and arm64, publishes signed APT
+metadata through GitHub Pages, and verifies installation from the public URL.
 
 `src/usbradioplus_radio.c`, `src/usbradioplus_radio.h`, and `src/txagc/` are
 integrated implementation components, not convenience copies selected in

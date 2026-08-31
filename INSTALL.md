@@ -1,5 +1,23 @@
 # Building and installing
 
+## Signed Debian packages
+
+For Debian 12 or 13 on amd64 or arm64:
+
+```text
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://cpeter1207.github.io/USBRadioPlus/usbradioplus-archive-keyring.gpg |
+    sudo tee /etc/apt/keyrings/usbradioplus.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/usbradioplus.gpg] https://cpeter1207.github.io/USBRadioPlus $(. /etc/os-release; echo $VERSION_CODENAME) main" |
+    sudo tee /etc/apt/sources.list.d/usbradioplus.list
+sudo apt update
+sudo apt install usbradioplus
+```
+
+The archive signing-key fingerprint is
+`A0D5 A79E 0F5C 45E9 E636 7995 0951 502B AC79 5E55`. Installation does not
+activate the module, restart Asterisk, or edit `modules.conf` or `rpt.conf`.
+
 After uploading and extracting the tarball on an ASL3 node, run:
 
 ```text

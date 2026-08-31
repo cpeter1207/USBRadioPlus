@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: RNNoise
+Source: https://gitlab.xiph.org/xiph/rnnoise
+
+Files: *
+Copyright: 2017-2022 Xiph.Org Foundation and contributors
+License: BSD-3-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the conditions in the upstream
+ COPYING file are met.
+

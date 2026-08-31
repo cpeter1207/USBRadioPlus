@@ -1,0 +1,26 @@
+Source: rnnoise
+Section: libs
+Priority: optional
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13), autoconf, automake, libtool, pkg-config
+Standards-Version: 4.7.2
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Rules-Requires-Root: no
+
+Package: librnnoise0
+Architecture: amd64 arm64
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: recurrent neural network audio noise suppression library
+ RNNoise combines signal processing and recurrent neural networks to suppress
+ background noise in speech audio.
+
+Package: librnnoise-dev
+Section: libdevel
+Architecture: amd64 arm64
+Multi-Arch: same
+Depends: librnnoise0 (= ${binary:Version}), ${misc:Depends}
+Description: development files for the RNNoise audio library
+ This package provides the header, shared-library link, and pkg-config metadata
+ required to build applications using RNNoise.
+

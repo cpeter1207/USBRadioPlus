@@ -1,0 +1,6 @@
+rnnoise (0.2-1) unstable; urgency=medium
+
+  * Package upstream RNNoise 0.2 for USBRadioPlus.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sun, 30 Aug 2026 21:00:00 -0500
+
