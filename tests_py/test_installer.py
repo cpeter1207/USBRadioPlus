@@ -55,6 +55,13 @@ def test_node_installer_bootstraps_then_uses_make():
         assert forbidden not in source
 
 
+def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
+    source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
+    assert 'source_root/build/rnnoise.XXXXXX' in source
+    assert '${TMPDIR:-/tmp}/usbradioplus-rnnoise.XXXXXX' not in source
+    assert "mount /tmp noexec" in source
+
+
 def test_dist_archive_has_one_versioned_root(tmp_path):
     environment = dict(os.environ, SOURCE_DATE_EPOCH="0")
     subprocess.run(["make", "clean", "dist"], cwd=ROOT, env=environment,
