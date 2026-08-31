@@ -327,7 +327,7 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     checkout = workflow.index("uses: actions/checkout@v5")
     assert install_git < checkout
     assert 'git config --global --add safe.directory "$GITHUB_WORKSPACE"' in workflow
-    assert 'TAG_NAME="v${RELEASE_VERSION//~/-}"' in workflow
+    assert 'TAG_NAME="v$(printf \'%s\' "$RELEASE_VERSION" | tr \'~\' \'-\')"' in workflow
     assert 'git check-ref-format "refs/tags/$TAG_NAME"' in workflow
     assert "DIST_DIRS := .github " in makefile
     assert "CHANGELOG.md" in makefile

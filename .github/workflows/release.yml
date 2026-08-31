@@ -77,7 +77,7 @@ jobs:
           test "$RELEASE_VERSION" != "$NEXT_VERSION"
           test "$(cat VERSION)" = "$RELEASE_VERSION"
           test -n "${RELEASE_CHANGES//[[:space:]]/}"
-          TAG_NAME="v${RELEASE_VERSION//~/-}"
+          TAG_NAME="v$(printf '%s' "$RELEASE_VERSION" | tr '~' '-')"
           git check-ref-format "refs/tags/$TAG_NAME"
           printf 'TAG_NAME=%s\n' "$TAG_NAME" >> "$GITHUB_ENV"
           git fetch --tags --force origin
