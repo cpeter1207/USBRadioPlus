@@ -29,6 +29,8 @@ def test_staged_install_manifest(tmp_path):
         "usr/share/man/man5/usbradioplus-processing.conf.5",
         "usr/share/man/man5/usbradioplus.conf.5",
         "usr/share/man/man7/usbradioplus.7",
+        "usr/share/man/man8/usbradioplus-processing-tune.8",
+        "usr/share/man/man8/usbradioplus-rxlevel.8",
         "usr/share/man/man8/usbradioplus-tune.8",
     ]
     assert not list(stage.rglob("modules.conf"))
