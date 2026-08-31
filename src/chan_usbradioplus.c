@@ -4220,6 +4220,37 @@ static void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cm
 			ast_cli(fd, "TX soft limiting setpoint currently set to: %i\n", o->txslimsp);
 		}
 		break;
+	case 'D': /* Set local repeat level for duplex=3 operation. */
+		if (cmd[1]) {
+			char *end = NULL;
+			long level = strtol(cmd + 1, &end, 10);
+			if (!end || *end || level < 0 || level > DUPLEX3_LEVEL_MAX) {
+				ast_cli(fd, "Duplex 3 level must be between 0 and %d\n", DUPLEX3_LEVEL_MAX);
+				break;
+			}
+			o->duplex3 = (int) level;
+			mixer_write(o);
+			ast_cli(fd, "Duplex 3 level changed to %ld\n", level);
+		} else {
+			ast_cli(fd, "Duplex 3 level currently set to: %d\n", o->duplex3);
+		}
+		break;
+	case 'M': /* Select hardware-mixer or native software local repeat. */
+		if (cmd[1]) {
+			if (cmd[1] != '0' && cmd[1] != '1') {
+				ast_cli(fd, "Duplex 3 mode must be hardware or software\n");
+				break;
+			}
+			o->duplex3mode = cmd[1] == '1'
+				? DUPLEX3_MODE_SOFTWARE : DUPLEX3_MODE_HARDWARE;
+			mixer_write(o);
+			ast_cli(fd, "Duplex 3 mode changed to %s\n",
+				o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware");
+		} else {
+			ast_cli(fd, "Duplex 3 mode currently set to: %s\n",
+				o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware");
+		}
+		break;
 
 	case 'm': /* change rxboost */
 		if (cmd[1]) {
@@ -4696,6 +4727,11 @@ static void tune_write(struct chan_usbradio_pvt *o)
 		CONFIG_UPDATE_SIGNAL(txmixa, txmixa, mixer_type);
 		CONFIG_UPDATE_SIGNAL(txmixb, txmixb, mixer_type);
 		CONFIG_UPDATE_INT(txslimsp);
+		CONFIG_UPDATE_INT(duplex3);
+		if (tune_variable_update(cfg, CONFIG, category, "duplex3mode",
+			o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware")) {
+			ast_log(LOG_WARNING, "Failed to update duplex3mode\n");
+		}
 		{
 			char gainbuf[32];
 			snprintf(gainbuf, sizeof(gainbuf), "%.3f", o->plus_presquelch_gain_db);

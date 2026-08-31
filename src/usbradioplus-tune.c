@@ -55,6 +55,8 @@
  *		w - change tx mixer a
  *		x - change tx mixer b
  *		y - receive audio statistics display
+ *		D - change duplex 3 repeat level
+ *		M - change duplex 3 implementation
  *
  * Most of these commands take optional parameters to set values.
  *
@@ -89,6 +91,7 @@ enum {
 	TX_OUT_AUX
 };
 static const char *const mixer_type[] = { "no", "voice", "tone", "composite", "auxvoice" };
+static const char *const duplex3_mode_type[] = { "hardware", "software" };
 
 /*! \brief command prefix for Asterisk - simpleusb channel driver access */
 #define COMMAND_PREFIX "radioplus "
@@ -104,6 +107,22 @@ static void ourhandler(int sig)
 	signal(sig, ourhandler);
 	while (waitpid(-1, &i, WNOHANG) > 0) {
 		;
+	}
+}
+
+static void launch_processing_tune(void)
+{
+	int status;
+
+	/* system() waits for this child, so temporarily stop the general child
+	 * reaper from collecting it first. */
+	signal(SIGCHLD, SIG_DFL);
+	status = system("/usr/sbin/usbradioplus-processing-tune");
+	signal(SIGCHLD, ourhandler);
+	if (status == -1) {
+		fprintf(stderr, "Unable to start usbradioplus-processing-tune: %s\n", strerror(errno));
+	} else if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+		fprintf(stderr, "usbradioplus-processing-tune exited without completing normally\n");
 	}
 }
 
@@ -868,6 +887,7 @@ static void options_menu(void)
 	int rxboost = 0, txboost = 0, carrierfrom = 0, ctcssfrom = 0;
 	int rxondelay = 0, txoffdelay = 0, txprelim = 0, txlimonly = 0;
 	int rxdemod = 0, txmixa = 0, txmixb = 0, txslimsp = 12000;
+	int duplex3 = 0, duplex3mode = 0;
 	int result;
 	char str[256];
 
@@ -884,6 +904,15 @@ static void options_menu(void)
 		if (!astgetline(COMMAND_PREFIX "tune menu-support L", str, sizeof(str) - 1)) {
 			sscanf(str, "TX soft limiting setpoint currently set to: %d", &txslimsp);
 		}
+		if (!astgetline(COMMAND_PREFIX "tune menu-support D", str, sizeof(str) - 1)) {
+			sscanf(str, "Duplex 3 level currently set to: %d", &duplex3);
+		}
+		if (!astgetline(COMMAND_PREFIX "tune menu-support M", str, sizeof(str) - 1)) {
+			char mode[16];
+			if (sscanf(str, "Duplex 3 mode currently set to: %15s", mode) == 1) {
+				duplex3mode = !strcmp(mode, "software");
+			}
+		}
 
 		printf("\nOptions Menu\n");
 		printf("1) Toggle RX Boost (currently '%s')\n", rxboost ? "enabled" : "disabled");
@@ -896,6 +925,8 @@ static void options_menu(void)
 		printf("8) Change TX Mixer A (currently '%s')\n", mixer_type[txmixa]);
 		printf("9) Change Tx Mixer B (currently '%s')\n", mixer_type[txmixb]);
 		printf("L) Change TX Soft Limiter Setpoint (currently '%d')\n", txslimsp);
+		printf("D) Change Duplex 3 Repeat Level (currently '%d')\n", duplex3);
+		printf("M) Change Duplex 3 Mode (currently '%s')\n", duplex3_mode_type[duplex3mode]);
 		printf("0) Back\n");
 		printf("\nPlease enter your selection now: ");
 
@@ -993,6 +1024,22 @@ static void options_menu(void)
 			result = menu_get_integer("TX soft limiter setpoint", txslimsp, 5000, 13000);
 			if (result != txslimsp) {
 				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support L%d", result);
+				astgetresp(str);
+			}
+			break;
+		case 'd': /* set duplex 3 repeat level */
+		case 'D':
+			result = menu_get_integer("Duplex 3 repeat level", duplex3, 0, 999);
+			if (result != duplex3) {
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support D%d", result);
+				astgetresp(str);
+			}
+			break;
+		case 'm': /* select duplex 3 implementation */
+		case 'M':
+			result = menu_select_value("Duplex 3 Mode", duplex3_mode_type, 2, duplex3mode);
+			if (result > 0) {
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support M%d", result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1129,6 +1176,7 @@ int main(int argc, char *argv[])
 		printf("H) Change CTCSS From (currently '%s')\n", sd_signal_type[ctcssfrom]);
 		printf("P) Print Current Parameter Values\n");
 		printf("O) Options Menu\n");
+		printf("C) Configure Audio Processing\n");
 		printf("R) View live RX audio statistics (press any key to return)\n");
 		printf("S) Swap Current USB device with another USB device\n");
 		printf("T) Use PTT and test tone during TX level adjustments (currently '%s')\n", (keying) ? "enabled" : "disabled");
@@ -1237,6 +1285,10 @@ int main(int argc, char *argv[])
 		case 'o': /* options menu */
 		case 'O':
 			options_menu();
+			break;
+		case 'c': /* open the processing tuner */
+		case 'C':
+			launch_processing_tune();
 			break;
 		case 'p': /* print current values */
 		case 'P':

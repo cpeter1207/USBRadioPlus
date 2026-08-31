@@ -72,7 +72,14 @@ Select the COS and tone indication sources supported by usbradioplus.conf(5).
 .B Options
 Set RX boost, TX boost, RX demodulation, RX-on and TX-off delays, transmit
 pre-limiting, limiting-only operation, and USB output A and B routing.
-It also sets the transmit soft-limiter onset from 5000 through 13000.
+It also sets the transmit soft-limiter onset from 5000 through 13000, the
+duplex-3 repeat level from 0 through 999, and whether duplex-3 repeat audio uses
+the CM119 hardware mixer or the native software path.
+.TP
+.B Configure audio processing
+Open
+.BR usbradioplus-processing-tune .
+On return, the radio tuning menu refreshes its displayed values.
 .TP
 .B Print current parameter values
 Report the selected interface, USB device, output routing, and principal RX/TX
@@ -112,6 +119,13 @@ Only controls applicable to the selected source are shown. Stage toggles use
 single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
 pages validate both the documented range and dependent relationships such as a
 low-pass cutoff being above its high-pass cutoff.
+.PP
+The Filters page groups every fixed filter that applies to the selected source.
+For local receive it selects or disables CTCSS notch, comb, or high-pass
+filtering and sets the applicable cutoff or notch width. For voice and telemetry
+it enables or disables the transmit brick-wall band-pass and post-limiter
+low-pass and sets their cutoff frequencies. Dynamics pages contain the
+high-pass and low-pass detector filters for AGC, expansion, and compression.
 .PP
 Each accepted edit is written atomically and reloaded. If validation or reload
 fails, the preceding file and active settings are restored. The main menu can

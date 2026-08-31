@@ -217,7 +217,7 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert '"local": {"ctcss_filter_mode": "notch"' in processing
     assert '"input_gain_db": "6.0"' in processing
     assert '"splatter_filter_enabled": "yes"' in processing
-    assert 'groups.remove("Receive")' in processing
+    assert 'groups.remove("Filters")' in processing
     assert 'groups.remove("Lookahead")' in processing
     for wording in ("Live RX level display. Press any key",
                     "Live COS, CTCSS, and PTT status. Press any key",
@@ -228,10 +228,21 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert 'L) Change TX Soft Limiter Setpoint' in tune
     assert 'menu_get_integer("TX soft limiter setpoint", txslimsp, 5000, 13000)' in tune
     assert 'COMMAND_PREFIX "tune menu-support L%d"' in tune
+    assert 'COMMAND_PREFIX "tune menu-support D%d"' in tune
+    assert 'COMMAND_PREFIX "tune menu-support M%d"' in tune
+    assert "/usr/sbin/usbradioplus-processing-tune" in tune
     for constraint in ("relationship_error", 'pairs = {',
                        'key == "agc_floor_dbfs"'):
         assert constraint in processing
 
+
+def test_duplex3_tuning_is_live_and_persistent():
+    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "CONFIG_UPDATE_INT(duplex3)" in source
+        assert '"duplex3mode"' in source
+        assert "case 'D': /* Set local repeat level" in source
+        assert "case 'M': /* Select hardware-mixer" in source
 def test_tuning_tone_uses_native_transmitter_path():
     module = text("src/chan_usbradioplus.c")
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")

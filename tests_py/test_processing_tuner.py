@@ -33,3 +33,12 @@ def test_tuner_uses_current_cli_and_accessible_keys():
     for instruction in ("Up and Down arrows move", "Tab selects Back",
                         "Shift+Tab", "Current item"):
         assert instruction in source
+
+
+def test_fixed_filters_have_a_dedicated_menu():
+    settings = MODULE["SETTINGS"]
+    for key in ("ctcss_filter_mode", "ctcss_notch_width_hz",
+                "ctcss_highpass_hz", "splatter_filter_enabled",
+                "splatter_filter_highpass_hz", "splatter_filter_lowpass_hz",
+                "post_limiter_lowpass_enabled", "post_limiter_lowpass_hz"):
+        assert settings[key][5] == "Filters"

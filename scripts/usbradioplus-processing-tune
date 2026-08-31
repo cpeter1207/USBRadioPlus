@@ -28,11 +28,11 @@ SETTINGS = {
     "compressor_enabled": ("Compressor", "bool", None, None, "", "Stages"),
     "limiter_enabled": ("Two-band limiter", "bool", None, None, "", "Stages"),
     "stage_order": ("Dynamics stage order", "text", None, None, "", "Stages"),
-    "ctcss_filter_mode": ("Receive CTCSS filter mode", "choice", None, None, "", "Receive"),
-    "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Receive"),
-    "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Receive"),
+    "ctcss_filter_mode": ("Receive CTCSS filter mode", "choice", None, None, "", "Filters"),
+    "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Filters"),
+    "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Filters"),
     "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Output"),
-    "splatter_filter_enabled": ("Brick-wall band-pass", "bool", None, None, "", "Stages"),
+    "splatter_filter_enabled": ("Transmit brick-wall band-pass", "bool", None, None, "", "Filters"),
     "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
     "final_clipper_enabled": ("Final clipper", "bool", None, None, "", "Stages"),
     "agc_target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
@@ -74,10 +74,10 @@ SETTINGS = {
     "lookahead_limiter_attack_ms": ("Lookahead attack", "float", 0.1, 20, "ms", "Lookahead"),
     "lookahead_limiter_release_ms": ("Lookahead release", "float", 1, 5000, "ms", "Lookahead"),
     "final_clipper_ceiling_dbfs": ("Final clip ceiling", "float", -30, -0.5, "dBFS", "Lookahead"),
-    "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Lookahead"),
-    "post_limiter_lowpass_hz": ("Cleanup low-pass cutoff", "float", 5000, 20000, "Hz", "Lookahead"),
-    "splatter_filter_highpass_hz": ("Splatter-filter low cutoff", "float", 20, 2000, "Hz", "Output"),
-    "splatter_filter_lowpass_hz": ("Splatter-filter high cutoff", "float", 20, 5000, "Hz", "Output"),
+    "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Filters"),
+    "post_limiter_lowpass_hz": ("Post-limiter low-pass cutoff", "float", 5000, 20000, "Hz", "Filters"),
+    "splatter_filter_highpass_hz": ("Transmit band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
+    "splatter_filter_lowpass_hz": ("Transmit band-pass high cutoff", "float", 20, 5000, "Hz", "Filters"),
     "output_gain_db": ("Final output gain", "float", -30, 30, "dB", "Output"),
 }
 
@@ -382,16 +382,12 @@ def stages_menu(source):
         ("E", "expander_enabled", "Downward expander"),
         ("C", "compressor_enabled", "Compressor"),
         ("L", "limiter_enabled", "Two-band limiter"),
-        ("S", "splatter_filter_enabled", "Brick-wall band-pass"),
         ("H", "lookahead_limiter_enabled", "Lookahead limiter"),
-        ("P", "post_limiter_lowpass_enabled", "Post-limiter low-pass"),
         ("F", "final_clipper_enabled", "Final clipper"),
     ]
     entries = [entry for entry in entries
                if not (entry[1] == "rnnoise_enabled" and source != "local")
-               and not (entry[1] in {"splatter_filter_enabled",
-                                     "lookahead_limiter_enabled",
-                                     "post_limiter_lowpass_enabled",
+               and not (entry[1] in {"lookahead_limiter_enabled",
                                      "final_clipper_enabled"}
                         and source != "voice_telemetry")]
     selected = 0
@@ -450,11 +446,10 @@ def stages_menu(source):
 def settings_menu(source, group):
     values = section_values(read_config(), source)
     keys = [key for key, data in SETTINGS.items()
-            if data[5] == group and data[1] != "bool"
+            if data[5] == group
             and not (key.startswith("ctcss_") and source != "local")
             and not (group == "Lookahead" and source != "voice_telemetry")
-            and not (key in {"splatter_filter_highpass_hz",
-                             "splatter_filter_lowpass_hz"}
+            and not (key.startswith(("splatter_filter_", "post_limiter_"))
                      and source != "voice_telemetry")]
     if not keys:
         print(f"No editable numeric settings are available for {source}: {group}.")
@@ -468,7 +463,10 @@ def settings_menu(source, group):
         for index, key in enumerate(keys):
             label, _kind, _low, _high, units, _group = SETTINGS[key]
             marker = ">" if index == selected else " "
-            print(f"{marker} {index + 1}. {label}: {values.get(key, default_value(source, key))} {units}".rstrip())
+            current = values.get(key, default_value(source, key))
+            if SETTINGS[key][1] == "bool":
+                current = "ON" if current.lower() in ("yes", "true", "1", "on") else "OFF"
+            print(f"{marker} {index + 1}. {label}: {current} {units}".rstrip())
         back_marker = ">" if selected == len(keys) else " "
         print(f"{back_marker} B. Back")
         current_label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
@@ -497,7 +495,9 @@ def settings_menu(source, group):
             if selected == len(keys):
                 return
             kind = SETTINGS[keys[selected]][1]
-            if kind in ("text", "choice"):
+            if kind == "bool":
+                edit_setting(source, keys[selected])
+            elif kind in ("text", "choice"):
                 edit_text_setting(source, keys[selected])
             else:
                 edit_numeric_setting(source, keys[selected])
@@ -512,10 +512,10 @@ def settings_menu(source, group):
 
 
 def source_menu(source):
-    groups = ["Stages", "Receive", "AGC", "Expander", "Compressor",
+    groups = ["Stages", "Filters", "AGC", "Expander", "Compressor",
               "Two-band limiter", "Lookahead", "Output"]
-    if source != "local":
-        groups.remove("Receive")
+    if source == "link":
+        groups.remove("Filters")
     if source != "voice_telemetry":
         groups.remove("Lookahead")
     while True:
