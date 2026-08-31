@@ -178,7 +178,7 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git switch --orphan apt-repository
-          git rm -rf .
+          git rm -rf --ignore-unmatch .
           cp -a public/. .
           touch .nojekyll
           git add .
