@@ -326,6 +326,7 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     install_git = workflow.index("ca-certificates wget git gh")
     checkout = workflow.index("uses: actions/checkout@v5")
     assert install_git < checkout
+    assert 'git config --global --add safe.directory "$GITHUB_WORKSPACE"' in workflow
     assert "CHANGELOG.md" in makefile
     assert (ROOT / "CHANGELOG.md").is_file()
 
