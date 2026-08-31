@@ -46,6 +46,10 @@ interface. Run `make -s print-asl-radio-api` to report the selected interface.
 Repository packages include the interface and app_rpt generation in their
 version and require the exact ASL3 Asterisk build used to compile them. APT
 therefore cannot install a module built for the other interface generation.
+The repository names the modern package `usbradioplus-asl3105`; install that
+package on ASL 22.10/app_rpt 3.10 nodes. The `usbradioplus` package targets the
+earlier host interface. Installing the modern package replaces the earlier
+package but does not activate the module or alter Asterisk configuration.
 
 Build and test without changing the running node:
 

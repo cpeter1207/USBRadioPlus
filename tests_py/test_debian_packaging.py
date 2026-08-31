@@ -19,6 +19,8 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
     assert "${usbradioplus:ASLDepends}" in control
     assert "ASL3_ASTERISK_VERSION" in rules
+    assert "DEB_BINARY_PACKAGE ?= usbradioplus" in rules
+    assert "debian/$(DEB_BINARY_PACKAGE)" in rules
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
     assert not list((ROOT / "debian").glob("*.postinst"))
     assert not list((ROOT / "debian").glob("*.prerm"))
@@ -53,6 +55,8 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         'target_asl_version: "2:22.10.1+asl3-3.10.5-1.deb13"',
         'raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit',
         '*.deb13_*|*.deb13+*_*) suite=trixie',
+        'binary_package=usbradioplus-asl3105',
+        'Conflicts: usbradioplus',
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()

@@ -33,10 +33,13 @@ file layout.
 
 Binary modules are tied to the ASL host interface against which they were
 built. The Debian package records an exact dependency on that
-`asl3-asterisk` version. Published package versions also carry a generation tag,
-such as `+legacy.asl393` or `+modern.asl3105`, so both generations can remain in
-the repository at once without filename collisions. A new package build is
-required when ASL3 Asterisk is updated; do not weaken this dependency unless
+`asl3-asterisk` version. Published package versions also carry a generation
+tag. The original host interface is packaged as `usbradioplus`; the ASL
+22.10/app_rpt 3.10 host port is packaged as `usbradioplus-asl3105`. Distinct
+binary package names allow both to remain in one Debian suite because reprepro
+retains only one version of a package name for each architecture. The modern
+package replaces and conflicts with the original package. A new package build
+is required when ASL3 Asterisk is updated; do not weaken this dependency unless
 ASL publishes a stable module ABI or a suitable virtual ABI package.
 
 Set `SOURCE_DATE_EPOCH` when producing the upstream archive. The `dist` target

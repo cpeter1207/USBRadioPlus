@@ -114,6 +114,7 @@ jobs:
           set -eux
           package_version='${{ inputs.package_version }}'
           test -n "$package_version" || package_version=$(cat VERSION)
+          binary_package=usbradioplus
           if test '${{ matrix.requested_api }}' = modern; then
             modern_commit=32d268ad49aa44542704bce00873a0425bc71062
             modern_include=/tmp/asl-modern/include/asterisk
@@ -130,7 +131,11 @@ jobs:
             export ASL_RADIO_API=modern
             export CPPFLAGS=-I/tmp/asl-modern/include
             export ASL3_ASTERISK_VERSION='${{ matrix.target_asl_version }}'
+            binary_package=usbradioplus-asl3105
+            sed -i 's/^Package: usbradioplus$/Package: usbradioplus-asl3105/' debian/control
+            sed -i '/^Architecture: amd64 arm64$/a Conflicts: usbradioplus\nReplaces: usbradioplus' debian/control
           fi
+          export DEB_BINARY_PACKAGE="$binary_package"
           radio_api=$(make -s print-asl-radio-api)
           asl_version=$(dpkg-query -W -f='${Version}' asl3-asterisk)
           if test -n '${{ matrix.target_asl_version }}'; then
@@ -147,12 +152,14 @@ jobs:
           lintian --fail-on error ../usbradioplus_*.changes
           mkdir -p package-output
           cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
-            ../usbradioplus_*.deb package-output/
+            ../"$binary_package"_*.deb ../"$binary_package"-dbgsym_*.deb \
+            package-output/
           printf 'suite=%s\narchitecture=%s\nasl3_asterisk=%s\napp_rpt=%s\nradio_api=%s\n' \
             '${{ matrix.suite }}' "$(dpkg --print-architecture)" \
             "$asl_version" "$app_rpt_version" "$radio_api" > package-output/build-info.txt
-          test "$(dpkg-deb -f ../usbradioplus_*.deb Depends | \
+          test "$(dpkg-deb -f ../"$binary_package"_*.deb Depends | \
             grep -c "asl3-asterisk (= $asl_version)")" = 1
+          test "$(dpkg-deb -f ../"$binary_package"_*.deb Package)" = "$binary_package"
       - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.suite }}-${{ runner.arch }}-${{ matrix.requested_api }}-${{ steps.usbradioplus_build.outputs.radio_api }}
