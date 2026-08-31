@@ -29,9 +29,10 @@ when Debian does not provide it, runs the complete hardware-free test suite,
 and installs USBRadioPlus. It does not activate the module, restart Asterisk,
 or edit `modules.conf` or `rpt.conf`.
 
-The RNNoise bootstrap uses the source tree's `build` directory. This permits
-installation on hardened nodes where `/tmp` is mounted `noexec`. Its temporary
-RNNoise checkout, including upstream's `autogen.sh`, is removed automatically.
+The RNNoise bootstrap verifies and builds the official v0.2 release archive in
+the source tree's `build` directory. This permits installation on hardened
+nodes where `/tmp` is mounted `noexec`. The temporary source is removed
+automatically.
 
 USBRadioPlus requires a matching `asl3-asterisk-dev` package plus the libraries
 listed in `doc/packaging.md`. Developers with those dependencies already

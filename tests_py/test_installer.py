@@ -62,6 +62,11 @@ def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
     assert 'source_root/build/rnnoise.XXXXXX' in source
     assert '${TMPDIR:-/tmp}/usbradioplus-rnnoise.XXXXXX' not in source
     assert "mount /tmp noexec" in source
+    assert "releases/download/v0.2/rnnoise-0.2.tar.gz" in source
+    assert "90fce4b00b9ff24c08dbfe31b82ffd43" in source
+    assert "sha256sum -c -" in source
+    assert "git clone" not in source
+    assert "./autogen.sh" not in source
 
 
 def test_dist_archive_has_one_versioned_root(tmp_path):
