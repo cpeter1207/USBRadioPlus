@@ -111,6 +111,7 @@ enum duplex3_mode {
 #include "./txagc/avfilter_processor.h"
 #include "./txagc/rnnoise_processor.h"
 #include "usbradioplus_processing.h"
+#include "usbradioplus_repeat.h"
 
 #include "asterisk/lock.h"
 #include "asterisk/frame.h"
@@ -6321,14 +6322,10 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		}
 	} else if (o->rxkeyed && o->duplex3 > 0
 		&& o->duplex3mode == DUPLEX3_MODE_SOFTWARE) {
-		memcpy(local_program, o->plus_local_native, sizeof(local_program));
-		/* duplex3=999 is unity; lower values proportionally reduce repeat audio. */
-		if (o->duplex3 < DUPLEX3_LEVEL_MAX) {
-			double duplex3_gain = (double) o->duplex3 / DUPLEX3_LEVEL_MAX;
-			for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
-				local_program[i] *= duplex3_gain;
-			}
-		}
+		double duplex3_gain = (double) o->duplex3 / DUPLEX3_LEVEL_MAX;
+		urp_native_repeat_prepare(local_program, o->plus_local_native,
+			URP_NATIVE_SAMPLES, duplex3_gain,
+			o->usedtmf && o->dsp && o->toneflag);
 		if (o->plus_parrot_enabled && o->plus_parrot
 			&& o->plus_parrot_count < o->plus_parrot_capacity) {
 			size_t space = o->plus_parrot_capacity - o->plus_parrot_count;
@@ -6844,6 +6841,7 @@ static struct ast_cli_entry cli_usbradio[] = { AST_CLI_DEFINE(handle_console_key
 #include "usbradioplus_dsp.c"
 #include "usbradioplus_ctcss.c"
 #include "usbradioplus_hardware.c"
+#include "usbradioplus_repeat.c"
 #include "./txagc/agc_core.c"
 #include "./txagc/avfilter_processor.c"
 #include "./txagc/rnnoise_processor.c"

@@ -74,6 +74,14 @@ def test_duplex_routes_are_distinct():
     assert "o->duplex3 * o->micplaymax" in source
     assert "duplex3 must be between 0 and %d" in source
     assert "duplex3mode must be hardware or software" in source
+
+
+def test_software_duplex3_honors_dtmf_mute_state():
+    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "urp_native_repeat_prepare(local_program, o->plus_local_native" in source
+        assert "o->usedtmf && o->dsp && o->toneflag" in source
+        assert '#include "usbradioplus_repeat.c"' in source
     assert "urp_rate_convert(o->plus_down" in source
     assert "urp_src_process(o->plus_up" in source
     assert "o->plus_app_rpt_rate == URP_RATE_NATIVE" in source

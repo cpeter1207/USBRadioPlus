@@ -23,6 +23,10 @@ cc $common "$root/tests/test_hardware_words.c" \
 	"$root/src/usbradioplus_hardware.c" -o "$out/hardware-words"
 "$out/hardware-words"
 
+cc $common "$root/tests/test_native_repeat.c" \
+	"$root/src/usbradioplus_repeat.c" -o "$out/native-repeat"
+"$out/native-repeat"
+
 for name in txagc_float avfilter_bandpass avfilter_ctcss avfilter_emphasis \
 	avfilter_processor avfilter_permutations; do
 	cc $common "$root/tests/test_$name.c" \
