@@ -37,7 +37,6 @@ jobs:
       RELEASE_VERSION: ${{ inputs.release_version }}
       NEXT_VERSION: ${{ inputs.next_version }}
       RELEASE_CHANGES: ${{ inputs.changes }}
-      TAG_NAME: v${{ inputs.release_version }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
@@ -78,6 +77,9 @@ jobs:
           test "$RELEASE_VERSION" != "$NEXT_VERSION"
           test "$(cat VERSION)" = "$RELEASE_VERSION"
           test -n "${RELEASE_CHANGES//[[:space:]]/}"
+          TAG_NAME="v${RELEASE_VERSION//~/-}"
+          git check-ref-format "refs/tags/$TAG_NAME"
+          printf 'TAG_NAME=%s\n' "$TAG_NAME" >> "$GITHUB_ENV"
           git fetch --tags --force origin
           if git rev-parse --verify --quiet "refs/tags/$TAG_NAME"; then
             echo "Tag $TAG_NAME already exists." >&2
