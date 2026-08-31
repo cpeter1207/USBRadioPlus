@@ -17,7 +17,7 @@ make clean
 Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
 `asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
-`libusb-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
+`libusb-dev`, `portaudio19-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
 `librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
 publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install

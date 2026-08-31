@@ -13,8 +13,10 @@ def test_usbradioplus_debian_package_is_nonactivating():
     rules = read("debian/rules")
     assert "Architecture: amd64 arm64" in control
     assert "asl3-asterisk-dev" in control
+    assert "portaudio19-dev" in control
     assert "librnnoise-dev" in control
-    assert "asteriskmoduledir=/usr/lib/asterisk/modules" in rules
+    assert "dpkg-architecture -qDEB_HOST_MULTIARCH" in rules
+    assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
     assert not list((ROOT / "debian").glob("*.postinst"))
     assert not list((ROOT / "debian").glob("*.prerm"))
 
@@ -39,6 +41,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "signed-by=/etc/apt/keyrings/usbradioplus.gpg",
         "cmp -s /tmp/config-before/modules.conf",
         "cmp -s /tmp/config-before/rpt.conf",
+        'dpkg-query -L asl3-asterisk-modules',
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()

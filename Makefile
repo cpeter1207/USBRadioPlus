@@ -9,7 +9,8 @@ libdir ?= $(exec_prefix)/lib
 datarootdir ?= $(prefix)/share
 docdir ?= $(datarootdir)/doc/$(PACKAGE)
 mandir ?= $(datarootdir)/man
-asteriskmoduledir ?= $(libdir)/asterisk/modules
+MULTIARCH ?= $(strip $(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null))
+asteriskmoduledir ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))/asterisk/modules
 DESTDIR ?=
 
 CC ?= cc

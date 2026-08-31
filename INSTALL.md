@@ -69,3 +69,5 @@ make DESTDIR=/tmp/usbradioplus-stage prefix=/usr install
 Override `ASTERISK_INCLUDEDIR`, `asteriskmoduledir`, `CC`, `CFLAGS`, `LDFLAGS`,
 or the standard GNU installation-directory variables when required. Run
 `make clean` to remove all generated build and distribution artifacts.
+On Debian, the default module path includes the host multiarch tuple so it
+matches the ASL3 Asterisk module directory.

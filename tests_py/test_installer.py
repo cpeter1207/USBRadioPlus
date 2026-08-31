@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import tarfile
 
@@ -19,8 +20,13 @@ def test_staged_install_manifest(tmp_path):
     )
     files = sorted(path.relative_to(stage).as_posix()
                    for path in stage.rglob("*") if path.is_file())
+    multiarch = ""
+    if shutil.which("dpkg-architecture"):
+        multiarch = subprocess.run(
+            ["dpkg-architecture", "-qDEB_HOST_MULTIARCH"], check=True,
+            text=True, stdout=subprocess.PIPE).stdout.strip() + "/"
     assert files == [
-        "usr/lib/asterisk/modules/chan_usbradioplus.so",
+        f"usr/lib/{multiarch}asterisk/modules/chan_usbradioplus.so",
         "usr/sbin/usbradioplus-processing-tune",
         "usr/sbin/usbradioplus-rxlevel",
         "usr/sbin/usbradioplus-tune",
@@ -69,6 +75,11 @@ def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
     assert "packaging/rnnoise/debian/patches/arm-os-support.patch" in source
     assert "git clone" not in source
     assert "./autogen.sh" not in source
+
+
+def test_installer_includes_asterisk_transitive_header_dependencies():
+    source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
+    assert "portaudio19-dev" in source
 
 
 def test_dist_archive_has_one_versioned_root(tmp_path):

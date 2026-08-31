@@ -11,7 +11,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	asl3-asterisk-dev build-essential pkg-config python3 python3-pytest \
 	ca-certificates wget xz-utils patch \
 	libasound2-dev libusb-dev libusb-1.0-0-dev libsamplerate0-dev \
-	libavfilter-dev libavutil-dev
+	libavfilter-dev libavutil-dev portaudio19-dev
 
 if ! pkg-config --exists rnnoise; then
 	# Hardened nodes commonly mount /tmp noexec.  Build beside the source so
