@@ -7,15 +7,12 @@ Forwarded: not-needed
 Last-Update: 2026-08-30
 --- /dev/null
 +++ b/src/os_support.h
-@@ -0,0 +1,16 @@
+@@ -0,0 +1,13 @@
 +#ifndef RNNOISE_OS_SUPPORT_H
 +#define RNNOISE_OS_SUPPORT_H
 +
-+#include <stdint.h>
 +#include <string.h>
-+
-+typedef int8_t opus_int8;
-+typedef int32_t opus_int32;
++#include "opus_types.h"
 +
 +#ifndef OPUS_INLINE
 +#define OPUS_INLINE inline

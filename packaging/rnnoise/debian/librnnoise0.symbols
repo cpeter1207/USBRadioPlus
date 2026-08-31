@@ -2,8 +2,10 @@ librnnoise.so.0 librnnoise0 #MINVER#
  rnnoise_create@Base 0.2
  rnnoise_destroy@Base 0.2
  rnnoise_get_frame_size@Base 0.2
+ rnnoise_get_size@Base 0.2
  rnnoise_init@Base 0.2
+ rnnoise_model_from_buffer@Base 0.2
  rnnoise_model_from_file@Base 0.2
+ rnnoise_model_from_filename@Base 0.2
  rnnoise_model_free@Base 0.2
  rnnoise_process_frame@Base 0.2
-
