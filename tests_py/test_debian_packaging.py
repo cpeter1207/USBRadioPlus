@@ -69,3 +69,19 @@ def test_repository_workflow_builds_and_verifies_all_targets():
     assert "releases/download/v0.2/rnnoise-0.2.tar.gz" in workflow
     assert "90fce4b00b9ff24c08dbfe31b82ffd43bae383d85c5535676d28b0a2b11c0d37" in workflow
     assert "git clone" not in workflow
+
+
+def test_static_site_can_publish_without_rebuilding_packages():
+    workflow = read(".github/workflows/site.yml")
+    for required in (
+        "git archive origin/apt-repository",
+        "packaging/repository/install-usbradioplus.sh",
+        "git push --force origin HEAD:apt-repository",
+        "actions/deploy-pages@v5",
+        "sh -n /tmp/install-usbradioplus.sh",
+        "sudo sh install-usbradioplus.sh",
+        "group: debian-repository",
+    ):
+        assert required in workflow
+    assert "dpkg-buildpackage" not in workflow
+    assert "reprepro" not in workflow

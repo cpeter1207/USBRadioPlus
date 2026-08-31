@@ -293,6 +293,7 @@ jobs:
           mkdir -p /tmp/config-before
           cp -a /etc/asterisk/modules.conf /etc/asterisk/rpt.conf /tmp/config-before/ 2>/dev/null || true
           for attempt in 1 2 3 4 5; do
+            echo "Download attempt $attempt"
             curl -fsSLo /tmp/install-usbradioplus.sh \
               https://cpeter1207.github.io/USBRadioPlus/install-usbradioplus.sh && break
             sleep 10
