@@ -18,6 +18,7 @@ enum txagc_stage {
 enum txagc_ctcss_filter_mode {
 	TXAGC_CTCSS_FILTER_DISABLED,
 	TXAGC_CTCSS_FILTER_NOTCH,
+	TXAGC_CTCSS_FILTER_COMB,
 	TXAGC_CTCSS_FILTER_HIGHPASS,
 };
 

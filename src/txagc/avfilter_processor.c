@@ -274,7 +274,8 @@ static int build_description(char *graph, size_t size,
 		}
 		graph_input = "deemphasized";
 	}
-	if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH) {
+	if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH
+		|| cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_COMB) {
 		const char *cursor = cfg->ctcss_notch_frequencies;
 		char input_name[NAME_SIZE];
 		char output_name[NAME_SIZE];

@@ -114,7 +114,9 @@ DEFAULTS = {
 }
 
 SOURCE_DEFAULTS = {
-    "local": {"ctcss_filter_mode": "notch", "output_gain_db": "-6.2"},
+    # An absent local mode inherits rxhpf; highpass is the effective legacy
+    # mode shown by the tuner without silently selecting notch filtering.
+    "local": {"ctcss_filter_mode": "highpass", "output_gain_db": "-6.2"},
     "link": {"output_gain_db": "-6.2"},
     "voice_telemetry": {
         "input_gain_db": "6.0", "output_gain_db": "0.0",

@@ -54,6 +54,27 @@ def test_legacy_seed_does_not_leak_local_filters_into_link():
     link_read = loader.index('read_chain(cfg, "link"', reset)
     assert copied < reset < link_read
 
+def test_link_rejects_brickwall_filter_options():
+    source = text("src/usbradioplus_processing.c")
+    validator = source[source.index("static int validate_option_names"):
+                       source.index("static int read_stage_order")]
+    assert 'strcmp(sections[section], "link")' in validator
+    for option in ("splatter_filter_enabled", "splatter_filter_highpass_hz",
+                   "splatter_filter_lowpass_hz", "output_highpass_hz",
+                   "output_lowpass_hz"):
+        assert f'"{option}"' in validator
+
+def test_explicit_pl_filter_replaces_legacy_rxhpf():
+    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(name)
+        block = source[source.index("struct txagc_config filter_cfg;"):]
+        block = block[:block.index("filter_cfg.splatter_filter_enabled")]
+        explicit = block.index("chain.ctcss_filter_configured")
+        processing_cutoff = block.index("chain.agc.ctcss_highpass_hz", explicit)
+        legacy_fallback = block.index("o->plus_rxhpf_enabled", processing_cutoff)
+        assert explicit < processing_cutoff < legacy_fallback
+        assert "TXAGC_CTCSS_FILTER_COMB" in block
+
 def test_invalid_reload_cannot_replace_live_settings():
     source = text("src/usbradioplus_processing.c")
     loader = source[source.index("static int load_settings(void)"):
@@ -214,7 +235,7 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
                   '"--cancel-button", "Exit"', '"--ok-button", "Apply"',
                   '"--ok-button", "Close"', '"--yes-button", "Restore"'):
         assert label in processing
-    assert '"local": {"ctcss_filter_mode": "notch"' in processing
+    assert '"local": {"ctcss_filter_mode": "highpass"' in processing
     assert '"input_gain_db": "6.0"' in processing
     assert '"splatter_filter_enabled": "yes"' in processing
     assert 'groups.remove("Filters")' in processing
@@ -373,8 +394,7 @@ def test_configuration_manuals_cover_parser_options():
     legacy = [line for line in text("tests/data/legacy-options.txt").splitlines()
               if line and not line.startswith("#")]
     channel_extra = (
-        "duplex3mode txvoicehighpass linkhighpass nativeparrot parrotmaxseconds "
-        "txvoicehighpass_hz linkhighpass_hz emphasis_corner_hz "
+        "duplex3mode nativeparrot parrotmaxseconds emphasis_corner_hz "
         "presquelch_gain_db postsquelch_gain_db tx_ceiling_dbfs "
         "preemphasis_headroom_db rxlevel_presquelch_target_dbfs "
         "rxlevel_post_target_dbfs legacyaudioscaling pport pbase"
@@ -425,8 +445,7 @@ def test_example_files_cover_every_documented_option():
     legacy = [line for line in text("tests/data/legacy-options.txt").splitlines()
               if line and not line.startswith("#")]
     channel_extra = (
-        "duplex3mode txvoicehighpass linkhighpass nativeparrot parrotmaxseconds "
-        "txvoicehighpass_hz linkhighpass_hz emphasis_corner_hz "
+        "duplex3mode nativeparrot parrotmaxseconds emphasis_corner_hz "
         "presquelch_gain_db postsquelch_gain_db tx_ceiling_dbfs "
         "preemphasis_headroom_db rxlevel_presquelch_target_dbfs "
         "rxlevel_post_target_dbfs legacyaudioscaling pport pbase"
@@ -468,3 +487,46 @@ def test_manual_sections_and_install_layout():
                       "man5/usbradioplus-processing.conf.5",
                       "man7/usbradioplus.7", "man8/usbradioplus-tune.8"):
         assert installed in makefile.replace("$(DESTDIR)$(mandir)/", "")
+
+
+def test_link_path_has_no_separate_highpass_filter():
+    for path in ("src/chan_usbradioplus.c",
+                 "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "plus_link_hpf" not in source
+        assert '"linkhighpass"' not in source
+        assert '"linkhighpass_hz"' not in source
+    for path in ("examples/usbradioplus.conf.sample",
+                 "man/usbradioplus.conf.5"):
+        assert "linkhighpass" not in text(path).lower()
+
+
+def test_transmitter_has_only_final_brickwall_bandpass():
+    for path in ("src/chan_usbradioplus.c",
+                 "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "plus_tx_hpf" not in source
+        assert '"txvoicehighpass"' not in source
+        assert '"txvoicehighpass_hz"' not in source
+        assert "final_cfg.splatter_filter_enabled" in source
+    for path in ("examples/usbradioplus.conf.sample",
+                 "man/usbradioplus.conf.5"):
+        assert "txvoicehighpass" not in text(path).lower()
+
+
+def test_fixed_pl_filter_precedes_local_dynamics():
+    for path in ("src/chan_usbradioplus.c",
+                 "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "struct txagc_config dynamics_cfg = chain.agc;" in source
+        assert ("dynamics_cfg.ctcss_filter_mode = "
+                "TXAGC_CTCSS_FILTER_DISABLED;") in source
+        assert ("chain.agc.ctcss_filter_mode = "
+                "TXAGC_CTCSS_FILTER_DISABLED;") not in source
+        fixed_filter = source.index(
+            "txagc_avfilter_process(&o->plus_rx_filter_after")
+        rnnoise = source.index(
+            "txagc_rnnoise_process_double(&o->plus_local_rnnoise")
+        dynamics = source.index(
+            "txagc_avfilter_process(&o->plus_local_avfilter")
+        assert fixed_filter < rnnoise < dynamics

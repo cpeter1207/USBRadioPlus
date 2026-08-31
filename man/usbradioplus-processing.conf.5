@@ -66,9 +66,13 @@ Enable RNNoise after receiver de-emphasis and squelch gating and before
 dynamics. This applies only to [local]. Default is no.
 .TP
 .B ctcss_filter_mode = disabled|notch|comb|highpass
-Choose the fixed local-receiver filter after dynamics. Notch and comb remove
-configured receive CTCSS tones; highpass removes the subaudible band. Default
-is notch.
+Choose the single PL-removal filter after de-emphasis and the receiver gate,
+before RNNoise and dynamics. Notch removes the currently
+decoded PL tone. Comb removes every PL tone listed by rxctcssfreqs. Highpass
+removes the subaudible band. Notch and comb never run in series with a
+high-pass. If this option is absent,
+.B rxhpf
+in usbradioplus.conf selects and configures a high-pass for compatibility.
 .TP
 .B ctcss_notch_width_hz = 0.2..10
 Set each CTCSS notch width. Default is 2 Hz.
@@ -236,8 +240,9 @@ Set the final hard ceiling. Default is -3 dBFS.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, optionally passed
 through RNNoise, passed through the selected dynamics order, and then passed
-through the selected CTCSS filter. Link audio uses its dynamics graph. RNNoise
-and CTCSS removal are not available on link or transmitter sources.
+through one selected PL filter. Link audio uses only its dynamics graph;
+source-specific brick-wall filtering is not available. RNNoise and PL removal
+are not available on link or transmitter sources.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
 dynamics graph, and then applies its fixed filtering and peak-control tail.

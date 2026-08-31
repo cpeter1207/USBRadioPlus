@@ -34,7 +34,7 @@ static double measure(struct txagc_config *config, double frequency)
 int main(void)
 {
 	struct txagc_config config;
-	double notch_tone, notch_speech, hp_tone, hp_speech;
+	double notch_tone, notch_speech, comb_tone, hp_tone, hp_speech;
 
 	memset(&config, 0, sizeof(config));
 	config.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
@@ -42,13 +42,16 @@ int main(void)
 	strcpy(config.ctcss_notch_frequencies, "100.0,114.8,123.0");
 	notch_tone = measure(&config, 114.8);
 	notch_speech = measure(&config, 300.0);
+	config.ctcss_filter_mode = TXAGC_CTCSS_FILTER_COMB;
+	comb_tone = measure(&config, 123.0);
 	config.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
 	config.ctcss_highpass_hz = 300.0;
 	hp_tone = measure(&config, 114.8);
 	hp_speech = measure(&config, 1000.0);
-	printf("notch 114.8=%.4f 300=%.2f; highpass 114.8=%.4f 1000=%.2f\n",
-		notch_tone, notch_speech, hp_tone, hp_speech);
+	printf("notch 114.8=%.4f 300=%.2f; comb 123=%.4f; highpass 114.8=%.4f 1000=%.2f\n",
+		notch_tone, notch_speech, comb_tone, hp_tone, hp_speech);
 	if (20.0 * log10(notch_speech / notch_tone) < 40.0) return 1;
-	if (20.0 * log10(hp_speech / hp_tone) < 60.0) return 2;
+	if (20.0 * log10(notch_speech / comb_tone) < 40.0) return 2;
+	if (20.0 * log10(hp_speech / hp_tone) < 60.0) return 3;
 	return 0;
 }

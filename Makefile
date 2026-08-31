@@ -10,6 +10,7 @@ libdir ?= $(exec_prefix)/lib
 datarootdir ?= $(prefix)/share
 docdir ?= $(datarootdir)/doc/$(PACKAGE)
 mandir ?= $(datarootdir)/man
+sysconfdir ?= /etc
 MULTIARCH ?= $(strip $(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null))
 asteriskmoduledir ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))/asterisk/modules
 DESTDIR ?=
@@ -93,13 +94,20 @@ check: all
 install: all
 	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(sbindir) \
 		$(DESTDIR)$(docdir) $(DESTDIR)$(mandir)/man5 \
-		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8
+		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8 \
+		$(DESTDIR)$(sysconfdir)/asterisk
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 	$(INSTALL_PROGRAM) $(TUNE) $(DESTDIR)$(sbindir)/usbradioplus-tune
 	$(INSTALL_PROGRAM) scripts/usbradioplus-rxlevel $(DESTDIR)$(sbindir)/usbradioplus-rxlevel
 	$(INSTALL_PROGRAM) scripts/usbradioplus-processing-tune $(DESTDIR)$(sbindir)/usbradioplus-processing-tune
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample $(DESTDIR)$(docdir)/
+	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; then \
+		$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample \
+			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; \
+	else \
+		echo "Preserving existing usbradioplus-processing.conf"; \
+	fi
 	$(INSTALL_DATA) man/usbradioplus.conf.5 $(DESTDIR)$(mandir)/man5/
 	$(INSTALL_DATA) man/usbradioplus-processing.conf.5 $(DESTDIR)$(mandir)/man5/
 	$(INSTALL_DATA) man/usbradioplus.7 $(DESTDIR)$(mandir)/man7/

@@ -28,6 +28,16 @@ static const char *source_names[TXAGC_SOURCE_COUNT] = {
 	"local", "link", "voice_telemetry"
 };
 
+static const char *ctcss_filter_name(int mode)
+{
+	switch (mode) {
+	case TXAGC_CTCSS_FILTER_NOTCH: return "notch";
+	case TXAGC_CTCSS_FILTER_COMB: return "comb";
+	case TXAGC_CTCSS_FILTER_HIGHPASS: return "highpass";
+	default: return "disabled";
+	}
+}
+
 struct txagc_settings {
 	int enabled;
 	char channel[AST_CHANNEL_NAME];
@@ -404,6 +414,16 @@ static int validate_option_names(struct ast_config *cfg)
 	for (section = 0; section < ARRAY_LEN(sections); ++section) {
 		for (variable = ast_variable_browse(cfg, sections[section]); variable;
 			variable = variable->next) {
+			if (!strcmp(sections[section], "link")
+				&& (!strcasecmp(variable->name, "splatter_filter_enabled")
+					|| !strcasecmp(variable->name, "splatter_filter_highpass_hz")
+					|| !strcasecmp(variable->name, "splatter_filter_lowpass_hz")
+					|| !strcasecmp(variable->name, "output_highpass_hz")
+					|| !strcasecmp(variable->name, "output_lowpass_hz"))) {
+				ast_log(LOG_ERROR,
+					"RadioPlus [link]: brick-wall band-pass filtering is not available\n");
+				return -1;
+			}
 			if (known_chain_option(variable->name)) continue;
 			if (!strcmp(sections[section], "general")
 				&& (!strcasecmp(variable->name, "channel")
@@ -441,8 +461,11 @@ static int read_chain(struct ast_config *cfg, const char *section,
 	{
 		const char *mode = ast_variable_retrieve(cfg, section, "ctcss_filter_mode");
 		if (mode) {
-			if (!strcasecmp(mode, "notch") || !strcasecmp(mode, "comb"))
+			chain->ctcss_filter_configured = 1;
+			if (!strcasecmp(mode, "notch"))
 				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+			else if (!strcasecmp(mode, "comb"))
+				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_COMB;
 			else if (!strcasecmp(mode, "highpass"))
 				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
 			else if (!strcasecmp(mode, "disabled") || !strcasecmp(mode, "off"))
@@ -490,6 +513,12 @@ static int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "compressor_sidechain_highpass_hz", &chain->agc.compressor_sidechain_highpass_hz);
 	read_double(cfg, section, "compressor_sidechain_lowpass_hz", &chain->agc.compressor_sidechain_lowpass_hz);
 	READ_BOOL("limiter_enabled", chain->agc.limiter_enabled);
+	if (ast_variable_retrieve(cfg, section, "splatter_filter_enabled")
+		|| ast_variable_retrieve(cfg, section, "splatter_filter_highpass_hz")
+		|| ast_variable_retrieve(cfg, section, "output_highpass_hz")
+		|| ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz")
+		|| ast_variable_retrieve(cfg, section, "output_lowpass_hz"))
+		chain->splatter_filter_configured = 1;
 	READ_BOOL("splatter_filter_enabled", chain->agc.splatter_filter_enabled);
 	read_double(cfg, section, "limiter_crossover_hz", &chain->agc.limiter_crossover_hz);
 	read_double_alias(cfg, section, "limiter_low_threshold_dbfs",
@@ -570,11 +599,15 @@ static int load_settings(void)
 	read_bool(cfg, "general", "local_enabled", &updated.chains[TXAGC_LOCAL].enabled);
 	updated.chains[TXAGC_LINK] = updated.chains[TXAGC_LOCAL];
 	updated.chains[TXAGC_LINK].rnnoise_enabled = 0;
+	updated.chains[TXAGC_LINK].ctcss_filter_configured = 0;
 	updated.chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
 	read_bool(cfg, "general", "link_enabled", &updated.chains[TXAGC_LINK].enabled);
 	if (read_chain(cfg, "local", &updated.chains[TXAGC_LOCAL])
 		|| read_chain(cfg, "link", &updated.chains[TXAGC_LINK])
 		|| read_chain(cfg, "voice_telemetry", &updated.chains[TXAGC_VOICE_TELEMETRY])) goto invalid;
+	/* Link audio receives the common transmitter tail after source mixing.
+	 * It must never carry a second, source-specific brick-wall band-pass. */
+	updated.chains[TXAGC_LINK].agc.splatter_filter_enabled = 0;
 	if (settings_parse_error) goto invalid;
 	updated.local_enabled = updated.chains[TXAGC_LOCAL].enabled;
 	updated.link_enabled = updated.chains[TXAGC_LINK].enabled;
@@ -838,22 +871,25 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
 		struct txagc_chain *chain = &current.chains[source];
 		ast_cli(args->fd, "Chain %s: %s, RNNoise %s, AGC %s, expander %s, "
-			"compressor %s, two-band limiter %s, brick-wall band-pass %s, "
-			"lookahead limiter %s, input gain %.1f dB, output gain %.1f dB\n",
+			"compressor %s, two-band limiter %s, ",
 			source_names[source], chain->enabled ? "enabled" : "disabled",
 			chain->rnnoise_enabled ? "enabled" : "disabled",
 			chain->agc.agc_enabled ? "enabled" : "disabled",
 			chain->agc.expander_enabled ? "enabled" : "disabled",
 			chain->agc.compressor_enabled ? "enabled" : "disabled",
-			chain->agc.limiter_enabled ? "enabled" : "disabled",
-			chain->agc.splatter_filter_enabled ? "enabled" : "disabled",
+			chain->agc.limiter_enabled ? "enabled" : "disabled");
+		if (source == TXAGC_VOICE_TELEMETRY)
+			ast_cli(args->fd, "brick-wall band-pass %s, ",
+				chain->agc.splatter_filter_enabled ? "enabled" : "disabled");
+		ast_cli(args->fd,
+			"lookahead limiter %s, input gain %.1f dB, output gain %.1f dB\n",
 			chain->agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 			chain->agc.input_gain_db,
 			chain->agc.output_gain_db);
 	}
 	ast_cli(args->fd, "\nDetailed local-chain settings:\n");
 	ast_cli(args->fd, "Enabled: %s\nLocal receiver: %s\nLinked audio: %s\n"
-		"Channel: %s\nRNNoise: %s\n"
+		"Channel: %s\nRNNoise: %s\nPL filter: %s%s\n"
 		"AGC stage: %s\nTarget: %.1f dBFS\nMax gain: %.1f dB\n"
 		"Max attenuation: %.1f dB\nAGC detector floor: %.1f dBFS\nAttack: %.0f ms\n"
 		"Release: %.0f ms\nReset after: %.0f ms\nSidechain band-pass: %.0f-%.0f Hz\n"
@@ -876,6 +912,10 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 		current.local_enabled ? "enabled" : "disabled",
 		current.link_enabled ? "enabled" : "disabled", current.channel,
 		current.rnnoise_enabled ? "enabled" : "disabled",
+		current.chains[TXAGC_LOCAL].ctcss_filter_configured
+			? ctcss_filter_name(current.agc.ctcss_filter_mode) : "rxhpf",
+		current.chains[TXAGC_LOCAL].ctcss_filter_configured
+			? " (explicit)" : " (usbradioplus.conf fallback)",
 		current.agc.agc_enabled ? "enabled" : "disabled",
 		current.agc.target_dbfs, current.agc.max_gain_db,
 		current.agc.max_attenuation_db, current.agc.agc_floor_dbfs,

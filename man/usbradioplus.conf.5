@@ -223,6 +223,13 @@ Set the receive or transmit low-pass cutoff.
 .B rxhpf, txhpf = no|yes|selector|frequency
 Set the receive or transmit high-pass cutoff.
 .PP
+On transmit,
+.B txhpf
+sets the low-frequency edge and
+.B txlpf
+sets the high-frequency edge of one final brick-wall band-pass. They do not
+create additional filter stages.
+.PP
 .B no
 disables a filter and
 .B yes
@@ -237,20 +244,6 @@ Useful initial passbands are 300--3000 Hz for 12.5 kHz narrowband and 15 kHz FM,
 be verified for intelligibility, CTCSS margin, peak deviation, and occupied
 bandwidth with a service monitor.
 .SH AUDIO-PATH CONTROLS
-.TP
-.B txvoicehighpass = yes|no
-Enable the high-pass filter on voice entering the transmitter path.  Default is
-.BR yes .
-.TP
-.B txvoicehighpass_hz = frequency
-Set that filter's cutoff.  Default is 250.
-.TP
-.B linkhighpass = yes|no
-Enable high-pass filtering of network audio.  Default is
-.BR yes .
-.TP
-.B linkhighpass_hz = frequency
-Set the network-audio high-pass cutoff.  Default is 250.
 .TP
 .B emphasis_corner_hz = frequency
 Set the pre-emphasis and de-emphasis corner.  Default is 212.206590789 Hz,

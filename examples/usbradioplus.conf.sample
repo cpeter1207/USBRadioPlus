@@ -111,9 +111,11 @@
 ; Receiver high-pass. no disables; yes selects 300 Hz; integer and exact-Hz
 ; forms work as described for rxlpf.
 ;rxhpf = yes
-; Transmitter low-pass, using the same no/yes/integer/exact-Hz syntax.
+; High-frequency edge of the single final transmitter brick-wall band-pass.
+; Uses the same no/yes/integer/exact-Hz syntax.
 ;txlpf = yes
-; Transmitter high-pass, using the same no/yes/integer/exact-Hz syntax.
+; Low-frequency edge of that same transmitter band-pass; this is not a
+; separate processing stage.
 ;txhpf = yes
 ;
 ; Initial voice passbands by FM channel bandwidth. Verify peak deviation,
@@ -123,14 +125,6 @@
 ; 20 kHz FM:            rxhpf=250.0 rxlpf=4000.0 txhpf=250.0 txlpf=4000.0
 ; 25 kHz FM:            rxhpf=250.0 rxlpf=5000.0 txhpf=250.0 txlpf=5000.0
 
-; Enable the high-pass on voice entering the transmitter path.
-;txvoicehighpass = yes
-; Transmitter voice-input high-pass cutoff in hertz.
-;txvoicehighpass_hz = 250.0
-; Enable the high-pass on network audio.
-;linkhighpass = yes
-; Network-audio high-pass cutoff in hertz.
-;linkhighpass_hz = 250.0
 ; Pre-emphasis and de-emphasis corner in hertz; 212.206590789 is 750 us.
 ;emphasis_corner_hz = 212.206590789
 ; Receive gain before and after the squelch gate, in dB.

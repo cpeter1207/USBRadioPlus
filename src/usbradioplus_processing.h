@@ -14,6 +14,8 @@ enum txagc_source {
 struct txagc_chain {
 	int enabled;
 	int rnnoise_enabled;
+	int ctcss_filter_configured;
+	int splatter_filter_configured;
 	int lookahead_limiter_configured;
 	struct txagc_config agc;
 };

@@ -128,7 +128,7 @@ def test_installer_has_strict_repository_and_transaction_guards():
         'grep -F "asl3-asterisk (= $asl_version)"',
         "apt-get -s install",
         "APT would change asl3-asterisk",
-        "does not edit Asterisk configuration",
+        "does not replace existing configuration",
     ):
         assert required in source
     for forbidden in ("systemctl", "asterisk -rx", "modules.conf /", "rpt.conf /"):

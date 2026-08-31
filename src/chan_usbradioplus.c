@@ -251,8 +251,6 @@ struct chan_usbradio_pvt {
 	struct urp_src *plus_up;
 	struct urp_src *plus_down;
 	struct urp_clock_recovery plus_link_clock;
-	struct urp_biquad plus_tx_hpf;
-	struct urp_biquad plus_link_hpf;
 	struct urp_deemphasis plus_deemphasis;
 	struct urp_deemphasis plus_preemphasis;
 	struct urp_deemphasis plus_link_preemphasis;
@@ -264,10 +262,6 @@ struct chan_usbradio_pvt {
 	struct txagc_avfilter plus_rx_filter_after;
 	struct txagc_avfilter plus_final_avfilter;
 	struct txagc_rnnoise plus_local_rnnoise;
-	unsigned int plus_tx_hpf_enabled:1;
-	unsigned int plus_link_hpf_enabled:1;
-	double plus_tx_hpf_hz;
-	double plus_link_hpf_hz;
 	double plus_emphasis_corner_hz;
 	double plus_presquelch_gain_db;
 	double plus_postsquelch_gain_db;
@@ -562,10 +556,6 @@ static struct chan_usbradio_pvt usbradio_default = {
 	.plus_rxhpf_hz = 300.0,
 	.plus_txlpf_hz = 3000.0,
 	.plus_txhpf_hz = 300.0,
-	.plus_tx_hpf_enabled = 1,
-	.plus_link_hpf_enabled = 1,
-	.plus_tx_hpf_hz = 250.0,
-	.plus_link_hpf_hz = 250.0,
 	/* 750 us land-mobile pre/deemphasis: fc = 1 / (2*pi*750 us). */
 	.plus_emphasis_corner_hz = 212.206590789,
 	.plus_presquelch_gain_db = 0.0,
@@ -5213,18 +5203,8 @@ static struct chan_usbradio_pvt *store_config(struct ast_config *cfg, const char
 			}
 			continue;
 		}
-		CV_BOOL("txvoicehighpass", o->plus_tx_hpf_enabled);
-		CV_BOOL("linkhighpass", o->plus_link_hpf_enabled);
 		CV_BOOL("nativeparrot", o->plus_parrot_enabled);
 		CV_UINT("parrotmaxseconds", o->plus_parrot_max_seconds);
-		if (!strcasecmp(v->name, "txvoicehighpass_hz")) {
-			o->plus_tx_hpf_hz = strtod(v->value, NULL);
-			continue;
-		}
-		if (!strcasecmp(v->name, "linkhighpass_hz")) {
-			o->plus_link_hpf_hz = strtod(v->value, NULL);
-			continue;
-		}
 		if (!strcasecmp(v->name, "emphasis_corner_hz")) {
 			o->plus_emphasis_corner_hz = strtod(v->value, NULL);
 			continue;
@@ -5311,9 +5291,7 @@ static struct chan_usbradio_pvt *store_config(struct ast_config *cfg, const char
 	if (o == &usbradio_default) { /* we are done with the default */
 		return NULL;
 	}
-	if (o->plus_tx_hpf_hz < 0.0 || o->plus_tx_hpf_hz >= URP_RATE_NATIVE / 2.0
-		|| o->plus_link_hpf_hz < 0.0 || o->plus_link_hpf_hz >= URP_RATE_NATIVE / 2.0
-		|| o->plus_emphasis_corner_hz <= 0.0 || o->plus_emphasis_corner_hz >= 300.0
+	if (o->plus_emphasis_corner_hz <= 0.0 || o->plus_emphasis_corner_hz >= 300.0
 		|| o->plus_presquelch_gain_db < -30.0 || o->plus_presquelch_gain_db > 30.0
 		|| o->plus_postsquelch_gain_db < -30.0 || o->plus_postsquelch_gain_db > 30.0
 		|| o->plus_tx_ceiling_dbfs > 0.0 || o->plus_tx_ceiling_dbfs < -20.0
@@ -5662,10 +5640,6 @@ static int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native sample-rate converters\n", o->name);
 		return -1;
 	}
-	urp_biquad_highpass(&o->plus_tx_hpf, URP_RATE_NATIVE,
-		o->plus_tx_hpf_hz, o->plus_tx_hpf_enabled);
-	urp_biquad_highpass(&o->plus_link_hpf, URP_RATE_NATIVE,
-		o->plus_link_hpf_hz, o->plus_link_hpf_enabled);
 	/* A very low corner closely realizes the conventional 6 dB/octave
 	 * land-mobile curve across the voice band. */
 	tau_us = 1000000.0 / (2.0 * M_PI * o->plus_emphasis_corner_hz);
@@ -5990,27 +5964,6 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			o->plus_local_native[i] *= gain;
 		}
 	}
-	memcpy(parrot_raw, o->plus_local_native, sizeof(parrot_raw));
-	if (local_chain_enabled && o->rxkeyed) {
-		/* De-emphasis and the selected fixed receive filter have already run,
-		 * and rxkeyed is the squelch gate. RNNoise is therefore always the
-		 * first optional local stage and feeds one intact FFmpeg graph. */
-		if (chain.rnnoise_enabled
-			&& txagc_rnnoise_process_double(&o->plus_local_rnnoise,
-				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE)) {
-			ast_log(LOG_WARNING, "RadioPlus/%s: local RNNoise processing failed\n",
-				o->name);
-		}
-		if (!chain.rnnoise_enabled) txagc_rnnoise_bypass(&o->plus_local_rnnoise);
-		chain.agc.deemphasis_enabled = 0;
-		chain.agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
-		if (txagc_avfilter_process(&o->plus_local_avfilter, &chain.agc,
-				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE) < 0)
-			ast_log(LOG_WARNING, "RadioPlus/%s: local dynamics processing failed\n",
-				o->name);
-	} else {
-		txagc_rnnoise_bypass(&o->plus_local_rnnoise);
-	}
 	{
 		struct txagc_config filter_cfg;
 		double rx_high = o->plus_rxhpf_exact ? o->plus_rxhpf_hz
@@ -6019,15 +5972,23 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			: usbradioplus_legacy_cutoff("rxlpf", o->rxlpf);
 		memset(&filter_cfg, 0, sizeof(filter_cfg));
 		filter_cfg.ctcss_notch_width_hz = 2.0;
-		filter_cfg.ctcss_highpass_hz = rx_high;
-		filter_cfg.ctcss_filter_mode = o->plus_rxhpf_enabled
-			? TXAGC_CTCSS_FILTER_HIGHPASS : TXAGC_CTCSS_FILTER_DISABLED;
-		if (local_chain_enabled
-			&& chain.agc.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH) {
-			filter_cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+		/* Apply exactly one PL-rejection filter after the qualified receiver
+		 * gate and before RNNoise or dynamics. An explicit processing mode owns
+		 * its type and cutoff; otherwise rxhpf supplies the compatible default. */
+		if (local_chain_enabled && chain.ctcss_filter_configured) {
+			filter_cfg.ctcss_filter_mode = chain.agc.ctcss_filter_mode;
+			filter_cfg.ctcss_highpass_hz = chain.agc.ctcss_highpass_hz;
 			filter_cfg.ctcss_notch_width_hz = chain.agc.ctcss_notch_width_hz;
-			ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreqs,
-				sizeof(filter_cfg.ctcss_notch_frequencies));
+			if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)
+				ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreq,
+					sizeof(filter_cfg.ctcss_notch_frequencies));
+			else if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_COMB)
+				ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreqs,
+					sizeof(filter_cfg.ctcss_notch_frequencies));
+		} else {
+			filter_cfg.ctcss_filter_mode = o->plus_rxhpf_enabled
+				? TXAGC_CTCSS_FILTER_HIGHPASS : TXAGC_CTCSS_FILTER_DISABLED;
+			filter_cfg.ctcss_highpass_hz = rx_high;
 		}
 		filter_cfg.splatter_filter_enabled = o->plus_rxlpf_enabled;
 		filter_cfg.output_lowpass_hz = rx_low;
@@ -6035,11 +5996,31 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE) < 0)
 			ast_log(LOG_WARNING, "RadioPlus/%s: fixed receive filter failed\n", o->name);
 	}
+	memcpy(parrot_raw, o->plus_local_native, sizeof(parrot_raw));
+	if (local_chain_enabled && o->rxkeyed) {
+		struct txagc_config dynamics_cfg = chain.agc;
 
-	/* The network copy is made from the conditioned local signal, with its
-	 * own optional CTCSS-rejection high-pass, then converted exactly once. */
+		/* De-emphasis, squelch qualification, and fixed receive filtering have
+		 * already run. RNNoise is therefore the first optional dynamics stage. */
+		if (chain.rnnoise_enabled
+			&& txagc_rnnoise_process_double(&o->plus_local_rnnoise,
+				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE)) {
+			ast_log(LOG_WARNING, "RadioPlus/%s: local RNNoise processing failed\n",
+				o->name);
+		}
+		if (!chain.rnnoise_enabled) txagc_rnnoise_bypass(&o->plus_local_rnnoise);
+		dynamics_cfg.deemphasis_enabled = 0;
+		/* Fixed receive filtering has already run; do not duplicate it here. */
+		dynamics_cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
+		if (txagc_avfilter_process(&o->plus_local_avfilter, &dynamics_cfg,
+				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE) < 0)
+			ast_log(LOG_WARNING, "RadioPlus/%s: local dynamics processing failed\n",
+				o->name);
+	} else {
+		txagc_rnnoise_bypass(&o->plus_local_rnnoise);
+	}
+	/* Convert the PL-filtered local signal to the app_rpt rate exactly once. */
 	memcpy(program, o->plus_local_native, sizeof(program));
-	urp_biquad_process_double(&o->plus_link_hpf, program, URP_NATIVE_SAMPLES);
 	for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
 		network_program[i] = plus_apply_gain((short) fmax(-32768.0,
 			fmin(32767.0, program[i])), 1.0);
@@ -6157,7 +6138,7 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		}
 	}
 	/* Keep unlimited floating-point headroom through preemphasis, mixing, and
-	 * transmit high-pass filtering. Low-frequency energy that will be removed
+	 * final brick-wall band-pass. Low-frequency energy that will be removed
 	 * must never hit a ceiling first and create broadband clipping products. */
 	{
 		double peak = plus_peak_double(local_program, URP_NATIVE_SAMPLES);
@@ -6170,14 +6151,20 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			program[i] += local_program[i];
 		}
 	}
-	urp_biquad_process_double(&o->plus_tx_hpf, program, URP_NATIVE_SAMPLES);
 	{
 		struct txagc_config final_cfg;
 		struct txagc_chain composite_chain;
 
-		if (!usbradioplus_processing_get_composite(&composite_chain)
-				&& composite_chain.enabled) {
+		if (!usbradioplus_processing_get_composite(&composite_chain)) {
 			final_cfg = composite_chain.agc;
+			/* The source master gates reorderable dynamics. Fixed transmitter-tail
+			 * stages retain their own explicit enable controls. */
+			if (!composite_chain.enabled) {
+				final_cfg.agc_enabled = 0;
+				final_cfg.expander_enabled = 0;
+				final_cfg.compressor_enabled = 0;
+				final_cfg.limiter_enabled = 0;
+			}
 		} else {
 			memset(&final_cfg, 0, sizeof(final_cfg));
 			final_cfg.input_gain_db = 6.0;
@@ -6212,14 +6199,16 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		/* Preserve txboost as a relative 6 dB increase above the native
 		 * transmitter chain's established baseline. */
 		if (o->txboost) final_cfg.input_gain_db += 6.0;
-		final_cfg.splatter_filter_enabled =
-			o->plus_txhpf_enabled || o->plus_txlpf_enabled;
-		final_cfg.output_highpass_hz = o->plus_txhpf_enabled
-			? (o->plus_txhpf_exact ? o->plus_txhpf_hz
-				: usbradioplus_legacy_cutoff("txhpf", o->txhpf)) : 0.0;
-		final_cfg.output_lowpass_hz = o->plus_txlpf_enabled
-			? (o->plus_txlpf_exact ? o->plus_txlpf_hz
-				: usbradioplus_legacy_cutoff("txlpf", o->txlpf)) : 0.0;
+		if (!composite_chain.splatter_filter_configured) {
+			final_cfg.splatter_filter_enabled =
+				o->plus_txhpf_enabled || o->plus_txlpf_enabled;
+			final_cfg.output_highpass_hz = o->plus_txhpf_enabled
+				? (o->plus_txhpf_exact ? o->plus_txhpf_hz
+					: usbradioplus_legacy_cutoff("txhpf", o->txhpf)) : 0.0;
+			final_cfg.output_lowpass_hz = o->plus_txlpf_enabled
+				? (o->plus_txlpf_exact ? o->plus_txlpf_hz
+					: usbradioplus_legacy_cutoff("txlpf", o->txlpf)) : 0.0;
+		}
 		/* A configured RadioPlus yes/no is authoritative.  Only an omitted
 		 * setting inherits txprelim, txlimonly, and txslimsp semantics. */
 		if (!composite_chain.lookahead_limiter_configured

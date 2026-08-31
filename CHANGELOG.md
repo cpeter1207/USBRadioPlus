@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Corrects local PL filtering so high-pass, notch, and comb modes run after
+  receiver qualification and before RNNoise and dynamics.
+- Uses one final transmitter brick-wall band-pass; `txhpf` sets its low edge
+  and `txlpf` sets its high edge when processing-file cutoffs are absent.
+- Removes the separate link and transmitter voice high-pass stages and their
+  configuration options.
+- Makes explicit transmitter-tail filter settings authoritative even when
+  voice/telemetry dynamics are disabled.
+- Expands processing-tuner filter controls, examples, manual pages, strict
+  validation, and regression coverage.
 - Adds a strictly validated bootstrap installer that detects supported Debian,
   architecture, and ASL3 combinations and installs the matching signed package.
 - Verifies the repository key, package origin, architecture, exact ASL runtime
