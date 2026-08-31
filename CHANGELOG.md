@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha3 - 2026-08-31
+
+Corrects local PL-filter ordering and mode handling; consolidates transmitter filtering into one final brick-wall band-pass with explicit processing settings and legacy txhpf/txlpf fallback; removes redundant link and transmitter high-pass stages; expands tune controls, documentation, installer validation, and regression coverage.
+
 - Corrects local PL filtering so high-pass, notch, and comb modes run after
   receiver qualification and before RNNoise and dynamics.
 - Uses one final transmitter brick-wall band-pass; `txhpf` sets its low edge
