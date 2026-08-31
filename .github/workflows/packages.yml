@@ -134,6 +134,7 @@ jobs:
             binary_package=usbradioplus-asl3105
             sed -i 's/^Package: usbradioplus$/Package: usbradioplus-asl3105/' debian/control
             sed -i '/^Architecture: amd64 arm64$/a Conflicts: usbradioplus\nReplaces: usbradioplus' debian/control
+            sed -i 's|debian/usbradioplus |debian/usbradioplus-asl3105 |' debian/rules
           fi
           export DEB_BINARY_PACKAGE="$binary_package"
           radio_api=$(make -s print-asl-radio-api)
@@ -152,8 +153,9 @@ jobs:
           lintian --fail-on error ../usbradioplus_*.changes
           mkdir -p package-output
           cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
-            ../"$binary_package"_*.deb ../"$binary_package"-dbgsym_*.deb \
-            package-output/
+            ../"$binary_package"_*.deb package-output/
+          find .. -maxdepth 1 -name "$binary_package-dbgsym_*.deb" \
+            -exec cp -t package-output {} +
           printf 'suite=%s\narchitecture=%s\nasl3_asterisk=%s\napp_rpt=%s\nradio_api=%s\n' \
             '${{ matrix.suite }}' "$(dpkg --print-architecture)" \
             "$asl_version" "$app_rpt_version" "$radio_api" > package-output/build-info.txt

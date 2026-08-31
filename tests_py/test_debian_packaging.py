@@ -57,6 +57,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         '*.deb13_*|*.deb13+*_*) suite=trixie',
         'binary_package=usbradioplus-asl3105',
         'Conflicts: usbradioplus',
+        "debian/usbradioplus-asl3105",
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()
