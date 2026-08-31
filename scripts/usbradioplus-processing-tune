@@ -35,15 +35,15 @@ SETTINGS = {
     "splatter_filter_enabled": ("Brick-wall band-pass", "bool", None, None, "", "Stages"),
     "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
     "final_clipper_enabled": ("Final clipper", "bool", None, None, "", "Stages"),
-    "target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
-    "max_gain_db": ("AGC maximum gain", "float", 0, 30, "dB", "AGC"),
-    "max_attenuation_db": ("AGC maximum attenuation", "float", 0, 60, "dB", "AGC"),
+    "agc_target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
+    "agc_max_gain_db": ("AGC maximum gain", "float", 0, 30, "dB", "AGC"),
+    "agc_max_attenuation_db": ("AGC maximum attenuation", "float", 0, 60, "dB", "AGC"),
     "agc_floor_dbfs": ("AGC detector floor", "float", -100, -3, "dBFS", "AGC"),
-    "attack_ms": ("AGC attack", "float", 1, 10000, "ms", "AGC"),
-    "release_ms": ("AGC release", "float", 1, 30000, "ms", "AGC"),
-    "reset_after_ms": ("AGC reset after", "float", 100, 60000, "ms", "AGC"),
-    "sidechain_highpass_hz": ("AGC sidechain band-pass low edge", "float", 50, 2000, "Hz", "AGC"),
-    "sidechain_lowpass_hz": ("AGC sidechain band-pass high edge", "float", 50, 3500, "Hz", "AGC"),
+    "agc_attack_ms": ("AGC attack", "float", 1, 10000, "ms", "AGC"),
+    "agc_release_ms": ("AGC release", "float", 1, 30000, "ms", "AGC"),
+    "agc_reset_after_ms": ("AGC reset after", "float", 100, 60000, "ms", "AGC"),
+    "agc_sidechain_highpass_hz": ("AGC sidechain band-pass low edge", "float", 50, 2000, "Hz", "AGC"),
+    "agc_sidechain_lowpass_hz": ("AGC sidechain band-pass high edge", "float", 50, 3500, "Hz", "AGC"),
     "expander_threshold_dbfs": ("Expander threshold", "float", -100, -10, "dBFS", "Expander"),
     "expander_ratio": ("Expander ratio", "float", 1, 10, ":1", "Expander"),
     "expander_max_attenuation_db": ("Expander max attenuation", "float", 0, 40, "dB", "Expander"),
@@ -59,25 +59,25 @@ SETTINGS = {
     "compressor_sidechain_highpass_hz": ("Compressor sidechain band-pass low edge", "float", 50, 2000, "Hz", "Compressor"),
     "compressor_sidechain_lowpass_hz": ("Compressor sidechain band-pass high edge", "float", 50, 3500, "Hz", "Compressor"),
     "limiter_crossover_hz": ("Limiter crossover", "float", 300, 2000, "Hz", "Two-band limiter"),
-    "low_limiter_threshold_dbfs": ("Low-band threshold", "float", -40, -1, "dBFS", "Two-band limiter"),
-    "low_limiter_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
-    "low_limiter_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Two-band limiter"),
-    "low_limiter_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Two-band limiter"),
-    "low_limiter_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Two-band limiter"),
-    "high_clip_dbfs": ("High-band limit", "float", -30, -1, "dBFS", "Two-band limiter"),
-    "high_limiter_ratio": ("High-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
-    "high_limiter_knee_db": ("High-band knee", "float", 0, 24, "dB", "Two-band limiter"),
-    "high_limiter_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Two-band limiter"),
-    "high_limiter_release_ms": ("High-band release", "float", 1, 1000, "ms", "Two-band limiter"),
-    "lookahead_limit_dbfs": ("Lookahead ceiling", "float", -30, -0.1, "dBFS", "Lookahead"),
-    "lookahead_ms": ("Lookahead time", "float", 0.1, 20, "ms", "Lookahead"),
-    "lookahead_attack_ms": ("Lookahead attack", "float", 0.1, 20, "ms", "Lookahead"),
-    "lookahead_release_ms": ("Lookahead release", "float", 1, 5000, "ms", "Lookahead"),
-    "final_clip_dbfs": ("Final clip ceiling", "float", -30, -0.5, "dBFS", "Lookahead"),
+    "limiter_low_threshold_dbfs": ("Low-band threshold", "float", -40, -1, "dBFS", "Two-band limiter"),
+    "limiter_low_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
+    "limiter_low_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Two-band limiter"),
+    "limiter_low_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Two-band limiter"),
+    "limiter_low_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Two-band limiter"),
+    "limiter_high_threshold_dbfs": ("High-band threshold", "float", -30, -1, "dBFS", "Two-band limiter"),
+    "limiter_high_ratio": ("High-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
+    "limiter_high_knee_db": ("High-band knee", "float", 0, 24, "dB", "Two-band limiter"),
+    "limiter_high_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Two-band limiter"),
+    "limiter_high_release_ms": ("High-band release", "float", 1, 1000, "ms", "Two-band limiter"),
+    "lookahead_limiter_ceiling_dbfs": ("Lookahead ceiling", "float", -30, -0.1, "dBFS", "Lookahead"),
+    "lookahead_limiter_lookahead_ms": ("Lookahead time", "float", 0.1, 20, "ms", "Lookahead"),
+    "lookahead_limiter_attack_ms": ("Lookahead attack", "float", 0.1, 20, "ms", "Lookahead"),
+    "lookahead_limiter_release_ms": ("Lookahead release", "float", 1, 5000, "ms", "Lookahead"),
+    "final_clipper_ceiling_dbfs": ("Final clip ceiling", "float", -30, -0.5, "dBFS", "Lookahead"),
     "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Lookahead"),
     "post_limiter_lowpass_hz": ("Cleanup low-pass cutoff", "float", 5000, 20000, "Hz", "Lookahead"),
-    "output_highpass_hz": ("Output band-pass low cutoff", "float", 20, 2000, "Hz", "Output"),
-    "output_lowpass_hz": ("Output band-pass high cutoff", "float", 20, 5000, "Hz", "Output"),
+    "splatter_filter_highpass_hz": ("Splatter-filter low cutoff", "float", 20, 2000, "Hz", "Output"),
+    "splatter_filter_lowpass_hz": ("Splatter-filter high cutoff", "float", 20, 5000, "Hz", "Output"),
     "output_gain_db": ("Final output gain", "float", -30, 30, "dB", "Output"),
 }
 
@@ -88,11 +88,11 @@ DEFAULTS = {
     "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "2.0",
     "ctcss_highpass_hz": "300.0", "input_gain_db": "0.0",
     "splatter_filter_enabled": "no", "lookahead_limiter_enabled": "no",
-    "final_clipper_enabled": "no", "target_dbfs": "-10.0",
-    "max_gain_db": "12.0", "max_attenuation_db": "6.0",
-    "agc_floor_dbfs": "-60.0", "attack_ms": "750.0",
-    "release_ms": "1500.0", "reset_after_ms": "3000.0",
-    "sidechain_highpass_hz": "800.0", "sidechain_lowpass_hz": "1500.0",
+    "final_clipper_enabled": "no", "agc_target_dbfs": "-10.0",
+    "agc_max_gain_db": "12.0", "agc_max_attenuation_db": "6.0",
+    "agc_floor_dbfs": "-60.0", "agc_attack_ms": "750.0",
+    "agc_release_ms": "1500.0", "agc_reset_after_ms": "3000.0",
+    "agc_sidechain_highpass_hz": "800.0", "agc_sidechain_lowpass_hz": "1500.0",
     "expander_threshold_dbfs": "-55.0", "expander_ratio": "1.5",
     "expander_max_attenuation_db": "9.0", "expander_attack_ms": "10.0",
     "expander_release_ms": "250.0", "expander_sidechain_highpass_hz": "800.0",
@@ -101,16 +101,16 @@ DEFAULTS = {
     "compressor_makeup_gain_db": "0.0", "compressor_attack_ms": "75.0",
     "compressor_release_ms": "300.0", "compressor_sidechain_highpass_hz": "800.0",
     "compressor_sidechain_lowpass_hz": "1500.0", "limiter_crossover_hz": "1000.0",
-    "low_limiter_threshold_dbfs": "-1.5", "low_limiter_ratio": "10.0",
-    "low_limiter_knee_db": "6.0", "low_limiter_attack_ms": "50.0",
-    "low_limiter_release_ms": "250.0", "high_clip_dbfs": "-1.5",
-    "high_limiter_ratio": "20.0", "high_limiter_knee_db": "6.0",
-    "high_limiter_attack_ms": "0.5", "high_limiter_release_ms": "25.0",
-    "final_clip_dbfs": "-3.0", "lookahead_limit_dbfs": "-3.0",
-    "lookahead_ms": "5.0", "lookahead_attack_ms": "1.0",
-    "lookahead_release_ms": "100.0", "post_limiter_lowpass_enabled": "no",
-    "post_limiter_lowpass_hz": "8000.0", "output_highpass_hz": "300.0",
-    "output_lowpass_hz": "3000.0", "output_gain_db": "0.0",
+    "limiter_low_threshold_dbfs": "-1.5", "limiter_low_ratio": "10.0",
+    "limiter_low_knee_db": "6.0", "limiter_low_attack_ms": "50.0",
+    "limiter_low_release_ms": "250.0", "limiter_high_threshold_dbfs": "-1.5",
+    "limiter_high_ratio": "20.0", "limiter_high_knee_db": "6.0",
+    "limiter_high_attack_ms": "0.5", "limiter_high_release_ms": "25.0",
+    "final_clipper_ceiling_dbfs": "-3.0", "lookahead_limiter_ceiling_dbfs": "-3.0",
+    "lookahead_limiter_lookahead_ms": "5.0", "lookahead_limiter_attack_ms": "1.0",
+    "lookahead_limiter_release_ms": "100.0", "post_limiter_lowpass_enabled": "no",
+    "post_limiter_lowpass_hz": "8000.0", "splatter_filter_highpass_hz": "300.0",
+    "splatter_filter_lowpass_hz": "3000.0", "output_gain_db": "0.0",
 }
 
 SOURCE_DEFAULTS = {
@@ -131,10 +131,10 @@ def default_value(source, key):
 def relationship_error(source, key, number, values):
     """Validate constraints involving another value before writing the file."""
     pairs = {
-        "sidechain_lowpass_hz": "sidechain_highpass_hz",
+        "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
         "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
         "compressor_sidechain_lowpass_hz": "compressor_sidechain_highpass_hz",
-        "output_lowpass_hz": "output_highpass_hz",
+        "splatter_filter_lowpass_hz": "splatter_filter_highpass_hz",
     }
     if key in pairs:
         lower_key = pairs[key]
@@ -148,10 +148,10 @@ def relationship_error(source, key, number, values):
         if number >= upper:
             return f"{SETTINGS[key][0]} must be below {SETTINGS[upper_key][0]} ({upper:g} Hz)."
     if key == "agc_floor_dbfs":
-        target = float(values.get("target_dbfs", default_value(source, "target_dbfs")))
+        target = float(values.get("agc_target_dbfs", default_value(source, "agc_target_dbfs")))
         if number >= target:
             return f"AGC detector floor must be below AGC target ({target:g} dBFS)."
-    if key == "target_dbfs":
+    if key == "agc_target_dbfs":
         floor = float(values.get("agc_floor_dbfs", default_value(source, "agc_floor_dbfs")))
         if number <= floor:
             return f"AGC target must be above AGC detector floor ({floor:g} dBFS)."
@@ -453,7 +453,8 @@ def settings_menu(source, group):
             if data[5] == group and data[1] != "bool"
             and not (key.startswith("ctcss_") and source != "local")
             and not (group == "Lookahead" and source != "voice_telemetry")
-            and not (key in {"output_highpass_hz", "output_lowpass_hz"}
+            and not (key in {"splatter_filter_highpass_hz",
+                             "splatter_filter_lowpass_hz"}
                      and source != "voice_telemetry")]
     if not keys:
         print(f"No editable numeric settings are available for {source}: {group}.")

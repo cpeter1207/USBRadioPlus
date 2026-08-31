@@ -189,15 +189,15 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert 'TX Prelimiting (currently \'%s\')\\n", rxboost ?' not in tune
     assert 'TX Limiting Only (currently \'%s\')\\n", txboost ?' not in tune
     expected_ranges = {
-        "target_dbfs": ("-40", "-3"),
-        "max_attenuation_db": ("0", "60"),
-        "release_ms": ("1", "30000"),
-        "low_limiter_attack_ms": ("0.1", "1000"),
-        "high_clip_dbfs": ("-30", "-1"),
-        "lookahead_limit_dbfs": ("-30", "-0.1"),
-        "lookahead_ms": ("0.1", "20"),
-        "lookahead_attack_ms": ("0.1", "20"),
-        "lookahead_release_ms": ("1", "5000"),
+        "agc_target_dbfs": ("-40", "-3"),
+        "agc_max_attenuation_db": ("0", "60"),
+        "agc_release_ms": ("1", "30000"),
+        "limiter_low_attack_ms": ("0.1", "1000"),
+        "limiter_high_threshold_dbfs": ("-30", "-1"),
+        "lookahead_limiter_ceiling_dbfs": ("-30", "-0.1"),
+        "lookahead_limiter_lookahead_ms": ("0.1", "20"),
+        "lookahead_limiter_attack_ms": ("0.1", "20"),
+        "lookahead_limiter_release_ms": ("1", "5000"),
     }
     for option, (low, high) in expected_ranges.items():
         assert re.search(rf'"{option}": \([^\n]+, {re.escape(low)}, {re.escape(high)},',
@@ -371,6 +371,34 @@ def test_configuration_manuals_cover_parser_options():
     general_options = ["enabled", "channel", "local_enabled", "link_enabled"]
     assert not [option for option in set(chain_options + general_options)
                 if option not in processing_man]
+
+
+def test_processing_options_use_stage_first_names():
+    canonical = text("examples/usbradioplus-processing.conf.sample")
+    tuner = text("scripts/usbradioplus-processing-tune")
+    manual = text("man/usbradioplus-processing.conf.5")
+    parser = text("src/usbradioplus_processing.c")
+    old_names = (
+        "target_dbfs", "max_gain_db", "max_attenuation_db", "attack_ms",
+        "release_ms", "reset_after_ms", "sidechain_highpass_hz",
+        "sidechain_lowpass_hz", "low_limiter_threshold_dbfs",
+        "low_limiter_ratio", "low_limiter_knee_db", "low_limiter_attack_ms",
+        "low_limiter_release_ms", "high_clip_dbfs", "high_limiter_ratio",
+        "high_limiter_knee_db", "high_limiter_attack_ms",
+        "high_limiter_release_ms", "final_clip_dbfs", "lookahead_limit_dbfs",
+        "lookahead_ms", "lookahead_attack_ms", "lookahead_release_ms",
+        "output_highpass_hz", "output_lowpass_hz",
+    )
+    for name in old_names:
+        assignment = rf"(?m)^;?{re.escape(name)}\s*="
+        assert not re.search(assignment, canonical)
+        assert not re.search(rf"\.B {re.escape(name)}\s*=", manual)
+        assert f'    "{name}": (' not in tuner
+        assert f'"{name}"' in parser  # Accepted as a deprecated alias.
+    for prefix in ("agc_", "expander_", "compressor_", "limiter_",
+                   "lookahead_limiter_", "post_limiter_", "final_clipper_",
+                   "splatter_filter_"):
+        assert re.search(rf"(?m)^;?{prefix}[a-z0-9_]*\s*=", canonical)
 
 def test_example_files_cover_every_documented_option():
     channel = text("examples/usbradioplus.conf.sample").lower()

@@ -35,21 +35,21 @@ output_gain_db = -6.2
 ; Enable automatic gain control.
 agc_enabled = no
 ; Long-term AGC output target, -40 through -3 dBFS.
-target_dbfs = -10.0
+agc_target_dbfs = -10.0
 ; Maximum AGC boost for weak audio, 0 through 30 dB.
-max_gain_db = 12.0
+agc_max_gain_db = 12.0
 ; Maximum AGC reduction for strong audio, 0 through 60 dB.
-max_attenuation_db = 6.0
-; Do not raise signals below this level; it must be below target_dbfs.
+agc_max_attenuation_db = 6.0
+; Do not raise signals below this level; it must be below agc_target_dbfs.
 agc_floor_dbfs = -60.0
 ; AGC attack and release times in milliseconds.
-attack_ms = 750.0
-release_ms = 1500.0
+agc_attack_ms = 750.0
+agc_release_ms = 1500.0
 ; Reset AGC gain after this much closed-squelch time, 100 through 60000 ms.
-reset_after_ms = 3000.0
+agc_reset_after_ms = 3000.0
 ; AGC level-detector bandpass. Low-pass must be above high-pass.
-sidechain_highpass_hz = 800.0
-sidechain_lowpass_hz = 1500.0
+agc_sidechain_highpass_hz = 800.0
+agc_sidechain_lowpass_hz = 1500.0
 
 ; Enable downward expansion to reduce noise between words.
 expander_enabled = no
@@ -86,17 +86,17 @@ limiter_enabled = no
 ; Frequency dividing the low and high limiter bands, 300 through 2000 Hz.
 limiter_crossover_hz = 1000.0
 ; Low-band threshold, ratio, knee, attack, and release.
-low_limiter_threshold_dbfs = -1.5
-low_limiter_ratio = 10.0
-low_limiter_knee_db = 6.0
-low_limiter_attack_ms = 50.0
-low_limiter_release_ms = 250.0
+limiter_low_threshold_dbfs = -1.5
+limiter_low_ratio = 10.0
+limiter_low_knee_db = 6.0
+limiter_low_attack_ms = 50.0
+limiter_low_release_ms = 250.0
 ; High-band threshold, ratio, knee, attack, and release.
-high_clip_dbfs = -1.5
-high_limiter_ratio = 20.0
-high_limiter_knee_db = 6.0
-high_limiter_attack_ms = 0.5
-high_limiter_release_ms = 25.0
+limiter_high_threshold_dbfs = -1.5
+limiter_high_ratio = 20.0
+limiter_high_knee_db = 6.0
+limiter_high_attack_ms = 0.5
+limiter_high_release_ms = 25.0
 
 [link]
 ; Enable processing for audio received from connected nodes.
@@ -129,17 +129,17 @@ limiter_enabled = no
 ; Enable the fixed transmit splatter-control filter.
 splatter_filter_enabled = yes
 ; Fixed transmitter bandpass cutoffs, 20..2000 Hz and up to 5000 Hz.
-output_highpass_hz = 300.0
-output_lowpass_hz = 3000.0
+splatter_filter_highpass_hz = 300.0
+splatter_filter_lowpass_hz = 3000.0
 ; When omitted, txprelim, txlimonly, and txslimsp in usbradioplus.conf select
 ; lookahead limiting. Explicit no disables it; yes enables it.
 ;lookahead_limiter_enabled = no
 ; Explicit lookahead ceiling, -30 through -0.1 dBFS.
-lookahead_limit_dbfs = -3.0
+lookahead_limiter_ceiling_dbfs = -3.0
 ; Lookahead, attack, and release times in milliseconds.
-lookahead_ms = 5.0
-lookahead_attack_ms = 1.0
-lookahead_release_ms = 100.0
+lookahead_limiter_lookahead_ms = 5.0
+lookahead_limiter_attack_ms = 1.0
+lookahead_limiter_release_ms = 100.0
 ; Enable the fixed cleanup low-pass after lookahead limiting.
 post_limiter_lowpass_enabled = no
 ; Cleanup low-pass cutoff, 5000 through 20000 Hz.
@@ -147,7 +147,7 @@ post_limiter_lowpass_hz = 8000.0
 ; Enable a final hard ceiling after the other transmitter stages.
 final_clipper_enabled = no
 ; Final hard ceiling, -30 through -0.5 dBFS.
-final_clip_dbfs = -3.0
+final_clipper_ceiling_dbfs = -3.0
 ; Gain at the end of the transmitter chain, -30 through +30 dB.
 output_gain_db = 0.0
 ;

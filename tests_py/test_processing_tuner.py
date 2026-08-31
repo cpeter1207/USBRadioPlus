@@ -19,8 +19,8 @@ def test_section_parser_and_non_destructive_insert():
     original = "[local]\nenabled = no ; comment\n\n[link]\nenabled = no\n"
     values = MODULE["section_values"](original, "local")
     assert values == {"enabled": "no"}
-    updated = MODULE["replace_value"](original, "local", "target_dbfs", "-12")
-    assert MODULE["section_values"](updated, "local")["target_dbfs"] == "-12"
+    updated = MODULE["replace_value"](original, "local", "agc_target_dbfs", "-12")
+    assert MODULE["section_values"](updated, "local")["agc_target_dbfs"] == "-12"
     assert MODULE["section_values"](updated, "link") == {"enabled": "no"}
 
 

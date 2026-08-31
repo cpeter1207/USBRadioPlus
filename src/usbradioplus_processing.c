@@ -283,6 +283,48 @@ static void read_double(struct ast_config *cfg, const char *section,
 	}
 }
 
+/* Keep early-alpha configuration files readable while exposing one consistent
+ * stage-first naming scheme.  A file must not set both spellings because the
+ * intended value would otherwise depend on parser order. */
+static const char *read_option_alias(struct ast_config *cfg, const char *section,
+	const char *name, const char *legacy_name)
+{
+	const char *text = ast_variable_retrieve(cfg, section, name);
+	const char *legacy = legacy_name
+		? ast_variable_retrieve(cfg, section, legacy_name) : NULL;
+
+	if (text && legacy) {
+		ast_log(LOG_ERROR, "RadioPlus [%s]: use %s or deprecated %s, not both\n",
+			section, name, legacy_name);
+		settings_parse_error = 1;
+		return text;
+	}
+	if (legacy) {
+		ast_log(LOG_WARNING, "RadioPlus [%s]: %s is deprecated; use %s\n",
+			section, legacy_name, name);
+		return legacy;
+	}
+	return text;
+}
+
+static void read_double_alias(struct ast_config *cfg, const char *section,
+	const char *name, const char *legacy_name, double *value)
+{
+	const char *text = read_option_alias(cfg, section, name, legacy_name);
+	char *end = NULL;
+	double parsed;
+
+	if (!text) return;
+	parsed = strtod(text, &end);
+	if (end && *end == '\0' && isfinite(parsed)) {
+		*value = parsed;
+	} else {
+		ast_log(LOG_ERROR, "RadioPlus [%s]: %s requires a finite number, got '%s'\n",
+			section, name, text);
+		settings_parse_error = 1;
+	}
+}
+
 static void read_bool(struct ast_config *cfg, const char *section,
 	const char *name, int *value)
 {
@@ -302,9 +344,10 @@ static int known_chain_option(const char *name)
 	static const char *const names[] = {
 		"enabled", "stage_order", "rnnoise_enabled", "ctcss_filter_mode",
 		"ctcss_notch_width_hz", "ctcss_highpass_hz", "agc_enabled",
-		"input_gain_db", "target_dbfs", "max_gain_db", "max_attenuation_db",
-		"agc_floor_dbfs", "attack_ms", "release_ms", "reset_after_ms",
-		"sidechain_highpass_hz", "sidechain_lowpass_hz", "expander_enabled",
+		"input_gain_db", "agc_target_dbfs", "agc_max_gain_db",
+		"agc_max_attenuation_db", "agc_floor_dbfs", "agc_attack_ms",
+		"agc_release_ms", "agc_reset_after_ms", "agc_sidechain_highpass_hz",
+		"agc_sidechain_lowpass_hz", "expander_enabled",
 		"expander_threshold_dbfs", "expander_ratio", "expander_max_attenuation_db",
 		"expander_attack_ms", "expander_release_ms",
 		"expander_sidechain_highpass_hz", "expander_sidechain_lowpass_hz",
@@ -312,18 +355,34 @@ static int known_chain_option(const char *name)
 		"compressor_makeup_gain_db", "compressor_attack_ms", "compressor_release_ms",
 		"compressor_sidechain_highpass_hz", "compressor_sidechain_lowpass_hz",
 		"limiter_enabled", "splatter_filter_enabled", "limiter_crossover_hz",
-		"low_limiter_threshold_dbfs", "low_limiter_ratio", "low_limiter_knee_db",
-		"low_limiter_attack_ms", "low_limiter_release_ms", "high_clip_dbfs",
-		"high_limiter_ratio", "high_limiter_knee_db", "high_limiter_attack_ms",
-		"high_limiter_release_ms", "final_clipper_enabled", "final_clip_dbfs",
-		"lookahead_limiter_enabled", "lookahead_limit_dbfs", "lookahead_ms",
-		"lookahead_attack_ms", "lookahead_release_ms",
+		"limiter_low_threshold_dbfs", "limiter_low_ratio", "limiter_low_knee_db",
+		"limiter_low_attack_ms", "limiter_low_release_ms",
+		"limiter_high_threshold_dbfs", "limiter_high_ratio", "limiter_high_knee_db",
+		"limiter_high_attack_ms", "limiter_high_release_ms",
+		"final_clipper_enabled", "final_clipper_ceiling_dbfs",
+		"lookahead_limiter_enabled", "lookahead_limiter_ceiling_dbfs",
+		"lookahead_limiter_lookahead_ms", "lookahead_limiter_attack_ms",
+		"lookahead_limiter_release_ms",
 		"post_limiter_lowpass_enabled", "post_limiter_lowpass_hz",
-		"output_highpass_hz", "output_lowpass_hz", "output_gain_db",
+		"splatter_filter_highpass_hz", "splatter_filter_lowpass_hz",
+		"output_gain_db",
+	};
+	static const char *const legacy_names[] = {
+		"target_dbfs", "max_gain_db", "max_attenuation_db", "attack_ms",
+		"release_ms", "reset_after_ms", "sidechain_highpass_hz",
+		"sidechain_lowpass_hz", "low_limiter_threshold_dbfs",
+		"low_limiter_ratio", "low_limiter_knee_db", "low_limiter_attack_ms",
+		"low_limiter_release_ms", "high_clip_dbfs", "high_limiter_ratio",
+		"high_limiter_knee_db", "high_limiter_attack_ms",
+		"high_limiter_release_ms", "final_clip_dbfs", "lookahead_limit_dbfs",
+		"lookahead_ms", "lookahead_attack_ms", "lookahead_release_ms",
+		"output_highpass_hz", "output_lowpass_hz",
 	};
 	size_t index;
 	for (index = 0; index < ARRAY_LEN(names); ++index)
 		if (!strcasecmp(name, names[index])) return 1;
+	for (index = 0; index < ARRAY_LEN(legacy_names); ++index)
+		if (!strcasecmp(name, legacy_names[index])) return 1;
 	return 0;
 }
 
@@ -399,15 +458,21 @@ static int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "ctcss_highpass_hz", &chain->agc.ctcss_highpass_hz);
 	READ_BOOL("agc_enabled", chain->agc.agc_enabled);
 	read_double(cfg, section, "input_gain_db", &chain->agc.input_gain_db);
-	read_double(cfg, section, "target_dbfs", &chain->agc.target_dbfs);
-	read_double(cfg, section, "max_gain_db", &chain->agc.max_gain_db);
-	read_double(cfg, section, "max_attenuation_db", &chain->agc.max_attenuation_db);
+	read_double_alias(cfg, section, "agc_target_dbfs", "target_dbfs",
+		&chain->agc.target_dbfs);
+	read_double_alias(cfg, section, "agc_max_gain_db", "max_gain_db",
+		&chain->agc.max_gain_db);
+	read_double_alias(cfg, section, "agc_max_attenuation_db", "max_attenuation_db",
+		&chain->agc.max_attenuation_db);
 	read_double(cfg, section, "agc_floor_dbfs", &chain->agc.agc_floor_dbfs);
-	read_double(cfg, section, "attack_ms", &chain->agc.attack_ms);
-	read_double(cfg, section, "release_ms", &chain->agc.release_ms);
-	read_double(cfg, section, "reset_after_ms", &chain->agc.reset_after_ms);
-	read_double(cfg, section, "sidechain_highpass_hz", &chain->agc.sidechain_highpass_hz);
-	read_double(cfg, section, "sidechain_lowpass_hz", &chain->agc.sidechain_lowpass_hz);
+	read_double_alias(cfg, section, "agc_attack_ms", "attack_ms", &chain->agc.attack_ms);
+	read_double_alias(cfg, section, "agc_release_ms", "release_ms", &chain->agc.release_ms);
+	read_double_alias(cfg, section, "agc_reset_after_ms", "reset_after_ms",
+		&chain->agc.reset_after_ms);
+	read_double_alias(cfg, section, "agc_sidechain_highpass_hz",
+		"sidechain_highpass_hz", &chain->agc.sidechain_highpass_hz);
+	read_double_alias(cfg, section, "agc_sidechain_lowpass_hz",
+		"sidechain_lowpass_hz", &chain->agc.sidechain_lowpass_hz);
 	READ_BOOL("expander_enabled", chain->agc.expander_enabled);
 	read_double(cfg, section, "expander_threshold_dbfs", &chain->agc.expander_threshold_dbfs);
 	read_double(cfg, section, "expander_ratio", &chain->agc.expander_ratio);
@@ -427,29 +492,42 @@ static int read_chain(struct ast_config *cfg, const char *section,
 	READ_BOOL("limiter_enabled", chain->agc.limiter_enabled);
 	READ_BOOL("splatter_filter_enabled", chain->agc.splatter_filter_enabled);
 	read_double(cfg, section, "limiter_crossover_hz", &chain->agc.limiter_crossover_hz);
-	read_double(cfg, section, "low_limiter_threshold_dbfs", &chain->agc.low_limiter_threshold_dbfs);
-	read_double(cfg, section, "low_limiter_ratio", &chain->agc.low_limiter_ratio);
-	read_double(cfg, section, "low_limiter_knee_db", &chain->agc.low_limiter_knee_db);
-	read_double(cfg, section, "low_limiter_attack_ms", &chain->agc.low_limiter_attack_ms);
-	read_double(cfg, section, "low_limiter_release_ms", &chain->agc.low_limiter_release_ms);
-	read_double(cfg, section, "high_clip_dbfs", &chain->agc.high_clip_dbfs);
-	read_double(cfg, section, "high_limiter_ratio", &chain->agc.high_limiter_ratio);
-	read_double(cfg, section, "high_limiter_knee_db", &chain->agc.high_limiter_knee_db);
-	read_double(cfg, section, "high_limiter_attack_ms", &chain->agc.high_limiter_attack_ms);
-	read_double(cfg, section, "high_limiter_release_ms", &chain->agc.high_limiter_release_ms);
+	read_double_alias(cfg, section, "limiter_low_threshold_dbfs",
+		"low_limiter_threshold_dbfs", &chain->agc.low_limiter_threshold_dbfs);
+	read_double_alias(cfg, section, "limiter_low_ratio", "low_limiter_ratio", &chain->agc.low_limiter_ratio);
+	read_double_alias(cfg, section, "limiter_low_knee_db", "low_limiter_knee_db", &chain->agc.low_limiter_knee_db);
+	read_double_alias(cfg, section, "limiter_low_attack_ms", "low_limiter_attack_ms",
+		&chain->agc.low_limiter_attack_ms);
+	read_double_alias(cfg, section, "limiter_low_release_ms",
+		"low_limiter_release_ms", &chain->agc.low_limiter_release_ms);
+	read_double_alias(cfg, section, "limiter_high_threshold_dbfs",
+		"high_clip_dbfs", &chain->agc.high_clip_dbfs);
+	read_double_alias(cfg, section, "limiter_high_ratio", "high_limiter_ratio", &chain->agc.high_limiter_ratio);
+	read_double_alias(cfg, section, "limiter_high_knee_db", "high_limiter_knee_db", &chain->agc.high_limiter_knee_db);
+	read_double_alias(cfg, section, "limiter_high_attack_ms",
+		"high_limiter_attack_ms", &chain->agc.high_limiter_attack_ms);
+	read_double_alias(cfg, section, "limiter_high_release_ms",
+		"high_limiter_release_ms", &chain->agc.high_limiter_release_ms);
 	READ_BOOL("final_clipper_enabled", chain->agc.final_clipper_enabled);
-	read_double(cfg, section, "final_clip_dbfs", &chain->agc.final_clip_dbfs);
+	read_double_alias(cfg, section, "final_clipper_ceiling_dbfs", "final_clip_dbfs",
+		&chain->agc.final_clip_dbfs);
 	chain->lookahead_limiter_configured =
 		ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL;
 	READ_BOOL("lookahead_limiter_enabled", chain->agc.lookahead_limiter_enabled);
-	read_double(cfg, section, "lookahead_limit_dbfs", &chain->agc.lookahead_limit_dbfs);
-	read_double(cfg, section, "lookahead_ms", &chain->agc.lookahead_ms);
-	read_double(cfg, section, "lookahead_attack_ms", &chain->agc.lookahead_attack_ms);
-	read_double(cfg, section, "lookahead_release_ms", &chain->agc.lookahead_release_ms);
+	read_double_alias(cfg, section, "lookahead_limiter_ceiling_dbfs",
+		"lookahead_limit_dbfs", &chain->agc.lookahead_limit_dbfs);
+	read_double_alias(cfg, section, "lookahead_limiter_lookahead_ms",
+		"lookahead_ms", &chain->agc.lookahead_ms);
+	read_double_alias(cfg, section, "lookahead_limiter_attack_ms",
+		"lookahead_attack_ms", &chain->agc.lookahead_attack_ms);
+	read_double_alias(cfg, section, "lookahead_limiter_release_ms",
+		"lookahead_release_ms", &chain->agc.lookahead_release_ms);
 	READ_BOOL("post_limiter_lowpass_enabled", chain->agc.post_limiter_lowpass_enabled);
 	read_double(cfg, section, "post_limiter_lowpass_hz", &chain->agc.post_limiter_lowpass_hz);
-	read_double(cfg, section, "output_highpass_hz", &chain->agc.output_highpass_hz);
-	read_double(cfg, section, "output_lowpass_hz", &chain->agc.output_lowpass_hz);
+	read_double_alias(cfg, section, "splatter_filter_highpass_hz",
+		"output_highpass_hz", &chain->agc.output_highpass_hz);
+	read_double_alias(cfg, section, "splatter_filter_lowpass_hz",
+		"output_lowpass_hz", &chain->agc.output_lowpass_hz);
 	read_double(cfg, section, "output_gain_db", &chain->agc.output_gain_db);
 #undef READ_BOOL
 	return read_stage_order(cfg, section, chain);
