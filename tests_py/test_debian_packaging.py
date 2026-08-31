@@ -43,7 +43,6 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "suite: trixie",
         "reprepro -b public includedeb",
         "actions/deploy-pages@v5",
-        "signed-by=/etc/apt/keyrings/usbradioplus.gpg",
         "cmp -s /tmp/config-before/modules.conf",
         "cmp -s /tmp/config-before/rpt.conf",
         'dpkg-query -L asl3-asterisk-modules',
@@ -58,8 +57,12 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         'binary_package=usbradioplus-asl3105',
         'Conflicts: usbradioplus',
         "debian/usbradioplus-asl3105",
+        "packaging/repository/install-usbradioplus.sh",
+        "sh /tmp/install-usbradioplus.sh --yes",
     ):
         assert required in workflow
+    installer = read("packaging/repository/install-usbradioplus.sh")
+    assert "signed-by=%s" in installer
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()
     assert "uses: ./.github/workflows/packages.yml" in release
     assert "source_ref: ${{ needs.release.outputs.tag_name }}" in release

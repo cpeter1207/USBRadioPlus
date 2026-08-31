@@ -204,7 +204,10 @@ jobs:
           fi
           rm -rf public/dists public/pool public/db public/conf
           mkdir -p public/conf
-          cp packaging/repository/index.html packaging/repository/usbradioplus-archive-keyring.gpg public/
+          cp packaging/repository/index.html \
+            packaging/repository/install-usbradioplus.sh \
+            packaging/repository/usbradioplus-archive-keyring.gpg public/
+          chmod 0755 public/install-usbradioplus.sh
           for suite in bookworm trixie; do
             cat >> public/conf/distributions <<EOF
           Origin: USBRadioPlus
@@ -289,17 +292,12 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y asl3-asterisk
           mkdir -p /tmp/config-before
           cp -a /etc/asterisk/modules.conf /etc/asterisk/rpt.conf /tmp/config-before/ 2>/dev/null || true
-          install -d -m 0755 /etc/apt/keyrings
           for attempt in 1 2 3 4 5; do
-            curl -fsSLo /etc/apt/keyrings/usbradioplus.gpg \
-              https://cpeter1207.github.io/USBRadioPlus/usbradioplus-archive-keyring.gpg && break
+            curl -fsSLo /tmp/install-usbradioplus.sh \
+              https://cpeter1207.github.io/USBRadioPlus/install-usbradioplus.sh && break
             sleep 10
           done
-          printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/usbradioplus.gpg] https://cpeter1207.github.io/USBRadioPlus ${{ matrix.suite }} main' \
-            > /etc/apt/sources.list.d/usbradioplus.list
-          for attempt in 1 2 3 4 5; do apt-get update && break; sleep 10; done
-          apt-cache policy usbradioplus
-          DEBIAN_FRONTEND=noninteractive apt-get install -y usbradioplus
+          sh /tmp/install-usbradioplus.sh --yes
           module_dir=$(dirname "$(dpkg-query -L asl3-asterisk-modules | \
             sed -n '/\/app_rpt\.so$/ { p; q; }')")
           test -n "$module_dir"

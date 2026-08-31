@@ -2,17 +2,22 @@
 
 ## Signed Debian packages
 
-For Debian 12 or 13 on amd64 or arm64:
+For a supported ASL3 node on Debian 12 or 13, download and run the bootstrap
+installer:
 
 ```text
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://cpeter1207.github.io/USBRadioPlus/usbradioplus-archive-keyring.gpg |
-    sudo tee /etc/apt/keyrings/usbradioplus.gpg >/dev/null
-echo "deb [signed-by=/etc/apt/keyrings/usbradioplus.gpg] https://cpeter1207.github.io/USBRadioPlus $(. /etc/os-release; echo $VERSION_CODENAME) main" |
-    sudo tee /etc/apt/sources.list.d/usbradioplus.list
-sudo apt update
-sudo apt install usbradioplus
+curl -fsSLO https://cpeter1207.github.io/USBRadioPlus/install-usbradioplus.sh
+sudo sh install-usbradioplus.sh
 ```
+
+The installer reports the detected Debian release, architecture, and exact
+ASL3 Asterisk version before asking for confirmation. It accepts only published
+host combinations, verifies the repository signing-key fingerprint, checks the
+selected package's architecture and exact ASL dependency, and simulates the APT
+transaction before installation. Unsupported or unknown combinations stop with
+an error; the installer never upgrades or downgrades ASL to satisfy the module.
+Use `sudo sh install-usbradioplus.sh --dry-run` to perform detection without
+changing the node. `--yes` permits an explicitly unattended installation.
 
 The archive signing-key fingerprint is
 `A0D5 A79E 0F5C 45E9 E636 7995 0951 502B AC79 5E55`. Installation does not
@@ -46,10 +51,11 @@ interface. Run `make -s print-asl-radio-api` to report the selected interface.
 Repository packages include the interface and app_rpt generation in their
 version and require the exact ASL3 Asterisk build used to compile them. APT
 therefore cannot install a module built for the other interface generation.
-The repository names the modern package `usbradioplus-asl3105`; install that
-package on ASL 22.10/app_rpt 3.10 nodes. The `usbradioplus` package targets the
-earlier host interface. Installing the modern package replaces the earlier
-package but does not activate the module or alter Asterisk configuration.
+The bootstrap installer hides the ABI-specific package names from normal users.
+The repository names the modern package `usbradioplus-asl3105`; the
+`usbradioplus` package targets the earlier host interface. Installing the modern
+package replaces the earlier package but does not activate the module or alter
+Asterisk configuration.
 
 Build and test without changing the running node:
 
