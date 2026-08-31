@@ -18,7 +18,6 @@ enum txagc_stage {
 enum txagc_ctcss_filter_mode {
 	TXAGC_CTCSS_FILTER_DISABLED,
 	TXAGC_CTCSS_FILTER_NOTCH,
-	TXAGC_CTCSS_FILTER_COMB,
 	TXAGC_CTCSS_FILTER_HIGHPASS,
 };
 
@@ -36,6 +35,9 @@ struct txagc_config {
 	int preemphasis_enabled;
 	double emphasis_corner_hz;
 	double emphasis_reference_hz;
+	int receive_bandpass_enabled;
+	double receive_bandpass_highpass_hz;
+	double receive_bandpass_lowpass_hz;
 	int ctcss_filter_mode;
 	double ctcss_notch_width_hz;
 	double ctcss_highpass_hz;

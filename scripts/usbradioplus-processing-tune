@@ -31,6 +31,9 @@ SETTINGS = {
     "ctcss_filter_mode": ("Receive CTCSS filter mode", "choice", None, None, "", "Filters"),
     "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Filters"),
     "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Filters"),
+    "receive_bandpass_enabled": ("Receive brick-wall band-pass", "bool", None, None, "", "Filters"),
+    "receive_bandpass_highpass_hz": ("Receive band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
+    "receive_bandpass_lowpass_hz": ("Receive band-pass high cutoff", "float", 20, 5000, "Hz", "Filters"),
     "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Output"),
     "splatter_filter_enabled": ("Transmit brick-wall band-pass", "bool", None, None, "", "Filters"),
     "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
@@ -85,8 +88,10 @@ DEFAULTS = {
     "enabled": "yes", "rnnoise_enabled": "no", "agc_enabled": "no",
     "expander_enabled": "no", "compressor_enabled": "no",
     "limiter_enabled": "no", "stage_order": "expander,agc,compressor,limiter",
-    "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "2.0",
+    "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "5.0",
     "ctcss_highpass_hz": "300.0", "input_gain_db": "0.0",
+    "receive_bandpass_enabled": "no", "receive_bandpass_highpass_hz": "20.0",
+    "receive_bandpass_lowpass_hz": "5000.0",
     "splatter_filter_enabled": "no", "lookahead_limiter_enabled": "no",
     "final_clipper_enabled": "no", "agc_target_dbfs": "-10.0",
     "agc_max_gain_db": "12.0", "agc_max_attenuation_db": "6.0",
@@ -116,7 +121,8 @@ DEFAULTS = {
 SOURCE_DEFAULTS = {
     # An absent local mode inherits rxhpf; highpass is the effective legacy
     # mode shown by the tuner without silently selecting notch filtering.
-    "local": {"ctcss_filter_mode": "highpass", "output_gain_db": "-6.2"},
+    "local": {"ctcss_filter_mode": "highpass", "receive_bandpass_enabled": "yes",
+              "output_gain_db": "-6.2"},
     "link": {"output_gain_db": "-6.2"},
     "voice_telemetry": {
         "input_gain_db": "6.0", "output_gain_db": "0.0",
@@ -136,6 +142,7 @@ def relationship_error(source, key, number, values):
         "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
         "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
         "compressor_sidechain_lowpass_hz": "compressor_sidechain_highpass_hz",
+        "receive_bandpass_lowpass_hz": "receive_bandpass_highpass_hz",
         "splatter_filter_lowpass_hz": "splatter_filter_highpass_hz",
     }
     if key in pairs:
@@ -326,7 +333,7 @@ def edit_text_setting(source, key):
     if key == "stage_order":
         prompt = "Comma-separated expander, agc, compressor, limiter"
     else:
-        prompt = "One of: disabled, highpass, notch, comb"
+        prompt = "One of: disabled, highpass, notch"
     try:
         entered = input(f"New {label} ({prompt}) [{current}]: ").strip().lower()
     except (EOFError, KeyboardInterrupt):
@@ -342,8 +349,8 @@ def edit_text_setting(source, key):
             print("Stage order contains an unknown, empty, or duplicate stage; unchanged.")
             return
         entered = ",".join(stages)
-    elif entered not in {"disabled", "highpass", "notch", "comb"}:
-        print("CTCSS filter mode must be disabled, highpass, notch, or comb; unchanged.")
+    elif entered not in {"disabled", "highpass", "notch"}:
+        print("CTCSS filter mode must be disabled, highpass, or notch; unchanged.")
         return
     old_text = text
     atomic_write(replace_value(text, source, key, entered))
@@ -450,6 +457,7 @@ def settings_menu(source, group):
     keys = [key for key, data in SETTINGS.items()
             if data[5] == group
             and not (key.startswith("ctcss_") and source != "local")
+            and not (key.startswith("receive_bandpass_") and source != "local")
             and not (group == "Lookahead" and source != "voice_telemetry")
             and not (key.startswith(("splatter_filter_", "post_limiter_"))
                      and source != "voice_telemetry")]

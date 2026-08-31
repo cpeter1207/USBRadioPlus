@@ -20,6 +20,7 @@
 
 #define GRAPH_SIZE 16384
 #define NAME_SIZE 32
+#define CTCSS_NOTCH_SECTIONS 8
 
 static double db_to_linear(double db)
 {
@@ -166,6 +167,18 @@ static int add_sidechain_stage(char *graph, size_t size, const char *input,
 		prefix, prefix, filter, options, output);
 }
 
+static int add_brickwall_bandpass(char *graph, size_t size, const char *input,
+	const char *output, const char *prefix, double highpass, double lowpass)
+{
+	return graph_append(graph, size,
+		"[%s]acrossover=split=%.9g:order=20th[%slo][%spass];"
+		"[%slo]anullsink;"
+		"[%spass]acrossover=split=%.9g:order=20th[%s][%shi];"
+		"[%shi]anullsink;",
+		input, highpass, prefix, prefix, prefix,
+		prefix, lowpass, output, prefix, prefix);
+}
+
 static int add_emphasis(char *graph, size_t size, const char *input,
 	const char *output, int production, double corner_hz,
 	double reference_hz, unsigned int sample_rate)
@@ -274,8 +287,15 @@ static int build_description(char *graph, size_t size,
 		}
 		graph_input = "deemphasized";
 	}
-	if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH
-		|| cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_COMB) {
+	if (cfg->receive_bandpass_enabled) {
+		if (add_brickwall_bandpass(graph, size, graph_input, "rxbandpass",
+				"rxbp", cfg->receive_bandpass_highpass_hz,
+				cfg->receive_bandpass_lowpass_hz) < 0) {
+			return AVERROR(ENOSPC);
+		}
+		graph_input = "rxbandpass";
+	}
+	if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH) {
 		const char *cursor = cfg->ctcss_notch_frequencies;
 		char input_name[NAME_SIZE];
 		char output_name[NAME_SIZE];
@@ -285,18 +305,24 @@ static int build_description(char *graph, size_t size,
 		while (*cursor) {
 			char *end;
 			double frequency = strtod(cursor, &end);
+			unsigned int section;
 			if (end == cursor) {
 				++cursor;
 				continue;
 			}
 			cursor = end;
 			if (frequency < 50.0 || frequency > 300.0) continue;
-			snprintf(output_name, sizeof(output_name), "ctn%u", notch++);
-			if (graph_append(graph, size,
-					"[%s]bandreject=f=%.9g:t=h:w=%.9g:r=f64[%s];",
-					input_name, frequency, cfg->ctcss_notch_width_hz,
-					output_name) < 0) return AVERROR(ENOSPC);
-			strcpy(input_name, output_name);
+			/* Higher order supplies 50 dB rejection at the TIA-603
+			 * frequency-tolerance edges without widening into speech. */
+			for (section = 0; section < CTCSS_NOTCH_SECTIONS; ++section) {
+				snprintf(output_name, sizeof(output_name), "ctn%u_%u", notch, section);
+				if (graph_append(graph, size,
+						"[%s]bandreject=f=%.9g:t=h:w=%.9g:r=f64[%s];",
+						input_name, frequency, cfg->ctcss_notch_width_hz,
+						output_name) < 0) return AVERROR(ENOSPC);
+				strcpy(input_name, output_name);
+			}
+			++notch;
 		}
 		if (notch) graph_input = strcpy(next, input_name);
 	} else if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_HIGHPASS

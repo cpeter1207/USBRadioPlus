@@ -14,6 +14,9 @@ static void configure(struct txagc_config *cfg)
 {
 	memset(cfg, 0, sizeof(*cfg));
 	cfg->stage_count = TXAGC_MAX_DYNAMICS_STAGES;
+	cfg->ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	cfg->ctcss_notch_width_hz = 5.0;
+	strcpy(cfg->ctcss_notch_frequencies, "254.1");
 	cfg->agc_enabled = cfg->expander_enabled = 1;
 	cfg->compressor_enabled = cfg->limiter_enabled = 1;
 	cfg->target_dbfs = -12.0;

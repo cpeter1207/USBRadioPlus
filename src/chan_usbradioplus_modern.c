@@ -6206,7 +6206,10 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		double rx_low = o->plus_rxlpf_exact ? o->plus_rxlpf_hz
 			: usbradioplus_legacy_cutoff("rxlpf", o->rxlpf);
 		memset(&filter_cfg, 0, sizeof(filter_cfg));
-		filter_cfg.ctcss_notch_width_hz = 2.0;
+		filter_cfg.receive_bandpass_enabled = 1;
+		filter_cfg.receive_bandpass_highpass_hz = 20.0;
+		filter_cfg.receive_bandpass_lowpass_hz = 5000.0;
+		filter_cfg.ctcss_notch_width_hz = 5.0;
 		/* Apply exactly one PL-rejection filter after the qualified receiver
 		 * gate and before RNNoise or dynamics. An explicit processing mode owns
 		 * its type and cutoff; otherwise rxhpf supplies the compatible default. */
@@ -6217,13 +6220,17 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)
 				ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreq,
 					sizeof(filter_cfg.ctcss_notch_frequencies));
-			else if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_COMB)
-				ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreqs,
-					sizeof(filter_cfg.ctcss_notch_frequencies));
 		} else {
 			filter_cfg.ctcss_filter_mode = o->plus_rxhpf_enabled
 				? TXAGC_CTCSS_FILTER_HIGHPASS : TXAGC_CTCSS_FILTER_DISABLED;
 			filter_cfg.ctcss_highpass_hz = rx_high;
+		}
+		if (local_chain_enabled) {
+			filter_cfg.receive_bandpass_enabled = chain.agc.receive_bandpass_enabled;
+			filter_cfg.receive_bandpass_highpass_hz =
+				chain.agc.receive_bandpass_highpass_hz;
+			filter_cfg.receive_bandpass_lowpass_hz =
+				chain.agc.receive_bandpass_lowpass_hz;
 		}
 		filter_cfg.splatter_filter_enabled = o->plus_rxlpf_enabled;
 		filter_cfg.output_lowpass_hz = rx_low;
@@ -6247,6 +6254,7 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		dynamics_cfg.deemphasis_enabled = 0;
 		/* Fixed receive filtering has already run; do not duplicate it here. */
 		dynamics_cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
+		dynamics_cfg.receive_bandpass_enabled = 0;
 		if (txagc_avfilter_process(&o->plus_local_avfilter, &dynamics_cfg,
 				o->plus_local_native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE) < 0)
 			ast_log(LOG_WARNING, "RadioPlus/%s: local dynamics processing failed\n",

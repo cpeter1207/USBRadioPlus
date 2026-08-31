@@ -21,14 +21,20 @@ enabled = yes
 stage_order = expander,agc,compressor,limiter
 ; RNNoise runs after de-emphasis, squelch gating, and PL removal, before dynamics.
 rnnoise_enabled = no
-; Select one PL-removal filter immediately after the receiver gate and before
-; RNNoise or dynamics: highpass, notch, or comb.
-; Notch removes the decoded PL tone; comb removes all tones in rxctcssfreqs.
+; Apply a steep receive band-pass immediately after the squelch gate and before
+; PL filtering. Cutoffs are the -3 dB crossover frequencies.
+receive_bandpass_enabled = yes
+receive_bandpass_highpass_hz = 20.0
+receive_bandpass_lowpass_hz = 5000.0
+; Select one PL-removal filter after the receive band-pass and before RNNoise
+; or dynamics: highpass or notch.
+; Notch follows and removes the PL tone identified by the decoder.
 ; If omitted, rxhpf in usbradioplus.conf selects and configures a high-pass.
-; Notch and comb do not also apply the rxhpf high-pass.
-ctcss_filter_mode = comb
-; Width of each configured CTCSS notch, 0.2 through 10 Hz.
-ctcss_notch_width_hz = 2.0
+; Notch does not also apply the rxhpf high-pass.
+ctcss_filter_mode = notch
+; -3 dB width of each configured CTCSS notch, 0.2 through 10 Hz. The 5 Hz
+; default rejects standard CTCSS encoder error while preserving nearby audio.
+ctcss_notch_width_hz = 5.0
 ; Cutoff for ctcss_filter_mode=highpass, 50 through 500 Hz.
 ctcss_highpass_hz = 150.0
 ; Gain before the dynamics graph, -30 through +30 dB.

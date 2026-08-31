@@ -65,17 +65,27 @@ voice/telemetry defaults to 0 dB.
 Enable RNNoise after receiver de-emphasis and squelch gating and before
 dynamics. This applies only to [local]. Default is no.
 .TP
-.B ctcss_filter_mode = disabled|notch|comb|highpass
-Choose the single PL-removal filter after de-emphasis and the receiver gate,
-before RNNoise and dynamics. Notch removes the currently
-decoded PL tone. Comb removes every PL tone listed by rxctcssfreqs. Highpass
-removes the subaudible band. Notch and comb never run in series with a
-high-pass. If this option is absent,
+.B receive_bandpass_enabled = yes|no
+Enable the local-receiver brick-wall band-pass immediately after the squelch
+gate and before PL filtering. Default is yes.
+.TP
+.B receive_bandpass_highpass_hz = 20..2000
+Set the receive band-pass low-frequency cutoff. Default is 20 Hz.
+.TP
+.B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..5000
+Set the receive band-pass high-frequency cutoff. Default is 5000 Hz.
+.TP
+.B ctcss_filter_mode = disabled|notch|highpass
+Choose the single PL-removal filter after the receive band-pass and before
+RNNoise and dynamics. Notch follows and removes the currently
+decoded PL tone. Highpass removes the subaudible band. Notch never runs in
+series with a high-pass. If this option is absent,
 .B rxhpf
 in usbradioplus.conf selects and configures a high-pass for compatibility.
 .TP
 .B ctcss_notch_width_hz = 0.2..10
-Set each CTCSS notch width. Default is 2 Hz.
+Set each CTCSS notch's -3 dB width. Default is 5 Hz, providing at least 50 dB
+rejection at the +/-0.5 percent CTCSS encoder tolerance limits.
 .TP
 .B ctcss_highpass_hz = 50..500
 Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.

@@ -32,7 +32,6 @@ static const char *ctcss_filter_name(int mode)
 {
 	switch (mode) {
 	case TXAGC_CTCSS_FILTER_NOTCH: return "notch";
-	case TXAGC_CTCSS_FILTER_COMB: return "comb";
 	case TXAGC_CTCSS_FILTER_HIGHPASS: return "highpass";
 	default: return "disabled";
 	}
@@ -94,8 +93,11 @@ static void settings_defaults(struct txagc_settings *value)
 	base->agc.stage_order[1] = TXAGC_STAGE_AGC;
 	base->agc.stage_order[2] = TXAGC_STAGE_COMPRESSOR;
 	base->agc.stage_order[3] = TXAGC_STAGE_LIMITER;
+	base->agc.receive_bandpass_enabled = 1;
+	base->agc.receive_bandpass_highpass_hz = 20.0;
+	base->agc.receive_bandpass_lowpass_hz = 5000.0;
 	base->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
-	base->agc.ctcss_notch_width_hz = 2.0;
+	base->agc.ctcss_notch_width_hz = 5.0;
 	base->agc.ctcss_highpass_hz = 300.0;
 	base->agc.agc_enabled = 0;
 	base->agc.input_gain_db = 0.0;
@@ -153,6 +155,8 @@ static void settings_defaults(struct txagc_settings *value)
 	value->chains[TXAGC_VOICE_TELEMETRY] = *base;
 	value->chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
 	value->chains[TXAGC_VOICE_TELEMETRY].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
+	value->chains[TXAGC_LINK].agc.receive_bandpass_enabled = 0;
+	value->chains[TXAGC_VOICE_TELEMETRY].agc.receive_bandpass_enabled = 0;
 	base = &value->chains[TXAGC_VOICE_TELEMETRY];
 	base->rnnoise_enabled = 0;
 	base->agc.agc_enabled = 0;
@@ -184,6 +188,11 @@ static int validate_chain(const struct txagc_chain *value)
 		|| value->agc.ctcss_notch_width_hz > 10.0
 		|| value->agc.ctcss_highpass_hz < 50.0
 		|| value->agc.ctcss_highpass_hz > 500.0
+		|| value->agc.receive_bandpass_highpass_hz < 20.0
+		|| value->agc.receive_bandpass_highpass_hz > 2000.0
+		|| value->agc.receive_bandpass_lowpass_hz
+			<= value->agc.receive_bandpass_highpass_hz
+		|| value->agc.receive_bandpass_lowpass_hz > 5000.0
 		|| value->agc.input_gain_db < -30.0 || value->agc.input_gain_db > 30.0
 		|| value->agc.target_dbfs > -3.0 || value->agc.target_dbfs < -40.0
 		|| value->agc.max_gain_db < 0.0 || value->agc.max_gain_db > 30.0
@@ -257,6 +266,13 @@ static int validate_settings(const struct txagc_settings *value)
 			&& value->chains[source].agc.ctcss_filter_mode
 				!= TXAGC_CTCSS_FILTER_DISABLED) {
 			ast_log(LOG_ERROR, "RadioPlus [%s]: CTCSS receive filtering is local-receiver-only\n",
+				source_names[source]);
+			return -1;
+		}
+		if (source != TXAGC_LOCAL
+			&& value->chains[source].agc.receive_bandpass_enabled) {
+			ast_log(LOG_ERROR,
+				"RadioPlus [%s]: receive band-pass is local-receiver-only\n",
 				source_names[source]);
 			return -1;
 		}
@@ -353,6 +369,8 @@ static int known_chain_option(const char *name)
 {
 	static const char *const names[] = {
 		"enabled", "stage_order", "rnnoise_enabled", "ctcss_filter_mode",
+		"receive_bandpass_enabled", "receive_bandpass_highpass_hz",
+		"receive_bandpass_lowpass_hz",
 		"ctcss_notch_width_hz", "ctcss_highpass_hz", "agc_enabled",
 		"input_gain_db", "agc_target_dbfs", "agc_max_gain_db",
 		"agc_max_attenuation_db", "agc_floor_dbfs", "agc_attack_ms",
@@ -414,6 +432,13 @@ static int validate_option_names(struct ast_config *cfg)
 	for (section = 0; section < ARRAY_LEN(sections); ++section) {
 		for (variable = ast_variable_browse(cfg, sections[section]); variable;
 			variable = variable->next) {
+			if (strcmp(sections[section], "local")
+				&& (!strncasecmp(variable->name, "receive_bandpass_", 17))) {
+				ast_log(LOG_ERROR,
+					"RadioPlus [%s]: receive band-pass is local-receiver-only\n",
+					sections[section]);
+				return -1;
+			}
 			if (!strcmp(sections[section], "link")
 				&& (!strcasecmp(variable->name, "splatter_filter_enabled")
 					|| !strcasecmp(variable->name, "splatter_filter_highpass_hz")
@@ -458,14 +483,17 @@ static int read_chain(struct ast_config *cfg, const char *section,
 #define READ_BOOL(name, field) read_bool(cfg, section, name, &(field))
 	READ_BOOL("enabled", chain->enabled);
 	READ_BOOL("rnnoise_enabled", chain->rnnoise_enabled);
+	READ_BOOL("receive_bandpass_enabled", chain->agc.receive_bandpass_enabled);
+	read_double(cfg, section, "receive_bandpass_highpass_hz",
+		&chain->agc.receive_bandpass_highpass_hz);
+	read_double(cfg, section, "receive_bandpass_lowpass_hz",
+		&chain->agc.receive_bandpass_lowpass_hz);
 	{
 		const char *mode = ast_variable_retrieve(cfg, section, "ctcss_filter_mode");
 		if (mode) {
 			chain->ctcss_filter_configured = 1;
 			if (!strcasecmp(mode, "notch"))
 				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
-			else if (!strcasecmp(mode, "comb"))
-				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_COMB;
 			else if (!strcasecmp(mode, "highpass"))
 				chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
 			else if (!strcasecmp(mode, "disabled") || !strcasecmp(mode, "off"))
@@ -601,6 +629,7 @@ static int load_settings(void)
 	updated.chains[TXAGC_LINK].rnnoise_enabled = 0;
 	updated.chains[TXAGC_LINK].ctcss_filter_configured = 0;
 	updated.chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
+	updated.chains[TXAGC_LINK].agc.receive_bandpass_enabled = 0;
 	read_bool(cfg, "general", "link_enabled", &updated.chains[TXAGC_LINK].enabled);
 	if (read_chain(cfg, "local", &updated.chains[TXAGC_LOCAL])
 		|| read_chain(cfg, "link", &updated.chains[TXAGC_LINK])
@@ -878,6 +907,9 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 			chain->agc.expander_enabled ? "enabled" : "disabled",
 			chain->agc.compressor_enabled ? "enabled" : "disabled",
 			chain->agc.limiter_enabled ? "enabled" : "disabled");
+		if (source == TXAGC_LOCAL)
+			ast_cli(args->fd, "receive brick-wall band-pass %s, ",
+				chain->agc.receive_bandpass_enabled ? "enabled" : "disabled");
 		if (source == TXAGC_VOICE_TELEMETRY)
 			ast_cli(args->fd, "brick-wall band-pass %s, ",
 				chain->agc.splatter_filter_enabled ? "enabled" : "disabled");
@@ -889,7 +921,8 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 	}
 	ast_cli(args->fd, "\nDetailed local-chain settings:\n");
 	ast_cli(args->fd, "Enabled: %s\nLocal receiver: %s\nLinked audio: %s\n"
-		"Channel: %s\nRNNoise: %s\nPL filter: %s%s\n"
+		"Channel: %s\nRNNoise: %s\nReceive band-pass: %s (%.0f-%.0f Hz)\n"
+		"PL filter: %s%s\n"
 		"AGC stage: %s\nTarget: %.1f dBFS\nMax gain: %.1f dB\n"
 		"Max attenuation: %.1f dB\nAGC detector floor: %.1f dBFS\nAttack: %.0f ms\n"
 		"Release: %.0f ms\nReset after: %.0f ms\nSidechain band-pass: %.0f-%.0f Hz\n"
@@ -912,6 +945,9 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 		current.local_enabled ? "enabled" : "disabled",
 		current.link_enabled ? "enabled" : "disabled", current.channel,
 		current.rnnoise_enabled ? "enabled" : "disabled",
+		current.agc.receive_bandpass_enabled ? "enabled" : "disabled",
+		current.agc.receive_bandpass_highpass_hz,
+		current.agc.receive_bandpass_lowpass_hz,
 		current.chains[TXAGC_LOCAL].ctcss_filter_configured
 			? ctcss_filter_name(current.agc.ctcss_filter_mode) : "rxhpf",
 		current.chains[TXAGC_LOCAL].ctcss_filter_configured
