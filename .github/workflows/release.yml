@@ -78,8 +78,11 @@ jobs:
           test "$(cat VERSION)" = "$RELEASE_VERSION"
           test -n "${RELEASE_CHANGES//[[:space:]]/}"
           TAG_NAME="v$(printf '%s' "$RELEASE_VERSION" | tr '~' '-')"
+          ASSET_VERSION="$(printf '%s' "$RELEASE_VERSION" | tr '~' '-')"
+          ASSET_BASENAME="usbradioplus-$ASSET_VERSION.tar.xz"
           git check-ref-format "refs/tags/$TAG_NAME"
           printf 'TAG_NAME=%s\n' "$TAG_NAME" >> "$GITHUB_ENV"
+          printf 'ASSET_BASENAME=%s\n' "$ASSET_BASENAME" >> "$GITHUB_ENV"
           git fetch --tags --force origin
           if git rev-parse --verify --quiet "refs/tags/$TAG_NAME"; then
             echo "Tag $TAG_NAME already exists." >&2
@@ -124,8 +127,8 @@ jobs:
           make clean
           make distcheck
           test -f "dist/usbradioplus-$RELEASE_VERSION.tar.xz"
-          sha256sum "dist/usbradioplus-$RELEASE_VERSION.tar.xz" \
-            > "dist/usbradioplus-$RELEASE_VERSION.tar.xz.sha256"
+          cp "dist/usbradioplus-$RELEASE_VERSION.tar.xz" "dist/$ASSET_BASENAME"
+          (cd dist && sha256sum "$ASSET_BASENAME" > "$ASSET_BASENAME.sha256")
 
       - name: Push release commit and tag
         shell: bash
@@ -141,8 +144,8 @@ jobs:
           args=(release create "$TAG_NAME"
             --title "USBRadioPlus $RELEASE_VERSION"
             --notes-file release-notes.md
-            "dist/usbradioplus-$RELEASE_VERSION.tar.xz"
-            "dist/usbradioplus-$RELEASE_VERSION.tar.xz.sha256")
+            "dist/$ASSET_BASENAME"
+            "dist/$ASSET_BASENAME.sha256")
           if [[ "${{ inputs.prerelease }}" == "true" ]]; then
             args+=(--prerelease)
           fi

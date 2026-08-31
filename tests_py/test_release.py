@@ -329,6 +329,8 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     assert 'git config --global --add safe.directory "$GITHUB_WORKSPACE"' in workflow
     assert 'TAG_NAME="v$(printf \'%s\' "$RELEASE_VERSION" | tr \'~\' \'-\')"' in workflow
     assert 'git check-ref-format "refs/tags/$TAG_NAME"' in workflow
+    assert 'ASSET_BASENAME="usbradioplus-$ASSET_VERSION.tar.xz"' in workflow
+    assert 'sha256sum "$ASSET_BASENAME" > "$ASSET_BASENAME.sha256"' in workflow
     assert "DIST_DIRS := .github " in makefile
     assert "CHANGELOG.md" in makefile
     assert (ROOT / "CHANGELOG.md").is_file()
