@@ -98,6 +98,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
     assert f"{root}/Makefile" in names
     assert f"{root}/COPYING" in names
     assert f"{root}/.github/workflows/release.yml" in names
+    assert f"{root}/src/chan_usbradioplus_modern.c" in names
     assert not any("/.git/" in name or name.endswith("/.git")
                    or "/build/" in name or "/dist/" in name
                    or "/work/" in name for name in names)

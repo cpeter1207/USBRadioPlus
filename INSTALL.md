@@ -39,6 +39,14 @@ USBRadioPlus requires a matching `asl3-asterisk-dev` package plus the libraries
 listed in `doc/packaging.md`. Developers with those dependencies already
 installed may use `sudo ./install.sh --skip-deps`.
 
+The build selects the radio-device interface exposed by the installed ASL3
+headers. ASL 22.9/app_rpt 3.9 uses the original OSS and libusb-0.1 interface;
+ASL 22.10/app_rpt 3.10 uses the shared-device, PortAudio, and libusb-1.0
+interface. Run `make -s print-asl-radio-api` to report the selected interface.
+Repository packages include the interface and app_rpt generation in their
+version and require the exact ASL3 Asterisk build used to compile them. APT
+therefore cannot install a module built for the other interface generation.
+
 Build and test without changing the running node:
 
 ```text

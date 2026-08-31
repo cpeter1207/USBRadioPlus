@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+ASL3_ASTERISK_VERSION ?= $(shell dpkg-query -W -f='$${Version}' asl3-asterisk)
 
 %:
 	dh $@
@@ -17,3 +18,11 @@ override_dh_auto_install:
 
 override_dh_auto_clean:
 	$(MAKE) clean
+
+override_dh_installdocs:
+	dh_installdocs README.md CHANGELOG.md doc/native-radio.md \
+		examples/usbradioplus.conf.sample \
+		examples/usbradioplus-processing.conf.sample
+
+override_dh_gencontrol:
+	dh_gencontrol -- -V'usbradioplus:ASLDepends=asl3-asterisk (= $(ASL3_ASTERISK_VERSION))'

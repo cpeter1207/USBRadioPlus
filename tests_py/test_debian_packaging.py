@@ -17,6 +17,9 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librnnoise-dev" in control
     assert "dpkg-architecture -qDEB_HOST_MULTIARCH" in rules
     assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
+    assert "${usbradioplus:ASLDepends}" in control
+    assert "ASL3_ASTERISK_VERSION" in rules
+    assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
     assert not list((ROOT / "debian").glob("*.postinst"))
     assert not list((ROOT / "debian").glob("*.prerm"))
 
@@ -44,6 +47,8 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         'dpkg-query -L asl3-asterisk-modules',
         'package_revision:',
         'cp --no-clobber -t incoming',
+        'asl_package_tag="${radio_api}.asl',
+        'app_rpt_version=',
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()

@@ -100,21 +100,34 @@ jobs:
           lintian --fail-on error ../rnnoise_*.changes
           dpkg -i ../librnnoise0_*.deb ../librnnoise-dev_*.deb
       - name: Build USBRadioPlus package
+        id: usbradioplus_build
         run: |
           set -eux
           package_version='${{ inputs.package_version }}'
           test -n "$package_version" || package_version=$(cat VERSION)
-          dch --newversion "$package_version-${{ inputs.package_revision }}.deb${{ matrix.debian }}" \
+          radio_api=$(make -s print-asl-radio-api)
+          asl_version=$(dpkg-query -W -f='${Version}' asl3-asterisk)
+          app_rpt_version=$(printf '%s\n' "$asl_version" | \
+            sed -n 's/.*+asl3-\([0-9][0-9.]*\)-.*/\1/p')
+          test -n "$app_rpt_version"
+          asl_package_tag="${radio_api}.asl$(printf '%s' "$app_rpt_version" | tr -d '.')"
+          echo "radio_api=$radio_api" >> "$GITHUB_OUTPUT"
+          dch --newversion "$package_version-${{ inputs.package_revision }}.deb${{ matrix.debian }}+$asl_package_tag" \
             --distribution "${{ matrix.suite }}" "Build for Debian ${{ matrix.debian }}."
           dpkg-buildpackage -b -us -uc
           lintian --fail-on error ../usbradioplus_*.changes
           mkdir -p package-output
           cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
             ../usbradioplus_*.deb package-output/
+          printf 'suite=%s\narchitecture=%s\nasl3_asterisk=%s\napp_rpt=%s\nradio_api=%s\n' \
+            '${{ matrix.suite }}' "$(dpkg --print-architecture)" \
+            "$asl_version" "$app_rpt_version" "$radio_api" > package-output/build-info.txt
+          test "$(dpkg-deb -f ../usbradioplus_*.deb Depends | \
+            grep -c "asl3-asterisk (= $asl_version)")" = 1
       - uses: actions/upload-artifact@v7
         with:
-          name: packages-${{ matrix.suite }}-${{ runner.arch }}
-          path: package-output/*.deb
+          name: packages-${{ matrix.suite }}-${{ runner.arch }}-${{ steps.usbradioplus_build.outputs.radio_api }}
+          path: package-output/*
           if-no-files-found: error
 
   publish:

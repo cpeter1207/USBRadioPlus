@@ -23,6 +23,22 @@ publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
 
+The Makefile detects the ASL radio-device API from
+`asterisk/res_usbradio.h`. The legacy build uses OSS and libusb-0.1. The modern
+build uses the ASL shared-device service, PortAudio, and libusb-1.0. Packagers
+may set `ASL_RADIO_API=legacy` or `ASL_RADIO_API=modern` for a controlled build,
+but the selected source must be compiled against headers from the matching ASL
+package. Both builds use the same configuration, DSP, utilities, and installed
+file layout.
+
+Binary modules are tied to the ASL host interface against which they were
+built. The Debian package records an exact dependency on that
+`asl3-asterisk` version. Published package versions also carry a generation tag,
+such as `+legacy.asl393` or `+modern.asl3105`, so both generations can remain in
+the repository at once without filename collisions. A new package build is
+required when ASL3 Asterisk is updated; do not weaken this dependency unless
+ASL publishes a stable module ABI or a suitable virtual ABI package.
+
 Set `SOURCE_DATE_EPOCH` when producing the upstream archive. The `dist` target
 normalizes archive ownership, ordering, and timestamps. `distcheck` extracts
 the archive into a temporary directory, builds and tests it, and performs a
