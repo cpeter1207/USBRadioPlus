@@ -9,6 +9,10 @@ on:
       package_version:
         required: true
         type: string
+      package_revision:
+        required: false
+        default: "1"
+        type: string
   workflow_dispatch:
     inputs:
       source_ref:
@@ -20,6 +24,11 @@ on:
         description: Package version; blank uses VERSION
         default: ""
         required: false
+        type: string
+      package_revision:
+        description: Debian package revision
+        default: "1"
+        required: true
         type: string
 
 permissions:
@@ -95,7 +104,7 @@ jobs:
           set -eux
           package_version='${{ inputs.package_version }}'
           test -n "$package_version" || package_version=$(cat VERSION)
-          dch --newversion "$package_version-1.deb${{ matrix.debian }}" \
+          dch --newversion "$package_version-${{ inputs.package_revision }}.deb${{ matrix.debian }}" \
             --distribution "${{ matrix.suite }}" "Build for Debian ${{ matrix.debian }}."
           dpkg-buildpackage -b -us -uc
           lintian --fail-on error ../usbradioplus_*.changes
@@ -140,7 +149,7 @@ jobs:
           git fetch origin apt-repository || true
           if git show-ref --verify --quiet refs/remotes/origin/apt-repository; then
             git archive origin/apt-repository | tar -x -C public
-            find public/pool -name '*.deb' -exec cp -t incoming {} + 2>/dev/null || true
+            find public/pool -name '*.deb' -exec cp --no-clobber -t incoming {} + 2>/dev/null || true
           fi
           rm -rf public/dists public/pool public/db public/conf
           mkdir -p public/conf
