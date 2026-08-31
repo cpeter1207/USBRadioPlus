@@ -53,7 +53,7 @@ jobs:
             ca-certificates wget git gh
 
       - name: Check out main with complete history
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0

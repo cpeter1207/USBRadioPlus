@@ -59,7 +59,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates git
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.source_ref }}
       - name: Trust workspace
@@ -102,7 +102,7 @@ jobs:
           mkdir -p package-output
           cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
             ../usbradioplus_*.deb package-output/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.suite }}-${{ runner.arch }}
           path: package-output/*.deb
@@ -114,10 +114,10 @@ jobs:
     environment:
       name: github-pages
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
           path: incoming
@@ -169,8 +169,8 @@ jobs:
           reprepro -b public export
           cp -a public site
           rm -rf site/conf site/db
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - name: Save repository snapshot
@@ -194,7 +194,7 @@ jobs:
     steps:
       - name: Deploy GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   verify:
     needs: deploy

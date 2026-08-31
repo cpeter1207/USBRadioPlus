@@ -65,6 +65,8 @@ def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
     assert "releases/download/v0.2/rnnoise-0.2.tar.gz" in source
     assert "90fce4b00b9ff24c08dbfe31b82ffd43" in source
     assert "sha256sum -c -" in source
+    assert 'patch -d "$rnnoise_dir" -p1' in source
+    assert "packaging/rnnoise/debian/patches/arm-os-support.patch" in source
     assert "git clone" not in source
     assert "./autogen.sh" not in source
 

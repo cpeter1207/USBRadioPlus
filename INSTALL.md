@@ -31,7 +31,8 @@ or edit `modules.conf` or `rpt.conf`.
 
 The RNNoise bootstrap verifies and builds the official v0.2 release archive in
 the source tree's `build` directory. This permits installation on hardened
-nodes where `/tmp` is mounted `noexec`. The temporary source is removed
+nodes where `/tmp` is mounted `noexec`. It also restores the support header
+omitted from the archive's ARM NEON sources. The temporary source is removed
 automatically.
 
 USBRadioPlus requires a matching `asl3-asterisk-dev` package plus the libraries

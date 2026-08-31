@@ -35,7 +35,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "suite: bookworm",
         "suite: trixie",
         "reprepro -b public includedeb",
-        "actions/deploy-pages@v4",
+        "actions/deploy-pages@v5",
         "signed-by=/etc/apt/keyrings/usbradioplus.gpg",
         "cmp -s /tmp/config-before/modules.conf",
         "cmp -s /tmp/config-before/rpt.conf",
@@ -44,3 +44,6 @@ def test_repository_workflow_builds_and_verifies_all_targets():
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()
     assert "uses: ./.github/workflows/packages.yml" in release
     assert "source_ref: ${{ needs.release.outputs.tag_name }}" in release
+    assert "releases/download/v0.2/rnnoise-0.2.tar.gz" in workflow
+    assert "90fce4b00b9ff24c08dbfe31b82ffd43bae383d85c5535676d28b0a2b11c0d37" in workflow
+    assert "git clone" not in workflow

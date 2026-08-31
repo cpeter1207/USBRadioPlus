@@ -9,7 +9,7 @@ fi
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	asl3-asterisk-dev build-essential pkg-config python3 python3-pytest \
-	ca-certificates wget xz-utils \
+	ca-certificates wget xz-utils patch \
 	libasound2-dev libusb-dev libusb-1.0-0-dev libsamplerate0-dev \
 	libavfilter-dev libavutil-dev
 
@@ -27,6 +27,9 @@ if ! pkg-config --exists rnnoise; then
 		90fce4b00b9ff24c08dbfe31b82ffd43bae383d85c5535676d28b0a2b11c0d37 \
 		"$rnnoise_archive" | sha256sum -c -
 	tar -C "$rnnoise_dir" --strip-components=1 -xzf "$rnnoise_archive"
+	# The v0.2 archive omits the support header required by its ARM NEON path.
+	patch -d "$rnnoise_dir" -p1 < \
+		"$source_root/packaging/rnnoise/debian/patches/arm-os-support.patch"
 	(
 		cd "$rnnoise_dir"
 		./configure --prefix=/usr/local --disable-examples --disable-doc
