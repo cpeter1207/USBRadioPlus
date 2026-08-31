@@ -100,7 +100,7 @@ jobs:
           dpkg-buildpackage -b -us -uc
           lintian --fail-on error ../usbradioplus_*.changes
           mkdir -p package-output
-          cp ../librnnoise0_*.deb ../librnnoise-dev_*.deb \
+          cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
             ../usbradioplus_*.deb package-output/
       - uses: actions/upload-artifact@v4
         with:
