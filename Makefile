@@ -39,7 +39,7 @@ TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md RELEASE-CHECKLIST.md install.sh
-DIST_DIRS := src scripts examples man doc tests tests_py tools
+DIST_DIRS := .github src scripts examples man doc tests tests_py tools
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
 
