@@ -1,0 +1,147 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: Version currently in VERSION to release (for example, 0.1.0~alpha1)
+        required: true
+        type: string
+      next_version:
+        description: Development version to write after the release
+        required: true
+        type: string
+      changes:
+        description: Concise Markdown release notes
+        required: true
+        type: string
+      prerelease:
+        description: Mark the GitHub release as a prerelease
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container: debian:12
+    timeout-minutes: 45
+    env:
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      NEXT_VERSION: ${{ inputs.next_version }}
+      RELEASE_CHANGES: ${{ inputs.changes }}
+      TAG_NAME: v${{ inputs.release_version }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Check out main with complete history
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install ASL3 repository and build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            ca-certificates wget git gh
+          wget -q -O /tmp/asl-apt-repos.deb \
+            https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
+          dpkg -i /tmp/asl-apt-repos.deb
+          ./scripts/install-build-deps.sh
+
+      - name: Validate release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_pattern='^[0-9][0-9A-Za-z.+:~_-]*$'
+          [[ "$RELEASE_VERSION" =~ $version_pattern ]]
+          [[ "$NEXT_VERSION" =~ $version_pattern ]]
+          test "$RELEASE_VERSION" != "$NEXT_VERSION"
+          test "$(cat VERSION)" = "$RELEASE_VERSION"
+          test -n "${RELEASE_CHANGES//[[:space:]]/}"
+          git fetch --tags --force origin
+          if git rev-parse --verify --quiet "refs/tags/$TAG_NAME"; then
+            echo "Tag $TAG_NAME already exists." >&2
+            exit 1
+          fi
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists." >&2
+            exit 1
+          fi
+
+      - name: Prepare changelog and release commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from datetime import date
+          from pathlib import Path
+
+          path = Path("CHANGELOG.md")
+          body = path.read_text(encoding="utf-8")
+          marker = "## Unreleased\n"
+          if marker not in body:
+              raise SystemExit("CHANGELOG.md has no Unreleased section")
+          changes = os.environ["RELEASE_CHANGES"].strip()
+          version = os.environ["RELEASE_VERSION"]
+          entry = f"## {version} - {date.today().isoformat()}\n\n{changes}\n\n"
+          before, after = body.split(marker, 1)
+          path.write_text(before + marker + "\n" + entry + after.lstrip(),
+                          encoding="utf-8")
+          Path("release-notes.md").write_text(changes + "\n", encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "Release $RELEASE_VERSION"
+
+      - name: Build and verify release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          make clean
+          make distcheck
+          test -f "dist/usbradioplus-$RELEASE_VERSION.tar.xz"
+          sha256sum "dist/usbradioplus-$RELEASE_VERSION.tar.xz" \
+            > "dist/usbradioplus-$RELEASE_VERSION.tar.xz.sha256"
+
+      - name: Push release commit and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag -a "$TAG_NAME" -m "USBRadioPlus $RELEASE_VERSION"
+          git push --atomic origin HEAD:main "refs/tags/$TAG_NAME"
+
+      - name: Create GitHub release
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(release create "$TAG_NAME"
+            --title "USBRadioPlus $RELEASE_VERSION"
+            --notes-file release-notes.md
+            "dist/usbradioplus-$RELEASE_VERSION.tar.xz"
+            "dist/usbradioplus-$RELEASE_VERSION.tar.xz.sha256")
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh "${args[@]}"
+
+      - name: Start next development version
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$NEXT_VERSION" > VERSION
+          git add VERSION
+          git commit -m "Start $NEXT_VERSION development"
+          git push origin HEAD:main

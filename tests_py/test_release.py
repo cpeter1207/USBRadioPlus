@@ -307,7 +307,24 @@ def test_repository_uses_upstream_linux_layout():
         assert (ROOT / path).is_dir()
     for obsolete in ("channels", "configs", "utils", "vendor", "build-install.sh"):
         assert not (ROOT / obsolete).exists()
-    assert text("VERSION").strip() == "0.1.0~alpha1"
+    assert re.fullmatch(r"[0-9][0-9A-Za-z.+:~_-]*", text("VERSION").strip())
+
+def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
+    workflow = text(".github/workflows/release.yml")
+    makefile = text("Makefile")
+    for required in (
+        "container: debian:12",
+        "asl-apt-repos.deb12_all.deb",
+        "./scripts/install-build-deps.sh",
+        "make distcheck",
+        "git push --atomic origin HEAD:main",
+        "gh release create",
+        "Start next development version",
+        "permissions:\n  contents: write",
+    ):
+        assert required in workflow
+    assert "CHANGELOG.md" in makefile
+    assert (ROOT / "CHANGELOG.md").is_file()
 
 def test_readme_is_a_short_project_entry_point():
     readme = text("README.md").lower()
