@@ -1,0 +1,228 @@
+;
+; USBRadioPlus channel configuration
+;
+; Copy this file to /etc/asterisk/usbradioplus.conf and edit one device
+; section for each USB radio interface. Values in [general] are inherited by
+; every device section. Assignments are commented so this reference cannot
+; accidentally select or key hardware.
+;
+
+[general]
+
+; Enable the Asterisk receive jitter buffer. Usually unnecessary for local USB.
+;jbenable = no
+; Maximum jitter-buffer length in milliseconds.
+;jbmaxsize = 200
+; Timestamp jump, in milliseconds, that forces buffer resynchronization.
+;jbresyncthreshold = 1000
+; Jitter-buffer algorithm: fixed or adaptive.
+;jbimpl = fixed
+; Write jitter-buffer frame diagnostics to the Asterisk log.
+;jblog = no
+
+; Encoded Linux USB audio fragment request. 1966092 is the build default;
+; change it only while diagnosing driver buffering or latency.
+;frags = 1966092
+; Maximum queued output fragments. The driver default is 20.
+;queuesize = 20
+; Reduce receive processing while carrier is closed.
+;rxcpusaver = no
+; Reduce transmit processing while PTT is idle.
+;txcpusaver = no
+; Interface wiring: 0 for a normal modified fob; 1 for Dingotel/Sph hardware.
+;hdwtype = 0
+; Use a supported interface EEPROM for tuning values: 0=no, 1=yes.
+;eeprom = 1
+; Remove the CM1xx input attenuator for approximately 20 dB more RX gain.
+;rxboost = no
+; Add 6 dB ahead of transmitter processing.
+;txboost = no
+
+; Receiver connection: no, speaker (already de-emphasized), or flat discriminator.
+;rxdemod = flat
+; Carrier source: no, usb, usbinvert, dsp, vox, pp, or ppinvert.
+;carrierfrom = dsp
+; VOX carrier hold time after speech ends, in milliseconds.
+;voxhangtime = 2000
+; VOX detector threshold adjustment.
+;rxsqvox = 0
+; Hysteresis for DSP carrier detection. The driver default is 3000.
+;rxsqhyst = 3000
+; DSP noise-detector filter selection. Change only during receiver calibration.
+;rxnoisefiltype = 0
+; Receive-audio delay, in milliseconds, used to remove a squelch tail.
+;rxsquelchdelay = 30
+; Ignore carrier for this many 20 ms intervals after local PTT releases.
+;rxondelay = 0
+; Ignore the receiver for this many 20 ms intervals after TX unkeys.
+;txoffdelay = 0
+; Additional receiver gain multiplier.
+;rxgain = 1.0
+; Invert the received radio-signaling bit polarity.
+;rxpolarity = no
+
+; CTCSS source: no, usb, usbinvert, dsp, pp, or ppinvert. DSP requires flat RX.
+;ctcssfrom = dsp
+; Comma-separated CTCSS tones accepted by the receiver decoder.
+;rxctcssfreqs = 100.0
+; Transmit CTCSS tones corresponding to rxctcssfreqs.
+;txctcssfreqs = 100.0
+; CTCSS tone transmitted when no received tone selects another entry.
+;txctcssdefault = 100.0
+; Start in carrier-squelch operation without requiring decoded CTCSS.
+;rxctcssoverride = no
+; CTCSS decoder tolerance. 1 is the normal setting.
+;rxctcssrelax = 1
+; CTCSS turn-off signaling: no, phase (reverse burst), or notone.
+;txtoctype = notone
+; Invert receive and transmit DCS polarity, respectively.
+;dcsrxpolarity = no
+;dcstxpolarity = no
+; Invert receive and transmit low-speed-data polarity, respectively.
+;lsdrxpolarity = no
+;lsdtxpolarity = no
+
+; Apply transmit pre-emphasis and limiting for a direct modulator connection.
+;txprelim = yes
+; Apply limiting without pre-emphasis for a radio microphone input.
+;txlimonly = yes
+; USB left-channel signal: no, voice, tone, composite, or auxvoice.
+;txmixa = composite
+; USB right-channel signal: no, voice, tone, composite, or auxvoice.
+;txmixb = no
+; Invert PTT. no normally means ground-to-transmit.
+;invertptt = no
+; Radio interface operation: 0=half duplex, 1=full duplex.
+;duplex = 0
+; Local receiver-to-transmitter audio: 0=off through 999=full level.
+;duplex3 = 0
+; duplex3 route: hardware uses the CM119 mixer; software uses 48 kHz DSP audio.
+;duplex3mode = hardware
+; Delay program audio after PTT asserts so the transmitter can settle.
+;txsettletime = 0
+; Blank received signaling around transmitter switching.
+;txrxblankingtime = 0
+; Invert the transmitted radio-signaling bit polarity.
+;txpolarity = no
+
+; Receiver low-pass. no disables; yes selects 3000 Hz; an integer selects a
+; standard filter; a decimal value is an exact cutoff in hertz.
+;rxlpf = yes
+; Receiver high-pass. no disables; yes selects 300 Hz; integer and exact-Hz
+; forms work as described for rxlpf.
+;rxhpf = yes
+; Transmitter low-pass, using the same no/yes/integer/exact-Hz syntax.
+;txlpf = yes
+; Transmitter high-pass, using the same no/yes/integer/exact-Hz syntax.
+;txhpf = yes
+;
+; Initial voice passbands by FM channel bandwidth. Verify peak deviation,
+; occupied bandwidth, intelligibility, and CTCSS margin with a service monitor.
+; 12.5 kHz narrowband: rxhpf=300.0 rxlpf=3000.0 txhpf=300.0 txlpf=3000.0
+; 15 kHz FM:            rxhpf=300.0 rxlpf=3000.0 txhpf=300.0 txlpf=3000.0
+; 20 kHz FM:            rxhpf=250.0 rxlpf=4000.0 txhpf=250.0 txlpf=4000.0
+; 25 kHz FM:            rxhpf=250.0 rxlpf=5000.0 txhpf=250.0 txlpf=5000.0
+
+; Enable the high-pass on voice entering the transmitter path.
+;txvoicehighpass = yes
+; Transmitter voice-input high-pass cutoff in hertz.
+;txvoicehighpass_hz = 250.0
+; Enable the high-pass on network audio.
+;linkhighpass = yes
+; Network-audio high-pass cutoff in hertz.
+;linkhighpass_hz = 250.0
+; Pre-emphasis and de-emphasis corner in hertz; 212.206590789 is 750 us.
+;emphasis_corner_hz = 212.206590789
+; Receive gain before and after the squelch gate, in dB.
+;presquelch_gain_db = 0.0
+;postsquelch_gain_db = 0.0
+; Transmit PCM ceiling in dBFS. Default is 0 with one-code rail protection.
+;tx_ceiling_dbfs = 0.0
+; Internal headroom for pre-emphasis, in dB.
+;preemphasis_headroom_db = 24.0
+; RX calibration target before squelch processing, in dBFS.
+;rxlevel_presquelch_target_dbfs = -1.0
+; RX calibration target after squelch processing, in dBFS.
+;rxlevel_post_target_dbfs = -1.0
+; Enable the native-rate local recorder and playback test.
+;nativeparrot = no
+; Maximum native parrot recording length, in seconds.
+;parrotmaxseconds = 30
+; Select the alternate PCM scale used by stations calibrated to it.
+;legacyaudioscaling = yes
+
+; Pulse this GPIO for 500 ms on receive ADC clipping; 0 disables it.
+;clipledgpio = 0
+; Configure CM1xx GPIO pins as in, out0, or out1.
+;gpio1 = in
+;gpio2 = in
+;gpio3 = in
+;gpio4 = in
+;gpio5 = in
+;gpio6 = in
+;gpio7 = in
+;gpio8 = in
+; Parallel-port device and fallback I/O base address. Legacy binary channel
+; selection uses pins 6-9; RTX synthesizer control uses pins 2-6. Do not assign
+; those pins as general-purpose outputs when the corresponding feature is used.
+;pport = /dev/parport0
+;pbase = 0x378
+; Parallel output pins accept out0, out1, or ptt.
+;pp2 = out0
+;pp3 = out0
+;pp4 = out0
+;pp5 = out0
+;pp6 = out0
+;pp7 = out0
+;pp8 = out0
+;pp9 = out0
+; Parallel input pins accept in, cor, or ctcss.
+;pp10 = in
+;pp12 = in
+;pp13 = in
+;pp15 = in
+
+; Frequencies in Hz for a legacy parallel-programmed RTX radio. Zero disables
+; synthesizer programming. Remote SETFREQ commands temporarily replace them.
+;rxfreq = 0
+;txfreq = 0
+; Permit this channel to be selected for remote-radio operation.
+;radioactive = no
+; Low-speed-data channel or app_rpt association number.
+;rptnum = 0
+; Remote-control area identifier.
+;area = 0
+; Remote-control authentication key.
+;ukey =
+; Remote-radio idle polling interval.
+;idleinterval = 0
+; Remote-radio turn-off behavior mask.
+;turnoffs = 0
+; Send receiver signal information to the voter path.
+;sendvoter = 0
+; DSP trace selection and diagnostic verbosity.
+;tracetype = 0
+;tracelevel = 0
+; Low-level receive diagnostic mode used during tuning.
+;fever = 0
+
+; Define the first interface. Change the section name if rpt.conf uses another
+; RadioPlus device name.
+;[usb]
+; ALSA device selector. Normally written by usbradioplus-tune.
+;devstr =
+; USB interface serial number, recommended with more than one fob.
+;serial =
+; USB capture mixer level, 0 through 999.
+;rxmixerset = 500
+; Recovered receive voice level; 0.5 is unity.
+;rxvoiceadj = 0.5
+; DSP carrier-squelch threshold, 0 through 999.
+;rxsquelchadj = 500
+; Left and right USB playback mixer levels, 0 through 999.
+;txmixaset = 500
+;txmixbset = 500
+; Transmitted CTCSS level, 0 through 999.
+;txctcssadj = 200
+; Soft-limiter onset used when limiting is selected, 5000 through 13000.
+;txslimsp = 12000

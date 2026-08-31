@@ -1,0 +1,373 @@
+.TH USBRADIOPLUS.CONF 5 "August 2026" "USBRadioPlus alpha" "File Formats Manual"
+.SH NAME
+usbradioplus.conf \- USBRadioPlus radio-interface configuration
+.SH SYNOPSIS
+.B /etc/asterisk/usbradioplus.conf
+.SH DESCRIPTION
+The file contains one
+.B [general]
+section followed by one named section for each USB radio interface.  Values in
+.B [general]
+become defaults for each interface.  A device section overrides those values.
+The section name forms the Asterisk channel name; section
+.B [usb]
+is addressed as
+.BR RadioPlus/usb .
+.PP
+Option names are not case sensitive.  Boolean values are
+.B yes
+or
+.BR no .
+Unless stated otherwise, times are milliseconds and frequencies are hertz.
+.SH JITTER BUFFER
+The standard Asterisk channel jitter-buffer options may be placed in
+.BR [general] .
+.TP
+.B jbenable = yes|no
+Enable a receive-side jitter buffer.  Default is
+.BR no .
+.TP
+.B jbmaxsize = milliseconds
+Maximum jitter-buffer length.  Default is 200.
+.TP
+.B jbresyncthreshold = milliseconds
+Timestamp discontinuity that causes resynchronization.  Default is 1000.
+.TP
+.B jbimpl = fixed|adaptive
+Select the fixed-size or adaptive implementation.  Default is
+.BR fixed .
+.TP
+.B jblog = yes|no
+Write jitter-buffer frame diagnostics.  Default is
+.BR no .
+.SH DEVICE SELECTION AND USB AUDIO
+.TP
+.B devstr = string
+Select a USB audio device by its ALSA device string.  Normally set by the tuning
+utility.
+.TP
+.B serial = string
+Bind the section to a USB interface serial number.  Use this on systems with
+more than one interface.
+.TP
+.B hdwtype = 0|1
+Select the interface wiring.  Use 0 for the usual modified USB sound fob and 1
+for a Dingotel/Sph interface.  Default is 0.
+.TP
+.B eeprom = 0|1
+Read and write tuning values in a supported interface EEPROM.  Default is 1.
+.TP
+.B rxboost = yes|no
+Remove the CM1xx input attenuator for approximately 20 dB more receive gain.
+.TP
+.B txboost = yes|no
+Add 6 dB ahead of transmit processing.
+.TP
+.B frags = integer
+Requested USB audio fragment count.  Change only when diagnosing a driver or
+latency problem.  Default is the driver build value.
+.TP
+.B queuesize = integer
+Maximum queued output fragments.  Default is 20.
+.TP
+.B rxcpusaver = yes|no
+Reduce receive processing while the receiver is closed.
+.TP
+.B txcpusaver = yes|no
+Reduce transmit processing while the transmitter is idle.
+.SH RECEIVER AND SQUELCH
+.TP
+.B rxdemod = no|speaker|flat
+Describe the receiver audio connection.  Use
+.B flat
+for discriminator audio requiring de-emphasis,
+.B speaker
+for audio already de-emphasized by the receiver, or
+.B no
+when receive audio is unused.
+.TP
+.B carrierfrom = no|usb|usbinvert|dsp|vox|pp|ppinvert
+Choose the carrier-operated-squelch source:
+.B usb
+and
+.B usbinvert
+use the interface input;
+.B dsp
+uses the noise detector;
+.B vox
+uses received voice energy; and
+.B pp
+or
+.B ppinvert
+uses the parallel port.
+.TP
+.B voxhangtime = integer
+Hold carrier detection after VOX energy ends.  Default is 2000.
+.TP
+.B rxsqvox = integer
+VOX detector threshold adjustment.
+.TP
+.B rxsqhyst = integer
+Hysteresis for DSP carrier detection.  Default is 3000.
+.TP
+.B rxnoisefiltype = integer
+Select the DSP noise-detector filter.  This is an advanced calibration setting.
+.TP
+.B rxsquelchdelay = integer
+Delay receive program audio so the driver can remove a carrier-squelch tail.
+.TP
+.B rxondelay = integer
+After PTT releases, ignore carrier for this many 20 ms intervals.  Use on a
+simplex station to prevent relay racing.  Default is 0.
+.TP
+.B txoffdelay = integer
+After PTT releases, ignore the receiver for this many 20 ms intervals.  This can
+exclude a linked repeater's transmitter hang time.  Default is 0.
+.TP
+.B rxgain = number
+Additional receive gain multiplier.
+.TP
+.B rxpolarity = yes|no
+Invert the received radio-signaling bit polarity.
+.SH CTCSS AND OTHER LOW-SPEED SIGNALING
+.TP
+.B ctcssfrom = no|usb|usbinvert|dsp|pp|ppinvert
+Choose the receive CTCSS indication source.  The
+.B dsp
+setting decodes tones from flat receiver audio;
+.B usb
+and
+.B usbinvert
+use the interface input; parallel-port forms use the configured input pin.
+.TP
+.B rxctcssfreqs = list
+Comma-separated receive CTCSS tones.  Frequencies must be supported by the
+decoder.
+.TP
+.B txctcssfreqs = list
+Comma-separated transmit CTCSS tones corresponding to the receive list.
+.TP
+.B txctcssdefault = frequency
+Tone transmitted when no received tone selects another entry.
+.TP
+.B rxctcssoverride = yes|no
+Begin in carrier-squelch operation without requiring a decoded CTCSS tone.
+.TP
+.B rxctcssrelax = integer
+Select CTCSS decoder tolerance.  The normal setting is 1.
+.TP
+.B txtoctype = no|phase|notone
+Choose CTCSS turn-off signaling:
+.B no
+drops PTT with the tone,
+.B phase
+sends a reverse burst, and
+.B notone
+removes tone before PTT.
+.TP
+.B dcsrxpolarity, dcstxpolarity = yes|no
+Invert receive or transmit DCS polarity.
+.TP
+.B lsdrxpolarity, lsdtxpolarity = yes|no
+Invert receive or transmit low-speed-data polarity.
+.SH TRANSMIT ROUTING AND CONTROL
+.TP
+.B txprelim = yes|no
+Apply transmit pre-emphasis and limiting for a direct modulator connection.
+.TP
+.B txlimonly = yes|no
+Apply limiting without pre-emphasis, typically for a microphone input whose
+radio supplies pre-emphasis.
+.TP
+.B txmixa, txmixb = no|voice|tone|composite|auxvoice
+Select the signal on the left or right USB playback channel:
+.B voice
+is program audio,
+.B tone
+is CTCSS,
+.B composite
+combines both, and
+.B auxvoice
+is an unkeyed monitor feed.
+.TP
+.B invertptt = yes|no
+Invert the USB PTT output.  Default operation grounds the output to transmit.
+.TP
+.B duplex = 0|1
+Select half-duplex or full-duplex radio-interface operation.
+.TP
+.B duplex3 = 0..999
+Set local receiver-to-transmitter audio.  Zero disables the route and 999 is
+full level.
+.TP
+.B duplex3mode = hardware|software
+Use the CM119 hardware mixer or the 48 kHz software receiver path for the
+.B duplex3
+route.  Default is
+.BR hardware .
+.TP
+.B txsettletime = integer
+Delay transmit audio after asserting PTT so the transmitter can reach steady
+operation.
+.TP
+.B txrxblankingtime = integer
+Blank receive signaling around transmitter switching.
+.TP
+.B txpolarity = yes|no
+Invert the transmitted radio-signaling bit polarity.
+.SH AUDIO FILTERS
+.TP
+.B rxlpf, txlpf = no|yes|selector|frequency
+Set the receive or transmit low-pass cutoff.
+.TP
+.B rxhpf, txhpf = no|yes|selector|frequency
+Set the receive or transmit high-pass cutoff.
+.PP
+.B no
+disables a filter and
+.B yes
+selects its 300 Hz high-pass or 3000 Hz low-pass default.  An integer selects
+the standard radio filter: low-pass selectors 0, 1, and 2 are 3000, 3300, and
+3500 Hz; high-pass selectors 0, 1, and 2 are 300, 250, and 120 Hz.  A decimal
+number specifies the exact cutoff in hertz.  A high-pass cutoff must be lower
+than its paired low-pass cutoff.
+.PP
+Useful initial passbands are 300--3000 Hz for 12.5 kHz narrowband and 15 kHz FM,
+250--4000 Hz for 20 kHz FM, and 250--5000 Hz for 25 kHz FM.  Final settings must
+be verified for intelligibility, CTCSS margin, peak deviation, and occupied
+bandwidth with a service monitor.
+.SH AUDIO-PATH CONTROLS
+.TP
+.B txvoicehighpass = yes|no
+Enable the high-pass filter on voice entering the transmitter path.  Default is
+.BR yes .
+.TP
+.B txvoicehighpass_hz = frequency
+Set that filter's cutoff.  Default is 250.
+.TP
+.B linkhighpass = yes|no
+Enable high-pass filtering of network audio.  Default is
+.BR yes .
+.TP
+.B linkhighpass_hz = frequency
+Set the network-audio high-pass cutoff.  Default is 250.
+.TP
+.B emphasis_corner_hz = frequency
+Set the pre-emphasis and de-emphasis corner.  Default is 212.206590789 Hz,
+corresponding to a 750 microsecond time constant.
+.TP
+.B presquelch_gain_db, postsquelch_gain_db = dB
+Apply gain before or after the receive squelch gate.  Both default to 0 dB.
+.TP
+.B tx_ceiling_dbfs = dBFS
+Set the transmit PCM ceiling.  Default is 0 dBFS; conversion retains one PCM
+code of rail protection.
+.TP
+.B preemphasis_headroom_db = dB
+Provide working headroom inside the pre-emphasis stage.  Default is 24 dB.
+.TP
+.B rxlevel_presquelch_target_dbfs, rxlevel_post_target_dbfs = dBFS
+Set the calibration targets used by the receive-level utility before and after
+squelch processing.  Default is -1 dBFS for each.
+.TP
+.B nativeparrot = yes|no
+Enable the local native-rate test recorder and playback function.  Default is
+.BR no .
+.TP
+.B parrotmaxseconds = integer
+Limit a native parrot recording.  Default is 30 seconds.
+.TP
+.B legacyaudioscaling = yes|no
+Select the alternate PCM level scale for installations calibrated to it.
+Default is
+.BR yes .
+.SH GPIO AND PARALLEL PORT
+.TP
+.B clipledgpio = 0..8
+Pulse the selected GPIO for 500 ms when the receive ADC clips.  Zero disables
+the indication.
+.TP
+.B gpio1 ... gpio8 = in|out0|out1
+Configure a CM1xx GPIO as an input or as an output with its initial state.
+.TP
+.B pport = path
+Set the parallel-port device.  Default is
+.BR /dev/parport0 .
+Legacy binary channel selection uses data pins 6 through 9.  RTX synthesizer
+programming uses data pins 2 through 6.  Pins used for either purpose must not
+also be assigned as general-purpose outputs.
+.TP
+.B pbase = address
+Set a parallel-port I/O base address when no device driver is used.
+.TP
+.B pp2 ... pp9 = out0|out1|ptt
+Configure a parallel-port output pin and its initial state or assign it to PTT.
+.TP
+.B pp10, pp12, pp13, pp15 = in|cor|ctcss
+Configure a parallel-port input and optionally assign it to carrier or CTCSS.
+.SH REMOTE AND DIAGNOSTIC OPTIONS
+.TP
+.B rxfreq, txfreq = integer
+Set receive and transmit frequency in Hz for a legacy parallel-programmed RTX
+radio.  A value of zero disables synthesizer programming.  USBRadioPlus writes
+the synthesizer before changing the physical PTT output.  A remote
+.B SETFREQ
+command supplies temporary frequencies while remote-base operation is active.
+.TP
+.B radioactive = yes|no
+Enable remote radio control for this channel.
+.TP
+.B rptnum = integer
+Associate the radio with an app_rpt node number for remote operation.
+.TP
+.B area = integer
+Set the remote-control area identifier.
+.TP
+.B ukey = string
+Set the remote-control authentication key.
+.TP
+.B idleinterval = integer
+Set the remote-radio idle polling interval.
+.TP
+.B turnoffs = integer
+Set the remote-radio turn-off behavior mask.
+.TP
+.B sendvoter = integer
+Send receiver information to the configured voter path.
+.TP
+.B tracetype = integer
+Select DSP trace output.
+.TP
+.B tracelevel = integer
+Set DSP diagnostic verbosity.
+.TP
+.B fever = integer
+Enable low-level diagnostic behavior used by the tuning interface.
+.SH TUNING VALUES
+These values are normally written by
+.BR usbradioplus-tune (8).
+.TP
+.B rxmixerset = 0..999
+Set the USB capture mixer level.
+.TP
+.B rxvoiceadj = number
+Set recovered voice level; 0.5 is unity.
+.TP
+.B rxsquelchadj = 0..999
+Set the DSP carrier-squelch threshold.
+.TP
+.B txmixaset, txmixbset = 0..999
+Set left- and right-channel USB playback levels.
+.TP
+.B txctcssadj = 0..999
+Set transmitted CTCSS deviation.
+.TP
+.B txslimsp = 5000..13000
+Set the transmitter soft-limiter onset used when transmit limiting is selected.
+.SH FILES
+.B /etc/asterisk/usbradioplus.conf
+.SH SEE ALSO
+.BR usbradioplus (7),
+.BR usbradioplus-processing.conf (5),
+.BR usbradioplus-tune (8),
+.BR rpt.conf (5)

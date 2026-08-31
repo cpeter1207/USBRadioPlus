@@ -1,0 +1,117 @@
+.TH USBRADIOPLUS 7 "August 2026" "USBRadioPlus alpha" "Miscellaneous Information Manual"
+.SH NAME
+usbradioplus \- enhanced USB radio channel driver for AllStarLink
+.SH DESCRIPTION
+USBRadioPlus is an Asterisk channel driver for CM108-, CM109-, and CM119-family
+USB radio interfaces.  It replaces
+.BR chan_usbradio
+for stations that need more configurable audio filtering and optional dynamics
+processing.  Radio signaling, USB mixer control, PTT, carrier-operated squelch,
+CTCSS, and tuning are provided in the same channel driver.
+.PP
+Each configured interface appears to Asterisk as
+.BR RadioPlus/ name .
+Channel and hardware settings are read from
+.BR usbradioplus.conf (5).
+Optional audio-processing graphs are read from
+.BR usbradioplus-processing.conf (5).
+.SH INSTALLATION
+Install the matching ASL3 Asterisk development package and the DSP development
+libraries, then build, test, and install with:
+.PP
+.nf
+make
+make check
+sudo make prefix=/usr install
+.fi
+.PP
+For a release archive on an ASL3 node, the supported convenience command is:
+.PP
+.nf
+sudo ./install.sh
+.fi
+.PP
+The convenience installer obtains the required Debian build packages, builds
+the module and utilities, runs the hardware-independent tests, and installs the
+result.  Installation does not load a module, restart Asterisk, or edit an
+Asterisk configuration file.
+.SH ACTIVATION
+Retain the installed
+.B chan_usbradio.so
+and its configuration until USBRadioPlus has been tested on the radio system.
+Do not allow both drivers to open the same USB interface.
+.PP
+In
+.BR /etc/asterisk/modules.conf ,
+prevent the old driver from loading and load USBRadioPlus.  For example:
+.PP
+.nf
+noload => chan_usbradio.so
+load => chan_usbradioplus.so
+.fi
+.PP
+Copy or rename the working channel configuration to
+.BR /etc/asterisk/usbradioplus.conf .
+Review it using
+.BR usbradioplus.conf (5).
+.PP
+In the applicable node section of
+.BR /etc/asterisk/rpt.conf ,
+change only the channel technology in
+.BR rxchannel .
+Keep the device name and the remaining channel arguments unchanged.  For
+example:
+.PP
+.nf
+rxchannel = RadioPlus/usb
+.fi
+.PP
+During a maintenance window, restart Asterisk, then verify PTT, COS, CTCSS,
+receive audio, transmit deviation, and duplex operation before returning the
+station to service.  Do not replace a running module with
+.B module reload;
+on some ASL3 systems the CM119 remains unassigned until Asterisk restarts.
+.SH CONFIGURATION
+The channel file contains hardware selection, radio signaling, audio routing,
+filters, levels, delays, duplex operation, and GPIO assignments.  See
+.BR usbradioplus.conf (5)
+for every option, accepted value, and default.
+.PP
+The processing file contains the local-receiver, link, and transmitter audio
+graphs.  See
+.BR usbradioplus-processing.conf (5)
+for graph order, processing controls, limits, and defaults.
+.SH TUNING UTILITIES
+.TP
+.B usbradioplus-tune
+Interactive, keyboard-operated setup for USB mixer levels, receive voice and
+CTCSS levels, squelch, transmit voice and CTCSS deviation, PTT, test tone,
+statistics, and EEPROM storage.
+.TP
+.B usbradioplus-rxlevel
+Receive-level calibration and monitoring, including peak, RMS, and clipping
+information.
+.TP
+.B usbradioplus-processing-tune
+Checks and edits the optional processing graphs and can display live processing
+statistics.
+.PP
+See
+.BR usbradioplus-tune (8)
+for operating instructions and the service-monitor procedure.
+.SH FILES
+.TP
+.B /usr/lib/asterisk/modules/chan_usbradioplus.so
+Asterisk channel module.
+.TP
+.B /etc/asterisk/usbradioplus.conf
+Channel, radio-interface, and tuning configuration.
+.TP
+.B /etc/asterisk/usbradioplus-processing.conf
+Optional audio-processing configuration.
+.SH SEE ALSO
+.BR usbradioplus.conf (5),
+.BR usbradioplus-processing.conf (5),
+.BR usbradioplus-tune (8),
+.BR modules.conf (5),
+.BR rpt.conf (5)

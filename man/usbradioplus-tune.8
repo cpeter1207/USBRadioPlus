@@ -1,0 +1,160 @@
+.TH USBRADIOPLUS-TUNE 8 "August 2026" "USBRadioPlus alpha" "System Administration"
+.SH NAME
+usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
+.SH SYNOPSIS
+.B usbradioplus-tune
+.br
+.B usbradioplus-rxlevel
+[menu|calibrate [seconds]|status|cancel|save]
+.br
+.B usbradioplus-processing-tune
+[--check] [--offline] [--config path] [--lock path]
+.SH DESCRIPTION
+These utilities configure USBRadioPlus from a keyboard-operated terminal.
+Run them as root on the Asterisk node. Changes made by the interactive menus
+take effect immediately; use the explicit save command to retain radio tuning
+values after a restart.
+.PP
+Menu buttons use consistent action names. Select opens the highlighted item,
+Apply commits an edit, Back returns one menu level, Exit leaves the utility,
+Cancel abandons an edit, and Close dismisses information without changing it.
+.SH USBRADIOPLUS-TUNE
+The main menu operates on the active RadioPlus device. It provides:
+.TP
+.B Select active USB device
+Choose one configured radio interface. Swap exchanges USB assignments between
+two configured interfaces; it does not exchange their radio settings.
+.TP
+.B Auto-detect RX noise level
+With no carrier present, adjust USB capture level and the DSP carrier-squelch
+starting point. This requires flat discriminator audio and should be followed
+by receiver-level and squelch verification.
+.TP
+.B Set RX voice level using display
+Show a live deviation bar, then accept a 0--999 receive voice setting. Press
+any key to leave the live display and reach the setting prompt.
+.TP
+.B Auto-detect RX CTCSS level
+Measure received CTCSS and adjust decoder level. Apply a carrier with the
+configured tone and specified tone deviation before selecting this action.
+.TP
+.B Set RX squelch level
+Display current DSP signal strength and accept a 0--999 squelch setting. Higher
+numbers require a stronger signal to open.
+.TP
+.B Set TX voice level
+Set the 0--999 mixer level for the output carrying voice or composite audio.
+When test-tone keying is enabled, the action keys PTT and sends 1 kHz for five
+seconds.
+.TP
+.B Set auxiliary voice level
+Set the 0--999 level on the output configured as auxvoice. The action is
+unavailable unless one output mixer carries auxvoice.
+.TP
+.B Set TX CTCSS level
+Set CTCSS deviation from 0--999. When test-tone keying is enabled, the action
+keys PTT and sends CTCSS for five seconds.
+.TP
+.B Auto-detect RX voice level
+Adjust recovered voice gain from a received 1 kHz tone at 3 kHz deviation.
+This action requires flat discriminator audio and a steady calibrated signal.
+.TP
+.B Echo mode
+Return received audio to the transmitter for alignment. Disable it when the
+test is complete.
+.TP
+.B Flash transmitter
+Send three one-second PTT and 1 kHz tone bursts separated by 1.5 seconds.
+.TP
+.B Carrier and CTCSS source
+Select the COS and tone indication sources supported by usbradioplus.conf(5).
+.TP
+.B Options
+Set RX boost, TX boost, RX demodulation, RX-on and TX-off delays, transmit
+pre-limiting, limiting-only operation, and USB output A and B routing.
+It also sets the transmit soft-limiter onset from 5000 through 13000.
+.TP
+.B Print current parameter values
+Report the selected interface, USB device, output routing, and principal RX/TX
+levels.
+.TP
+.B Live statistics and status
+Display RX or TX peak, RMS, clipping, COS, CTCSS, and PTT state. Press any key
+to return. TX statistics report that PTT is clear when the transmitter is idle.
+.TP
+.B Save current parameter values
+Write device selection, signal sources, mixer and radio levels, squelch,
+delays, boosts, transmitter processing selections, and limiter setpoint to
+usbradioplus.conf. EEPROM values are also written when EEPROM storage is enabled.
+.SH USBRADIOPLUS-RXLEVEL
+.TP
+.B menu
+Open the numbered receive calibration menu. This is the default action.
+.TP
+.B calibrate [seconds]
+Collect closed-squelch noise and at least one second of COR-qualified receive
+audio for 2--600 seconds. The default is 30 seconds. On completion, report the
+recommended pre- and post-squelch gains, peaks, and ADC rail counts, then save
+the gains.
+.TP
+.B status
+Report whether calibration is running, current gain recommendations, noise and
+signal peaks, sample counts, and ADC rail counts.
+.TP
+.B cancel
+Stop a running calibration without changing gains.
+.TP
+.B save
+Write the current pre- and post-squelch gain values to usbradioplus.conf.
+.SH USBRADIOPLUS-PROCESSING-TUNE
+The processing menu selects local receiver, linked audio, or voice and telemetry.
+Only controls applicable to the selected source are shown. Stage toggles use
+single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
+pages validate both the documented range and dependent relationships such as a
+low-pass cutoff being above its high-pass cutoff.
+.PP
+Each accepted edit is written atomically and reloaded. If validation or reload
+fails, the preceding file and active settings are restored. The main menu can
+create a timestamped backup or restore the configuration from the start of the
+session.
+.TP
+.B --check
+Validate prerequisites and confirm that the configured local, link, and
+voice/telemetry sections can be read.
+.TP
+.B --offline
+With --check, do not require Asterisk or the terminal menu package. This is
+intended for installation and package tests.
+.TP
+.B --config path
+Use another processing configuration for --check.
+.TP
+.B --lock path
+Use another menu lock file.
+.SH SERVICE-MONITOR PROCEDURE
+Use a dummy load or authorized test frequency. Set capture gain first with an
+unmodulated receiver and verify that ADC rail counts remain zero. Apply a
+calibrated 1 kHz signal at system deviation and set recovered RX voice level.
+Apply the configured CTCSS tone at the specified tone deviation and verify
+decode margin.
+.PP
+Key into a service monitor, set voice peak deviation, then set CTCSS deviation.
+Verify peak and RMS level, clipping, occupied bandwidth, PTT operation, and
+tone turn-off behavior before saving. Repeat checks after reconnecting USB and
+after restarting Asterisk.
+.SH FILES
+.TP
+.B /etc/asterisk/usbradioplus.conf
+Radio-interface and saved tuning values.
+.TP
+.B /etc/asterisk/usbradioplus-processing.conf
+Optional processing graphs.
+.TP
+.B /run/lock/usbradioplus-processing-tune.lock
+Processing-menu single-instance lock.
+.SH SEE ALSO
+.BR usbradioplus (7),
+.BR usbradioplus.conf (5),
+.BR usbradioplus-processing.conf (5),
+.BR modules.conf (5),
+.BR rpt.conf (5)

@@ -1,0 +1,620 @@
+#!/usr/bin/env python3
+"""Interactive tuning menu for USBRadioPlus processing."""
+
+import argparse
+import fcntl
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import termios
+import tty
+from datetime import datetime
+
+CONFIG = "/etc/asterisk/usbradioplus-processing.conf"
+LOCK = "/run/lock/usbradioplus-processing-tune.lock"
+
+SOURCES = [("local", "Local receiver"), ("link", "Linked audio"),
+           ("voice_telemetry", "Voice + telemetry")]
+
+# key: label, kind, minimum, maximum, units, group
+SETTINGS = {
+    "enabled": ("Entire chain", "bool", None, None, "", "Stages"),
+    "rnnoise_enabled": ("RNNoise", "bool", None, None, "", "Stages"),
+    "agc_enabled": ("AGC", "bool", None, None, "", "Stages"),
+    "expander_enabled": ("Downward expander", "bool", None, None, "", "Stages"),
+    "compressor_enabled": ("Compressor", "bool", None, None, "", "Stages"),
+    "limiter_enabled": ("Two-band limiter", "bool", None, None, "", "Stages"),
+    "stage_order": ("Dynamics stage order", "text", None, None, "", "Stages"),
+    "ctcss_filter_mode": ("Receive CTCSS filter mode", "choice", None, None, "", "Receive"),
+    "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Receive"),
+    "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Receive"),
+    "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Output"),
+    "splatter_filter_enabled": ("Brick-wall band-pass", "bool", None, None, "", "Stages"),
+    "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
+    "final_clipper_enabled": ("Final clipper", "bool", None, None, "", "Stages"),
+    "target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
+    "max_gain_db": ("AGC maximum gain", "float", 0, 30, "dB", "AGC"),
+    "max_attenuation_db": ("AGC maximum attenuation", "float", 0, 60, "dB", "AGC"),
+    "agc_floor_dbfs": ("AGC detector floor", "float", -100, -3, "dBFS", "AGC"),
+    "attack_ms": ("AGC attack", "float", 1, 10000, "ms", "AGC"),
+    "release_ms": ("AGC release", "float", 1, 30000, "ms", "AGC"),
+    "reset_after_ms": ("AGC reset after", "float", 100, 60000, "ms", "AGC"),
+    "sidechain_highpass_hz": ("AGC sidechain band-pass low edge", "float", 50, 2000, "Hz", "AGC"),
+    "sidechain_lowpass_hz": ("AGC sidechain band-pass high edge", "float", 50, 3500, "Hz", "AGC"),
+    "expander_threshold_dbfs": ("Expander threshold", "float", -100, -10, "dBFS", "Expander"),
+    "expander_ratio": ("Expander ratio", "float", 1, 10, ":1", "Expander"),
+    "expander_max_attenuation_db": ("Expander max attenuation", "float", 0, 40, "dB", "Expander"),
+    "expander_attack_ms": ("Expander attack", "float", 1, 1000, "ms", "Expander"),
+    "expander_release_ms": ("Expander release", "float", 1, 10000, "ms", "Expander"),
+    "expander_sidechain_highpass_hz": ("Expander sidechain band-pass low edge", "float", 50, 2000, "Hz", "Expander"),
+    "expander_sidechain_lowpass_hz": ("Expander sidechain band-pass high edge", "float", 50, 3500, "Hz", "Expander"),
+    "compressor_threshold_dbfs": ("Compressor threshold", "float", -60, 0, "dBFS", "Compressor"),
+    "compressor_ratio": ("Compressor ratio", "float", 1, 20, ":1", "Compressor"),
+    "compressor_makeup_gain_db": ("Compressor make-up gain", "float", -30, 30, "dB", "Compressor"),
+    "compressor_attack_ms": ("Compressor attack", "float", 1, 1000, "ms", "Compressor"),
+    "compressor_release_ms": ("Compressor release", "float", 1, 10000, "ms", "Compressor"),
+    "compressor_sidechain_highpass_hz": ("Compressor sidechain band-pass low edge", "float", 50, 2000, "Hz", "Compressor"),
+    "compressor_sidechain_lowpass_hz": ("Compressor sidechain band-pass high edge", "float", 50, 3500, "Hz", "Compressor"),
+    "limiter_crossover_hz": ("Limiter crossover", "float", 300, 2000, "Hz", "Two-band limiter"),
+    "low_limiter_threshold_dbfs": ("Low-band threshold", "float", -40, -1, "dBFS", "Two-band limiter"),
+    "low_limiter_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
+    "low_limiter_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Two-band limiter"),
+    "low_limiter_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Two-band limiter"),
+    "low_limiter_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Two-band limiter"),
+    "high_clip_dbfs": ("High-band limit", "float", -30, -1, "dBFS", "Two-band limiter"),
+    "high_limiter_ratio": ("High-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
+    "high_limiter_knee_db": ("High-band knee", "float", 0, 24, "dB", "Two-band limiter"),
+    "high_limiter_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Two-band limiter"),
+    "high_limiter_release_ms": ("High-band release", "float", 1, 1000, "ms", "Two-band limiter"),
+    "lookahead_limit_dbfs": ("Lookahead ceiling", "float", -30, -0.1, "dBFS", "Lookahead"),
+    "lookahead_ms": ("Lookahead time", "float", 0.1, 20, "ms", "Lookahead"),
+    "lookahead_attack_ms": ("Lookahead attack", "float", 0.1, 20, "ms", "Lookahead"),
+    "lookahead_release_ms": ("Lookahead release", "float", 1, 5000, "ms", "Lookahead"),
+    "final_clip_dbfs": ("Final clip ceiling", "float", -30, -0.5, "dBFS", "Lookahead"),
+    "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Lookahead"),
+    "post_limiter_lowpass_hz": ("Cleanup low-pass cutoff", "float", 5000, 20000, "Hz", "Lookahead"),
+    "output_highpass_hz": ("Output band-pass low cutoff", "float", 20, 2000, "Hz", "Output"),
+    "output_lowpass_hz": ("Output band-pass high cutoff", "float", 20, 5000, "Hz", "Output"),
+    "output_gain_db": ("Final output gain", "float", -30, 30, "dB", "Output"),
+}
+
+DEFAULTS = {
+    "enabled": "yes", "rnnoise_enabled": "no", "agc_enabled": "no",
+    "expander_enabled": "no", "compressor_enabled": "no",
+    "limiter_enabled": "no", "stage_order": "expander,agc,compressor,limiter",
+    "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "2.0",
+    "ctcss_highpass_hz": "300.0", "input_gain_db": "0.0",
+    "splatter_filter_enabled": "no", "lookahead_limiter_enabled": "no",
+    "final_clipper_enabled": "no", "target_dbfs": "-10.0",
+    "max_gain_db": "12.0", "max_attenuation_db": "6.0",
+    "agc_floor_dbfs": "-60.0", "attack_ms": "750.0",
+    "release_ms": "1500.0", "reset_after_ms": "3000.0",
+    "sidechain_highpass_hz": "800.0", "sidechain_lowpass_hz": "1500.0",
+    "expander_threshold_dbfs": "-55.0", "expander_ratio": "1.5",
+    "expander_max_attenuation_db": "9.0", "expander_attack_ms": "10.0",
+    "expander_release_ms": "250.0", "expander_sidechain_highpass_hz": "800.0",
+    "expander_sidechain_lowpass_hz": "1500.0",
+    "compressor_threshold_dbfs": "-6.0", "compressor_ratio": "2.0",
+    "compressor_makeup_gain_db": "0.0", "compressor_attack_ms": "75.0",
+    "compressor_release_ms": "300.0", "compressor_sidechain_highpass_hz": "800.0",
+    "compressor_sidechain_lowpass_hz": "1500.0", "limiter_crossover_hz": "1000.0",
+    "low_limiter_threshold_dbfs": "-1.5", "low_limiter_ratio": "10.0",
+    "low_limiter_knee_db": "6.0", "low_limiter_attack_ms": "50.0",
+    "low_limiter_release_ms": "250.0", "high_clip_dbfs": "-1.5",
+    "high_limiter_ratio": "20.0", "high_limiter_knee_db": "6.0",
+    "high_limiter_attack_ms": "0.5", "high_limiter_release_ms": "25.0",
+    "final_clip_dbfs": "-3.0", "lookahead_limit_dbfs": "-3.0",
+    "lookahead_ms": "5.0", "lookahead_attack_ms": "1.0",
+    "lookahead_release_ms": "100.0", "post_limiter_lowpass_enabled": "no",
+    "post_limiter_lowpass_hz": "8000.0", "output_highpass_hz": "300.0",
+    "output_lowpass_hz": "3000.0", "output_gain_db": "0.0",
+}
+
+SOURCE_DEFAULTS = {
+    "local": {"ctcss_filter_mode": "notch", "output_gain_db": "-6.2"},
+    "link": {"output_gain_db": "-6.2"},
+    "voice_telemetry": {
+        "input_gain_db": "6.0", "output_gain_db": "0.0",
+        "splatter_filter_enabled": "yes",
+    },
+}
+
+
+def default_value(source, key):
+    """Return the module default for this source, not a generic menu default."""
+    return SOURCE_DEFAULTS.get(source, {}).get(key, DEFAULTS[key])
+
+
+def relationship_error(source, key, number, values):
+    """Validate constraints involving another value before writing the file."""
+    pairs = {
+        "sidechain_lowpass_hz": "sidechain_highpass_hz",
+        "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
+        "compressor_sidechain_lowpass_hz": "compressor_sidechain_highpass_hz",
+        "output_lowpass_hz": "output_highpass_hz",
+    }
+    if key in pairs:
+        lower_key = pairs[key]
+        lower = float(values.get(lower_key, default_value(source, lower_key)))
+        if number <= lower:
+            return f"{SETTINGS[key][0]} must be above {SETTINGS[lower_key][0]} ({lower:g} Hz)."
+    reverse = {lower: upper for upper, lower in pairs.items()}
+    if key in reverse:
+        upper_key = reverse[key]
+        upper = float(values.get(upper_key, default_value(source, upper_key)))
+        if number >= upper:
+            return f"{SETTINGS[key][0]} must be below {SETTINGS[upper_key][0]} ({upper:g} Hz)."
+    if key == "agc_floor_dbfs":
+        target = float(values.get("target_dbfs", default_value(source, "target_dbfs")))
+        if number >= target:
+            return f"AGC detector floor must be below AGC target ({target:g} dBFS)."
+    if key == "target_dbfs":
+        floor = float(values.get("agc_floor_dbfs", default_value(source, "agc_floor_dbfs")))
+        if number <= floor:
+            return f"AGC target must be above AGC detector floor ({floor:g} dBFS)."
+    return None
+
+
+def run(args, check=False):
+    return subprocess.run(args, text=True, stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, check=check).stdout
+
+
+def dialog(args):
+    """Run whiptail, whose numbered/tagged menus match the ASL3 utilities."""
+    if "--msgbox" in args and "--ok-button" not in args:
+        args = ["--ok-button", "Close"] + args
+    # Match asl-menu's `3>&1 1>&2 2>&3`: newt draws the interface on stdout,
+    # while the selected tag is returned on stderr.
+    result = subprocess.run(["whiptail", "--backtitle", "USBRadioPlus processing"] + args,
+                            text=True, stdout=sys.stderr, stderr=subprocess.PIPE)
+    return result.returncode, result.stderr.strip()
+
+
+def read_config():
+    with open(CONFIG, encoding="utf-8") as stream:
+        return stream.read()
+
+
+def section_values(text, section):
+    values, active = {}, False
+    for line in text.splitlines():
+        match = re.match(r"\s*\[([^]]+)\]", line)
+        if match:
+            active = match.group(1).strip() == section
+        elif active:
+            match = re.match(r"\s*([A-Za-z0-9_]+)\s*=\s*([^;#]*?)\s*(?:[;#].*)?$", line)
+            if match:
+                values[match.group(1)] = match.group(2)
+    return values
+
+
+def replace_value(text, section, key, value):
+    lines, active, found = text.splitlines(keepends=True), False, False
+    for index, line in enumerate(lines):
+        match = re.match(r"\s*\[([^]]+)\]", line)
+        if match:
+            active = match.group(1).strip() == section
+        elif active and re.match(rf"\s*{re.escape(key)}\s*=", line):
+            ending = "\n" if line.endswith("\n") else ""
+            lines[index] = f"{key} = {value}{ending}"
+            found = True
+            break
+    if not found:
+        for index, line in enumerate(lines):
+            match = re.match(r"\s*\[([^]]+)\]", line)
+            if match and match.group(1).strip() == section:
+                insert_at = index + 1
+                while insert_at < len(lines) and not re.match(r"\s*\[", lines[insert_at]):
+                    insert_at += 1
+                lines.insert(insert_at, f"{key} = {value}\n")
+                found = True
+                break
+    if not found:
+        raise ValueError(f"configuration section [{section}] is missing")
+    return "".join(lines)
+
+
+def atomic_write(text):
+    directory = os.path.dirname(CONFIG)
+    original = os.stat(CONFIG)
+    fd, path = tempfile.mkstemp(prefix=".usbradioplus-processing.",
+                                dir=directory, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(path, original.st_mode)
+        os.chown(path, original.st_uid, original.st_gid)
+        os.replace(path, CONFIG)
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)
+
+
+def reload_config(old_text):
+    output = run(["asterisk", "-rx", "radioplus processing reload"])
+    if "reloaded in place" not in output.lower():
+        atomic_write(old_text)
+        run(["asterisk", "-rx", "radioplus processing reload"])
+        raise RuntimeError("Reload failed; the previous configuration was restored.\n\n" + output)
+
+
+def edit_setting(source, key):
+    text = read_config()
+    values = section_values(text, source)
+    label, kind, low, high, units, _group = SETTINGS[key]
+    current = values.get(key, default_value(source, key))
+    if kind == "bool":
+        new = "no" if current.lower() in ("yes", "true", "1", "on") else "yes"
+    else:
+        code, new = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                            "--inputbox", f"{label}\nRange: {low} to {high} {units}",
+                            "10", "62", current])
+        if code:
+            return
+        try:
+            number = float(new)
+        except ValueError:
+            dialog(["--msgbox", "Enter a numeric value.", "7", "40"])
+            return
+        if number < low or number > high:
+            dialog(["--msgbox", f"Value must be between {low} and {high} {units}.", "8", "52"])
+            return
+        relation = relationship_error(source, key, number, values)
+        if relation:
+            dialog(["--msgbox", relation, "8", "64"])
+            return
+        new = f"{number:g}"
+    updated = replace_value(text, source, key, new)
+    atomic_write(updated)
+    try:
+        reload_config(text)
+    except RuntimeError as error:
+        dialog(["--msgbox", str(error), "12", "70"])
+
+
+def edit_numeric_setting(source, key):
+    """Prompt for and apply a numeric value using ordinary terminal I/O."""
+    text = read_config()
+    values = section_values(text, source)
+    label, _kind, low, high, units, _group = SETTINGS[key]
+    current = values.get(key, default_value(source, key))
+    try:
+        entered = input(f"New {label} ({low} to {high} {units}) [{current}]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("Change cancelled.")
+        return
+    if not entered:
+        print("No value entered; setting unchanged.")
+        return
+    try:
+        number = float(entered)
+    except ValueError:
+        print(f"Invalid value {entered!r}; enter a number. Setting unchanged.")
+        return
+    if number < low or number > high:
+        print(f"Value must be between {low} and {high} {units}. Setting unchanged.")
+        return
+    relation = relationship_error(source, key, number, values)
+    if relation:
+        print(relation + " Setting unchanged.")
+        return
+    new = f"{number:g}"
+    updated = replace_value(text, source, key, new)
+    atomic_write(updated)
+    try:
+        reload_config(text)
+    except RuntimeError as error:
+        print(str(error))
+        return
+    print(f"{label} changed from {current} to {new} {units}. Applied successfully.")
+
+
+def edit_text_setting(source, key):
+    """Edit strictly enumerated graph and receive-filter values."""
+    text = read_config()
+    values = section_values(text, source)
+    label = SETTINGS[key][0]
+    current = values.get(key, default_value(source, key))
+    if key == "stage_order":
+        prompt = "Comma-separated expander, agc, compressor, limiter"
+    else:
+        prompt = "One of: disabled, highpass, notch"
+    try:
+        entered = input(f"New {label} ({prompt}) [{current}]: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print("Change cancelled.")
+        return
+    if not entered:
+        print("No value entered; setting unchanged.")
+        return
+    if key == "stage_order":
+        stages = [item.strip() for item in entered.split(",")]
+        allowed = {"expander", "agc", "compressor", "limiter"}
+        if not stages or any(item not in allowed for item in stages) or len(stages) != len(set(stages)):
+            print("Stage order contains an unknown, empty, or duplicate stage; unchanged.")
+            return
+        entered = ",".join(stages)
+    elif entered not in {"disabled", "highpass", "notch", "comb"}:
+        print("CTCSS filter mode must be disabled, highpass, notch, or comb; unchanged.")
+        return
+    old_text = text
+    atomic_write(replace_value(text, source, key, entered))
+    try:
+        reload_config(old_text)
+    except RuntimeError as error:
+        print(str(error))
+        return
+    print(f"{label} changed from {current or '(inherited)'} to {entered}. Applied successfully.")
+
+
+def read_key():
+    """Read one key, including terminal arrow-key sequences."""
+    fd = sys.stdin.fileno()
+    previous = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        first = os.read(fd, 1).decode("utf-8", "ignore")
+        if first == "\x1b":
+            second = os.read(fd, 1).decode("utf-8", "ignore")
+            if second == "[":
+                third = os.read(fd, 1).decode("utf-8", "ignore")
+                if third == "Z":
+                    return "SHIFT_TAB"
+                return first + second + third
+            return first + second
+        return first
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, previous)
+
+
+def stages_menu(source):
+    """Screen-reader-friendly, single-key stage toggles."""
+    entries = [
+        ("1", "enabled", "Entire chain"),
+        ("R", "rnnoise_enabled", "RNNoise"),
+        ("A", "agc_enabled", "AGC"),
+        ("E", "expander_enabled", "Downward expander"),
+        ("C", "compressor_enabled", "Compressor"),
+        ("L", "limiter_enabled", "Two-band limiter"),
+        ("S", "splatter_filter_enabled", "Brick-wall band-pass"),
+        ("H", "lookahead_limiter_enabled", "Lookahead limiter"),
+        ("P", "post_limiter_lowpass_enabled", "Post-limiter low-pass"),
+        ("F", "final_clipper_enabled", "Final clipper"),
+    ]
+    entries = [entry for entry in entries
+               if not (entry[1] == "rnnoise_enabled" and source != "local")
+               and not (entry[1] in {"splatter_filter_enabled",
+                                     "lookahead_limiter_enabled",
+                                     "post_limiter_lowpass_enabled",
+                                     "final_clipper_enabled"}
+                        and source != "voice_telemetry")]
+    selected = 0
+    while True:
+        values = section_values(read_config(), source)
+        print(f"\n{source} stage toggles. Press a listed key to toggle immediately.")
+        print("Up and Down arrows move; Enter toggles the current item.")
+        print("Tab selects Back; Shift+Tab returns to the list. B, Q, or Escape also go back.")
+        for index, (key, setting, label) in enumerate(entries):
+            state = "ON" if values.get(setting, default_value(source, setting)).lower() in ("yes", "true", "1", "on") else "OFF"
+            marker = ">" if index == selected else " "
+            print(f"{marker} {key}. {label}: {state}")
+        back_marker = ">" if selected == len(entries) else " "
+        print(f"{back_marker} B. Back")
+        current_label = "Back button" if selected == len(entries) else entries[selected][2]
+        print(f"Current item: {current_label}. Command: ", end="", flush=True)
+        keypress = read_key()
+        print()
+        if keypress == "\x1b[A":
+            selected = (selected - 1) % (len(entries) + 1)
+            label = "Back button" if selected == len(entries) else entries[selected][2]
+            print(f"Selected {label}.")
+            continue
+        if keypress == "\x1b[B":
+            selected = (selected + 1) % (len(entries) + 1)
+            label = "Back button" if selected == len(entries) else entries[selected][2]
+            print(f"Selected {label}.")
+            continue
+        if keypress == "\t":
+            selected = len(entries)
+            print("Back button selected. Press Enter to return.")
+            continue
+        if keypress == "SHIFT_TAB":
+            selected = 0
+            print(f"Returned to the stage list. Selected {entries[selected][2]}.")
+            continue
+        if keypress in ("\r", "\n"):
+            if selected == len(entries):
+                return
+            target = entries[selected]
+        elif keypress.upper() in ("B", "Q") or keypress == "\x1b":
+            return
+        else:
+            matches = [entry for entry in entries if entry[0].upper() == keypress.upper()]
+            if not matches:
+                print(f"Unrecognized key {keypress!r}.")
+                continue
+            target = matches[0]
+            selected = entries.index(target)
+        edit_setting(source, target[1])
+        new_values = section_values(read_config(), source)
+        state = "ON" if new_values.get(target[1], default_value(source, target[1])).lower() in ("yes", "true", "1", "on") else "OFF"
+        print(f"{target[2]} is now {state}.")
+
+
+def settings_menu(source, group):
+    values = section_values(read_config(), source)
+    keys = [key for key, data in SETTINGS.items()
+            if data[5] == group and data[1] != "bool"
+            and not (key.startswith("ctcss_") and source != "local")
+            and not (group == "Lookahead" and source != "voice_telemetry")
+            and not (key in {"output_highpass_hz", "output_lowpass_hz"}
+                     and source != "voice_telemetry")]
+    if not keys:
+        print(f"No editable numeric settings are available for {source}: {group}.")
+        return
+    selected = 0
+    while True:
+        values = section_values(read_config(), source)
+        print(f"\n{source}: {group} settings.")
+        print("Up and Down arrows move; Enter edits the current setting.")
+        print("Tab selects Back; Shift+Tab returns to the list. B, Q, or Escape also go back.")
+        for index, key in enumerate(keys):
+            label, _kind, _low, _high, units, _group = SETTINGS[key]
+            marker = ">" if index == selected else " "
+            print(f"{marker} {index + 1}. {label}: {values.get(key, default_value(source, key))} {units}".rstrip())
+        back_marker = ">" if selected == len(keys) else " "
+        print(f"{back_marker} B. Back")
+        current_label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
+        print(f"Current item: {current_label}. Command: ", end="", flush=True)
+        keypress = read_key()
+        print()
+        if keypress == "\x1b[A":
+            selected = (selected - 1) % (len(keys) + 1)
+            label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
+            print(f"Selected {label}.")
+            continue
+        if keypress == "\x1b[B":
+            selected = (selected + 1) % (len(keys) + 1)
+            label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
+            print(f"Selected {label}.")
+            continue
+        if keypress == "\t":
+            selected = len(keys)
+            print("Back button selected. Press Enter to return.")
+            continue
+        if keypress == "SHIFT_TAB":
+            selected = 0
+            print(f"Returned to the settings list. Selected {SETTINGS[keys[0]][0]}.")
+            continue
+        if keypress in ("\r", "\n"):
+            if selected == len(keys):
+                return
+            kind = SETTINGS[keys[selected]][1]
+            if kind in ("text", "choice"):
+                edit_text_setting(source, keys[selected])
+            else:
+                edit_numeric_setting(source, keys[selected])
+            continue
+        if keypress.upper() in ("B", "Q") or keypress == "\x1b":
+            return
+        if keypress.isdigit() and 1 <= int(keypress) <= len(keys):
+            selected = int(keypress) - 1
+            print(f"Selected {SETTINGS[keys[selected]][0]}. Press Enter to edit.")
+            continue
+        print(f"Unrecognized key {keypress!r}.")
+
+
+def source_menu(source):
+    groups = ["Stages", "Receive", "AGC", "Expander", "Compressor",
+              "Two-band limiter", "Lookahead", "Output"]
+    if source != "local":
+        groups.remove("Receive")
+    if source != "voice_telemetry":
+        groups.remove("Lookahead")
+    while True:
+        group_items = sum(([str(index), f"{group}: change {group.lower()} settings"]
+                           for index, group in enumerate(groups, 1)), [])
+        code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Back",
+                               "--menu", f"Tune {source}",
+                               "19", "70", "11"] + group_items +
+                              ["S", "Show live measurements", "C", "Show active configuration"])
+        if code:
+            return
+        if choice.isdigit() and 1 <= int(choice) <= len(groups):
+            group = groups[int(choice) - 1]
+            if group == "Stages":
+                stages_menu(source)
+            else:
+                settings_menu(source, group)
+        elif choice.upper() == "S":
+            dialog(["--ok-button", "Close", "--title", "USBRadioPlus measurements", "--msgbox",
+                    run(["asterisk", "-rx", "radioplus processing stats"]), "27", "100"])
+        else:
+            dialog(["--ok-button", "Close", "--title", "USBRadioPlus configuration", "--msgbox",
+                    run(["asterisk", "-rx", "radioplus processing show"]), "27", "100"])
+
+
+def interactive():
+    if os.geteuid() != 0:
+        sys.exit("Run this menu with sudo: sudo usbradioplus-processing-tune")
+    if not shutil.which("whiptail"):
+        sys.exit("whiptail is required")
+    if not sys.stdin.isatty() or not sys.stdout.isatty() or not sys.stderr.isatty():
+        sys.exit("usbradioplus-processing-tune requires an interactive terminal.")
+    if os.environ.get("TERM", "").lower() in ("", "dumb", "unknown"):
+        sys.exit("The terminal type is not usable for a menu (TERM is unset or dumb). "
+                 "Start it from the same terminal in which asl-menu works.")
+    os.makedirs(os.path.dirname(LOCK), exist_ok=True)
+    with open(LOCK, "w", encoding="ascii") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            sys.exit("Another USBRadioPlus processing menu is already running.")
+        starting = read_config()
+        while True:
+            code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Exit",
+                                   "--menu",
+                                   "Select an audio source. Changes apply immediately.",
+                                   "17", "72", "9",
+                                   "1", "Local receiver",
+                                   "2", "Linked audio",
+                                   "3", "Voice + telemetry",
+                                   "S", "Show all live measurements",
+                                   "B", "Create a timestamped configuration backup",
+                                   "R", "Restore settings from the start of this session"])
+            if code:
+                return
+            source_by_tag = {"1": "local", "2": "link", "3": "voice_telemetry"}
+            if choice in source_by_tag:
+                source_menu(source_by_tag[choice])
+            elif choice.upper() == "S":
+                dialog(["--ok-button", "Close", "--title", "USBRadioPlus measurements", "--msgbox",
+                        run(["asterisk", "-rx", "radioplus processing stats"]), "27", "100"])
+            elif choice.upper() == "B":
+                path = CONFIG + ".bak." + datetime.now().strftime("%Y%m%d-%H%M%S")
+                shutil.copy2(CONFIG, path)
+                dialog(["--ok-button", "Close", "--msgbox", f"Backup created:\n{path}", "8", "72"])
+            elif choice.upper() == "R":
+                rc, _ = dialog(["--yes-button", "Restore", "--no-button", "Cancel",
+                                "--yesno", "Restore the configuration from the start of this session?", "8", "64"])
+                if not rc:
+                    old = read_config()
+                    atomic_write(starting)
+                    try:
+                        reload_config(old)
+                    except RuntimeError as error:
+                        dialog(["--msgbox", str(error), "12", "70"])
+
+
+def main():
+    global CONFIG, LOCK
+    parser = argparse.ArgumentParser(description="Interactive USBRadioPlus processing tuner")
+    parser.add_argument("--check", action="store_true", help="validate prerequisites and configuration")
+    parser.add_argument("--config", default=CONFIG, help="processing configuration path")
+    parser.add_argument("--lock", default=LOCK, help="menu lock-file path")
+    parser.add_argument("--offline", action="store_true",
+                        help="with --check, do not require whiptail or Asterisk")
+    args = parser.parse_args()
+    CONFIG, LOCK = args.config, args.lock
+    if args.check:
+        missing = [] if args.offline else [name for name in ("whiptail", "asterisk")
+                                           if not shutil.which(name)]
+        if missing:
+            sys.exit("Missing: " + ", ".join(missing))
+        text = read_config()
+        absent = [section for section, _label in SOURCES if not section_values(text, section)]
+        if absent:
+            sys.exit("Missing configuration sections: " + ", ".join(absent))
+        print("usbradioplus-processing-tune: configuration and prerequisites are valid")
+        return
+    interactive()
+
+
+if __name__ == "__main__":
+    main()

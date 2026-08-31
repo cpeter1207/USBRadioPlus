@@ -1,0 +1,13 @@
+set -eu
+output=""
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = "-o" ]; then
+		output=$2
+		shift 2
+		continue
+	fi
+	shift
+done
+test -n "$output"
+printf '#!/bin/sh\nexit 0\n' > "$output"
+chmod +x "$output"

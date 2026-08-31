@@ -1,0 +1,74 @@
+#!/bin/bash
+set -u
+
+run_cli() {
+	sudo -n asterisk -rx "$1"
+}
+
+status() {
+	run_cli "radioplus rxlevel status"
+}
+
+calibrate() {
+	local seconds="${1:-30}"
+	local result
+	case "$seconds" in
+		''|*[!0-9]*) echo "Duration must be a whole number of seconds."; return 2 ;;
+	esac
+	if (( seconds < 2 || seconds > 600 )); then
+		echo "Duration must be between 2 and 600 seconds."
+		return 2
+	fi
+	run_cli "radioplus rxlevel calibrate $seconds" || return
+	echo "Leave the receiver unkeyed for some noise, and transmit for at least one second during this window."
+	for (( elapsed=0; elapsed<seconds+5; elapsed++ )); do
+		sleep 1
+		result="$(status)" || return
+		if [[ "$result" != *"running"* ]]; then
+			echo "$result"
+			if [[ "$result" =~ ADC\ rails\ \+([1-9][0-9]*)/ || "$result" =~ /-([1-9][0-9]*)\ samples ]]; then
+				echo "Warning: the CM119 ADC reached full scale. Reduce analog or capture gain and recalibrate."
+			fi
+			run_cli "radioplus rxlevel save"
+			return
+		fi
+		if (( (elapsed + 1) % 5 == 0 )); then
+			echo "$((seconds - elapsed - 1)) seconds remaining."
+		fi
+	done
+	echo "Calibration did not finish on time. Current status:"
+	status
+	return 1
+}
+
+menu() {
+	while true; do
+		echo
+		echo "RadioPlus receive-level utility"
+		echo "1. Calibrate for 30 seconds"
+		echo "2. Calibrate for a different duration"
+		echo "3. Show status and current gains"
+		echo "4. Cancel calibration"
+		echo "5. Save current gains"
+		echo "6. Exit"
+		read -r -p "Choice: " choice
+		case "$choice" in
+			1) calibrate 30 ;;
+			2) read -r -p "Seconds (2-600): " seconds; calibrate "$seconds" ;;
+			3) status ;;
+			4) run_cli "radioplus rxlevel cancel" ;;
+			5) run_cli "radioplus rxlevel save" ;;
+			6|q|Q) return ;;
+			*) echo "Choose 1 through 6." ;;
+		esac
+	done
+}
+
+case "${1:-menu}" in
+	menu) menu ;;
+	calibrate) calibrate "${2:-30}" ;;
+	status) status ;;
+	cancel) run_cli "radioplus rxlevel cancel" ;;
+	save) run_cli "radioplus rxlevel save" ;;
+	*) echo "Usage: usbradioplus-rxlevel [menu|calibrate [seconds]|status|cancel|save]"; exit 2 ;;
+esac

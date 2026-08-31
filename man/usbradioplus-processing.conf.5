@@ -1,0 +1,280 @@
+.TH USBRADIOPLUS-PROCESSING.CONF 5 "August 2026" "USBRadioPlus alpha" "File Formats Manual"
+.SH NAME
+usbradioplus-processing.conf \- USBRadioPlus audio-processing configuration
+.SH SYNOPSIS
+.B /etc/asterisk/usbradioplus-processing.conf
+.SH DESCRIPTION
+This optional file configures audio processing for a USBRadioPlus channel.
+When the file is absent or
+.B enabled
+is no, no processing graph is active. Every noise-reduction and dynamics stage
+is disabled unless explicitly enabled.
+.PP
+The file has four sections:
+.BR [general] ,
+.BR [local] ,
+.BR [link] ,
+and
+.BR [voice_telemetry] .
+The local chain processes the radio receiver. The link chain processes audio
+received from connected nodes. The voice/telemetry chain processes the mixed
+audio sent to the transmitter. Settings in
+.B [general]
+provide chain defaults; a chain section overrides them.
+.PP
+Reload validation is strict. An unknown section, unknown option, repeated or
+unknown graph stage, option in an inapplicable chain, non-finite number, or
+out-of-range value rejects the new file and leaves the running configuration
+unchanged.
+.SH GENERAL OPTIONS
+.TP
+.B enabled = yes|no
+Enable processing from this file. Default is no.
+.TP
+.B channel = technology-prefix
+Apply the configuration to channels with this prefix. Default is RadioPlus/.
+.TP
+.B local_enabled = yes|no
+Enable or disable the local-receiver chain from [general].
+.TP
+.B link_enabled = yes|no
+Enable or disable the link chain from [general].
+.PP
+All chain options below may also appear in [general]. They seed the chains to
+which each option applies.
+.SH CHAIN AND GRAPH OPTIONS
+.TP
+.B enabled = yes|no
+Enable the named chain. Global enabled=yes is also required.
+.TP
+.B stage_order = list
+Set the comma-separated dynamics order. Permitted stages are expander, agc,
+compressor, and limiter. Each may occur at most once. The default order is
+expander,agc,compressor,limiter. An enabled stage runs only when listed.
+.TP
+.B input_gain_db = -30..30
+Apply gain before dynamics. Local and link default to 0 dB; voice/telemetry
+defaults to 6 dB.
+.TP
+.B output_gain_db = -30..30
+Apply gain at the end of the chain. Local and link default to -6.2 dB;
+voice/telemetry defaults to 0 dB.
+.SH LOCAL-RECEIVER NOISE AND SIGNALING FILTERS
+.TP
+.B rnnoise_enabled = yes|no
+Enable RNNoise after receiver de-emphasis and squelch gating and before
+dynamics. This applies only to [local]. Default is no.
+.TP
+.B ctcss_filter_mode = disabled|notch|comb|highpass
+Choose the fixed local-receiver filter after dynamics. Notch and comb remove
+configured receive CTCSS tones; highpass removes the subaudible band. Default
+is notch.
+.TP
+.B ctcss_notch_width_hz = 0.2..10
+Set each CTCSS notch width. Default is 2 Hz.
+.TP
+.B ctcss_highpass_hz = 50..500
+Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.
+.SH AUTOMATIC GAIN CONTROL
+.TP
+.B agc_enabled = yes|no
+Enable automatic gain control. Default is no.
+.TP
+.B target_dbfs = -40..-3
+Set the long-term output target. Default is -10 dBFS.
+.TP
+.B max_gain_db = 0..30
+Limit gain applied to weak audio. Default is 12 dB.
+.TP
+.B max_attenuation_db = 0..60
+Limit attenuation applied to strong audio. Default is 6 dB.
+.TP
+.B agc_floor_dbfs = -100..target_dbfs
+Prevent the AGC from raising noise below this input level. Default is -60 dBFS.
+.TP
+.B attack_ms = 1..10000
+Set AGC attack time. Default is 750 ms.
+.TP
+.B release_ms = 1..30000
+Set AGC release time. Default is 1500 ms.
+.TP
+.B reset_after_ms = 100..60000
+Reset accumulated AGC gain after closed-squelch or idle time. Default is 3000 ms.
+.TP
+.B sidechain_highpass_hz = 50..2000
+Set the AGC detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B sidechain_lowpass_hz = sidechain_highpass_hz..3500
+Set the AGC detector low-pass cutoff. Default is 1500 Hz.
+.SH DOWNWARD EXPANDER
+.TP
+.B expander_enabled = yes|no
+Enable downward expansion to reduce background noise between words. Default is no.
+.TP
+.B expander_threshold_dbfs = -100..-10
+Set the level below which expansion begins. Default is -55 dBFS.
+.TP
+.B expander_ratio = 1..10
+Set reduction below threshold. Default is 1.5:1.
+.TP
+.B expander_max_attenuation_db = 0..40
+Limit expander reduction. Default is 9 dB.
+.TP
+.B expander_attack_ms = 1..1000
+Set how quickly the expander opens for speech. Default is 10 ms.
+.TP
+.B expander_release_ms = 1..10000
+Set how quickly it returns to attenuation. Default is 250 ms.
+.TP
+.B expander_sidechain_highpass_hz = 50..2000
+Set the expander detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B expander_sidechain_lowpass_hz = expander_sidechain_highpass_hz..3500
+Set the expander detector low-pass cutoff. Default is 1500 Hz.
+.SH COMPRESSOR
+.TP
+.B compressor_enabled = yes|no
+Enable compression of strong speech. Default is no.
+.TP
+.B compressor_threshold_dbfs = -60..0
+Set the level above which compression begins. Default is -6 dBFS.
+.TP
+.B compressor_ratio = 1..20
+Set the compression ratio. Default is 2:1.
+.TP
+.B compressor_makeup_gain_db = -30..30
+Apply gain after compression. Default is 0 dB.
+.TP
+.B compressor_attack_ms = 1..1000
+Set compressor attack time. Default is 75 ms.
+.TP
+.B compressor_release_ms = 1..10000
+Set compressor release time. Default is 300 ms.
+.TP
+.B compressor_sidechain_highpass_hz = 50..2000
+Set the compressor detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B compressor_sidechain_lowpass_hz = compressor_sidechain_highpass_hz..3500
+Set the compressor detector low-pass cutoff. Default is 1500 Hz.
+.SH TWO-BAND LIMITER
+.TP
+.B limiter_enabled = yes|no
+Enable the two-band limiter in the reorderable graph. Default is no.
+.TP
+.B limiter_crossover_hz = 300..2000
+Divide low and high limiter bands. Default is 1000 Hz.
+.TP
+.B low_limiter_threshold_dbfs = -40..-1
+Set low-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B low_limiter_ratio = 1..20
+Set low-band ratio. Default is 10:1.
+.TP
+.B low_limiter_knee_db = 0..24
+Set low-band soft-knee width. Default is 6 dB.
+.TP
+.B low_limiter_attack_ms = 0.1..1000
+Set low-band attack. Default is 50 ms.
+.TP
+.B low_limiter_release_ms = 1..10000
+Set low-band release. Default is 250 ms.
+.TP
+.B high_clip_dbfs = -30..-1
+Set high-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B high_limiter_ratio = 1..20
+Set high-band ratio. Default is 20:1.
+.TP
+.B high_limiter_knee_db = 0..24
+Set high-band soft-knee width. Default is 6 dB.
+.TP
+.B high_limiter_attack_ms = 0.1..100
+Set high-band attack. Default is 0.5 ms.
+.TP
+.B high_limiter_release_ms = 1..1000
+Set high-band release. Default is 25 ms.
+.SH FIXED TRANSMITTER PROCESSING
+These options apply only to [voice_telemetry]. They do not belong in
+stage_order and run in a fixed transmitter-tail order.
+.TP
+.B splatter_filter_enabled = yes|no
+Enable the fixed transmit splatter-control filter. Default is yes.
+.TP
+.B output_highpass_hz = 20..2000
+Set the fixed transmitter high-pass cutoff. Default is 300 Hz.
+.TP
+.B output_lowpass_hz = output_highpass_hz..5000
+Set the fixed transmitter low-pass cutoff. Default is 3000 Hz.
+.TP
+.B lookahead_limiter_enabled = yes|no
+Enable or explicitly disable lookahead peak limiting. When omitted, the channel
+transmit limiter settings determine whether it runs and its ceiling.
+.TP
+.B lookahead_limit_dbfs = -30..-0.1
+Set the explicit lookahead ceiling. Default is -3 dBFS.
+.TP
+.B lookahead_ms = 0.1..20
+Set peak lookahead. Default is 5 ms.
+.TP
+.B lookahead_attack_ms = 0.1..20
+Set limiter attack. Default is 1 ms.
+.TP
+.B lookahead_release_ms = 1..5000
+Set limiter release. Default is 100 ms.
+.TP
+.B post_limiter_lowpass_enabled = yes|no
+Enable the fixed cleanup low-pass after lookahead limiting. Default is no.
+.TP
+.B post_limiter_lowpass_hz = 5000..20000
+Set cleanup-filter cutoff. Default is 8000 Hz.
+.TP
+.B final_clipper_enabled = yes|no
+Enable the final hard ceiling. Default is no.
+.TP
+.B final_clip_dbfs = -30..-0.5
+Set the final hard ceiling. Default is -3 dBFS.
+.SH ORDER OF PROCESSING
+Local receiver audio is de-emphasized and squelch-gated, optionally passed
+through RNNoise, passed through the selected dynamics order, and then passed
+through the selected CTCSS filter. Link audio uses its dynamics graph. RNNoise
+and CTCSS removal are not available on link or transmitter sources.
+.PP
+The transmitter combines voice and telemetry, applies the voice/telemetry
+dynamics graph, and then applies its fixed filtering and peak-control tail.
+.SH EXAMPLE
+.nf
+[general]
+enabled = yes
+channel = RadioPlus/
+
+[local]
+enabled = yes
+rnnoise_enabled = yes
+stage_order = expander,agc,compressor,limiter
+expander_enabled = yes
+agc_enabled = yes
+ctcss_filter_mode = notch
+
+[link]
+enabled = yes
+stage_order = agc,compressor
+agc_enabled = yes
+compressor_enabled = yes
+
+[voice_telemetry]
+enabled = yes
+input_gain_db = 6.0
+stage_order = compressor,limiter
+compressor_enabled = yes
+limiter_enabled = yes
+output_highpass_hz = 250
+output_lowpass_hz = 5000
+post_limiter_lowpass_enabled = yes
+post_limiter_lowpass_hz = 5000
+.fi
+.SH FILES
+.B /etc/asterisk/usbradioplus-processing.conf
+.SH SEE ALSO
+.BR usbradioplus (7),
+.BR usbradioplus.conf (5),
+.BR usbradioplus-tune (8)
