@@ -49,6 +49,10 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         'cp --no-clobber -t incoming',
         'asl_package_tag="${radio_api}.asl',
         'app_rpt_version=',
+        'requested_api: modern',
+        'target_asl_version: "2:22.10.1+asl3-3.10.5-1.deb13"',
+        'raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit',
+        '*.deb13_*|*.deb13+*_*) suite=trixie',
     ):
         assert required in workflow
     assert (ROOT / "packaging/repository/usbradioplus-archive-keyring.gpg").is_file()

@@ -52,15 +52,24 @@ jobs:
           - debian: "12"
             suite: bookworm
             runner: ubuntu-24.04
+            requested_api: auto
           - debian: "12"
             suite: bookworm
             runner: ubuntu-24.04-arm
+            requested_api: auto
           - debian: "13"
             suite: trixie
             runner: ubuntu-24.04
+            requested_api: auto
           - debian: "13"
             suite: trixie
             runner: ubuntu-24.04-arm
+            requested_api: auto
+          - debian: "13"
+            suite: trixie
+            runner: ubuntu-24.04-arm
+            requested_api: modern
+            target_asl_version: "2:22.10.1+asl3-3.10.5-1.deb13"
     runs-on: ${{ matrix.runner }}
     container: debian:${{ matrix.debian }}
     steps:
@@ -105,8 +114,28 @@ jobs:
           set -eux
           package_version='${{ inputs.package_version }}'
           test -n "$package_version" || package_version=$(cat VERSION)
+          if test '${{ matrix.requested_api }}' = modern; then
+            modern_commit=32d268ad49aa44542704bce00873a0425bc71062
+            modern_include=/tmp/asl-modern/include/asterisk
+            mkdir -p "$modern_include"
+            wget -qO "$modern_include/res_usbradio.h" \
+              "https://raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit/include/asterisk/res_usbradio.h"
+            wget -qO "$modern_include/rpt_chan_shared.h" \
+              "https://raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit/include/asterisk/rpt_chan_shared.h"
+            printf '%s  %s\n%s  %s\n' \
+              1eb851d9c737e7da15936e09747bf1a47015c831a17b2d099bcb28c950a3944a \
+              "$modern_include/res_usbradio.h" \
+              7523e77d367ec8cd784711040789da2d3cc47584d2ac47c3b7788fbdc004832c \
+              "$modern_include/rpt_chan_shared.h" | sha256sum -c -
+            export ASL_RADIO_API=modern
+            export CPPFLAGS=-I/tmp/asl-modern/include
+            export ASL3_ASTERISK_VERSION='${{ matrix.target_asl_version }}'
+          fi
           radio_api=$(make -s print-asl-radio-api)
           asl_version=$(dpkg-query -W -f='${Version}' asl3-asterisk)
+          if test -n '${{ matrix.target_asl_version }}'; then
+            asl_version='${{ matrix.target_asl_version }}'
+          fi
           app_rpt_version=$(printf '%s\n' "$asl_version" | \
             sed -n 's/.*+asl3-\([0-9][0-9.]*\)-.*/\1/p')
           test -n "$app_rpt_version"
@@ -126,7 +155,7 @@ jobs:
             grep -c "asl3-asterisk (= $asl_version)")" = 1
       - uses: actions/upload-artifact@v7
         with:
-          name: packages-${{ matrix.suite }}-${{ runner.arch }}-${{ steps.usbradioplus_build.outputs.radio_api }}
+          name: packages-${{ matrix.suite }}-${{ runner.arch }}-${{ matrix.requested_api }}-${{ steps.usbradioplus_build.outputs.radio_api }}
           path: package-output/*
           if-no-files-found: error
 
@@ -182,8 +211,8 @@ jobs:
           done
           for package in incoming/*.deb; do
             case "$package" in
-              *.deb12_*) suite=bookworm ;;
-              *.deb13_*) suite=trixie ;;
+              *.deb12_*|*.deb12+*_*) suite=bookworm ;;
+              *.deb13_*|*.deb13+*_*) suite=trixie ;;
               *) echo "Cannot select suite for $package" >&2; exit 1 ;;
             esac
             reprepro -b public includedeb "$suite" "$package"
