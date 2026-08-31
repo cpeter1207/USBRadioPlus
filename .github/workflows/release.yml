@@ -41,8 +41,16 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
+      - name: Install release tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            ca-certificates wget git gh
+
       - name: Check out main with complete history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -51,9 +59,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            ca-certificates wget git gh
           wget -q -O /tmp/asl-apt-repos.deb \
             https://repo.allstarlink.org/public/asl-apt-repos.deb12_all.deb
           dpkg -i /tmp/asl-apt-repos.deb

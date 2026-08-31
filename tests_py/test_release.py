@@ -318,11 +318,14 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
         "./scripts/install-build-deps.sh",
         "make distcheck",
         "git push --atomic origin HEAD:main",
-        "gh release create",
+        "args=(release create",
         "Start next development version",
         "permissions:\n  contents: write",
     ):
         assert required in workflow
+    install_git = workflow.index("ca-certificates wget git gh")
+    checkout = workflow.index("uses: actions/checkout@v5")
+    assert install_git < checkout
     assert "CHANGELOG.md" in makefile
     assert (ROOT / "CHANGELOG.md").is_file()
 
