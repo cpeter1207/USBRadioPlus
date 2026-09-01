@@ -232,11 +232,13 @@ static int add_dynamic_stage(char *graph, size_t size,
 #else
 		double ratio = cfg->deesser_ratio;
 		double span = -cfg->deesser_threshold_dbfs;
+		double detector_reduction = cfg->deesser_max_reduction_db / 2.0;
 		/* FFmpeg 5.1 does not apply range to cuts. Cap its ratio so a
-		 * full-scale detector input cannot exceed the requested reduction. */
-		if (span > cfg->deesser_max_reduction_db) {
+		 * full-scale detector input cannot exceed the requested reduction.
+		 * Its bell response applies the detector gain twice at band center. */
+		if (span > detector_reduction) {
 			double limited_ratio = span
-				/ (span - cfg->deesser_max_reduction_db);
+				/ (span - detector_reduction);
 			if (ratio > limited_ratio) ratio = limited_ratio;
 		}
 		return graph_append(graph, size,
