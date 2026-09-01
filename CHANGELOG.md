@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha4 - 2026-09-01
+
+Improves local receive filtering. The PL notch now follows only the currently decoded CTCSS tone, uses a 5 Hz higher-order response, and provides at least 50 dB rejection at the TIA-603 +/-0.5% tolerance edges; obsolete comb mode is removed. Adds a configurable 20-5000 Hz brick-wall receive band-pass immediately after squelch gating and before PL filtering, with matching tuner controls, documentation, strict validation, regression tests, and real-time performance coverage.
+
 ## 0.1.0~alpha3 - 2026-08-31
 
 Corrects local PL-filter ordering and mode handling; consolidates transmitter filtering into one final brick-wall band-pass with explicit processing settings and legacy txhpf/txlpf fallback; removes redundant link and transmitter high-pass stages; expands tune controls, documentation, installer validation, and regression coverage.
