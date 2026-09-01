@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha5 - 2026-09-01
+
+Adds configurable three-band equalization and split-band de-essing to local receive, linked audio, and voice/telemetry processing. Both stages are reorderable, strictly validated, documented, and exposed through the processing tuner, with signal-response, graph-permutation, performance, and compatibility coverage.
+
 ## 0.1.0~alpha4 - 2026-09-01
 
 Improves local receive filtering. The PL notch now follows only the currently decoded CTCSS tone, uses a 5 Hz higher-order response, and provides at least 50 dB rejection at the TIA-603 +/-0.5% tolerance edges; obsolete comb mode is removed. Adds a configurable 20-5000 Hz brick-wall receive band-pass immediately after squelch gating and before PL filtering, with matching tuner controls, documentation, strict validation, regression tests, and real-time performance coverage.
