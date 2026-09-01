@@ -47,7 +47,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "cmp -s /tmp/config-before/rpt.conf",
         'dpkg-query -L asl3-asterisk-modules',
         'package_revision:',
-        'cp --no-clobber -t incoming',
+        'cp --no-clobber -t "$INCOMING_DIR"',
         'asl_package_tag="${radio_api}.asl',
         'app_rpt_version=',
         'requested_api: modern',
