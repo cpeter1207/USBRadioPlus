@@ -247,6 +247,41 @@ static void test_src_clock_drift(void)
 	simulate_src_clock_drift(1000.0);
 }
 
+static void test_elastic_fifo_short_burst_and_recovery(void)
+{
+	size_t native_count = 0;
+	unsigned int emitted = 0, program_frames = 0, underflows = 0;
+	int primed = 0;
+
+	/* Two leading safety frames plus one telemetry frame reach the target. */
+	native_count += 3 * URP_NATIVE_SAMPLES;
+	program_frames = 1;
+	if (!primed && native_count >= 3 * URP_NATIVE_SAMPLES) primed = 1;
+	while (primed && native_count >= URP_NATIVE_SAMPLES) {
+		native_count -= URP_NATIVE_SAMPLES;
+		emitted++;
+	}
+	assert(emitted == 3 && program_frames == 1);
+
+	/* An empty tick records the underrun and resets recovery state. */
+	if (primed && native_count < URP_NATIVE_SAMPLES) {
+		underflows++;
+		primed = 0;
+		native_count = 0;
+	}
+	assert(underflows == 1);
+
+	/* Recovery seeds the same margin and preserves its first program frame. */
+	native_count += 3 * URP_NATIVE_SAMPLES;
+	program_frames++;
+	if (!primed && native_count >= 3 * URP_NATIVE_SAMPLES) primed = 1;
+	while (primed && native_count >= URP_NATIVE_SAMPLES) {
+		native_count -= URP_NATIVE_SAMPLES;
+		emitted++;
+	}
+	assert(emitted == 6 && program_frames == 2);
+}
+
 static void test_echo(void)
 {
 	struct urp_echo_replacer e;
@@ -271,7 +306,8 @@ int main(void)
 	test_same_rate_bypass(); test_cutoff_parser(); test_legacy_filter_selectors();
 	test_legacy_limiter_ceiling();
 	test_clock_recovery();
-	test_simulated_clock_drift(); test_src_clock_drift(); test_echo();
+	test_simulated_clock_drift(); test_src_clock_drift();
+	test_elastic_fifo_short_burst_and_recovery(); test_echo();
 	puts("usbradioplus DSP tests passed");
 	return 0;
 }

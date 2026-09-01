@@ -2071,8 +2071,21 @@ static int usbradio_hangup(struct ast_channel *c)
 static void usbradioplus_queue_program(struct chan_usbradio_pvt *o,
 	const short *samples, size_t count)
 {
+	unsigned int seed_frames, frame;
 	if (count > o->plus_app_rpt_samples) count = o->plus_app_rpt_samples;
 	ast_mutex_lock(&o->plus_link_lock);
+	/* Lead a new or recovered burst with the target safety margin. PTT remains
+	 * asserted while it drains, so even a one-frame telemetry burst is kept. */
+	seed_frames = !o->plus_link_native_primed
+		&& !o->plus_link_native_count && !o->plus_link_queue_count
+		? PLUS_LINK_NATIVE_TARGET_SAMPLES / URP_NATIVE_SAMPLES - 1 : 0;
+	for (frame = 0; frame < seed_frames; ++frame) {
+		memset(o->plus_link_queue[o->plus_link_queue_tail], 0,
+			sizeof(o->plus_link_queue[0]));
+		o->plus_link_queue_tail = (o->plus_link_queue_tail + 1)
+			% PLUS_LINK_QUEUE_FRAMES;
+		o->plus_link_queue_count++;
+	}
 	if (o->plus_link_queue_count == PLUS_LINK_QUEUE_FRAMES) {
 		o->plus_link_queue_head = (o->plus_link_queue_head + 1)
 			% PLUS_LINK_QUEUE_FRAMES;
@@ -2089,6 +2102,15 @@ static void usbradioplus_queue_program(struct chan_usbradio_pvt *o,
 	if (o->plus_link_queue_count > o->plus_link_queue_high_water)
 		o->plus_link_queue_high_water = o->plus_link_queue_count;
 	ast_mutex_unlock(&o->plus_link_lock);
+}
+
+static int usbradioplus_program_pending(struct chan_usbradio_pvt *o)
+{
+	int pending;
+	ast_mutex_lock(&o->plus_link_lock);
+	pending = o->plus_link_queue_count != 0;
+	ast_mutex_unlock(&o->plus_link_lock);
+	return pending || o->plus_link_native_count != 0;
 }
 
 static int usbradio_write(struct ast_channel *c, struct ast_frame *f)
@@ -2127,7 +2149,9 @@ static int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 
 	/* The signaling engine does not render audio. Preserve app_rpt's program frame for the
 	 * native-rate transmitter graph in the next CM119 hardware tick. */
-	if (!o->echoing) {
+	/* app_rpt writes silence continuously. Admit only keyed program frames so
+	 * an unkeyed stream cannot prevent the accepted audio tail from draining. */
+	if (!o->echoing && o->txkeyed) {
 		usbradioplus_queue_program(o, f->data.ptr,
 			f->datalen / sizeof(short));
 	}
@@ -2295,6 +2319,7 @@ static struct ast_frame *usbradio_read(struct ast_channel *c)
 
 	was_rxkeyed = o->rxkeyed;
 	if (o->txkeyed || o->txtestkey || o->echoing || o->plus_parrot_playing
+		|| usbradioplus_program_pending(o)
 		|| o->rxkeyed) {
 		if (!o->radio->txPttIn) {
 			o->radio->txPttIn = 1;
@@ -6088,7 +6113,8 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	if (o->plus_link_native_primed
 		&& !plus_link_native_pop(o, o->plus_link_native)) {
 		o->plus_link_native_primed = 0;
-		o->plus_link_queue_underflows++;
+		if (o->txkeyed || usbradioplus_program_pending(o))
+			o->plus_link_queue_underflows++;
 		urp_src_reset(o->plus_up);
 		urp_clock_recovery_reset(&o->plus_link_clock);
 		o->plus_link_native_head = o->plus_link_native_count = 0;
