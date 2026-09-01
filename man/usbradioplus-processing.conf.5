@@ -48,9 +48,10 @@ which each option applies.
 Enable the named chain. Global enabled=yes is also required.
 .TP
 .B stage_order = list
-Set the comma-separated dynamics order. Permitted stages are expander, agc,
-compressor, and limiter. Each may occur at most once. The default order is
-expander,agc,compressor,limiter. An enabled stage runs only when listed.
+Set the comma-separated processing order. Permitted stages are equalizer,
+expander, agc, deesser, compressor, and limiter. Each may occur at most once.
+All defaults place deesser immediately before compressor. An enabled stage runs
+only when listed.
 .TP
 .B input_gain_db = -30..30
 Apply gain before dynamics. Local and link default to 0 dB; voice/telemetry
@@ -59,6 +60,67 @@ defaults to 6 dB.
 .B output_gain_db = -30..30
 Apply gain at the end of the chain. Local and link default to -6.2 dB;
 voice/telemetry defaults to 0 dB.
+.SH PARAMETRIC EQUALIZER
+The three-band equalizer is available in every source chain and is reorderable
+with AGC, expander, compressor, and limiter. It is enabled by default.
+.TP
+.B equalizer_enabled = yes|no
+Enable the three-band equalizer. Default is yes.
+.TP
+.B equalizer_low_gain_db = -12..12
+Set low-shelf gain. Default is 2 dB.
+.TP
+.B equalizer_low_frequency_hz = 20..1000
+Set low-shelf frequency. Default is 300 Hz.
+.TP
+.B equalizer_low_slope = 0.1..1
+Set low-shelf slope. Default is 0.7.
+.TP
+.B equalizer_mid_gain_db = -12..12
+Set mid-band gain. Default is -0.5 dB.
+.TP
+.B equalizer_mid_frequency_hz = 100..4000
+Set mid-band center frequency. Default is 750 Hz.
+.TP
+.B equalizer_mid_width_octaves = 0.1..4
+Set mid-band width. Default is one octave.
+.TP
+.B equalizer_high_gain_db = -12..12
+Set high-shelf gain. Default is -1 dB.
+.TP
+.B equalizer_high_frequency_hz = 1000..5000
+Set high-shelf frequency. Default is 2500 Hz.
+.TP
+.B equalizer_high_slope = 0.1..1
+Set high-shelf slope. Default is 0.7.
+.SH SPLIT-BAND DE-ESSER
+The de-esser is available in every source chain. It detects and
+attenuates a bell-shaped sibilance band without reducing the rest of the signal.
+It is reorderable and defaults immediately before the compressor.
+.TP
+.B deesser_enabled = yes|no
+Enable sibilance reduction. Default is no.
+.TP
+.B deesser_frequency_hz = 2000..8000
+Set the detection and attenuation center frequency. Default is 4000 Hz.
+.TP
+.B deesser_width_octaves = 0.1..4
+Set the detection and attenuation bandwidth. Default is one octave.
+.TP
+.B deesser_threshold_dbfs = -60..-1
+Set the sibilance-band level that starts attenuation. Default is -18 dBFS.
+.TP
+.B deesser_ratio = 1..20
+Set how strongly levels above threshold increase attenuation. Default is 3:1.
+.TP
+.B deesser_max_reduction_db = 0.1..20
+Limit attenuation in the selected band. Default is 4 dB.
+.TP
+.B deesser_attack_ms = 0.1..100
+Set how quickly attenuation begins. Default is 2 ms.
+.TP
+.B deesser_release_ms = 1..2000
+Set how quickly attenuation ends. Default is 60 ms.
 .SH LOCAL-RECEIVER NOISE AND SIGNALING FILTERS
 .TP
 .B rnnoise_enabled = yes|no
@@ -265,21 +327,21 @@ channel = RadioPlus/
 [local]
 enabled = yes
 rnnoise_enabled = yes
-stage_order = expander,agc,compressor,limiter
+stage_order = equalizer,expander,agc,deesser,compressor,limiter
 expander_enabled = yes
 agc_enabled = yes
 ctcss_filter_mode = notch
 
 [link]
 enabled = yes
-stage_order = agc,compressor
+stage_order = equalizer,agc,deesser,compressor
 agc_enabled = yes
 compressor_enabled = yes
 
 [voice_telemetry]
 enabled = yes
 input_gain_db = 6.0
-stage_order = compressor,limiter
+stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
 splatter_filter_highpass_hz = 250

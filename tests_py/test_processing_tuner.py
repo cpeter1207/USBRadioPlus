@@ -49,3 +49,23 @@ def test_fixed_filters_have_a_dedicated_menu():
 def test_receive_filter_prompt_lists_every_valid_mode():
     source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
     assert "One of: disabled, highpass, notch" in source
+
+
+def test_equalizer_defaults_and_source_placement():
+    default_value = MODULE["default_value"]
+    for source in ("local", "link", "voice_telemetry"):
+        assert default_value(source, "equalizer_enabled") == "yes"
+        assert default_value(source, "equalizer_low_gain_db") == "2.0"
+        assert default_value(source, "equalizer_mid_gain_db") == "-0.5"
+        assert default_value(source, "equalizer_high_gain_db") == "-1.0"
+    for source in ("local", "link"):
+        assert default_value(source, "stage_order") == (
+            "equalizer,expander,agc,deesser,compressor,limiter"
+        )
+    assert default_value("voice_telemetry", "stage_order") == (
+        "equalizer,expander,agc,deesser,compressor,limiter"
+    )
+    for source in ("local", "link", "voice_telemetry"):
+        assert default_value(source, "deesser_enabled") == "no"
+        order = default_value(source, "stage_order").split(",")
+        assert order.index("deesser") + 1 == order.index("compressor")

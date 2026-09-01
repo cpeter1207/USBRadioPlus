@@ -23,6 +23,38 @@ def test_optional_processors_default_off():
         assignments = re.findall(rf"(?<![A-Za-z0-9_]){field}\s*=\s*(\d)", defaults)
         assert assignments and set(assignments) == {"0"}, (field, assignments)
 
+
+def test_equalizer_is_enabled_in_every_source_chain():
+    source = text("src/usbradioplus_processing.c")
+    defaults = source[source.index("static void settings_defaults"):
+                      source.index("static int validate_chain")]
+    assert "base->agc.equalizer_enabled = 1;" in defaults
+    assert "base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;" in defaults
+    assert "base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;" in defaults
+    assert "base->agc.equalizer_low_gain_db = 2.0;" in defaults
+    assert "base->agc.equalizer_mid_gain_db = -0.5;" in defaults
+    assert "base->agc.equalizer_high_gain_db = -1.0;" in defaults
+    voice = defaults[defaults.index("base = &value->chains[TXAGC_VOICE_TELEMETRY]"):]
+    assert "base->agc.equalizer_enabled = 1;" in voice
+    assert "base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;" in voice
+    assert "base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;" in voice
+    assert "base->agc.stage_order[2] = TXAGC_STAGE_AGC;" in voice
+    assert "base->agc.stage_order[3] = TXAGC_STAGE_DEESSER;" in voice
+    assert "base->agc.equalizer_low_gain_db = 2.0;" in voice
+    assert "base->agc.equalizer_mid_gain_db = -0.5;" in voice
+    assert "base->agc.equalizer_high_gain_db = -1.0;" in voice
+
+
+def test_deesser_is_default_disabled_before_every_compressor():
+    source = text("src/usbradioplus_processing.c")
+    defaults = source[source.index("static void settings_defaults"):
+                      source.index("static int validate_chain")]
+    assert "base->agc.deesser_enabled = 0;" in defaults
+    assert defaults.count("TXAGC_STAGE_DEESSER") >= 2
+    base = defaults[:defaults.index("base = &value->chains[TXAGC_VOICE_TELEMETRY]")]
+    assert base.index("stage_order[3] = TXAGC_STAGE_DEESSER") < base.index(
+        "stage_order[4] = TXAGC_STAGE_COMPRESSOR")
+
 def test_legacy_default_initializer_is_preserved():
     source = text("src/chan_usbradioplus.c")
     block = source[source.index("static struct chan_usbradio_pvt usbradio_default"):

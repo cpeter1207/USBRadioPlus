@@ -28,6 +28,8 @@ cc $common "$root/tests/test_native_repeat.c" \
 "$out/native-repeat"
 
 for name in txagc_float avfilter_bandpass avfilter_ctcss avfilter_emphasis \
+	avfilter_equalizer \
+	avfilter_deesser \
 	avfilter_processor avfilter_permutations; do
 	cc $common "$root/tests/test_$name.c" \
 		"$root/src/txagc/agc_core.c" \

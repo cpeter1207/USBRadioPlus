@@ -17,8 +17,29 @@ channel = RadioPlus/
 [local]
 ; Enable the local receiver chain. The master switch must also be enabled.
 enabled = yes
-; Dynamics order. Use each of expander, agc, compressor, and limiter at most once.
-stage_order = expander,agc,compressor,limiter
+; Reorder the equalizer and dynamics stages. The equalizer runs immediately
+; before the downward expander by default.
+stage_order = equalizer,expander,agc,deesser,compressor,limiter
+; Three-band tone control.
+equalizer_enabled = yes
+equalizer_low_gain_db = 2.0
+equalizer_low_frequency_hz = 300.0
+equalizer_low_slope = 0.7
+equalizer_mid_gain_db = -0.5
+equalizer_mid_frequency_hz = 750.0
+equalizer_mid_width_octaves = 1.0
+equalizer_high_gain_db = -1.0
+equalizer_high_frequency_hz = 2500.0
+equalizer_high_slope = 0.7
+; Split-band sibilance reduction immediately before the compressor by default.
+deesser_enabled = no
+deesser_frequency_hz = 4000.0
+deesser_width_octaves = 1.0
+deesser_threshold_dbfs = -18.0
+deesser_ratio = 3.0
+deesser_max_reduction_db = 4.0
+deesser_attack_ms = 2.0
+deesser_release_ms = 60.0
 ; RNNoise runs after de-emphasis, squelch gating, and PL removal, before dynamics.
 rnnoise_enabled = no
 ; Apply a steep receive band-pass immediately after the squelch gate and before
@@ -111,8 +132,29 @@ limiter_high_release_ms = 50.0
 [link]
 ; Enable processing for audio received from connected nodes.
 enabled = no
-; Link dynamics can be reordered independently of local receive.
-stage_order = expander,agc,compressor,limiter
+; Link equalization and dynamics can be reordered independently of local receive.
+; The equalizer runs immediately before the downward expander by default.
+stage_order = equalizer,expander,agc,deesser,compressor,limiter
+; Three-band tone control.
+equalizer_enabled = yes
+equalizer_low_gain_db = 2.0
+equalizer_low_frequency_hz = 300.0
+equalizer_low_slope = 0.7
+equalizer_mid_gain_db = -0.5
+equalizer_mid_frequency_hz = 750.0
+equalizer_mid_width_octaves = 1.0
+equalizer_high_gain_db = -1.0
+equalizer_high_frequency_hz = 2500.0
+equalizer_high_slope = 0.7
+; Split-band sibilance reduction immediately before the compressor by default.
+deesser_enabled = no
+deesser_frequency_hz = 4000.0
+deesser_width_octaves = 1.0
+deesser_threshold_dbfs = -18.0
+deesser_ratio = 3.0
+deesser_max_reduction_db = 4.0
+deesser_attack_ms = 2.0
+deesser_release_ms = 60.0
 ; Gain before and after link dynamics, -30 through +30 dB.
 input_gain_db = 0.0
 output_gain_db = -6.2
@@ -149,8 +191,30 @@ agc_floor_dbfs = -40.0
 enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
-; Reorder only dynamics; fixed transmitter stages are not listed here.
-stage_order = expander,agc,compressor,limiter
+; Reorder the equalizer and dynamics stages. Fixed transmitter-tail stages are
+; not listed here. The de-esser runs immediately before the compressor by default.
+stage_order = equalizer,expander,agc,deesser,compressor,limiter
+; Three-band voice/telemetry tone control.
+equalizer_enabled = yes
+equalizer_low_gain_db = 2.0
+equalizer_low_frequency_hz = 300.0
+equalizer_low_slope = 0.7
+equalizer_mid_gain_db = -0.5
+equalizer_mid_frequency_hz = 750.0
+equalizer_mid_width_octaves = 1.0
+equalizer_high_gain_db = -1.0
+equalizer_high_frequency_hz = 2500.0
+equalizer_high_slope = 0.7
+; Split-band sibilance reduction. Detection and attenuation are confined to a
+; bell-shaped band so other voice frequencies do not dip with an S sound.
+deesser_enabled = no
+deesser_frequency_hz = 4000.0
+deesser_width_octaves = 1.0
+deesser_threshold_dbfs = -18.0
+deesser_ratio = 3.0
+deesser_max_reduction_db = 4.0
+deesser_attack_ms = 2.0
+deesser_release_ms = 60.0
 ; Enable individual transmitter dynamics stages as required.
 expander_enabled = no
 agc_enabled = no

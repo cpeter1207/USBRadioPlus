@@ -16,9 +16,9 @@ int main(void)
 	memset(&cfg, 0, sizeof(cfg));
 	{
 		char error[128];
-		assert(!txagc_parse_stage_order("limiter, expander,agc,compressor",
+		assert(!txagc_parse_stage_order("limiter,expander,agc,deesser,compressor,equalizer",
 			&cfg, error, sizeof(error)));
-		assert(cfg.stage_count == 4 && cfg.stage_order[0] == TXAGC_STAGE_LIMITER);
+		assert(cfg.stage_count == 6 && cfg.stage_order[3] == TXAGC_STAGE_DEESSER);
 		assert(txagc_parse_stage_order("agc,agc", &cfg, error, sizeof(error)));
 		assert(strstr(error, "duplicate stage"));
 		assert(txagc_parse_stage_order("rnnoise,agc", &cfg, error, sizeof(error)));

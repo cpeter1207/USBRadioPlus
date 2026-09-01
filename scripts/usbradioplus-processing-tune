@@ -27,7 +27,9 @@ SETTINGS = {
     "expander_enabled": ("Downward expander", "bool", None, None, "", "Stages"),
     "compressor_enabled": ("Compressor", "bool", None, None, "", "Stages"),
     "limiter_enabled": ("Two-band limiter", "bool", None, None, "", "Stages"),
-    "stage_order": ("Dynamics stage order", "text", None, None, "", "Stages"),
+    "equalizer_enabled": ("Three-band equalizer", "bool", None, None, "", "Stages"),
+    "deesser_enabled": ("Split-band de-esser", "bool", None, None, "", "Stages"),
+    "stage_order": ("Processing stage order", "text", None, None, "", "Stages"),
     "ctcss_filter_mode": ("Receive CTCSS filter mode", "choice", None, None, "", "Filters"),
     "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Filters"),
     "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Filters"),
@@ -35,6 +37,22 @@ SETTINGS = {
     "receive_bandpass_highpass_hz": ("Receive band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
     "receive_bandpass_lowpass_hz": ("Receive band-pass high cutoff", "float", 20, 5000, "Hz", "Filters"),
     "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Output"),
+    "equalizer_low_gain_db": ("Equalizer low-shelf gain", "float", -12, 12, "dB", "Equalizer"),
+    "equalizer_low_frequency_hz": ("Equalizer low-shelf frequency", "float", 20, 1000, "Hz", "Equalizer"),
+    "equalizer_low_slope": ("Equalizer low-shelf slope", "float", 0.1, 1, "", "Equalizer"),
+    "equalizer_mid_gain_db": ("Equalizer mid-band gain", "float", -12, 12, "dB", "Equalizer"),
+    "equalizer_mid_frequency_hz": ("Equalizer mid-band frequency", "float", 100, 4000, "Hz", "Equalizer"),
+    "equalizer_mid_width_octaves": ("Equalizer mid-band width", "float", 0.1, 4, "octaves", "Equalizer"),
+    "equalizer_high_gain_db": ("Equalizer high-shelf gain", "float", -12, 12, "dB", "Equalizer"),
+    "equalizer_high_frequency_hz": ("Equalizer high-shelf frequency", "float", 1000, 5000, "Hz", "Equalizer"),
+    "equalizer_high_slope": ("Equalizer high-shelf slope", "float", 0.1, 1, "", "Equalizer"),
+    "deesser_frequency_hz": ("De-esser center frequency", "float", 2000, 8000, "Hz", "De-esser"),
+    "deesser_width_octaves": ("De-esser width", "float", 0.1, 4, "octaves", "De-esser"),
+    "deesser_threshold_dbfs": ("De-esser threshold", "float", -60, -1, "dBFS", "De-esser"),
+    "deesser_ratio": ("De-esser ratio", "float", 1, 20, ":1", "De-esser"),
+    "deesser_max_reduction_db": ("De-esser maximum reduction", "float", 0.1, 20, "dB", "De-esser"),
+    "deesser_attack_ms": ("De-esser attack", "float", 0.1, 100, "ms", "De-esser"),
+    "deesser_release_ms": ("De-esser release", "float", 1, 2000, "ms", "De-esser"),
     "splatter_filter_enabled": ("Transmit brick-wall band-pass", "bool", None, None, "", "Filters"),
     "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
     "final_clipper_enabled": ("Final clipper", "bool", None, None, "", "Stages"),
@@ -87,9 +105,18 @@ SETTINGS = {
 DEFAULTS = {
     "enabled": "yes", "rnnoise_enabled": "no", "agc_enabled": "no",
     "expander_enabled": "no", "compressor_enabled": "no",
-    "limiter_enabled": "no", "stage_order": "expander,agc,compressor,limiter",
+    "limiter_enabled": "no", "stage_order": "equalizer,expander,agc,deesser,compressor,limiter",
     "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "5.0",
     "ctcss_highpass_hz": "300.0", "input_gain_db": "0.0",
+    "equalizer_enabled": "yes", "equalizer_low_gain_db": "2.0",
+    "equalizer_low_frequency_hz": "300.0", "equalizer_low_slope": "0.7",
+    "equalizer_mid_gain_db": "-0.5", "equalizer_mid_frequency_hz": "750.0",
+    "equalizer_mid_width_octaves": "1.0", "equalizer_high_gain_db": "-1.0",
+    "equalizer_high_frequency_hz": "2500.0", "equalizer_high_slope": "0.7",
+    "deesser_enabled": "no", "deesser_frequency_hz": "4000.0",
+    "deesser_width_octaves": "1.0", "deesser_threshold_dbfs": "-18.0",
+    "deesser_ratio": "3.0", "deesser_max_reduction_db": "4.0",
+    "deesser_attack_ms": "2.0", "deesser_release_ms": "60.0",
     "receive_bandpass_enabled": "no", "receive_bandpass_highpass_hz": "20.0",
     "receive_bandpass_lowpass_hz": "5000.0",
     "splatter_filter_enabled": "no", "lookahead_limiter_enabled": "no",
@@ -126,6 +153,9 @@ SOURCE_DEFAULTS = {
     "link": {"output_gain_db": "-6.2"},
     "voice_telemetry": {
         "input_gain_db": "6.0", "output_gain_db": "0.0",
+        "stage_order": "equalizer,expander,agc,deesser,compressor,limiter",
+        "equalizer_enabled": "yes", "equalizer_low_gain_db": "2.0",
+        "equalizer_mid_gain_db": "-0.5", "equalizer_high_gain_db": "-1.0",
         "splatter_filter_enabled": "yes",
     },
 }
@@ -331,7 +361,7 @@ def edit_text_setting(source, key):
     label = SETTINGS[key][0]
     current = values.get(key, default_value(source, key))
     if key == "stage_order":
-        prompt = "Comma-separated expander, agc, compressor, limiter"
+        prompt = "Comma-separated equalizer, agc, expander, deesser, compressor, limiter"
     else:
         prompt = "One of: disabled, highpass, notch"
     try:
@@ -344,7 +374,7 @@ def edit_text_setting(source, key):
         return
     if key == "stage_order":
         stages = [item.strip() for item in entered.split(",")]
-        allowed = {"expander", "agc", "compressor", "limiter"}
+        allowed = {"equalizer", "expander", "agc", "deesser", "compressor", "limiter"}
         if not stages or any(item not in allowed for item in stages) or len(stages) != len(set(stages)):
             print("Stage order contains an unknown, empty, or duplicate stage; unchanged.")
             return
@@ -522,7 +552,7 @@ def settings_menu(source, group):
 
 
 def source_menu(source):
-    groups = ["Stages", "Filters", "AGC", "Expander", "Compressor",
+    groups = ["Stages", "Filters", "Equalizer", "AGC", "Expander", "De-esser", "Compressor",
               "Two-band limiter", "Lookahead", "Output"]
     if source == "link":
         groups.remove("Filters")

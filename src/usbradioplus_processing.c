@@ -88,11 +88,13 @@ static void settings_defaults(struct txagc_settings *value)
 	base = &value->chains[TXAGC_LOCAL];
 	base->enabled = 1;
 	base->rnnoise_enabled = 0;
-	base->agc.stage_count = 4;
-	base->agc.stage_order[0] = TXAGC_STAGE_EXPANDER;
-	base->agc.stage_order[1] = TXAGC_STAGE_AGC;
-	base->agc.stage_order[2] = TXAGC_STAGE_COMPRESSOR;
-	base->agc.stage_order[3] = TXAGC_STAGE_LIMITER;
+	base->agc.stage_count = 6;
+	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
+	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
+	base->agc.stage_order[2] = TXAGC_STAGE_AGC;
+	base->agc.stage_order[3] = TXAGC_STAGE_DEESSER;
+	base->agc.stage_order[4] = TXAGC_STAGE_COMPRESSOR;
+	base->agc.stage_order[5] = TXAGC_STAGE_LIMITER;
 	base->agc.receive_bandpass_enabled = 1;
 	base->agc.receive_bandpass_highpass_hz = 20.0;
 	base->agc.receive_bandpass_lowpass_hz = 5000.0;
@@ -101,6 +103,24 @@ static void settings_defaults(struct txagc_settings *value)
 	base->agc.ctcss_highpass_hz = 300.0;
 	base->agc.agc_enabled = 0;
 	base->agc.input_gain_db = 0.0;
+	base->agc.equalizer_enabled = 1;
+	base->agc.equalizer_low_gain_db = 2.0;
+	base->agc.equalizer_low_frequency_hz = 300.0;
+	base->agc.equalizer_low_slope = 0.7;
+	base->agc.equalizer_mid_gain_db = -0.5;
+	base->agc.equalizer_mid_frequency_hz = 750.0;
+	base->agc.equalizer_mid_width_octaves = 1.0;
+	base->agc.equalizer_high_gain_db = -1.0;
+	base->agc.equalizer_high_frequency_hz = 2500.0;
+	base->agc.equalizer_high_slope = 0.7;
+	base->agc.deesser_enabled = 0;
+	base->agc.deesser_frequency_hz = 4000.0;
+	base->agc.deesser_width_octaves = 1.0;
+	base->agc.deesser_threshold_dbfs = -18.0;
+	base->agc.deesser_ratio = 3.0;
+	base->agc.deesser_max_reduction_db = 4.0;
+	base->agc.deesser_attack_ms = 2.0;
+	base->agc.deesser_release_ms = 60.0;
 	base->agc.target_dbfs = -10.0;
 	base->agc.max_gain_db = 12.0;
 	base->agc.max_attenuation_db = 6.0;
@@ -164,6 +184,17 @@ static void settings_defaults(struct txagc_settings *value)
 	base->agc.compressor_enabled = 0;
 	base->agc.limiter_enabled = 0;
 	base->agc.input_gain_db = 6.0;
+	base->agc.stage_count = 6;
+	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
+	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
+	base->agc.stage_order[2] = TXAGC_STAGE_AGC;
+	base->agc.stage_order[3] = TXAGC_STAGE_DEESSER;
+	base->agc.stage_order[4] = TXAGC_STAGE_COMPRESSOR;
+	base->agc.stage_order[5] = TXAGC_STAGE_LIMITER;
+	base->agc.equalizer_enabled = 1;
+	base->agc.equalizer_low_gain_db = 2.0;
+	base->agc.equalizer_mid_gain_db = -0.5;
+	base->agc.equalizer_high_gain_db = -1.0;
 	base->agc.splatter_filter_enabled = 1;
 	base->agc.final_clipper_enabled = 0;
 	base->agc.lookahead_limiter_enabled = 0;
@@ -178,7 +209,7 @@ static int validate_chain(const struct txagc_chain *value)
 	if (value->agc.stage_count > TXAGC_MAX_DYNAMICS_STAGES) return -1;
 	for (index = 0; index < value->agc.stage_count; ++index) {
 		if (value->agc.stage_order[index] < TXAGC_STAGE_EXPANDER
-			|| value->agc.stage_order[index] > TXAGC_STAGE_LIMITER
+			|| value->agc.stage_order[index] > TXAGC_STAGE_DEESSER
 			|| (seen & (1U << value->agc.stage_order[index]))) return -1;
 		seen |= 1U << value->agc.stage_order[index];
 	}
@@ -194,6 +225,38 @@ static int validate_chain(const struct txagc_chain *value)
 			<= value->agc.receive_bandpass_highpass_hz
 		|| value->agc.receive_bandpass_lowpass_hz > 5000.0
 		|| value->agc.input_gain_db < -30.0 || value->agc.input_gain_db > 30.0
+		|| value->agc.equalizer_low_gain_db < -12.0
+		|| value->agc.equalizer_low_gain_db > 12.0
+		|| value->agc.equalizer_low_frequency_hz < 20.0
+		|| value->agc.equalizer_low_frequency_hz > 1000.0
+		|| value->agc.equalizer_low_slope < 0.1
+		|| value->agc.equalizer_low_slope > 1.0
+		|| value->agc.equalizer_mid_gain_db < -12.0
+		|| value->agc.equalizer_mid_gain_db > 12.0
+		|| value->agc.equalizer_mid_frequency_hz < 100.0
+		|| value->agc.equalizer_mid_frequency_hz > 4000.0
+		|| value->agc.equalizer_mid_width_octaves < 0.1
+		|| value->agc.equalizer_mid_width_octaves > 4.0
+		|| value->agc.equalizer_high_gain_db < -12.0
+		|| value->agc.equalizer_high_gain_db > 12.0
+		|| value->agc.equalizer_high_frequency_hz < 1000.0
+		|| value->agc.equalizer_high_frequency_hz > 5000.0
+		|| value->agc.equalizer_high_slope < 0.1
+		|| value->agc.equalizer_high_slope > 1.0
+		|| value->agc.deesser_frequency_hz < 2000.0
+		|| value->agc.deesser_frequency_hz > 8000.0
+		|| value->agc.deesser_width_octaves < 0.1
+		|| value->agc.deesser_width_octaves > 4.0
+		|| value->agc.deesser_threshold_dbfs < -60.0
+		|| value->agc.deesser_threshold_dbfs > -1.0
+		|| value->agc.deesser_ratio < 1.0
+		|| value->agc.deesser_ratio > 20.0
+		|| value->agc.deesser_max_reduction_db < 0.1
+		|| value->agc.deesser_max_reduction_db > 20.0
+		|| value->agc.deesser_attack_ms < 0.1
+		|| value->agc.deesser_attack_ms > 100.0
+		|| value->agc.deesser_release_ms < 1.0
+		|| value->agc.deesser_release_ms > 2000.0
 		|| value->agc.target_dbfs > -3.0 || value->agc.target_dbfs < -40.0
 		|| value->agc.max_gain_db < 0.0 || value->agc.max_gain_db > 30.0
 		|| value->agc.max_attenuation_db < 0.0 || value->agc.max_attenuation_db > 60.0
@@ -371,6 +434,14 @@ static int known_chain_option(const char *name)
 		"enabled", "stage_order", "rnnoise_enabled", "ctcss_filter_mode",
 		"receive_bandpass_enabled", "receive_bandpass_highpass_hz",
 		"receive_bandpass_lowpass_hz",
+		"equalizer_enabled", "equalizer_low_gain_db",
+		"equalizer_low_frequency_hz", "equalizer_low_slope",
+		"equalizer_mid_gain_db", "equalizer_mid_frequency_hz",
+		"equalizer_mid_width_octaves", "equalizer_high_gain_db",
+		"equalizer_high_frequency_hz", "equalizer_high_slope",
+		"deesser_enabled", "deesser_frequency_hz", "deesser_width_octaves",
+		"deesser_threshold_dbfs", "deesser_ratio", "deesser_max_reduction_db",
+		"deesser_attack_ms", "deesser_release_ms",
 		"ctcss_notch_width_hz", "ctcss_highpass_hz", "agc_enabled",
 		"input_gain_db", "agc_target_dbfs", "agc_max_gain_db",
 		"agc_max_attenuation_db", "agc_floor_dbfs", "agc_attack_ms",
@@ -508,6 +579,29 @@ static int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "ctcss_notch_width_hz", &chain->agc.ctcss_notch_width_hz);
 	read_double(cfg, section, "ctcss_highpass_hz", &chain->agc.ctcss_highpass_hz);
 	READ_BOOL("agc_enabled", chain->agc.agc_enabled);
+	READ_BOOL("equalizer_enabled", chain->agc.equalizer_enabled);
+	read_double(cfg, section, "equalizer_low_gain_db", &chain->agc.equalizer_low_gain_db);
+	read_double(cfg, section, "equalizer_low_frequency_hz",
+		&chain->agc.equalizer_low_frequency_hz);
+	read_double(cfg, section, "equalizer_low_slope", &chain->agc.equalizer_low_slope);
+	read_double(cfg, section, "equalizer_mid_gain_db", &chain->agc.equalizer_mid_gain_db);
+	read_double(cfg, section, "equalizer_mid_frequency_hz",
+		&chain->agc.equalizer_mid_frequency_hz);
+	read_double(cfg, section, "equalizer_mid_width_octaves",
+		&chain->agc.equalizer_mid_width_octaves);
+	read_double(cfg, section, "equalizer_high_gain_db", &chain->agc.equalizer_high_gain_db);
+	read_double(cfg, section, "equalizer_high_frequency_hz",
+		&chain->agc.equalizer_high_frequency_hz);
+	read_double(cfg, section, "equalizer_high_slope", &chain->agc.equalizer_high_slope);
+	READ_BOOL("deesser_enabled", chain->agc.deesser_enabled);
+	read_double(cfg, section, "deesser_frequency_hz", &chain->agc.deesser_frequency_hz);
+	read_double(cfg, section, "deesser_width_octaves", &chain->agc.deesser_width_octaves);
+	read_double(cfg, section, "deesser_threshold_dbfs", &chain->agc.deesser_threshold_dbfs);
+	read_double(cfg, section, "deesser_ratio", &chain->agc.deesser_ratio);
+	read_double(cfg, section, "deesser_max_reduction_db",
+		&chain->agc.deesser_max_reduction_db);
+	read_double(cfg, section, "deesser_attack_ms", &chain->agc.deesser_attack_ms);
+	read_double(cfg, section, "deesser_release_ms", &chain->agc.deesser_release_ms);
 	read_double(cfg, section, "input_gain_db", &chain->agc.input_gain_db);
 	read_double_alias(cfg, section, "agc_target_dbfs", "target_dbfs",
 		&chain->agc.target_dbfs);
@@ -910,6 +1004,10 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 		if (source == TXAGC_LOCAL)
 			ast_cli(args->fd, "receive brick-wall band-pass %s, ",
 				chain->agc.receive_bandpass_enabled ? "enabled" : "disabled");
+		ast_cli(args->fd, "equalizer %s, ",
+			chain->agc.equalizer_enabled ? "enabled" : "disabled");
+		ast_cli(args->fd, "de-esser %s, ",
+			chain->agc.deesser_enabled ? "enabled" : "disabled");
 		if (source == TXAGC_VOICE_TELEMETRY)
 			ast_cli(args->fd, "brick-wall band-pass %s, ",
 				chain->agc.splatter_filter_enabled ? "enabled" : "disabled");

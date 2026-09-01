@@ -212,6 +212,34 @@ static int add_dynamic_stage(char *graph, size_t size,
 
 	snprintf(prefix, sizeof(prefix), "d%u", serial);
 	switch (kind) {
+	case TXAGC_STAGE_DEESSER: {
+		double octave_ratio;
+		double q;
+		if (!cfg->deesser_enabled) return 0;
+		octave_ratio = pow(2.0, cfg->deesser_width_octaves);
+		q = sqrt(octave_ratio) / (octave_ratio - 1.0);
+		return graph_append(graph, size,
+			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
+			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
+			"attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
+			"mode=cutabove:dftype=bandpass:tftype=bell:precision=double[%s];",
+			current, db_to_linear(cfg->deesser_threshold_dbfs),
+			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
+			cfg->deesser_attack_ms, cfg->deesser_release_ms,
+			cfg->deesser_ratio, db_to_linear(cfg->deesser_max_reduction_db), next);
+	}
+	case TXAGC_STAGE_EQUALIZER:
+		if (!cfg->equalizer_enabled) return 0;
+		return graph_append(graph, size,
+			"[%s]bass=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64,"
+			"equalizer=f=%.9g:t=o:w=%.9g:g=%.9g:r=f64,"
+			"treble=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64[%s];",
+			current, cfg->equalizer_low_gain_db,
+			cfg->equalizer_low_frequency_hz, cfg->equalizer_low_slope,
+			cfg->equalizer_mid_frequency_hz,
+			cfg->equalizer_mid_width_octaves, cfg->equalizer_mid_gain_db,
+			cfg->equalizer_high_gain_db, cfg->equalizer_high_frequency_hz,
+			cfg->equalizer_high_slope, next);
 	case TXAGC_STAGE_AGC:
 		if (!cfg->agc_enabled) return 0;
 		target = clamp(db_to_linear(cfg->target_dbfs), 0.000001, 1.0);
@@ -345,7 +373,11 @@ static int build_description(char *graph, size_t size,
 		int enabled = (cfg->stage_order[order_index] == TXAGC_STAGE_AGC && cfg->agc_enabled)
 			|| (cfg->stage_order[order_index] == TXAGC_STAGE_EXPANDER && cfg->expander_enabled)
 			|| (cfg->stage_order[order_index] == TXAGC_STAGE_COMPRESSOR && cfg->compressor_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_LIMITER && cfg->limiter_enabled);
+			|| (cfg->stage_order[order_index] == TXAGC_STAGE_LIMITER && cfg->limiter_enabled)
+			|| (cfg->stage_order[order_index] == TXAGC_STAGE_EQUALIZER
+				&& cfg->equalizer_enabled)
+			|| (cfg->stage_order[order_index] == TXAGC_STAGE_DEESSER
+				&& cfg->deesser_enabled);
 		if (!enabled) continue;
 		snprintf(next, sizeof(next), "s%u", stage++);
 		if (add_dynamic_stage(graph, size, cfg, cfg->stage_order[order_index],

@@ -7,13 +7,31 @@
 
 #define RATE 48000U
 #define BLOCK 960U
-#define PERMUTATIONS 24U
+#define PERMUTATIONS 720U
 #define BLOCKS_PER_PERMUTATION 80U
 
 static void configure(struct txagc_config *cfg)
 {
 	memset(cfg, 0, sizeof(*cfg));
 	cfg->stage_count = TXAGC_MAX_DYNAMICS_STAGES;
+	cfg->equalizer_enabled = 1;
+	cfg->equalizer_low_gain_db = 2.0;
+	cfg->equalizer_low_frequency_hz = 300.0;
+	cfg->equalizer_low_slope = 0.7;
+	cfg->equalizer_mid_gain_db = -0.5;
+	cfg->equalizer_mid_frequency_hz = 750.0;
+	cfg->equalizer_mid_width_octaves = 1.0;
+	cfg->equalizer_high_gain_db = -1.0;
+	cfg->equalizer_high_frequency_hz = 2500.0;
+	cfg->equalizer_high_slope = 0.7;
+	cfg->deesser_enabled = 1;
+	cfg->deesser_frequency_hz = 4000.0;
+	cfg->deesser_width_octaves = 1.0;
+	cfg->deesser_threshold_dbfs = -18.0;
+	cfg->deesser_ratio = 3.0;
+	cfg->deesser_max_reduction_db = 4.0;
+	cfg->deesser_attack_ms = 2.0;
+	cfg->deesser_release_ms = 60.0;
 	cfg->ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
 	cfg->ctcss_notch_width_hz = 5.0;
 	strcpy(cfg->ctcss_notch_frequencies, "254.1");
@@ -103,6 +121,8 @@ int main(void)
 	enum txagc_stage order[TXAGC_MAX_DYNAMICS_STAGES] = {
 		TXAGC_STAGE_EXPANDER, TXAGC_STAGE_AGC,
 		TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER,
+		TXAGC_STAGE_EQUALIZER,
+		TXAGC_STAGE_DEESSER,
 	};
 	unsigned int number = 0;
 	double seconds = 0.0;

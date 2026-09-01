@@ -6,13 +6,15 @@
 
 #define TXAGC_MAX_LOOKAHEAD_SAMPLES 4096
 #define TXAGC_CTCSS_FREQUENCIES_SIZE 512
-#define TXAGC_MAX_DYNAMICS_STAGES 4
+#define TXAGC_MAX_DYNAMICS_STAGES 6
 
 enum txagc_stage {
 	TXAGC_STAGE_EXPANDER,
 	TXAGC_STAGE_AGC,
 	TXAGC_STAGE_COMPRESSOR,
 	TXAGC_STAGE_LIMITER,
+	TXAGC_STAGE_EQUALIZER,
+	TXAGC_STAGE_DEESSER,
 };
 
 enum txagc_ctcss_filter_mode {
@@ -43,6 +45,24 @@ struct txagc_config {
 	double ctcss_highpass_hz;
 	char ctcss_notch_frequencies[TXAGC_CTCSS_FREQUENCIES_SIZE];
 	double input_gain_db;
+	int equalizer_enabled;
+	double equalizer_low_gain_db;
+	double equalizer_low_frequency_hz;
+	double equalizer_low_slope;
+	double equalizer_mid_gain_db;
+	double equalizer_mid_frequency_hz;
+	double equalizer_mid_width_octaves;
+	double equalizer_high_gain_db;
+	double equalizer_high_frequency_hz;
+	double equalizer_high_slope;
+	int deesser_enabled;
+	double deesser_frequency_hz;
+	double deesser_width_octaves;
+	double deesser_threshold_dbfs;
+	double deesser_ratio;
+	double deesser_max_reduction_db;
+	double deesser_attack_ms;
+	double deesser_release_ms;
 	int agc_enabled;
 	double target_dbfs;
 	double max_gain_db;

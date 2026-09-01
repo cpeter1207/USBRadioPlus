@@ -79,6 +79,13 @@ the CM119 hardware mixer or the native software path.
 .B Configure audio processing
 Open
 .BR usbradioplus-processing-tune .
+Its Stages menu enables or disables the equalizer and de-esser and edits their
+positions in the processing order. The Equalizer menu edits the low shelf,
+mid-band bell, and high shelf. The De-esser menu edits its center frequency,
+bandwidth, threshold, ratio, maximum reduction, attack, and release.
+See
+.BR usbradioplus-processing.conf (5)
+for option definitions and ranges.
 On return, the radio tuning menu refreshes its displayed values.
 .TP
 .B Print current parameter values

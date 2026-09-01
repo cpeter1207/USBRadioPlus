@@ -40,6 +40,8 @@ int txagc_parse_stage_order(const char *text, struct txagc_config *config,
 		else if (!strcasecmp(token, "agc")) stage = TXAGC_STAGE_AGC;
 		else if (!strcasecmp(token, "compressor")) stage = TXAGC_STAGE_COMPRESSOR;
 		else if (!strcasecmp(token, "limiter")) stage = TXAGC_STAGE_LIMITER;
+		else if (!strcasecmp(token, "equalizer")) stage = TXAGC_STAGE_EQUALIZER;
+		else if (!strcasecmp(token, "deesser")) stage = TXAGC_STAGE_DEESSER;
 		else goto unknown;
 		bit = 1U << stage;
 		if (seen & bit) {
@@ -61,6 +63,8 @@ int txagc_parse_stage_order(const char *text, struct txagc_config *config,
 	REQUIRE_STAGE(config->agc_enabled, TXAGC_STAGE_AGC, "agc");
 	REQUIRE_STAGE(config->compressor_enabled, TXAGC_STAGE_COMPRESSOR, "compressor");
 	REQUIRE_STAGE(config->limiter_enabled, TXAGC_STAGE_LIMITER, "limiter");
+	REQUIRE_STAGE(config->equalizer_enabled, TXAGC_STAGE_EQUALIZER, "equalizer");
+	REQUIRE_STAGE(config->deesser_enabled, TXAGC_STAGE_DEESSER, "deesser");
 #undef REQUIRE_STAGE
 	return 0;
 unknown:
