@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha8 - 2026-09-01
+
+Mute DTMF in the native parrot processed recording while preserving the unmuted app_rpt detector feed.
+
 ## 0.1.0~alpha7 - 2026-09-01
 
 Fixes elastic transmit FIFO startup and recovery so short telemetry is preserved, buffered audio drains before PTT release, and independent app_rpt and CM119 clocks retain the full safety margin without audible dropouts.
