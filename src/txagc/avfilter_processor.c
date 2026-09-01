@@ -235,7 +235,7 @@ static int add_dynamic_stage(char *graph, size_t size,
 			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
 			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
 			"attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
-			"mode=cut:tftype=bell:precision=double[%s];",
+			"mode=cut:tftype=bell[%s];",
 			current, db_to_linear(cfg->deesser_threshold_dbfs),
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
