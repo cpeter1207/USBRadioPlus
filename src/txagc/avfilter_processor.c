@@ -10,6 +10,7 @@
 #include <libavfilter/avfilter.h>
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
+#include <libavfilter/version.h>
 #include <libavutil/audio_fifo.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/dict.h>
@@ -218,6 +219,7 @@ static int add_dynamic_stage(char *graph, size_t size,
 		if (!cfg->deesser_enabled) return 0;
 		octave_ratio = pow(2.0, cfg->deesser_width_octaves);
 		q = sqrt(octave_ratio) / (octave_ratio - 1.0);
+#if LIBAVFILTER_VERSION_MAJOR >= 9
 		return graph_append(graph, size,
 			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
 			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
@@ -227,6 +229,18 @@ static int add_dynamic_stage(char *graph, size_t size,
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
 			cfg->deesser_ratio, db_to_linear(cfg->deesser_max_reduction_db), next);
+#else
+		/* FFmpeg 5.1 uses fixed band-pass detection and names cut-above "cut". */
+		return graph_append(graph, size,
+			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
+			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
+			"attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
+			"mode=cut:tftype=bell:precision=double[%s];",
+			current, db_to_linear(cfg->deesser_threshold_dbfs),
+			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
+			cfg->deesser_attack_ms, cfg->deesser_release_ms,
+			cfg->deesser_ratio, db_to_linear(cfg->deesser_max_reduction_db), next);
+#endif
 	}
 	case TXAGC_STAGE_EQUALIZER:
 		if (!cfg->equalizer_enabled) return 0;
