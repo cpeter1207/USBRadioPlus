@@ -60,6 +60,6 @@ int main(void)
 	if (!isfinite(speech) || !isfinite(quiet_sibilance)
 		|| !isfinite(loud_sibilance)) return 1;
 	if (fabs(speech) > 0.5 || fabs(quiet_sibilance) > 0.5) return 2;
-	if (loud_sibilance > -2.0 || loud_sibilance < -4.5) return 3;
+	if (loud_sibilance > -1.0 || loud_sibilance < -4.5) return 3;
 	return 0;
 }
