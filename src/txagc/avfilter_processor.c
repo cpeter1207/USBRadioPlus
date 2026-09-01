@@ -228,7 +228,7 @@ static int add_dynamic_stage(char *graph, size_t size,
 			current, db_to_linear(cfg->deesser_threshold_dbfs),
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
-			cfg->deesser_ratio, db_to_linear(cfg->deesser_max_reduction_db), next);
+			cfg->deesser_ratio, cfg->deesser_max_reduction_db, next);
 #else
 		/* FFmpeg 5.1 uses fixed band-pass detection and names cut-above "cut". */
 		return graph_append(graph, size,
@@ -239,7 +239,7 @@ static int add_dynamic_stage(char *graph, size_t size,
 			current, db_to_linear(cfg->deesser_threshold_dbfs),
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
-			cfg->deesser_ratio, db_to_linear(cfg->deesser_max_reduction_db), next);
+			cfg->deesser_ratio, cfg->deesser_max_reduction_db, next);
 #endif
 	}
 	case TXAGC_STAGE_EQUALIZER:
