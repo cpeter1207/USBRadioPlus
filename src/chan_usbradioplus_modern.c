@@ -6376,20 +6376,23 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		&& o->duplex3mode == DUPLEX3_MODE_SOFTWARE) {
 		double duplex3_gain = (double) o->duplex3 / DUPLEX3_LEVEL_MAX;
 		urp_native_repeat_prepare(local_program, o->plus_local_native,
-			URP_NATIVE_SAMPLES, duplex3_gain,
+			URP_NATIVE_SAMPLES, 1.0,
 			o->usedtmf && o->dsp && o->toneflag);
 		if (o->plus_parrot_enabled && o->plus_parrot
 			&& o->plus_parrot_count < o->plus_parrot_capacity) {
 			size_t space = o->plus_parrot_capacity - o->plus_parrot_count;
 			size_t count = space < URP_NATIVE_SAMPLES ? space : URP_NATIVE_SAMPLES;
 			memcpy(o->plus_parrot + o->plus_parrot_count,
-				o->plus_local_native, count * sizeof(double));
+				local_program, count * sizeof(double));
 			memcpy(o->plus_parrot_raw + o->plus_parrot_count,
 				parrot_raw, count * sizeof(double));
 			o->plus_parrot_count += count;
 			if (count != URP_NATIVE_SAMPLES) {
 				o->plus_parrot_truncated = 1;
 			}
+		}
+		for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+			local_program[i] *= duplex3_gain;
 		}
 	}
 	{
