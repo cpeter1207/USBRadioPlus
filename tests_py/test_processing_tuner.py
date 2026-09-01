@@ -69,3 +69,11 @@ def test_equalizer_defaults_and_source_placement():
         assert default_value(source, "deesser_enabled") == "no"
         order = default_value(source, "stage_order").split(",")
         assert order.index("deesser") + 1 == order.index("compressor")
+
+
+def test_stage_menu_and_input_output_labels():
+    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    assert '("Z", "equalizer_enabled", "Three-band equalizer")' in source
+    assert '("D", "deesser_enabled", "Split-band de-esser")' in source
+    assert '"input_gain_db": ("Input gain", "float", -30, 30, "dB", "Input/output")' in source
+    assert '"output_gain_db": ("Output gain", "float", -30, 30, "dB", "Input/output")' in source
