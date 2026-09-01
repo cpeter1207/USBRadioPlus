@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha6 - 2026-09-01
+
+Normalizes de-esser maximum-reduction behavior across the FFmpeg versions shipped by Debian 12 and Debian 13. Includes the equalizer and de-esser processing, tuner, documentation, validation, and performance coverage introduced in alpha5.
+
 ## 0.1.0~alpha5 - 2026-09-01
 
 Adds configurable three-band equalization and split-band de-essing to local receive, linked audio, and voice/telemetry processing. Both stages are reorderable, strictly validated, documented, and exposed through the processing tuner, with signal-response, graph-permutation, performance, and compatibility coverage.
