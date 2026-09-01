@@ -152,8 +152,13 @@ jobs:
           dpkg-buildpackage -b -us -uc
           lintian --fail-on error ../usbradioplus_*.changes
           mkdir -p package-output
-          cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb \
-            ../"$binary_package"_*.deb package-output/
+          cp ../"$binary_package"_*.deb package-output/
+          # The exact-version ARM build uses the same RNNoise binaries as the
+          # ordinary ARM build. Publish one copy so artifact merging cannot
+          # overwrite two files with the same package name.
+          if test '${{ matrix.requested_api }}' != modern; then
+            cp /tmp/librnnoise0_*.deb /tmp/librnnoise-dev_*.deb package-output/
+          fi
           find .. -maxdepth 1 -name "$binary_package-dbgsym_*.deb" \
             -exec cp -t package-output {} +
           printf 'suite=%s\narchitecture=%s\nasl3_asterisk=%s\napp_rpt=%s\nradio_api=%s\n' \
@@ -173,6 +178,12 @@ jobs:
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
+    env:
+      ARTIFACT_DIR: /tmp/usbradioplus-package-artifacts
+      INCOMING_DIR: /tmp/usbradioplus-package-incoming
+      PUBLIC_DIR: /tmp/usbradioplus-package-public
+      SITE_DIR: /tmp/usbradioplus-package-site
+      OLD_REPO_DIR: /tmp/usbradioplus-old-repository
     steps:
       - uses: actions/checkout@v7
         with:
@@ -180,8 +191,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
-          path: incoming
-          merge-multiple: true
+          path: /tmp/usbradioplus-package-artifacts
       - name: Install repository tools
         run: sudo apt-get update && sudo apt-get install -y reprepro gnupg
       - name: Import signing key
@@ -194,22 +204,38 @@ jobs:
         env:
           SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
         run: |
-          set -eux
-          rm -rf public
-          mkdir -p public/conf
+          set -euxo pipefail
+          mkdir -p "$INCOMING_DIR" "$PUBLIC_DIR/conf" "$OLD_REPO_DIR"
+          # Flatten artifacts deliberately. Identically named files must also
+          # be byte-identical; otherwise publishing would be nondeterministic.
+          find "$ARTIFACT_DIR" -type f -name '*.deb' -print0 |
+            while IFS= read -r -d '' package; do
+              destination="$INCOMING_DIR/$(basename "$package")"
+              if test -e "$destination"; then
+                cmp "$package" "$destination"
+              else
+                cp "$package" "$destination"
+              fi
+            done
+          test -n "$(find "$INCOMING_DIR" -maxdepth 1 -name '*.deb' -print -quit)"
           git fetch origin apt-repository || true
           if git show-ref --verify --quiet refs/remotes/origin/apt-repository; then
-            git archive origin/apt-repository | tar -x -C public
-            find public/pool -name '*.deb' -exec cp --no-clobber -t incoming {} + 2>/dev/null || true
+            # Import only the repository's root pool. Older broken snapshots
+            # may contain recursively nested public/site trees elsewhere.
+            git archive origin/apt-repository pool | tar -x -C "$OLD_REPO_DIR"
+            find "$OLD_REPO_DIR/pool" -type f -name '*.deb' \
+              -exec cp --no-clobber -t "$INCOMING_DIR" {} + 2>/dev/null || true
           fi
-          rm -rf public/dists public/pool public/db public/conf
-          mkdir -p public/conf
+          # Fully decompress every data archive before it can enter the repo.
+          for package in "$INCOMING_DIR"/*.deb; do
+            dpkg-deb --fsys-tarfile "$package" | tar -tf - >/dev/null
+          done
           cp packaging/repository/index.html \
             packaging/repository/install-usbradioplus.sh \
-            packaging/repository/usbradioplus-archive-keyring.gpg public/
-          chmod 0755 public/install-usbradioplus.sh
+            packaging/repository/usbradioplus-archive-keyring.gpg "$PUBLIC_DIR/"
+          chmod 0755 "$PUBLIC_DIR/install-usbradioplus.sh"
           for suite in bookworm trixie; do
-            cat >> public/conf/distributions <<EOF
+            cat >> "$PUBLIC_DIR/conf/distributions" <<EOF
           Origin: USBRadioPlus
           Label: USBRadioPlus
           Codename: $suite
@@ -221,28 +247,29 @@ jobs:
 
           EOF
           done
-          for package in incoming/*.deb; do
+          for package in "$INCOMING_DIR"/*.deb; do
             case "$package" in
               *.deb12_*|*.deb12+*_*) suite=bookworm ;;
               *.deb13_*|*.deb13+*_*) suite=trixie ;;
               *) echo "Cannot select suite for $package" >&2; exit 1 ;;
             esac
-            reprepro -b public includedeb "$suite" "$package"
+            reprepro -b "$PUBLIC_DIR" includedeb "$suite" "$package"
           done
-          reprepro -b public export
-          cp -a public site
-          rm -rf site/conf site/db
+          reprepro -b "$PUBLIC_DIR" export
+          cp -a "$PUBLIC_DIR" "$SITE_DIR"
+          rm -rf "$SITE_DIR/conf" "$SITE_DIR/db"
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: /tmp/usbradioplus-package-site
       - name: Save repository snapshot
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git switch --orphan apt-repository
           git rm -rf --ignore-unmatch .
-          cp -a public/. .
+          git clean -fdx
+          cp -a "$PUBLIC_DIR/." .
           touch .nojekyll
           git add .
           git commit -m "Publish USBRadioPlus $(cat VERSION 2>/dev/null || echo packages)"
