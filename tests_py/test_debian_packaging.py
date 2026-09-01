@@ -41,7 +41,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "ubuntu-24.04-arm",
         "suite: bookworm",
         "suite: trixie",
-        "reprepro -b public includedeb",
+        'reprepro -b "$PUBLIC_DIR" includedeb',
         "actions/deploy-pages@v5",
         "cmp -s /tmp/config-before/modules.conf",
         "cmp -s /tmp/config-before/rpt.conf",
