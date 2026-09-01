@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha7 - 2026-09-01
+
+Fixes elastic transmit FIFO startup and recovery so short telemetry is preserved, buffered audio drains before PTT release, and independent app_rpt and CM119 clocks retain the full safety margin without audible dropouts.
+
 ## 0.1.0~alpha6 - 2026-09-01
 
 Normalizes de-esser maximum-reduction behavior across the FFmpeg versions shipped by Debian 12 and Debian 13. Includes the equalizer and de-esser processing, tuner, documentation, validation, and performance coverage introduced in alpha5.
