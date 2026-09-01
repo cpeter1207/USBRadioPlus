@@ -230,7 +230,15 @@ static int add_dynamic_stage(char *graph, size_t size,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
 			cfg->deesser_ratio, cfg->deesser_max_reduction_db, next);
 #else
-		/* FFmpeg 5.1 uses fixed band-pass detection and names cut-above "cut". */
+		double ratio = cfg->deesser_ratio;
+		double span = -cfg->deesser_threshold_dbfs;
+		/* FFmpeg 5.1 does not apply range to cuts. Cap its ratio so a
+		 * full-scale detector input cannot exceed the requested reduction. */
+		if (span > cfg->deesser_max_reduction_db) {
+			double limited_ratio = span
+				/ (span - cfg->deesser_max_reduction_db);
+			if (ratio > limited_ratio) ratio = limited_ratio;
+		}
 		return graph_append(graph, size,
 			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
 			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
@@ -239,7 +247,7 @@ static int add_dynamic_stage(char *graph, size_t size,
 			current, db_to_linear(cfg->deesser_threshold_dbfs),
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
 			cfg->deesser_attack_ms, cfg->deesser_release_ms,
-			cfg->deesser_ratio, cfg->deesser_max_reduction_db, next);
+			ratio, 0.0, next);
 #endif
 	}
 	case TXAGC_STAGE_EQUALIZER:
