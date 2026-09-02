@@ -102,6 +102,12 @@ install: all
 	$(INSTALL_PROGRAM) scripts/usbradioplus-processing-tune $(DESTDIR)$(sbindir)/usbradioplus-processing-tune
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample $(DESTDIR)$(docdir)/
+	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
+		$(INSTALL_DATA) examples/usbradioplus.conf.default \
+			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; \
+	else \
+		echo "Preserving existing usbradioplus.conf"; \
+	fi
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; then \
 		$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample \
 			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; \

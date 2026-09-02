@@ -223,7 +223,7 @@ static int validate_chain(const struct txagc_chain *value)
 		|| value->agc.receive_bandpass_highpass_hz > 2000.0
 		|| value->agc.receive_bandpass_lowpass_hz
 			<= value->agc.receive_bandpass_highpass_hz
-		|| value->agc.receive_bandpass_lowpass_hz > 5000.0
+		|| value->agc.receive_bandpass_lowpass_hz > 6000.0
 		|| value->agc.input_gain_db < -30.0 || value->agc.input_gain_db > 30.0
 		|| value->agc.equalizer_low_gain_db < -12.0
 		|| value->agc.equalizer_low_gain_db > 12.0
@@ -301,7 +301,7 @@ static int validate_chain(const struct txagc_chain *value)
 		|| value->agc.post_limiter_lowpass_hz > 20000.0
 		|| value->agc.output_highpass_hz < 20.0 || value->agc.output_highpass_hz > 2000.0
 		|| value->agc.output_lowpass_hz <= value->agc.output_highpass_hz
-		|| value->agc.output_lowpass_hz > 5000.0
+		|| value->agc.output_lowpass_hz > 6000.0
 		|| value->agc.output_gain_db < -30.0 || value->agc.output_gain_db > 30.0) {
 		return -1;
 	}

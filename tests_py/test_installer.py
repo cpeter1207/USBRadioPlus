@@ -27,6 +27,7 @@ def test_staged_install_manifest(tmp_path):
             text=True, stdout=subprocess.PIPE).stdout.strip() + "/"
     assert files == [
         "etc/asterisk/usbradioplus-processing.conf",
+        "etc/asterisk/usbradioplus.conf",
         f"usr/lib/{multiarch}asterisk/modules/chan_usbradioplus.so",
         "usr/sbin/usbradioplus-processing-tune",
         "usr/sbin/usbradioplus-rxlevel",
@@ -47,6 +48,23 @@ def test_staged_install_manifest(tmp_path):
 def test_install_preserves_existing_processing_configuration(tmp_path):
     stage = tmp_path / "stage"
     config = stage / "etc/asterisk/usbradioplus-processing.conf"
+    config.parent.mkdir(parents=True)
+    config.write_text("operator configuration\n", encoding="utf-8")
+    fixture = ROOT / "tests/fixtures/asterisk-dev"
+    environment = dict(os.environ, TMPDIR=str(tmp_path),
+                       CC=f"bash {fixture / 'fake-cc'}")
+    subprocess.run(
+        ["make", "install", f"DESTDIR={stage}", "prefix=/usr",
+         f"ASTERISK_INCLUDEDIR={fixture / 'include'}"],
+        cwd=ROOT, env=environment, check=True, text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    )
+    assert config.read_text(encoding="utf-8") == "operator configuration\n"
+
+
+def test_install_preserves_existing_channel_configuration(tmp_path):
+    stage = tmp_path / "stage"
+    config = stage / "etc/asterisk/usbradioplus.conf"
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
     fixture = ROOT / "tests/fixtures/asterisk-dev"

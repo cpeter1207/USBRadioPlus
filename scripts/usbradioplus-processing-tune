@@ -35,7 +35,7 @@ SETTINGS = {
     "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Filters"),
     "receive_bandpass_enabled": ("Receive brick-wall band-pass", "bool", None, None, "", "Filters"),
     "receive_bandpass_highpass_hz": ("Receive band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
-    "receive_bandpass_lowpass_hz": ("Receive band-pass high cutoff", "float", 20, 5000, "Hz", "Filters"),
+    "receive_bandpass_lowpass_hz": ("Receive band-pass high cutoff", "float", 20, 6000, "Hz", "Filters"),
     "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Input/output"),
     "equalizer_low_gain_db": ("Equalizer low-shelf gain", "float", -12, 12, "dB", "Equalizer"),
     "equalizer_low_frequency_hz": ("Equalizer low-shelf frequency", "float", 20, 1000, "Hz", "Equalizer"),
@@ -98,7 +98,7 @@ SETTINGS = {
     "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Filters"),
     "post_limiter_lowpass_hz": ("Post-limiter low-pass cutoff", "float", 5000, 20000, "Hz", "Filters"),
     "splatter_filter_highpass_hz": ("Transmit band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
-    "splatter_filter_lowpass_hz": ("Transmit band-pass high cutoff", "float", 20, 5000, "Hz", "Filters"),
+    "splatter_filter_lowpass_hz": ("Transmit band-pass high cutoff", "float", 20, 6000, "Hz", "Filters"),
     "output_gain_db": ("Output gain", "float", -30, 30, "dB", "Input/output"),
 }
 

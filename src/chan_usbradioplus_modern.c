@@ -388,7 +388,7 @@ struct chan_usbradio_pvt {
 	double plus_txlpf_hz, plus_txhpf_hz;
 
 	char rxctcssrelax;
-	float rxctcssgain;
+	float rxctcssadj;
 
 	char txctcssdefault[16]; /* for repeater operation */
 	char rxctcssfreqs[512];	 /* a string */
@@ -929,6 +929,7 @@ static int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config
 	o->txmixaset = 500;
 	o->txmixbset = 500;
 	o->rxvoiceadj = 0.5;
+	o->rxctcssadj = 1.0;
 	o->txctcssadj = 200;
 	o->rxsquelchadj = 500;
 	o->txslimsp = DEFAULT_TX_SOFT_LIMITER_SETPOINT;
@@ -958,6 +959,7 @@ static int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config
 		CV_UINT("txmixaset", o->txmixaset);
 		CV_UINT("txmixbset", o->txmixbset);
 		CV_F("rxvoiceadj", store_rxvoiceadj(o, v->value));
+		CV_F("rxctcssadj", sscanf(v->value, N_FMT(f), &o->rxctcssadj));
 		CV_UINT("txctcssadj", o->txctcssadj);
 		CV_UINT("rxsquelchadj", o->rxsquelchadj);
 		CV_UINT("txslimsp", o->txslimsp);
@@ -1429,6 +1431,7 @@ static void *hidthread(void *arg)
 
 			*(o->radio->prxSquelchAdjust) = ((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
 			*(o->radio->prxVoiceAdjust) = o->rxvoiceadj * M_Q8;
+			*(o->radio->prxCtcssAdjust) = o->rxctcssadj * M_Q8;
 			o->radio->rxCtcss->relax = o->rxctcssrelax;
 			o->radio->txTocType = o->txtoctype;
 
@@ -2432,6 +2435,11 @@ static void *usbradio_audio_thread(void *arg)
 			urp_radio_process(o->radio, o->plus_squelch_native,
 				(i16 *) (o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
 				o->usbradio_write_buf);
+			if (o->radio->b.ctcssRxEnable && o->radio->rxCtcss->decode != o->rxctcssdecode) {
+				ast_debug(3, "Channel %s: rxctcssdecode = %i.\n", o->name, o->radio->rxCtcss->decode);
+				o->rxctcssdecode = o->radio->rxCtcss->decode;
+				ast_copy_string(o->rxctcssfreq, o->radio->rxctcssfreq, sizeof(o->rxctcssfreq));
+			}
 			usbradioplus_native_tick(o);
 
 			if (lastpttout != o->radio->txPttOut) {
@@ -2514,12 +2522,6 @@ static void *usbradio_audio_thread(void *arg)
 				ast_debug(3, "Channel %s: rxcarrierdetect = %i.\n", o->name, cd);
 			}
 			o->rx_cos_active = cd;
-
-			if (o->radio->b.ctcssRxEnable && o->radio->rxCtcss->decode != o->rxctcssdecode) {
-				ast_debug(3, "Channel %s: rxctcssdecode = %i.\n", o->name, o->radio->rxCtcss->decode);
-				o->rxctcssdecode = o->radio->rxCtcss->decode;
-				ast_copy_string(o->rxctcssfreq, o->radio->rxctcssfreq, sizeof(o->rxctcssfreq));
-			}
 
 #ifndef HAVE_XPMRX
 			if (!o->radio->b.ctcssRxEnable ||
@@ -3692,11 +3694,12 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 {
 	const int settingmin = 1;
 	const int settingstart = 2;
-	const int maxtries = 12;
+	const int maxtries = 48;
 
 	int target;
-	int tolerance = 2750;
+	int tolerance;
 	int setting = 0, tries = 0, tmpdiscfactor, meas, measnoise;
+	int bestsetting = 0, bestmeas = 0;
 	int micmax, spkrmax, micplaymax;
 	float settingmax, f;
 
@@ -3704,10 +3707,17 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		ast_cli(fd, "ERROR: usbradioplus.conf rxdemod=speaker vs. carrierfrom=dsp \n");
 	}
 
-	if (o->rxdemod == RX_AUDIO_FLAT) {
+	/* Menu option 2 requests both flags: put discriminator noise at the PCM
+	 * rail before deriving the DSP squelch threshold from that noise. */
+	if (setsql && intflag) {
+		target = 32767;
+		tolerance = 1;
+	} else if (o->rxdemod == RX_AUDIO_FLAT) {
 		target = 27000;
+		tolerance = 2750;
 	} else {
 		target = 23000;
+		tolerance = 2750;
 	}
 
 	usbradio_mixer_limits(o, &micmax, &spkrmax, &micplaymax);
@@ -3744,6 +3754,10 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		meas = o->radio->spsMeasure->apeak;
 		o->radio->spsMeasure->enabled = 0;
 
+		if (setsql && intflag && meas <= target && meas > bestmeas) {
+			bestmeas = meas;
+			bestsetting = setting;
+		}
 		if (!meas) {
 			meas++;
 		}
@@ -3765,8 +3779,23 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		} else if (setting > settingmax) {
 			setting = settingmax;
 		}
+		/* Reserve the final measurement for the hardware maximum so an input
+		 * that cannot reach the rail still selects its highest attainable peak. */
+		if (setsql && intflag && tries == maxtries - 2
+			&& bestmeas < target - tolerance) {
+			setting = (int) settingmax;
+		}
 
 		tries++;
+	}
+	if (setsql && intflag && bestmeas) {
+		setting = bestsetting;
+		meas = bestmeas;
+		usbradio_set_rx_mixer(o, setting);
+		if (ast_radio_wait_or_poll(fd, 100, intflag)) {
+			o->radio->b.tuning = 0;
+			return;
+		}
 	}
 
 	/* Measure HF Noise */
@@ -3791,10 +3820,15 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 
 	ast_cli(fd, "DONE tries=%i, setting=%i, meas=%i, sqnoise=%i\n", tries, ((setting * 1000) + (micmax / 2)) / micmax, meas, measnoise);
 
-	if (meas < (target - tolerance) || meas > (target + tolerance)) {
+	if ((setsql && intflag && !bestmeas)
+		|| (!(setsql && intflag)
+			&& (meas < target - tolerance || meas > target + tolerance))) {
 		ast_cli(fd, "ERROR: RX INPUT ADJUST FAILED.\n");
 	} else {
 		ast_cli(fd, "INFO: RX INPUT ADJUST SUCCESS.\n");
+		if (setsql && intflag && meas < target - tolerance) {
+			ast_cli(fd, "INFO: Using highest achievable RX noise peak of %d.\n", meas);
+		}
 		o->rxmixerset = ((setting * 1000) + (micmax / 2)) / micmax;
 
 		if (o->rxcdtype == CD_XPMR_NOISE) {
@@ -4760,6 +4794,7 @@ static void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 		ast_cli(fd, "ERROR: RX CTCSS GAIN ADJUST FAILED.\n");
 	} else {
 		ast_cli(fd, "INFO: RX CTCSS GAIN ADJUST SUCCESS.\n");
+		o->rxctcssadj = setting;
 	}
 
 	if (o->rxcdtype == CD_XPMR_NOISE) {
@@ -4922,6 +4957,7 @@ static void tune_write(struct chan_usbradio_pvt *o)
 		CONFIG_UPDATE_INT(txmixaset);
 		CONFIG_UPDATE_INT(txmixbset);
 		CONFIG_UPDATE_FLOAT(rxvoiceadj);
+		CONFIG_UPDATE_FLOAT(rxctcssadj);
 		CONFIG_UPDATE_INT(txctcssadj);
 		CONFIG_UPDATE_INT(rxsquelchadj);
 		CONFIG_UPDATE_INT(fever);
@@ -5675,6 +5711,7 @@ static struct chan_usbradio_pvt *store_config(struct ast_config *cfg, const char
 
 		*(o->radio->prxSquelchAdjust) = ((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
 		*(o->radio->prxVoiceAdjust) = o->rxvoiceadj * M_Q8;
+		*(o->radio->prxCtcssAdjust) = o->rxctcssadj * M_Q8;
 		o->radio->rxCtcss->relax = o->rxctcssrelax;
 		o->radio->txTocType = o->txtoctype;
 
@@ -5907,9 +5944,9 @@ static int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	urp_deemphasis_configure(&o->plus_deemphasis, URP_RATE_NATIVE,
 		tau_us, o->rxdemod == RX_AUDIO_FLAT);
 	urp_preemphasis_configure(&o->plus_preemphasis, URP_RATE_NATIVE,
-		tau_us, o->txprelim && !o->txlimonly);
+		tau_us, o->txprelim);
 	urp_preemphasis_configure(&o->plus_link_preemphasis, URP_RATE_NATIVE,
-		tau_us, o->txprelim && !o->txlimonly);
+		tau_us, o->txprelim);
 	txagc_core_init(&o->plus_final_core);
 	txagc_avfilter_init(&o->plus_local_avfilter);
 	txagc_avfilter_init(&o->plus_rx_filter);
@@ -6466,7 +6503,7 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		}
 		/* Pre-emphasis belongs to the native composite graph regardless of which
 		 * source supplied the audio. */
-		final_cfg.preemphasis_enabled = o->txprelim && !o->txlimonly;
+		final_cfg.preemphasis_enabled = o->txprelim;
 		final_cfg.emphasis_corner_hz = o->plus_emphasis_corner_hz;
 		final_cfg.emphasis_reference_hz = 1000.0;
 		/* Preserve txboost as a relative 6 dB increase above the native
