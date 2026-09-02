@@ -4,11 +4,8 @@ usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
 .SH SYNOPSIS
 .B usbradioplus-tune
 .br
-.B usbradioplus-rxlevel
-[menu|calibrate [seconds]|status|cancel|save]
-.br
 .B usbradioplus-processing-tune
-[--check] [--offline] [--config path] [--lock path]
+[-n node] [--check] [--offline] [--config path] [--lock path]
 .SH DESCRIPTION
 These utilities configure USBRadioPlus from a keyboard-operated terminal.
 Run them as root on the Asterisk node. Changes made by the interactive menus
@@ -31,8 +28,9 @@ starting point. This requires flat discriminator audio and should be followed
 by receiver-level and squelch verification.
 .TP
 .B Set RX voice level using display
-Show a live deviation bar, then accept a 0--999 receive voice setting. Press
-any key to leave the live display and reach the setting prompt.
+Show a live deviation bar, then accept a 0--999 receive voice setting. This
+adjusts the local processing input gain. Press any key to leave the live
+display and reach the setting prompt.
 .TP
 .B Auto-detect RX CTCSS level
 Measure received CTCSS and adjust decoder level. Apply a carrier with the
@@ -56,12 +54,16 @@ Set CTCSS deviation from 0--999. When test-tone keying is enabled, the action
 keys PTT and sends CTCSS for five seconds.
 .TP
 .B Auto-detect RX voice level
-Adjust recovered voice gain from a received 1 kHz tone at 3 kHz deviation.
-This action requires flat discriminator audio and a steady calibrated signal.
+Adjust the local processing input gain from a received 1 kHz tone at 3 kHz
+deviation. This action requires flat discriminator audio and a steady
+calibrated signal.
 .TP
 .B Echo mode
-Return received audio to the transmitter for alignment. Disable it when the
-test is complete.
+Record a received transmission and return it to the transmitter for alignment.
+With software duplex-3 local repeat active, echo uses the native 48 kHz receive
+and transmit path. Otherwise it retains the 8 kHz Asterisk-path playback used
+by chan_usbradio. Keying, maximum duration, and start and stop behavior are the
+same for both paths. Disable echo when the test is complete.
 .TP
 .B Flash transmitter
 Send three one-second PTT and 1 kHz tone bursts separated by 1.5 seconds.
@@ -100,28 +102,15 @@ to return. TX statistics report that PTT is clear when the transmitter is idle.
 Write device selection, signal sources, mixer and radio levels, squelch,
 delays, boosts, transmitter processing selections, and limiter setpoint to
 usbradioplus.conf. EEPROM values are also written when EEPROM storage is enabled.
-.SH USBRADIOPLUS-RXLEVEL
-.TP
-.B menu
-Open the numbered receive calibration menu. This is the default action.
-.TP
-.B calibrate [seconds]
-Collect closed-squelch noise and at least one second of COR-qualified receive
-audio for 2--600 seconds. The default is 30 seconds. On completion, report the
-recommended pre- and post-squelch gains, peaks, and ADC rail counts, then save
-the gains.
-.TP
-.B status
-Report whether calibration is running, current gain recommendations, noise and
-signal peaks, sample counts, and ADC rail counts.
-.TP
-.B cancel
-Stop a running calibration without changing gains.
-.TP
-.B save
-Write the current pre- and post-squelch gain values to usbradioplus.conf.
 .SH USBRADIOPLUS-PROCESSING-TUNE
 The processing menu selects local receiver, linked audio, or voice and telemetry.
+If its configuration file is absent, it installs a copy of the shipped default
+before opening. The Radio calibration and continuous meters entry opens the
+canonical radio-tuning menu. It therefore provides the same device selection
+and swapping, automatic RX calibration, live RX level adjustment, CTCSS
+calibration, service-monitor transmit adjustment, auxiliary-output adjustment,
+test-tone keying, transmitter flash, echo control, and continuous RX, TX, COS,
+CTCSS, and PTT displays without duplicating their implementations.
 Only controls applicable to the selected source are shown. Stage toggles use
 single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
 pages validate both the documented range and dependent relationships such as a
@@ -134,10 +123,15 @@ it enables or disables the transmit brick-wall band-pass and post-limiter
 low-pass and sets their cutoff frequencies. Dynamics pages contain the
 high-pass and low-pass detector filters for AGC, expansion, and compression.
 .PP
-Each accepted edit is written atomically and reloaded. If validation or reload
-fails, the preceding file and active settings are restored. The main menu can
-create a timestamped backup or restore the configuration from the start of the
-session.
+Each accepted edit is written atomically and reloaded so it can be evaluated
+live. If validation or reload fails, the preceding file and active settings are
+restored. Save commits the current processing session. Discard restores the
+last saved state, including when exiting. A separate action writes current
+radio tuning to usbradioplus.conf and, when enabled, the interface EEPROM. The
+main menu can also create a timestamped backup.
+.TP
+.B -n node
+Select the active RadioPlus channel before opening either tuning interface.
 .TP
 .B --check
 Validate prerequisites and confirm that the configured local, link, and

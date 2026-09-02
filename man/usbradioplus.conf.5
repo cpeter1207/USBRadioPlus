@@ -53,15 +53,12 @@ more than one interface.
 .B hdwtype = 0|1
 Select the interface wiring.  Use 0 for the usual modified USB sound fob and 1
 for a Dingotel/Sph interface.  Default is 0.
+.PP
+When the selected interface provides a CM1xx input attenuator, the driver
+always bypasses it.
 .TP
 .B eeprom = 0|1
 Read and write tuning values in a supported interface EEPROM.  Default is 1.
-.TP
-.B rxboost = yes|no
-Remove the CM1xx input attenuator for approximately 20 dB more receive gain.
-.TP
-.B txboost = yes|no
-Add 6 dB ahead of transmit processing.
 .TP
 .B frags = integer
 Requested USB audio fragment count.  Change only when diagnosing a driver or
@@ -100,6 +97,9 @@ uses received voice energy; and
 or
 .B ppinvert
 uses the parallel port.
+This setting is used when
+.B hardware_cos_assignment
+is absent from usbradioplus-processing.conf.
 .TP
 .B voxhangtime = integer
 Hold carrier detection after VOX energy ends.  Default is 2000.
@@ -124,9 +124,6 @@ simplex station to prevent relay racing.  Default is 0.
 After PTT releases, ignore the receiver for this many 20 ms intervals.  This can
 exclude a linked repeater's transmitter hang time.  Default is 0.
 .TP
-.B rxgain = number
-Additional receive gain multiplier.
-.TP
 .B rxpolarity = yes|no
 Invert the received radio-signaling bit polarity.
 .SH CTCSS AND OTHER LOW-SPEED SIGNALING
@@ -142,10 +139,15 @@ use the interface input; parallel-port forms use the configured input pin.
 .TP
 .B rxctcssfreqs = list
 Comma-separated receive CTCSS tones.  Frequencies must be supported by the
-decoder.
+decoder. This setting is used when
+.B hardware_rx_ctcss_frequencies
+is absent from usbradioplus-processing.conf.
 .TP
 .B txctcssfreqs = list
-Comma-separated transmit CTCSS tones corresponding to the receive list.
+Comma-separated transmit CTCSS tones corresponding to the receive list. This
+setting is used when
+.B hardware_tx_ctcss_frequencies
+is absent from usbradioplus-processing.conf.
 .TP
 .B txctcssdefault = frequency
 Tone transmitted when no received tone selects another entry.
@@ -189,6 +191,8 @@ is CTCSS,
 combines both, and
 .B auxvoice
 is an unkeyed monitor feed.
+These settings are used when the corresponding hardware output assignment is
+absent from usbradioplus-processing.conf.
 .TP
 .B invertptt = yes|no
 Invert the USB PTT output.  Default operation grounds the output to transmit.
@@ -248,32 +252,6 @@ bandwidth with a service monitor.
 .B emphasis_corner_hz = frequency
 Set the pre-emphasis and de-emphasis corner.  Default is 212.206590789 Hz,
 corresponding to a 750 microsecond time constant.
-.TP
-.B presquelch_gain_db, postsquelch_gain_db = dB
-Apply gain before or after the receive squelch gate.  Both default to 0 dB.
-.TP
-.B tx_ceiling_dbfs = dBFS
-Set the transmit PCM ceiling.  Default is 0 dBFS; conversion retains one PCM
-code of rail protection.
-.TP
-.B preemphasis_headroom_db = dB
-Provide working headroom inside the pre-emphasis stage.  Default is 24 dB.
-.TP
-.B rxlevel_presquelch_target_dbfs, rxlevel_post_target_dbfs = dBFS
-Set the calibration targets used by the receive-level utility before and after
-squelch processing.  Default is -1 dBFS for each.
-.TP
-.B nativeparrot = yes|no
-Enable the local native-rate test recorder and playback function.  Default is
-.BR no .
-.TP
-.B parrotmaxseconds = integer
-Limit a native parrot recording.  Default is 30 seconds.
-.TP
-.B legacyaudioscaling = yes|no
-Select the alternate PCM level scale for installations calibrated to it.
-Default is
-.BR yes .
 .SH GPIO AND PARALLEL PORT
 .TP
 .B clipledgpio = 0..8
@@ -341,16 +319,23 @@ These values are normally written by
 .BR usbradioplus-tune (8).
 .TP
 .B rxmixerset = 0..999
-Set the USB capture mixer level.
+Set the USB capture mixer level when
+.B hardware_input_gain_db
+is absent.
 .TP
 .B rxvoiceadj = number
-Set recovered voice level; 0.5 is unity.
+Set recovered voice level when the local-chain
+.B input_gain_db
+option is absent from
+.BR usbradioplus-processing.conf (5).
+The value is converted to decibels; 0.5 is unity.
 .TP
 .B rxsquelchadj = 0..999
 Set the DSP carrier-squelch threshold.
 .TP
 .B txmixaset, txmixbset = 0..999
-Set left- and right-channel USB playback levels.
+Set left- and right-channel USB playback levels when the corresponding hardware
+output gain is absent from usbradioplus-processing.conf.
 .TP
 .B txctcssadj = 0..999
 Set transmitted CTCSS deviation.

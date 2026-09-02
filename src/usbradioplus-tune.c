@@ -42,8 +42,6 @@
  *		j - save current settings for the selected node
  *		k - change echo mode
  *		l - generate test tone
- *		m - change rxboost
- *		n - change txboost
  *		o - change carrier from
  *		p - change ctcss from
  *		q - change rx on delay
@@ -884,7 +882,7 @@ static int menu_get_integer(const char *name, int current, int minimum, int maxi
 static void options_menu(void)
 {
 	int flatrx = 0, txhasctcss = 0, echomode = 0;
-	int rxboost = 0, txboost = 0, carrierfrom = 0, ctcssfrom = 0;
+	int reserved_field_1 = 0, reserved_field_2 = 0, carrierfrom = 0, ctcssfrom = 0;
 	int rxondelay = 0, txoffdelay = 0, txprelim = 0, txlimonly = 0;
 	int rxdemod = 0, txmixa = 0, txmixb = 0, txslimsp = 12000;
 	int duplex3 = 0, duplex3mode = 0;
@@ -896,11 +894,13 @@ static void options_menu(void)
 		if (astgetline(COMMAND_PREFIX "tune menu-support 0", str, sizeof(str) - 1)) {
 			return;
 		}
-		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode, &rxboost, &txboost,
+		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode, &reserved_field_1, &reserved_field_2,
 				&carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb) != 14) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			return;
 		}
+		(void) reserved_field_1;
+		(void) reserved_field_2;
 		if (!astgetline(COMMAND_PREFIX "tune menu-support L", str, sizeof(str) - 1)) {
 			sscanf(str, "TX soft limiting setpoint currently set to: %d", &txslimsp);
 		}
@@ -915,15 +915,13 @@ static void options_menu(void)
 		}
 
 		printf("\nOptions Menu\n");
-		printf("1) Toggle RX Boost (currently '%s')\n", rxboost ? "enabled" : "disabled");
-		printf("2) Toggle TX Boost (currently '%s')\n", txboost ? "enabled" : "disabled");
-		printf("3) Change RX Demodulation (currently '%s')\n", demodulation_type[rxdemod]);
-		printf("4) Change RX On Delay (currently '%d')\n", rxondelay);
-		printf("5) Change TX Off Delay (currently '%d')\n", txoffdelay);
-		printf("6) Toggle TX Prelimiting (currently '%s')\n", txprelim ? "enabled" : "disabled");
-		printf("7) Toggle TX Limiting Only (currently '%s')\n", txlimonly ? "enabled" : "disabled");
-		printf("8) Change TX Mixer A (currently '%s')\n", mixer_type[txmixa]);
-		printf("9) Change Tx Mixer B (currently '%s')\n", mixer_type[txmixb]);
+		printf("1) Change RX Demodulation (currently '%s')\n", demodulation_type[rxdemod]);
+		printf("2) Change RX On Delay (currently '%d')\n", rxondelay);
+		printf("3) Change TX Off Delay (currently '%d')\n", txoffdelay);
+		printf("4) Toggle TX Prelimiting (currently '%s')\n", txprelim ? "enabled" : "disabled");
+		printf("5) Toggle TX Limiting Only (currently '%s')\n", txlimonly ? "enabled" : "disabled");
+		printf("6) Change TX Mixer A (currently '%s')\n", mixer_type[txmixa]);
+		printf("7) Change Tx Mixer B (currently '%s')\n", mixer_type[txmixb]);
 		printf("L) Change TX Soft Limiter Setpoint (currently '%d')\n", txslimsp);
 		printf("D) Change Duplex 3 Repeat Level (currently '%d')\n", duplex3);
 		printf("M) Change Duplex 3 Mode (currently '%s')\n", duplex3_mode_type[duplex3mode]);
@@ -944,46 +942,24 @@ static void options_menu(void)
 		}
 
 		switch (str[0]) {
-		case '1': /* toggle rxboost */
-			if (rxboost) {
-				if (astgetresp(COMMAND_PREFIX "tune menu-support m0")) {
-					exit(255);
-				}
-			} else {
-				if (astgetresp(COMMAND_PREFIX "tune menu-support m1")) {
-					exit(255);
-				}
-			}
-			break;
-		case '2': /* toggle txboost */
-			if (txboost) {
-				if (astgetresp(COMMAND_PREFIX "tune menu-support n0")) {
-					exit(255);
-				}
-			} else {
-				if (astgetresp(COMMAND_PREFIX "tune menu-support n1")) {
-					exit(255);
-				}
-			}
-			break;
-		case '3': /* select rx demodulation */
+		case '1': /* select rx demodulation */
 			result = menu_select_value("RX Demodulation", demodulation_type, 3, rxdemod);
 			if (result > 0) {
 				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support u%d", result - 1);
 				astgetresp(str);
 			}
 			break;
-		case '4': /* set rx on delay */
+		case '2': /* set rx on delay */
 			result = menu_get_delay("RX On Delay", "q", rxondelay);
 			snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support q%d", result);
 			astgetresp(str);
 			break;
-		case '5': /* set tx off delay */
+		case '3': /* set tx off delay */
 			result = menu_get_delay("TX Off Delay", "r", txoffdelay);
 			snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support r%d", result);
 			astgetresp(str);
 			break;
-		case '6': /* toggle txprelim */
+		case '4': /* toggle txprelim */
 			if (txprelim) {
 				if (astgetresp(COMMAND_PREFIX "tune menu-support s0")) {
 					exit(255);
@@ -994,7 +970,7 @@ static void options_menu(void)
 				}
 			}
 			break;
-		case '7': /* toggle txlimonly */
+		case '5': /* toggle txlimonly */
 			if (txlimonly) {
 				if (astgetresp(COMMAND_PREFIX "tune menu-support t0")) {
 					exit(255);
@@ -1005,14 +981,14 @@ static void options_menu(void)
 				}
 			}
 			break;
-		case '8': /* select tx mixer a */
+		case '6': /* select tx mixer a */
 			result = menu_select_value("TX Mixer A", mixer_type, 5, txmixa);
 			if (result > 0) {
 				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support w%d", result - 1);
 				astgetresp(str);
 			}
 			break;
-		case '9': /* select tx mixer b */
+		case '7': /* select tx mixer b */
 			result = menu_select_value("TX Mixer B", mixer_type, 5, txmixb);
 			if (result > 0) {
 				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support x%d", result - 1);
@@ -1056,7 +1032,7 @@ static void options_menu(void)
 int main(int argc, char *argv[])
 {
 	int flatrx = 0, txhasctcss = 0, keying = 0, echomode = 0;
-	int rxboost = 0, txboost = 0, carrierfrom = 0, ctcssfrom = 0;
+	int reserved_field_1 = 0, reserved_field_2 = 0, carrierfrom = 0, ctcssfrom = 0;
 	int rxondelay = 0, txoffdelay = 0, txprelim = 0, txlimonly = 0;
 	int rxdemod = 0, txmixa = 0, txmixb = 0;
 	int rxmixerset = 0, rxsquelchadj = 0;
@@ -1102,11 +1078,13 @@ int main(int argc, char *argv[])
 			exit(255);
 		}
 		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode,
-				&rxboost, &txboost, &carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb,
+				&reserved_field_1, &reserved_field_2, &carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb,
 				&rxmixerset, &rxvoiceadj, &rxsquelchadj, &txmixaset, &txmixbset, &txctcssadj, &micplaymax, &spkrmax, &micmax) != 23) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			exit(255);
 		}
+		(void) reserved_field_1;
+		(void) reserved_field_2;
 		printf("\n");
 
 		/* print selected USB device  at the top of our menu*/

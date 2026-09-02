@@ -15,9 +15,132 @@ from datetime import datetime
 
 CONFIG = "/etc/asterisk/usbradioplus-processing.conf"
 LOCK = "/run/lock/usbradioplus-processing-tune.lock"
+RADIO_TUNE = "usbradioplus-tune"
+NODE = None
+DEFAULT_CONFIG_CANDIDATES = (
+    "/usr/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
+    "/usr/local/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 "examples", "usbradioplus-processing.conf.sample"),
+)
 
 SOURCES = [("local", "Local receiver"), ("link", "Linked audio"),
            ("voice_telemetry", "Voice + telemetry")]
+
+HARDWARE_SETTINGS = {
+    "hardware_input_gain_db": ("Hardware input gain", "gain"),
+    "hardware_output_a_gain_db": ("Hardware output A gain", "gain"),
+    "hardware_output_b_gain_db": ("Hardware output B gain", "gain"),
+    "hardware_output_a_assignment": ("Hardware output A assignment", "assignment"),
+    "hardware_output_b_assignment": ("Hardware output B assignment", "assignment"),
+    "hardware_cos_assignment": ("COS assignment", "cos"),
+    "hardware_rx_ctcss_frequencies": ("Receive CTCSS frequencies", "frequencies"),
+    "hardware_tx_ctcss_frequencies": ("Transmit CTCSS frequencies", "frequencies"),
+	"hardware_device_identifier": ("USB device identifier", "text"),
+	"hardware_serial": ("USB serial number", "text"),
+	"hardware_interface_type": ("Interface wiring type", "binary"),
+	"hardware_eeprom_enabled": ("EEPROM tuning storage", "bool"),
+	"hardware_audio_fragment_count": ("Audio fragment count", "integer"),
+	"hardware_audio_queue_size": ("Audio queue size", "integer"),
+	"hardware_rx_cpu_saver_enabled": ("Receive CPU saver", "bool"),
+	"hardware_tx_cpu_saver_enabled": ("Transmit CPU saver", "bool"),
+	"hardware_rx_audio_source": ("Receiver audio source", "rx_audio_source"),
+	"hardware_rx_ctcss_source": ("Receive CTCSS source", "rx_ctcss_source"),
+	"hardware_vox_hang_ms": ("VOX hang time", "integer"),
+	"hardware_vox_threshold": ("VOX threshold", "integer"),
+	"hardware_noise_squelch_hysteresis": ("Noise squelch hysteresis", "integer"),
+	"hardware_noise_filter_type": ("Noise detector filter type", "integer"),
+	"hardware_squelch_delay": ("Receive squelch delay", "integer"),
+	"hardware_rx_on_delay_frames": ("Receive-on delay", "integer"),
+	"hardware_rx_polarity_inverted": ("Receive signaling polarity inverted", "bool"),
+	"hardware_squelch_level": ("DSP squelch level", "level"),
+	"hardware_rx_ctcss_level": ("Receive CTCSS decoder level", "float"),
+	"hardware_rx_ctcss_override_enabled": ("Receive CTCSS override", "bool"),
+	"hardware_rx_ctcss_relax": ("Receive CTCSS relax", "integer"),
+	"hardware_tx_ctcss_default_hz": ("Default transmit CTCSS frequency", "float"),
+	"hardware_tx_ctcss_level": ("Transmit CTCSS level", "level"),
+	"hardware_ctcss_turnoff_mode": ("CTCSS turn-off mode", "ctcss_turnoff"),
+	"hardware_dcs_rx_polarity_inverted": ("Receive DCS polarity inverted", "bool"),
+	"hardware_dcs_tx_polarity_inverted": ("Transmit DCS polarity inverted", "bool"),
+	"hardware_lsd_rx_polarity_inverted": ("Receive low-speed-data polarity inverted", "bool"),
+	"hardware_lsd_tx_polarity_inverted": ("Transmit low-speed-data polarity inverted", "bool"),
+	"hardware_tx_preemphasis_limiter_enabled": ("Transmit pre-emphasis and limiter", "bool"),
+	"hardware_tx_limiter_only_enabled": ("Transmit limiter only", "bool"),
+	"hardware_tx_soft_limiter_setpoint": ("Compatibility soft-limiter setpoint", "softlimit"),
+	"hardware_tx_settle_ms": ("Transmit settle time", "integer"),
+	"hardware_tx_rx_blanking_ms": ("Transmit/receive blanking time", "integer"),
+	"hardware_tx_off_delay_frames": ("Transmit-off receive delay", "integer"),
+	"hardware_tx_polarity_inverted": ("Transmit signaling polarity inverted", "bool"),
+	"hardware_ptt_inverted": ("PTT output inverted", "bool"),
+	"hardware_rx_frequency_hz": ("Receiver frequency", "integer"),
+	"hardware_tx_frequency_hz": ("Transmitter frequency", "integer"),
+	"hardware_repeater_number": ("Repeater signaling number", "integer"),
+	"hardware_area": ("Signaling area", "integer"),
+	"hardware_user_key": ("Signaling user key", "text"),
+	"hardware_idle_interval": ("Signaling idle interval", "integer"),
+	"hardware_turnoff_count": ("Signaling turn-off count", "integer"),
+	"hardware_voter_reporting": ("Voter reporting setting", "integer"),
+	"hardware_clip_led_gpio": ("Clipping LED GPIO", "gpio"),
+    "hardware_gpio_1_mode": ("GPIO 1 mode", "gpio_mode"),
+    "hardware_gpio_2_mode": ("GPIO 2 mode", "gpio_mode"),
+    "hardware_gpio_3_mode": ("GPIO 3 mode", "gpio_mode"),
+    "hardware_gpio_4_mode": ("GPIO 4 mode", "gpio_mode"),
+    "hardware_gpio_5_mode": ("GPIO 5 mode", "gpio_mode"),
+    "hardware_gpio_6_mode": ("GPIO 6 mode", "gpio_mode"),
+    "hardware_gpio_7_mode": ("GPIO 7 mode", "gpio_mode"),
+    "hardware_gpio_8_mode": ("GPIO 8 mode", "gpio_mode"),
+    "hardware_parallel_port_device": ("Parallel-port device", "text"),
+    "hardware_parallel_port_base_address": ("Parallel-port base address", "address"),
+    "hardware_parallel_pin_2_assignment": ("Parallel pin 2 assignment", "parallel_output"),
+    "hardware_parallel_pin_3_assignment": ("Parallel pin 3 assignment", "parallel_output"),
+    "hardware_parallel_pin_4_assignment": ("Parallel pin 4 assignment", "parallel_output"),
+    "hardware_parallel_pin_5_assignment": ("Parallel pin 5 assignment", "parallel_output"),
+    "hardware_parallel_pin_6_assignment": ("Parallel pin 6 assignment", "parallel_output"),
+    "hardware_parallel_pin_7_assignment": ("Parallel pin 7 assignment", "parallel_output"),
+    "hardware_parallel_pin_8_assignment": ("Parallel pin 8 assignment", "parallel_output"),
+    "hardware_parallel_pin_9_assignment": ("Parallel pin 9 assignment", "parallel_output"),
+    "hardware_parallel_pin_10_assignment": ("Parallel pin 10 assignment", "parallel_input"),
+    "hardware_parallel_pin_12_assignment": ("Parallel pin 12 assignment", "parallel_input"),
+    "hardware_parallel_pin_13_assignment": ("Parallel pin 13 assignment", "parallel_input"),
+    "hardware_parallel_pin_15_assignment": ("Parallel pin 15 assignment", "parallel_input"),
+    "hardware_emphasis_corner_hz": ("Emphasis corner frequency", "emphasis"),
+}
+
+ASTERISK_SETTINGS = {
+    "asterisk_jitter_buffer_enabled": ("Jitter buffer", "bool"),
+    "asterisk_jitter_buffer_max_size_ms": ("Maximum jitter-buffer size", "integer"),
+    "asterisk_jitter_buffer_resync_threshold_ms": ("Jitter-buffer resync threshold", "integer"),
+    "asterisk_jitter_buffer_implementation": ("Jitter-buffer implementation", "jitter_impl"),
+    "asterisk_jitter_buffer_logging_enabled": ("Jitter-buffer frame logging", "bool"),
+    "asterisk_jitter_buffer_force_enabled": ("Force jitter-buffer use", "bool"),
+    "asterisk_jitter_buffer_target_extra_ms": ("Adaptive target extra buffering", "integer"),
+    "asterisk_jitter_buffer_video_sync_enabled": ("Synchronize video to buffered audio", "bool"),
+}
+
+DUPLEX_SETTINGS = {
+    "duplex_radio_mode": ("Radio duplex mode", "binary"),
+    "duplex_local_repeat_level": ("Local repeat level", "level"),
+    "duplex_local_repeat_mode": ("Local repeat mode", "duplex_mode"),
+}
+
+GENERAL_SETTINGS = {"channel_enabled": ("Radio channel enabled", "bool")}
+
+DIAGNOSTICS_SETTINGS = {
+    "diagnostics_trace_type": ("Trace type", "integer"),
+    "diagnostics_trace_level": ("Trace level", "integer"),
+    "diagnostics_fever": ("Low-level diagnostic setting", "integer"),
+}
+
+CHOICES = {
+    "rx_audio_source": (("no", "No receiver audio"), ("speaker", "De-emphasized speaker audio"), ("flat", "Flat discriminator audio")),
+    "rx_ctcss_source": (("no", "No CTCSS indication"), ("usb", "USB input, active high"), ("usbinvert", "USB input, active low"), ("dsp", "Native CTCSS decoder"), ("pp", "Parallel port, active high"), ("ppinvert", "Parallel port, active low")),
+    "ctcss_turnoff": (("no", "No turn-off signaling"), ("phase", "Reverse burst"), ("notone", "Remove tone before PTT")),
+    "duplex_mode": (("hardware", "CM119 hardware mixer"), ("software", "Native 48 kHz path")),
+    "jitter_impl": (("fixed", "Fixed-size jitter buffer"), ("adaptive", "Adaptive jitter buffer")),
+    "gpio_mode": (("in", "Input"), ("out0", "Output, initially low"), ("out1", "Output, initially high")),
+    "parallel_output": (("out0", "Output, initially low"), ("out1", "Output, initially high"), ("ptt", "PTT output")),
+    "parallel_input": (("in", "General-purpose input"), ("cor", "Carrier indication"), ("ctcss", "CTCSS indication")),
+}
 
 # key: label, kind, minimum, maximum, units, group
 SETTINGS = {
@@ -202,6 +325,24 @@ def run(args, check=False):
                           stderr=subprocess.STDOUT, check=check).stdout
 
 
+def launch_radio_tune():
+    """Use the canonical radio tuner so calibration behavior stays single-sourced."""
+    command = [RADIO_TUNE]
+    try:
+        result = subprocess.run(command, check=False).returncode
+    except OSError as error:
+        dialog(["--msgbox", f"Unable to start {RADIO_TUNE}: {error}", "9", "70"])
+        return
+    if result:
+        dialog(["--msgbox", f"Radio tuning menu exited with status {result}.", "8", "58"])
+
+
+def complete_configuration():
+    radio = run(["asterisk", "-rx", "radioplus tune menu-support 2"])
+    processing = run(["asterisk", "-rx", "radioplus processing show"])
+    return radio.rstrip() + "\n\n" + processing.rstrip()
+
+
 def dialog(args):
     """Run whiptail, whose numbered/tagged menus match the ASL3 utilities."""
     if "--msgbox" in args and "--ok-button" not in args:
@@ -216,6 +357,20 @@ def dialog(args):
 def read_config():
     with open(CONFIG, encoding="utf-8") as stream:
         return stream.read()
+
+
+def ensure_config():
+    """Install the shipped defaults when no processing file exists."""
+    if os.path.exists(CONFIG):
+        return
+    for candidate in DEFAULT_CONFIG_CANDIDATES:
+        if os.path.isfile(candidate):
+            os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+            shutil.copyfile(candidate, CONFIG)
+            os.chmod(CONFIG, 0o644)
+            return
+    raise FileNotFoundError(
+        f"{CONFIG} is missing and the shipped default configuration was not found")
 
 
 def section_values(text, section):
@@ -253,7 +408,12 @@ def replace_value(text, section, key, value):
                 found = True
                 break
     if not found:
-        raise ValueError(f"configuration section [{section}] is missing")
+        if section in {"general", "asterisk", "hardware", "duplex", "diagnostics"}:
+            if lines and not lines[-1].endswith("\n"):
+                lines[-1] += "\n"
+            lines.extend([f"\n[{section}]\n", f"{key} = {value}\n"])
+        else:
+            raise ValueError(f"configuration section [{section}] is missing")
     return "".join(lines)
 
 
@@ -412,6 +572,15 @@ def read_key():
         termios.tcsetattr(fd, termios.TCSADRAIN, previous)
 
 
+def read_menu_key(selected, item_count):
+    """Read a key while the terminal cursor rests on the selected menu row."""
+    rows_up = item_count + 1 - selected
+    print(f"\033[s\033[{rows_up}A\r", end="", flush=True)
+    keypress = read_key()
+    print("\033[u", end="", flush=True)
+    return keypress
+
+
 def stages_menu(source):
     """Screen-reader-friendly, single-key stage toggles."""
     entries = [
@@ -445,7 +614,7 @@ def stages_menu(source):
         print(f"{back_marker} B. Back")
         current_label = "Back button" if selected == len(entries) else entries[selected][2]
         print(f"Current item: {current_label}. Command: ", end="", flush=True)
-        keypress = read_key()
+        keypress = read_menu_key(selected, len(entries))
         print()
         if keypress == "\x1b[A":
             selected = (selected - 1) % (len(entries) + 1)
@@ -471,6 +640,20 @@ def stages_menu(source):
             target = entries[selected]
         elif keypress.upper() in ("B", "Q") or keypress == "\x1b":
             return
+        elif kind == "address":
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--inputbox", f"{label}\nDecimal or 0x-prefixed address",
+                                    "10", "68", current])
+            if code:
+                continue
+            try:
+                number = int(entered, 0)
+            except ValueError:
+                dialog(["--msgbox", "Enter a decimal or 0x-prefixed address.", "7", "54"])
+                continue
+            if not 0 <= number <= 0xffffffff:
+                dialog(["--msgbox", "Address must fit in 32 bits.", "7", "48"])
+                continue
         else:
             matches = [entry for entry in entries if entry[0].upper() == keypress.upper()]
             if not matches:
@@ -513,7 +696,7 @@ def settings_menu(source, group):
         print(f"{back_marker} B. Back")
         current_label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
         print(f"Current item: {current_label}. Command: ", end="", flush=True)
-        keypress = read_key()
+        keypress = read_menu_key(selected, len(keys))
         print()
         if keypress == "\x1b[A":
             selected = (selected - 1) % (len(keys) + 1)
@@ -560,15 +743,18 @@ def source_menu(source):
         groups.remove("Filters")
     if source != "voice_telemetry":
         groups.remove("Lookahead")
+    selected = "1"
     while True:
         group_items = sum(([str(index), f"{group}: change {group.lower()} settings"]
                            for index, group in enumerate(groups, 1)), [])
         code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Back",
+                               "--default-item", selected,
                                "--menu", f"Tune {source}",
                                "19", "70", "11"] + group_items +
-                              ["S", "Show live measurements", "C", "Show active configuration"])
+                              ["S", "Show processing measurement snapshot", "C", "Show complete active configuration"])
         if code:
             return
+        selected = choice
         if choice.isdigit() and 1 <= int(choice) <= len(groups):
             group = groups[int(choice) - 1]
             if group == "Stages":
@@ -580,7 +766,138 @@ def source_menu(source):
                     run(["asterisk", "-rx", "radioplus processing stats"]), "27", "100"])
         else:
             dialog(["--ok-button", "Close", "--title", "USBRadioPlus configuration", "--msgbox",
-                    run(["asterisk", "-rx", "radioplus processing show"]), "27", "100"])
+                    complete_configuration(), "27", "100"])
+
+
+def section_options_menu(section, settings, title):
+    """Edit non-graph channel settings while preserving main-file fallbacks."""
+    keys = list(settings)
+    selected = "1"
+    while True:
+        values = section_values(read_config(), section)
+        items = []
+        for index, key in enumerate(keys, 1):
+            label, _kind = settings[key]
+            items += [str(index), f"{label}: {values.get(key, 'legacy fallback')}"]
+        code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Back",
+                               "--default-item", selected,
+                               "--menu", title, "20", "78", "12"] + items)
+        if code:
+            return
+        selected = choice
+        key = keys[int(choice) - 1]
+        label, kind = settings[key]
+        old_text = read_config()
+        current = values.get(key, "")
+        if kind == "gain":
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--inputbox", f"{label}\nRange: -30 to 30 dB; 0 dB is mixer midpoint",
+                                    "10", "68", current or "0"])
+            if code:
+                continue
+            try:
+                number = float(entered)
+            except ValueError:
+                dialog(["--msgbox", "Enter a numeric value.", "7", "40"])
+                continue
+            if number < -30 or number > 30:
+                dialog(["--msgbox", "Value must be between -30 and 30 dB.", "8", "52"])
+                continue
+            entered = f"{number:g}"
+        elif kind == "assignment":
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--radiolist", label, "13", "58", "5",
+                                    "off", "No signal", "ON" if current == "off" else "OFF",
+                                    "voice", "Voice only", "ON" if current == "voice" else "OFF",
+                                    "ctcss", "CTCSS only", "ON" if current == "ctcss" else "OFF",
+                                    "voice_ctcss", "Voice and CTCSS", "ON" if current == "voice_ctcss" else "OFF",
+                                    "auxvoice", "Auxiliary voice", "ON" if current == "auxvoice" else "OFF"])
+            if code:
+                continue
+        elif kind == "cos":
+            choices = (("no", "No COS detection"), ("usb", "USB COS, active high"),
+                       ("usbinvert", "USB COS, active low"), ("dsp", "DSP noise squelch"),
+                       ("vox", "Voice-operated squelch"), ("pp", "Parallel port, active high"),
+                       ("ppinvert", "Parallel port, active low"))
+            args = ["--ok-button", "Apply", "--cancel-button", "Cancel",
+                    "--radiolist", label, "17", "68", "7"]
+            for value, description in choices:
+                args += [value, description, "ON" if current == value else "OFF"]
+            code, entered = dialog(args)
+            if code:
+                continue
+        elif kind in CHOICES:
+            choices = CHOICES[kind]
+            args = ["--ok-button", "Apply", "--cancel-button", "Cancel",
+                    "--radiolist", label, "16", "70", str(len(choices))]
+            for value, description in choices:
+                args += [value, description, "ON" if current == value else "OFF"]
+            code, entered = dialog(args)
+            if code:
+                continue
+        elif kind == "bool":
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--radiolist", label, "10", "52", "2",
+                                    "yes", "Enabled", "ON" if current == "yes" else "OFF",
+                                    "no", "Disabled", "ON" if current == "no" else "OFF"])
+            if code:
+                continue
+        elif kind == "frequencies":
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--inputbox", f"{label}\nComma-separated CTCSS frequencies",
+                                    "10", "68", current])
+            if code:
+                continue
+            if not entered.strip():
+                dialog(["--msgbox", "Enter at least one CTCSS frequency.", "7", "52"])
+                continue
+            try:
+                frequencies = [float(value.strip()) for value in entered.split(",")]
+            except ValueError:
+                frequencies = []
+            if not frequencies or any(value <= 0 for value in frequencies):
+                dialog(["--msgbox", "Enter positive, comma-separated frequencies.", "7", "58"])
+                continue
+        else:
+            ranges = {"emphasis": (0.001, 299.999, "Hz")}
+            hint = "Enter a number" if kind in {"integer", "float", "level", "binary", "softlimit", "gpio", "emphasis"} else "Enter a value"
+            if kind in ranges:
+                low, high, units = ranges[kind]
+                hint = f"Range: {low:g} to {high:g} {units}"
+            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
+                                    "--inputbox", f"{label}\n{hint}", "10", "68", current])
+            if code:
+                continue
+            if kind in {"integer", "level", "binary", "softlimit", "gpio"}:
+                try:
+                    number = int(entered, 0)
+                except ValueError:
+                    dialog(["--msgbox", "Enter an integer value.", "7", "44"])
+                    continue
+                if kind == "level" and not 0 <= number <= 999:
+                    dialog(["--msgbox", "Value must be from 0 through 999.", "7", "48"])
+                    continue
+                limits = {"binary": (0, 1), "softlimit": (5000, 13000), "gpio": (0, 8)}
+                if kind in limits and not limits[kind][0] <= number <= limits[kind][1]:
+                    dialog(["--msgbox", f"Value must be from {limits[kind][0]} through {limits[kind][1]}.", "7", "52"])
+                    continue
+            elif kind in {"float", "emphasis"}:
+                try:
+                    number = float(entered)
+                except ValueError:
+                    dialog(["--msgbox", "Enter a numeric value.", "7", "44"])
+                    continue
+                if kind == "emphasis" and not 0.0 < number < 300.0:
+                    dialog(["--msgbox", "Value must be greater than 0 and less than 300 Hz.", "7", "58"])
+                    continue
+            elif not entered.strip():
+                dialog(["--msgbox", "The value cannot be empty.", "7", "44"])
+                continue
+        atomic_write(replace_value(old_text, section, key, entered))
+        try:
+            reload_config(old_text)
+        except RuntimeError as error:
+            dialog(["--msgbox", str(error), "12", "70"])
 
 
 def interactive():
@@ -600,25 +917,74 @@ def interactive():
         except BlockingIOError:
             sys.exit("Another USBRadioPlus processing menu is already running.")
         starting = read_config()
+        selected = "1"
         while True:
             code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Exit",
+                                   "--default-item", selected,
                                    "--menu",
-                                   "Select an audio source. Changes apply immediately.",
-                                   "17", "72", "9",
+                                   "Select a configuration section. Audio processing changes apply immediately; device construction changes require an Asterisk restart.",
+                                   "18", "72", "10",
                                    "1", "Local receiver",
                                    "2", "Linked audio",
                                    "3", "Voice + telemetry",
-                                   "S", "Show all live measurements",
+                                   "4", "Asterisk channel settings",
+                                   "5", "CM119 hardware",
+                                   "6", "Duplex operation",
+                                   "7", "General channel settings",
+                                   "8", "Diagnostics",
+                                   "T", "Radio calibration and continuous meters",
+                                   "S", "Show complete active configuration",
+                                   "W", "Save this live processing session",
+                                   "E", "Write live radio tuning and EEPROM values",
                                    "B", "Create a timestamped configuration backup",
-                                   "R", "Restore settings from the start of this session"])
+                                   "R", "Discard live changes since the last save"])
             if code:
+                if read_config() == starting:
+                    return
+                action, selected = dialog(["--ok-button", "Select", "--cancel-button", "Continue editing",
+                                           "--menu", "Live processing settings have changed.", "12", "68", "3",
+                                           "save", "Save changes and exit",
+                                           "discard", "Discard changes and exit",
+                                           "continue", "Return to the menu"])
+                if action or selected == "continue":
+                    continue
+                if selected == "discard":
+                    old = read_config()
+                    atomic_write(starting)
+                    try:
+                        reload_config(old)
+                    except RuntimeError as error:
+                        dialog(["--msgbox", str(error), "12", "70"])
+                        continue
                 return
+            selected = choice
             source_by_tag = {"1": "local", "2": "link", "3": "voice_telemetry"}
             if choice in source_by_tag:
                 source_menu(source_by_tag[choice])
+            elif choice == "4":
+                section_options_menu("asterisk", ASTERISK_SETTINGS, "Asterisk channel settings")
+            elif choice == "5":
+                section_options_menu("hardware", HARDWARE_SETTINGS, "CM119 hardware and radio signaling")
+            elif choice == "6":
+                section_options_menu("duplex", DUPLEX_SETTINGS, "Duplex operation")
+            elif choice == "7":
+                section_options_menu("general", GENERAL_SETTINGS, "General channel settings")
+            elif choice == "8":
+                section_options_menu("diagnostics", DIAGNOSTICS_SETTINGS, "Diagnostics")
+            elif choice.upper() == "T":
+                launch_radio_tune()
             elif choice.upper() == "S":
-                dialog(["--ok-button", "Close", "--title", "USBRadioPlus measurements", "--msgbox",
-                        run(["asterisk", "-rx", "radioplus processing stats"]), "27", "100"])
+                dialog(["--ok-button", "Close", "--title", "Complete USBRadioPlus configuration", "--msgbox",
+                        complete_configuration(), "27", "100"])
+            elif choice.upper() == "W":
+                starting = read_config()
+                dialog(["--ok-button", "Close", "--msgbox",
+                        "Current processing settings are saved. Use Radio calibration and continuous meters to save live radio and EEPROM tuning values.",
+                        "9", "72"])
+            elif choice.upper() == "E":
+                output = run(["asterisk", "-rx", "radioplus tune menu-support j"])
+                dialog(["--ok-button", "Close", "--title", "Radio tuning save", "--msgbox",
+                        output, "9", "70"])
             elif choice.upper() == "B":
                 path = CONFIG + ".bak." + datetime.now().strftime("%Y%m%d-%H%M%S")
                 shutil.copy2(CONFIG, path)
@@ -636,26 +1002,34 @@ def interactive():
 
 
 def main():
-    global CONFIG, LOCK
+    global CONFIG, LOCK, NODE
     parser = argparse.ArgumentParser(description="Interactive USBRadioPlus processing tuner")
     parser.add_argument("--check", action="store_true", help="validate prerequisites and configuration")
     parser.add_argument("--config", default=CONFIG, help="processing configuration path")
     parser.add_argument("--lock", default=LOCK, help="menu lock-file path")
     parser.add_argument("--offline", action="store_true",
                         help="with --check, do not require whiptail or Asterisk")
+    parser.add_argument("-n", "--node", help="select the active RadioPlus channel")
     args = parser.parse_args()
     CONFIG, LOCK = args.config, args.lock
+    NODE = args.node
+    ensure_config()
     if args.check:
-        missing = [] if args.offline else [name for name in ("whiptail", "asterisk")
+        missing = [] if args.offline else [name for name in ("whiptail", "asterisk", RADIO_TUNE)
                                            if not shutil.which(name)]
         if missing:
             sys.exit("Missing: " + ", ".join(missing))
         text = read_config()
-        absent = [section for section, _label in SOURCES if not section_values(text, section)]
+        section_names = set(re.findall(r"(?m)^\s*\[([^]]+)\]", text))
+        absent = [section for section, _label in SOURCES if section not in section_names]
         if absent:
             sys.exit("Missing configuration sections: " + ", ".join(absent))
         print("usbradioplus-processing-tune: configuration and prerequisites are valid")
         return
+    if NODE:
+        output = run(["asterisk", "-rx", f"radioplus active {NODE}"])
+        if "set to" not in output.lower():
+            sys.exit(output.strip() or f"Unable to select RadioPlus channel {NODE}")
     interactive()
 
 

@@ -8,8 +8,8 @@ front end decimates to 8 kHz while measuring discriminator noise for DSP COR.
 The same baseband copy feeds the subaudible low-pass filter and the parallel
 CTCSS tone detectors. VOX uses the decimated wideband level instead of the
 noise measurement. These paths retain the established `rxsquelch`,
-`rxctcssrelax`, `rxvoiceadj`, and `rxctcssadj` scales so existing tuning values
-remain useful.
+`rxctcssrelax`, and `rxctcssadj` scales. A configured `rxvoiceadj` is converted
+to the local processing input gain when `input_gain_db` is absent.
 
 The transmitter state machine selects the configured or received CTCSS tone,
 controls PTT settling and receiver blanking, and implements no-tone or

@@ -10,8 +10,12 @@ When the file is absent or
 is no, no processing graph is active. Every noise-reduction and dynamics stage
 is disabled unless explicitly enabled.
 .PP
-The file has four sections:
+The file has eight sections:
 .BR [general] ,
+.BR [asterisk] ,
+.BR [hardware] ,
+.BR [duplex] ,
+.BR [diagnostics] ,
 .BR [local] ,
 .BR [link] ,
 and
@@ -21,6 +25,10 @@ received from connected nodes. The voice/telemetry chain processes the mixed
 audio sent to the transmitter. Settings in
 .B [general]
 provide chain defaults; a chain section overrides them.
+.PP
+Audio graph settings and live-safe mixer or signaling controls take effect on a
+processing reload. Device selection, buffering, interface layout, and channel
+construction settings take effect when Asterisk loads the module.
 .PP
 Reload validation is strict. An unknown section, unknown option, repeated or
 unknown graph stage, option in an inapplicable chain, non-finite number, or
@@ -42,6 +50,234 @@ Enable or disable the link chain from [general].
 .PP
 All chain options below may also appear in [general]. They seed the chains to
 which each option applies.
+.SH ASTERISK OPTIONS
+The
+.B [asterisk]
+section controls Asterisk's receive jitter buffer. An absent option falls back
+to the corresponding setting in usbradioplus.conf.
+.TP
+.B asterisk_jitter_buffer_enabled = yes|no
+Enable the receive jitter buffer. The fallback is jbenable.
+.TP
+.B asterisk_jitter_buffer_max_size_ms = milliseconds
+Set the maximum jitter-buffer length. The fallback is jbmaxsize.
+.TP
+.B asterisk_jitter_buffer_resync_threshold_ms = milliseconds
+Set the timestamp discontinuity that causes resynchronization. The fallback is
+jbresyncthreshold.
+.TP
+.B asterisk_jitter_buffer_implementation = fixed|adaptive
+Select the fixed-size or adaptive jitter-buffer implementation. The fallback is
+jbimpl.
+.TP
+.B asterisk_jitter_buffer_logging_enabled = yes|no
+Enable jitter-buffer frame diagnostics. The fallback is jblog.
+.TP
+.B asterisk_jitter_buffer_force_enabled = yes|no
+Force jitter-buffer use. The fallback is jbforce.
+.TP
+.B asterisk_jitter_buffer_target_extra_ms = milliseconds
+Add target buffering when using the adaptive implementation. The fallback is
+jbtargetextra.
+.TP
+.B asterisk_jitter_buffer_video_sync_enabled = yes|no
+Delay video to remain synchronized with buffered audio. USBRadioPlus does not
+normally carry video, but Asterisk accepts this setting. The fallback is
+jbsyncvideo.
+.SH HARDWARE OPTIONS
+The
+.B [hardware]
+section configures the CM119 converter and playback-channel routing. An absent
+option falls back to the corresponding setting in usbradioplus.conf.
+.TP
+.B hardware_input_gain_db = -30..30
+Set CM119 capture gain. Zero dB is the normalized mixer midpoint, 500 on the
+0--999 scale. Values beyond the available mixer range are clamped. The fallback
+is
+.BR rxmixerset .
+.TP
+.B hardware_output_a_gain_db, hardware_output_b_gain_db = -30..30
+Set playback gain for CM119 output A or B. Zero dB is the normalized mixer
+midpoint. The fallbacks are
+.B txmixaset
+and
+.BR txmixbset .
+.TP
+.B hardware_output_a_assignment, hardware_output_b_assignment = off|voice|ctcss|voice_ctcss|auxvoice
+Route no signal, voice, CTCSS, voice mixed with CTCSS, or auxiliary voice to
+the corresponding CM119 output. The fallbacks are
+.B txmixa
+and
+.BR txmixb .
+.TP
+.B hardware_cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
+Select the carrier-operated-squelch source. The fallback is
+.B carrierfrom
+in usbradioplus.conf.
+.TP
+.B hardware_rx_ctcss_frequencies = list
+Set the comma-separated receive CTCSS frequency list. The fallback is
+.B rxctcssfreqs
+in usbradioplus.conf.
+.TP
+.B hardware_tx_ctcss_frequencies = list
+Set the comma-separated transmit CTCSS frequency list corresponding to the
+receive list. The fallback is
+.B txctcssfreqs
+in usbradioplus.conf.
+.TP
+.B hardware_emphasis_corner_hz = frequency
+Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
+be greater than zero and less than 300. The fallback is emphasis_corner_hz.
+.SS Device and buffering
+.TP
+.B hardware_device_identifier, hardware_serial
+Select the USB audio interface by device identifier or serial number. The
+fallbacks are devstr and serial.
+.TP
+.B hardware_interface_type
+Select the supported interface wiring layout. The fallback is hdwtype.
+.TP
+.B hardware_eeprom_enabled = yes|no
+Enable interface EEPROM tuning storage. The fallback is eeprom.
+.TP
+.B hardware_audio_fragment_count, hardware_audio_queue_size
+Set the PortAudio fragment count and channel-driver queue depth. The fallbacks
+are frags and queuesize.
+.TP
+.B hardware_rx_cpu_saver_enabled, hardware_tx_cpu_saver_enabled = yes|no
+Reduce idle receive or transmit DSP activity. The fallbacks are rxcpusaver and
+txcpusaver.
+.SS Receiver and squelch
+.TP
+.B hardware_rx_audio_source = no|speaker|flat
+Select the receiver audio connection. The fallback is rxdemod.
+.TP
+.B hardware_rx_ctcss_source = no|usb|usbinvert|dsp|pp|ppinvert
+Select the receive CTCSS indication source. The fallback is ctcssfrom.
+.TP
+.B hardware_vox_hang_ms, hardware_vox_threshold
+Set VOX hang time and detection threshold. The fallbacks are voxhangtime and
+rxsqvox.
+.TP
+.B hardware_noise_squelch_hysteresis, hardware_noise_filter_type
+Configure native noise-squelch hysteresis and detector filtering. The
+fallbacks are rxsqhyst and rxnoisefiltype.
+.TP
+.B hardware_squelch_delay, hardware_rx_on_delay_frames
+Set receive audio squelch-tail delay and carrier acceptance delay. The
+fallbacks are rxsquelchdelay and rxondelay.
+.TP
+.B hardware_rx_polarity_inverted = yes|no
+Invert receive signaling polarity. The fallback is rxpolarity.
+.TP
+.B hardware_squelch_level = 0..999
+Set the native carrier-squelch threshold. The fallback is rxsquelchadj.
+.TP
+.B hardware_rx_ctcss_level
+Set the receive CTCSS decoder input level. The fallback is rxctcssadj.
+.TP
+.B hardware_rx_ctcss_override_enabled = yes|no
+Start in carrier-squelch operation without requiring CTCSS. The fallback is
+rxctcssoverride.
+.TP
+.B hardware_rx_ctcss_relax
+Set CTCSS decoder tolerance. The fallback is rxctcssrelax.
+.SS Transmit signaling and timing
+.TP
+.B hardware_tx_ctcss_default_hz
+Set the default transmitted CTCSS frequency. The fallback is txctcssdefault.
+.TP
+.B hardware_tx_ctcss_level = 0..999
+Set transmitted CTCSS deviation. The fallback is txctcssadj.
+.TP
+.B hardware_ctcss_turnoff_mode = no|phase|notone
+Select CTCSS turn-off signaling. The fallback is txtoctype.
+.TP
+.B hardware_dcs_rx_polarity_inverted, hardware_dcs_tx_polarity_inverted = yes|no
+Invert receive or transmit DCS polarity. The fallbacks are dcsrxpolarity and
+dcstxpolarity.
+.TP
+.B hardware_lsd_rx_polarity_inverted, hardware_lsd_tx_polarity_inverted = yes|no
+Invert receive or transmit low-speed-data polarity. The fallbacks are
+lsdrxpolarity and lsdtxpolarity.
+.TP
+.B hardware_tx_preemphasis_limiter_enabled, hardware_tx_limiter_only_enabled = yes|no
+Select compatibility transmit pre-emphasis and limiting. The fallbacks are
+txprelim and txlimonly.
+.TP
+.B hardware_tx_soft_limiter_setpoint
+Set compatibility soft-limiter onset. The fallback is txslimsp.
+.TP
+.B hardware_tx_settle_ms, hardware_tx_rx_blanking_ms
+Set transmitter settling and signaling blanking intervals. The fallbacks are
+txsettletime and txrxblankingtime.
+.TP
+.B hardware_tx_off_delay_frames
+Delay receiver acceptance after transmitter release. The fallback is
+txoffdelay.
+.TP
+.B hardware_tx_polarity_inverted, hardware_ptt_inverted = yes|no
+Invert transmit signaling or the physical PTT output. The fallbacks are
+txpolarity and invertptt.
+.SS Radio identity and auxiliary controls
+.TP
+.B hardware_rx_frequency_hz, hardware_tx_frequency_hz
+Record receiver and transmitter frequencies. The fallbacks are rxfreq and
+txfreq.
+.TP
+.B hardware_repeater_number, hardware_area, hardware_user_key
+Set the native signaling-system identity. The fallbacks are rptnum, area, and
+ukey.
+.TP
+.B hardware_idle_interval, hardware_turnoff_count, hardware_voter_reporting
+Set signaling cadence, turn-off behavior, and voter reporting. The fallbacks
+are idleinterval, turnoffs, and sendvoter.
+.TP
+.B hardware_clip_led_gpio = 0..8
+Select the optional clipping-indicator GPIO. The fallback is clipledgpio.
+.SS GPIO and parallel port
+.TP
+.B hardware_gpio_1_mode, hardware_gpio_2_mode, hardware_gpio_3_mode, hardware_gpio_4_mode, hardware_gpio_5_mode, hardware_gpio_6_mode, hardware_gpio_7_mode, hardware_gpio_8_mode = in|out0|out1
+Configure a CM119 GPIO as an input or as an output with its initial state. The
+fallbacks are gpio1 through gpio8.
+.TP
+.B hardware_parallel_port_device
+Set the parallel-port device path. The fallback is pport.
+.TP
+.B hardware_parallel_port_base_address
+Set the parallel-port I/O base address in decimal or 0x-prefixed notation. The
+fallback is pbase.
+.TP
+.B hardware_parallel_pin_2_assignment, hardware_parallel_pin_3_assignment, hardware_parallel_pin_4_assignment, hardware_parallel_pin_5_assignment, hardware_parallel_pin_6_assignment, hardware_parallel_pin_7_assignment, hardware_parallel_pin_8_assignment, hardware_parallel_pin_9_assignment = out0|out1|ptt
+Configure a parallel-port output and its initial state or assign it to PTT. The
+fallbacks are pp2 through pp9.
+.TP
+.B hardware_parallel_pin_10_assignment, hardware_parallel_pin_12_assignment, hardware_parallel_pin_13_assignment, hardware_parallel_pin_15_assignment = in|cor|ctcss
+Configure a parallel-port input as a general-purpose input or assign it to COS
+or CTCSS indication. The fallbacks are pp10, pp12, pp13, and pp15.
+.SH DUPLEX OPTIONS
+The [duplex] section controls radio-interface duplex behavior. Missing options
+use their usbradioplus.conf fallbacks.
+.TP
+.B duplex_radio_mode = 0|1
+Select half- or full-duplex radio operation. The fallback is duplex.
+.TP
+.B duplex_local_repeat_level = 0..999
+Set local receiver-to-transmitter audio level. The fallback is duplex3.
+.TP
+.B duplex_local_repeat_mode = hardware|software
+Select the CM119 mixer or native 48 kHz local repeat path. The fallback is
+duplex3mode.
+.SH DIAGNOSTIC OPTIONS
+.TP
+.B diagnostics_trace_type, diagnostics_trace_level, diagnostics_fever
+Set native trace selection, verbosity, and low-level tuning diagnostics. The
+fallbacks are tracetype, tracelevel, and fever.
+.SH GENERAL CHANNEL OPTION
+.TP
+.B channel_enabled = yes|no
+Enable the configured radio channel. The fallback is radioactive.
 .SH CHAIN AND GRAPH OPTIONS
 .TP
 .B enabled = yes|no
@@ -54,8 +290,11 @@ All defaults place deesser immediately before compressor. An enabled stage runs
 only when listed.
 .TP
 .B input_gain_db = -30..30
-Apply gain before dynamics. Local and link default to 0 dB; voice/telemetry
-defaults to 6 dB.
+Apply source input gain. In the local receiver, this gain runs immediately
+after de-emphasis and before fixed filtering or dynamics. If it is absent,
+.B rxvoiceadj
+from usbradioplus.conf supplies the local-receiver gain. Link defaults to 0 dB;
+voice/telemetry defaults to 6 dB.
 .TP
 .B output_gain_db = -30..30
 Apply gain at the end of the chain. Local and link default to -6.2 dB;

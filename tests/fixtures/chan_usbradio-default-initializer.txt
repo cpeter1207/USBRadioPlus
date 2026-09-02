@@ -12,4 +12,3 @@
 .rptnum = 0,
 .clipledgpio = 0,
 .rxaudiostats.index = 0,
-.legacyaudioscaling = 1,

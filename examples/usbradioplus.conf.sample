@@ -30,13 +30,10 @@
 ; Reduce transmit processing while PTT is idle.
 ;txcpusaver = no
 ; Interface wiring: 0 for a normal modified fob; 1 for Dingotel/Sph hardware.
+; USBRadioPlus always bypasses a CM1xx input attenuator when one is present.
 ;hdwtype = 0
 ; Use a supported interface EEPROM for tuning values: 0=no, 1=yes.
 ;eeprom = 1
-; Remove the CM1xx input attenuator for approximately 20 dB more RX gain.
-;rxboost = no
-; Add 6 dB ahead of transmitter processing.
-;txboost = no
 
 ; Receiver connection: no, speaker (already de-emphasized), or flat discriminator.
 ;rxdemod = flat
@@ -56,8 +53,6 @@
 ;rxondelay = 0
 ; Ignore the receiver for this many 20 ms intervals after TX unkeys.
 ;txoffdelay = 0
-; Additional receiver gain multiplier.
-;rxgain = 1.0
 ; Invert the received radio-signaling bit polarity.
 ;rxpolarity = no
 
@@ -127,23 +122,7 @@
 
 ; Pre-emphasis and de-emphasis corner in hertz; 212.206590789 is 750 us.
 ;emphasis_corner_hz = 212.206590789
-; Receive gain before and after the squelch gate, in dB.
-;presquelch_gain_db = 0.0
-;postsquelch_gain_db = 0.0
-; Transmit PCM ceiling in dBFS. Default is 0 with one-code rail protection.
-;tx_ceiling_dbfs = 0.0
-; Internal headroom for pre-emphasis, in dB.
-;preemphasis_headroom_db = 24.0
-; RX calibration target before squelch processing, in dBFS.
-;rxlevel_presquelch_target_dbfs = -1.0
-; RX calibration target after squelch processing, in dBFS.
-;rxlevel_post_target_dbfs = -1.0
-; Enable the native-rate local recorder and playback test.
-;nativeparrot = no
-; Maximum native parrot recording length, in seconds.
-;parrotmaxseconds = 30
-; Select the alternate PCM scale used by stations calibrated to it.
-;legacyaudioscaling = yes
+; CM119 capture level in dB.
 
 ; Pulse this GPIO for 500 ms on receive ADC clipping; 0 disables it.
 ;clipledgpio = 0
@@ -207,9 +186,10 @@
 ;devstr =
 ; USB interface serial number, recommended with more than one fob.
 ;serial =
-; USB capture mixer level, 0 through 999.
+; USB capture mixer level, 0 through 999, used when hardware_input_gain_db is absent.
 ;rxmixerset = 500
-; Recovered receive voice level; 0.5 is unity.
+; Recovered receive voice level used only when local input_gain_db is absent
+; from usbradioplus-processing.conf; 0.5 is unity.
 ;rxvoiceadj = 0.5
 ; DSP carrier-squelch threshold, 0 through 999.
 ;rxsquelchadj = 500

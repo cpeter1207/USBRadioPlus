@@ -10,9 +10,145 @@
 enabled = yes
 ; Asterisk channel prefix to which processing applies.
 channel = RadioPlus/
+; Enable the configured radio channel. If omitted, radioactive is used.
+;channel_enabled = yes
 ; Enable local receive and incoming-link chains from this section.
 ;local_enabled = yes
 ;link_enabled = yes
+
+[asterisk]
+; Asterisk receive jitter-buffer controls. When omitted, the corresponding
+; matching jitter-buffer settings in usbradioplus.conf are used.
+;asterisk_jitter_buffer_enabled = no
+;asterisk_jitter_buffer_max_size_ms = 200
+;asterisk_jitter_buffer_resync_threshold_ms = 1000
+;asterisk_jitter_buffer_implementation = fixed
+;asterisk_jitter_buffer_logging_enabled = no
+; Force jitter buffering even when Asterisk would not normally use it.
+;asterisk_jitter_buffer_force_enabled = no
+; Additional target delay used by the adaptive jitter buffer.
+;asterisk_jitter_buffer_target_extra_ms = 40
+; Delay video to remain synchronized with jitter-buffered audio.
+;asterisk_jitter_buffer_video_sync_enabled = no
+
+[hardware]
+; CM119 capture and playback levels use dB relative to the normalized mixer
+; midpoint. Zero dB is 500 on the 0--999 mixer scale. Values are clamped to
+; the hardware range. When omitted, rxmixerset, txmixaset, and txmixbset in
+; usbradioplus.conf supply the corresponding values.
+;hardware_input_gain_db = 0.0
+;hardware_output_a_gain_db = 0.0
+;hardware_output_b_gain_db = 0.0
+; Route voice, CTCSS, both, auxiliary voice, or nothing to each CM119 playback
+; channel. When
+; omitted, txmixa and txmixb in usbradioplus.conf supply the assignments.
+;hardware_output_a_assignment = voice_ctcss
+;hardware_output_b_assignment = off
+; Select the COS source. If omitted, carrierfrom in usbradioplus.conf is used.
+;hardware_cos_assignment = dsp
+; Comma-separated receive and transmit CTCSS frequency lists. If omitted,
+; rxctcssfreqs and txctcssfreqs in usbradioplus.conf are used.
+;hardware_rx_ctcss_frequencies = 100.0
+;hardware_tx_ctcss_frequencies = 100.0
+; De-emphasis and pre-emphasis corner frequency. If omitted,
+; emphasis_corner_hz in usbradioplus.conf is used.
+;hardware_emphasis_corner_hz = 212.206590789
+; Device selection and interface layout. The matching usbradioplus.conf option
+; is used when an option below is omitted.
+;hardware_device_identifier = 1-1
+;hardware_serial =
+;hardware_interface_type = 0
+;hardware_eeprom_enabled = yes
+; PortAudio buffering and idle DSP controls.
+;hardware_audio_fragment_count = 196
+;hardware_audio_queue_size = 20
+;hardware_rx_cpu_saver_enabled = no
+;hardware_tx_cpu_saver_enabled = no
+; Receiver audio and CTCSS indication sources.
+;hardware_rx_audio_source = flat
+;hardware_rx_ctcss_source = dsp
+;hardware_vox_hang_ms = 2000
+;hardware_vox_threshold = 0
+;hardware_noise_squelch_hysteresis = 3000
+;hardware_noise_filter_type = 0
+;hardware_squelch_delay = 0
+; Carrier timing, polarity, squelch, and receive CTCSS calibration.
+;hardware_rx_on_delay_frames = 0
+;hardware_rx_polarity_inverted = no
+;hardware_squelch_level = 500
+;hardware_rx_ctcss_level = 1.0
+;hardware_rx_ctcss_override_enabled = no
+;hardware_rx_ctcss_relax = 1
+; Transmit CTCSS, signaling polarity, modulation mode, and timing.
+;hardware_tx_ctcss_default_hz = 100.0
+;hardware_tx_ctcss_level = 200
+;hardware_ctcss_turnoff_mode = notone
+;hardware_dcs_rx_polarity_inverted = no
+;hardware_dcs_tx_polarity_inverted = no
+;hardware_lsd_rx_polarity_inverted = no
+;hardware_lsd_tx_polarity_inverted = no
+; Transmit modulation selection, limiter compatibility, and keying delays.
+;hardware_tx_preemphasis_limiter_enabled = yes
+;hardware_tx_limiter_only_enabled = no
+;hardware_tx_soft_limiter_setpoint = 12000
+;hardware_tx_settle_ms = 500
+;hardware_tx_rx_blanking_ms = 0
+;hardware_tx_off_delay_frames = 0
+;hardware_tx_polarity_inverted = no
+;hardware_ptt_inverted = no
+; Radio identity and signaling metadata.
+;hardware_rx_frequency_hz = 0
+;hardware_tx_frequency_hz = 0
+;hardware_repeater_number = 0
+;hardware_area = 0
+;hardware_user_key =
+; Signaling cadence, voter reporting, and the optional clipping indicator.
+;hardware_idle_interval = 0
+;hardware_turnoff_count = 0
+;hardware_voter_reporting = 0
+;hardware_clip_led_gpio = 0
+; Configure each available CM119 GPIO as an input or as an output with its
+; initial level. When omitted, gpio1 through gpio8 in usbradioplus.conf are used.
+;hardware_gpio_1_mode = in
+;hardware_gpio_2_mode = in
+;hardware_gpio_3_mode = in
+;hardware_gpio_4_mode = in
+;hardware_gpio_5_mode = in
+;hardware_gpio_6_mode = in
+;hardware_gpio_7_mode = in
+;hardware_gpio_8_mode = in
+; Parallel-port device selection. The base address accepts decimal or 0x-prefixed
+; notation. When omitted, pport and pbase in usbradioplus.conf are used.
+;hardware_parallel_port_device = /dev/parport0
+;hardware_parallel_port_base_address = 0x378
+; Parallel-port outputs may start low or high, or carry PTT.
+;hardware_parallel_pin_2_assignment = out0
+;hardware_parallel_pin_3_assignment = out0
+;hardware_parallel_pin_4_assignment = out0
+;hardware_parallel_pin_5_assignment = out0
+;hardware_parallel_pin_6_assignment = out0
+;hardware_parallel_pin_7_assignment = out0
+;hardware_parallel_pin_8_assignment = out0
+;hardware_parallel_pin_9_assignment = out0
+; Parallel-port inputs may be general-purpose inputs or carry COS or CTCSS.
+;hardware_parallel_pin_10_assignment = in
+;hardware_parallel_pin_12_assignment = in
+;hardware_parallel_pin_13_assignment = in
+;hardware_parallel_pin_15_assignment = in
+
+[duplex]
+; Radio duplex mode and local 48 kHz repeat route. The matching
+; usbradioplus.conf option is used when one is omitted.
+;duplex_radio_mode = 0
+;duplex_local_repeat_level = 0
+;duplex_local_repeat_mode = hardware
+
+[diagnostics]
+; Diagnostic controls. The matching usbradioplus.conf option is used when an
+; option is omitted.
+;diagnostics_trace_type = 0
+;diagnostics_trace_level = 0
+;diagnostics_fever = 0
 
 [local]
 ; Enable the local receiver chain. The master switch must also be enabled.
@@ -58,7 +194,8 @@ ctcss_filter_mode = notch
 ctcss_notch_width_hz = 5.0
 ; Cutoff for ctcss_filter_mode=highpass, 50 through 500 Hz.
 ctcss_highpass_hz = 150.0
-; Gain before the dynamics graph, -30 through +30 dB.
+; Receive gain immediately after de-emphasis and before fixed filters or
+; dynamics, -30 through +30 dB. If omitted, usbradioplus.conf rxvoiceadj is used.
 input_gain_db = 0.0
 ; Gain after the chain, -30 through +30 dB.
 output_gain_db = 0.0

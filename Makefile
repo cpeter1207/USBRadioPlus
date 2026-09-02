@@ -98,7 +98,6 @@ install: all
 		$(DESTDIR)$(sysconfdir)/asterisk
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 	$(INSTALL_PROGRAM) $(TUNE) $(DESTDIR)$(sbindir)/usbradioplus-tune
-	$(INSTALL_PROGRAM) scripts/usbradioplus-rxlevel $(DESTDIR)$(sbindir)/usbradioplus-rxlevel
 	$(INSTALL_PROGRAM) scripts/usbradioplus-processing-tune $(DESTDIR)$(sbindir)/usbradioplus-processing-tune
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample $(DESTDIR)$(docdir)/
@@ -118,7 +117,6 @@ install: all
 	$(INSTALL_DATA) man/usbradioplus-processing.conf.5 $(DESTDIR)$(mandir)/man5/
 	$(INSTALL_DATA) man/usbradioplus.7 $(DESTDIR)$(mandir)/man7/
 	$(INSTALL_DATA) man/usbradioplus-tune.8 $(DESTDIR)$(mandir)/man8/
-	ln -sf usbradioplus-tune.8 $(DESTDIR)$(mandir)/man8/usbradioplus-rxlevel.8
 	ln -sf usbradioplus-tune.8 $(DESTDIR)$(mandir)/man8/usbradioplus-processing-tune.8
 
 install-strip: install
@@ -128,13 +126,11 @@ install-strip: install
 uninstall:
 	rm -f $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so \
 		$(DESTDIR)$(sbindir)/usbradioplus-tune \
-		$(DESTDIR)$(sbindir)/usbradioplus-rxlevel \
 		$(DESTDIR)$(sbindir)/usbradioplus-processing-tune \
 		$(DESTDIR)$(mandir)/man5/usbradioplus.conf.5 \
 		$(DESTDIR)$(mandir)/man5/usbradioplus-processing.conf.5 \
 		$(DESTDIR)$(mandir)/man7/usbradioplus.7 \
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
-		$(DESTDIR)$(mandir)/man8/usbradioplus-rxlevel.8 \
 		$(DESTDIR)$(mandir)/man8/usbradioplus-processing-tune.8 \
 		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
 		$(DESTDIR)$(docdir)/usbradioplus-processing.conf.sample

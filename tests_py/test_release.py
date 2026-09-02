@@ -12,7 +12,7 @@ def test_all_legacy_options_are_recognized():
                if x and not x.startswith("#")]
     missing = [x for x in options if f'"{x}"' not in module]
     assert not missing
-    assert len(options) == 67
+    assert len(options) == 63
 
 def test_optional_processors_default_off():
     source = text("src/usbradioplus_processing.c")
@@ -145,15 +145,29 @@ def test_software_duplex3_honors_dtmf_mute_state():
     assert ".plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT" in source
     assert not (ROOT / "patches/app_rpt-radioplus-duplex.patch").exists()
 
-def test_legacy_transmit_defaults_do_not_reserve_headroom():
-    source = text("src/chan_usbradioplus.c")
-    defaults = source[source.index("static struct chan_usbradio_pvt usbradio_default"):
-                      source.index("/*\tDECLARE FUNCTION PROTOTYPES")]
-    assert "nativeaudio" not in defaults
-    assert "nativeaudio" not in source
-    assert ".plus_tx_ceiling_dbfs = 0.0" in defaults
-    assert "fmax(-32767.0" in source
-    assert "fmin(32766.0" in source
+
+def test_echo_uses_native_buffer_only_for_software_duplex3():
+    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(path)
+        assert "static int usbradioplus_native_echo" in source
+        assert "o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE" in source
+        assert "o->echomode && usbradioplus_native_echo(o)" in source
+        assert "o->echomode && !usbradioplus_native_echo(o)" in source
+        assert "DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES" in source
+        assert "nativeparrot" not in source
+        assert "parrotmaxseconds" not in source
+
+def test_native_transmit_only_clamps_at_pcm_boundary():
+    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(name)
+        defaults = source[source.index("static struct chan_usbradio_pvt usbradio_default"):
+                          source.index("/*\tDECLARE FUNCTION PROTOTYPES")]
+        assert "nativeaudio" not in defaults
+        assert "nativeaudio" not in source
+        assert "plus_tx_ceiling_dbfs" not in source
+        assert "preemphasis_headroom_db" not in source
+        assert "fmax(-32768.0" in source
+        assert "fmin(32767.0" in source
 
 def test_native_transmit_gain_and_limiter_precedence():
     processing = text("src/usbradioplus_processing.c")
@@ -165,19 +179,133 @@ def test_native_transmit_gain_and_limiter_precedence():
     assert 'ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL' in processing
     assert "!composite_chain.lookahead_limiter_configured" in module
     assert "urp_legacy_limiter_ceiling_dbfs(o->txslimsp)" in module
-    assert "if (o->txboost) final_cfg.input_gain_db += 6.0" in module
+    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(name)
+        for removed in ("rxgain", "legacyaudioscaling", "txboost", "rxboost"):
+            assert removed not in source
+    assert "Toggle TX Boost" not in text("src/usbradioplus-tune.c")
     assert "When omitted, txprelim, txlimonly, and txslimsp" in sample
     assert "nativeaudio" not in text("examples/usbradioplus.conf.sample")
     assert "PmrTx(" not in text("src/usbradioplus_radio.c")
 
 def test_native_receive_preserves_legacy_level_and_delay():
     source = text("src/chan_usbradioplus.c")
-    assert "2.0 * o->rxvoiceadj" in source
+    processing = text("src/usbradioplus_processing.c")
+    assert "2.0 * o->legacy_rxvoiceadj" in source
+    assert "effective_rx_input_gain_db(o) / 20.0" in source
+    assert "dynamics_cfg.input_gain_db = 0.0" in source
+    assert "chain->input_gain_configured = 1" in processing
     assert "o->rxsquelchdelay * (URP_RATE_NATIVE / 1000)" in source
     assert "plus_rx_delay[o->plus_rx_delay_index]" in source
     detector = source.index("urp_radio_process(o->radio")
     receiver = source.index("usbradioplus_native_tick(o)", detector)
     assert detector < receiver
+
+def test_hardware_input_gain_controls_capture_with_rxmixerset_fallback():
+    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(name)
+        assert "plus_presquelch_gain_configured" in source
+        assert "500.0 * pow(10.0, gain_db / 20.0)" in source
+        assert "hardware.input_gain_configured" in source
+        assert "presquelch_gain_to_mixer(hardware.input_gain_db) : o->rxmixerset" in source
+        prepare = source[source.rindex("static void usbradioplus_prepare_squelch_audio"):
+                         source.index("static unsigned int plus_peak")]
+        assert "pow(" not in prepare
+        native = source[source.index("static void usbradioplus_native_tick"):
+                        source.index("static char *handle_radioplus_native_stats")]
+        assert "program_gain_db = o->plus_presquelch_gain_db" not in native
+    docs = text("man/usbradioplus-processing.conf.5")
+    assert "normalized mixer midpoint, 500" in docs
+    assert "hardware_input_gain_db" in docs
+
+def test_processing_hardware_section_covers_gain_routing_and_fallbacks():
+    parser = text("src/usbradioplus_processing.c")
+    sample = text("examples/usbradioplus-processing.conf.sample")
+    manual = text("man/usbradioplus-processing.conf.5")
+    tuner = text("scripts/usbradioplus-processing-tune")
+    options = (
+        "hardware_input_gain_db", "hardware_output_a_gain_db",
+        "hardware_output_b_gain_db", "hardware_output_a_assignment",
+        "hardware_output_b_assignment", "hardware_cos_assignment",
+        "hardware_rx_ctcss_frequencies", "hardware_tx_ctcss_frequencies",
+    )
+    assert "[hardware]" in sample
+    for option in options:
+        assert option in parser
+        assert option in sample
+        assert option in manual
+        assert option in tuner
+    assert "500.0 * pow(10.0, gain_db / 20.0)" in text("src/chan_usbradioplus.c")
+    assert "legacy fallback" in tuner
+    for assignment in ("off", "voice", "ctcss", "voice_ctcss", "auxvoice"):
+        assert assignment in parser
+    module = text("src/chan_usbradioplus.c")
+    assert "hardware.cos_assignment_configured" in module
+    assert "hardware.rx_ctcss_frequencies_configured" in module
+    assert "hardware.tx_ctcss_frequencies_configured" in module
+
+def test_modern_channel_options_overlay_legacy_fallbacks():
+    parser = text("src/usbradioplus_processing.c")
+    sample = text("examples/usbradioplus-processing.conf.sample")
+    manual = text("man/usbradioplus-processing.conf.5")
+    tuner = text("scripts/usbradioplus-processing-tune")
+    modules = text("src/chan_usbradioplus.c") + text("src/chan_usbradioplus_modern.c")
+    modern = (
+        "hardware_device_identifier hardware_serial hardware_interface_type "
+        "hardware_eeprom_enabled hardware_audio_fragment_count hardware_audio_queue_size "
+        "hardware_rx_cpu_saver_enabled hardware_tx_cpu_saver_enabled hardware_rx_audio_source "
+        "hardware_rx_ctcss_source hardware_vox_hang_ms hardware_vox_threshold "
+        "hardware_noise_squelch_hysteresis hardware_noise_filter_type hardware_squelch_delay "
+        "hardware_rx_on_delay_frames hardware_rx_polarity_inverted hardware_squelch_level "
+        "hardware_rx_ctcss_level hardware_rx_ctcss_override_enabled hardware_rx_ctcss_relax "
+        "hardware_tx_ctcss_default_hz hardware_tx_ctcss_level hardware_ctcss_turnoff_mode "
+        "hardware_dcs_rx_polarity_inverted hardware_dcs_tx_polarity_inverted "
+        "hardware_lsd_rx_polarity_inverted hardware_lsd_tx_polarity_inverted "
+        "hardware_tx_preemphasis_limiter_enabled hardware_tx_limiter_only_enabled "
+        "hardware_tx_soft_limiter_setpoint hardware_tx_settle_ms hardware_tx_rx_blanking_ms "
+        "hardware_tx_off_delay_frames hardware_tx_polarity_inverted hardware_ptt_inverted "
+        "hardware_rx_frequency_hz hardware_tx_frequency_hz hardware_repeater_number "
+        "hardware_area hardware_user_key hardware_idle_interval hardware_turnoff_count "
+        "hardware_voter_reporting hardware_clip_led_gpio "
+        "hardware_gpio_1_mode hardware_gpio_2_mode hardware_gpio_3_mode "
+        "hardware_gpio_4_mode hardware_gpio_5_mode hardware_gpio_6_mode "
+        "hardware_gpio_7_mode hardware_gpio_8_mode hardware_parallel_port_device "
+        "hardware_parallel_port_base_address hardware_parallel_pin_2_assignment "
+        "hardware_parallel_pin_3_assignment hardware_parallel_pin_4_assignment "
+        "hardware_parallel_pin_5_assignment hardware_parallel_pin_6_assignment "
+        "hardware_parallel_pin_7_assignment hardware_parallel_pin_8_assignment "
+        "hardware_parallel_pin_9_assignment hardware_parallel_pin_10_assignment "
+        "hardware_parallel_pin_12_assignment hardware_parallel_pin_13_assignment "
+        "hardware_parallel_pin_15_assignment hardware_emphasis_corner_hz "
+        "asterisk_jitter_buffer_enabled "
+        "asterisk_jitter_buffer_max_size_ms asterisk_jitter_buffer_resync_threshold_ms "
+        "asterisk_jitter_buffer_implementation asterisk_jitter_buffer_logging_enabled "
+        "asterisk_jitter_buffer_force_enabled asterisk_jitter_buffer_target_extra_ms "
+        "asterisk_jitter_buffer_video_sync_enabled "
+        "duplex_radio_mode "
+        "duplex_local_repeat_level duplex_local_repeat_mode channel_enabled "
+        "diagnostics_trace_type diagnostics_trace_level diagnostics_fever"
+    ).split()
+    for option in modern:
+        assert option in parser
+        assert option in sample
+        assert option in manual
+        assert option in tuner
+    assert "apply_processing_config_overrides" in modules
+    assert "usbradioplus_processing_get_option" in modules
+    assert all(section in sample for section in
+               ("[asterisk]", "[duplex]", "[diagnostics]"))
+
+def test_postsquelch_gain_is_removed():
+    names = (
+        "src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c",
+        "man/usbradioplus.conf.5", "man/usbradioplus-tune.8",
+        "examples/usbradioplus.conf.sample",
+    )
+    for name in names:
+        content = text(name).lower()
+        assert "postsquelch" not in content
+        assert "post-squelch gain" not in content
 
 def test_native_radio_has_no_program_voice_or_obsolete_clock_recovery():
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
@@ -250,8 +378,8 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     processing = text("scripts/usbradioplus-processing-tune")
     assert 'TX Prelimiting (currently \'%s\')\\n", txprelim ?' in tune
     assert 'TX Limiting Only (currently \'%s\')\\n", txlimonly ?' in tune
-    assert 'TX Prelimiting (currently \'%s\')\\n", rxboost ?' not in tune
-    assert 'TX Limiting Only (currently \'%s\')\\n", txboost ?' not in tune
+    assert "rxboost" not in tune
+    assert "txboost" not in tune
     expected_ranges = {
         "agc_target_dbfs": ("-40", "-3"),
         "agc_max_attenuation_db": ("0", "60"),
@@ -357,14 +485,15 @@ def test_tuning_commands_and_persistence_cover_all_levels():
     handler = module[handler_start:module.index("static struct chan_usbradio_pvt *store_config",
                                                 handler_start)]
     cases = set(re.findall(r"case '([0-9a-z])'", handler))
-    assert set("0123abcdefghijklmnopqrstuvwxyz") <= cases
+    assert set("0123abcdefghijklopqrstuvwxyz") <= cases
     for command in ("c", "d", "e", "f", "g", "h", "j"):
         assert f"tune menu-support {command}" in utility
     saver_start = module.rindex("static void tune_write")
     saver = module[saver_start:module.index("static int radio_config", saver_start)]
-    for field in ("rxmixerset", "rxvoiceadj", "rxsquelchadj", "txmixaset",
+    for field in ("rxmixerset", "rxsquelchadj", "txmixaset",
                   "txmixbset", "txctcssadj"):
         assert f"CONFIG_UPDATE_" in saver and field in saver
+    assert "usbradioplus_processing_save_local_input_gain" in saver
     for field in ("EEPROM_USER_TXMIXASET", "EEPROM_USER_TXMIXBSET",
                   "EEPROM_USER_RXVOICEADJ", "EEPROM_USER_TXCTCSSADJ",
                   "EEPROM_USER_RXSQUELCHADJ"):
@@ -429,10 +558,7 @@ def test_configuration_manuals_cover_parser_options():
     legacy = [line for line in text("tests/data/legacy-options.txt").splitlines()
               if line and not line.startswith("#")]
     channel_extra = (
-        "duplex3mode nativeparrot parrotmaxseconds emphasis_corner_hz "
-        "presquelch_gain_db postsquelch_gain_db tx_ceiling_dbfs "
-        "preemphasis_headroom_db rxlevel_presquelch_target_dbfs "
-        "rxlevel_post_target_dbfs legacyaudioscaling pport pbase"
+        "duplex3mode emphasis_corner_hz pport pbase"
     ).split()
     assert not [option for option in legacy + channel_extra
                 if option.lower() not in channel_man]
@@ -443,7 +569,11 @@ def test_configuration_manuals_cover_parser_options():
     end = parser.index("};", start)
     chain_options = re.findall(r'"([a-z][a-z0-9_]*)"', parser[start:end])
     general_options = ["enabled", "channel", "local_enabled", "link_enabled"]
-    assert not [option for option in set(chain_options + general_options)
+    hardware_options = ["hardware_input_gain_db", "hardware_output_a_gain_db",
+                        "hardware_output_b_gain_db", "hardware_output_a_assignment",
+                        "hardware_output_b_assignment", "hardware_cos_assignment",
+                        "hardware_rx_ctcss_frequencies", "hardware_tx_ctcss_frequencies"]
+    assert not [option for option in set(chain_options + general_options + hardware_options)
                 if option not in processing_man]
 
 
@@ -480,10 +610,7 @@ def test_example_files_cover_every_documented_option():
     legacy = [line for line in text("tests/data/legacy-options.txt").splitlines()
               if line and not line.startswith("#")]
     channel_extra = (
-        "duplex3mode nativeparrot parrotmaxseconds emphasis_corner_hz "
-        "presquelch_gain_db postsquelch_gain_db tx_ceiling_dbfs "
-        "preemphasis_headroom_db rxlevel_presquelch_target_dbfs "
-        "rxlevel_post_target_dbfs legacyaudioscaling pport pbase"
+        "duplex3mode emphasis_corner_hz pport pbase"
     ).split()
     assert not [option for option in legacy + channel_extra
                 if not re.search(rf"(?m)^;?{re.escape(option)}\s*=", channel)]

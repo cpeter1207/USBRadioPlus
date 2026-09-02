@@ -55,11 +55,6 @@ hdwtype = 0                 ; Leave this set to 0 for USB sound fobs modified us
                             ; the instructions from usbfob.pdf. Use a setting of
                             ; 1 is for Dingotel/Sph interfaces.
 
-rxboost = yes               ; no  - 20db attenuator inserted
-                            ; yes - 20db attenuator removed
-                            ; Set to yes for additional gain if using a low-level receiver output
-                            ; CM119B devices are hard coded to rxboost 20dB attenuator removed
-
 rxctcssrelax = 1            ; reduce talkoff from radios w/o CTCSS TX HPF
                             ; Do not change this, leave this as a 1
 
@@ -115,7 +110,6 @@ txoffdelay = 0              ; Ignore the receiver for a specified number of 20 m
                             ; This is useful when setting up a half-duplex link with an existing
                             ; repeater, where you need to ignore the repeater's hangtime.
 
-txboost = no                ; Add transmitter audio gain boost: no,yes
 
 txprelim = yes              ; Audio processing on left output channel: no,yes
                             ; no  - Audio is not pre-emphasized and limited.
@@ -178,7 +172,6 @@ clipledgpio = 0             ; Enable ADC Clip Detect feature to use a GPIO outpu
                             ; Supports URI Clip LED by setting a GPIO (if available) high for 500mS
                             ; when clipping detected. Value = GPIO# to use (GPIO1 recommended)
 
-legacyaudioscaling = no     ; If yes, continue to do raw audio sample scaling and clipping, resulting in Tx audio levels increasing
                             ; by 0.83dB and Rx audio levels decreasing by 1.94dB. Should be set to no unless you have an existing
                             ; node with precisely adjusted audio levels and are unable to adjust them. This parameter and associated
                             ; scaling/clipping code will be deleted once existing installs have been able to verify their audio levels
@@ -206,9 +199,12 @@ legacyaudioscaling = no     ; If yes, continue to do raw audio sample scaling an
 ;;;;; ASL3 Tune settings ;;;;;
 devstr=
 serial=
+; Fallback CM119 capture level used when hardware_input_gain_db is absent.
 rxmixerset=500
 txmixaset=500
 txmixbset=500
+; Fallback receive gain when [local] input_gain_db is not configured in
+; usbradioplus-processing.conf. A value of 0.5 is unity gain.
 rxvoiceadj=0.5
 txctcssadj=200
 rxsquelchadj=500

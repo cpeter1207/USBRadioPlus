@@ -28,11 +28,54 @@ def test_tuner_uses_current_cli_and_accessible_keys():
     source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
     assert "txagc reload" not in source
     for command in ("radioplus processing reload", "radioplus processing stats",
-                    "radioplus processing show"):
+                    "radioplus processing show", "radioplus tune menu-support 2",
+                    "radioplus tune menu-support j", "radioplus active"):
         assert command in source
     for instruction in ("Up and Down arrows move", "Tab selects Back",
                         "Shift+Tab", "Current item"):
         assert instruction in source
+    assert "subprocess.run(command, check=False)" in source
+    assert 'parser.add_argument("-n", "--node"' in source
+
+
+def test_whiptail_menus_preserve_the_selected_item():
+    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    assert source.count('"--default-item", selected') == 3
+    assert source.count("selected = choice") == 3
+
+
+def test_text_menus_place_the_cursor_on_the_selected_row():
+    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    assert "def read_menu_key(selected, item_count):" in source
+    assert 'print(f"\\033[s\\033[{rows_up}A\\r", end="", flush=True)' in source
+    assert source.count("read_menu_key(selected, len(") == 2
+
+
+def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
+    config = tmp_path / "usbradioplus-processing.conf"
+    sample = tmp_path / "sample.conf"
+    sample.write_text("[local]\nenabled = yes\n", encoding="utf-8")
+    old_config = MODULE["CONFIG"]
+    old_candidates = MODULE["DEFAULT_CONFIG_CANDIDATES"]
+    MODULE["ensure_config"].__globals__["CONFIG"] = str(config)
+    MODULE["ensure_config"].__globals__["DEFAULT_CONFIG_CANDIDATES"] = (str(sample),)
+    try:
+        MODULE["ensure_config"]()
+        assert config.read_text(encoding="utf-8") == sample.read_text(encoding="utf-8")
+        assert config.stat().st_mode & 0o777 == 0o644
+    finally:
+        MODULE["ensure_config"].__globals__["CONFIG"] = old_config
+        MODULE["ensure_config"].__globals__["DEFAULT_CONFIG_CANDIDATES"] = old_candidates
+
+
+def test_tuner_covers_non_audio_sections():
+    assert set(MODULE["ASTERISK_SETTINGS"]) >= {
+        "asterisk_jitter_buffer_force_enabled",
+        "asterisk_jitter_buffer_target_extra_ms",
+        "asterisk_jitter_buffer_video_sync_enabled",
+    }
+    assert "hardware_emphasis_corner_hz" in MODULE["HARDWARE_SETTINGS"]
+    assert MODULE["HARDWARE_SETTINGS"]["hardware_emphasis_corner_hz"][1] == "emphasis"
 
 
 def test_fixed_filters_have_a_dedicated_menu():
