@@ -2149,7 +2149,8 @@ static struct ast_frame *usbradio_read(struct ast_channel *c)
 
 	was_rxkeyed = o->rxkeyed;
 	if (o->txkeyed || o->txtestkey || o->echoing || o->plus_parrot_playing ||
-	    usbradioplus_program_pending(o) || (o->rxkeyed && o->duplex3 > 0)) {
+	    usbradioplus_program_pending(o) ||
+	    (o->rxkeyed && o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE)) {
 		if (!o->radio->txPttIn) {
 			o->radio->txPttIn = 1;
 			ast_debug(3, "Channel %s: txPttIn = %i.\n", o->name, o->radio->txPttIn);
