@@ -1119,6 +1119,7 @@ static void *hidthread(void *arg)
 	char lasttxtmp;
 	int i, j, k;
 	int res;
+	int gpio_refresh_ms = 0;
 	int open_device_failed = 0;
 	int detach_failed = 0;
 	int claim_failed = 0;
@@ -1146,6 +1147,7 @@ static void *hidthread(void *arg)
 	 */
 	while (!o->stophid) {
 		ast_radio_time(&o->lasthidtime);
+		gpio_refresh_ms = 0;
 
 		/* Prior device teardown */
 		o->hasusb = 0;
@@ -1603,6 +1605,7 @@ static void *hidthread(void *arg)
 				}
 			}
 			j = ast_tvdiff_ms(ast_radio_tvnow(), then);
+			gpio_refresh_ms += j;
 			/* make output inversion mask (for pulseage) */
 			o->hid_gpio_lastmask = o->hid_gpio_pulsemask;
 			o->hid_gpio_pulsemask = 0;
@@ -1619,11 +1622,12 @@ static void *hidthread(void *arg)
 					o->hid_gpio_pulsemask |= 1 << i;
 				}
 			}
-			if (o->hid_gpio_pulsemask ||
+			if (o->hid_gpio_pulsemask || gpio_refresh_ms >= 200 ||
 			    o->hid_gpio_lastmask) { /* if anything inverted (temporarily) */
 				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
 				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
 				ast_radio_hid_set_outputs(usb_handle, buf);
+				gpio_refresh_ms = 0;
 			}
 			if (o->gpio_set) {
 				o->gpio_set = 0;
