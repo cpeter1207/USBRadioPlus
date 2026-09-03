@@ -73,8 +73,10 @@
 
 #include "usbradioplus_radio.h"
 #include "usbradioplus_radio_coefficients.h"
+#include "asterisk/logger.h"
 
 static i16 radioIndex = 0; /* Count live detector instances. */
+static char disabled_code[] = "0";
 
 /*
 	Trace Routines
@@ -99,7 +101,8 @@ void strace2(t_sdbg *sdbg)
 		if (sdbg->source[i]) {
 			int ii;
 			for (ii = 0; ii < SAMPLES_PER_BLOCK; ii++) {
-				sdbg->buffer[ii * URP_RADIO_DEBUG_CHANNELS + i] = sdbg->source[i][ii];
+				sdbg->buffer[ii * URP_RADIO_DEBUG_CHANNELS + i] =
+					sdbg->source[i][ii];
 			}
 		}
 	}
@@ -126,8 +129,12 @@ i16 string_parse(char *src, char **dest, char ***ptrs)
 	pd = *dest;
 	if (pd) {
 		ast_free(pd);
+		*dest = NULL;
 	}
 	pd = ast_calloc(slen + 1, 1);
+	if (!pd) {
+		return -1;
+	}
 	memcpy(pd, src, slen);
 	*dest = pd;
 
@@ -152,8 +159,14 @@ i16 string_parse(char *src, char **dest, char ***ptrs)
 
 	if (*ptrs) {
 		ast_free(*ptrs);
+		*ptrs = NULL;
 	}
 	*ptrs = ast_calloc(numsub, sizeof(char *));
+	if (!*ptrs) {
+		ast_free(*dest);
+		*dest = NULL;
+		return -1;
+	}
 	for (i = 0; i < numsub; i++) {
 		(*ptrs)[i] = ptstr[i];
 		TRACEJ(5, " %i = %s\n", i, (*ptrs)[i]);
@@ -197,8 +210,16 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 
 	TRACEF(1, "urp_radio_parse_codes(%i) 05\n", 0);
 
-	pChan->numrxcodes = string_parse(pChan->pRxCodeSrc, &(pChan->pRxCodeStr), &(pChan->pRxCode));
-	pChan->numtxcodes = string_parse(pChan->pTxCodeSrc, &(pChan->pTxCodeStr), &(pChan->pTxCode));
+	pChan->numrxcodes =
+		string_parse(pChan->pRxCodeSrc, &(pChan->pRxCodeStr), &(pChan->pRxCode));
+	if (pChan->numrxcodes < 0) {
+		return 1;
+	}
+	pChan->numtxcodes =
+		string_parse(pChan->pTxCodeSrc, &(pChan->pTxCodeStr), &(pChan->pTxCode));
+	if (pChan->numtxcodes < 0) {
+		return 1;
+	}
 
 	if (pChan->numrxcodes != pChan->numtxcodes) {
 		ast_log(LOG_ERROR, "numrxcodes != numtxcodes \n");
@@ -209,10 +230,7 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	pChan->rxCtcss->input = pChan->pRxLsdLimit;
 	pChan->rxCtcss->decode = CTCSS_NULL;
 
-	pChan->rxCtcss->testIndex = 0;
-	if (!pChan->rxCtcss->testIndex) {
-		pChan->rxCtcss->testIndex = 3;
-	}
+	pChan->rxCtcss->testIndex = 3;
 
 	pChan->rxctcssfreq[0] = 0; /* decode now   CTCSS_RXONLY */
 
@@ -226,60 +244,74 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 
 	/* Do Receive Codes String */
 	for (i = 0; i < pChan->numrxcodes; i++) {
-		i16 ii, ri, ti;
-		float f;
-
 		p = pChan->pStr = pChan->pRxCode[i];
 
 		{
-			sscanf(p, N_FMT(f), &f);
-			ri = urp_ctcss_frequency_index(f);
-			if (ri == CTCSS_NULL) {
-				ast_log(LOG_ERROR, "Invalid RX CTCSS code detected and ignored. %i %s\n", i, pChan->pRxCode[i]);
+			i16 rx_index, tx_index;
+			float frequency;
 
-			} else if (ri > maxctcssindex) {
-				maxctcssindex = ri;
+			sscanf(p, N_FMT(frequency), &frequency);
+			rx_index = urp_ctcss_frequency_index(frequency);
+			if (rx_index == CTCSS_NULL) {
+				ast_log(LOG_ERROR,
+					"Invalid RX CTCSS code detected and ignored. %i %s\n", i,
+					pChan->pRxCode[i]);
+
+			} else if (rx_index > maxctcssindex) {
+				maxctcssindex = rx_index;
 			}
 
 			if (i < pChan->numtxcodes) { /* more rx codes than tx codes */
-				sscanf(pChan->pTxCode[i], N_FMT(f), &f);
-				ti = urp_ctcss_frequency_index(f);
-				if (ti == CTCSS_NULL) {
-					if (f != 0.0) {
-						f = -1.0; /* tone freq not valid */
-						ast_log(LOG_ERROR, "Invalid TX CTCSS code detected and ignored. %i %s\n", i, pChan->pTxCode[i]);
+				sscanf(pChan->pTxCode[i], N_FMT(frequency), &frequency);
+				tx_index = urp_ctcss_frequency_index(frequency);
+				if (tx_index == CTCSS_NULL) {
+					if (frequency != 0.0) {
+						frequency = -1.0; /* tone freq not valid */
+						ast_log(LOG_ERROR,
+							"Invalid TX CTCSS code detected and "
+							"ignored. %i %s\n",
+							i, pChan->pTxCode[i]);
 					}
-				} else if (f > maxctcsstxfreq) {
-					maxctcsstxfreq = f;
+				} else if (frequency > maxctcsstxfreq) {
+					maxctcsstxfreq = frequency;
 				}
 			} else {
-				ti = CTCSS_NULL;
-				f = -1.0; /* tone freq not provided */
-				ast_log(LOG_ERROR, "Invalid CTCSS configuration. Number of rx codes > number of tx codes\n");
+				tx_index = CTCSS_NULL;
+				frequency = -1.0; /* tone freq not provided */
+				ast_log(LOG_ERROR, "Invalid CTCSS configuration. Number of rx "
+						   "codes > number of tx codes\n");
 			}
 
-			if (ri > CTCSS_NULL && ti > CTCSS_NULL) {
+			if (rx_index > CTCSS_NULL && tx_index > CTCSS_NULL) {
 				pChan->b.ctcssRxEnable = 1;
 				pChan->b.ctcssTxEnable = 1;
-				pChan->rxCtcssMap[ri] = ti;
+				pChan->rxCtcssMap[rx_index] = tx_index;
 				pChan->numrxctcssfreqs++;
-				TRACEF(1, "pChan->rxctcss[%i]=%s  pChan->rxCtcssMap[%i]=%i\n", i, pChan->rxctcss[i], ri, ti);
-			} else if (ri > CTCSS_NULL && f == 0) {
+				TRACEF(1, "pChan->rxctcss[%i]=%s  pChan->rxCtcssMap[%i]=%i\n", i,
+				       pChan->rxctcss[i], rx_index, tx_index);
+			} else if (rx_index > CTCSS_NULL && frequency == 0) {
 				pChan->b.ctcssRxEnable = 1;
-				pChan->rxCtcssMap[ri] = CTCSS_RXONLY;
+				pChan->rxCtcssMap[rx_index] = CTCSS_RXONLY;
 				pChan->numrxctcssfreqs++;
-				TRACEF(1, "pChan->rxctcss[%i]=%s  pChan->rxCtcssMap[%i]=%i RXONLY\n", i, pChan->rxctcss[i], ri, ti);
+				TRACEF(1,
+				       "pChan->rxctcss[%i]=%s  pChan->rxCtcssMap[%i]=%i RXONLY\n",
+				       i, pChan->rxctcss[i], rx_index, tx_index);
 			} else {
+				i16 clear_index;
+
 				pChan->numrxctcssfreqs = 0;
-				ast_log(LOG_ERROR, "Invalid CTCSS configuration. CTCSS has been disabled\n");
-				for (ii = 0; ii < CTCSS_NUM_CODES; ii++) {
-					pChan->rxCtcssMap[ii] = CTCSS_NULL;
+				ast_log(LOG_ERROR,
+					"Invalid CTCSS configuration. CTCSS has been disabled\n");
+				for (clear_index = 0; clear_index < CTCSS_NUM_CODES;
+				     clear_index++) {
+					pChan->rxCtcssMap[clear_index] = CTCSS_NULL;
 				}
 			}
 		}
 	}
 
-	TRACEF(1, "urp_radio_parse_codes() CTCSS Init Struct  %i  %i\n", pChan->b.ctcssRxEnable, pChan->b.ctcssTxEnable);
+	TRACEF(1, "urp_radio_parse_codes() CTCSS Init Struct  %i  %i\n", pChan->b.ctcssRxEnable,
+	       pChan->b.ctcssTxEnable);
 	if (pChan->b.ctcssRxEnable) {
 		pChan->rxHpfEnable = 1;
 		pChan->spsRxLsdNrz->enabled = pChan->rxCenterSlicerEnable = 1;
@@ -313,7 +345,9 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 		sscanf(p, N_FMT(f), &f);
 		ti = urp_ctcss_frequency_index(f);
 		if (ti == CTCSS_NULL) {
-			ast_log(LOG_ERROR, "Invalid default TX CTCSS code detected and ignored. %s\n", pChan->pTxCodeDefault);
+			ast_log(LOG_ERROR,
+				"Invalid default TX CTCSS code detected and ignored. %s\n",
+				pChan->pTxCodeDefault);
 		} else if (f > maxctcsstxfreq) {
 			maxctcsstxfreq = f;
 		}
@@ -324,7 +358,8 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 			pChan->txctcssdefault_value = f;
 			pChan->txCtcssFreq10 = f * 10;
 			pChan->txcodedefaultsmode = SMODE_CTCSS;
-			TRACEF(1, "urp_radio_parse_codes() Tx Default CTCSS = %s %i %f\n", p, ti, f);
+			TRACEF(1, "urp_radio_parse_codes() Tx Default CTCSS = %s %i %f\n", p, ti,
+			       f);
 		}
 	}
 
@@ -348,37 +383,36 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	}
 
 	pSps = pChan->spsRxLsd;
-	if (pSps->x) {
-		ast_free(pSps->x);
-	}
+	ast_free(pSps->x);
+	pSps->x = NULL;
 
 	if (hit) {
 		pSps->ncoef = taps_fir_lpf_250_9_66;
 		pSps->size_coef = 2;
-		pSps->coef = (void *) coef_fir_lpf_250_9_66;
+		pSps->coef = (void *)coef_fir_lpf_250_9_66;
 		pSps->nx = taps_fir_lpf_250_9_66;
 		pSps->size_x = 2;
 		pSps->x = ast_calloc(pSps->nx, pSps->size_x);
 		if (pSps->x == NULL) {
-			; /* XXX do something here */
+			return 1;
 		}
 		pSps->calcAdjust = gain_fir_lpf_250_9_66;
 		TRACEF(1, "urp_radio_parse_codes() Rx Filter Freq High\n");
 	} else {
 		pSps->ncoef = taps_fir_lpf_215_9_88;
 		pSps->size_coef = 2;
-		pSps->coef = (void *) coef_fir_lpf_215_9_88;
+		pSps->coef = (void *)coef_fir_lpf_215_9_88;
 		pSps->nx = taps_fir_lpf_215_9_88;
 		pSps->size_x = 2;
 		pSps->x = ast_calloc(pSps->nx, pSps->size_x);
 		if (pSps->x == NULL) {
-			; /* XXX do something here */
+			return 1;
 		}
 		pSps->calcAdjust = gain_fir_lpf_215_9_88;
 		TRACEF(1, "urp_radio_parse_codes() Rx Filter Freq Low\n");
 	}
 
-	if (pChan->b.ctcssRxEnable || pChan->b.dcsRxEnable || pChan->b.lmrRxEnable) {
+	if (pChan->b.ctcssRxEnable) {
 		pChan->rxCenterSlicerEnable = 1;
 		pSps->enabled = 1;
 	} else {
@@ -427,7 +461,8 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 {
 #define DCgainBpfNoise 65536
 
-	i16 samples, nx, iOutput, *input, *output, *noutput;
+	i16 samples, nx, iOutput, *output, *noutput;
+	const i16 *input;
 	i16 *x;
 	i16 decimator, decimate, doNoise, fever, fev1;
 	i32 i, naccum, outputGain, calcAdjust;
@@ -543,9 +578,9 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 
 		/* compOut means muted. MICOR-style bi-level timing suppresses clean
 		 * tails while keeping weak, fluttering speech from being chopped. */
-		mySps->compOut = urp_micor_squelch_update(&mySps->micor_squelch,
-			mySps->compOut, (uint32_t) npwr, (uint32_t) mySps->setpt,
-			(uint32_t) mySps->hyst, MS_PER_FRAME);
+		mySps->compOut = urp_micor_squelch_update(&mySps->micor_squelch, mySps->compOut,
+							  (uint32_t)npwr, (uint32_t)mySps->setpt,
+							  (uint32_t)mySps->hyst, MS_PER_FRAME);
 
 #if URP_RADIO_DEBUG == 1
 		if (mySps->parentChan->tracetype) {
@@ -555,7 +590,7 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 		}
 #endif
 
-		((urp_radio_state *) (mySps->parentChan))->rxRssi = mySps->apeak = npwr;
+		((urp_radio_state *)(mySps->parentChan))->rxRssi = mySps->apeak = npwr;
 	}
 
 	return 0;
@@ -567,8 +602,10 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 i16 urp_radio_fir(urp_radio_stage *mySps)
 {
 	i32 nsamples, inputGain, outputGain, calcAdjust;
-	i16 *input, *output;
-	i16 *x, *coef;
+	const i16 *input;
+	i16 *output;
+	i16 *x;
+	const i16 *coef;
 	i32 i, ii;
 	i16 nx, hyst, setpt, compOut;
 	i16 amax, amin, apeak = 0, discounteru = 0, discounterl = 0, discfactor;
@@ -605,10 +642,11 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 
 	amax = mySps->amax;
 	amin = mySps->amin;
+	discounteru = mySps->discounteru;
+	discounterl = mySps->discounterl;
 
 	discfactor = mySps->discfactor;
 	hyst = mySps->hyst;
-	setpt = mySps->setpt;
 	nsamples = mySps->nSamples;
 
 	if (mySps->option == 3) {
@@ -680,7 +718,7 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 				discounteru = discfactor;
 			} else if (--discounteru <= 0) {
 				discounteru = discfactor;
-				amax = (i32) ((amax * 32700) / 32768);
+				amax = (i32)((amax * 32700) / 32768);
 			}
 
 			if (accum < amin) {
@@ -688,10 +726,10 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 				discounterl = discfactor;
 			} else if (--discounterl <= 0) {
 				discounterl = discfactor;
-				amin = (i32) ((amin * 32700) / 32768);
+				amin = (i32)((amin * 32700) / 32768);
 			}
 
-			apeak = (i32) (amax - amin) / 2;
+			apeak = (i32)(amax - amin) / 2;
 
 			if (apeak > setpt) {
 				compOut = 1;
@@ -720,12 +758,11 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 i16 gp_inte_00(urp_radio_stage *mySps)
 {
 	i16 npoints;
-	i16 *input, *output;
+	const i16 *input;
+	i16 *output;
 
 	i32 outputGain;
 	i32 i;
-	i32 accum;
-
 	i32 state00;
 	i16 coeff00, coeff01;
 
@@ -741,21 +778,23 @@ i16 gp_inte_00(urp_radio_stage *mySps)
 
 	outputGain = mySps->outputGain;
 
-	coeff00 = ((i16 *) mySps->coef)[0];
-	coeff01 = ((i16 *) mySps->coef)[1];
-	state00 = ((i32 *) mySps->x)[0];
+	coeff00 = ((i16 *)mySps->coef)[0];
+	coeff01 = ((i16 *)mySps->coef)[1];
+	state00 = ((i32 *)mySps->x)[0];
 
 	/* note fixed gain of 2 to compensate for attenuation */
 	/* in passband */
 
 	for (i = 0; i < npoints; i++) {
+		i32 accum;
+
 		accum = input[i];
 		state00 = accum + (state00 * coeff01) / M_Q15;
 		accum = (state00 * coeff00) / (M_Q15 / 4);
 		output[i] = (accum * outputGain) / M_Q8;
 	}
 
-	((i32 *) (mySps->x))[0] = state00;
+	((i32 *)(mySps->x))[0] = state00;
 
 	return 0;
 }
@@ -766,7 +805,8 @@ i16 gp_inte_00(urp_radio_stage *mySps)
 i16 CenterSlicer(urp_radio_stage *mySps)
 {
 	i16 npoints;
-	i16 *input, *output, *buff;
+	const i16 *input;
+	i16 *output, *buff;
 
 	i32 inputGainB;
 	i32 i;
@@ -803,8 +843,6 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 	discounterl = mySps->discounterl;
 
 	discfactor = mySps->discfactor;
-	npoints = mySps->nSamples;
-
 	for (i = 0; i < npoints; i++) {
 		static i32 tfx;
 		accum = input[i];
@@ -845,7 +883,6 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 		buff[i] = accum;
 
 #if URP_RADIO_DEBUG == 1
-		tfx = 0;
 		if ((tfx++ / 8) & 1) { /* trace min/max levels */
 			mySps->parentChan->pRxLsdCen[i] = amax;
 		} else {
@@ -870,15 +907,14 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 i16 MeasureBlock(urp_radio_stage *mySps)
 {
 	i16 npoints;
-	i16 *input, *output;
+	const i16 *input;
+	i16 *output;
 
 	i32 i;
-	i32 accum;
-
-	i16 amax;	   /* buffer amplitude maximum */
-	i16 amin;	   /* buffer amplitude minimum */
+	i16 amax;      /* buffer amplitude maximum */
+	i16 amin;      /* buffer amplitude minimum */
 	i16 apeak = 0; /* buffer amplitude peak (peak to peak)/2 */
-	i16 setpt;	   /* amplitude set point for amplitude comparator */
+	i16 setpt;     /* amplitude set point for amplitude comparator */
 
 	i32 discounteru; /* amplitude detector integrator discharge counter upper */
 	i32 discounterl; /* amplitude detector integrator discharge counter lower */
@@ -891,7 +927,8 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 	}
 
 	if (mySps->option == 3) {
-		mySps->amax = mySps->amin = mySps->apeak = mySps->discounteru = mySps->discounterl = mySps->enabled = 0;
+		mySps->amax = mySps->amin = mySps->apeak = mySps->discounteru = mySps->discounterl =
+			mySps->enabled = 0;
 		return 1;
 	}
 
@@ -907,9 +944,9 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 	discounterl = mySps->discounterl;
 
 	discfactor = mySps->discfactor;
-	npoints = mySps->nSamples;
-
 	for (i = 0; i < npoints; i++) {
+		i32 accum;
+
 		accum = input[i];
 
 		if (accum > amax) {
@@ -917,7 +954,7 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 			discounteru = discfactor;
 		} else if (--discounteru <= 0) {
 			discounteru = discfactor;
-			amax = (i32) ((amax * 32700) / 32768);
+			amax = (i32)((amax * 32700) / 32768);
 		}
 
 		if (accum < amin) {
@@ -925,10 +962,10 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 			discounterl = discfactor;
 		} else if (--discounterl <= 0) {
 			discounterl = discfactor;
-			amin = (i32) ((amin * 32700) / 32768);
+			amin = (i32)((amin * 32700) / 32768);
 		}
 
-		apeak = (i32) (amax - amin) / 2;
+		apeak = (i32)(amax - amin) / 2;
 		if (output) {
 			output[i] = apeak;
 		}
@@ -953,26 +990,28 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 */
 i16 DelayLine(urp_radio_stage *mySps)
 {
-	i16 *input, *output, *buff;
+	const i16 *input;
+	i16 *output, *buff;
 	i16 i, npoints, buffsize, inindex, outindex;
 
-	urp_radio_state *pChan;
+	const urp_radio_state *pChan;
 	pChan = mySps->parentChan;
+	(void)pChan; /* Used only by trace macros when tracing is compiled in. */
 	TRACEF(5, " DelayLine() %i\n", mySps->enabled);
 
 	if (!mySps->enabled || mySps->b.outzero) {
 		if (mySps->b.dirty) {
 			mySps->b.dirty = 0;
 			mySps->buffInIndex = 0;
-			memset((void *) (mySps->buff), 0, mySps->buffSize * 2);
-			memset((void *) (mySps->sink), 0, mySps->nSamples * 2);
+			memset((void *)(mySps->buff), 0, mySps->buffSize * 2);
+			memset((void *)(mySps->sink), 0, mySps->nSamples * 2);
 		}
 		return 0;
 	}
 
 	input = mySps->source;
 	output = mySps->sink;
-	buff = (i16 *) (mySps->buff);
+	buff = (i16 *)(mySps->buff);
 	buffsize = mySps->buffSize;
 	npoints = mySps->nSamples;
 	inindex = mySps->buffInIndex;
@@ -1000,13 +1039,15 @@ i16 DelayLine(urp_radio_stage *mySps)
 */
 i16 urp_ctcss_decode(urp_radio_state *pChan)
 {
-	i16 i, points2do, *pInput, hit, thit, relax;
+	i16 i, points2do, thit, relax;
+	const i16 *pInput;
 	i16 tnum, tmp, indexNow, diffpeak;
 	i16 tv0, tv1, tv2, tv3, indexDebug;
 	i16 points = 0;
 	i16 indexWas = 0;
 
-	TRACEF(5, "urp_ctcss_decode(%p) %i %i %i %i\n", pChan, pChan->rxCtcss->enabled, 0, pChan->rxCtcss->testIndex, pChan->rxCtcss->decode);
+	TRACEF(5, "urp_ctcss_decode(%p) %i %i %i %i\n", pChan, pChan->rxCtcss->enabled, 0,
+	       pChan->rxCtcss->testIndex, pChan->rxCtcss->decode);
 
 	if (!pChan->rxCtcss->enabled) {
 		return 1;
@@ -1015,7 +1056,7 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 	relax = pChan->rxCtcss->relax;
 	pInput = pChan->rxCtcss->input;
 
-	thit = hit = -1;
+	thit = -1;
 
 	for (tnum = 0; tnum < CTCSS_NUM_CODES; tnum++) {
 		i32 accum, peak;
@@ -1025,7 +1066,8 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 
 		TRACEF(6, " urp_ctcss_decode() tnum=%i %i\n", tnum, pChan->rxCtcssMap[tnum]);
 
-		if ((pChan->rxCtcssMap[tnum] == CTCSS_NULL) || (pChan->rxCtcss->decode > CTCSS_NULL && (tnum != pChan->rxCtcss->decode))) {
+		if ((pChan->rxCtcssMap[tnum] == CTCSS_NULL) ||
+		    (pChan->rxCtcss->decode > CTCSS_NULL && (tnum != pChan->rxCtcss->decode))) {
 			continue;
 		}
 
@@ -1047,7 +1089,8 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 
 			accum = pInput[indexNow - 1]; /* duuuude's major bug fix! */
 
-			ptdet->z[ptdet->zIndex] += (((accum - ptdet->z[ptdet->zIndex]) * binFactor) / M_Q15);
+			ptdet->z[ptdet->zIndex] +=
+				(((accum - ptdet->z[ptdet->zIndex]) * binFactor) / M_Q15);
 
 			peak = abs(ptdet->z[0] - ptdet->z[2]) + abs(ptdet->z[1] - ptdet->z[3]);
 
@@ -1108,10 +1151,15 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 				ptdet->decode = 0;
 			}
 
-			if ((pChan->rxCtcss->decode == tnum) && !relax && (ptdet->dvu > (0.00075 * M_Q15))) {
+			if ((pChan->rxCtcss->decode == tnum) && !relax &&
+			    (ptdet->dvu > (0.00075 * M_Q15))) {
 				ptdet->decode = 0;
-				ptdet->z[0] = ptdet->z[1] = ptdet->z[2] = ptdet->z[3] = ptdet->dvu = 0;
-				TRACEF(4, "urp_ctcss_decode() turnoff detected by dvdt for tnum = %i.\n", tnum);
+				ptdet->z[0] = ptdet->z[1] = ptdet->z[2] = ptdet->z[3] = ptdet->dvu =
+					0;
+				TRACEF(4,
+				       "urp_ctcss_decode() turnoff detected by dvdt for tnum = "
+				       "%i.\n",
+				       tnum);
 			}
 
 			if (ptdet->decode < 0 || !pChan->rxCarrierDetect) {
@@ -1127,37 +1175,36 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 
 #if URP_RADIO_DEBUG == 1
 			if (thit >= 0 && thit == tnum) {
-				TRACEF(6, " urp_ctcss_decode() %i %i %i %i \n", tnum, ptdet->peak, ptdet->setpt, ptdet->hyst);
+				TRACEF(6, " urp_ctcss_decode() %i %i %i %i \n", tnum, ptdet->peak,
+				       ptdet->setpt, ptdet->hyst);
 			}
 
-			if (ptdet->pDebug0) {
-				tv0 = ptdet->peak;
-				tv1 = ptdet->decode;
-				tv2 = tmp;
-				tv3 = ptdet->dvu * 32;
+			tv0 = ptdet->peak;
+			tv1 = ptdet->decode;
+			tv2 = tmp;
+			tv3 = ptdet->dvu * 32;
 
-				if (indexDebug == 0) {
-					ptdet->lasttv0 = ptdet->pDebug0[points - 1];
-					ptdet->lasttv1 = ptdet->pDebug1[points - 1];
-					ptdet->lasttv2 = ptdet->pDebug2[points - 1];
-					ptdet->lasttv3 = ptdet->pDebug3[points - 1];
-				}
-
-				while (indexDebug < indexNow) {
-					ptdet->pDebug0[indexDebug] = ptdet->lasttv0;
-					ptdet->pDebug1[indexDebug] = ptdet->lasttv1;
-					ptdet->pDebug2[indexDebug] = ptdet->lasttv2;
-					ptdet->pDebug3[indexDebug] = ptdet->lasttv3;
-					indexDebug++;
-				}
-				ptdet->lasttv0 = tv0;
-				ptdet->lasttv1 = tv1;
-				ptdet->lasttv2 = tv2;
-				ptdet->lasttv3 = tv3;
+			if (indexDebug == 0) {
+				ptdet->lasttv0 = ptdet->pDebug0[points - 1];
+				ptdet->lasttv1 = ptdet->pDebug1[points - 1];
+				ptdet->lasttv2 = ptdet->pDebug2[points - 1];
+				ptdet->lasttv3 = ptdet->pDebug3[points - 1];
 			}
+
+			while (indexDebug < indexNow) {
+				ptdet->pDebug0[indexDebug] = ptdet->lasttv0;
+				ptdet->pDebug1[indexDebug] = ptdet->lasttv1;
+				ptdet->pDebug2[indexDebug] = ptdet->lasttv2;
+				ptdet->pDebug3[indexDebug] = ptdet->lasttv3;
+				indexDebug++;
+			}
+			ptdet->lasttv0 = tv0;
+			ptdet->lasttv1 = tv1;
+			ptdet->lasttv2 = tv2;
+			ptdet->lasttv3 = tv3;
 #endif
 			indexWas = indexNow;
-			ptdet->zIndex = (++ptdet->zIndex) % 4;
+			ptdet->zIndex = (ptdet->zIndex + 1) % 4;
 		}
 		ptdet->counter -= (points2do * CTCSS_SCOUNT_MUL);
 
@@ -1179,7 +1226,8 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 		pChan->rxCtcss->BlankingTimer = 0;
 	}
 
-	if (thit > CTCSS_NULL && pChan->rxCtcss->decode <= CTCSS_NULL && !pChan->rxCtcss->BlankingTimer) {
+	if (thit > CTCSS_NULL && pChan->rxCtcss->decode <= CTCSS_NULL &&
+	    !pChan->rxCtcss->BlankingTimer) {
 		pChan->rxCtcss->decode = thit;
 		sprintf(pChan->rxctcssfreq, "%.1f", freq_ctcss[thit]);
 		TRACEC(1, "ctcss decode  %i  %.1f\n", thit, freq_ctcss[thit]);
@@ -1206,6 +1254,13 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 */
 urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 {
+#define ALLOCATE_OR_FAIL(target, count, size)                                                      \
+	do {                                                                                       \
+		(target) = ast_calloc((count), (size));                                            \
+		if (!(target)) {                                                                   \
+			goto allocation_failed;                                                    \
+		}                                                                                  \
+	} while (0)
 	i16 i;
 	urp_radio_state *pChan;
 	urp_radio_stage *pSps;
@@ -1213,22 +1268,24 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	TRACEJ(1, "urp_radio_create(%p,%i)\n", tChan, numSamples);
 
-	pChan = (urp_radio_state *) ast_calloc(sizeof(urp_radio_state), 1);
+	pChan = (urp_radio_state *)ast_calloc(sizeof(urp_radio_state), 1);
 	if (pChan == NULL) {
 		ast_log(LOG_ERROR, "urp_radio_create() failed\n");
 		return NULL;
 	}
 
-
 	pChan->index = radioIndex++;
 	pChan->nSamplesTx = pChan->nSamplesRx = numSamples;
 
-	pDecCtcss = (urp_ctcss_decoder *) ast_calloc(sizeof(urp_ctcss_decoder), 1);
+	ALLOCATE_OR_FAIL(pDecCtcss, sizeof(*pDecCtcss), 1);
 	pChan->rxCtcss = pDecCtcss;
 	pChan->rxctcssfreq[0] = 0;
 
 	if (tChan == NULL) {
 		ast_log(LOG_WARNING, "urp_radio_create() WARNING: NULL tChan!\n");
+		pChan->pRxCodeSrc = disabled_code;
+		pChan->pTxCodeSrc = disabled_code;
+		pChan->pTxCodeDefault = disabled_code;
 		pChan->rxNoiseSquelchEnable = 0;
 		pChan->rxHpfEnable = 0;
 		pChan->rxDeEmpEnable = 0;
@@ -1236,7 +1293,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->rxCtcssDecodeEnable = 0;
 		pChan->rxDcsDecodeEnable = 0;
 
-		pChan->rxCarrierPoint = 17000;
 		pChan->rxCarrierHyst = 2500;
 
 		pChan->txMixA = TX_OUT_VOICE;
@@ -1278,13 +1334,13 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->name = tChan->name;
 		pChan->fever = tChan->fever;
 
-		if (tChan->rxlpf >= 0 && (size_t) tChan->rxlpf < MAX_RXLPF) {
+		if (tChan->rxlpf >= 0 && (size_t)tChan->rxlpf < MAX_RXLPF) {
 			pChan->rxlpf = tChan->rxlpf;
 		} else {
 			pChan->rxlpf = 0;
 		}
 
-		if (tChan->rxhpf >= 0 && (size_t) tChan->rxhpf < MAX_RXHPF) {
+		if (tChan->rxhpf >= 0 && (size_t)tChan->rxhpf < MAX_RXHPF) {
 			pChan->rxhpf = tChan->rxhpf;
 		} else {
 			pChan->rxhpf = 0;
@@ -1310,65 +1366,52 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	pChan->rxDcsDecodeEnable = 0;
 
-	if (pChan->b.ctcssRxEnable || pChan->b.dcsRxEnable || pChan->b.lmrRxEnable) {
-		pChan->rxHpfEnable = 1;
-		pChan->rxCenterSlicerEnable = 1;
-		pChan->rxCtcssDecodeEnable = 1;
-	}
-
 	pChan->lastrxdecode = CTCSS_NULL;
 
 	TRACEF(1, "calloc buffers \n");
 
-	pChan->pRxDemod = ast_calloc(numSamples, 2);
-	pChan->pRxNoise = ast_calloc(numSamples, 2);
-	pChan->pRxBase = ast_calloc(numSamples, 2);
-	pChan->pRxHpf = ast_calloc(numSamples, 2);
-	pChan->pRxLsd = ast_calloc(numSamples, 2);
-	pChan->pRxSpeaker = ast_calloc(numSamples, 2);
-	pChan->pRxCtcss = ast_calloc(numSamples, 2);
-	pChan->pRxDcTrack = ast_calloc(numSamples, 2);
-	pChan->pRxLsdLimit = ast_calloc(numSamples, 2);
-
-	pChan->prxMeasure = ast_calloc(numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxDemod, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxNoise, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxBase, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxHpf, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxLsd, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxSpeaker, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxCtcss, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxDcTrack, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxLsdLimit, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->prxMeasure, numSamples, 2);
 
 #if URP_RADIO_DEBUG == 1
 	TRACEF(1, "configure tracing\n");
 
-	pChan->pTstTxOut = ast_calloc(numSamples, 2);
-	pChan->pRxLsdCen = ast_calloc(numSamples, 2);
-	pChan->prxDebug0 = ast_calloc(numSamples, 2);
-	pChan->prxDebug1 = ast_calloc(numSamples, 2);
-	pChan->prxDebug2 = ast_calloc(numSamples, 2);
-	pChan->prxDebug3 = ast_calloc(numSamples, 2);
-	pChan->ptxDebug0 = ast_calloc(numSamples, 2);
-	pChan->ptxDebug1 = ast_calloc(numSamples, 2);
-	pChan->ptxDebug2 = ast_calloc(numSamples, 2);
-	pChan->ptxDebug3 = ast_calloc(numSamples, 2);
-	pChan->pNull = ast_calloc(numSamples, 2);
-
-	for (i = 0; i < numSamples; i++) {
-		pChan->pNull[i] = ((i % (numSamples / 2)) * 8000) - 4000;
-	}
-
-	pChan->rxCtcss->pDebug0 = ast_calloc(numSamples, 2);
-	pChan->rxCtcss->pDebug1 = ast_calloc(numSamples, 2);
-	pChan->rxCtcss->pDebug2 = ast_calloc(numSamples, 2);
-	pChan->rxCtcss->pDebug3 = ast_calloc(numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pTstTxOut, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxLsdCen, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->prxDebug0, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->prxDebug1, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->prxDebug2, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->prxDebug3, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->ptxDebug0, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->ptxDebug1, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->ptxDebug2, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->ptxDebug3, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug0, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug1, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug2, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug3, numSamples, 2);
 
 	for (i = 0; i < CTCSS_NUM_CODES; i++) {
-		pChan->rxCtcss->tdet[i].pDebug0 = ast_calloc(numSamples, 2);
-		pChan->rxCtcss->tdet[i].pDebug1 = ast_calloc(numSamples, 2);
-		pChan->rxCtcss->tdet[i].pDebug2 = ast_calloc(numSamples, 2);
-		pChan->rxCtcss->tdet[i].pDebug3 = ast_calloc(numSamples, 2);
+		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug0, numSamples, 2);
+		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug1, numSamples, 2);
+		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug2, numSamples, 2);
+		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug3, numSamples, 2);
 	}
 
 	/* buffer, 2 bytes per sample, and 16 channels */
-	pChan->prxDebug = ast_calloc(numSamples * 16, 2);
-	pChan->ptxDebug = ast_calloc(numSamples * 16, 2);
+	ALLOCATE_OR_FAIL(pChan->ptxDebug, numSamples * 16, 2);
 
-	/* TSCOPE CONFIGURATION SETSCOPE configure debug traces and sources for each channel of the output */
-	pChan->sdbg = (t_sdbg *) ast_calloc(sizeof(t_sdbg), 1);
+	/* TSCOPE CONFIGURATION SETSCOPE configure debug traces and sources for each channel of the
+	 * output */
+	ALLOCATE_OR_FAIL(pChan->sdbg, sizeof(*pChan->sdbg), 1);
 
 	for (i = 0; i < URP_RADIO_DEBUG_CHANNELS; i++) {
 		pChan->sdbg->trace[i] = -1;
@@ -1457,7 +1500,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 		pChan->sdbg->trace[5] = TX_PTT_IN;
 		pChan->sdbg->trace[6] = TX_PTT_OUT;
-
 	}
 
 	for (i = 0; i < URP_RADIO_DEBUG_CHANNELS; i++) {
@@ -1479,22 +1521,22 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	/* allocate space for first sps and set pointers */
 	pSps = pChan->spsRx = urp_radio_stage_create(pChan);
+	if (!pSps) {
+		goto allocation_failed;
+	}
 	pSps->source = NULL; /* set when called */
 	pSps->sink = pChan->pRxBase;
 	pSps->sigProc = urp_radio_receive_frontend;
 	pSps->enabled = 1;
 	pSps->decimator = pSps->decimate = 6;
-	pSps->interpolate = pSps->interpolate = 1;
+	pSps->interpolate = 1;
 	pSps->nSamples = pChan->nSamplesRx;
 	pSps->ncoef = fir_rxlpf[pChan->rxlpf].taps;
 	pSps->size_coef = 2;
-	pSps->coef = (void *) fir_rxlpf[pChan->rxlpf].coefs;
+	pSps->coef = (void *)fir_rxlpf[pChan->rxlpf].coefs;
 	pSps->nx = fir_rxlpf[pChan->rxlpf].taps;
 	pSps->size_x = 2;
-	pSps->x = ast_calloc(pSps->nx, pSps->size_coef);
-	if (pSps->x == NULL) {
-		; /* XXX do something here */
-	}
+	ALLOCATE_OR_FAIL(pSps->x, pSps->nx, pSps->size_coef);
 	pSps->calcAdjust = (fir_rxlpf[pChan->rxlpf].gain * 256) / 0x0100;
 	pSps->outputGain = (1.0 * M_Q8);
 	pSps->discfactor = 2;
@@ -1511,6 +1553,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	/* allocate space for next sps and set pointers */
 	/* Rx SubAudible Decoder Low Pass Filter */
 	pSps = pChan->spsRxLsd = pSps->nextSps = urp_radio_stage_create(pChan);
+	if (!pSps) {
+		goto allocation_failed;
+	}
 	pSps->source = pChan->pRxBase;
 	pSps->sink = pChan->pRxLsd;
 	pSps->sigProc = urp_radio_fir;
@@ -1524,13 +1569,10 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	/* configure the the larger, lower cutoff filter by default */
 	pSps->ncoef = taps_fir_lpf_215_9_88;
 	pSps->size_coef = 2;
-	pSps->coef = (void *) coef_fir_lpf_215_9_88;
+	pSps->coef = (void *)coef_fir_lpf_215_9_88;
 	pSps->nx = taps_fir_lpf_215_9_88;
 	pSps->size_x = 2;
-	pSps->x = ast_calloc(pSps->nx, pSps->size_x);
-	if (pSps->x == NULL) {
-		; /* XXX do something here */
-	}
+	ALLOCATE_OR_FAIL(pSps->x, pSps->nx, pSps->size_x);
 	pSps->calcAdjust = gain_fir_lpf_215_9_88;
 
 	pSps->inputGain = (1 * M_Q8);
@@ -1540,6 +1582,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	/* CTCSS CenterSlicer */
 	pSps = pChan->spsRxLsdNrz = pSps->nextSps = urp_radio_stage_create(pChan);
+	if (!pSps) {
+		goto allocation_failed;
+	}
 	pSps->source = pChan->pRxLsd;
 	pSps->sink = pChan->pRxDcTrack;
 	pSps->buff = pChan->pRxLsdLimit;
@@ -1548,12 +1593,15 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pSps->discfactor = LSD_DFS; /* centering time constant */
 	pSps->inputGain = (1 * M_Q8);
 	pSps->outputGain = (1 * M_Q8);
-	pSps->setpt = 4900;		/* ptp clamp for DC centering */
+	pSps->setpt = 4900;	/* ptp clamp for DC centering */
 	pSps->inputGainB = 625; /* peak output limiter clip point */
 	pSps->enabled = 0;
 
 	/* Rx HPF */
 	pSps = pSps->nextSps = urp_radio_stage_create(pChan);
+	if (!pSps) {
+		goto allocation_failed;
+	}
 	pChan->spsRxHpf = pSps;
 	pSps->source = pChan->pRxBase;
 	pSps->sink = pChan->pRxHpf;
@@ -1566,13 +1614,10 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pSps->interpolate = 1;
 	pSps->ncoef = fir_rxhpf[pChan->rxhpf].taps;
 	pSps->size_coef = 2;
-	pSps->coef = (void *) fir_rxhpf[pChan->rxhpf].coefs;
+	pSps->coef = (void *)fir_rxhpf[pChan->rxhpf].coefs;
 	pSps->nx = fir_rxhpf[pChan->rxhpf].taps;
 	pSps->size_x = 2;
-	pSps->x = ast_calloc(pSps->nx, pSps->size_x);
-	if (pSps->x == NULL) {
-		; /* XXX do something here */
-	}
+	ALLOCATE_OR_FAIL(pSps->x, pSps->nx, pSps->size_x);
 	pSps->calcAdjust = fir_rxhpf[pChan->rxhpf].gain;
 	pSps->inputGain = (1 * M_Q8);
 	pSps->outputGain = (1 * M_Q8);
@@ -1583,6 +1628,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	/* Rx DeEmp */
 	if (pChan->rxDeEmpEnable) {
 		pSps = pSps->nextSps = urp_radio_stage_create(pChan);
+		if (!pSps) {
+			goto allocation_failed;
+		}
 		pChan->spsRxDeEmp = pSps;
 		pSps->source = pChan->pRxHpf;
 		pSps->sink = pChan->pRxSpeaker;
@@ -1593,14 +1641,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 		pSps->ncoef = taps_int_lpf_300_1_2;
 		pSps->size_coef = 2;
-		pSps->coef = (void *) coef_int_lpf_300_1_2;
+		pSps->coef = (void *)coef_int_lpf_300_1_2;
 
 		pSps->nx = taps_int_lpf_300_1_2;
 		pSps->size_x = 4;
-		pSps->x = ast_calloc(pSps->nx, pSps->size_x);
-		if (pSps->x == NULL) {
-			; /* XXX do something here */
-		}
+		ALLOCATE_OR_FAIL(pSps->x, pSps->nx, pSps->size_x);
 		pSps->calcAdjust = gain_int_lpf_300_1_2 / 2;
 		pSps->inputGain = (1.0 * M_Q8);
 		pSps->outputGain = (1.0 * M_Q8);
@@ -1619,6 +1664,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	if (pChan->rxSquelchDelay > 0) {
 		TRACEF(1, "create rx squelch delay\n");
 		pSps = pChan->spsDelayLine = pSps->nextSps = urp_radio_stage_create(pChan);
+		if (!pSps) {
+			goto allocation_failed;
+		}
 		pChan->spsRxSquelchDelay = pSps;
 		pSps->sigProc = DelayLine;
 		if (pChan->rxDeEmpEnable) {
@@ -1635,7 +1683,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pSps->outputGain = 1 * M_Q8;
 		pSps->nSamples = pChan->nSamplesRx;
 		pSps->buffSize = RXSQDELAYBUFSIZE;
-		pSps->buff = ast_calloc(RXSQDELAYBUFSIZE, 2);
+		ALLOCATE_OR_FAIL(pSps->buff, RXSQDELAYBUFSIZE, 2);
 		pSps->buffLead = pChan->rxSquelchDelay * 8; /* convert ms to samples */
 		pSps->buffInIndex = 0;
 		pSps->buffOutIndex = 0;
@@ -1643,9 +1691,12 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	if (pChan->rxCdType == CD_XPMR_VOX) {
 		TRACEF(1, "create vox measureblock\n");
-		pChan->prxVoxMeas = ast_calloc(pChan->nSamplesRx, 2);
+		ALLOCATE_OR_FAIL(pChan->prxVoxMeas, pChan->nSamplesRx, 2);
 
 		pSps = pChan->spsRxVox = pSps->nextSps = urp_radio_stage_create(pChan);
+		if (!pSps) {
+			goto allocation_failed;
+		}
 		pSps->sigProc = MeasureBlock;
 		pSps->parentChan = pChan;
 		pSps->source = pChan->pRxBase;
@@ -1666,6 +1717,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	/* tuning measure block */
 	pSps = pChan->spsMeasure = pSps->nextSps = urp_radio_stage_create(pChan);
+	if (!pSps) {
+		goto allocation_failed;
+	}
 	pSps->source = pChan->spsRx->sink;
 	pSps->sink = pChan->prxMeasure;
 	pSps->sigProc = MeasureBlock;
@@ -1679,7 +1733,9 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pChan->ptxCtcssAdjust = &pChan->txCtcssGainQ8;
 
 	/* Configure Coded Signaling */
-	urp_radio_parse_codes(pChan);
+	if (urp_radio_parse_codes(pChan)) {
+		goto allocation_failed;
+	}
 
 	pChan->smode = SMODE_NULL;
 	pChan->smodewas = SMODE_NULL;
@@ -1692,7 +1748,14 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	TRACEF(1, "urp_radio_create() end\n");
 
+#undef ALLOCATE_OR_FAIL
 	return pChan;
+
+allocation_failed:
+	ast_log(LOG_ERROR, "urp_radio_create(): memory allocation failed\n");
+	urp_radio_destroy(pChan);
+#undef ALLOCATE_OR_FAIL
+	return NULL;
 }
 
 /*
@@ -1702,6 +1765,9 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	urp_radio_stage *pmr_sps, *tmp_sps;
 	i16 i;
 
+	if (!pChan) {
+		return 1;
+	}
 	TRACEF(1, "urp_radio_destroy()\n");
 
 	ast_free(pChan->pRxDemod);
@@ -1710,6 +1776,7 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	ast_free(pChan->pRxHpf);
 	ast_free(pChan->pRxLsd);
 	ast_free(pChan->pRxSpeaker);
+	ast_free(pChan->pRxCtcss);
 	ast_free(pChan->pRxDcTrack);
 	if (pChan->pRxLsdLimit) {
 		ast_free(pChan->pRxLsdLimit);
@@ -1718,7 +1785,11 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	if (pChan->prxMeasure) {
 		ast_free(pChan->prxMeasure);
 	}
-
+	ast_free(pChan->prxVoxMeas);
+	ast_free(pChan->pRxCode);
+	ast_free(pChan->pRxCodeStr);
+	ast_free(pChan->pTxCode);
+	ast_free(pChan->pTxCodeStr);
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->ptxDebug) {
@@ -1734,21 +1805,31 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	ast_free(pChan->ptxDebug1);
 	ast_free(pChan->ptxDebug2);
 	ast_free(pChan->ptxDebug3);
+	ast_free(pChan->pTstTxOut);
+	ast_free(pChan->pRxLsdCen);
 
-	ast_free(pChan->rxCtcss->pDebug0);
-	ast_free(pChan->rxCtcss->pDebug1);
+	if (pChan->rxCtcss) {
+		ast_free(pChan->rxCtcss->pDebug0);
+		ast_free(pChan->rxCtcss->pDebug1);
+		ast_free(pChan->rxCtcss->pDebug2);
+		ast_free(pChan->rxCtcss->pDebug3);
 
-	for (i = 0; i < CTCSS_NUM_CODES; i++) {
-		ast_free(pChan->rxCtcss->tdet[i].pDebug0);
-		ast_free(pChan->rxCtcss->tdet[i].pDebug1);
-		ast_free(pChan->rxCtcss->tdet[i].pDebug2);
-		ast_free(pChan->rxCtcss->tdet[i].pDebug3);
+		for (i = 0; i < CTCSS_NUM_CODES; i++) {
+			ast_free(pChan->rxCtcss->tdet[i].pDebug0);
+			ast_free(pChan->rxCtcss->tdet[i].pDebug1);
+			ast_free(pChan->rxCtcss->tdet[i].pDebug2);
+			ast_free(pChan->rxCtcss->tdet[i].pDebug3);
+		}
 	}
 #endif
 
-	ast_free(pChan->pRxCtcss);
+	ast_free(pChan->rxCtcss);
 
 	pmr_sps = pChan->spsRx;
+	if (pChan->spsDelayLine) {
+		ast_free(pChan->spsDelayLine->buff);
+		pChan->spsDelayLine->buff = NULL;
+	}
 
 	if (pChan->sdbg) {
 		ast_free(pChan->sdbg);
@@ -1773,10 +1854,11 @@ urp_radio_stage *urp_radio_stage_create(urp_radio_state *pChan)
 
 	TRACEF(1, "urp_radio_stage_create()\n");
 
-	pSps = (urp_radio_stage *) ast_calloc(sizeof(urp_radio_stage), 1);
+	pSps = (urp_radio_stage *)ast_calloc(sizeof(urp_radio_stage), 1);
 
 	if (!pSps) {
 		ast_log(LOG_ERROR, "Error: urp_radio_stage_create()\n");
+		return NULL;
 	}
 
 	pSps->parentChan = pChan;
@@ -1810,7 +1892,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 
 	TRACEC(5, "urp_radio_process(%p %p %p %p)\n", pChan, input, outputrx, outputtx);
 
-
 	if (pChan == NULL) {
 		ast_log(LOG_ERROR, "urp_radio_process() pChan == NULL\n");
 		return 1;
@@ -1820,12 +1901,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->b.rxCapture) {
-		if (pChan->ptxDebug) {
-			memset((void *) pChan->ptxDebug, 0, pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
-		}
+		memset((void *)pChan->ptxDebug, 0,
+		       pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
 
-		memset((void *) pChan->sdbg->buffer, 0, pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
-		pChan->prxDebug = pChan->sdbg->buffer;
+		memset((void *)pChan->sdbg->buffer, 0,
+		       pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
 	}
 #endif
 
@@ -1849,13 +1929,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		}
 	}
 
-	if (pChan->rxCpuSaver && !pChan->rxCarrierDetect && pChan->smode == SMODE_NULL && !pChan->txPttIn && !pChan->txPttOut) {
+	if (pChan->rxCpuSaver && !pChan->rxCarrierDetect && pChan->smode == SMODE_NULL &&
+	    !pChan->txPttIn && !pChan->txPttOut) {
 		if (!pChan->b.rxhalted) {
-			if (pChan->spsRxHpf) {
-				pChan->spsRxHpf->enabled = 0;
-			}
-
-			if (pChan->spsRxDeEmp) {
+			pChan->spsRxHpf->enabled = 0;
+			if (pChan->rxDeEmpEnable) {
 				pChan->spsRxDeEmp->enabled = 0;
 			}
 
@@ -1863,11 +1941,8 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 			TRACEC(1, "urp_radio_process() rx sps halted\n");
 		}
 	} else if (pChan->b.rxhalted) {
-		if (pChan->spsRxHpf) {
-			pChan->spsRxHpf->enabled = 1;
-		}
-
-		if (pChan->spsRxDeEmp) {
+		pChan->spsRxHpf->enabled = 1;
+		if (pChan->rxDeEmpEnable) {
 			pChan->spsRxDeEmp->enabled = 1;
 		}
 
@@ -1876,10 +1951,10 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	}
 
 	i = 0;
-	while (pmr_sps != NULL && pmr_sps != 0) {
+	while (pmr_sps != NULL) {
 		TRACEC(5, "urp_radio_process() sps %i\n", i++);
 		pmr_sps->sigProc(pmr_sps);
-		pmr_sps = (urp_radio_stage *) (pmr_sps->nextSps);
+		pmr_sps = (urp_radio_stage *)(pmr_sps->nextSps);
 	}
 
 	if (pChan->rxCdType == CD_XPMR_VOX) {
@@ -1902,7 +1977,7 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 
 	/* stop and start these engines instead to eliminate falsing */
 	if (pChan->b.ctcssRxEnable &&
-		(!pChan->b.rxhalted || pChan->rxCtcss->decode != CTCSS_NULL || pChan->smode == SMODE_CTCSS)) {
+	    (!pChan->b.rxhalted || pChan->rxCtcss->decode != CTCSS_NULL)) {
 		urp_ctcss_decode(pChan);
 	}
 
@@ -1923,7 +1998,8 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		}
 	}
 
-	if (pChan->rxCtcss->decode > CTCSS_NULL && (pChan->smode == SMODE_NULL || pChan->smode == SMODE_CTCSS)) {
+	if (pChan->rxCtcss->decode > CTCSS_NULL &&
+	    (pChan->smode == SMODE_NULL || pChan->smode == SMODE_CTCSS)) {
 		if (pChan->smode != SMODE_CTCSS) {
 			TRACEC(1, "smode set=%i  code=%i\n", pChan->smode, pChan->rxCtcss->decode);
 			pChan->smode = pChan->smodewas = SMODE_CTCSS;
@@ -1954,13 +2030,17 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	hit = 0;
 	{
 		if (pChan->txPttIn && (pChan->txState == CHAN_TXSTATE_IDLE)) {
-			TRACEC(1, "txPttIn==1 from CHAN_TXSTATE_IDLE && !SMODE_LSD. codeindex=%i  %i \n", pChan->rxCtcss->decode,
-				pChan->rxCtcssMap[pChan->rxCtcss->decode]);
+			TRACEC(1,
+			       "txPttIn==1 from CHAN_TXSTATE_IDLE && !SMODE_LSD. codeindex=%i  %i "
+			       "\n",
+			       pChan->rxCtcss->decode, pChan->rxCtcssMap[pChan->rxCtcss->decode]);
 			pChan->txCtcssFreq10 = 0;
 			if (pChan->smode == SMODE_CTCSS && !pChan->b.txCtcssInhibit) {
 				if (pChan->rxCtcss->decode > CTCSS_NULL) {
-					if (pChan->rxCtcssMap[pChan->rxCtcss->decode] != CTCSS_RXONLY) {
-						f = freq_ctcss[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
+					if (pChan->rxCtcssMap[pChan->rxCtcss->decode] !=
+					    CTCSS_RXONLY) {
+						f = freq_ctcss
+							[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
 					}
 				} else {
 					f = pChan->txctcssdefault_value;
@@ -1972,8 +2052,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 					pChan->txCtcssEnabled = 1;
 					pChan->txCtcssTurnoffTimer = 0;
 				}
-			} else if (pChan->smode == SMODE_NULL && pChan->txcodedefaultsmode == SMODE_CTCSS && !pChan->b.txCtcssInhibit) {
-				TRACEC(1, "txPtt Encode txcodedefaultsmode==SMODE_CTCSS %f\n", pChan->txctcssdefault_value);
+			} else if (pChan->smode == SMODE_NULL &&
+				   pChan->txcodedefaultsmode == SMODE_CTCSS &&
+				   !pChan->b.txCtcssInhibit) {
+				TRACEC(1, "txPtt Encode txcodedefaultsmode==SMODE_CTCSS %f\n",
+				       pChan->txctcssdefault_value);
 				f = pChan->txctcssdefault_value;
 				pChan->txCtcssFreq10 = f * 10;
 				pChan->txCtcssOption = 1;
@@ -1981,10 +2064,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 				pChan->txCtcssTurnoffTimer = 0;
 				pChan->smode = SMODE_CTCSS;
 				pChan->smodetimer = pChan->smodetime;
-			} else if (pChan->txcodedefaultsmode == SMODE_NULL || pChan->b.txCtcssInhibit) {
-				TRACEC(1, "txPtt Encode txcodedefaultsmode==SMODE_NULL\n");
-			} else {
-				TRACEC(1, "txPttIn=%i NOT HANDLED PROPERLY.\n", pChan->txPttIn);
 			}
 
 			memset(pChan->txctcssfreq, 0, sizeof(pChan->txctcssfreq));
@@ -1995,7 +2074,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 			pChan->txPttOut = 1;
 
 			pChan->txsettletimer = pChan->txsettletime;
-
 
 			TRACEC(1, "urp_radio_process() TxOn\n");
 		} else if (pChan->txPttIn && pChan->txState == CHAN_TXSTATE_ACTIVE) {
@@ -2036,7 +2114,7 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 				if (--pChan->txHangTime == 0) {
 					pChan->txState = CHAN_TXSTATE_FINISHING;
 				}
-			} else if (pChan->txHangTime <= 0 && pChan->txCtcssState == 0) {
+			} else if (pChan->txCtcssState == 0) {
 				pChan->txBufferClear = 3;
 				pChan->txState = CHAN_TXSTATE_FINISHING;
 				TRACEC(1, "Tx Off TOC.\n");
@@ -2070,8 +2148,8 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	}
 
 	/* enable this after we know everything else is working */
-	if (pChan->txCpuSaver && !pChan->txPttIn && !pChan->txPttOut
-		&& pChan->txState == CHAN_TXSTATE_IDLE) {
+	if (pChan->txCpuSaver && !pChan->txPttIn && !pChan->txPttOut &&
+	    pChan->txState == CHAN_TXSTATE_IDLE) {
 		if (!pChan->b.txhalted) {
 			pChan->b.txhalted = 1;
 			TRACEC(1, "urp_radio_process() tx sps halted\n");
@@ -2115,18 +2193,24 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		for (i = 0; i < pChan->nSamplesRx; i++) {
 			pChan->pRxDemod[i] = input[i * 2 * 6];
 			pChan->pTstTxOut[i] = outputtx[i * 2 * 6 + 0]; /* txa */
-			TSCOPE((RX_NOISE_TRIG, pChan->sdbg, i, (pChan->rxCarrierDetect * URP_RADIO_TRACE_AMP) - URP_RADIO_TRACE_AMP / 2));
-			TSCOPE((RX_CTCSS_DECODE, pChan->sdbg, i, pChan->rxCtcss->decode * (M_Q14 / CTCSS_NUM_CODES)));
-			TSCOPE((RX_SMODE, pChan->sdbg, i, pChan->smode * (URP_RADIO_TRACE_AMP / 4)));
-			TSCOPE((TX_PTT_IN, pChan->sdbg, i, (pChan->txPttIn * URP_RADIO_TRACE_AMP) - URP_RADIO_TRACE_AMP / 2));
-			TSCOPE((TX_PTT_OUT, pChan->sdbg, i, (pChan->txPttOut * URP_RADIO_TRACE_AMP) - URP_RADIO_TRACE_AMP / 2));
+			TSCOPE((RX_NOISE_TRIG, pChan->sdbg, i,
+				(pChan->rxCarrierDetect * URP_RADIO_TRACE_AMP) -
+					URP_RADIO_TRACE_AMP / 2));
+			TSCOPE((RX_CTCSS_DECODE, pChan->sdbg, i,
+				pChan->rxCtcss->decode * (M_Q14 / CTCSS_NUM_CODES)));
+			TSCOPE((RX_SMODE, pChan->sdbg, i,
+				pChan->smode * (URP_RADIO_TRACE_AMP / 4)));
+			TSCOPE((TX_PTT_IN, pChan->sdbg, i,
+				(pChan->txPttIn * URP_RADIO_TRACE_AMP) - URP_RADIO_TRACE_AMP / 2));
+			TSCOPE((TX_PTT_OUT, pChan->sdbg, i,
+				(pChan->txPttOut * URP_RADIO_TRACE_AMP) - URP_RADIO_TRACE_AMP / 2));
 		}
 	}
 #endif
 
 	strace2(pChan->sdbg);
-	TRACEC(5, "urp_radio_process() return  cd=%i smode=%i  txPttIn=%i  txPttOut=%i \n", pChan->rxCarrierDetect, pChan->smode, pChan->txPttIn,
-		pChan->txPttOut);
+	TRACEC(5, "urp_radio_process() return  cd=%i smode=%i  txPttIn=%i  txPttOut=%i \n",
+	       pChan->rxCarrierDetect, pChan->smode, pChan->txPttIn, pChan->txPttOut);
 	return 0;
 }
 

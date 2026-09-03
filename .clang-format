@@ -1,0 +1,10 @@
+BasedOnStyle: LLVM
+Language: Cpp
+UseTab: Always
+TabWidth: 8
+IndentWidth: 8
+ContinuationIndentWidth: 8
+ColumnLimit: 100
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: None
+SortIncludes: Never

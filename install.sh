@@ -27,7 +27,7 @@ if [ "$(id -u)" -ne 0 ] && [ -z "$destdir" ]; then
 	exit 1
 fi
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 if [ "$skip_deps" = no ]; then
 	if [ "$(id -u)" -ne 0 ]; then
 		echo "Installing dependencies requires root." >&2

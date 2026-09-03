@@ -38,6 +38,9 @@
 #ifndef USBRADIOPLUS_RADIO_H
 #define USBRADIOPLUS_RADIO_H 1
 
+#include <stdint.h>
+
+#include "asterisk/rpt_chan_shared.h"
 #include "usbradioplus_squelch.h"
 
 #define URP_RADIO_DEVELOPMENT 0 /* when running in test mode */
@@ -48,17 +51,25 @@
 #define URP_RADIO_TRACE_LEVEL 0
 
 #ifdef CHAN_USBRADIO
+#ifndef URP_RADIO_DEBUG
 #define URP_RADIO_DEBUG 1
+#endif
+#ifndef URP_RADIO_TRACE
 #define URP_RADIO_TRACE 1
-#define TRACEO(level, a) \
-	{ \
-		if (o && (o->tracelevel >= level)) { \
-			printf a; \
-		} \
+#endif
+#define TRACEO(level, a)                                                                           \
+	{                                                                                          \
+		if (o && (o->tracelevel >= level)) {                                               \
+			printf a;                                                                  \
+		}                                                                                  \
 	}
 #else
+#ifndef URP_RADIO_DEBUG
 #define URP_RADIO_DEBUG 1
+#endif
+#ifndef URP_RADIO_TRACE
 #define URP_RADIO_TRACE 1
+#endif
 #define TRACEO(level, a)
 #endif
 
@@ -67,9 +78,9 @@
 
 #if (URP_RADIO_DEBUG == 1)
 #define URP_RADIO_DEBUG_CHANNELS 16
-#define TSCOPE(a) \
-	{ \
-		strace a; \
+#define TSCOPE(a)                                                                                  \
+	{                                                                                          \
+		strace a;                                                                          \
 	}
 #else
 #define URP_RADIO_DEBUG_CHANNELS 0
@@ -79,44 +90,44 @@
 #define URP_RADIO_TRACE_AMP 8192
 
 #if (URP_RADIO_TRACE == 1)
-#define TRACEX(a) \
-	{ \
-		ast_debug a; \
+#define TRACEX(a)                                                                                  \
+	{                                                                                          \
+		ast_debug a;                                                                       \
 	}
-#define TRACEC(level, ...) \
-	{ \
-		if (pChan->tracelevel >= level) { \
-			ast_debug(level, "%08i ", pChan->frameCountRx); \
-			ast_debug(level, __VA_ARGS__); \
-		} \
+#define TRACEC(level, ...)                                                                         \
+	{                                                                                          \
+		if (pChan->tracelevel >= level) {                                                  \
+			ast_debug(level, "%08i ", pChan->frameCountRx);                            \
+			ast_debug(level, __VA_ARGS__);                                             \
+		}                                                                                  \
 	}
-#define TRACEF(level, ...) \
-	{ \
-		if (pChan->tracelevel >= level) { \
-			ast_debug(level, __VA_ARGS__); \
-		} \
+#define TRACEF(level, ...)                                                                         \
+	{                                                                                          \
+		if (pChan->tracelevel >= level) {                                                  \
+			ast_debug(level, __VA_ARGS__);                                             \
+		}                                                                                  \
 	}
-#define TRACEJ(level, ...) \
-	{ \
-		if (URP_RADIO_TRACE_LEVEL >= level) { \
-			ast_debug(level, __VA_ARGS__); \
-		} \
+#define TRACEJ(level, ...)                                                                         \
+	{                                                                                          \
+		if (URP_RADIO_TRACE_LEVEL >= level) {                                              \
+			ast_debug(level, __VA_ARGS__);                                             \
+		}                                                                                  \
 	}
 #else
 #define TRACEX(a)
-#define TRACEC(level, a)
-#define TRACEF(level, a)
-#define TRACEJ(level, a)
+#define TRACEC(...)
+#define TRACEF(...)
+#define TRACEJ(...)
 #endif
 
 #define i8 int8_t
-#define u8 u_int8_t
+#define u8 uint8_t
 #define i16 int16_t
-#define u16 u_int16_t
+#define u16 uint16_t
 #define i32 int32_t
-#define u32 u_int32_t
+#define u32 uint32_t
 #define i64 int64_t
-#define u64 u_int64_t
+#define u64 uint64_t
 
 #define M_Q31 0x80000000
 #define M_Q30 0x40000000
@@ -173,7 +184,7 @@
 
 #define CTCSS_TURN_OFF_TIME 160	 /* ms */
 #define CTCSS_TURN_OFF_SHIFT 240 /* degrees */
-#define TOC_NOTONE_TIME 600		 /* ms */
+#define TOC_NOTONE_TIME 600	 /* ms */
 
 #define DDB_FRAME_SIZE 160 /* clock de-drift defaults */
 #define DDB_FRAMES_IN_BUFF 8
@@ -286,7 +297,7 @@ typedef struct {
 	i16 fudgeFactor;
 	i16 peak; /* peak amplitude now   maw sph now */
 	i16 enabled;
-	i16 state;	/* dead, running, error */
+	i16 state;  /* dead, running, error */
 	i16 zIndex; /* z bucket index */
 	i16 z[4];
 	i16 zi;
@@ -315,7 +326,7 @@ typedef struct {
 
 typedef struct {
 	i16 enabled; /* if 0 none, 0xFFFF all tones, or single tone */
-	i16 *input;	 /* source data */
+	i16 *input;  /* source data */
 	i16 clamplitude;
 	i16 center;
 	i16 decode; /* current ctcss decode index */
@@ -342,7 +353,7 @@ typedef struct {
 	float txctcssdefault_value;
 
 	struct {
-		unsigned valid:1;
+		unsigned valid : 1;
 	} b;
 } urp_ctcss_decoder;
 
@@ -363,7 +374,7 @@ typedef struct urp_radio_stage {
 	struct urp_radio_state *parentChan;
 	i16 *source;  /* source buffer */
 	i16 *sourceB; /* source buffer B */
-	i16 *sink;	  /* sink buffer */
+	i16 *sink;    /* sink buffer */
 
 	i16 numChanOut; /* allows output direct to interleaved buffer */
 	i16 selChanOut;
@@ -391,14 +402,14 @@ typedef struct urp_radio_stage {
 	i16 decimator; /* like the state this must be saved between calls (could be put in x's) */
 
 	u32 sampleRate; /* in Hz for elements in this structure */
-	u32 freq;		/* in 0.1 Hz */
+	u32 freq;	/* in 0.1 Hz */
 
 	i16 measPeak; /* do measure Peak */
-	i16 amax;	  /* buffer amplitude maximum */
-	i16 amin;	  /* buffer amplitude minimum */
-	i16 apeak;	  /* buffer amplitude peak value (peak to peak)/2 */
-	i16 setpt;	  /* amplitude set point for amplitude comparator */
-	i16 hyst;	  /* hysterysis for amplitude comparator */
+	i16 amax;     /* buffer amplitude maximum */
+	i16 amin;     /* buffer amplitude minimum */
+	i16 apeak;    /* buffer amplitude peak value (peak to peak)/2 */
+	i16 setpt;    /* amplitude set point for amplitude comparator */
+	i16 hyst;     /* hysterysis for amplitude comparator */
 	i16 compOut;  /* amplitude comparator output */
 	i16 blanking; /* blanking timer in frames */
 	struct urp_micor_squelch micor_squelch;
@@ -407,33 +418,33 @@ typedef struct urp_radio_stage {
 	i32 discounterl; /* amplitude detector integrator discharge counter lower */
 	i32 discfactor;	 /* amplitude detector integrator discharge factor */
 
-	i16 err;	/* error condition */
+	i16 err;    /* error condition */
 	i16 option; /* option / request zero */
-	i16 state;	/* stopped, start, stopped assumes zero'd */
+	i16 state;  /* stopped, start, stopped assumes zero'd */
 
 	i16 pending;
 
 	struct {
-		unsigned hit:1;
-		unsigned hitlast:1;
-		unsigned hita:1;
-		unsigned hitb:1;
-		unsigned bithit:1;
-		unsigned now:1;
-		unsigned next:1;
-		unsigned prev:1;
-		unsigned clock:1;
-		unsigned hold:1;
-		unsigned opt1:1;
-		unsigned opt2:1;
-		unsigned polarity:1;
-		unsigned dotting:1;
-		unsigned lastbitpending:1;
-		unsigned outzero:1;
-		unsigned settling:1;
-		unsigned syncing:1;
-		unsigned dirty:1;
-		unsigned mute:1;
+		unsigned hit : 1;
+		unsigned hitlast : 1;
+		unsigned hita : 1;
+		unsigned hitb : 1;
+		unsigned bithit : 1;
+		unsigned now : 1;
+		unsigned next : 1;
+		unsigned prev : 1;
+		unsigned clock : 1;
+		unsigned hold : 1;
+		unsigned opt1 : 1;
+		unsigned opt2 : 1;
+		unsigned polarity : 1;
+		unsigned dotting : 1;
+		unsigned lastbitpending : 1;
+		unsigned outzero : 1;
+		unsigned settling : 1;
+		unsigned syncing : 1;
+		unsigned dirty : 1;
+		unsigned mute : 1;
 	} b;
 
 	i16 cleared; /* output buffer cleared */
@@ -452,12 +463,12 @@ typedef struct urp_radio_stage {
 	i16 (*sigProc)(struct urp_radio_stage *sps); /* function to call */
 
 	i32 calcAdjust; /* final adjustment */
-	i16 nx;			/* number of x history elements */
-	i16 ncoef;		/* number of coefficients */
-	i16 size_x;		/* size of each x history element */
+	i16 nx;		/* number of x history elements */
+	i16 ncoef;	/* number of coefficients */
+	i16 size_x;	/* size of each x history element */
 	i16 size_coef;	/* size of each coefficient */
-	void *x;		/* history registers */
-	void *x2;		/* history registers, 2nd bank */
+	void *x;	/* history registers */
+	void *x2;	/* history registers, 2nd bank */
 	void *coef;
 
 	void *y; /* history registers, y bank */
@@ -478,13 +489,13 @@ struct t_encLsd;
 	pmr channel
 */
 typedef struct urp_radio_state {
-	i16 index;	   /* which one */
+	i16 index;     /* which one */
 	i16 devicenum; /* belongs to */
 
 	char *name;
 
 	i16 enabled; /* enabled/disabled */
-	i16 status;	 /* ok, error, busy, idle, initializing */
+	i16 status;  /* ok, error, busy, idle, initializing */
 
 	i16 tracelevel;
 	i16 tracetype;
@@ -494,12 +505,12 @@ typedef struct urp_radio_state {
 	i16 nSamplesTx;
 
 	i32 inputSampleRate; /* in S/s  48000 */
-	i32 baseSampleRate;	 /* in S/s   8000 */
+	i32 baseSampleRate;  /* in S/s   8000 */
 
 	i16 inputGain;
 	i16 inputOffset;
 
-	i32 ticks;		  /* time ticks */
+	i32 ticks;	  /* time ticks */
 	u32 frameCountRx; /* number processed */
 	u32 frameCountTx;
 
@@ -510,18 +521,17 @@ typedef struct urp_radio_state {
 	i32 txTurnOff;
 	i16 txBufferClear;
 
-
 	i32 txsettletime; /* in samples */
 	i32 txsettletimer;
 
 	i16 txrxblankingtime; /* in milli-seconds */
 	i16 txrxblankingtimer;
 
-	i16 rxDC;			 /* average DC value of input */
-	i16 rxSqSet;		 /* carrier squelch threshold */
-	i16 rxSqHyst;		 /* carrier squelch hysterysis */
-	i16 rxRssi;			 /* current Rssi level */
-	i16 rxQuality;		 /* signal quality metric */
+	i16 rxDC;	     /* average DC value of input */
+	i16 rxSqSet;	     /* carrier squelch threshold */
+	i16 rxSqHyst;	     /* carrier squelch hysterysis */
+	i16 rxRssi;	     /* current Rssi level */
+	i16 rxQuality;	     /* signal quality metric */
 	i16 rxCarrierDetect; /* carrier detect */
 	enum radio_carrier_detect rxCdType;
 	i16 voxHangTime; /* if rxCdType=CD_DSP_VOX, time to wait for RX audio before setting CD=0 */
@@ -540,7 +550,6 @@ typedef struct urp_radio_state {
 	i16 rxDcsDecodeEnable;
 	i16 rxSquelchDelay;
 
-
 	char radioDuplex;
 	char rxNoiseFilType;
 	int rxlpf;
@@ -549,8 +558,8 @@ typedef struct urp_radio_state {
 	char *pStr;
 
 	/*      start channel signaling codes source */
-	char *pRxCodeSrc;	  /* source */
-	char *pTxCodeSrc;	  /* source */
+	char *pRxCodeSrc;     /* source */
+	char *pTxCodeSrc;     /* source */
 	char *pTxCodeDefault; /* source */
 	/*      end channel signaling codes source */
 
@@ -688,7 +697,6 @@ typedef struct urp_radio_state {
 	i32 txOutputGainA;
 	i32 txOutputGainB;
 
-
 	/* tune tweaks */
 
 	i32 rxVoxTimer; /* Vox Hang Timer */
@@ -707,50 +715,50 @@ typedef struct urp_radio_state {
 	i32 *ptxLimiterAdjust; /* from calling application */
 
 	struct {
-		unsigned pmrNoiseSquelch:1;
-		unsigned rxHpf:1;
-		unsigned txHpf:1;
-		unsigned txLpf:1;
-		unsigned rxDeEmphasis:1;
-		unsigned txPreEmphasis:1;
-		unsigned extCarrierDetect:1;
-		unsigned txCapture:1;
-		unsigned rxCapture:1;
-		unsigned rxplmon:1;
-		unsigned remoted:1;
-		unsigned loopback:1;
-		unsigned rxpolarity:1;
-		unsigned txpolarity:1;
-		unsigned dcsrxpolarity:1;
-		unsigned dcstxpolarity:1;
-		unsigned lsdrxpolarity:1;
-		unsigned lsdtxpolarity:1;
-		unsigned txsettling:1;
-		unsigned smodeturnoff:1;
+		unsigned pmrNoiseSquelch : 1;
+		unsigned rxHpf : 1;
+		unsigned txHpf : 1;
+		unsigned txLpf : 1;
+		unsigned rxDeEmphasis : 1;
+		unsigned txPreEmphasis : 1;
+		unsigned extCarrierDetect : 1;
+		unsigned txCapture : 1;
+		unsigned rxCapture : 1;
+		unsigned rxplmon : 1;
+		unsigned remoted : 1;
+		unsigned loopback : 1;
+		unsigned rxpolarity : 1;
+		unsigned txpolarity : 1;
+		unsigned dcsrxpolarity : 1;
+		unsigned dcstxpolarity : 1;
+		unsigned lsdrxpolarity : 1;
+		unsigned lsdtxpolarity : 1;
+		unsigned txsettling : 1;
+		unsigned smodeturnoff : 1;
 
-		unsigned ctcssRxEnable:1;
-		unsigned ctcssTxEnable:1;
-		unsigned dcsRxEnable:1;
-		unsigned dcsTxEnable:1;
-		unsigned lmrRxEnable:1;
-		unsigned lmrTxEnable:1;
-		unsigned mdcRxEnable:1;
-		unsigned mdcTxEnable:1;
-		unsigned dstRxEnable:1;
-		unsigned dstTxEnable:1;
-		unsigned p25RxEnable:1;
-		unsigned p25TxEnable:1;
-		unsigned ax25Enable:1;
+		unsigned ctcssRxEnable : 1;
+		unsigned ctcssTxEnable : 1;
+		unsigned dcsRxEnable : 1;
+		unsigned dcsTxEnable : 1;
+		unsigned lmrRxEnable : 1;
+		unsigned lmrTxEnable : 1;
+		unsigned mdcRxEnable : 1;
+		unsigned mdcTxEnable : 1;
+		unsigned dstRxEnable : 1;
+		unsigned dstTxEnable : 1;
+		unsigned p25RxEnable : 1;
+		unsigned p25TxEnable : 1;
+		unsigned ax25Enable : 1;
 
-		unsigned txCtcssInhibit:1;
-		unsigned txCtcssReady:1;
-		unsigned txCtcssOff:1;
+		unsigned txCtcssInhibit : 1;
+		unsigned txCtcssReady : 1;
+		unsigned txCtcssOff : 1;
 
-		unsigned rxkeyed:1;
-		unsigned rxhalted:1;
-		unsigned txhalted:1;
-		unsigned tuning:1;
-		unsigned pttwas:1;
+		unsigned rxkeyed : 1;
+		unsigned rxhalted : 1;
+		unsigned txhalted : 1;
+		unsigned tuning : 1;
+		unsigned pttwas : 1;
 	} b;
 
 	i16 *pRxDemod; /* buffers */
@@ -770,15 +778,13 @@ typedef struct urp_radio_state {
 	i16 *pAlt0;
 	i16 *pAlt1;
 
-	i16 *pNull;
-
 #if URP_RADIO_DEBUG == 1
 
 	i16 *pRxLsdCen;
 
 	i16 *pTstTxOut;
 
-	i16 *prxDebug; /* consolidated debug buffer */
+	i16 *prxDebug; /* aliases sdbg->buffer while receive capture is active */
 	i16 *ptxDebug; /* consolidated debug buffer */
 
 	i16 *prxDebug0;
@@ -826,8 +832,6 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan);
 
 i16 urp_ctcss_frequency_index(float freq);
 i16 MeasureBlock(urp_radio_stage *mySps);
-
-
 
 #endif /* USBRADIOPLUS_RADIO_H */
 

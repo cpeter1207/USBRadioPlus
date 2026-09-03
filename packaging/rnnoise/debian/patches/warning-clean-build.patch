@@ -1,0 +1,28 @@
+Description: Keep the release build warning-clean
+ The upstream diagnostic is build advice rather than a correctness warning.
+ Initialize the gain array explicitly so compilers can prove that the delayed
+ pitch-filter call never observes indeterminate storage.
+Author: USBRadioPlus contributors
+Forwarded: no
+Last-Update: 2026-09-03
+--- a/src/nnet.h
++++ b/src/nnet.h
+@@ -160,7 +160,6 @@
+ #if defined(_MSC_VER)
+ #pragma message ("Only SSE and SSE2 are available. On newer machines, enable SSSE3/AVX/AVX2 to get better performance")
+ #else
+-#warning "Only SSE and SSE2 are available. On newer machines, enable SSSE3/AVX/AVX2 using -march= to get better performance"
+ #endif
+ #endif
+ 
+--- a/src/denoise.c
++++ b/src/denoise.c
+@@ -462,7 +462,7 @@ float rnnoise_process_frame(DenoiseState *st, float *out, const float *in) {
+   float Ex[NB_BANDS], Ep[NB_BANDS];
+   float Exp[NB_BANDS];
+   float features[NB_FEATURES];
+-  float g[NB_BANDS];
++  float g[NB_BANDS] = {0};
+   float gf[FREQ_SIZE]={1};
+   float vad_prob = 0;
+   int silence;

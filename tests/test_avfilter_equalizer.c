@@ -31,15 +31,16 @@ static double measure(double frequency, int enabled)
 	txagc_avfilter_init(&state);
 	for (int block = 0; block < 100; ++block) {
 		for (int index = 0; index < BLOCK; ++index) {
-			double time = (double) (block * BLOCK + index) / RATE;
+			double time = (double)(block * BLOCK + index) / RATE;
 			samples[index] = 1000.0 * sin(2.0 * M_PI * frequency * time);
 		}
 		if (txagc_avfilter_process(&state, &config, samples, BLOCK, RATE) < 0)
 			return NAN;
-		if (block >= 50) for (int index = 0; index < BLOCK; ++index) {
-			sum += samples[index] * samples[index];
-			++count;
-		}
+		if (block >= 50)
+			for (int index = 0; index < BLOCK; ++index) {
+				sum += samples[index] * samples[index];
+				++count;
+			}
 	}
 	txagc_avfilter_destroy(&state);
 	return sqrt(sum / count);
@@ -55,9 +56,10 @@ int main(void)
 	double mid_db = 20.0 * log10(mid / bypass);
 	double high_db = 20.0 * log10(high / bypass);
 
-	printf("equalizer 150Hz=%+.2f 750Hz=%+.2f 4000Hz=%+.2f dB\n",
-		low_db, mid_db, high_db);
-	if (!isfinite(low_db) || !isfinite(mid_db) || !isfinite(high_db)) return 1;
-	if (low_db < 1.0 || mid_db > 0.25 || high_db > -0.5) return 2;
+	printf("equalizer 150Hz=%+.2f 750Hz=%+.2f 4000Hz=%+.2f dB\n", low_db, mid_db, high_db);
+	if (!isfinite(low_db) || !isfinite(mid_db) || !isfinite(high_db))
+		return 1;
+	if (low_db < 1.0 || mid_db > 0.25 || high_db > -0.5)
+		return 2;
 	return 0;
 }

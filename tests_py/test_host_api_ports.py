@@ -1,11 +1,14 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def source(name):
-    return (ROOT / "src" / name).read_text(encoding="utf-8")
+    body = (ROOT / "src" / name).read_text(encoding="utf-8")
+    if name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
+        body += source("usbradioplus_channel_common.inc")
+        body += source("usbradioplus_native_tick.inc")
+    return body
 
 
 def test_legacy_port_keeps_the_original_host_boundary():

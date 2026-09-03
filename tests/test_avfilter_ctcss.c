@@ -7,8 +7,8 @@
 #define RATE 48000
 #define BLOCK 960
 
-static double measure_window(struct txagc_config *config, double frequency,
-		int warmup_blocks, int measurement_blocks)
+static double measure_window(struct txagc_config *config, double frequency, int warmup_blocks,
+			     int measurement_blocks)
 {
 	struct txagc_avfilter state;
 	double samples[BLOCK];
@@ -18,15 +18,16 @@ static double measure_window(struct txagc_config *config, double frequency,
 	txagc_avfilter_init(&state);
 	for (int block = 0; block < warmup_blocks + measurement_blocks; ++block) {
 		for (int i = 0; i < BLOCK; ++i) {
-			double t = (double) (block * BLOCK + i) / RATE;
+			double t = (double)(block * BLOCK + i) / RATE;
 			samples[i] = 1000.0 * sin(2.0 * M_PI * frequency * t);
 		}
 		if (txagc_avfilter_process(&state, config, samples, BLOCK, RATE) < 0)
 			return NAN;
-		if (block >= warmup_blocks) for (int i = 0; i < BLOCK; ++i) {
-			sum += samples[i] * samples[i];
-			++count;
-		}
+		if (block >= warmup_blocks)
+			for (int i = 0; i < BLOCK; ++i) {
+				sum += samples[i] * samples[i];
+				++count;
+			}
 	}
 	txagc_avfilter_destroy(&state);
 	return sqrt(sum / count);
@@ -59,14 +60,20 @@ int main(void)
 	hp_tone = measure(&config, 114.8);
 	hp_speech = measure(&config, 1000.0);
 	printf("notch 254.1=%.4f tolerance=%.4f/%.4f after500ms=%.4f 300=%.2f\n"
-		"highpass 114.8=%.4f 1000=%.2f\n",
-		notch_tone, notch_low, notch_high, edge_after_500ms, notch_speech,
-		hp_tone, hp_speech);
-	if (20.0 * log10(notch_speech / notch_tone) < 40.0) return 1;
-	if (20.0 * log10(hp_speech / hp_tone) < 60.0) return 3;
-	if (20.0 * log10(notch_speech / notch_low) < 50.0) return 4;
-	if (20.0 * log10(notch_speech / notch_high) < 50.0) return 5;
-	if (fabs(20.0 * log10(notch_speech / bypass_speech)) > 0.25) return 7;
-	if (20.0 * log10(notch_speech / edge_after_500ms) < 50.0) return 8;
+	       "highpass 114.8=%.4f 1000=%.2f\n",
+	       notch_tone, notch_low, notch_high, edge_after_500ms, notch_speech, hp_tone,
+	       hp_speech);
+	if (20.0 * log10(notch_speech / notch_tone) < 40.0)
+		return 1;
+	if (20.0 * log10(hp_speech / hp_tone) < 60.0)
+		return 3;
+	if (20.0 * log10(notch_speech / notch_low) < 50.0)
+		return 4;
+	if (20.0 * log10(notch_speech / notch_high) < 50.0)
+		return 5;
+	if (fabs(20.0 * log10(notch_speech / bypass_speech)) > 0.25)
+		return 7;
+	if (20.0 * log10(notch_speech / edge_after_500ms) < 50.0)
+		return 8;
 	return 0;
 }

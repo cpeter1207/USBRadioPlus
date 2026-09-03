@@ -28,7 +28,7 @@ static double measure(double frequency, int receive)
 	txagc_avfilter_init(&state);
 	for (int block = 0; block < 100; ++block) {
 		for (int i = 0; i < BLOCK; ++i) {
-			double t = (double) (block * BLOCK + i) / RATE;
+			double t = (double)(block * BLOCK + i) / RATE;
 			samples[i] = 1000.0 * sin(2.0 * M_PI * frequency * t);
 		}
 		if (txagc_avfilter_process(&state, &config, samples, BLOCK, RATE) < 0) {
@@ -57,12 +57,14 @@ int main(void)
 	double low_rejection = 20.0 * log10(pass / low);
 	double high_rejection = 20.0 * log10(pass / high);
 
-	printf("100Hz=%.3f 1000Hz=%.3f 5000Hz=%.3f rejection=%.1f/%.1f dB\n",
-		low, pass, high, low_rejection, high_rejection);
-	if (!isfinite(pass) || pass < 650.0 || pass > 750.0) return 1;
-	if (low_rejection < 60.0 || high_rejection < 60.0) return 2;
-	if (fabs(receive_pass - pass) > 0.1
-		|| fabs(receive_low - low) > 0.1
-		|| fabs(receive_high - high) > 0.1) return 3;
+	printf("100Hz=%.3f 1000Hz=%.3f 5000Hz=%.3f rejection=%.1f/%.1f dB\n", low, pass, high,
+	       low_rejection, high_rejection);
+	if (!isfinite(pass) || pass < 650.0 || pass > 750.0)
+		return 1;
+	if (low_rejection < 60.0 || high_rejection < 60.0)
+		return 2;
+	if (fabs(receive_pass - pass) > 0.1 || fabs(receive_low - low) > 0.1 ||
+	    fabs(receive_high - high) > 0.1)
+		return 3;
 	return 0;
 }

@@ -14,27 +14,5 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	libavfilter-dev libavutil-dev portaudio19-dev
 
 if ! pkg-config --exists rnnoise; then
-	# Hardened nodes commonly mount /tmp noexec.  Build beside the source so
-	# Autoconf can run its generated checks on the filesystem that ran install.sh.
-	source_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-	mkdir -p "$source_root/build"
-	rnnoise_dir=$(mktemp -d "$source_root/build/rnnoise.XXXXXX")
-	trap 'rm -rf -- "$rnnoise_dir"' EXIT HUP INT TERM
-	rnnoise_archive="$rnnoise_dir/rnnoise-0.2.tar.gz"
-	wget -qO "$rnnoise_archive" \
-		https://github.com/xiph/rnnoise/releases/download/v0.2/rnnoise-0.2.tar.gz
-	printf '%s  %s\n' \
-		90fce4b00b9ff24c08dbfe31b82ffd43bae383d85c5535676d28b0a2b11c0d37 \
-		"$rnnoise_archive" | sha256sum -c -
-	tar -C "$rnnoise_dir" --strip-components=1 -xzf "$rnnoise_archive"
-	# The v0.2 archive omits the support header required by its ARM NEON path.
-	patch -d "$rnnoise_dir" -p1 < \
-		"$source_root/packaging/rnnoise/debian/patches/arm-os-support.patch"
-	(
-		cd "$rnnoise_dir"
-		./configure --prefix=/usr/local --disable-examples --disable-doc
-		make -j"$(getconf _NPROCESSORS_ONLN)"
-		make install
-	)
-	ldconfig
+	sh "$(dirname -- "$0")/install-rnnoise.sh"
 fi

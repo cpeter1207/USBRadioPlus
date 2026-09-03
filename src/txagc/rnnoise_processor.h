@@ -32,10 +32,10 @@ struct txagc_rnnoise {
 
 void txagc_rnnoise_init(struct txagc_rnnoise *state);
 void txagc_rnnoise_destroy(struct txagc_rnnoise *state);
-int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples,
-	size_t count, unsigned int sample_rate);
-int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
-	size_t count, unsigned int sample_rate);
+int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples, size_t count,
+			  unsigned int sample_rate);
+int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, size_t count,
+				 unsigned int sample_rate);
 void txagc_rnnoise_bypass(struct txagc_rnnoise *state);
 
 #endif

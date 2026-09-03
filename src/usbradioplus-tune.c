@@ -66,30 +66,55 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <ctype.h>
 #include <signal.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <getopt.h>
 
 #include "asterisk/utils.h"
 
 /*! \brief type of signal detection used for carrier (cd) or ctcss (sd) */
-static const char *const cd_signal_type[] = { "no", "dsp", "vox", "usb", "usbinvert", "pp", "ppinvert" };
-static const char *const sd_signal_type[] = { "no", "usb", "usbinvert", "dsp", "pp", "ppinvert" };
+static const char *const cd_signal_type[] = {"no",	  "dsp", "vox",	    "usb",
+					     "usbinvert", "pp",	 "ppinvert"};
+static const char *const sd_signal_type[] = {"no", "usb", "usbinvert", "dsp", "pp", "ppinvert"};
 
 /*! \brief demodulation type */
-static const char *const demodulation_type[] = { "no", "speaker", "flat" };
+static const char *const demodulation_type[] = {"no", "speaker", "flat"};
 
 /*! \brief mixer type */
-enum {
-	TX_OUT_OFF,
-	TX_OUT_VOICE,
-	TX_OUT_LSD,
-	TX_OUT_COMPOSITE,
-	TX_OUT_AUX
-};
-static const char *const mixer_type[] = { "no", "voice", "tone", "composite", "auxvoice" };
-static const char *const duplex3_mode_type[] = { "hardware", "software" };
+enum { TX_OUT_OFF, TX_OUT_VOICE, TX_OUT_LSD, TX_OUT_COMPOSITE, TX_OUT_AUX };
+static const char *const mixer_type[] = {"no", "voice", "tone", "composite", "auxvoice"};
+static const char *const duplex3_mode_type[] = {"hardware", "software"};
+
+typedef int (*asterisk_line_reader)(char *cmd, char *str, int max);
+typedef int (*asterisk_response_reader)(char *cmd);
+typedef int (*command_runner)(const char *command);
+
+static int astgetline_real(char *cmd, char *str, int max);
+static int astgetresp_real(char *cmd);
+static asterisk_line_reader astgetline = astgetline_real;
+static asterisk_response_reader astgetresp = astgetresp_real;
+static command_runner run_command = system;
+static const char *asterisk_binary = "/usr/sbin/asterisk";
+
+static int set_nonblocking_real(int fd)
+{
+	return fcntl(fd, F_SETFL, O_NONBLOCK);
+}
+
+static int open_null_real(void)
+{
+	return open("/dev/null", O_RDWR);
+}
+
+static int (*make_pipe)(int pipefd[2]) = pipe;
+static int (*set_nonblocking)(int fd) = set_nonblocking_real;
+static int (*open_null_device)(void) = open_null_real;
+static pid_t (*make_child)(void) = fork;
+static int (*copy_fd)(int oldfd, int newfd) = dup2;
+static int waitfds_real(int fd1, int fd2, int ms);
+static int (*waitfds)(int fd1, int fd2, int ms) = waitfds_real;
+static ssize_t (*read_bytes)(int fd, void *buffer, size_t count) = read;
 
 /*! \brief command prefix for Asterisk - simpleusb channel driver access */
 #define COMMAND_PREFIX "radioplus "
@@ -115,12 +140,14 @@ static void launch_processing_tune(void)
 	/* system() waits for this child, so temporarily stop the general child
 	 * reaper from collecting it first. */
 	signal(SIGCHLD, SIG_DFL);
-	status = system("/usr/sbin/usbradioplus-processing-tune");
+	status = run_command("/usr/sbin/usbradioplus-processing-tune");
 	signal(SIGCHLD, ourhandler);
 	if (status == -1) {
-		fprintf(stderr, "Unable to start usbradioplus-processing-tune: %s\n", strerror(errno));
+		fprintf(stderr, "Unable to start usbradioplus-processing-tune: %s\n",
+			strerror(errno));
 	} else if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-		fprintf(stderr, "usbradioplus-processing-tune exited without completing normally\n");
+		fprintf(stderr,
+			"usbradioplus-processing-tune exited without completing normally\n");
 	}
 }
 
@@ -134,7 +161,7 @@ static void launch_processing_tune(void)
  */
 static int qcompar(const void *a, const void *b)
 {
-	char **sa = (char **) a, **sb = (char **) b;
+	char **sa = (char **)a, **sb = (char **)b;
 	return (strcmp(*sa, *sb));
 }
 
@@ -144,10 +171,11 @@ static int qcompar(const void *a, const void *b)
  * \note This modifies the string str, be sure to save an intact copy if you need it later.
  *
  * \param str		Pointer to string to process (it will be modified).
- * \param strp		Pointer to a list of substrings created, NULL will be placed at the end of the list.
- * \param limit		Maximum number of substrings to process.
- * \param delim		Specified delimiter
- * \param quote		User specified quote for escaping a substring. Set to zero to escape nothing.
+ * \param strp		Pointer to a list of substrings created, NULL will be placed at the end of
+ * the list. \param limit		Maximum number of substrings to process. \param delim
+ * Specified delimiter
+ * \param quote		User specified quote for escaping a substring. Set to zero to escape
+ * nothing.
  *
  * \retval 			Returns number of substrings found.
  */
@@ -166,7 +194,7 @@ static int explode_string(char *str, char *strp[], size_t limit, char delim, cha
 		strp[0] = 0;
 		return 0;
 	}
-	for (; *str && ((size_t) i + 1 < limit); str++) {
+	for (; *str && ((size_t)i + 1 < limit); str++) {
 		if (quote) {
 			if (*str == quote) {
 				if (inquo) {
@@ -187,6 +215,29 @@ static int explode_string(char *str, char *strp[], size_t limit, char delim, cha
 	return i;
 }
 
+static int parse_integer(const char *text, int minimum, int maximum, int *value)
+{
+	char *end;
+	long parsed;
+
+	if (!text || !*text)
+		return -1;
+	errno = 0;
+	parsed = strtol(text, &end, 10);
+	if (errno || *end || parsed < minimum || parsed > maximum)
+		return -1;
+	*value = (int)parsed;
+	return 0;
+}
+
+static void strip_newline(char *text)
+{
+	size_t length = strlen(text);
+
+	if (length && text[length - 1] == '\n')
+		text[length - 1] = '\0';
+}
+
 /*!
  * \brief Execute an asterisk command.
  *
@@ -199,46 +250,56 @@ static int doastcmd(char *cmd)
 {
 	int pfd[2], pid, nullfd;
 
-	if (pipe(pfd) == -1) {
+	if (make_pipe(pfd) == -1) {
 		perror("Error: cannot open pipe");
 		return -1;
 	}
-	if (fcntl(pfd[0], F_SETFL, O_NONBLOCK) == -1) {
+	if (set_nonblocking(pfd[0]) == -1) {
 		perror("Error: cannot set pipe to NONBLOCK");
+		close(pfd[0]);
+		close(pfd[1]);
 		return -1;
 	}
 
-	nullfd = open("/dev/null", O_RDWR);
+	nullfd = open_null_device();
 	if (nullfd == -1) {
 		perror("Error: cannot open /dev/null");
+		close(pfd[0]);
+		close(pfd[1]);
 		return -1;
 	}
 
-	pid = fork();
+	pid = make_child();
 	if (pid == -1) {
 		perror("Error: cannot fork");
+		close(nullfd);
+		close(pfd[0]);
+		close(pfd[1]);
 		return -1;
 	}
 	if (pid) { /* if this is us (the parent) */
+		close(nullfd);
 		close(pfd[1]);
 		return pfd[0];
 	}
 	close(pfd[0]);
 
-	if (dup2(nullfd, fileno(stdin)) == -1) {
+	if (copy_fd(nullfd, fileno(stdin)) == -1) {
 		perror("Error: cannot dup2() stdin");
 		exit(0);
 	}
-	if (dup2(pfd[1], fileno(stdout)) == -1) {
+	if (copy_fd(pfd[1], fileno(stdout)) == -1) {
 		perror("Error: cannot dup2() stdout");
 		exit(0);
 	}
-	if (dup2(pfd[1], fileno(stderr)) == -1) {
+	if (copy_fd(pfd[1], fileno(stderr)) == -1) {
 		perror("Error: cannot dup2() stderr");
 		exit(0);
 	}
 	/* Execute the asterisk command */
-	execl("/usr/sbin/asterisk", "asterisk", "-rx", cmd, NULL);
+	close(nullfd);
+	close(pfd[1]);
+	execl(asterisk_binary, "asterisk", "-rx", cmd, NULL);
 
 	exit(0);
 }
@@ -259,7 +320,7 @@ static int doastcmd(char *cmd)
  * \param ms		Milliseconds to wait.
  * \returns			-1 on error, 0 if nothing ready, or fd+1.
  */
-static int waitfds(int fd1, int fd2, int ms)
+static int waitfds_real(int fd1, int fd2, int ms)
 {
 	fd_set fds;
 	struct timeval tv;
@@ -285,10 +346,8 @@ static int waitfds(int fd1, int fd2, int ms)
 	if (FD_ISSET(fd1, &fds)) {
 		return (fd1 + 1);
 	}
-	if ((fd2 > 0) && (FD_ISSET(fd2, &fds))) {
-		return (fd2 + 1);
-	}
-	return 0;
+	/* select() reported one of the two requested descriptors, and fd1 was not it. */
+	return fd2 + 1;
 }
 
 /*!
@@ -301,7 +360,7 @@ static int getcharfd(int fd)
 {
 	char c;
 
-	if (read(fd, &c, 1) != 1) {
+	if (read_bytes(fd, &c, 1) != 1) {
 		return -1;
 	}
 	return c;
@@ -320,26 +379,27 @@ static int getstrfd(int fd, char *str, int max)
 	int i, j;
 	char c;
 
-	i = 0;
 	for (i = 0; (i < max) || (!max); i++) {
 		do {
 			j = waitfds(fd, -1, 100);
 			if (j == -1) {
 				if (errno != EINTR) {
-					return 0;
+					break;
 				}
 				j = 0;
 			}
 		} while (!j);
+		if (j == -1) {
+			break;
+		}
 
-		j = read(fd, &c, 1);
+		do {
+			j = (int)read_bytes(fd, &c, 1);
+		} while (j == -1 && errno == EINTR);
 		if (j == 0) {
 			break;
 		}
 		if (j == -1) {
-			if (errno == EINTR) {
-				continue;
-			}
 			break;
 		}
 		if (c == '\n') {
@@ -365,9 +425,13 @@ static int getstrfd(int fd, char *str, int max)
  * \param max		Size of string buffer.
  * \returns			-1 on error, 0 if successful, 1 if nothing was returned.
  */
-static int astgetline(char *cmd, char *str, int max)
+static int astgetline_real(char *cmd, char *str, int max)
 {
 	int fd, rv;
+
+	if (str && max > 0) {
+		str[0] = '\0';
+	}
 
 	/* Send the command to Asterisk */
 	fd = doastcmd(cmd);
@@ -390,9 +454,9 @@ static int astgetline(char *cmd, char *str, int max)
  * \param cmd		Pointer to command to send to asterisk.
  * \returns			-1 on error, 0 if successful.
  */
-static int astgetresp(char *cmd)
+static int astgetresp_real(char *cmd)
 {
-	int i, w, fd;
+	int i, fd;
 	char str[256];
 
 	/* Send the command to Asterisk */
@@ -404,6 +468,8 @@ static int astgetresp(char *cmd)
 
 	/* Wait and process the response */
 	for (;;) {
+		int w;
+
 		w = waitfds(fileno(stdin), fd, 100);
 		if (w == -1) {
 			if (errno == EINTR) {
@@ -423,16 +489,13 @@ static int astgetresp(char *cmd)
 			break;
 		}
 
-		/* if it's Asterisk */
-		if (w == (fd + 1)) {
-			i = getcharfd(fd);
-			if (i == -1) {
-				break;
-			}
-			putchar(i);
-			fflush(stdout);
-			continue;
+		/* waitfds() can only identify stdin or the Asterisk descriptor here. */
+		i = getcharfd(fd);
+		if (i == -1) {
+			break;
 		}
+		putchar(i);
+		fflush(stdout);
 	}
 	close(fd);
 	return 0;
@@ -475,15 +538,8 @@ static void menu_selectusb(void)
 		printf("USB device not changed\n");
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > n)) {
+	strip_newline(str);
+	if (parse_integer(str, 0, n, &i)) {
 		printf("Entry Error, USB device not changed\n");
 		return;
 	}
@@ -531,15 +587,8 @@ static void menu_swapusb(void)
 		printf("USB device not changed\n");
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > n)) {
+	strip_newline(str);
+	if (parse_integer(str, 0, n, &i)) {
 		printf("Entry Error, USB device not swapped\n");
 		return;
 	}
@@ -556,7 +605,7 @@ static void menu_swapusb(void)
  */
 static void menu_rxvoice(void)
 {
-	int i, x;
+	int i;
 	char str[100];
 
 	for (;;) {
@@ -568,24 +617,18 @@ static void menu_rxvoice(void)
 			break;
 		}
 
-		printf("Enter a new RX voice level (0-999), or press Enter to keep the current value: ");
+		printf("Enter a new RX voice level (0-999), or press Enter to keep the current "
+		       "value: ");
 		if (fgets(str, sizeof(str) - 1, stdin) == NULL) {
 			printf("Rx voice setting not changed\n");
 			return;
 		}
-		if (str[0] && (str[strlen(str) - 1] == '\n')) {
-			str[strlen(str) - 1] = 0;
-		}
+		strip_newline(str);
 		if (!str[0]) {
 			printf("Rx voice setting not changed\n");
 			return;
 		}
-		for (x = 0; str[x]; x++) {
-			if (!isdigit(str[x])) {
-				break;
-			}
-		}
-		if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > 999)) {
+		if (parse_integer(str, 0, 999, &i)) {
 			printf("Entry Error, Rx voice setting not changed\n");
 			continue;
 		}
@@ -602,7 +645,7 @@ static void menu_rxvoice(void)
 static void menu_rxsquelch(void)
 {
 	char str[100];
-	int i, x;
+	int i;
 
 	if (astgetresp(COMMAND_PREFIX "tune menu-support e")) {
 		return;
@@ -613,19 +656,12 @@ static void menu_rxsquelch(void)
 		printf("Rx Squelch Level setting not changed\n");
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Rx Squelch Level setting not changed\n");
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_integer(str, 0, 999, &i)) {
 		printf("Entry Error, Rx Squelch Level setting not changed\n");
 		return;
 	}
@@ -640,7 +676,7 @@ static void menu_rxsquelch(void)
 static void menu_txvoice(int keying)
 {
 	char str[100];
-	int i, x;
+	int i;
 
 	if (astgetresp(COMMAND_PREFIX "tune menu-support f")) {
 		return;
@@ -654,9 +690,7 @@ static void menu_txvoice(int keying)
 		}
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Tx Voice Level setting not changed\n");
 		if (keying) {
@@ -664,12 +698,7 @@ static void menu_txvoice(int keying)
 		}
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_integer(str, 0, 999, &i)) {
 		printf("Entry Error, Tx Voice Level setting not changed\n");
 		return;
 	}
@@ -687,30 +716,24 @@ static void menu_txvoice(int keying)
 static void menu_auxvoice(void)
 {
 	char str[100];
-	int i, x;
+	int i;
 
 	if (astgetresp(COMMAND_PREFIX "tune menu-support g")) {
 		return;
 	}
 
-	printf("Enter a new auxiliary voice level (0-999), or press Enter to keep the current value: ");
+	printf("Enter a new auxiliary voice level (0-999), or press Enter to keep the current "
+	       "value: ");
 	if (fgets(str, sizeof(str) - 1, stdin) == NULL) {
 		printf("Entry Error, Aux Voice Level setting not changed\n");
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Entry Error, Aux Voice Level setting not changed\n");
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_integer(str, 0, 999, &i)) {
 		printf("Entry Error, Aux Voice Level setting not changed\n");
 		return;
 	}
@@ -726,7 +749,7 @@ static void menu_auxvoice(void)
 static void menu_txtone(int keying)
 {
 	char str[100];
-	int i, x;
+	int i;
 
 	if (astgetresp(COMMAND_PREFIX "tune menu-support h")) {
 		return;
@@ -740,9 +763,7 @@ static void menu_txtone(int keying)
 		}
 		return;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Tx CTCSS Modulation Level setting not changed\n");
 		if (keying) {
@@ -750,12 +771,7 @@ static void menu_txtone(int keying)
 		}
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_integer(str, 0, 999, &i)) {
 		printf("Entry Error, Tx CTCSS Modulation Level setting not changed\n");
 		return;
 	}
@@ -783,7 +799,8 @@ static void menu_view_status(void)
  * \param max_items		Number of items in the items array.
  * \param selection		Current selected item.
  */
-static int menu_select_value(const char *value_name, const char *const *items, int max_items, int selection)
+static int menu_select_value(const char *value_name, const char *const *items, int max_items,
+			     int selection)
 {
 	char str[100];
 	int i;
@@ -799,14 +816,12 @@ static int menu_select_value(const char *value_name, const char *const *items, i
 		printf("Method not changed\n");
 		return 0;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
-	if (!str[0] || (str[0] < '1' || atoi(str) > max_items)) {
+	strip_newline(str);
+	if (parse_integer(str, 1, max_items, &i)) {
 		printf("Method not changed\n");
 		return 0;
 	}
-	return atoi(str);
+	return i;
 }
 
 /*!
@@ -818,7 +833,7 @@ static int menu_select_value(const char *value_name, const char *const *items, i
 static int menu_get_delay(const char *delay_type, const char *menu_option, int delay)
 {
 	char str[100];
-	int value, x;
+	int value;
 
 	snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support %s", menu_option);
 	if (astgetresp(str)) {
@@ -830,19 +845,12 @@ static int menu_get_delay(const char *delay_type, const char *menu_option, int d
 		printf("Setting not changed\n");
 		return delay;
 	}
-	if (str[0] && (str[strlen(str) - 1] == '\n')) {
-		str[strlen(str) - 1] = 0;
-	}
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Setting not changed\n");
 		return delay;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, "%d", &value) < 1) || (value < 0) || (value > 999)) {
+	if (parse_integer(str, 0, 999, &value)) {
 		printf("Entry Error, setting not changed\n");
 		return delay;
 	}
@@ -854,22 +862,20 @@ static int menu_get_delay(const char *delay_type, const char *menu_option, int d
 static int menu_get_integer(const char *name, int current, int minimum, int maximum)
 {
 	char str[100];
-	int value, x;
+	int value;
 
-	printf("Enter a new %s (%d-%d), or press Enter to keep %d: ",
-		name, minimum, maximum, current);
+	printf("Enter a new %s (%d-%d), or press Enter to keep %d: ", name, minimum, maximum,
+	       current);
 	if (fgets(str, sizeof(str) - 1, stdin) == NULL) {
 		printf("Setting not changed\n");
 		return current;
 	}
-	if (str[0] && str[strlen(str) - 1] == '\n') str[strlen(str) - 1] = 0;
+	strip_newline(str);
 	if (!str[0]) {
 		printf("Setting not changed\n");
 		return current;
 	}
-	for (x = 0; str[x] && isdigit(str[x]); x++) { }
-	if (str[x] || sscanf(str, "%d", &value) != 1
-		|| value < minimum || value > maximum) {
+	if (parse_integer(str, minimum, maximum, &value)) {
 		printf("Entry error; setting not changed\n");
 		return current;
 	}
@@ -894,13 +900,15 @@ static void options_menu(void)
 		if (astgetline(COMMAND_PREFIX "tune menu-support 0", str, sizeof(str) - 1)) {
 			return;
 		}
-		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode, &reserved_field_1, &reserved_field_2,
-				&carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb) != 14) {
+		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss,
+			   &echomode, &reserved_field_1, &reserved_field_2, &carrierfrom,
+			   &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod,
+			   &txmixa, &txmixb) != 14) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			return;
 		}
-		(void) reserved_field_1;
-		(void) reserved_field_2;
+		(void)reserved_field_1;
+		(void)reserved_field_2;
 		if (!astgetline(COMMAND_PREFIX "tune menu-support L", str, sizeof(str) - 1)) {
 			sscanf(str, "TX soft limiting setpoint currently set to: %d", &txslimsp);
 		}
@@ -918,13 +926,16 @@ static void options_menu(void)
 		printf("1) Change RX Demodulation (currently '%s')\n", demodulation_type[rxdemod]);
 		printf("2) Change RX On Delay (currently '%d')\n", rxondelay);
 		printf("3) Change TX Off Delay (currently '%d')\n", txoffdelay);
-		printf("4) Toggle TX Prelimiting (currently '%s')\n", txprelim ? "enabled" : "disabled");
-		printf("5) Toggle TX Limiting Only (currently '%s')\n", txlimonly ? "enabled" : "disabled");
+		printf("4) Toggle TX Prelimiting (currently '%s')\n",
+		       txprelim ? "enabled" : "disabled");
+		printf("5) Toggle TX Limiting Only (currently '%s')\n",
+		       txlimonly ? "enabled" : "disabled");
 		printf("6) Change TX Mixer A (currently '%s')\n", mixer_type[txmixa]);
 		printf("7) Change Tx Mixer B (currently '%s')\n", mixer_type[txmixb]);
 		printf("L) Change TX Soft Limiter Setpoint (currently '%d')\n", txslimsp);
 		printf("D) Change Duplex 3 Repeat Level (currently '%d')\n", duplex3);
-		printf("M) Change Duplex 3 Mode (currently '%s')\n", duplex3_mode_type[duplex3mode]);
+		printf("M) Change Duplex 3 Mode (currently '%s')\n",
+		       duplex3_mode_type[duplex3mode]);
 		printf("0) Back\n");
 		printf("\nPlease enter your selection now: ");
 
@@ -943,9 +954,11 @@ static void options_menu(void)
 
 		switch (str[0]) {
 		case '1': /* select rx demodulation */
-			result = menu_select_value("RX Demodulation", demodulation_type, 3, rxdemod);
+			result =
+				menu_select_value("RX Demodulation", demodulation_type, 3, rxdemod);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support u%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support u%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -984,22 +997,26 @@ static void options_menu(void)
 		case '6': /* select tx mixer a */
 			result = menu_select_value("TX Mixer A", mixer_type, 5, txmixa);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support w%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support w%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
 		case '7': /* select tx mixer b */
 			result = menu_select_value("TX Mixer B", mixer_type, 5, txmixb);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support x%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support x%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
 		case 'l': /* set tx soft limiter onset */
 		case 'L':
-			result = menu_get_integer("TX soft limiter setpoint", txslimsp, 5000, 13000);
+			result =
+				menu_get_integer("TX soft limiter setpoint", txslimsp, 5000, 13000);
 			if (result != txslimsp) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support L%d", result);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support L%d",
+					 result);
 				astgetresp(str);
 			}
 			break;
@@ -1007,15 +1024,18 @@ static void options_menu(void)
 		case 'D':
 			result = menu_get_integer("Duplex 3 repeat level", duplex3, 0, 999);
 			if (result != duplex3) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support D%d", result);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support D%d",
+					 result);
 				astgetresp(str);
 			}
 			break;
 		case 'm': /* select duplex 3 implementation */
 		case 'M':
-			result = menu_select_value("Duplex 3 Mode", duplex3_mode_type, 2, duplex3mode);
+			result = menu_select_value("Duplex 3 Mode", duplex3_mode_type, 2,
+						   duplex3mode);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support M%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support M%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1031,6 +1051,10 @@ static void options_menu(void)
  */
 int main(int argc, char *argv[])
 {
+	static const struct option long_options[] = {
+		{"meter", required_argument, NULL, 'm'},
+		{NULL, 0, NULL, 0},
+	};
 	int flatrx = 0, txhasctcss = 0, keying = 0, echomode = 0;
 	int reserved_field_1 = 0, reserved_field_2 = 0, carrierfrom = 0, ctcssfrom = 0;
 	int rxondelay = 0, txoffdelay = 0, txprelim = 0, txlimonly = 0;
@@ -1043,16 +1067,21 @@ int main(int argc, char *argv[])
 	int result;
 	int opt;
 	const char *device = NULL;
+	const char *meter = NULL;
 
 	signal(SIGCHLD, ourhandler);
 
-	while ((opt = getopt(argc, argv, "n:")) != -1) {
+	while ((opt = getopt_long(argc, argv, "n:m:", long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'n':
 			device = optarg;
 			break;
+		case 'm':
+			meter = optarg;
+			break;
 		default: /* '?' */
-			fprintf(stderr, "Usage: %s [-n node#]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [-n node#] [--meter rx|tx|status|all]\n",
+				argv[0]);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -1061,7 +1090,8 @@ int main(int argc, char *argv[])
 		snprintf(str, sizeof(str), COMMAND_PREFIX "active %s", device);
 		if (astgetline(str, str, sizeof(str) - 1)) {
 			printf("The chan_usbradioplus active device could not be set!\n\n");
-			printf("Verify that Asterisk is running and chan_usbradioplus is loaded.\n\n");
+			printf("Verify that Asterisk is running and chan_usbradioplus is "
+			       "loaded.\n\n");
 			exit(EXIT_FAILURE);
 		}
 		if (strstr(str, "Active (command) USB Radio device set to ") != str) {
@@ -1070,21 +1100,47 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (meter) {
+		const char *command = NULL;
+
+		if (!strcmp(meter, "rx"))
+			command = "y";
+		else if (!strcmp(meter, "tx"))
+			command = "z";
+		else if (!strcmp(meter, "status"))
+			command = "v";
+		else if (!strcmp(meter, "all"))
+			command = "A";
+		else {
+			fprintf(stderr, "Meter must be rx, tx, status, or all\n");
+			exit(EXIT_FAILURE);
+		}
+		printf("Continuous %s display. Press Enter to return.\n", meter);
+		snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support %s", command);
+		return astgetresp(str) ? EXIT_FAILURE : EXIT_SUCCESS;
+	}
+
 	for (;;) {
 		/* get device parameters from Asterisk */
 		if (astgetline(COMMAND_PREFIX "tune menu-support 0+9", str, sizeof(str) - 1)) {
-			printf("The setup information for chan_usbradioplus could not be retrieved!\n\n");
-			printf("Verify that Asterisk is running and chan_usbradioplus is loaded.\n\n");
+			printf("The setup information for chan_usbradioplus could not be "
+			       "retrieved!\n\n");
+			printf("Verify that Asterisk is running and chan_usbradioplus is "
+			       "loaded.\n\n");
 			exit(255);
 		}
-		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode,
-				&reserved_field_1, &reserved_field_2, &carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb,
-				&rxmixerset, &rxvoiceadj, &rxsquelchadj, &txmixaset, &txmixbset, &txctcssadj, &micplaymax, &spkrmax, &micmax) != 23) {
+		if (sscanf(str,
+			   "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,%d",
+			   &flatrx, &txhasctcss, &echomode, &reserved_field_1, &reserved_field_2,
+			   &carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly,
+			   &rxdemod, &txmixa, &txmixb, &rxmixerset, &rxvoiceadj, &rxsquelchadj,
+			   &txmixaset, &txmixbset, &txctcssadj, &micplaymax, &spkrmax,
+			   &micmax) != 23) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			exit(255);
 		}
-		(void) reserved_field_1;
-		(void) reserved_field_2;
+		(void)reserved_field_1;
+		(void)reserved_field_2;
 		printf("\n");
 
 		/* print selected USB device  at the top of our menu*/
@@ -1095,31 +1151,40 @@ int main(int argc, char *argv[])
 		if (flatrx) {
 			printf("2) Auto-Detect Rx Noise Level Value (with no carrier)\n");
 		} else {
-			printf("2) Auto-Detect Rx Noise Level does not apply to this devices configuration\n");
+			printf("2) Auto-Detect Rx Noise Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
-			printf("3) Set Rx Voice Level using display (currently '%d')\n", (int) ((rxvoiceadj * 200.0) + .5));
+			printf("3) Set Rx Voice Level using display (currently '%d')\n",
+			       (int)((rxvoiceadj * 200.0) + .5));
 		} else {
-			printf("3) Set Rx Voice Level using display (currently '%d')\n", rxmixerset);
+			printf("3) Set Rx Voice Level using display (currently '%d')\n",
+			       rxmixerset);
 		}
 		if (flatrx) {
 			printf("4) Auto-Detect Rx CTCSS Level Value (with carrier + CTCSS)\n");
 		} else {
-			printf("4) Auto-Detect Rx CTCSS Level does not apply to this devices configuration\n");
+			printf("4) Auto-Detect Rx CTCSS Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
 			printf("5) Set Rx Squelch Level (currently '%d')\n", rxsquelchadj);
 		} else {
-			printf("5) Set Rx Squelch Level does not apply to this devices configuration\n");
+			printf("5) Set Rx Squelch Level does not apply to this devices "
+			       "configuration\n");
 		}
-		if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE) || (txmixb == TX_OUT_VOICE) || (txmixb == TX_OUT_COMPOSITE)) {
+		if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE) ||
+		    (txmixb == TX_OUT_VOICE) || (txmixb == TX_OUT_COMPOSITE)) {
 			if (keying) {
-				printf("6) Set Transmit Voice Level and send test tone (no CTCSS)\n");
+				printf("6) Set Transmit Voice Level and send test tone (no "
+				       "CTCSS)\n");
 			} else {
 				if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE)) {
-					printf("6) Set Transmit Voice Level (currently '%d')\n", txmixaset);
+					printf("6) Set Transmit Voice Level (currently '%d')\n",
+					       txmixaset);
 				} else {
-					printf("6) Set Transmit Voice Level (currently '%d')\n", txmixbset);
+					printf("6) Set Transmit Voice Level (currently '%d')\n",
+					       txmixbset);
 				}
 			}
 		} else {
@@ -1127,9 +1192,11 @@ int main(int argc, char *argv[])
 		}
 		if ((txmixa == TX_OUT_AUX) || (txmixb == TX_OUT_AUX)) {
 			if (txmixa == TX_OUT_AUX) {
-				printf("7) Set Transmit Aux Voice Level (currently '%d')\n", txmixaset);
+				printf("7) Set Transmit Aux Voice Level (currently '%d')\n",
+				       txmixaset);
 			} else {
-				printf("7) Set Transmit Aux Voice Level (currently '%d')\n", txmixbset);
+				printf("7) Set Transmit Aux Voice Level (currently '%d')\n",
+				       txmixbset);
 			}
 		} else {
 			printf("7) Set Transmit Aux Voice Level not available as configured\n");
@@ -1138,17 +1205,22 @@ int main(int argc, char *argv[])
 			if (keying) {
 				printf("8) Set Transmit CTCSS Level and send CTCSS tone\n");
 			} else {
-				printf("8) Set Transmit CTCSS Level (currently '%d')\n", txctcssadj);
+				printf("8) Set Transmit CTCSS Level (currently '%d')\n",
+				       txctcssadj);
 			}
 		} else {
-			printf("8) Set Transmit CTCSS Level does not apply to this devices configuration\n");
+			printf("8) Set Transmit CTCSS Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
-			printf("9) Auto-Detect Rx Voice Level Value (with carrier + 1KHz @ 3KHz Dev)\n");
+			printf("9) Auto-Detect Rx Voice Level Value (with carrier + 1KHz @ 3KHz "
+			       "Dev)\n");
 		} else {
-			printf("9) Auto-Detect Rx Voice Level does not apply to this devices configuration\n");
+			printf("9) Auto-Detect Rx Voice Level does not apply to this devices "
+			       "configuration\n");
 		}
-		printf("E) Toggle Echo Mode (currently '%s')\n", (echomode) ? "enabled" : "disabled");
+		printf("E) Toggle Echo Mode (currently '%s')\n",
+		       (echomode) ? "enabled" : "disabled");
 		printf("F) Flash transmitter (three one-second PTT and tone bursts)\n");
 		printf("G) Change Carrier From (currently '%s')\n", cd_signal_type[carrierfrom]);
 		printf("H) Change CTCSS From (currently '%s')\n", sd_signal_type[ctcssfrom]);
@@ -1157,7 +1229,8 @@ int main(int argc, char *argv[])
 		printf("C) Configure Audio Processing\n");
 		printf("R) View live RX audio statistics (press Enter to return)\n");
 		printf("S) Swap Current USB device with another USB device\n");
-		printf("T) Use PTT and test tone during TX level adjustments (currently '%s')\n", (keying) ? "enabled" : "disabled");
+		printf("T) Use PTT and test tone during TX level adjustments (currently '%s')\n",
+		       (keying) ? "enabled" : "disabled");
 		printf("V) View live COS, CTCSS, and PTT status (press Enter to return)\n");
 		printf("W) Save current parameter values\n");
 		printf("X) View live TX audio statistics (press Enter to return)\n");
@@ -1248,7 +1321,8 @@ int main(int argc, char *argv[])
 		case 'G':
 			result = menu_select_value("Carrier From", cd_signal_type, 7, carrierfrom);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support o%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support o%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1256,7 +1330,8 @@ int main(int argc, char *argv[])
 		case 'H':
 			result = menu_select_value("CTCSS From", sd_signal_type, 6, ctcssfrom);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support p%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support p%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1286,7 +1361,8 @@ int main(int argc, char *argv[])
 		case 't': /* toggle test tone */
 		case 'T':
 			keying = !keying;
-			printf("Transmit Test Tone/Keying is now %s\n", (keying) ? "Enabled" : "Disabled");
+			printf("Transmit Test Tone/Keying is now %s\n",
+			       (keying) ? "Enabled" : "Disabled");
 			break;
 		case 'v': /* view cos, ctcss, and ptt status - live */
 		case 'V':
@@ -1309,5 +1385,5 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	exit(0);
+	return EXIT_SUCCESS;
 }

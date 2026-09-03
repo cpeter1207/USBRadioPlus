@@ -22,6 +22,12 @@ INSTALL_PROGRAM ?= $(INSTALL)
 INSTALL_DATA ?= $(INSTALL) -m 0644
 PYTHON ?= python3
 TAR ?= tar
+GCOVR ?= gcovr
+DOXYGEN ?= doxygen
+RUFF ?= ruff
+CLANG_FORMAT ?= clang-format
+CPPCHECK ?= cppcheck
+SHELLCHECK ?= shellcheck
 
 CPPFLAGS ?=
 CFLAGS ?= -O2 -g
@@ -58,13 +64,15 @@ TUNE := $(BUILD_DIR)/usbradioplus-tune
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
-DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md RELEASE-CHECKLIST.md install.sh
-DIST_DIRS := .github debian packaging src scripts examples man doc tests tests_py tools
+DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
+	RELEASE-CHECKLIST.md CONTRIBUTING.md AGENTS.md Doxyfile pyproject.toml \
+	.clang-format .clang-tidy .dockerignore install.sh
+DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tools
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
 
-.PHONY: all check clean dist distcheck install install-strip install-from-dist \
-	print-asl-radio-api uninstall
+.PHONY: all check ci coverage docs lint static-analysis clean dist distcheck \
+	install install-strip install-from-dist print-asl-radio-api uninstall
 
 print-asl-radio-api:
 	@echo $(ASL_RADIO_API)
@@ -90,6 +98,60 @@ check: all
 	$(PYTHON) -m pytest -q tests_py
 	sh ./tests/run_c_tests.sh
 	$(PYTHON) tools/validate_release.py
+
+lint:
+	$(RUFF) check scripts tests_py tools
+	$(RUFF) format --check scripts/usbradioplus-processing-tune tests_py tools
+	$(CLANG_FORMAT) --dry-run --Werror \
+		$(wildcard src/*.c src/*.h src/*.inc src/txagc/*.c src/txagc/*.h tests/*.c)
+	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
+		packaging/repository/install-usbradioplus.sh
+
+static-analysis:
+	$(CPPCHECK) --std=c11 --check-level=exhaustive \
+		--enable=warning,style,performance,portability \
+		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
+		--suppress=syntaxError:src/chan_usbradioplus.c \
+		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
+		-Isrc src
+	clang-tidy $(CHANNEL_SOURCE) \
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
+		-DAST_MODULE='"chan_usbradioplus"' \
+		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self
+	clang-tidy src/usbradioplus-tune.c -- $(COMMON_CPPFLAGS) -std=gnu11 -fblocks \
+		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self
+	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dsp.c \
+		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
+		src/usbradioplus_channel_core.c \
+		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
+		src/txagc/rnnoise_processor.c \
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11
+
+coverage:
+	rm -rf $(BUILD_DIR)/coverage
+	mkdir -p $(BUILD_DIR)/coverage
+	$(PYTHON) -m coverage run --branch -m pytest -q tests_py
+	$(PYTHON) -m coverage html -d $(BUILD_DIR)/coverage/python
+	$(PYTHON) -m coverage xml -o $(BUILD_DIR)/coverage/python.xml
+	$(PYTHON) -m coverage report --fail-under=100
+	C_TEST_CFLAGS="--coverage -O0 -g" \
+		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
+		sh ./tests/run_c_tests.sh
+	rm -f $(MODULE) $(TUNE)
+	$(MAKE) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
+	sh ./tests/run_coverage_integration.sh
+	$(GCOVR) --root . --filter 'src/.*\.(c|inc)' \
+		--exclude-unreachable-branches --exclude-throw-branches \
+		--html-details $(BUILD_DIR)/coverage/index.html \
+		--xml $(BUILD_DIR)/coverage/coverage.xml \
+		--fail-under-line 100 --fail-under-branch 100 --print-summary
+
+docs:
+	mkdir -p $(BUILD_DIR)
+	$(DOXYGEN) Doxyfile
+	test ! -s $(BUILD_DIR)/doxygen-warnings.log
+
+ci: lint static-analysis check coverage docs distcheck
 
 install: all
 	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(sbindir) \
@@ -147,6 +209,7 @@ $(TARBALL): $(DIST_FILES)
 	chmod 0755 $(BUILD_DIR)/$(DISTNAME)/scripts/* \
 		$(BUILD_DIR)/$(DISTNAME)/install.sh \
 		$(BUILD_DIR)/$(DISTNAME)/tests/run_c_tests.sh \
+		$(BUILD_DIR)/$(DISTNAME)/tests/container-smoke-test.sh \
 		$(BUILD_DIR)/$(DISTNAME)/tests/fixtures/asterisk-dev/fake-cc
 	$(TAR) --sort=name --mtime=@$(SOURCE_DATE_EPOCH) --owner=0 --group=0 \
 		--numeric-owner -C $(BUILD_DIR) -cJf $@ $(DISTNAME)

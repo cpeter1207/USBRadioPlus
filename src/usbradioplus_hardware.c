@@ -3,11 +3,11 @@
 
 #define URP_PP_REGISTER_BITS 20
 #define URP_PP_BIT_TIME 100000
-#define URP_DTX_CLK 0x01U       /* connector pin 2 */
-#define URP_DTX_DATA 0x02U      /* connector pin 3 */
-#define URP_DTX_ENABLE 0x04U    /* connector pin 4 */
-#define URP_DTX_TX 0x08U        /* connector pin 5 */
-#define URP_DTX_TXPWR 0x10U     /* connector pin 6; retained low */
+#define URP_DTX_CLK 0x01U	/* connector pin 2 */
+#define URP_DTX_DATA 0x02U	/* connector pin 3 */
+#define URP_DTX_ENABLE 0x04U	/* connector pin 4 */
+#define URP_DTX_TX 0x08U	/* connector pin 5 */
+#define URP_DTX_TXPWR 0x10U	/* connector pin 6; retained low */
 #define URP_BIN_PROG_MASK 0xf0U /* connector pins 6 through 9 */
 
 static void urp_hardware_delay(unsigned multiplier)
@@ -28,8 +28,7 @@ static void urp_hardware_spi(struct urp_parallel_bus *bus, uint32_t data)
 	uint32_t bit = 0x00080000U;
 	int i;
 
-	bus->value &= ~(URP_DTX_CLK | URP_DTX_DATA | URP_DTX_ENABLE |
-		URP_DTX_TXPWR | URP_DTX_TX);
+	bus->value &= ~(URP_DTX_CLK | URP_DTX_DATA | URP_DTX_ENABLE | URP_DTX_TXPWR | URP_DTX_TX);
 	urp_hardware_write(bus);
 	urp_hardware_delay(initialized ? 4 : 200);
 	initialized = 1;
@@ -57,8 +56,7 @@ static void urp_hardware_spi(struct urp_parallel_bus *bus, uint32_t data)
 	urp_hardware_write(bus);
 }
 
-struct urp_rtx_words urp_hardware_rtx_words(uint32_t rx_freq,
-	uint32_t tx_freq, int transmitting)
+struct urp_rtx_words urp_hardware_rtx_words(uint32_t rx_freq, uint32_t tx_freq, int transmitting)
 {
 	const uint32_t reference_freq = rx_freq > 200000000U ? 16012500U : 16000000U;
 	const uint32_t step_freq = rx_freq > 200000000U ? 12500U : 5000U;
@@ -83,11 +81,11 @@ void urp_hardware_set_channel(struct urp_parallel_bus *bus, uint8_t channel)
 	urp_hardware_write(bus);
 }
 
-void urp_hardware_program_radio(struct urp_parallel_bus *bus,
-	uint32_t rx_freq, uint32_t tx_freq, int transmitting, int high_power)
+void urp_hardware_program_radio(struct urp_parallel_bus *bus, uint32_t rx_freq, uint32_t tx_freq,
+				int transmitting, int high_power)
 {
 	struct urp_rtx_words words;
-	(void) high_power; /* The original interface never enabled this line. */
+	(void)high_power; /* The original interface never enabled this line. */
 	if (!bus || !bus->write || !rx_freq)
 		return;
 	words = urp_hardware_rtx_words(rx_freq, tx_freq, transmitting);

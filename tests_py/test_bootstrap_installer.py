@@ -1,11 +1,10 @@
-from pathlib import Path
 import os
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "packaging/repository/install-usbradioplus.sh"
@@ -26,9 +25,7 @@ def run_detection(tmp_path, suite, architecture, asl_version, *arguments):
     test_root.mkdir(parents=True, exist_ok=True)
     commands = Path(tempfile.mkdtemp(prefix=f"{tmp_path.name}-", dir=test_root))
     os_release = tmp_path / "os-release"
-    os_release.write_text(
-        f"ID=debian\nVERSION_CODENAME={suite}\n", encoding="utf-8"
-    )
+    os_release.write_text(f"ID=debian\nVERSION_CODENAME={suite}\n", encoding="utf-8")
     write_command(commands, "id", 'test "$1" = -u\nprintf "0\\n"\n')
     write_command(
         commands,
@@ -38,7 +35,7 @@ def run_detection(tmp_path, suite, architecture, asl_version, *arguments):
     write_command(
         commands,
         "dpkg-query",
-        "case \"$*\" in\n"
+        'case "$*" in\n'
         "  *Status-Status*) printf 'installed\\n' ;;\n"
         f"  *Version*) printf '%s\\n' '{asl_version}' ;;\n"
         "  *) exit 2 ;;\n"
@@ -75,12 +72,8 @@ def run_detection(tmp_path, suite, architecture, asl_version, *arguments):
         ),
     ],
 )
-def test_dry_run_selects_only_supported_package(
-    tmp_path, suite, architecture, version, package
-):
-    result = run_detection(
-        tmp_path, suite, architecture, version, "--dry-run"
-    )
+def test_dry_run_selects_only_supported_package(tmp_path, suite, architecture, version, package):
+    result = run_detection(tmp_path, suite, architecture, version, "--dry-run")
     assert result.returncode == 0, result.stdout
     assert f"Package:        {package}" in result.stdout
     assert version in result.stdout
@@ -95,12 +88,8 @@ def test_dry_run_selects_only_supported_package(
         ("trixie", "arm64", "2:99.0+asl3-99.0-1.deb13", "no package is published"),
     ],
 )
-def test_unknown_host_combinations_are_rejected(
-    tmp_path, suite, architecture, version, message
-):
-    result = run_detection(
-        tmp_path, suite, architecture, version, "--dry-run"
-    )
+def test_unknown_host_combinations_are_rejected(tmp_path, suite, architecture, version, message):
+    result = run_detection(tmp_path, suite, architecture, version, "--dry-run")
     assert result.returncode != 0
     assert message in result.stdout
 

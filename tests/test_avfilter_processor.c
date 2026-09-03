@@ -54,13 +54,19 @@ int main(void)
 	config.compressor_sidechain_highpass_hz = 800.0;
 	config.compressor_sidechain_lowpass_hz = 1500.0;
 	config.limiter_enabled = 1;
-	config.limiter_crossover_hz = 1000.0;
+	config.limiter_low_crossover_hz = 500.0;
+	config.limiter_high_crossover_hz = 2000.0;
 	config.low_limiter_threshold_dbfs = -1.5;
 	config.low_limiter_ratio = 10.0;
 	config.low_limiter_knee_db = 6.0;
 	config.low_limiter_attack_ms = 50.0;
 	config.low_limiter_release_ms = 250.0;
-	config.high_clip_dbfs = -1.5;
+	config.mid_limiter_threshold_dbfs = -1.5;
+	config.mid_limiter_ratio = 10.0;
+	config.mid_limiter_knee_db = 6.0;
+	config.mid_limiter_attack_ms = 10.0;
+	config.mid_limiter_release_ms = 100.0;
+	config.high_limiter_threshold_dbfs = -1.5;
 	config.high_limiter_ratio = 20.0;
 	config.high_limiter_knee_db = 6.0;
 	config.high_limiter_attack_ms = 0.5;
@@ -74,7 +80,7 @@ int main(void)
 	for (int block = 0; block < 3000; ++block) {
 		double amplitude = (block < 1500 ? 0.03 : 0.9) * 32768.0;
 		for (int index = 0; index < BLOCK; ++index) {
-			double t = (double) (block * BLOCK + index) / RATE;
+			double t = (double)(block * BLOCK + index) / RATE;
 			samples[index] = amplitude * sin(2.0 * M_PI * 1000.0 * t);
 		}
 		if (txagc_avfilter_process(&state, &config, samples, BLOCK, RATE) < 0) {
@@ -92,9 +98,8 @@ int main(void)
 			loud_sum += value;
 		}
 	}
-	printf("quiet_peak=%.6f loud_peak=%.6f max_peak=%.6f underrun=%llu\n",
-		quiet_sum / 400.0, loud_sum / 500.0, maximum,
-		state.underrun_samples);
+	printf("quiet_peak=%.6f loud_peak=%.6f max_peak=%.6f underrun=%llu\n", quiet_sum / 400.0,
+	       loud_sum / 500.0, maximum, state.underrun_samples);
 	if (maximum > 32768.0 * pow(10.0, -3.0 / 20.0) * 1.001) {
 		fprintf(stderr, "limiter ceiling exceeded\n");
 		return 2;

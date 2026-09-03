@@ -14,10 +14,9 @@ struct urp_parallel_bus {
 	void *opaque;
 };
 
-struct urp_rtx_words urp_hardware_rtx_words(uint32_t rx_freq,
-	uint32_t tx_freq, int transmitting);
+struct urp_rtx_words urp_hardware_rtx_words(uint32_t rx_freq, uint32_t tx_freq, int transmitting);
 void urp_hardware_set_channel(struct urp_parallel_bus *bus, uint8_t channel);
-void urp_hardware_program_radio(struct urp_parallel_bus *bus,
-	uint32_t rx_freq, uint32_t tx_freq, int transmitting, int high_power);
+void urp_hardware_program_radio(struct urp_parallel_bus *bus, uint32_t rx_freq, uint32_t tx_freq,
+				int transmitting, int high_power);
 
 #endif

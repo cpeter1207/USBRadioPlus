@@ -301,7 +301,7 @@ Apply gain at the end of the chain. Local and link default to -6.2 dB;
 voice/telemetry defaults to 0 dB.
 .SH PARAMETRIC EQUALIZER
 The three-band equalizer is available in every source chain and is reorderable
-with AGC, expander, compressor, and limiter. It is enabled by default.
+with AGC, expander, compressor, and the multiband limiter. It is enabled by default.
 .TP
 .B equalizer_enabled = yes|no
 Enable the three-band equalizer. Default is yes.
@@ -310,7 +310,7 @@ Enable the three-band equalizer. Default is yes.
 Set low-shelf gain. Default is 2 dB.
 .TP
 .B equalizer_low_frequency_hz = 20..1000
-Set low-shelf frequency. Default is 300 Hz.
+Set low-shelf frequency. Default is 500 Hz.
 .TP
 .B equalizer_low_slope = 0.1..1
 Set low-shelf slope. Default is 0.7.
@@ -319,7 +319,7 @@ Set low-shelf slope. Default is 0.7.
 Set mid-band gain. Default is -0.5 dB.
 .TP
 .B equalizer_mid_frequency_hz = 100..4000
-Set mid-band center frequency. Default is 750 Hz.
+Set mid-band center frequency. Default is 1000 Hz.
 .TP
 .B equalizer_mid_width_octaves = 0.1..4
 Set mid-band width. Default is one octave.
@@ -328,7 +328,7 @@ Set mid-band width. Default is one octave.
 Set high-shelf gain. Default is -1 dB.
 .TP
 .B equalizer_high_frequency_hz = 1000..5000
-Set high-shelf frequency. Default is 2500 Hz.
+Set high-shelf frequency. Default is 2000 Hz.
 .TP
 .B equalizer_high_slope = 0.1..1
 Set high-shelf slope. Default is 0.7.
@@ -471,13 +471,16 @@ Set the compressor detector high-pass cutoff. Default is 800 Hz.
 .TP
 .B compressor_sidechain_lowpass_hz = compressor_sidechain_highpass_hz..3500
 Set the compressor detector low-pass cutoff. Default is 1500 Hz.
-.SH TWO-BAND LIMITER
+.SH MULTIBAND LIMITER
 .TP
 .B limiter_enabled = yes|no
-Enable the two-band limiter in the reorderable graph. Default is no.
+Enable the shared FFmpeg three-band limiter in the reorderable graph. Default is no.
 .TP
-.B limiter_crossover_hz = 300..2000
-Divide low and high limiter bands. Default is 1000 Hz.
+.B limiter_low_crossover_hz = 100..2000
+Divide the low and mid limiter bands. Default is 500 Hz.
+.TP
+.B limiter_high_crossover_hz = limiter_low_crossover_hz..5000
+Divide the mid and high limiter bands. Default is 2000 Hz.
 .TP
 .B limiter_low_threshold_dbfs = -40..-1
 Set low-band limiting threshold. Default is -1.5 dBFS.
@@ -493,6 +496,21 @@ Set low-band attack. Default is 50 ms.
 .TP
 .B limiter_low_release_ms = 1..10000
 Set low-band release. Default is 250 ms.
+.TP
+.B limiter_mid_threshold_dbfs = -40..-1
+Set mid-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B limiter_mid_ratio = 1..20
+Set mid-band ratio. Default is 10:1.
+.TP
+.B limiter_mid_knee_db = 0..24
+Set mid-band soft-knee width. Default is 6 dB.
+.TP
+.B limiter_mid_attack_ms = 0.1..1000
+Set mid-band attack. Default is 10 ms.
+.TP
+.B limiter_mid_release_ms = 1..10000
+Set mid-band release. Default is 100 ms.
 .TP
 .B limiter_high_threshold_dbfs = -30..-1
 Set high-band limiting threshold. Default is -1.5 dBFS.
@@ -522,14 +540,14 @@ Set the fixed transmitter high-pass cutoff. Default is 300 Hz.
 Set the fixed transmitter low-pass cutoff. Default is 3000 Hz.
 .TP
 .B lookahead_limiter_enabled = yes|no
-Enable or explicitly disable lookahead peak limiting. When omitted, the channel
+Enable or explicitly disable the final limiter. When omitted, the channel
 transmit limiter settings determine whether it runs and its ceiling.
 .TP
 .B lookahead_limiter_ceiling_dbfs = -30..-0.1
-Set the explicit lookahead ceiling. Default is -3 dBFS.
+Set the final-limiter ceiling. Default is -3 dBFS.
 .TP
 .B lookahead_limiter_lookahead_ms = 0.1..20
-Set peak lookahead. Default is 5 ms.
+Set final-limiter lookahead. Default is 5 ms.
 .TP
 .B lookahead_limiter_attack_ms = 0.1..20
 Set limiter attack. Default is 1 ms.
@@ -538,16 +556,10 @@ Set limiter attack. Default is 1 ms.
 Set limiter release. Default is 100 ms.
 .TP
 .B post_limiter_lowpass_enabled = yes|no
-Enable the fixed cleanup low-pass after lookahead limiting. Default is no.
+Enable the fixed cleanup low-pass after final limiting. Default is no.
 .TP
 .B post_limiter_lowpass_hz = 5000..20000
 Set cleanup-filter cutoff. Default is 8000 Hz.
-.TP
-.B final_clipper_enabled = yes|no
-Enable the final hard ceiling. Default is no.
-.TP
-.B final_clipper_ceiling_dbfs = -30..-0.5
-Set the final hard ceiling. Default is -3 dBFS.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, optionally passed
 through RNNoise, passed through the selected dynamics order, and then passed

@@ -30,7 +30,7 @@ static double response(int production, double frequency)
 	txagc_avfilter_init(&state);
 	for (int block = 0; block < 20; ++block) {
 		for (int index = 0; index < BLOCK; ++index) {
-			double t = (double) (block * BLOCK + index) / RATE;
+			double t = (double)(block * BLOCK + index) / RATE;
 			samples[index] = 1000.0 * sin(2.0 * M_PI * frequency * t);
 		}
 		if (txagc_avfilter_process(&state, &config, samples, BLOCK, RATE) < 0) {
@@ -46,24 +46,23 @@ static double response(int production, double frequency)
 
 int main(void)
 {
-	const double frequencies[] = { 300.0, 600.0, 1000.0, 1200.0, 2400.0, 3000.0 };
+	const double frequencies[] = {300.0, 600.0, 1000.0, 1200.0, 2400.0, 3000.0};
 	double previous_pre = NAN;
 	double previous_de = NAN;
 	for (size_t index = 0; index < sizeof(frequencies) / sizeof(frequencies[0]); ++index) {
 		double pre = response(1, frequencies[index]);
 		double de = response(0, frequencies[index]);
-		printf("%.0f Hz pre=%+.3f dB de=%+.3f dB sum=%+.3f dB\n",
-			frequencies[index], pre, de, pre + de);
+		printf("%.0f Hz pre=%+.3f dB de=%+.3f dB sum=%+.3f dB\n", frequencies[index], pre,
+		       de, pre + de);
 		if (!isfinite(pre) || !isfinite(de) || fabs(pre + de) > 0.05) {
 			return 1;
 		}
-		if (frequencies[index] == 1000.0 &&
-				(fabs(pre) > 0.05 || fabs(de) > 0.05)) {
+		if (frequencies[index] == 1000.0 && (fabs(pre) > 0.05 || fabs(de) > 0.05)) {
 			return 2;
 		}
 		if (isfinite(previous_pre) && frequencies[index] == 1200.0 &&
-				(fabs((pre - previous_pre) - 6.0) > 0.5 ||
-				 fabs((de - previous_de) + 6.0) > 0.5)) {
+		    (fabs((pre - previous_pre) - 6.0) > 0.5 ||
+		     fabs((de - previous_de) + 6.0) > 0.5)) {
 			return 3;
 		}
 		if (frequencies[index] == 600.0) {

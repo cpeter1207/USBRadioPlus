@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
   pages: write
   id-token: write
 
@@ -31,7 +32,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+
+  containers:
+    uses: ./.github/workflows/containers.yml
+
   release:
+    needs: [quality, containers]
     outputs:
       tag_name: ${{ steps.release_metadata.outputs.tag_name }}
     runs-on: ubuntu-latest
@@ -165,6 +173,13 @@ jobs:
           git add VERSION
           git commit -m "Start $NEXT_VERSION development"
           git push origin HEAD:main
+
+  publish-containers:
+    needs: release
+    uses: ./.github/workflows/containers.yml
+    with:
+      publish: true
+      release_version: ${{ inputs.release_version }}
 
   packages:
     needs: release

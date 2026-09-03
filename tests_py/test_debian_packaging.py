@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -45,17 +44,17 @@ def test_repository_workflow_builds_and_verifies_all_targets():
         "actions/deploy-pages@v5",
         "cmp -s /tmp/config-before/modules.conf",
         "cmp -s /tmp/config-before/rpt.conf",
-        'dpkg-query -L asl3-asterisk-modules',
-        'package_revision:',
+        "dpkg-query -L asl3-asterisk-modules",
+        "package_revision:",
         'cp --no-clobber -t "$INCOMING_DIR"',
         'asl_package_tag="${radio_api}.asl',
-        'app_rpt_version=',
-        'requested_api: modern',
+        "app_rpt_version=",
+        "requested_api: modern",
         'target_asl_version: "2:22.10.1+asl3-3.10.5-1.deb13"',
-        'raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit',
-        '*.deb13_*|*.deb13+*_*) suite=trixie',
-        'binary_package=usbradioplus-asl3105',
-        'Conflicts: usbradioplus',
+        "raw.githubusercontent.com/AllStarLink/app_rpt/$modern_commit",
+        "*.deb13_*|*.deb13+*_*) suite=trixie",
+        "binary_package=usbradioplus-asl3105",
+        "Conflicts: usbradioplus",
         "debian/usbradioplus-asl3105",
         "packaging/repository/install-usbradioplus.sh",
         "sh /tmp/install-usbradioplus.sh --yes",
@@ -80,7 +79,7 @@ def test_static_site_can_publish_without_rebuilding_packages():
         "actions/deploy-pages@v5",
         "sh -n /tmp/install-usbradioplus.sh",
         "sudo sh install-usbradioplus.sh",
-        "group: debian-repository",
+        "group: github-pages",
     ):
         assert required in workflow
     assert "dpkg-buildpackage" not in workflow

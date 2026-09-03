@@ -52,8 +52,8 @@ static int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
 {
 	int error;
 
-	if (state->active && state->input_rate == sample_rate && state->denoise
-		&& state->upsampler && state->downsampler) {
+	if (state->active && state->input_rate == sample_rate && state->denoise &&
+	    state->upsampler && state->downsampler) {
 		return 0;
 	}
 	txagc_rnnoise_destroy(state);
@@ -89,8 +89,17 @@ static void consume(float *fifo, size_t *fifo_count, size_t count)
 	*fifo_count -= count;
 }
 
-int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
-	size_t count, unsigned int sample_rate)
+static int16_t pcm_from_double(double sample)
+{
+	if (sample > 32767.0)
+		return 32767;
+	if (sample < -32768.0)
+		return -32768;
+	return (int16_t)lround(sample);
+}
+
+int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, size_t count,
+				 unsigned int sample_rate)
 {
 	float input[2048];
 	float converted[4096];
@@ -99,8 +108,8 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 	SRC_DATA data;
 	size_t i;
 
-	if (!sample_rate || count > sizeof(input) / sizeof(input[0])
-		|| configure_rate(state, sample_rate)) {
+	if (!sample_rate || count > sizeof(input) / sizeof(input[0]) ||
+	    configure_rate(state, sample_rate)) {
 		return -1;
 	}
 	state->active = 1;
@@ -112,11 +121,9 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 	data.input_frames = count;
 	data.data_out = converted;
 	data.output_frames = sizeof(converted) / sizeof(converted[0]);
-	data.src_ratio = (double) TXAGC_RNNOISE_RATE / sample_rate;
-	if (src_process(state->upsampler, &data)
-		|| data.input_frames_used != (long) count
-		|| append(state->up_fifo, &state->up_count, converted,
-			data.output_frames_gen)) {
+	data.src_ratio = (double)TXAGC_RNNOISE_RATE / sample_rate;
+	if (src_process(state->upsampler, &data) || data.input_frames_used != (long)count ||
+	    append(state->up_fifo, &state->up_count, converted, data.output_frames_gen)) {
 		state->errors++;
 		reset_stream(state);
 		return -1;
@@ -124,8 +131,8 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 
 	while (state->up_count >= TXAGC_RNNOISE_FRAME) {
 		long generated;
-		state->vad_probability = rnnoise_process_frame(state->denoise, clean,
-			state->up_fifo);
+		state->vad_probability =
+			rnnoise_process_frame(state->denoise, clean, state->up_fifo);
 		state->vad_sum += state->vad_probability;
 		state->rnnoise_frames++;
 		consume(state->up_fifo, &state->up_count, TXAGC_RNNOISE_FRAME);
@@ -139,7 +146,7 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 		data.input_frames = TXAGC_RNNOISE_FRAME;
 		data.data_out = down;
 		data.output_frames = sizeof(down) / sizeof(down[0]);
-		data.src_ratio = (double) sample_rate / TXAGC_RNNOISE_RATE;
+		data.src_ratio = (double)sample_rate / TXAGC_RNNOISE_RATE;
 		if (src_process(state->downsampler, &data)) {
 			state->errors++;
 			reset_stream(state);
@@ -159,8 +166,8 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 			available = count;
 		}
 		for (i = 0; i < available; ++i) {
-		samples[i] = state->down_fifo[i];
-		state->output_samples++;
+			samples[i] = state->down_fifo[i];
+			state->output_samples++;
 		}
 		consume(state->down_fifo, &state->down_count, available);
 		for (; i < count; ++i) {
@@ -171,8 +178,8 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples,
 	return 0;
 }
 
-int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples,
-	size_t count, unsigned int sample_rate)
+int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples, size_t count,
+			  unsigned int sample_rate)
 {
 	double work[2048];
 	size_t i;
@@ -188,11 +195,7 @@ int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples,
 	if (result) {
 		return result;
 	}
-	for (i = 0; i < count; ++i) {
-		double output = work[i];
-		if (output > 32767.0) output = 32767.0;
-		if (output < -32768.0) output = -32768.0;
-		samples[i] = (int16_t) lround(output);
-	}
+	for (i = 0; i < count; ++i)
+		samples[i] = pcm_from_double(work[i]);
 	return 0;
 }

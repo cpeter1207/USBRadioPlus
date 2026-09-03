@@ -1,0 +1,19 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+include = ["scripts/usbradioplus-processing-tune", "tests_py/*.py", "tools/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests_py"]
+
+[tool.coverage.run]
+branch = true
+source = ["scripts", "tools"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false

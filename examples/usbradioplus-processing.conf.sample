@@ -159,13 +159,13 @@ stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band tone control.
 equalizer_enabled = yes
 equalizer_low_gain_db = 2.0
-equalizer_low_frequency_hz = 300.0
+equalizer_low_frequency_hz = 500.0
 equalizer_low_slope = 0.7
 equalizer_mid_gain_db = -0.5
-equalizer_mid_frequency_hz = 750.0
+equalizer_mid_frequency_hz = 1000.0
 equalizer_mid_width_octaves = 1.0
 equalizer_high_gain_db = -1.0
-equalizer_high_frequency_hz = 2500.0
+equalizer_high_frequency_hz = 2000.0
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction immediately before the compressor by default.
 deesser_enabled = no
@@ -249,16 +249,23 @@ compressor_release_ms = 800.0
 compressor_sidechain_highpass_hz = 800.0
 compressor_sidechain_lowpass_hz = 1500.0
 
-; Enable the two-band limiter.
+; Enable the shared FFmpeg multiband limiter.
 limiter_enabled = yes
-; Frequency dividing the low and high limiter bands, 300 through 2000 Hz.
-limiter_crossover_hz = 1000.0
+; Frequencies dividing the low, mid, and high bands.
+limiter_low_crossover_hz = 500.0
+limiter_high_crossover_hz = 2000.0
 ; Low-band threshold, ratio, knee, attack, and release.
 limiter_low_threshold_dbfs = -1.0
 limiter_low_ratio = 10.0
 limiter_low_knee_db = 6.0
 limiter_low_attack_ms = 50.0
 limiter_low_release_ms = 300.0
+; Mid-band threshold, ratio, knee, attack, and release.
+limiter_mid_threshold_dbfs = -1.0
+limiter_mid_ratio = 10.0
+limiter_mid_knee_db = 6.0
+limiter_mid_attack_ms = 10.0
+limiter_mid_release_ms = 100.0
 ; High-band threshold, ratio, knee, attack, and release.
 limiter_high_threshold_dbfs = -1.0
 limiter_high_ratio = 20.0
@@ -275,13 +282,13 @@ stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band tone control.
 equalizer_enabled = yes
 equalizer_low_gain_db = 2.0
-equalizer_low_frequency_hz = 300.0
+equalizer_low_frequency_hz = 500.0
 equalizer_low_slope = 0.7
 equalizer_mid_gain_db = -0.5
-equalizer_mid_frequency_hz = 750.0
+equalizer_mid_frequency_hz = 1000.0
 equalizer_mid_width_octaves = 1.0
 equalizer_high_gain_db = -1.0
-equalizer_high_frequency_hz = 2500.0
+equalizer_high_frequency_hz = 2000.0
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction immediately before the compressor by default.
 deesser_enabled = no
@@ -313,10 +320,13 @@ agc_release_ms = 30000.0
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0
 compressor_release_ms = 800.0
-; Low- and high-band limiter thresholds and timing.
+; Multiband limiter thresholds and timing.
 limiter_low_threshold_dbfs = -1.0
 limiter_low_attack_ms = 50.0
 limiter_low_release_ms = 300.0
+limiter_mid_threshold_dbfs = -1.0
+limiter_mid_attack_ms = 10.0
+limiter_mid_release_ms = 100.0
 limiter_high_threshold_dbfs = -1.0
 limiter_high_attack_ms = 1.0
 limiter_high_release_ms = 50.0
@@ -334,13 +344,13 @@ stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
 equalizer_enabled = yes
 equalizer_low_gain_db = 2.0
-equalizer_low_frequency_hz = 300.0
+equalizer_low_frequency_hz = 500.0
 equalizer_low_slope = 0.7
 equalizer_mid_gain_db = -0.5
-equalizer_mid_frequency_hz = 750.0
+equalizer_mid_frequency_hz = 1000.0
 equalizer_mid_width_octaves = 1.0
 equalizer_high_gain_db = -1.0
-equalizer_high_frequency_hz = 2500.0
+equalizer_high_frequency_hz = 2000.0
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction. Detection and attenuation are confined to a
 ; bell-shaped band so other voice frequencies do not dip with an S sound.
@@ -363,22 +373,18 @@ splatter_filter_enabled = yes
 splatter_filter_highpass_hz = 20.0
 splatter_filter_lowpass_hz = 5000.0
 ; When omitted, txprelim, txlimonly, and txslimsp in usbradioplus.conf select
-; lookahead limiting. Explicit no disables it; yes enables it.
+; final limiting. Explicit no disables it; yes enables it.
 ;lookahead_limiter_enabled = no
-; Explicit lookahead ceiling, -30 through -0.1 dBFS.
+; Explicit final-limiter ceiling, -30 through -0.1 dBFS.
 lookahead_limiter_ceiling_dbfs = -3.0
 ; Lookahead, attack, and release times in milliseconds.
 lookahead_limiter_lookahead_ms = 5.0
 lookahead_limiter_attack_ms = 1.0
 lookahead_limiter_release_ms = 100.0
-; Enable the fixed cleanup low-pass after lookahead limiting.
+; Enable the fixed cleanup low-pass after final limiting.
 post_limiter_lowpass_enabled = no
 ; Cleanup low-pass cutoff, 5000 through 20000 Hz.
 post_limiter_lowpass_hz = 5500.0
-; Enable a final hard ceiling after the other transmitter stages.
-final_clipper_enabled = no
-; Final hard ceiling, -30 through -0.5 dBFS.
-final_clipper_ceiling_dbfs = -3.0
 ; Gain at the end of the transmitter chain, -30 through +30 dB.
 output_gain_db = 0.0
 ;
@@ -395,10 +401,13 @@ agc_release_ms = 30000.0
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0
 compressor_release_ms = 800.0
-; Low- and high-band limiter thresholds and timing.
+; Multiband limiter thresholds and timing.
 limiter_low_threshold_dbfs = -1.0
 limiter_low_attack_ms = 50.0
 limiter_low_release_ms = 300.0
+limiter_mid_threshold_dbfs = -1.0
+limiter_mid_attack_ms = 10.0
+limiter_mid_release_ms = 100.0
 limiter_high_threshold_dbfs = -1.0
 limiter_high_attack_ms = 1.0
 limiter_high_release_ms = 50.0

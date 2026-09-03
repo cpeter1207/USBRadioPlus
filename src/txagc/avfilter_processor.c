@@ -51,7 +51,7 @@ static int graph_append(char *graph, size_t size, const char *format, ...)
 	va_start(ap, format);
 	result = vsnprintf(graph + used, size - used, format, ap);
 	va_end(ap);
-	if (result < 0 || (size_t) result >= size - used) {
+	if (result < 0 || (size_t)result >= size - used) {
 		return AVERROR(ENOSPC);
 	}
 	return 0;
@@ -59,23 +59,21 @@ static int graph_append(char *graph, size_t size, const char *format, ...)
 
 static int astats_value(const AVFrame *frame, const char *name, double *value)
 {
-	AVDictionaryEntry *entry = av_dict_get(frame->metadata, name, NULL, 0);
+	const AVDictionaryEntry *entry = av_dict_get(frame->metadata, name, NULL, 0);
 	char *end;
-	if (!entry || !entry->value) {
+	if (!entry) {
 		return -1;
 	}
 	*value = strtod(entry->value, &end);
 	return end != entry->value ? 0 : -1;
 }
 
-static void update_astats(struct txagc_avfilter *state, const AVFrame *frame,
-	int input)
+static void update_astats(struct txagc_avfilter *state, const AVFrame *frame, int input)
 {
 	double peak;
 	double rms;
-	if (astats_value(frame, "lavfi.astats.Overall.Peak_level", &peak)
-			|| astats_value(frame, "lavfi.astats.Overall.RMS_level", &rms)
-			|| rms <= -90.0) {
+	if (astats_value(frame, "lavfi.astats.Overall.Peak_level", &peak) ||
+	    astats_value(frame, "lavfi.astats.Overall.RMS_level", &rms) || rms <= -90.0) {
 		return;
 	}
 	if (input) {
@@ -107,8 +105,8 @@ enum cleanup_meter {
 	CLEANUP_POST_8_PLUS,
 };
 
-static void update_cleanup_astats(struct txagc_avfilter *state,
-	const AVFrame *frame, enum cleanup_meter meter)
+static void update_cleanup_astats(struct txagc_avfilter *state, const AVFrame *frame,
+				  enum cleanup_meter meter)
 {
 	double peak;
 	double rms;
@@ -156,55 +154,55 @@ static void update_cleanup_astats(struct txagc_avfilter *state,
 	}
 }
 
-static int add_sidechain_stage(char *graph, size_t size, const char *input,
-	const char *output, const char *prefix, const char *filter,
-	double highpass, double lowpass, const char *options)
+static int add_sidechain_stage(char *graph, size_t size, const char *input, const char *output,
+			       const char *prefix, const char *filter, double highpass,
+			       double lowpass, const char *options)
 {
 	return graph_append(graph, size,
-		"[%s]asplit=2[%smain][%ssc];"
-		"[%ssc]highpass=f=%.9g:p=2,lowpass=f=%.9g:p=2[%sdet];"
-		"[%smain][%sdet]%s=%s[%s];",
-		input, prefix, prefix, prefix, highpass, lowpass, prefix,
-		prefix, prefix, filter, options, output);
+			    "[%s]asplit=2[%smain][%ssc];"
+			    "[%ssc]highpass=f=%.9g:p=2,lowpass=f=%.9g:p=2[%sdet];"
+			    "[%smain][%sdet]%s=%s[%s];",
+			    input, prefix, prefix, prefix, highpass, lowpass, prefix, prefix,
+			    prefix, filter, options, output);
 }
 
-static int add_brickwall_bandpass(char *graph, size_t size, const char *input,
-	const char *output, const char *prefix, double highpass, double lowpass)
+static int add_brickwall_bandpass(char *graph, size_t size, const char *input, const char *output,
+				  const char *prefix, double highpass, double lowpass)
 {
 	return graph_append(graph, size,
-		"[%s]acrossover=split=%.9g:order=20th[%slo][%spass];"
-		"[%slo]anullsink;"
-		"[%spass]acrossover=split=%.9g:order=20th[%s][%shi];"
-		"[%shi]anullsink;",
-		input, highpass, prefix, prefix, prefix,
-		prefix, lowpass, output, prefix, prefix);
+			    "[%s]acrossover=split=%.9g:order=20th[%slo][%spass];"
+			    "[%slo]anullsink;"
+			    "[%spass]acrossover=split=%.9g:order=20th[%s][%shi];"
+			    "[%shi]anullsink;",
+			    input, highpass, prefix, prefix, prefix, prefix, lowpass, output,
+			    prefix, prefix);
 }
 
-static int add_emphasis(char *graph, size_t size, const char *input,
-	const char *output, int production, double corner_hz,
-	double reference_hz, unsigned int sample_rate)
+static int add_emphasis(char *graph, size_t size, const char *input, const char *output,
+			int production, double corner_hz, double reference_hz,
+			unsigned int sample_rate)
 {
 	double pole = exp(-2.0 * M_PI * corner_hz / sample_rate);
 	double omega = 2.0 * M_PI * reference_hz / sample_rate;
-	double inverse_at_reference = sqrt(1.0 + pole * pole
-		- 2.0 * pole * cos(omega)) / (1.0 - pole);
+	double inverse_at_reference =
+		sqrt(1.0 + pole * pole - 2.0 * pole * cos(omega)) / (1.0 - pole);
 	if (production) {
 		double scale = 1.0 / inverse_at_reference;
 		return graph_append(graph, size,
-			"[%s]biquad=b0=%.17g:b1=%.17g:b2=0:a0=1:a1=0:a2=0:"
-			"precision=f64[%s];",
-			input, scale / (1.0 - pole),
-			-pole * scale / (1.0 - pole), output);
+				    "[%s]biquad=b0=%.17g:b1=%.17g:b2=0:a0=1:a1=0:a2=0:"
+				    "precision=f64[%s];",
+				    input, scale / (1.0 - pole), -pole * scale / (1.0 - pole),
+				    output);
 	}
 	return graph_append(graph, size,
-		"[%s]biquad=b0=%.17g:b1=0:b2=0:a0=1:a1=%.17g:a2=0:"
-		"precision=f64[%s];",
-		input, inverse_at_reference * (1.0 - pole), -pole, output);
+			    "[%s]biquad=b0=%.17g:b1=0:b2=0:a0=1:a1=%.17g:a2=0:"
+			    "precision=f64[%s];",
+			    input, inverse_at_reference * (1.0 - pole), -pole, output);
 }
 
-static int add_dynamic_stage(char *graph, size_t size,
-	const struct txagc_config *cfg, enum txagc_stage kind,
-	const char *current, const char *next, unsigned int serial)
+static int add_dynamic_stage(char *graph, size_t size, const struct txagc_config *cfg,
+			     enum txagc_stage kind, const char *current, const char *next,
+			     unsigned int serial)
 {
 	char options[1024];
 	char prefix[32];
@@ -216,19 +214,21 @@ static int add_dynamic_stage(char *graph, size_t size,
 	case TXAGC_STAGE_DEESSER: {
 		double octave_ratio;
 		double q;
-		if (!cfg->deesser_enabled) return 0;
+		if (!cfg->deesser_enabled)
+			return 0;
 		octave_ratio = pow(2.0, cfg->deesser_width_octaves);
 		q = sqrt(octave_ratio) / (octave_ratio - 1.0);
 #if LIBAVFILTER_VERSION_MAJOR >= 9
-		return graph_append(graph, size,
+		return graph_append(
+			graph, size,
 			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
 			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
 			"attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
 			"mode=cutabove:dftype=bandpass:tftype=bell:precision=double[%s];",
 			current, db_to_linear(cfg->deesser_threshold_dbfs),
 			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
-			cfg->deesser_attack_ms, cfg->deesser_release_ms,
-			cfg->deesser_ratio, cfg->deesser_max_reduction_db / 2.0, next);
+			cfg->deesser_attack_ms, cfg->deesser_release_ms, cfg->deesser_ratio,
+			cfg->deesser_max_reduction_db / 2.0, next);
 #else
 		double ratio = cfg->deesser_ratio;
 		double span = -cfg->deesser_threshold_dbfs;
@@ -237,92 +237,101 @@ static int add_dynamic_stage(char *graph, size_t size,
 		 * full-scale detector input cannot exceed the requested reduction.
 		 * Its bell response applies the detector gain twice at band center. */
 		if (span > detector_reduction) {
-			double limited_ratio = span
-				/ (span - detector_reduction);
-			if (ratio > limited_ratio) ratio = limited_ratio;
+			double limited_ratio = span / (span - detector_reduction);
+			if (ratio > limited_ratio)
+				ratio = limited_ratio;
 		}
 		return graph_append(graph, size,
-			"[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
-			"dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
-			"attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
-			"mode=cut:tftype=bell[%s];",
-			current, db_to_linear(cfg->deesser_threshold_dbfs),
-			cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
-			cfg->deesser_attack_ms, cfg->deesser_release_ms,
-			ratio, 0.0, next);
+				    "[%s]adynamicequalizer=threshold=%.12g:dfrequency=%.9g:"
+				    "dqfactor=%.12g:tfrequency=%.9g:tqfactor=%.12g:"
+				    "attack=%.9g:release=%.9g:ratio=%.9g:range=%.12g:"
+				    "mode=cut:tftype=bell[%s];",
+				    current, db_to_linear(cfg->deesser_threshold_dbfs),
+				    cfg->deesser_frequency_hz, q, cfg->deesser_frequency_hz, q,
+				    cfg->deesser_attack_ms, cfg->deesser_release_ms, ratio, 0.0,
+				    next);
 #endif
 	}
 	case TXAGC_STAGE_EQUALIZER:
-		if (!cfg->equalizer_enabled) return 0;
+		if (!cfg->equalizer_enabled)
+			return 0;
 		return graph_append(graph, size,
-			"[%s]bass=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64,"
-			"equalizer=f=%.9g:t=o:w=%.9g:g=%.9g:r=f64,"
-			"treble=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64[%s];",
-			current, cfg->equalizer_low_gain_db,
-			cfg->equalizer_low_frequency_hz, cfg->equalizer_low_slope,
-			cfg->equalizer_mid_frequency_hz,
-			cfg->equalizer_mid_width_octaves, cfg->equalizer_mid_gain_db,
-			cfg->equalizer_high_gain_db, cfg->equalizer_high_frequency_hz,
-			cfg->equalizer_high_slope, next);
+				    "[%s]bass=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64,"
+				    "equalizer=f=%.9g:t=o:w=%.9g:g=%.9g:r=f64,"
+				    "treble=g=%.9g:f=%.9g:t=s:w=%.9g:r=f64[%s];",
+				    current, cfg->equalizer_low_gain_db,
+				    cfg->equalizer_low_frequency_hz, cfg->equalizer_low_slope,
+				    cfg->equalizer_mid_frequency_hz,
+				    cfg->equalizer_mid_width_octaves, cfg->equalizer_mid_gain_db,
+				    cfg->equalizer_high_gain_db, cfg->equalizer_high_frequency_hz,
+				    cfg->equalizer_high_slope, next);
 	case TXAGC_STAGE_AGC:
-		if (!cfg->agc_enabled) return 0;
+		if (!cfg->agc_enabled)
+			return 0;
 		target = clamp(db_to_linear(cfg->target_dbfs), 0.000001, 1.0);
 		max_gain = clamp(db_to_linear(cfg->max_gain_db), 1.0, 100.0);
 		return graph_append(graph, size,
-			"[%s]dynaudnorm=framelen=10:gausssize=3:peak=1:"
-			"maxgain=%.12g:targetrms=%.12g:threshold=%.12g:"
-			"overlap=0.5:correctdc=0[%s];",
-			current, max_gain, target,
-			clamp(db_to_linear(cfg->agc_floor_dbfs), 0.0, 1.0), next);
+				    "[%s]dynaudnorm=framelen=10:gausssize=3:peak=1:"
+				    "maxgain=%.12g:targetrms=%.12g:threshold=%.12g:"
+				    "overlap=0.5:correctdc=0[%s];",
+				    current, max_gain, target,
+				    clamp(db_to_linear(cfg->agc_floor_dbfs), 0.0, 1.0), next);
 	case TXAGC_STAGE_EXPANDER:
-		if (!cfg->expander_enabled) return 0;
+		if (!cfg->expander_enabled)
+			return 0;
 		snprintf(options, sizeof(options),
-			"threshold=%.12g:ratio=%.9g:range=%.12g:attack=%.9g:"
-			"release=%.9g:knee=2.828427:detection=rms",
-			db_to_linear(cfg->expander_threshold_dbfs),
-			clamp(cfg->expander_ratio, 1.0, 20.0),
-			db_to_linear(-fabs(cfg->expander_max_attenuation_db)),
-			cfg->expander_attack_ms, cfg->expander_release_ms);
-		return add_sidechain_stage(graph, size, current, next, prefix,
-			"sidechaingate", cfg->expander_sidechain_highpass_hz,
-			cfg->expander_sidechain_lowpass_hz, options);
+			 "threshold=%.12g:ratio=%.9g:range=%.12g:attack=%.9g:"
+			 "release=%.9g:knee=2.828427:detection=rms",
+			 db_to_linear(cfg->expander_threshold_dbfs),
+			 clamp(cfg->expander_ratio, 1.0, 20.0),
+			 db_to_linear(-fabs(cfg->expander_max_attenuation_db)),
+			 cfg->expander_attack_ms, cfg->expander_release_ms);
+		return add_sidechain_stage(graph, size, current, next, prefix, "sidechaingate",
+					   cfg->expander_sidechain_highpass_hz,
+					   cfg->expander_sidechain_lowpass_hz, options);
 	case TXAGC_STAGE_COMPRESSOR:
-		if (!cfg->compressor_enabled) return 0;
+		if (!cfg->compressor_enabled)
+			return 0;
 		snprintf(options, sizeof(options),
-			"mode=downward:threshold=%.12g:ratio=%.9g:attack=%.9g:"
-			"release=%.9g:makeup=%.12g:knee=2.828427:detection=rms",
-			db_to_linear(cfg->compressor_threshold_dbfs),
-			clamp(cfg->compressor_ratio, 1.0, 20.0),
-			cfg->compressor_attack_ms, cfg->compressor_release_ms,
-			db_to_linear(cfg->compressor_makeup_gain_db));
-		return add_sidechain_stage(graph, size, current, next, prefix,
-			"sidechaincompress", cfg->compressor_sidechain_highpass_hz,
-			cfg->compressor_sidechain_lowpass_hz, options);
+			 "mode=downward:threshold=%.12g:ratio=%.9g:attack=%.9g:"
+			 "release=%.9g:makeup=%.12g:knee=2.828427:detection=rms",
+			 db_to_linear(cfg->compressor_threshold_dbfs),
+			 clamp(cfg->compressor_ratio, 1.0, 20.0), cfg->compressor_attack_ms,
+			 cfg->compressor_release_ms, db_to_linear(cfg->compressor_makeup_gain_db));
+		return add_sidechain_stage(graph, size, current, next, prefix, "sidechaincompress",
+					   cfg->compressor_sidechain_highpass_hz,
+					   cfg->compressor_sidechain_lowpass_hz, options);
 	case TXAGC_STAGE_LIMITER:
-		if (!cfg->limiter_enabled) return 0;
-		return graph_append(graph, size,
-			"[%s]acrossover=split=%.9g:order=4th[%slo][%shi];"
+		if (!cfg->limiter_enabled)
+			return 0;
+		return graph_append(
+			graph, size,
+			"[%s]acrossover=split=%.9g %.9g:order=4th[%slo][%smid][%shi];"
 			"[%slo]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
 			"release=%.9g:knee=%.12g:detection=peak[%sloc];"
+			"[%smid]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
+			"release=%.9g:knee=%.12g:detection=peak[%smidc];"
 			"[%shi]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
 			"release=%.9g:knee=%.12g:detection=peak[%shic];"
-			"[%sloc][%shic]amix=inputs=2:normalize=0[%s];",
-			current, cfg->limiter_crossover_hz, prefix, prefix,
-			prefix, db_to_linear(cfg->low_limiter_threshold_dbfs),
-			clamp(cfg->low_limiter_ratio, 1.0, 20.0),
-			cfg->low_limiter_attack_ms, cfg->low_limiter_release_ms,
-			db_to_linear(cfg->low_limiter_knee_db), prefix,
-			prefix, db_to_linear(cfg->high_clip_dbfs),
-			clamp(cfg->high_limiter_ratio, 1.0, 20.0),
-			cfg->high_limiter_attack_ms, cfg->high_limiter_release_ms,
-			db_to_linear(cfg->high_limiter_knee_db), prefix,
-			prefix, prefix, next);
+			"[%sloc][%smidc][%shic]amix=inputs=3:normalize=0[%s];",
+			current, cfg->limiter_low_crossover_hz, cfg->limiter_high_crossover_hz,
+			prefix, prefix, prefix, prefix,
+			db_to_linear(cfg->low_limiter_threshold_dbfs),
+			clamp(cfg->low_limiter_ratio, 1.0, 20.0), cfg->low_limiter_attack_ms,
+			cfg->low_limiter_release_ms, db_to_linear(cfg->low_limiter_knee_db), prefix,
+			prefix, db_to_linear(cfg->mid_limiter_threshold_dbfs),
+			clamp(cfg->mid_limiter_ratio, 1.0, 20.0), cfg->mid_limiter_attack_ms,
+			cfg->mid_limiter_release_ms, db_to_linear(cfg->mid_limiter_knee_db), prefix,
+			prefix, db_to_linear(cfg->high_limiter_threshold_dbfs),
+			clamp(cfg->high_limiter_ratio, 1.0, 20.0), cfg->high_limiter_attack_ms,
+			cfg->high_limiter_release_ms, db_to_linear(cfg->high_limiter_knee_db),
+			prefix, prefix, prefix, prefix, next);
 	}
 	return AVERROR(EINVAL);
 }
 
-static int build_description(char *graph, size_t size,
-	const struct txagc_config *cfg, unsigned int sample_rate)
+static int build_description(char *graph, size_t size, const struct txagc_config *cfg,
+			     unsigned int sample_rate)
 {
 	char current[NAME_SIZE] = "s0";
 	const char *graph_input = "in";
@@ -332,17 +341,16 @@ static int build_description(char *graph, size_t size,
 
 	graph[0] = '\0';
 	if (cfg->deemphasis_enabled) {
-		if (add_emphasis(graph, size, "in", "deemphasized", 0,
-				cfg->emphasis_corner_hz, cfg->emphasis_reference_hz,
-				sample_rate) < 0) {
+		if (add_emphasis(graph, size, "in", "deemphasized", 0, cfg->emphasis_corner_hz,
+				 cfg->emphasis_reference_hz, sample_rate) < 0) {
 			return AVERROR(ENOSPC);
 		}
 		graph_input = "deemphasized";
 	}
 	if (cfg->receive_bandpass_enabled) {
-		if (add_brickwall_bandpass(graph, size, graph_input, "rxbandpass",
-				"rxbp", cfg->receive_bandpass_highpass_hz,
-				cfg->receive_bandpass_lowpass_hz) < 0) {
+		if (add_brickwall_bandpass(graph, size, graph_input, "rxbandpass", "rxbp",
+					   cfg->receive_bandpass_highpass_hz,
+					   cfg->receive_bandpass_lowpass_hz) < 0) {
 			return AVERROR(ENOSPC);
 		}
 		graph_input = "rxbandpass";
@@ -363,60 +371,73 @@ static int build_description(char *graph, size_t size,
 				continue;
 			}
 			cursor = end;
-			if (frequency < 50.0 || frequency > 300.0) continue;
+			if (frequency < 50.0 || frequency > 300.0)
+				continue;
 			/* Higher order supplies 50 dB rejection at the TIA-603
 			 * frequency-tolerance edges without widening into speech. */
 			for (section = 0; section < CTCSS_NOTCH_SECTIONS; ++section) {
-				snprintf(output_name, sizeof(output_name), "ctn%u_%u", notch, section);
+				snprintf(output_name, sizeof(output_name), "ctn%u_%u", notch,
+					 section);
 				if (graph_append(graph, size,
-						"[%s]bandreject=f=%.9g:t=h:w=%.9g:r=f64[%s];",
-						input_name, frequency, cfg->ctcss_notch_width_hz,
-						output_name) < 0) return AVERROR(ENOSPC);
-				strcpy(input_name, output_name);
+						 "[%s]bandreject=f=%.9g:t=h:w=%.9g:r=f64[%s];",
+						 input_name, frequency, cfg->ctcss_notch_width_hz,
+						 output_name) < 0)
+					return AVERROR(ENOSPC);
+				snprintf(input_name, sizeof(input_name), "%s", output_name);
 			}
 			++notch;
 		}
-		if (notch) graph_input = strcpy(next, input_name);
-	} else if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_HIGHPASS
-			&& cfg->ctcss_highpass_hz > 0.0) {
+		if (notch) {
+			snprintf(next, sizeof(next), "%s", input_name);
+			graph_input = next;
+		}
+	} else if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_HIGHPASS &&
+		   cfg->ctcss_highpass_hz > 0.0) {
 		if (graph_append(graph, size,
-				"[%s]acrossover=split=%.9g:order=20th[ctlow][cthigh];"
-				"[ctlow]anullsink;",
-				graph_input, cfg->ctcss_highpass_hz) < 0) return AVERROR(ENOSPC);
+				 "[%s]acrossover=split=%.9g:order=20th[ctlow][cthigh];"
+				 "[ctlow]anullsink;",
+				 graph_input, cfg->ctcss_highpass_hz) < 0)
+			return AVERROR(ENOSPC);
 		graph_input = "cthigh";
 	}
 	if (graph_append(graph, size,
-			"[%s]asplit=2[programin][metertap];"
-			"[metertap]astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=Peak_level+RMS_level[in_meter];"
-			"[programin]volume=%.12g[%s];",
-			graph_input, db_to_linear(cfg->input_gain_db), current) < 0) {
+			 "[%s]asplit=2[programin][metertap];"
+			 "[metertap]astats=metadata=1:reset=1:measure_perchannel=none:measure_"
+			 "overall=Peak_level+RMS_level[in_meter];"
+			 "[programin]volume=%.12g[%s];",
+			 graph_input, db_to_linear(cfg->input_gain_db), current) < 0) {
 		return AVERROR(ENOSPC);
 	}
 
 	for (order_index = 0; order_index < cfg->stage_count; ++order_index) {
-		int enabled = (cfg->stage_order[order_index] == TXAGC_STAGE_AGC && cfg->agc_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_EXPANDER && cfg->expander_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_COMPRESSOR && cfg->compressor_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_LIMITER && cfg->limiter_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_EQUALIZER
-				&& cfg->equalizer_enabled)
-			|| (cfg->stage_order[order_index] == TXAGC_STAGE_DEESSER
-				&& cfg->deesser_enabled);
-		if (!enabled) continue;
+		int enabled =
+			(cfg->stage_order[order_index] == TXAGC_STAGE_AGC && cfg->agc_enabled) ||
+			(cfg->stage_order[order_index] == TXAGC_STAGE_EXPANDER &&
+			 cfg->expander_enabled) ||
+			(cfg->stage_order[order_index] == TXAGC_STAGE_COMPRESSOR &&
+			 cfg->compressor_enabled) ||
+			(cfg->stage_order[order_index] == TXAGC_STAGE_LIMITER &&
+			 cfg->limiter_enabled) ||
+			(cfg->stage_order[order_index] == TXAGC_STAGE_EQUALIZER &&
+			 cfg->equalizer_enabled) ||
+			(cfg->stage_order[order_index] == TXAGC_STAGE_DEESSER &&
+			 cfg->deesser_enabled);
+		if (!enabled)
+			continue;
 		snprintf(next, sizeof(next), "s%u", stage++);
-		if (add_dynamic_stage(graph, size, cfg, cfg->stage_order[order_index],
-				current, next, order_index) < 0) return AVERROR(ENOSPC);
-		strcpy(current, next);
+		if (add_dynamic_stage(graph, size, cfg, cfg->stage_order[order_index], current,
+				      next, order_index) < 0)
+			return AVERROR(ENOSPC);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
 	if (cfg->preemphasis_enabled) {
 		snprintf(next, sizeof(next), "s%u", stage++);
-		if (add_emphasis(graph, size, current, next, 1,
-				cfg->emphasis_corner_hz, cfg->emphasis_reference_hz,
-				sample_rate) < 0) {
+		if (add_emphasis(graph, size, current, next, 1, cfg->emphasis_corner_hz,
+				 cfg->emphasis_reference_hz, sample_rate) < 0) {
 			return AVERROR(ENOSPC);
 		}
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
 	if (cfg->splatter_filter_enabled && cfg->output_highpass_hz > 0.0) {
@@ -424,45 +445,44 @@ static int build_description(char *graph, size_t size,
 		snprintf(next, sizeof(next), "s%u", stage++);
 		snprintf(rejected, sizeof(rejected), "hp%urej", stage);
 		if (graph_append(graph, size,
-				"[%s]acrossover=split=%.9g:order=20th[%s][%s];[%s]anullsink;",
-				current, cfg->output_highpass_hz, rejected, next, rejected) < 0)
+				 "[%s]acrossover=split=%.9g:order=20th[%s][%s];[%s]anullsink;",
+				 current, cfg->output_highpass_hz, rejected, next, rejected) < 0)
 			return AVERROR(ENOSPC);
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 	if (cfg->splatter_filter_enabled && cfg->output_lowpass_hz > 0.0) {
 		char rejected[NAME_SIZE];
 		snprintf(next, sizeof(next), "s%u", stage++);
 		snprintf(rejected, sizeof(rejected), "lp%urej", stage);
 		if (graph_append(graph, size,
-				"[%s]acrossover=split=%.9g:order=20th[%s][%s];[%s]anullsink;",
-				current, cfg->output_lowpass_hz, next, rejected, rejected) < 0)
+				 "[%s]acrossover=split=%.9g:order=20th[%s][%s];[%s]anullsink;",
+				 current, cfg->output_lowpass_hz, next, rejected, rejected) < 0)
 			return AVERROR(ENOSPC);
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
-	/* Output gain is part of the signal presented to the final lookahead
-	 * limiter.  Applying it afterward would defeat the configured ceiling and
-	 * force the integer-boundary safety clamp to act as a clipper. */
+	/* Output gain precedes the final limiter so it cannot defeat the configured
+	 * ceiling. PCM conversion clamps only values that cannot be represented. */
 	if (cfg->output_gain_db != 0.0) {
 		snprintf(next, sizeof(next), "s%u", stage++);
-		if (graph_append(graph, size, "[%s]volume=%.12g[%s];",
-				current, db_to_linear(cfg->output_gain_db), next) < 0) {
+		if (graph_append(graph, size, "[%s]volume=%.12g[%s];", current,
+				 db_to_linear(cfg->output_gain_db), next) < 0) {
 			return AVERROR(ENOSPC);
 		}
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
 	if (cfg->lookahead_limiter_enabled) {
 		snprintf(next, sizeof(next), "s%u", stage++);
 		if (graph_append(graph, size,
-				"[%s]alimiter=limit=%.12g:attack=%.9g:release=%.9g:"
-				"level=0:latency=0[%s];",
-				current, db_to_linear(cfg->lookahead_limit_dbfs),
-				clamp(cfg->lookahead_ms, 0.1, 80.0),
-				cfg->lookahead_release_ms, next) < 0) {
+				 "[%s]alimiter=limit=%.12g:attack=%.9g:release=%.9g:"
+				 "level=0:latency=0[%s];",
+				 current, db_to_linear(cfg->lookahead_limit_dbfs),
+				 clamp(cfg->lookahead_ms, 0.1, 80.0), cfg->lookahead_release_ms,
+				 next) < 0) {
 			return AVERROR(ENOSPC);
 		}
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
 	if (cfg->post_limiter_lowpass_enabled) {
@@ -470,42 +490,43 @@ static int build_description(char *graph, size_t size,
 		snprintf(next, sizeof(next), "s%u", stage++);
 		snprintf(rejected, sizeof(rejected), "cln%urej", stage);
 		if (graph_append(graph, size,
-				"[%s]asplit=3[cleanupmain][cleanuppre][cleanupspec];"
-				"[cleanuppre]astats=metadata=1:reset=1:measure_perchannel=none:"
-				"measure_overall=Peak_level+RMS_level[cleanup_pre_meter];"
-				"[cleanupspec]acrossover=split=5000 8000:order=20th"
-				"[prebelow5][pre5to8][preabove8];"
-				"[prebelow5]anullsink;"
-				"[pre5to8]astats=metadata=1:reset=1:measure_perchannel=none:"
-				"measure_overall=RMS_level[cleanup_pre_5_8_meter];"
-				"[preabove8]astats=metadata=1:reset=1:measure_perchannel=none:"
-				"measure_overall=RMS_level[cleanup_pre_8_plus_meter];"
-				"[cleanupmain]acrossover=split=%.9g:order=20th[%s][%s];"
-				"[%s]anullsink;",
-				current, cfg->post_limiter_lowpass_hz, next, rejected,
-				rejected) < 0) {
+				 "[%s]asplit=3[cleanupmain][cleanuppre][cleanupspec];"
+				 "[cleanuppre]astats=metadata=1:reset=1:measure_perchannel=none:"
+				 "measure_overall=Peak_level+RMS_level[cleanup_pre_meter];"
+				 "[cleanupspec]acrossover=split=5000 8000:order=20th"
+				 "[prebelow5][pre5to8][preabove8];"
+				 "[prebelow5]anullsink;"
+				 "[pre5to8]astats=metadata=1:reset=1:measure_perchannel=none:"
+				 "measure_overall=RMS_level[cleanup_pre_5_8_meter];"
+				 "[preabove8]astats=metadata=1:reset=1:measure_perchannel=none:"
+				 "measure_overall=RMS_level[cleanup_pre_8_plus_meter];"
+				 "[cleanupmain]acrossover=split=%.9g:order=20th[%s][%s];"
+				 "[%s]anullsink;",
+				 current, cfg->post_limiter_lowpass_hz, next, rejected,
+				 rejected) < 0) {
 			return AVERROR(ENOSPC);
 		}
-		strcpy(current, next);
+		snprintf(current, sizeof(current), "%s", next);
 	}
 
 	if (cfg->post_limiter_lowpass_enabled) {
 		return graph_append(graph, size,
-			"[%s]asplit=2[postmain][postspec];"
-			"[postspec]acrossover=split=5000 8000:order=20th"
-			"[postbelow5][post5to8][postabove8];"
-			"[postbelow5]anullsink;"
-			"[post5to8]astats=metadata=1:reset=1:measure_perchannel=none:"
-			"measure_overall=RMS_level[cleanup_post_5_8_meter];"
-			"[postabove8]astats=metadata=1:reset=1:measure_perchannel=none:"
-			"measure_overall=RMS_level[cleanup_post_8_plus_meter];"
-			"[postmain]astats=metadata=1:reset=1:measure_perchannel=none:"
-			"measure_overall=Peak_level+RMS_level[out]",
-			current);
+				    "[%s]asplit=2[postmain][postspec];"
+				    "[postspec]acrossover=split=5000 8000:order=20th"
+				    "[postbelow5][post5to8][postabove8];"
+				    "[postbelow5]anullsink;"
+				    "[post5to8]astats=metadata=1:reset=1:measure_perchannel=none:"
+				    "measure_overall=RMS_level[cleanup_post_5_8_meter];"
+				    "[postabove8]astats=metadata=1:reset=1:measure_perchannel=none:"
+				    "measure_overall=RMS_level[cleanup_post_8_plus_meter];"
+				    "[postmain]astats=metadata=1:reset=1:measure_perchannel=none:"
+				    "measure_overall=Peak_level+RMS_level[out]",
+				    current);
 	}
 	return graph_append(graph, size,
-		"[%s]astats=metadata=1:reset=1:measure_perchannel=none:measure_overall=Peak_level+RMS_level[out]",
-		current);
+			    "[%s]astats=metadata=1:reset=1:measure_perchannel=none:measure_overall="
+			    "Peak_level+RMS_level[out]",
+			    current);
 }
 
 static void free_graph(struct txagc_avfilter *state)
@@ -526,8 +547,15 @@ static void free_graph(struct txagc_avfilter *state)
 	state->configured = 0;
 }
 
-static int configure(struct txagc_avfilter *state,
-	const struct txagc_config *config, unsigned int sample_rate)
+static void set_double_sample_format(AVFilterContext *sink)
+{
+	const int formats[] = {AV_SAMPLE_FMT_DBL, AV_SAMPLE_FMT_NONE};
+	av_opt_set_bin(sink, "sample_fmts", (const uint8_t *)formats, sizeof(formats[0]),
+		       AV_OPT_SEARCH_CHILDREN);
+}
+
+static int configure(struct txagc_avfilter *state, const struct txagc_config *config,
+		     unsigned int sample_rate)
 {
 	const AVFilter *source_filter;
 	const AVFilter *sink_filter;
@@ -537,30 +565,24 @@ static int configure(struct txagc_avfilter *state,
 	AVFilterInOut *meter_tail = NULL;
 	AVFilterInOut *cleanup_input;
 	AVFilterContext **cleanup_sinks[] = {
-		&state->cleanup_pre_sink,
-		&state->cleanup_pre_5_8_sink,
-		&state->cleanup_pre_8_plus_sink,
-		&state->cleanup_post_5_8_sink,
+		&state->cleanup_pre_sink,	  &state->cleanup_pre_5_8_sink,
+		&state->cleanup_pre_8_plus_sink,  &state->cleanup_post_5_8_sink,
 		&state->cleanup_post_8_plus_sink,
 	};
 	const char *cleanup_filter_names[] = {
-		"cleanup_pre_sink", "cleanup_pre_5_8_sink",
-		"cleanup_pre_8_plus_sink", "cleanup_post_5_8_sink",
-		"cleanup_post_8_plus_sink",
+		"cleanup_pre_sink",	 "cleanup_pre_5_8_sink",     "cleanup_pre_8_plus_sink",
+		"cleanup_post_5_8_sink", "cleanup_post_8_plus_sink",
 	};
 	const char *cleanup_pad_names[] = {
-		"cleanup_pre_meter", "cleanup_pre_5_8_meter",
-		"cleanup_pre_8_plus_meter", "cleanup_post_5_8_meter",
-		"cleanup_post_8_plus_meter",
+		"cleanup_pre_meter",	  "cleanup_pre_5_8_meter",     "cleanup_pre_8_plus_meter",
+		"cleanup_post_5_8_meter", "cleanup_post_8_plus_meter",
 	};
 	char args[256];
 	char description[GRAPH_SIZE];
-	const int sample_formats[] = { AV_SAMPLE_FMT_DBL, AV_SAMPLE_FMT_NONE };
 	int result;
 
 	free_graph(state);
-	result = build_description(description, sizeof(description), config,
-		sample_rate);
+	result = build_description(description, sizeof(description), config, sample_rate);
 	if (result < 0) {
 		return result;
 	}
@@ -571,39 +593,36 @@ static int configure(struct txagc_avfilter *state,
 	source_filter = avfilter_get_by_name("abuffer");
 	sink_filter = avfilter_get_by_name("abuffersink");
 	snprintf(args, sizeof(args),
-		"time_base=1/%u:sample_rate=%u:sample_fmt=dbl:channel_layout=mono",
-		sample_rate, sample_rate);
-	result = avfilter_graph_create_filter(&state->source, source_filter, "source",
-		args, NULL, state->graph);
+		 "time_base=1/%u:sample_rate=%u:sample_fmt=dbl:channel_layout=mono", sample_rate,
+		 sample_rate);
+	result = avfilter_graph_create_filter(&state->source, source_filter, "source", args, NULL,
+					      state->graph);
 	if (result < 0) {
 		goto fail;
 	}
 	if (config->post_limiter_lowpass_enabled) {
 		for (size_t index = 0; index < 5; ++index) {
-			result = avfilter_graph_create_filter(cleanup_sinks[index],
-				sink_filter, cleanup_filter_names[index], NULL, NULL,
-				state->graph);
+			result = avfilter_graph_create_filter(cleanup_sinks[index], sink_filter,
+							      cleanup_filter_names[index], NULL,
+							      NULL, state->graph);
 			if (result < 0) {
 				goto fail;
 			}
-			av_opt_set_int_list(*cleanup_sinks[index], "sample_fmts",
-				sample_formats, AV_SAMPLE_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+			set_double_sample_format(*cleanup_sinks[index]);
 		}
 	}
-	result = avfilter_graph_create_filter(&state->sink, sink_filter, "sink",
-		NULL, NULL, state->graph);
+	result = avfilter_graph_create_filter(&state->sink, sink_filter, "sink", NULL, NULL,
+					      state->graph);
 	if (result < 0) {
 		goto fail;
 	}
-	result = avfilter_graph_create_filter(&state->meter_sink, sink_filter,
-		"meter_sink", NULL, NULL, state->graph);
+	result = avfilter_graph_create_filter(&state->meter_sink, sink_filter, "meter_sink", NULL,
+					      NULL, state->graph);
 	if (result < 0) {
 		goto fail;
 	}
-	av_opt_set_int_list(state->sink, "sample_fmts", sample_formats,
-		AV_SAMPLE_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
-	av_opt_set_int_list(state->meter_sink, "sample_fmts", sample_formats,
-		AV_SAMPLE_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+	set_double_sample_format(state->sink);
+	set_double_sample_format(state->meter_sink);
 
 	outputs = avfilter_inout_alloc();
 	inputs = avfilter_inout_alloc();
@@ -637,8 +656,7 @@ static int configure(struct txagc_avfilter *state,
 			cleanup_input->pad_idx = 0;
 		}
 	}
-	result = avfilter_graph_parse_ptr(state->graph, description, &inputs, &outputs,
-		NULL);
+	result = avfilter_graph_parse_ptr(state->graph, description, &inputs, &outputs, NULL);
 	if (result < 0) {
 		goto fail;
 	}
@@ -646,7 +664,7 @@ static int configure(struct txagc_avfilter *state,
 	if (result < 0) {
 		goto fail;
 	}
-	state->fifo = av_audio_fifo_alloc(AV_SAMPLE_FMT_DBL, 1, sample_rate / 2);
+	state->fifo = av_audio_fifo_alloc(AV_SAMPLE_FMT_DBL, 1, (int)(sample_rate / 2));
 	if (!state->fifo) {
 		result = AVERROR(ENOMEM);
 		goto fail;
@@ -680,14 +698,10 @@ void txagc_avfilter_init(struct txagc_avfilter *state)
 	state->output_rms_dbfs = state->output_max_rms_dbfs = -INFINITY;
 	state->cleanup_pre_peak_dbfs = state->cleanup_pre_max_peak_dbfs = -INFINITY;
 	state->cleanup_pre_rms_dbfs = state->cleanup_pre_max_rms_dbfs = -INFINITY;
-	state->cleanup_pre_5_8_rms_dbfs =
-		state->cleanup_pre_5_8_max_rms_dbfs = -INFINITY;
-	state->cleanup_pre_8_plus_rms_dbfs =
-		state->cleanup_pre_8_plus_max_rms_dbfs = -INFINITY;
-	state->cleanup_post_5_8_rms_dbfs =
-		state->cleanup_post_5_8_max_rms_dbfs = -INFINITY;
-	state->cleanup_post_8_plus_rms_dbfs =
-		state->cleanup_post_8_plus_max_rms_dbfs = -INFINITY;
+	state->cleanup_pre_5_8_rms_dbfs = state->cleanup_pre_5_8_max_rms_dbfs = -INFINITY;
+	state->cleanup_pre_8_plus_rms_dbfs = state->cleanup_pre_8_plus_max_rms_dbfs = -INFINITY;
+	state->cleanup_post_5_8_rms_dbfs = state->cleanup_post_5_8_max_rms_dbfs = -INFINITY;
+	state->cleanup_post_8_plus_rms_dbfs = state->cleanup_post_8_plus_max_rms_dbfs = -INFINITY;
 }
 
 void txagc_avfilter_destroy(struct txagc_avfilter *state)
@@ -701,8 +715,8 @@ void txagc_avfilter_reset(struct txagc_avfilter *state)
 	free_graph(state);
 }
 
-static int drain_cleanup_meter(struct txagc_avfilter *state,
-	struct AVFilterContext *sink, AVFrame *frame, enum cleanup_meter meter)
+static int drain_cleanup_meter(struct txagc_avfilter *state, struct AVFilterContext *sink,
+			       AVFrame *frame, enum cleanup_meter meter)
 {
 	int result;
 
@@ -713,9 +727,8 @@ static int drain_cleanup_meter(struct txagc_avfilter *state,
 	return result == AVERROR(EAGAIN) || result == AVERROR_EOF ? 0 : result;
 }
 
-int txagc_avfilter_process(struct txagc_avfilter *state,
-	const struct txagc_config *config, double *samples, size_t count,
-	unsigned int sample_rate)
+int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_config *config,
+			   double *samples, size_t count, unsigned int sample_rate)
 {
 	AVFrame *input = NULL;
 	AVFrame *output = NULL;
@@ -725,8 +738,10 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 	double *output_pointer;
 	size_t copied = 0;
 
+	/* Configurations are zero-initialized before fields are assigned, making
+	 * their padding deterministic and this real-time comparison well-defined. */
 	if (!state->configured || state->sample_rate != sample_rate ||
-			memcmp(&state->config, config, sizeof(*config))) {
+	    memcmp(&state->config, config, sizeof(*config)) != 0) { /* NOLINT */
 		result = configure(state, config, sample_rate);
 		if (result < 0) {
 			return result;
@@ -739,8 +754,8 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 		goto done;
 	}
 	input->format = AV_SAMPLE_FMT_DBL;
-	input->sample_rate = sample_rate;
-	input->nb_samples = (int) count;
+	input->sample_rate = (int)sample_rate;
+	input->nb_samples = (int)count;
 	av_channel_layout_default(&input->ch_layout, 1);
 	result = av_frame_get_buffer(input, 0);
 	if (result < 0) {
@@ -749,10 +764,9 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 	/* Asterisk/usbradio uses floating point with 16-bit PCM units while
 	 * libavfilter's DBL format uses the normalized -1.0 .. +1.0 convention. */
 	for (size_t index = 0; index < count; ++index) {
-		((double *) input->data[0])[index] = samples[index] / 32768.0;
+		((double *)input->data[0])[index] = samples[index] / 32768.0;
 	}
-	result = av_buffersrc_add_frame_flags(state->source, input,
-		AV_BUFFERSRC_FLAG_KEEP_REF);
+	result = av_buffersrc_add_frame_flags(state->source, input, AV_BUFFERSRC_FLAG_KEEP_REF);
 	if (result < 0) {
 		goto done;
 	}
@@ -766,31 +780,36 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 	}
 	if (config->post_limiter_lowpass_enabled) {
 		result = drain_cleanup_meter(state, state->cleanup_pre_sink, output,
-			CLEANUP_PRE_FULL);
-		if (result < 0) goto done;
+					     CLEANUP_PRE_FULL);
+		if (result < 0)
+			goto done;
 		result = drain_cleanup_meter(state, state->cleanup_pre_5_8_sink, output,
-			CLEANUP_PRE_5_8);
-		if (result < 0) goto done;
+					     CLEANUP_PRE_5_8);
+		if (result < 0)
+			goto done;
 		result = drain_cleanup_meter(state, state->cleanup_pre_8_plus_sink, output,
-			CLEANUP_PRE_8_PLUS);
-		if (result < 0) goto done;
+					     CLEANUP_PRE_8_PLUS);
+		if (result < 0)
+			goto done;
 		result = drain_cleanup_meter(state, state->cleanup_post_5_8_sink, output,
-			CLEANUP_POST_5_8);
-		if (result < 0) goto done;
+					     CLEANUP_POST_5_8);
+		if (result < 0)
+			goto done;
 		result = drain_cleanup_meter(state, state->cleanup_post_8_plus_sink, output,
-			CLEANUP_POST_8_PLUS);
-		if (result < 0) goto done;
+					     CLEANUP_POST_8_PLUS);
+		if (result < 0)
+			goto done;
 	}
 
 	while ((result = av_buffersink_get_frame(state->sink, output)) >= 0) {
 		void *fifo_data[1];
 		update_astats(state, output, 0);
-		if (av_audio_fifo_realloc(state->fifo,
-				av_audio_fifo_size(state->fifo) + output->nb_samples) < 0) {
+		if (av_audio_fifo_realloc(state->fifo, av_audio_fifo_size(state->fifo) +
+							       output->nb_samples) < 0) {
 			result = AVERROR(ENOMEM);
 			goto done;
 		}
-		output_pointer = (double *) output->data[0];
+		output_pointer = (double *)output->data[0];
 		fifo_data[0] = output_pointer;
 		written = av_audio_fifo_write(state->fifo, fifo_data, output->nb_samples);
 		if (written != output->nb_samples) {
@@ -803,7 +822,7 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 		goto done;
 	}
 	available = av_audio_fifo_size(state->fifo);
-	copied = available < (int) count ? (size_t) available : count;
+	copied = available < (int)count ? (size_t)available : count;
 	if (!state->output_started) {
 		size_t fill = count - copied;
 		memset(samples, 0, fill * sizeof(*samples));
@@ -811,19 +830,17 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 		state->underrun_samples += fill;
 		if (copied) {
 			output_pointer = samples + fill;
-			av_audio_fifo_read(state->fifo, (void **) &output_pointer,
-				(int) copied);
+			av_audio_fifo_read(state->fifo, (void **)&output_pointer, (int)copied);
 			for (size_t index = fill; index < count; ++index) {
 				samples[index] *= 32768.0;
 			}
-			state->latency_samples = (unsigned int) state->startup_fill_samples;
+			state->latency_samples = (unsigned int)state->startup_fill_samples;
 			state->output_started = 1;
 		}
 	} else {
 		if (copied) {
 			output_pointer = samples;
-			av_audio_fifo_read(state->fifo, (void **) &output_pointer,
-				(int) copied);
+			av_audio_fifo_read(state->fifo, (void **)&output_pointer, (int)copied);
 			for (size_t index = 0; index < copied; ++index) {
 				samples[index] *= 32768.0;
 			}
@@ -834,7 +851,7 @@ int txagc_avfilter_process(struct txagc_avfilter *state,
 			state->runtime_underrun_samples += count - copied;
 		}
 	}
-	state->buffered_samples = (unsigned int) av_audio_fifo_size(state->fifo);
+	state->buffered_samples = (unsigned int)av_audio_fifo_size(state->fifo);
 	state->output_samples += copied;
 	result = 0;
 

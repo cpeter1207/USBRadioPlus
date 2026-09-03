@@ -12,8 +12,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import termios
-import tty
 from datetime import datetime
 
 CONFIG = "/etc/asterisk/usbradioplus-processing.conf"
@@ -24,12 +22,18 @@ NODE = None
 DEFAULT_CONFIG_CANDIDATES = (
     "/usr/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
     "/usr/local/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                 "examples", "usbradioplus-processing.conf.sample"),
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "examples",
+        "usbradioplus-processing.conf.sample",
+    ),
 )
 
-SOURCES = [("local", "Local receiver"), ("link", "Linked audio"),
-           ("voice_telemetry", "Voice + telemetry")]
+SOURCES = [
+    ("local", "Local receiver"),
+    ("link", "Linked audio"),
+    ("voice_telemetry", "Voice + telemetry"),
+]
 
 HARDWARE_SETTINGS = {
     "hardware_input_gain_db": ("Hardware input gain", "gain"),
@@ -40,51 +44,51 @@ HARDWARE_SETTINGS = {
     "hardware_cos_assignment": ("COS assignment", "cos"),
     "hardware_rx_ctcss_frequencies": ("Receive CTCSS frequencies", "frequencies"),
     "hardware_tx_ctcss_frequencies": ("Transmit CTCSS frequencies", "frequencies"),
-	"hardware_device_identifier": ("USB device identifier", "text"),
-	"hardware_serial": ("USB serial number", "text"),
-	"hardware_interface_type": ("Interface wiring type", "binary"),
-	"hardware_eeprom_enabled": ("EEPROM tuning storage", "bool"),
-	"hardware_audio_fragment_count": ("Audio fragment count", "integer"),
-	"hardware_audio_queue_size": ("Audio queue size", "integer"),
-	"hardware_rx_cpu_saver_enabled": ("Receive CPU saver", "bool"),
-	"hardware_tx_cpu_saver_enabled": ("Transmit CPU saver", "bool"),
-	"hardware_rx_audio_source": ("Receiver audio source", "rx_audio_source"),
-	"hardware_rx_ctcss_source": ("Receive CTCSS source", "rx_ctcss_source"),
-	"hardware_vox_hang_ms": ("VOX hang time", "integer"),
-	"hardware_vox_threshold": ("VOX threshold", "integer"),
-	"hardware_noise_squelch_hysteresis": ("Noise squelch hysteresis", "integer"),
-	"hardware_noise_filter_type": ("Noise detector filter type", "integer"),
-	"hardware_squelch_delay": ("Receive squelch delay", "integer"),
-	"hardware_rx_on_delay_frames": ("Receive-on delay", "integer"),
-	"hardware_rx_polarity_inverted": ("Receive signaling polarity inverted", "bool"),
-	"hardware_squelch_level": ("DSP squelch level", "level"),
-	"hardware_rx_ctcss_level": ("Receive CTCSS decoder level", "float"),
-	"hardware_rx_ctcss_override_enabled": ("Receive CTCSS override", "bool"),
-	"hardware_rx_ctcss_relax": ("Receive CTCSS relax", "integer"),
-	"hardware_tx_ctcss_default_hz": ("Default transmit CTCSS frequency", "float"),
-	"hardware_tx_ctcss_level": ("Transmit CTCSS level", "level"),
-	"hardware_ctcss_turnoff_mode": ("CTCSS turn-off mode", "ctcss_turnoff"),
-	"hardware_dcs_rx_polarity_inverted": ("Receive DCS polarity inverted", "bool"),
-	"hardware_dcs_tx_polarity_inverted": ("Transmit DCS polarity inverted", "bool"),
-	"hardware_lsd_rx_polarity_inverted": ("Receive low-speed-data polarity inverted", "bool"),
-	"hardware_lsd_tx_polarity_inverted": ("Transmit low-speed-data polarity inverted", "bool"),
-	"hardware_tx_preemphasis_limiter_enabled": ("Transmit pre-emphasis and limiter", "bool"),
-	"hardware_tx_limiter_only_enabled": ("Transmit limiter only", "bool"),
-	"hardware_tx_soft_limiter_setpoint": ("Compatibility soft-limiter setpoint", "softlimit"),
-	"hardware_tx_settle_ms": ("Transmit settle time", "integer"),
-	"hardware_tx_rx_blanking_ms": ("Transmit/receive blanking time", "integer"),
-	"hardware_tx_off_delay_frames": ("Transmit-off receive delay", "integer"),
-	"hardware_tx_polarity_inverted": ("Transmit signaling polarity inverted", "bool"),
-	"hardware_ptt_inverted": ("PTT output inverted", "bool"),
-	"hardware_rx_frequency_hz": ("Receiver frequency", "integer"),
-	"hardware_tx_frequency_hz": ("Transmitter frequency", "integer"),
-	"hardware_repeater_number": ("Repeater signaling number", "integer"),
-	"hardware_area": ("Signaling area", "integer"),
-	"hardware_user_key": ("Signaling user key", "text"),
-	"hardware_idle_interval": ("Signaling idle interval", "integer"),
-	"hardware_turnoff_count": ("Signaling turn-off count", "integer"),
-	"hardware_voter_reporting": ("Voter reporting setting", "integer"),
-	"hardware_clip_led_gpio": ("Clipping LED GPIO", "gpio"),
+    "hardware_device_identifier": ("USB device identifier", "text"),
+    "hardware_serial": ("USB serial number", "text"),
+    "hardware_interface_type": ("Interface wiring type", "binary"),
+    "hardware_eeprom_enabled": ("EEPROM tuning storage", "bool"),
+    "hardware_audio_fragment_count": ("Audio fragment count", "integer"),
+    "hardware_audio_queue_size": ("Audio queue size", "integer"),
+    "hardware_rx_cpu_saver_enabled": ("Receive CPU saver", "bool"),
+    "hardware_tx_cpu_saver_enabled": ("Transmit CPU saver", "bool"),
+    "hardware_rx_audio_source": ("Receiver audio source", "rx_audio_source"),
+    "hardware_rx_ctcss_source": ("Receive CTCSS source", "rx_ctcss_source"),
+    "hardware_vox_hang_ms": ("VOX hang time", "integer"),
+    "hardware_vox_threshold": ("VOX threshold", "integer"),
+    "hardware_noise_squelch_hysteresis": ("Noise squelch hysteresis", "integer"),
+    "hardware_noise_filter_type": ("Noise detector filter type", "integer"),
+    "hardware_squelch_delay": ("Receive squelch delay", "integer"),
+    "hardware_rx_on_delay_frames": ("Receive-on delay", "integer"),
+    "hardware_rx_polarity_inverted": ("Receive signaling polarity inverted", "bool"),
+    "hardware_squelch_level": ("DSP squelch level", "level"),
+    "hardware_rx_ctcss_level": ("Receive CTCSS decoder level", "float"),
+    "hardware_rx_ctcss_override_enabled": ("Receive CTCSS override", "bool"),
+    "hardware_rx_ctcss_relax": ("Receive CTCSS relax", "integer"),
+    "hardware_tx_ctcss_default_hz": ("Default transmit CTCSS frequency", "float"),
+    "hardware_tx_ctcss_level": ("Transmit CTCSS level", "level"),
+    "hardware_ctcss_turnoff_mode": ("CTCSS turn-off mode", "ctcss_turnoff"),
+    "hardware_dcs_rx_polarity_inverted": ("Receive DCS polarity inverted", "bool"),
+    "hardware_dcs_tx_polarity_inverted": ("Transmit DCS polarity inverted", "bool"),
+    "hardware_lsd_rx_polarity_inverted": ("Receive low-speed-data polarity inverted", "bool"),
+    "hardware_lsd_tx_polarity_inverted": ("Transmit low-speed-data polarity inverted", "bool"),
+    "hardware_tx_preemphasis_limiter_enabled": ("Transmit pre-emphasis and limiter", "bool"),
+    "hardware_tx_limiter_only_enabled": ("Transmit limiter only", "bool"),
+    "hardware_tx_soft_limiter_setpoint": ("Compatibility soft-limiter setpoint", "softlimit"),
+    "hardware_tx_settle_ms": ("Transmit settle time", "integer"),
+    "hardware_tx_rx_blanking_ms": ("Transmit/receive blanking time", "integer"),
+    "hardware_tx_off_delay_frames": ("Transmit-off receive delay", "integer"),
+    "hardware_tx_polarity_inverted": ("Transmit signaling polarity inverted", "bool"),
+    "hardware_ptt_inverted": ("PTT output inverted", "bool"),
+    "hardware_rx_frequency_hz": ("Receiver frequency", "integer"),
+    "hardware_tx_frequency_hz": ("Transmitter frequency", "integer"),
+    "hardware_repeater_number": ("Repeater signaling number", "integer"),
+    "hardware_area": ("Signaling area", "integer"),
+    "hardware_user_key": ("Signaling user key", "text"),
+    "hardware_idle_interval": ("Signaling idle interval", "integer"),
+    "hardware_turnoff_count": ("Signaling turn-off count", "integer"),
+    "hardware_voter_reporting": ("Voter reporting setting", "integer"),
+    "hardware_clip_led_gpio": ("Clipping LED GPIO", "gpio"),
     "hardware_gpio_1_mode": ("GPIO 1 mode", "gpio_mode"),
     "hardware_gpio_2_mode": ("GPIO 2 mode", "gpio_mode"),
     "hardware_gpio_3_mode": ("GPIO 3 mode", "gpio_mode"),
@@ -108,6 +112,97 @@ HARDWARE_SETTINGS = {
     "hardware_parallel_pin_13_assignment": ("Parallel pin 13 assignment", "parallel_input"),
     "hardware_parallel_pin_15_assignment": ("Parallel pin 15 assignment", "parallel_input"),
     "hardware_emphasis_corner_hz": ("Emphasis corner frequency", "emphasis"),
+}
+
+HARDWARE_GROUP_KEYS = {
+    "usb": (
+        "hardware_device_identifier",
+        "hardware_serial",
+        "hardware_interface_type",
+        "hardware_eeprom_enabled",
+        "hardware_audio_fragment_count",
+        "hardware_audio_queue_size",
+        "hardware_rx_cpu_saver_enabled",
+        "hardware_tx_cpu_saver_enabled",
+    ),
+    "receive": (
+        "hardware_input_gain_db",
+        "hardware_rx_audio_source",
+        "hardware_cos_assignment",
+        "hardware_vox_hang_ms",
+        "hardware_vox_threshold",
+        "hardware_noise_squelch_hysteresis",
+        "hardware_noise_filter_type",
+        "hardware_squelch_level",
+        "hardware_squelch_delay",
+        "hardware_rx_on_delay_frames",
+        "hardware_rx_polarity_inverted",
+        "hardware_rx_frequency_hz",
+        "hardware_emphasis_corner_hz",
+    ),
+    "transmit": (
+        "hardware_output_a_gain_db",
+        "hardware_output_b_gain_db",
+        "hardware_output_a_assignment",
+        "hardware_output_b_assignment",
+        "hardware_tx_preemphasis_limiter_enabled",
+        "hardware_tx_limiter_only_enabled",
+        "hardware_tx_soft_limiter_setpoint",
+        "hardware_tx_settle_ms",
+        "hardware_tx_rx_blanking_ms",
+        "hardware_tx_off_delay_frames",
+        "hardware_tx_polarity_inverted",
+        "hardware_ptt_inverted",
+        "hardware_tx_frequency_hz",
+    ),
+    "signaling": (
+        "hardware_rx_ctcss_source",
+        "hardware_rx_ctcss_frequencies",
+        "hardware_rx_ctcss_level",
+        "hardware_rx_ctcss_override_enabled",
+        "hardware_rx_ctcss_relax",
+        "hardware_tx_ctcss_frequencies",
+        "hardware_tx_ctcss_default_hz",
+        "hardware_tx_ctcss_level",
+        "hardware_ctcss_turnoff_mode",
+        "hardware_dcs_rx_polarity_inverted",
+        "hardware_dcs_tx_polarity_inverted",
+        "hardware_lsd_rx_polarity_inverted",
+        "hardware_lsd_tx_polarity_inverted",
+        "hardware_repeater_number",
+        "hardware_area",
+        "hardware_user_key",
+        "hardware_idle_interval",
+        "hardware_turnoff_count",
+        "hardware_voter_reporting",
+    ),
+    "gpio": (
+        "hardware_clip_led_gpio",
+        "hardware_gpio_1_mode",
+        "hardware_gpio_2_mode",
+        "hardware_gpio_3_mode",
+        "hardware_gpio_4_mode",
+        "hardware_gpio_5_mode",
+        "hardware_gpio_6_mode",
+        "hardware_gpio_7_mode",
+        "hardware_gpio_8_mode",
+    ),
+    "parallel": (
+        "hardware_parallel_port_device",
+        "hardware_parallel_port_base_address",
+        "hardware_parallel_pin_2_assignment",
+        "hardware_parallel_pin_3_assignment",
+        "hardware_parallel_pin_4_assignment",
+        "hardware_parallel_pin_5_assignment",
+        "hardware_parallel_pin_6_assignment",
+        "hardware_parallel_pin_7_assignment",
+        "hardware_parallel_pin_8_assignment",
+        "hardware_parallel_pin_9_assignment",
+        "hardware_parallel_pin_10_assignment",
+        "hardware_parallel_pin_12_assignment",
+        "hardware_parallel_pin_13_assignment",
+        "hardware_parallel_pin_15_assignment",
+    ),
 }
 
 ASTERISK_SETTINGS = {
@@ -144,33 +239,60 @@ LEGACY_OPTION_MAP = {
     "hardware_cos_assignment": "carrierfrom",
     "hardware_rx_ctcss_frequencies": "rxctcssfreqs",
     "hardware_tx_ctcss_frequencies": "txctcssfreqs",
-    "hardware_device_identifier": "devstr", "hardware_serial": "serial",
-    "hardware_interface_type": "hdwtype", "hardware_eeprom_enabled": "eeprom",
-    "hardware_audio_fragment_count": "frags", "hardware_audio_queue_size": "queuesize",
-    "hardware_rx_cpu_saver_enabled": "rxcpusaver", "hardware_tx_cpu_saver_enabled": "txcpusaver",
-    "hardware_rx_audio_source": "rxdemod", "hardware_rx_ctcss_source": "ctcssfrom",
-    "hardware_vox_hang_ms": "voxhangtime", "hardware_vox_threshold": "rxsqvox",
-    "hardware_noise_squelch_hysteresis": "rxsqhyst", "hardware_noise_filter_type": "rxnoisefiltype",
-    "hardware_squelch_delay": "rxsquelchdelay", "hardware_rx_on_delay_frames": "rxondelay",
-    "hardware_rx_polarity_inverted": "rxpolarity", "hardware_squelch_level": "rxsquelchadj",
-    "hardware_rx_ctcss_level": "rxctcssadj", "hardware_rx_ctcss_override_enabled": "rxctcssoverride",
-    "hardware_rx_ctcss_relax": "rxctcssrelax", "hardware_tx_ctcss_default_hz": "txctcssdefault",
-    "hardware_tx_ctcss_level": "txctcssadj", "hardware_ctcss_turnoff_mode": "txtoctype",
-    "hardware_dcs_rx_polarity_inverted": "dcsrxpolarity", "hardware_dcs_tx_polarity_inverted": "dcstxpolarity",
-    "hardware_lsd_rx_polarity_inverted": "lsdrxpolarity", "hardware_lsd_tx_polarity_inverted": "lsdtxpolarity",
-    "hardware_tx_preemphasis_limiter_enabled": "txprelim", "hardware_tx_limiter_only_enabled": "txlimonly",
-    "hardware_tx_soft_limiter_setpoint": "txslimsp", "hardware_tx_settle_ms": "txsettletime",
-    "hardware_tx_rx_blanking_ms": "txrxblankingtime", "hardware_tx_off_delay_frames": "txoffdelay",
-    "hardware_tx_polarity_inverted": "txpolarity", "hardware_ptt_inverted": "invertptt",
-    "hardware_rx_frequency_hz": "rxfreq", "hardware_tx_frequency_hz": "txfreq",
-    "hardware_repeater_number": "rptnum", "hardware_area": "area", "hardware_user_key": "ukey",
-    "hardware_idle_interval": "idleinterval", "hardware_turnoff_count": "turnoffs",
-    "hardware_voter_reporting": "sendvoter", "hardware_clip_led_gpio": "clipledgpio",
-    "hardware_parallel_port_device": "pport", "hardware_parallel_port_base_address": "pbase",
+    "hardware_device_identifier": "devstr",
+    "hardware_serial": "serial",
+    "hardware_interface_type": "hdwtype",
+    "hardware_eeprom_enabled": "eeprom",
+    "hardware_audio_fragment_count": "frags",
+    "hardware_audio_queue_size": "queuesize",
+    "hardware_rx_cpu_saver_enabled": "rxcpusaver",
+    "hardware_tx_cpu_saver_enabled": "txcpusaver",
+    "hardware_rx_audio_source": "rxdemod",
+    "hardware_rx_ctcss_source": "ctcssfrom",
+    "hardware_vox_hang_ms": "voxhangtime",
+    "hardware_vox_threshold": "rxsqvox",
+    "hardware_noise_squelch_hysteresis": "rxsqhyst",
+    "hardware_noise_filter_type": "rxnoisefiltype",
+    "hardware_squelch_delay": "rxsquelchdelay",
+    "hardware_rx_on_delay_frames": "rxondelay",
+    "hardware_rx_polarity_inverted": "rxpolarity",
+    "hardware_squelch_level": "rxsquelchadj",
+    "hardware_rx_ctcss_level": "rxctcssadj",
+    "hardware_rx_ctcss_override_enabled": "rxctcssoverride",
+    "hardware_rx_ctcss_relax": "rxctcssrelax",
+    "hardware_tx_ctcss_default_hz": "txctcssdefault",
+    "hardware_tx_ctcss_level": "txctcssadj",
+    "hardware_ctcss_turnoff_mode": "txtoctype",
+    "hardware_dcs_rx_polarity_inverted": "dcsrxpolarity",
+    "hardware_dcs_tx_polarity_inverted": "dcstxpolarity",
+    "hardware_lsd_rx_polarity_inverted": "lsdrxpolarity",
+    "hardware_lsd_tx_polarity_inverted": "lsdtxpolarity",
+    "hardware_tx_preemphasis_limiter_enabled": "txprelim",
+    "hardware_tx_limiter_only_enabled": "txlimonly",
+    "hardware_tx_soft_limiter_setpoint": "txslimsp",
+    "hardware_tx_settle_ms": "txsettletime",
+    "hardware_tx_rx_blanking_ms": "txrxblankingtime",
+    "hardware_tx_off_delay_frames": "txoffdelay",
+    "hardware_tx_polarity_inverted": "txpolarity",
+    "hardware_ptt_inverted": "invertptt",
+    "hardware_rx_frequency_hz": "rxfreq",
+    "hardware_tx_frequency_hz": "txfreq",
+    "hardware_repeater_number": "rptnum",
+    "hardware_area": "area",
+    "hardware_user_key": "ukey",
+    "hardware_idle_interval": "idleinterval",
+    "hardware_turnoff_count": "turnoffs",
+    "hardware_voter_reporting": "sendvoter",
+    "hardware_clip_led_gpio": "clipledgpio",
+    "hardware_parallel_port_device": "pport",
+    "hardware_parallel_port_base_address": "pbase",
     "hardware_emphasis_corner_hz": "emphasis_corner_hz",
-    "duplex_radio_mode": "duplex", "duplex_local_repeat_level": "duplex3",
-    "duplex_local_repeat_mode": "duplex3mode", "channel_enabled": "radioactive",
-    "diagnostics_trace_type": "tracetype", "diagnostics_trace_level": "tracelevel",
+    "duplex_radio_mode": "duplex",
+    "duplex_local_repeat_level": "duplex3",
+    "duplex_local_repeat_mode": "duplex3mode",
+    "channel_enabled": "radioactive",
+    "diagnostics_trace_type": "tracetype",
+    "diagnostics_trace_level": "tracelevel",
     "diagnostics_fever": "fever",
     "asterisk_jitter_buffer_enabled": "jbenable",
     "asterisk_jitter_buffer_max_size_ms": "jbmaxsize",
@@ -187,25 +309,76 @@ for _pin in (2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15):
     LEGACY_OPTION_MAP[f"hardware_parallel_pin_{_pin}_assignment"] = f"pp{_pin}"
 
 MODERN_SECTION_SETTINGS = {
-    "asterisk": ASTERISK_SETTINGS, "hardware": HARDWARE_SETTINGS,
-    "duplex": DUPLEX_SETTINGS, "general": GENERAL_SETTINGS,
+    "asterisk": ASTERISK_SETTINGS,
+    "hardware": HARDWARE_SETTINGS,
+    "duplex": DUPLEX_SETTINGS,
+    "general": GENERAL_SETTINGS,
     "diagnostics": DIAGNOSTICS_SETTINGS,
 }
 
 RESTART_ONLY_HARDWARE_KEYS = {
-    key for key in HARDWARE_SETTINGS
+    key
+    for key in HARDWARE_SETTINGS
     if key.startswith("hardware_gpio_") or key.startswith("hardware_parallel_pin_")
 }
 
 CHOICES = {
-    "rx_audio_source": (("no", "No receiver audio"), ("speaker", "De-emphasized speaker audio"), ("flat", "Flat discriminator audio")),
-    "rx_ctcss_source": (("no", "No CTCSS indication"), ("usb", "USB input, active high"), ("usbinvert", "USB input, active low"), ("dsp", "Native CTCSS decoder"), ("pp", "Parallel port, active high"), ("ppinvert", "Parallel port, active low")),
-    "ctcss_turnoff": (("no", "No turn-off signaling"), ("phase", "Reverse burst"), ("notone", "Remove tone before PTT")),
+    "assignment": (
+        ("off", "No signal"),
+        ("voice", "Voice only"),
+        ("ctcss", "CTCSS only"),
+        ("voice_ctcss", "Voice and CTCSS"),
+        ("auxvoice", "Auxiliary voice"),
+    ),
+    "cos": (
+        ("no", "No COS detection"),
+        ("usb", "USB COS, active high"),
+        ("usbinvert", "USB COS, active low"),
+        ("dsp", "DSP noise squelch"),
+        ("vox", "Voice-operated squelch"),
+        ("pp", "Parallel port, active high"),
+        ("ppinvert", "Parallel port, active low"),
+    ),
+    "ctcss_filter": (
+        ("disabled", "Disabled"),
+        ("highpass", "High-pass"),
+        ("notch", "Automatic decoded-tone notch"),
+    ),
+    "rx_audio_source": (
+        ("no", "No receiver audio"),
+        ("speaker", "De-emphasized speaker audio"),
+        ("flat", "Flat discriminator audio"),
+    ),
+    "rx_ctcss_source": (
+        ("no", "No CTCSS indication"),
+        ("usb", "USB input, active high"),
+        ("usbinvert", "USB input, active low"),
+        ("dsp", "Native CTCSS decoder"),
+        ("pp", "Parallel port, active high"),
+        ("ppinvert", "Parallel port, active low"),
+    ),
+    "ctcss_turnoff": (
+        ("no", "No turn-off signaling"),
+        ("phase", "Reverse burst"),
+        ("notone", "Remove tone before PTT"),
+    ),
     "duplex_mode": (("hardware", "CM119 hardware mixer"), ("software", "Native 48 kHz path")),
     "jitter_impl": (("fixed", "Fixed-size jitter buffer"), ("adaptive", "Adaptive jitter buffer")),
-    "gpio_mode": (("in", "Input"), ("out0", "Output, initially low"), ("out1", "Output, initially high")),
-    "parallel_output": (("out0", "Output, initially low"), ("out1", "Output, initially high"), ("ptt", "PTT output")),
-    "parallel_input": (("in", "General-purpose input"), ("cor", "Carrier indication"), ("ctcss", "CTCSS indication")),
+    "gpio_mode": (
+        ("in", "Input"),
+        ("out0", "Output, initially low"),
+        ("out1", "Output, initially high"),
+    ),
+    "parallel_output": (
+        ("out0", "Output, initially low"),
+        ("out1", "Output, initially high"),
+        ("ptt", "PTT output"),
+    ),
+    "parallel_input": (
+        ("in", "General-purpose input"),
+        ("cor", "Carrier indication"),
+        ("ctcss", "CTCSS indication"),
+    ),
 }
 
 # key: label, kind, minimum, maximum, units, group
@@ -215,7 +388,7 @@ SETTINGS = {
     "agc_enabled": ("AGC", "bool", None, None, "", "Stages"),
     "expander_enabled": ("Downward expander", "bool", None, None, "", "Stages"),
     "compressor_enabled": ("Compressor", "bool", None, None, "", "Stages"),
-    "limiter_enabled": ("Two-band limiter", "bool", None, None, "", "Stages"),
+    "limiter_enabled": ("Multiband limiter", "bool", None, None, "", "Stages"),
     "equalizer_enabled": ("Three-band equalizer", "bool", None, None, "", "Stages"),
     "deesser_enabled": ("Split-band de-esser", "bool", None, None, "", "Stages"),
     "stage_order": ("Processing stage order", "text", None, None, "", "Stages"),
@@ -223,17 +396,59 @@ SETTINGS = {
     "ctcss_notch_width_hz": ("CTCSS notch width", "float", 0.2, 10, "Hz", "Filters"),
     "ctcss_highpass_hz": ("CTCSS high-pass cutoff", "float", 50, 500, "Hz", "Filters"),
     "receive_bandpass_enabled": ("Receive brick-wall band-pass", "bool", None, None, "", "Filters"),
-    "receive_bandpass_highpass_hz": ("Receive band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
-    "receive_bandpass_lowpass_hz": ("Receive band-pass high cutoff", "float", 20, 6000, "Hz", "Filters"),
+    "receive_bandpass_highpass_hz": (
+        "Receive band-pass low cutoff",
+        "float",
+        20,
+        2000,
+        "Hz",
+        "Filters",
+    ),
+    "receive_bandpass_lowpass_hz": (
+        "Receive band-pass high cutoff",
+        "float",
+        20,
+        6000,
+        "Hz",
+        "Filters",
+    ),
     "input_gain_db": ("Input gain", "float", -30, 30, "dB", "Input/output"),
     "equalizer_low_gain_db": ("Equalizer low-shelf gain", "float", -12, 12, "dB", "Equalizer"),
-    "equalizer_low_frequency_hz": ("Equalizer low-shelf frequency", "float", 20, 1000, "Hz", "Equalizer"),
+    "equalizer_low_frequency_hz": (
+        "Equalizer low-shelf frequency",
+        "float",
+        20,
+        1000,
+        "Hz",
+        "Equalizer",
+    ),
     "equalizer_low_slope": ("Equalizer low-shelf slope", "float", 0.1, 1, "", "Equalizer"),
     "equalizer_mid_gain_db": ("Equalizer mid-band gain", "float", -12, 12, "dB", "Equalizer"),
-    "equalizer_mid_frequency_hz": ("Equalizer mid-band frequency", "float", 100, 4000, "Hz", "Equalizer"),
-    "equalizer_mid_width_octaves": ("Equalizer mid-band width", "float", 0.1, 4, "octaves", "Equalizer"),
+    "equalizer_mid_frequency_hz": (
+        "Equalizer mid-band frequency",
+        "float",
+        100,
+        4000,
+        "Hz",
+        "Equalizer",
+    ),
+    "equalizer_mid_width_octaves": (
+        "Equalizer mid-band width",
+        "float",
+        0.1,
+        4,
+        "octaves",
+        "Equalizer",
+    ),
     "equalizer_high_gain_db": ("Equalizer high-shelf gain", "float", -12, 12, "dB", "Equalizer"),
-    "equalizer_high_frequency_hz": ("Equalizer high-shelf frequency", "float", 1000, 5000, "Hz", "Equalizer"),
+    "equalizer_high_frequency_hz": (
+        "Equalizer high-shelf frequency",
+        "float",
+        1000,
+        5000,
+        "Hz",
+        "Equalizer",
+    ),
     "equalizer_high_slope": ("Equalizer high-shelf slope", "float", 0.1, 1, "", "Equalizer"),
     "deesser_frequency_hz": ("De-esser center frequency", "float", 2000, 8000, "Hz", "De-esser"),
     "deesser_width_octaves": ("De-esser width", "float", 0.1, 4, "octaves", "De-esser"),
@@ -243,8 +458,7 @@ SETTINGS = {
     "deesser_attack_ms": ("De-esser attack", "float", 0.1, 100, "ms", "De-esser"),
     "deesser_release_ms": ("De-esser release", "float", 1, 2000, "ms", "De-esser"),
     "splatter_filter_enabled": ("Transmit brick-wall band-pass", "bool", None, None, "", "Filters"),
-    "lookahead_limiter_enabled": ("Lookahead limiter", "bool", None, None, "", "Stages"),
-    "final_clipper_enabled": ("Final clipper", "bool", None, None, "", "Stages"),
+    "lookahead_limiter_enabled": ("Final limiter", "bool", None, None, "", "Stages"),
     "agc_target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
     "agc_max_gain_db": ("AGC maximum gain", "float", 0, 30, "dB", "AGC"),
     "agc_max_attenuation_db": ("AGC maximum attenuation", "float", 0, 60, "dB", "AGC"),
@@ -252,99 +466,279 @@ SETTINGS = {
     "agc_attack_ms": ("AGC attack", "float", 1, 10000, "ms", "AGC"),
     "agc_release_ms": ("AGC release", "float", 1, 30000, "ms", "AGC"),
     "agc_reset_after_ms": ("AGC reset after", "float", 100, 60000, "ms", "AGC"),
-    "agc_sidechain_highpass_hz": ("AGC sidechain band-pass low edge", "float", 50, 2000, "Hz", "AGC"),
-    "agc_sidechain_lowpass_hz": ("AGC sidechain band-pass high edge", "float", 50, 3500, "Hz", "AGC"),
+    "agc_sidechain_highpass_hz": (
+        "AGC sidechain band-pass low edge",
+        "float",
+        50,
+        2000,
+        "Hz",
+        "AGC",
+    ),
+    "agc_sidechain_lowpass_hz": (
+        "AGC sidechain band-pass high edge",
+        "float",
+        50,
+        3500,
+        "Hz",
+        "AGC",
+    ),
     "expander_threshold_dbfs": ("Expander threshold", "float", -100, -10, "dBFS", "Expander"),
     "expander_ratio": ("Expander ratio", "float", 1, 10, ":1", "Expander"),
     "expander_max_attenuation_db": ("Expander max attenuation", "float", 0, 40, "dB", "Expander"),
     "expander_attack_ms": ("Expander attack", "float", 1, 1000, "ms", "Expander"),
     "expander_release_ms": ("Expander release", "float", 1, 10000, "ms", "Expander"),
-    "expander_sidechain_highpass_hz": ("Expander sidechain band-pass low edge", "float", 50, 2000, "Hz", "Expander"),
-    "expander_sidechain_lowpass_hz": ("Expander sidechain band-pass high edge", "float", 50, 3500, "Hz", "Expander"),
+    "expander_sidechain_highpass_hz": (
+        "Expander sidechain band-pass low edge",
+        "float",
+        50,
+        2000,
+        "Hz",
+        "Expander",
+    ),
+    "expander_sidechain_lowpass_hz": (
+        "Expander sidechain band-pass high edge",
+        "float",
+        50,
+        3500,
+        "Hz",
+        "Expander",
+    ),
     "compressor_threshold_dbfs": ("Compressor threshold", "float", -60, 0, "dBFS", "Compressor"),
     "compressor_ratio": ("Compressor ratio", "float", 1, 20, ":1", "Compressor"),
     "compressor_makeup_gain_db": ("Compressor make-up gain", "float", -30, 30, "dB", "Compressor"),
     "compressor_attack_ms": ("Compressor attack", "float", 1, 1000, "ms", "Compressor"),
     "compressor_release_ms": ("Compressor release", "float", 1, 10000, "ms", "Compressor"),
-    "compressor_sidechain_highpass_hz": ("Compressor sidechain band-pass low edge", "float", 50, 2000, "Hz", "Compressor"),
-    "compressor_sidechain_lowpass_hz": ("Compressor sidechain band-pass high edge", "float", 50, 3500, "Hz", "Compressor"),
-    "limiter_crossover_hz": ("Limiter crossover", "float", 300, 2000, "Hz", "Two-band limiter"),
-    "limiter_low_threshold_dbfs": ("Low-band threshold", "float", -40, -1, "dBFS", "Two-band limiter"),
-    "limiter_low_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
-    "limiter_low_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Two-band limiter"),
-    "limiter_low_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Two-band limiter"),
-    "limiter_low_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Two-band limiter"),
-    "limiter_high_threshold_dbfs": ("High-band threshold", "float", -30, -1, "dBFS", "Two-band limiter"),
-    "limiter_high_ratio": ("High-band ratio", "float", 1, 20, ":1", "Two-band limiter"),
-    "limiter_high_knee_db": ("High-band knee", "float", 0, 24, "dB", "Two-band limiter"),
-    "limiter_high_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Two-band limiter"),
-    "limiter_high_release_ms": ("High-band release", "float", 1, 1000, "ms", "Two-band limiter"),
-    "lookahead_limiter_ceiling_dbfs": ("Lookahead ceiling", "float", -30, -0.1, "dBFS", "Lookahead"),
-    "lookahead_limiter_lookahead_ms": ("Lookahead time", "float", 0.1, 20, "ms", "Lookahead"),
-    "lookahead_limiter_attack_ms": ("Lookahead attack", "float", 0.1, 20, "ms", "Lookahead"),
-    "lookahead_limiter_release_ms": ("Lookahead release", "float", 1, 5000, "ms", "Lookahead"),
-    "final_clipper_ceiling_dbfs": ("Final clip ceiling", "float", -30, -0.5, "dBFS", "Lookahead"),
+    "compressor_sidechain_highpass_hz": (
+        "Compressor sidechain band-pass low edge",
+        "float",
+        50,
+        2000,
+        "Hz",
+        "Compressor",
+    ),
+    "compressor_sidechain_lowpass_hz": (
+        "Compressor sidechain band-pass high edge",
+        "float",
+        50,
+        3500,
+        "Hz",
+        "Compressor",
+    ),
+    "limiter_low_crossover_hz": (
+        "Low/mid crossover",
+        "float",
+        100,
+        2000,
+        "Hz",
+        "Multiband limiter",
+    ),
+    "limiter_high_crossover_hz": (
+        "Mid/high crossover",
+        "float",
+        100,
+        5000,
+        "Hz",
+        "Multiband limiter",
+    ),
+    "limiter_low_threshold_dbfs": (
+        "Low-band threshold",
+        "float",
+        -40,
+        -1,
+        "dBFS",
+        "Multiband limiter",
+    ),
+    "limiter_low_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
+    "limiter_low_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Multiband limiter"),
+    "limiter_low_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Multiband limiter"),
+    "limiter_low_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Multiband limiter"),
+    "limiter_mid_threshold_dbfs": (
+        "Mid-band threshold",
+        "float",
+        -40,
+        -1,
+        "dBFS",
+        "Multiband limiter",
+    ),
+    "limiter_mid_ratio": ("Mid-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
+    "limiter_mid_knee_db": ("Mid-band knee", "float", 0, 24, "dB", "Multiband limiter"),
+    "limiter_mid_attack_ms": ("Mid-band attack", "float", 0.1, 1000, "ms", "Multiband limiter"),
+    "limiter_mid_release_ms": ("Mid-band release", "float", 1, 10000, "ms", "Multiband limiter"),
+    "limiter_high_threshold_dbfs": (
+        "High-band threshold",
+        "float",
+        -30,
+        -1,
+        "dBFS",
+        "Multiband limiter",
+    ),
+    "limiter_high_ratio": ("High-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
+    "limiter_high_knee_db": ("High-band knee", "float", 0, 24, "dB", "Multiband limiter"),
+    "limiter_high_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Multiband limiter"),
+    "limiter_high_release_ms": ("High-band release", "float", 1, 1000, "ms", "Multiband limiter"),
+    "lookahead_limiter_ceiling_dbfs": (
+        "Final-limiter ceiling",
+        "float",
+        -30,
+        -0.1,
+        "dBFS",
+        "Final limiter",
+    ),
+    "lookahead_limiter_lookahead_ms": (
+        "Final-limiter lookahead",
+        "float",
+        0.1,
+        20,
+        "ms",
+        "Final limiter",
+    ),
+    "lookahead_limiter_attack_ms": (
+        "Final-limiter attack",
+        "float",
+        0.1,
+        20,
+        "ms",
+        "Final limiter",
+    ),
+    "lookahead_limiter_release_ms": (
+        "Final-limiter release",
+        "float",
+        1,
+        5000,
+        "ms",
+        "Final limiter",
+    ),
     "post_limiter_lowpass_enabled": ("Post-limiter cleanup low-pass", "bool", 0, 1, "", "Filters"),
-    "post_limiter_lowpass_hz": ("Post-limiter low-pass cutoff", "float", 5000, 20000, "Hz", "Filters"),
-    "splatter_filter_highpass_hz": ("Transmit band-pass low cutoff", "float", 20, 2000, "Hz", "Filters"),
-    "splatter_filter_lowpass_hz": ("Transmit band-pass high cutoff", "float", 20, 6000, "Hz", "Filters"),
+    "post_limiter_lowpass_hz": (
+        "Post-limiter low-pass cutoff",
+        "float",
+        5000,
+        20000,
+        "Hz",
+        "Filters",
+    ),
+    "splatter_filter_highpass_hz": (
+        "Transmit band-pass low cutoff",
+        "float",
+        20,
+        2000,
+        "Hz",
+        "Filters",
+    ),
+    "splatter_filter_lowpass_hz": (
+        "Transmit band-pass high cutoff",
+        "float",
+        20,
+        6000,
+        "Hz",
+        "Filters",
+    ),
     "output_gain_db": ("Output gain", "float", -30, 30, "dB", "Input/output"),
 }
 
 DEFAULTS = {
-    "enabled": "yes", "rnnoise_enabled": "no", "agc_enabled": "no",
-    "expander_enabled": "no", "compressor_enabled": "no",
-    "limiter_enabled": "no", "stage_order": "equalizer,expander,agc,deesser,compressor,limiter",
-    "ctcss_filter_mode": "disabled", "ctcss_notch_width_hz": "5.0",
-    "ctcss_highpass_hz": "300.0", "input_gain_db": "0.0",
-    "equalizer_enabled": "yes", "equalizer_low_gain_db": "2.0",
-    "equalizer_low_frequency_hz": "300.0", "equalizer_low_slope": "0.7",
-    "equalizer_mid_gain_db": "-0.5", "equalizer_mid_frequency_hz": "750.0",
-    "equalizer_mid_width_octaves": "1.0", "equalizer_high_gain_db": "-1.0",
-    "equalizer_high_frequency_hz": "2500.0", "equalizer_high_slope": "0.7",
-    "deesser_enabled": "no", "deesser_frequency_hz": "4000.0",
-    "deesser_width_octaves": "1.0", "deesser_threshold_dbfs": "-18.0",
-    "deesser_ratio": "3.0", "deesser_max_reduction_db": "4.0",
-    "deesser_attack_ms": "2.0", "deesser_release_ms": "60.0",
-    "receive_bandpass_enabled": "no", "receive_bandpass_highpass_hz": "20.0",
+    "enabled": "yes",
+    "rnnoise_enabled": "no",
+    "agc_enabled": "no",
+    "expander_enabled": "no",
+    "compressor_enabled": "no",
+    "limiter_enabled": "no",
+    "stage_order": "equalizer,expander,agc,deesser,compressor,limiter",
+    "ctcss_filter_mode": "disabled",
+    "ctcss_notch_width_hz": "5.0",
+    "ctcss_highpass_hz": "300.0",
+    "input_gain_db": "0.0",
+    "equalizer_enabled": "yes",
+    "equalizer_low_gain_db": "2.0",
+    "equalizer_low_frequency_hz": "500.0",
+    "equalizer_low_slope": "0.7",
+    "equalizer_mid_gain_db": "-0.5",
+    "equalizer_mid_frequency_hz": "1000.0",
+    "equalizer_mid_width_octaves": "1.0",
+    "equalizer_high_gain_db": "-1.0",
+    "equalizer_high_frequency_hz": "2000.0",
+    "equalizer_high_slope": "0.7",
+    "deesser_enabled": "no",
+    "deesser_frequency_hz": "4000.0",
+    "deesser_width_octaves": "1.0",
+    "deesser_threshold_dbfs": "-18.0",
+    "deesser_ratio": "3.0",
+    "deesser_max_reduction_db": "4.0",
+    "deesser_attack_ms": "2.0",
+    "deesser_release_ms": "60.0",
+    "receive_bandpass_enabled": "no",
+    "receive_bandpass_highpass_hz": "20.0",
     "receive_bandpass_lowpass_hz": "5000.0",
-    "splatter_filter_enabled": "no", "lookahead_limiter_enabled": "no",
-    "final_clipper_enabled": "no", "agc_target_dbfs": "-10.0",
-    "agc_max_gain_db": "12.0", "agc_max_attenuation_db": "6.0",
-    "agc_floor_dbfs": "-60.0", "agc_attack_ms": "750.0",
-    "agc_release_ms": "1500.0", "agc_reset_after_ms": "3000.0",
-    "agc_sidechain_highpass_hz": "800.0", "agc_sidechain_lowpass_hz": "1500.0",
-    "expander_threshold_dbfs": "-55.0", "expander_ratio": "1.5",
-    "expander_max_attenuation_db": "9.0", "expander_attack_ms": "10.0",
-    "expander_release_ms": "250.0", "expander_sidechain_highpass_hz": "800.0",
+    "splatter_filter_enabled": "no",
+    "lookahead_limiter_enabled": "no",
+    "agc_target_dbfs": "-10.0",
+    "agc_max_gain_db": "12.0",
+    "agc_max_attenuation_db": "6.0",
+    "agc_floor_dbfs": "-60.0",
+    "agc_attack_ms": "750.0",
+    "agc_release_ms": "1500.0",
+    "agc_reset_after_ms": "3000.0",
+    "agc_sidechain_highpass_hz": "800.0",
+    "agc_sidechain_lowpass_hz": "1500.0",
+    "expander_threshold_dbfs": "-55.0",
+    "expander_ratio": "1.5",
+    "expander_max_attenuation_db": "9.0",
+    "expander_attack_ms": "10.0",
+    "expander_release_ms": "250.0",
+    "expander_sidechain_highpass_hz": "800.0",
     "expander_sidechain_lowpass_hz": "1500.0",
-    "compressor_threshold_dbfs": "-6.0", "compressor_ratio": "2.0",
-    "compressor_makeup_gain_db": "0.0", "compressor_attack_ms": "75.0",
-    "compressor_release_ms": "300.0", "compressor_sidechain_highpass_hz": "800.0",
-    "compressor_sidechain_lowpass_hz": "1500.0", "limiter_crossover_hz": "1000.0",
-    "limiter_low_threshold_dbfs": "-1.5", "limiter_low_ratio": "10.0",
-    "limiter_low_knee_db": "6.0", "limiter_low_attack_ms": "50.0",
-    "limiter_low_release_ms": "250.0", "limiter_high_threshold_dbfs": "-1.5",
-    "limiter_high_ratio": "20.0", "limiter_high_knee_db": "6.0",
-    "limiter_high_attack_ms": "0.5", "limiter_high_release_ms": "25.0",
-    "final_clipper_ceiling_dbfs": "-3.0", "lookahead_limiter_ceiling_dbfs": "-3.0",
-    "lookahead_limiter_lookahead_ms": "5.0", "lookahead_limiter_attack_ms": "1.0",
-    "lookahead_limiter_release_ms": "100.0", "post_limiter_lowpass_enabled": "no",
-    "post_limiter_lowpass_hz": "8000.0", "splatter_filter_highpass_hz": "300.0",
-    "splatter_filter_lowpass_hz": "3000.0", "output_gain_db": "0.0",
+    "compressor_threshold_dbfs": "-6.0",
+    "compressor_ratio": "2.0",
+    "compressor_makeup_gain_db": "0.0",
+    "compressor_attack_ms": "75.0",
+    "compressor_release_ms": "300.0",
+    "compressor_sidechain_highpass_hz": "800.0",
+    "compressor_sidechain_lowpass_hz": "1500.0",
+    "limiter_low_crossover_hz": "500.0",
+    "limiter_high_crossover_hz": "2000.0",
+    "limiter_low_threshold_dbfs": "-1.5",
+    "limiter_low_ratio": "10.0",
+    "limiter_low_knee_db": "6.0",
+    "limiter_low_attack_ms": "50.0",
+    "limiter_low_release_ms": "250.0",
+    "limiter_mid_threshold_dbfs": "-1.5",
+    "limiter_mid_ratio": "10.0",
+    "limiter_mid_knee_db": "6.0",
+    "limiter_mid_attack_ms": "10.0",
+    "limiter_mid_release_ms": "100.0",
+    "limiter_high_threshold_dbfs": "-1.5",
+    "limiter_high_ratio": "20.0",
+    "limiter_high_knee_db": "6.0",
+    "limiter_high_attack_ms": "0.5",
+    "limiter_high_release_ms": "25.0",
+    "lookahead_limiter_ceiling_dbfs": "-3.0",
+    "lookahead_limiter_lookahead_ms": "5.0",
+    "lookahead_limiter_attack_ms": "1.0",
+    "lookahead_limiter_release_ms": "100.0",
+    "post_limiter_lowpass_enabled": "no",
+    "post_limiter_lowpass_hz": "8000.0",
+    "splatter_filter_highpass_hz": "300.0",
+    "splatter_filter_lowpass_hz": "3000.0",
+    "output_gain_db": "0.0",
 }
 
 SOURCE_DEFAULTS = {
     # An absent local mode inherits rxhpf; highpass is the effective legacy
     # mode shown by the tuner without silently selecting notch filtering.
-    "local": {"ctcss_filter_mode": "highpass", "receive_bandpass_enabled": "yes",
-              "output_gain_db": "-6.2"},
+    "local": {
+        "ctcss_filter_mode": "highpass",
+        "receive_bandpass_enabled": "yes",
+        "output_gain_db": "-6.2",
+    },
     "link": {"output_gain_db": "-6.2"},
     "voice_telemetry": {
-        "input_gain_db": "6.0", "output_gain_db": "0.0",
+        "input_gain_db": "6.0",
+        "output_gain_db": "0.0",
         "stage_order": "equalizer,expander,agc,deesser,compressor,limiter",
-        "equalizer_enabled": "yes", "equalizer_low_gain_db": "2.0",
-        "equalizer_mid_gain_db": "-0.5", "equalizer_high_gain_db": "-1.0",
+        "equalizer_enabled": "yes",
+        "equalizer_low_gain_db": "2.0",
+        "equalizer_mid_gain_db": "-0.5",
+        "equalizer_high_gain_db": "-1.0",
         "splatter_filter_enabled": "yes",
     },
 }
@@ -387,20 +781,23 @@ def relationship_error(source, key, number, values):
 
 
 def run(args, check=False):
-    return subprocess.run(args, text=True, stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT, check=check).stdout
+    return subprocess.run(
+        args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check
+    ).stdout
 
 
-def launch_radio_tune():
-    """Use the canonical radio tuner so calibration behavior stays single-sourced."""
-    command = [RADIO_TUNE]
+def launch_radio_meter(mode):
+    """Run a continuous meter without exposing the legacy tuner's menu UI."""
+    command = [RADIO_TUNE, "--meter", mode]
+    if active_node():
+        command[1:1] = ["-n", active_node()]
     try:
         result = subprocess.run(command, check=False).returncode
     except OSError as error:
         dialog(["--msgbox", f"Unable to start {RADIO_TUNE}: {error}", "9", "70"])
         return
     if result:
-        dialog(["--msgbox", f"Radio tuning menu exited with status {result}.", "8", "58"])
+        dialog(["--msgbox", f"Radio meter exited with status {result}.", "8", "58"])
 
 
 def complete_configuration():
@@ -415,8 +812,12 @@ def dialog(args):
         args = ["--ok-button", "Close"] + args
     # Match asl-menu's `3>&1 1>&2 2>&3`: newt draws the interface on stdout,
     # while the selected tag is returned on stderr.
-    result = subprocess.run(["whiptail", "--backtitle", "USBRadioPlus processing"] + args,
-                            text=True, stdout=sys.stderr, stderr=subprocess.PIPE)
+    result = subprocess.run(
+        ["whiptail", "--backtitle", "USBRadioPlus processing"] + args,
+        text=True,
+        stdout=sys.stderr,
+        stderr=subprocess.PIPE,
+    )
     return result.returncode, result.stderr.strip()
 
 
@@ -436,7 +837,8 @@ def ensure_config():
             set_config_permissions(CONFIG)
             return
     raise FileNotFoundError(
-        f"{CONFIG} is missing and the shipped default configuration was not found")
+        f"{CONFIG} is missing and the shipped default configuration was not found"
+    )
 
 
 def section_values(text, section):
@@ -482,8 +884,11 @@ def parse_asterisk_channel_config(path, node):
         if header:
             current = header.group(1).strip()
             sections.setdefault(current, {})
-            inherited = [item.strip() for item in (header.group(2) or "").split(",")
-                         if item.strip() and item.strip() != "!"]
+            inherited = [
+                item.strip()
+                for item in (header.group(2) or "").split(",")
+                if item.strip() and item.strip() != "!"
+            ]
             if inherited:
                 parents[current] = inherited
             continue
@@ -516,14 +921,14 @@ def active_node():
 def modern_fallback_value(key, value):
     """Translate a configured chan_usbradio spelling and scale to RadioPlus."""
     value = value.strip()
-    if key in {"hardware_input_gain_db", "hardware_output_a_gain_db",
-               "hardware_output_b_gain_db"}:
+    if key in {"hardware_input_gain_db", "hardware_output_a_gain_db", "hardware_output_b_gain_db"}:
         mixer = max(0.0, float(value))
         gain = 20.0 * math.log10(max(0.000001, mixer / 500.0))
         return f"{max(-30.0, min(30.0, gain)):.6g}"
     if key in {"hardware_output_a_assignment", "hardware_output_b_assignment"}:
         return {"no": "off", "tone": "ctcss", "composite": "voice_ctcss"}.get(
-            value.lower(), value.lower())
+            value.lower(), value.lower()
+        )
     settings = next((group for group in MODERN_SECTION_SETTINGS.values() if key in group), {})
     kind = settings.get(key, (None, None))[1]
     if kind == "bool":
@@ -531,9 +936,18 @@ def modern_fallback_value(key, value):
             return "yes"
         if value.lower() in {"no", "false", "n", "f", "0", "off"}:
             return "no"
-    if kind in {"assignment", "cos", "rx_audio_source", "rx_ctcss_source",
-                "ctcss_turnoff", "duplex_mode", "jitter_impl", "gpio_mode",
-                "parallel_output", "parallel_input"}:
+    if kind in {
+        "assignment",
+        "cos",
+        "rx_audio_source",
+        "rx_ctcss_source",
+        "ctcss_turnoff",
+        "duplex_mode",
+        "jitter_impl",
+        "gpio_mode",
+        "parallel_output",
+        "parallel_input",
+    }:
         lowered = value.lower()
         if kind in {"gpio_mode", "parallel_output"} and lowered == "out":
             return "out0"
@@ -579,7 +993,8 @@ def shipped_modern_defaults():
         if not missing:
             return values
     raise RuntimeError(
-        "The shipped processing defaults are unavailable or incomplete; reinstall USBRadioPlus.")
+        "The shipped processing defaults are unavailable or incomplete; reinstall USBRadioPlus."
+    )
 
 
 def materialize_legacy_fallbacks(text, fallbacks=None):
@@ -629,8 +1044,7 @@ def replace_value(text, section, key, value):
 def atomic_write(text):
     directory = os.path.dirname(CONFIG)
     original = os.stat(CONFIG)
-    fd, path = tempfile.mkstemp(prefix=".usbradioplus-processing.",
-                                dir=directory, text=True)
+    fd, path = tempfile.mkstemp(prefix=".usbradioplus-processing.", dir=directory, text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             stream.write(text)
@@ -678,16 +1092,143 @@ def apply_config(old_text, updated_text):
         reload_config(old_text)
         return False
     result = subprocess.run(
-        ["systemctl", "restart", "asterisk"], text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ["systemctl", "restart", "asterisk"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
     health = run(["asterisk", "-rx", "module show like chan_usbradioplus"])
     if result.returncode or "chan_usbradioplus.so" not in health or "Running" not in health:
         atomic_write(old_text)
         subprocess.run(["systemctl", "restart", "asterisk"], check=False)
         raise RuntimeError(
             "Asterisk restart failed; the previous configuration was restored.\n\n"
-            + result.stdout + health)
+            + result.stdout
+            + health
+        )
     return True
+
+
+def prompt_boolean(label, current):
+    """Edit every on/off value with the same explicit two-choice dialog."""
+    current = "yes" if current.lower() in ("yes", "true", "1", "on") else "no"
+    return dialog(
+        [
+            "--ok-button",
+            "Apply",
+            "--cancel-button",
+            "Cancel",
+            "--default-item",
+            current,
+            "--radiolist",
+            f"{label}\nCurrent: {'On' if current == 'yes' else 'Off'}",
+            "11",
+            "62",
+            "2",
+            "yes",
+            "On",
+            "ON" if current == "yes" else "OFF",
+            "no",
+            "Off",
+            "ON" if current == "no" else "OFF",
+        ]
+    )
+
+
+def prompt_choice(label, current, choices):
+    """Edit every enumerated value with the same single-choice dialog."""
+    height = min(22, max(11, len(choices) + 8))
+    args = [
+        "--ok-button",
+        "Apply",
+        "--cancel-button",
+        "Cancel",
+        "--default-item",
+        current,
+        "--radiolist",
+        f"{label}\nCurrent: {current}",
+        str(height),
+        "72",
+        str(len(choices)),
+    ]
+    for value, description in choices:
+        args += [value, description, "ON" if current == value else "OFF"]
+    return dialog(args)
+
+
+def prompt_number(label, current, number_kind, low=None, high=None, units=""):
+    """Edit gains, decimal values, and integers through one numeric UI."""
+    type_name = {"gain": "Gain", "float": "Decimal value", "integer": "Integer"}[number_kind]
+    limits = ""
+    if low is not None and high is not None:
+        limits = f"\nRange: {low:g} to {high:g}{(' ' + units) if units else ''}"
+    initial = current or "0"
+    # A leading minus is parsed as an option unless the editable value starts
+    # with whitespace. Whiptail removes this padding from the returned value.
+    if initial.startswith("-"):
+        initial = " " + initial
+    code, entered = dialog(
+        [
+            "--ok-button",
+            "Apply",
+            "--cancel-button",
+            "Cancel",
+            "--inputbox",
+            f"{label}\n{type_name}; current: {current}{limits}",
+            "11",
+            "70",
+            initial,
+        ]
+    )
+    if code:
+        return code, entered
+    entered = entered.strip()
+    try:
+        number = int(entered, 0) if number_kind == "integer" else float(entered)
+    except ValueError:
+        expected = "an integer" if number_kind == "integer" else "a numeric value"
+        dialog(["--msgbox", f"Enter {expected}.", "7", "44"])
+        return 1, ""
+    if number_kind != "integer" and not math.isfinite(number):
+        dialog(["--msgbox", "Enter a finite numeric value.", "7", "48"])
+        return 1, ""
+    if (low is not None and number < low) or (high is not None and number > high):
+        dialog(
+            [
+                "--msgbox",
+                f"Value must be between {low:g} and {high:g}{(' ' + units) if units else ''}.",
+                "8",
+                "58",
+            ]
+        )
+        return 1, ""
+    return 0, str(number) if number_kind == "integer" else f"{number:g}"
+
+
+def prompt_text(label, current, instruction="Enter a value"):
+    """Edit free-form and list values with the common Apply/Cancel dialog."""
+    return dialog(
+        [
+            "--ok-button",
+            "Apply",
+            "--cancel-button",
+            "Cancel",
+            "--inputbox",
+            f"{label}\n{instruction}\nCurrent: {current}",
+            "11",
+            "72",
+            current,
+        ]
+    )
+
+
+def display_value(kind, value):
+    """Present stored values consistently in every settings menu."""
+    if kind == "bool":
+        return "On" if value.lower() in ("yes", "true", "1", "on") else "Off"
+    if kind == "gain":
+        return f"{value} dB"
+    return value
 
 
 def edit_setting(source, key):
@@ -697,26 +1238,21 @@ def edit_setting(source, key):
     label, kind, low, high, units, _group = SETTINGS[key]
     current = values.get(key, default_value(source, key))
     if kind == "bool":
-        new = "no" if current.lower() in ("yes", "true", "1", "on") else "yes"
+        code, new = prompt_boolean(label, current)
+    elif kind == "choice":
+        code, new = prompt_choice(label, current, CHOICES["ctcss_filter"])
+    elif kind == "text":
+        return edit_text_setting(source, key)
     else:
-        code, new = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                            "--inputbox", f"{label}\nRange: {low} to {high} {units}",
-                            "10", "62", current])
-        if code:
-            return
-        try:
-            number = float(new)
-        except ValueError:
-            dialog(["--msgbox", "Enter a numeric value.", "7", "40"])
-            return
-        if number < low or number > high:
-            dialog(["--msgbox", f"Value must be between {low} and {high} {units}.", "8", "52"])
-            return
-        relation = relationship_error(source, key, number, values)
+        value_type = "gain" if key.endswith("_gain_db") or key == "input_gain_db" else "float"
+        code, new = prompt_number(label, current, value_type, low, high, units)
+    if code:
+        return
+    if kind not in {"bool", "choice", "text"}:
+        relation = relationship_error(source, key, float(new), values)
         if relation:
             dialog(["--msgbox", relation, "8", "64"])
             return
-        new = f"{number:g}"
     updated = replace_value(writable, source, key, new)
     try:
         apply_config(text, updated)
@@ -724,113 +1260,49 @@ def edit_setting(source, key):
         dialog(["--msgbox", str(error), "12", "70"])
 
 
-def edit_numeric_setting(source, key):
-    """Prompt for and apply a numeric value using ordinary terminal I/O."""
-    text = read_config()
-    writable = materialize_legacy_fallbacks(text)
-    values = section_values(text, source)
-    label, _kind, low, high, units, _group = SETTINGS[key]
-    current = values.get(key, default_value(source, key))
-    try:
-        entered = input(f"New {label} ({low} to {high} {units}) [{current}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print("Change cancelled.")
-        return
-    if not entered:
-        print("No value entered; setting unchanged.")
-        return
-    try:
-        number = float(entered)
-    except ValueError:
-        print(f"Invalid value {entered!r}; enter a number. Setting unchanged.")
-        return
-    if number < low or number > high:
-        print(f"Value must be between {low} and {high} {units}. Setting unchanged.")
-        return
-    relation = relationship_error(source, key, number, values)
-    if relation:
-        print(relation + " Setting unchanged.")
-        return
-    new = f"{number:g}"
-    updated = replace_value(writable, source, key, new)
-    try:
-        apply_config(text, updated)
-    except RuntimeError as error:
-        print(str(error))
-        return
-    print(f"{label} changed from {current} to {new} {units}. Applied successfully.")
-
-
 def edit_text_setting(source, key):
-    """Edit strictly enumerated graph and receive-filter values."""
+    """Edit the processing-stage order through the common text dialog."""
     text = read_config()
     writable = materialize_legacy_fallbacks(text)
     values = section_values(text, source)
     label = SETTINGS[key][0]
     current = values.get(key, default_value(source, key))
-    if key == "stage_order":
-        prompt = "Comma-separated equalizer, agc, expander, deesser, compressor, limiter"
-    else:
-        prompt = "One of: disabled, highpass, notch"
-    try:
-        entered = input(f"New {label} ({prompt}) [{current}]: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        print("Change cancelled.")
+    code, entered = prompt_text(
+        label,
+        current,
+        "Enter comma-separated equalizer, expander, agc, deesser, compressor, limiter",
+    )
+    if code:
         return
-    if not entered:
-        print("No value entered; setting unchanged.")
-        return
+    entered = entered.strip().lower()
     if key == "stage_order":
         stages = [item.strip() for item in entered.split(",")]
         allowed = {"equalizer", "expander", "agc", "deesser", "compressor", "limiter"}
-        if not stages or any(item not in allowed for item in stages) or len(stages) != len(set(stages)):
-            print("Stage order contains an unknown, empty, or duplicate stage; unchanged.")
+        if (
+            not stages
+            or any(item not in allowed for item in stages)
+            or len(stages) != len(set(stages))
+        ):
+            dialog(
+                [
+                    "--msgbox",
+                    "Stage order contains an unknown, empty, or duplicate stage.",
+                    "8",
+                    "68",
+                ]
+            )
             return
         entered = ",".join(stages)
-    elif entered not in {"disabled", "highpass", "notch"}:
-        print("CTCSS filter mode must be disabled, highpass, or notch; unchanged.")
-        return
     old_text = text
     updated = replace_value(writable, source, key, entered)
     try:
         apply_config(old_text, updated)
     except RuntimeError as error:
-        print(str(error))
-        return
-    print(f"{label} changed from {current or '(inherited)'} to {entered}. Applied successfully.")
-
-
-def read_key():
-    """Read one key, including terminal arrow-key sequences."""
-    fd = sys.stdin.fileno()
-    previous = termios.tcgetattr(fd)
-    try:
-        tty.setraw(fd)
-        first = os.read(fd, 1).decode("utf-8", "ignore")
-        if first == "\x1b":
-            second = os.read(fd, 1).decode("utf-8", "ignore")
-            if second == "[":
-                third = os.read(fd, 1).decode("utf-8", "ignore")
-                if third == "Z":
-                    return "SHIFT_TAB"
-                return first + second + third
-            return first + second
-        return first
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, previous)
-
-
-def read_menu_key(selected, item_count):
-    """Read a key while the terminal cursor rests on the selected menu row."""
-    rows_up = item_count + 1 - selected
-    print(f"\033[s\033[{rows_up}A\r", end="", flush=True)
-    keypress = read_key()
-    print("\033[u", end="", flush=True)
-    return keypress
+        dialog(["--msgbox", str(error), "12", "70"])
 
 
 def stages_menu(source):
-    """Screen-reader-friendly, single-key stage toggles."""
+    """Edit stage controls while retaining the selected row after redraw."""
     entries = [
         ("1", "enabled", "Entire chain"),
         ("R", "rnnoise_enabled", "RNNoise"),
@@ -839,167 +1311,146 @@ def stages_menu(source):
         ("E", "expander_enabled", "Downward expander"),
         ("D", "deesser_enabled", "Split-band de-esser"),
         ("C", "compressor_enabled", "Compressor"),
-        ("L", "limiter_enabled", "Two-band limiter"),
-        ("H", "lookahead_limiter_enabled", "Lookahead limiter"),
-        ("F", "final_clipper_enabled", "Final clipper"),
+        ("L", "limiter_enabled", "Multiband limiter"),
+        ("H", "lookahead_limiter_enabled", "Final limiter"),
     ]
-    entries = [entry for entry in entries
-               if not (entry[1] == "rnnoise_enabled" and source != "local")
-               and not (entry[1] in {"lookahead_limiter_enabled",
-                                     "final_clipper_enabled"}
-                        and source != "voice_telemetry")]
-    selected = 0
+    entries = [
+        entry
+        for entry in entries
+        if not (entry[1] == "rnnoise_enabled" and source != "local")
+        and not (entry[1] == "lookahead_limiter_enabled" and source != "voice_telemetry")
+    ]
+    selected = entries[0][0]
     while True:
         values = section_values(read_config(), source)
-        print(f"\n{source} stage toggles. Press a listed key to toggle immediately.")
-        print("Up and Down arrows move; Enter toggles the current item.")
-        print("Tab selects Back; Shift+Tab returns to the list. B, Q, or Escape also go back.")
-        for index, (key, setting, label) in enumerate(entries):
-            state = "ON" if values.get(setting, default_value(source, setting)).lower() in ("yes", "true", "1", "on") else "OFF"
-            marker = ">" if index == selected else " "
-            print(f"{marker} {key}. {label}: {state}")
-        back_marker = ">" if selected == len(entries) else " "
-        print(f"{back_marker} B. Back")
-        current_label = "Back button" if selected == len(entries) else entries[selected][2]
-        print(f"Current item: {current_label}. Command: ", end="", flush=True)
-        keypress = read_menu_key(selected, len(entries))
-        print()
-        if keypress == "\x1b[A":
-            selected = (selected - 1) % (len(entries) + 1)
-            label = "Back button" if selected == len(entries) else entries[selected][2]
-            print(f"Selected {label}.")
-            continue
-        if keypress == "\x1b[B":
-            selected = (selected + 1) % (len(entries) + 1)
-            label = "Back button" if selected == len(entries) else entries[selected][2]
-            print(f"Selected {label}.")
-            continue
-        if keypress == "\t":
-            selected = len(entries)
-            print("Back button selected. Press Enter to return.")
-            continue
-        if keypress == "SHIFT_TAB":
-            selected = 0
-            print(f"Returned to the stage list. Selected {entries[selected][2]}.")
-            continue
-        if keypress in ("\r", "\n"):
-            if selected == len(entries):
-                return
-            target = entries[selected]
-        elif keypress.upper() in ("B", "Q") or keypress == "\x1b":
+        items = []
+        for tag, setting, label in entries:
+            state = (
+                "ON"
+                if values.get(setting, default_value(source, setting)).lower()
+                in ("yes", "true", "1", "on")
+                else "OFF"
+            )
+            items += [tag, f"{label}: {state}"]
+        code, choice = dialog(
+            [
+                "--ok-button",
+                "Select",
+                "--cancel-button",
+                "Back",
+                "--default-item",
+                selected,
+                "--menu",
+                f"{source}: processing stages",
+                "18",
+                "72",
+                "10",
+            ]
+            + items
+        )
+        if code:
             return
-        elif kind == "address":
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--inputbox", f"{label}\nDecimal or 0x-prefixed address",
-                                    "10", "68", current])
-            if code:
-                continue
-            try:
-                number = int(entered, 0)
-            except ValueError:
-                dialog(["--msgbox", "Enter a decimal or 0x-prefixed address.", "7", "54"])
-                continue
-            if not 0 <= number <= 0xffffffff:
-                dialog(["--msgbox", "Address must fit in 32 bits.", "7", "48"])
-                continue
-        else:
-            matches = [entry for entry in entries if entry[0].upper() == keypress.upper()]
-            if not matches:
-                print(f"Unrecognized key {keypress!r}.")
-                continue
-            target = matches[0]
-            selected = entries.index(target)
+        selected = choice
+        target = next(entry for entry in entries if entry[0] == choice)
         edit_setting(source, target[1])
-        new_values = section_values(read_config(), source)
-        state = "ON" if new_values.get(target[1], default_value(source, target[1])).lower() in ("yes", "true", "1", "on") else "OFF"
-        print(f"{target[2]} is now {state}.")
 
 
 def settings_menu(source, group):
     values = section_values(read_config(), source)
-    keys = [key for key, data in SETTINGS.items()
-            if data[5] == group
-            and not (key.startswith("ctcss_") and source != "local")
-            and not (key.startswith("receive_bandpass_") and source != "local")
-            and not (group == "Lookahead" and source != "voice_telemetry")
-            and not (key.startswith(("splatter_filter_", "post_limiter_"))
-                     and source != "voice_telemetry")]
+    keys = [
+        key
+        for key, data in SETTINGS.items()
+        if data[5] == group
+        and not (key.startswith("ctcss_") and source != "local")
+        and not (key.startswith("receive_bandpass_") and source != "local")
+        and not (group == "Final limiter" and source != "voice_telemetry")
+        and not (
+            key.startswith(("splatter_filter_", "post_limiter_")) and source != "voice_telemetry"
+        )
+    ]
     if not keys:
         print(f"No editable numeric settings are available for {source}: {group}.")
         return
-    selected = 0
+    selected = "1"
     while True:
         values = section_values(read_config(), source)
-        print(f"\n{source}: {group} settings.")
-        print("Up and Down arrows move; Enter edits the current setting.")
-        print("Tab selects Back; Shift+Tab returns to the list. B, Q, or Escape also go back.")
+        items = []
         for index, key in enumerate(keys):
             label, _kind, _low, _high, units, _group = SETTINGS[key]
-            marker = ">" if index == selected else " "
             current = values.get(key, default_value(source, key))
             if SETTINGS[key][1] == "bool":
-                current = "ON" if current.lower() in ("yes", "true", "1", "on") else "OFF"
-            print(f"{marker} {index + 1}. {label}: {current} {units}".rstrip())
-        back_marker = ">" if selected == len(keys) else " "
-        print(f"{back_marker} B. Back")
-        current_label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
-        print(f"Current item: {current_label}. Command: ", end="", flush=True)
-        keypress = read_menu_key(selected, len(keys))
-        print()
-        if keypress == "\x1b[A":
-            selected = (selected - 1) % (len(keys) + 1)
-            label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
-            print(f"Selected {label}.")
-            continue
-        if keypress == "\x1b[B":
-            selected = (selected + 1) % (len(keys) + 1)
-            label = "Back button" if selected == len(keys) else SETTINGS[keys[selected]][0]
-            print(f"Selected {label}.")
-            continue
-        if keypress == "\t":
-            selected = len(keys)
-            print("Back button selected. Press Enter to return.")
-            continue
-        if keypress == "SHIFT_TAB":
-            selected = 0
-            print(f"Returned to the settings list. Selected {SETTINGS[keys[0]][0]}.")
-            continue
-        if keypress in ("\r", "\n"):
-            if selected == len(keys):
-                return
-            kind = SETTINGS[keys[selected]][1]
-            if kind == "bool":
-                edit_setting(source, keys[selected])
-            elif kind in ("text", "choice"):
-                edit_text_setting(source, keys[selected])
-            else:
-                edit_numeric_setting(source, keys[selected])
-            continue
-        if keypress.upper() in ("B", "Q") or keypress == "\x1b":
+                current = display_value("bool", current)
+            items += [str(index + 1), f"{label}: {current} {units}".rstrip()]
+        code, choice = dialog(
+            [
+                "--ok-button",
+                "Select",
+                "--cancel-button",
+                "Back",
+                "--default-item",
+                selected,
+                "--menu",
+                f"{source}: {group} settings",
+                "20",
+                "78",
+                "12",
+            ]
+            + items
+        )
+        if code:
             return
-        if keypress.isdigit() and 1 <= int(keypress) <= len(keys):
-            selected = int(keypress) - 1
-            print(f"Selected {SETTINGS[keys[selected]][0]}. Press Enter to edit.")
-            continue
-        print(f"Unrecognized key {keypress!r}.")
+        selected = choice
+        edit_setting(source, keys[int(choice) - 1])
 
 
 def source_menu(source):
-    groups = ["Stages", "Filters", "Equalizer", "AGC", "Expander", "De-esser", "Compressor",
-              "Two-band limiter", "Lookahead", "Input/output"]
+    groups = [
+        "Stages",
+        "Filters",
+        "Equalizer",
+        "AGC",
+        "Expander",
+        "De-esser",
+        "Compressor",
+        "Multiband limiter",
+        "Final limiter",
+        "Input/output",
+    ]
     if source == "link":
         groups.remove("Filters")
     if source != "voice_telemetry":
-        groups.remove("Lookahead")
+        groups.remove("Final limiter")
     selected = "1"
     while True:
-        group_items = sum(([str(index), f"{group}: change {group.lower()} settings"]
-                           for index, group in enumerate(groups, 1)), [])
-        code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Back",
-                               "--default-item", selected,
-                               "--menu", f"Tune {source}",
-                               "19", "70", "11"] + group_items +
-                              ["S", "Show processing measurement snapshot", "C", "Show complete active configuration"])
+        group_items = sum(
+            (
+                [str(index), f"{group}: change {group.lower()} settings"]
+                for index, group in enumerate(groups, 1)
+            ),
+            [],
+        )
+        code, choice = dialog(
+            [
+                "--ok-button",
+                "Select",
+                "--cancel-button",
+                "Back",
+                "--default-item",
+                selected,
+                "--menu",
+                f"Tune {source}",
+                "19",
+                "70",
+                "11",
+            ]
+            + group_items
+            + [
+                "S",
+                "Show processing measurement snapshot",
+                "C",
+                "Show complete active configuration",
+            ]
+        )
         if code:
             return
         selected = choice
@@ -1010,14 +1461,107 @@ def source_menu(source):
             else:
                 settings_menu(source, group)
         elif choice.upper() == "S":
-            dialog(["--ok-button", "Close", "--title", "USBRadioPlus measurements", "--msgbox",
-                    run(["asterisk", "-rx", "radioplus processing stats"]), "27", "100"])
+            dialog(
+                [
+                    "--ok-button",
+                    "Close",
+                    "--title",
+                    "USBRadioPlus measurements",
+                    "--msgbox",
+                    run(["asterisk", "-rx", "radioplus processing stats"]),
+                    "27",
+                    "100",
+                ]
+            )
         else:
-            dialog(["--ok-button", "Close", "--title", "USBRadioPlus configuration", "--msgbox",
-                    complete_configuration(), "27", "100"])
+            dialog(
+                [
+                    "--ok-button",
+                    "Close",
+                    "--title",
+                    "USBRadioPlus configuration",
+                    "--msgbox",
+                    complete_configuration(),
+                    "27",
+                    "100",
+                ]
+            )
 
 
-def section_options_menu(section, settings, title):
+def radio_command(option):
+    """Run one radio-tuning operation and return its user-facing result."""
+    return run(["asterisk", "-rx", f"radioplus tune menu-support {option}"]).strip()
+
+
+def radio_state():
+    """Read the live values used by the calibration menu."""
+    output = radio_command("0+9")
+    match = re.search(r"(?m)^(\d+(?:,[^,\r\n]+){22})$", output)
+    if not match:
+        raise RuntimeError("Unable to read the active radio tuning state.\n\n" + output)
+    values = match.group(1).split(",")
+    return {
+        "flat": int(values[0]),
+        "tx_has_ctcss": int(values[1]),
+        "echo": int(values[2]),
+        "carrier": int(values[5]),
+        "ctcss": int(values[6]),
+        "rx_mixer": int(values[14]),
+        "rx_voice": float(values[15]),
+        "squelch": int(values[16]),
+        "tx_a": int(values[17]),
+        "tx_b": int(values[18]),
+        "tx_ctcss": int(values[19]),
+        "tx_mixa": int(values[12]),
+        "tx_mixb": int(values[13]),
+    }
+
+
+def show_radio_result(title, option):
+    output = radio_command(option)
+    dialog(
+        [
+            "--ok-button",
+            "Close",
+            "--title",
+            title,
+            "--msgbox",
+            output or "Operation completed.",
+            "18",
+            "84",
+        ]
+    )
+
+
+def swap_radio_device():
+    """Swap this channel's USB assignment with another configured channel."""
+    names = [name.strip() for name in radio_command("3").split(",") if name.strip()]
+    if not names:
+        dialog(["--msgbox", "No eligible USB radio channels were found.", "8", "58"])
+        return
+    code, selected = prompt_choice(
+        "USB radio channel to swap",
+        names[0],
+        tuple((name, f"Radio channel {name}") for name in sorted(names)),
+    )
+    if code:
+        return
+    output = run(["asterisk", "-rx", f"radioplus tune swap {selected}"]).strip()
+    dialog(["--msgbox", output or "USB-device assignments swapped.", "8", "72"])
+
+
+def toggle_echo_mode():
+    try:
+        enabled = bool(radio_state()["echo"])
+    except RuntimeError as error:
+        dialog(["--msgbox", str(error), "12", "78"])
+        return
+    code, value = prompt_boolean("Echo mode", "yes" if enabled else "no")
+    if not code:
+        show_radio_result("Echo mode", "k1" if value == "yes" else "k0")
+
+
+def section_options_menu(section, settings, title, actions=()):
     """Edit non-graph channel settings while preserving main-file fallbacks."""
     keys = list(settings)
     selected = "1"
@@ -1027,86 +1571,50 @@ def section_options_menu(section, settings, title):
         defaults = shipped_modern_defaults()
         items = []
         for index, key in enumerate(keys, 1):
-            label, _kind = settings[key]
+            label, kind = settings[key]
             current = values.get(key, fallbacks.get(key, defaults[key]))
-            items += [str(index), f"{label}: {current}"]
-        code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Back",
-                               "--default-item", selected,
-                               "--menu", title, "20", "78", "12"] + items)
+            items += [str(index), f"{label}: {display_value(kind, current)}"]
+        for tag, label, _callback in actions:
+            items += [tag, label]
+        code, choice = dialog(
+            [
+                "--ok-button",
+                "Select",
+                "--cancel-button",
+                "Back",
+                "--default-item",
+                selected,
+                "--menu",
+                title,
+                "20",
+                "78",
+                "12",
+            ]
+            + items
+        )
         if code:
             return
         selected = choice
+        action = next((callback for tag, _label, callback in actions if tag == choice), None)
+        if action:
+            action()
+            continue
         key = keys[int(choice) - 1]
         label, kind = settings[key]
         old_text = read_config()
         writable = materialize_legacy_fallbacks(old_text, fallbacks)
         current = values.get(key, fallbacks.get(key, defaults[key]))
-        if kind == "gain":
-            # A leading minus is parsed as a whiptail option unless the
-            # editable initial value begins with whitespace.
-            initial = current or "0"
-            if initial.startswith("-"):
-                initial = " " + initial
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--inputbox", f"{label}\nRange: -30 to 30 dB; 0 dB is mixer midpoint",
-                                    "10", "68", initial])
-            if code:
-                continue
-            try:
-                number = float(entered)
-            except ValueError:
-                dialog(["--msgbox", "Enter a numeric value.", "7", "40"])
-                continue
-            if number < -30 or number > 30:
-                dialog(["--msgbox", "Value must be between -30 and 30 dB.", "8", "52"])
-                continue
-            entered = f"{number:g}"
-        elif kind == "assignment":
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--radiolist", label, "13", "58", "5",
-                                    "off", "No signal", "ON" if current == "off" else "OFF",
-                                    "voice", "Voice only", "ON" if current == "voice" else "OFF",
-                                    "ctcss", "CTCSS only", "ON" if current == "ctcss" else "OFF",
-                                    "voice_ctcss", "Voice and CTCSS", "ON" if current == "voice_ctcss" else "OFF",
-                                    "auxvoice", "Auxiliary voice", "ON" if current == "auxvoice" else "OFF"])
-            if code:
-                continue
-        elif kind == "cos":
-            choices = (("no", "No COS detection"), ("usb", "USB COS, active high"),
-                       ("usbinvert", "USB COS, active low"), ("dsp", "DSP noise squelch"),
-                       ("vox", "Voice-operated squelch"), ("pp", "Parallel port, active high"),
-                       ("ppinvert", "Parallel port, active low"))
-            args = ["--ok-button", "Apply", "--cancel-button", "Cancel",
-                    "--radiolist", label, "17", "68", "7"]
-            for value, description in choices:
-                args += [value, description, "ON" if current == value else "OFF"]
-            code, entered = dialog(args)
-            if code:
-                continue
+        if kind == "bool":
+            code, entered = prompt_boolean(label, current)
         elif kind in CHOICES:
-            choices = CHOICES[kind]
-            args = ["--ok-button", "Apply", "--cancel-button", "Cancel",
-                    "--radiolist", label, "16", "70", str(len(choices))]
-            for value, description in choices:
-                args += [value, description, "ON" if current == value else "OFF"]
-            code, entered = dialog(args)
-            if code:
-                continue
-        elif kind == "bool":
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--radiolist", label, "10", "52", "2",
-                                    "yes", "Enabled", "ON" if current == "yes" else "OFF",
-                                    "no", "Disabled", "ON" if current == "no" else "OFF"])
-            if code:
-                continue
+            code, entered = prompt_choice(label, current, CHOICES[kind])
+        elif kind == "gain":
+            code, entered = prompt_number(label, current, "gain", -30, 30, "dB")
         elif kind == "frequencies":
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--inputbox", f"{label}\nComma-separated CTCSS frequencies",
-                                    "10", "68", current])
+            code, entered = prompt_text(
+                label, current, "Enter positive, comma-separated CTCSS frequencies"
+            )
             if code:
-                continue
-            if not entered.strip():
-                dialog(["--msgbox", "Enter at least one CTCSS frequency.", "7", "52"])
                 continue
             try:
                 frequencies = [float(value.strip()) for value in entered.split(",")]
@@ -1115,50 +1623,122 @@ def section_options_menu(section, settings, title):
             if not frequencies or any(value <= 0 for value in frequencies):
                 dialog(["--msgbox", "Enter positive, comma-separated frequencies.", "7", "58"])
                 continue
+        elif kind in {"integer", "level", "binary", "softlimit", "gpio", "address"}:
+            limits = {
+                "level": (0, 999),
+                "binary": (0, 1),
+                "softlimit": (5000, 13000),
+                "gpio": (0, 8),
+                "address": (0, 0xFFFFFFFF),
+            }
+            low, high = limits.get(kind, (None, None))
+            code, entered = prompt_number(label, current, "integer", low, high)
+        elif kind in {"float", "emphasis"}:
+            low, high, units = (0.001, 299.999, "Hz") if kind == "emphasis" else (None, None, "")
+            code, entered = prompt_number(label, current, "float", low, high, units)
         else:
-            ranges = {"emphasis": (0.001, 299.999, "Hz")}
-            hint = "Enter a number" if kind in {"integer", "float", "level", "binary", "softlimit", "gpio", "emphasis"} else "Enter a value"
-            if kind in ranges:
-                low, high, units = ranges[kind]
-                hint = f"Range: {low:g} to {high:g} {units}"
-            code, entered = dialog(["--ok-button", "Apply", "--cancel-button", "Cancel",
-                                    "--inputbox", f"{label}\n{hint}", "10", "68", current])
-            if code:
-                continue
-            if kind in {"integer", "level", "binary", "softlimit", "gpio"}:
-                try:
-                    number = int(entered, 0)
-                except ValueError:
-                    dialog(["--msgbox", "Enter an integer value.", "7", "44"])
-                    continue
-                if kind == "level" and not 0 <= number <= 999:
-                    dialog(["--msgbox", "Value must be from 0 through 999.", "7", "48"])
-                    continue
-                limits = {"binary": (0, 1), "softlimit": (5000, 13000), "gpio": (0, 8)}
-                if kind in limits and not limits[kind][0] <= number <= limits[kind][1]:
-                    dialog(["--msgbox", f"Value must be from {limits[kind][0]} through {limits[kind][1]}.", "7", "52"])
-                    continue
-            elif kind in {"float", "emphasis"}:
-                try:
-                    number = float(entered)
-                except ValueError:
-                    dialog(["--msgbox", "Enter a numeric value.", "7", "44"])
-                    continue
-                if kind == "emphasis" and not 0.0 < number < 300.0:
-                    dialog(["--msgbox", "Value must be greater than 0 and less than 300 Hz.", "7", "58"])
-                    continue
-            elif not entered.strip():
-                dialog(["--msgbox", "The value cannot be empty.", "7", "44"])
-                continue
+            code, entered = prompt_text(label, current)
+        if code:
+            continue
+        if not entered.strip():
+            dialog(["--msgbox", "The value cannot be empty.", "7", "44"])
+            continue
         updated = replace_value(writable, section, key, entered)
         try:
             restarted = apply_config(old_text, updated)
             if restarted:
-                dialog(["--msgbox",
+                dialog(
+                    [
+                        "--msgbox",
                         "The hardware pin assignment was saved and Asterisk was restarted.",
-                        "8", "64"])
+                        "8",
+                        "64",
+                    ]
+                )
         except RuntimeError as error:
             dialog(["--msgbox", str(error), "12", "70"])
+
+
+def hardware_menu():
+    """Group hardware settings and related calibration actions by purpose."""
+    groups = (
+        ("1", "USB interface", "usb", (("S", "Swap USB-device assignments", swap_radio_device),)),
+        (
+            "2",
+            "Receiver",
+            "receive",
+            (
+                (
+                    "N",
+                    "Automatically calibrate RX discriminator noise and squelch",
+                    lambda: show_radio_result("RX noise calibration", "a"),
+                ),
+                (
+                    "L",
+                    "Automatically calibrate RX voice with 1 kHz at 3 kHz deviation",
+                    lambda: show_radio_result("RX voice calibration", "i"),
+                ),
+                ("E", "Echo mode", toggle_echo_mode),
+            ),
+        ),
+        (
+            "3",
+            "Transmitter",
+            "transmit",
+            (
+                (
+                    "F",
+                    "Flash transmitter with three calibration bursts",
+                    lambda: show_radio_result("Transmitter calibration bursts", "l"),
+                ),
+            ),
+        ),
+        (
+            "4",
+            "CTCSS and signaling",
+            "signaling",
+            (
+                (
+                    "C",
+                    "Automatically calibrate RX CTCSS decoder level",
+                    lambda: show_radio_result("RX CTCSS calibration", "d"),
+                ),
+            ),
+        ),
+        ("5", "CM119 GPIO", "gpio", ()),
+        ("6", "Parallel port", "parallel", ()),
+    )
+    selected = "1"
+    while True:
+        items = []
+        for tag, label, _group, _actions in groups:
+            items += [tag, label]
+        items += ["M", "Continuous status and RX/TX audio meters"]
+        code, choice = dialog(
+            [
+                "--ok-button",
+                "Select",
+                "--cancel-button",
+                "Back",
+                "--default-item",
+                selected,
+                "--menu",
+                "CM119 hardware and radio signaling",
+                "18",
+                "78",
+                "10",
+            ]
+            + items
+        )
+        if code:
+            return
+        selected = choice
+        if choice == "M":
+            launch_radio_meter("all")
+            continue
+        _tag, label, group, actions = next(item for item in groups if item[0] == choice)
+        settings = {key: HARDWARE_SETTINGS[key] for key in HARDWARE_GROUP_KEYS[group]}
+        section_options_menu("hardware", settings, label, actions)
 
 
 def interactive():
@@ -1169,8 +1749,10 @@ def interactive():
     if not sys.stdin.isatty() or not sys.stdout.isatty() or not sys.stderr.isatty():
         sys.exit("usbradioplus-processing-tune requires an interactive terminal.")
     if os.environ.get("TERM", "").lower() in ("", "dumb", "unknown"):
-        sys.exit("The terminal type is not usable for a menu (TERM is unset or dumb). "
-                 "Start it from the same terminal in which asl-menu works.")
+        sys.exit(
+            "The terminal type is not usable for a menu (TERM is unset or dumb). "
+            "Start it from the same terminal in which asl-menu works."
+        )
     os.makedirs(os.path.dirname(LOCK), exist_ok=True)
     with open(LOCK, "w", encoding="ascii") as lock:
         try:
@@ -1180,33 +1762,71 @@ def interactive():
         starting = read_config()
         selected = "1"
         while True:
-            code, choice = dialog(["--ok-button", "Select", "--cancel-button", "Exit",
-                                   "--default-item", selected,
-                                   "--menu",
-                                   "Select a configuration section. Audio processing changes apply immediately; hardware pin assignments are applied by restarting Asterisk.",
-                                   "18", "72", "10",
-                                   "1", "Local receiver",
-                                   "2", "Linked audio",
-                                   "3", "Voice + telemetry",
-                                   "4", "Asterisk channel settings",
-                                   "5", "CM119 hardware",
-                                   "6", "Duplex operation",
-                                   "7", "General channel settings",
-                                   "8", "Diagnostics",
-                                   "T", "Radio calibration and continuous meters",
-                                   "S", "Show complete active configuration",
-                                   "W", "Save this live processing session",
-                                   "E", "Write live radio tuning and EEPROM values",
-                                   "B", "Create a timestamped configuration backup",
-                                   "R", "Discard live changes since the last save"])
+            code, choice = dialog(
+                [
+                    "--ok-button",
+                    "Select",
+                    "--cancel-button",
+                    "Exit",
+                    "--default-item",
+                    selected,
+                    "--menu",
+                    "Select a configuration section. Audio processing changes apply "
+                    "immediately; hardware pin assignments are applied by restarting "
+                    "Asterisk.",
+                    "18",
+                    "72",
+                    "10",
+                    "1",
+                    "Local receiver",
+                    "2",
+                    "Linked audio",
+                    "3",
+                    "Voice + telemetry",
+                    "4",
+                    "Asterisk channel settings",
+                    "5",
+                    "CM119 hardware",
+                    "6",
+                    "Duplex operation",
+                    "7",
+                    "General channel settings",
+                    "8",
+                    "Diagnostics",
+                    "S",
+                    "Show complete active configuration",
+                    "W",
+                    "Save this live processing session",
+                    "E",
+                    "Write live radio tuning and EEPROM values",
+                    "B",
+                    "Create a timestamped configuration backup",
+                    "R",
+                    "Discard live changes since the last save",
+                ]
+            )
             if code:
                 if read_config() == starting:
                     return
-                action, selected = dialog(["--ok-button", "Select", "--cancel-button", "Continue editing",
-                                           "--menu", "Live processing settings have changed.", "12", "68", "3",
-                                           "save", "Save changes and exit",
-                                           "discard", "Discard changes and exit",
-                                           "continue", "Return to the menu"])
+                action, selected = dialog(
+                    [
+                        "--ok-button",
+                        "Select",
+                        "--cancel-button",
+                        "Continue editing",
+                        "--menu",
+                        "Live processing settings have changed.",
+                        "12",
+                        "68",
+                        "3",
+                        "save",
+                        "Save changes and exit",
+                        "discard",
+                        "Discard changes and exit",
+                        "continue",
+                        "Return to the menu",
+                    ]
+                )
                 if action or selected == "continue":
                     continue
                 if selected == "discard":
@@ -1224,34 +1844,70 @@ def interactive():
             elif choice == "4":
                 section_options_menu("asterisk", ASTERISK_SETTINGS, "Asterisk channel settings")
             elif choice == "5":
-                section_options_menu("hardware", HARDWARE_SETTINGS, "CM119 hardware and radio signaling")
+                hardware_menu()
             elif choice == "6":
                 section_options_menu("duplex", DUPLEX_SETTINGS, "Duplex operation")
             elif choice == "7":
                 section_options_menu("general", GENERAL_SETTINGS, "General channel settings")
             elif choice == "8":
                 section_options_menu("diagnostics", DIAGNOSTICS_SETTINGS, "Diagnostics")
-            elif choice.upper() == "T":
-                launch_radio_tune()
             elif choice.upper() == "S":
-                dialog(["--ok-button", "Close", "--title", "Complete USBRadioPlus configuration", "--msgbox",
-                        complete_configuration(), "27", "100"])
+                dialog(
+                    [
+                        "--ok-button",
+                        "Close",
+                        "--title",
+                        "Complete USBRadioPlus configuration",
+                        "--msgbox",
+                        complete_configuration(),
+                        "27",
+                        "100",
+                    ]
+                )
             elif choice.upper() == "W":
                 starting = read_config()
-                dialog(["--ok-button", "Close", "--msgbox",
-                        "Current processing settings are saved. Use Radio calibration and continuous meters to save live radio and EEPROM tuning values.",
-                        "9", "72"])
+                dialog(
+                    [
+                        "--ok-button",
+                        "Close",
+                        "--msgbox",
+                        "Current processing settings are saved. Use Radio calibration "
+                        "and continuous meters to save live radio and EEPROM tuning values.",
+                        "9",
+                        "72",
+                    ]
+                )
             elif choice.upper() == "E":
                 output = run(["asterisk", "-rx", "radioplus tune menu-support j"])
-                dialog(["--ok-button", "Close", "--title", "Radio tuning save", "--msgbox",
-                        output, "9", "70"])
+                dialog(
+                    [
+                        "--ok-button",
+                        "Close",
+                        "--title",
+                        "Radio tuning save",
+                        "--msgbox",
+                        output,
+                        "9",
+                        "70",
+                    ]
+                )
             elif choice.upper() == "B":
                 path = CONFIG + ".bak." + datetime.now().strftime("%Y%m%d-%H%M%S")
                 shutil.copy2(CONFIG, path)
                 dialog(["--ok-button", "Close", "--msgbox", f"Backup created:\n{path}", "8", "72"])
             elif choice.upper() == "R":
-                rc, _ = dialog(["--yes-button", "Restore", "--no-button", "Cancel",
-                                "--yesno", "Restore the configuration from the start of this session?", "8", "64"])
+                rc, _ = dialog(
+                    [
+                        "--yes-button",
+                        "Restore",
+                        "--no-button",
+                        "Cancel",
+                        "--yesno",
+                        "Restore the configuration from the start of this session?",
+                        "8",
+                        "64",
+                    ]
+                )
                 if not rc:
                     old = read_config()
                     try:
@@ -1263,19 +1919,25 @@ def interactive():
 def main():
     global CONFIG, LOCK, NODE
     parser = argparse.ArgumentParser(description="Interactive USBRadioPlus processing tuner")
-    parser.add_argument("--check", action="store_true", help="validate prerequisites and configuration")
+    parser.add_argument(
+        "--check", action="store_true", help="validate prerequisites and configuration"
+    )
     parser.add_argument("--config", default=CONFIG, help="processing configuration path")
     parser.add_argument("--lock", default=LOCK, help="menu lock-file path")
-    parser.add_argument("--offline", action="store_true",
-                        help="with --check, do not require whiptail or Asterisk")
+    parser.add_argument(
+        "--offline", action="store_true", help="with --check, do not require whiptail or Asterisk"
+    )
     parser.add_argument("-n", "--node", help="select the active RadioPlus channel")
     args = parser.parse_args()
     CONFIG, LOCK = args.config, args.lock
     NODE = args.node
     ensure_config()
     if args.check:
-        missing = [] if args.offline else [name for name in ("whiptail", "asterisk", RADIO_TUNE)
-                                           if not shutil.which(name)]
+        missing = (
+            []
+            if args.offline
+            else [name for name in ("whiptail", "asterisk", RADIO_TUNE) if not shutil.which(name)]
+        )
         if missing:
             sys.exit("Missing: " + ", ".join(missing))
         text = read_config()

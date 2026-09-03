@@ -57,8 +57,7 @@ struct txagc_avfilter {
 void txagc_avfilter_init(struct txagc_avfilter *state);
 void txagc_avfilter_destroy(struct txagc_avfilter *state);
 void txagc_avfilter_reset(struct txagc_avfilter *state);
-int txagc_avfilter_process(struct txagc_avfilter *state,
-	const struct txagc_config *config, double *samples, size_t count,
-	unsigned int sample_rate);
+int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_config *config,
+			   double *samples, size_t count, unsigned int sample_rate);
 
 #endif
