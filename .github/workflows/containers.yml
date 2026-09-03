@@ -11,9 +11,6 @@ on:
         required: false
         default: ""
         type: string
-  push:
-    branches: [main]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
