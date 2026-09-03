@@ -38,6 +38,8 @@
 #ifndef USBRADIOPLUS_RADIO_H
 #define USBRADIOPLUS_RADIO_H 1
 
+#include "usbradioplus_squelch.h"
+
 #define URP_RADIO_DEVELOPMENT 0 /* when running in test mode */
 
 #define URP_RADIO_TRACE_OVFLW 0
@@ -399,6 +401,7 @@ typedef struct urp_radio_stage {
 	i16 hyst;	  /* hysterysis for amplitude comparator */
 	i16 compOut;  /* amplitude comparator output */
 	i16 blanking; /* blanking timer in frames */
+	struct urp_micor_squelch micor_squelch;
 
 	i32 discounteru; /* amplitude detector integrator discharge counter upper */
 	i32 discounterl; /* amplitude detector integrator discharge counter lower */

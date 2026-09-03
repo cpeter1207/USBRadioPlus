@@ -1605,17 +1605,45 @@ int usbradioplus_processing_set_local_input_gain(double gain_db)
 	return 0;
 }
 
-int usbradioplus_processing_save_local_input_gain(double gain_db)
+int usbradioplus_processing_set_hardware_input_gain(double gain_db)
+{
+	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0) return -1;
+	ast_mutex_lock(&settings_lock);
+	settings.hardware.input_gain_db = gain_db;
+	settings.hardware.input_gain_configured = 1;
+	ast_mutex_unlock(&settings_lock);
+	return 0;
+}
+
+int usbradioplus_processing_save_input_gains(double hardware_gain_db,
+	double local_gain_db)
 {
 	struct ast_flags flags = { CONFIG_FLAG_WITHCOMMENTS | CONFIG_FLAG_NOCACHE };
 	struct ast_config *cfg;
 	struct ast_category *category;
 	char value[32];
 
-	if (usbradioplus_processing_set_local_input_gain(gain_db)) return -1;
+	if (!isfinite(hardware_gain_db) || hardware_gain_db < -30.0
+		|| hardware_gain_db > 30.0 || !isfinite(local_gain_db)
+		|| local_gain_db < -30.0 || local_gain_db > 30.0) return -1;
 	cfg = ast_config_load2(CONFIG_FILE, "chan_usbradioplus", flags);
 	if (!cfg || cfg == CONFIG_STATUS_FILEMISSING || cfg == CONFIG_STATUS_FILEINVALID) {
-		ast_log(LOG_ERROR, "Unable to save local input gain: invalid %s\n", CONFIG_FILE);
+		ast_log(LOG_ERROR, "Unable to save input gains: invalid %s\n", CONFIG_FILE);
+		return -1;
+	}
+	category = ast_category_get(cfg, "hardware", NULL);
+	if (!category) {
+		category = ast_category_new("hardware", CONFIG_FILE, 0);
+		if (!category) {
+			ast_config_destroy(cfg);
+			return -1;
+		}
+		ast_category_append(cfg, category);
+	}
+	snprintf(value, sizeof(value), "%.3f", hardware_gain_db);
+	if (tune_variable_update(cfg, CONFIG_FILE, category,
+		"hardware_input_gain_db", value)) {
+		ast_config_destroy(cfg);
 		return -1;
 	}
 	category = ast_category_get(cfg, "local", NULL);
@@ -1627,40 +1655,10 @@ int usbradioplus_processing_save_local_input_gain(double gain_db)
 		}
 		ast_category_append(cfg, category);
 	}
-	snprintf(value, sizeof(value), "%.3f", gain_db);
+	snprintf(value, sizeof(value), "%.3f", local_gain_db);
 	if (tune_variable_update(cfg, CONFIG_FILE, category, "input_gain_db", value)
 		|| ast_config_text_file_save2(CONFIG_FILE, cfg, "chan_usbradioplus", 0)) {
-		ast_log(LOG_WARNING, "Failed to save local input gain to %s\n", CONFIG_FILE);
-		ast_config_destroy(cfg);
-		return -1;
-	}
-	ast_config_destroy(cfg);
-	return 0;
-}
-
-int usbradioplus_processing_save_hardware_input_gain(double gain_db)
-{
-	struct ast_flags flags = { CONFIG_FLAG_WITHCOMMENTS | CONFIG_FLAG_NOCACHE };
-	struct ast_config *cfg;
-	struct ast_category *category;
-	char value[32];
-
-	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0) return -1;
-	cfg = ast_config_load2(CONFIG_FILE, "chan_usbradioplus", flags);
-	if (!cfg || cfg == CONFIG_STATUS_FILEMISSING || cfg == CONFIG_STATUS_FILEINVALID)
-		return -1;
-	category = ast_category_get(cfg, "hardware", NULL);
-	if (!category) {
-		category = ast_category_new("hardware", CONFIG_FILE, 0);
-		if (!category) {
-			ast_config_destroy(cfg);
-			return -1;
-		}
-		ast_category_append(cfg, category);
-	}
-	snprintf(value, sizeof(value), "%.3f", gain_db);
-	if (tune_variable_update(cfg, CONFIG_FILE, category, "hardware_input_gain_db", value)
-		|| ast_config_text_file_save2(CONFIG_FILE, cfg, "chan_usbradioplus", 0)) {
+		ast_log(LOG_WARNING, "Failed to save input gains to %s\n", CONFIG_FILE);
 		ast_config_destroy(cfg);
 		return -1;
 	}

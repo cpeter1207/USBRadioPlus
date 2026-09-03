@@ -24,8 +24,11 @@ two configured interfaces; it does not exchange their radio settings.
 .TP
 .B Auto-detect RX noise level
 With no carrier present, adjust USB capture level and the DSP carrier-squelch
-starting point. This requires flat discriminator audio and should be followed
-by receiver-level and squelch verification.
+starting point. Flat discriminator calibration targets 27,000 peak PCM codes,
+accepts values within 2,750 codes, and makes at most 12 attempts. Each attempt
+reports peak and RMS levels in PCM codes and dBFS. This requires flat
+discriminator audio and should be followed by receiver-level and squelch
+verification.
 .TP
 .B Set RX voice level using display
 Show a live deviation bar, then accept a 0--999 receive voice setting. This

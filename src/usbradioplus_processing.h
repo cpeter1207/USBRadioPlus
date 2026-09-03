@@ -56,8 +56,9 @@ int usbradioplus_processing_get_hardware(struct usbradioplus_hardware_settings *
 int usbradioplus_processing_get_option(const char *section, const char *name,
 	char *value, size_t value_size);
 int usbradioplus_processing_set_local_input_gain(double gain_db);
-int usbradioplus_processing_save_local_input_gain(double gain_db);
-int usbradioplus_processing_save_hardware_input_gain(double gain_db);
+int usbradioplus_processing_set_hardware_input_gain(double gain_db);
+int usbradioplus_processing_save_input_gains(double hardware_gain_db,
+	double local_gain_db);
 static int usbradioplus_processing_load(void);
 static int usbradioplus_processing_prime(void);
 static int usbradioplus_processing_unload(void);

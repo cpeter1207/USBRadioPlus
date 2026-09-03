@@ -541,20 +541,11 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 	if (doNoise) {
 		npwr = sqrt(npwr) / 16;
 
-		/* compOut=Squelched */
-		if (mySps->blanking) {
-			mySps->blanking--;
-		}
-
-		mySps->blanking = 0;
-		if (!mySps->compOut && ((npwr > (mySps->setpt + mySps->hyst)) || ((mySps->apeak < (mySps->setpt / 4)) && (npwr > mySps->setpt)))) {
-			if (!mySps->compOut) {
-				mySps->blanking = 2;
-				mySps->compOut = 1;
-			}
-		} else if ((npwr < mySps->setpt) && (!mySps->blanking)) {
-			mySps->compOut = 0;
-		}
+		/* compOut means muted. MICOR-style bi-level timing suppresses clean
+		 * tails while keeping weak, fluttering speech from being chopped. */
+		mySps->compOut = urp_micor_squelch_update(&mySps->micor_squelch,
+			mySps->compOut, (uint32_t) npwr, (uint32_t) mySps->setpt,
+			(uint32_t) mySps->hyst, MS_PER_FRAME);
 
 #if URP_RADIO_DEBUG == 1
 		if (mySps->parentChan->tracetype) {
@@ -1316,7 +1307,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	}
 
 	pChan->rxCarrierPoint = (pChan->rxSquelchPoint * 32767) / 100;
-	pChan->rxCarrierHyst = 3000; /* pChan->rxCarrierPoint/15; */
 
 	pChan->rxDcsDecodeEnable = 0;
 
@@ -1510,6 +1500,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pSps->discfactor = 2;
 	pSps->hyst = pChan->rxCarrierHyst;
 	pSps->setpt = pChan->rxCarrierPoint;
+	pSps->compOut = 1;
 	pChan->prxSquelchAdjust = &pSps->setpt;
 #if URP_RADIO_DEBUG == 1
 	pSps->debugBuff0 = pChan->pRxDemod;

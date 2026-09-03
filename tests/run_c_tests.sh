@@ -27,6 +27,9 @@ cc $common "$root/tests/test_native_repeat.c" \
 	"$root/src/usbradioplus_repeat.c" -o "$out/native-repeat"
 "$out/native-repeat"
 
+cc $common "$root/tests/test_micor_squelch.c" -o "$out/micor-squelch"
+"$out/micor-squelch"
+
 for name in txagc_float avfilter_bandpass avfilter_ctcss avfilter_emphasis \
 	avfilter_equalizer \
 	avfilter_deesser \

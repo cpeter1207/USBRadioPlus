@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import runpy
 import re
 
@@ -24,6 +25,78 @@ def test_section_parser_and_non_destructive_insert():
     assert MODULE["section_values"](updated, "link") == {"enabled": "no"}
 
 
+def test_legacy_templates_are_presented_and_saved_as_modern_values(tmp_path):
+    main = tmp_path / "usbradioplus.conf"
+    main.write_text(
+        "[radio-template](!)\n"
+        "rxmixerset = 250\n"
+        "txmixb = composite\n"
+        "carrierfrom = dsp\n"
+        "eeprom = 1\n"
+        "[524950](radio-template)\n"
+        "txmixb = tone\n",
+        encoding="utf-8",
+    )
+    fallbacks = MODULE["legacy_fallback_values"](str(main), "524950")
+    assert float(fallbacks["hardware_input_gain_db"]) == -6.0206
+    assert fallbacks["hardware_output_b_assignment"] == "ctcss"
+    assert fallbacks["hardware_cos_assignment"] == "dsp"
+    assert fallbacks["hardware_eeprom_enabled"] == "yes"
+    migrated = MODULE["materialize_legacy_fallbacks"](
+        "[local]\nenabled = yes\n", fallbacks)
+    hardware = MODULE["section_values"](migrated, "hardware")
+    assert hardware["hardware_output_b_assignment"] == "ctcss"
+    assert hardware["hardware_cos_assignment"] == "dsp"
+    assert "legacy fallback" not in migrated
+
+
+def test_legacy_includes_and_assignment_names_are_normalized(tmp_path):
+    custom = tmp_path / "custom.conf"
+    custom.write_text("[radio-template](!)\ntxmixa = no\npp2 = out\n", encoding="utf-8")
+    main = tmp_path / "usbradioplus.conf"
+    main.write_text(
+        '#tryinclude "custom.conf"\n[524950](radio-template)\ntxmixa = auxvoice\n',
+        encoding="utf-8",
+    )
+    fallbacks = MODULE["legacy_fallback_values"](str(main), "524950")
+    assert fallbacks["hardware_output_a_assignment"] == "auxvoice"
+    assert fallbacks["hardware_parallel_pin_2_assignment"] == "out0"
+
+
+def test_hardware_pin_assignments_require_restart():
+    original = "[hardware]\nhardware_gpio_1_mode = in\n"
+    output_routing = MODULE["replace_value"](
+        original, "hardware", "hardware_output_a_assignment", "voice")
+    gpio_routing = MODULE["replace_value"](
+        original, "hardware", "hardware_gpio_1_mode", "out0")
+    parallel_routing = MODULE["replace_value"](
+        original, "hardware", "hardware_parallel_pin_2_assignment", "ptt")
+    assert not MODULE["restart_required"](original, output_routing)
+    assert MODULE["restart_required"](original, gpio_routing)
+    assert MODULE["restart_required"](original, parallel_routing)
+
+
+def test_every_nonchain_setting_has_a_concrete_shipped_default():
+    defaults = MODULE["shipped_modern_defaults"]()
+    expected = {
+        key for settings in MODULE["MODERN_SECTION_SETTINGS"].values()
+        for key in settings
+    }
+    assert defaults.keys() >= expected
+    assert defaults["hardware_input_gain_db"] == "0.0"
+    assert defaults["hardware_gpio_1_mode"] == "in"
+    assert defaults["asterisk_jitter_buffer_implementation"] == "fixed"
+
+
+def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch):
+    path = tmp_path / "usbradioplus-processing.conf"
+    path.write_text("[general]\nenabled = yes\n", encoding="utf-8")
+    account = type("Account", (), {"pw_uid": os.getuid(), "pw_gid": os.getgid()})()
+    monkeypatch.setattr(MODULE["pwd"], "getpwnam", lambda _name: account)
+    MODULE["set_config_permissions"](path)
+    assert path.stat().st_mode & 0o777 == 0o640
+
+
 def test_tuner_uses_current_cli_and_accessible_keys():
     source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
     assert "txagc reload" not in source
@@ -42,6 +115,7 @@ def test_whiptail_menus_preserve_the_selected_item():
     source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
     assert source.count('"--default-item", selected') == 3
     assert source.count("selected = choice") == 3
+    assert 'if initial.startswith("-"):' in source
 
 
 def test_text_menus_place_the_cursor_on_the_selected_row():
@@ -62,7 +136,7 @@ def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
     try:
         MODULE["ensure_config"]()
         assert config.read_text(encoding="utf-8") == sample.read_text(encoding="utf-8")
-        assert config.stat().st_mode & 0o777 == 0o644
+        assert config.stat().st_mode & 0o777 == 0o640
     finally:
         MODULE["ensure_config"].__globals__["CONFIG"] = old_config
         MODULE["ensure_config"].__globals__["DEFAULT_CONFIG_CANDIDATES"] = old_candidates

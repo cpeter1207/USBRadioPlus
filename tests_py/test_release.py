@@ -204,7 +204,8 @@ def test_native_receive_preserves_legacy_level_and_delay():
 def test_hardware_input_gain_controls_capture_with_rxmixerset_fallback():
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
-        assert "plus_presquelch_gain_configured" in source
+        assert "plus_presquelch_gain" not in source
+        assert "usbradioplus_processing_set_hardware_input_gain" in source
         assert "500.0 * pow(10.0, gain_db / 20.0)" in source
         assert "hardware.input_gain_configured" in source
         assert "presquelch_gain_to_mixer(hardware.input_gain_db) : o->rxmixerset" in source
@@ -213,10 +214,25 @@ def test_hardware_input_gain_controls_capture_with_rxmixerset_fallback():
         assert "pow(" not in prepare
         native = source[source.index("static void usbradioplus_native_tick"):
                         source.index("static char *handle_radioplus_native_stats")]
-        assert "program_gain_db = o->plus_presquelch_gain_db" not in native
     docs = text("man/usbradioplus-processing.conf.5")
     assert "normalized mixer midpoint, 500" in docs
     assert "hardware_input_gain_db" in docs
+
+
+def test_rx_noise_calibration_matches_usbradio_and_reports_levels():
+    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
+        source = text(name)
+        start = source.index("static void tune_rxinput(", source.index("static void tune_rxinput(") + 1)
+        end = source.index("static void tune_rxvoice(", start)
+        calibration = source[start:end]
+        assert "const int maxtries = 12;" in calibration
+        assert "target = 27000;" in calibration
+        assert "int tolerance = 2750;" in calibration
+        assert "Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS)" in calibration
+        assert "target = 32767;" not in calibration
+    manual = text("man/usbradioplus-tune.8")
+    assert "27,000 peak PCM codes" in manual
+    assert "peak and RMS levels" in manual
 
 def test_processing_hardware_section_covers_gain_routing_and_fallbacks():
     parser = text("src/usbradioplus_processing.c")
@@ -236,7 +252,8 @@ def test_processing_hardware_section_covers_gain_routing_and_fallbacks():
         assert option in manual
         assert option in tuner
     assert "500.0 * pow(10.0, gain_db / 20.0)" in text("src/chan_usbradioplus.c")
-    assert "legacy fallback" in tuner
+    assert "LEGACY_OPTION_MAP" in tuner
+    assert "materialize_legacy_fallbacks" in tuner
     for assignment in ("off", "voice", "ctcss", "voice_ctcss", "auxvoice"):
         assert assignment in parser
     module = text("src/chan_usbradioplus.c")
@@ -493,7 +510,7 @@ def test_tuning_commands_and_persistence_cover_all_levels():
     for field in ("rxmixerset", "rxsquelchadj", "txmixaset",
                   "txmixbset", "txctcssadj"):
         assert f"CONFIG_UPDATE_" in saver and field in saver
-    assert "usbradioplus_processing_save_local_input_gain" in saver
+    assert "usbradioplus_processing_save_input_gains" in saver
     for field in ("EEPROM_USER_TXMIXASET", "EEPROM_USER_TXMIXBSET",
                   "EEPROM_USER_RXVOICEADJ", "EEPROM_USER_TXCTCSSADJ",
                   "EEPROM_USER_RXSQUELCHADJ"):

@@ -264,9 +264,6 @@ struct chan_usbradio_pvt {
 	struct txagc_avfilter plus_final_avfilter;
 	struct txagc_rnnoise plus_local_rnnoise;
 	double plus_emphasis_corner_hz;
-	/* Live tuning override; persisted as [hardware] hardware_input_gain_db. */
-	double plus_presquelch_gain_db;
-	int plus_presquelch_gain_configured;
 	int plus_hardware_applied;
 	int plus_applied_rxmixer, plus_applied_txmixaset, plus_applied_txmixbset;
 	int plus_applied_txmixa, plus_applied_txmixb;
@@ -540,7 +537,6 @@ static struct chan_usbradio_pvt usbradio_default = {
 	.plus_txhpf_hz = 300.0,
 	/* 750 us land-mobile pre/deemphasis: fc = 1 / (2*pi*750 us). */
 	.plus_emphasis_corner_hz = 212.206590789,
-	.plus_presquelch_gain_db = 0.0,
 };
 
 /*	DECLARE FUNCTION PROTOTYPES	*/
@@ -1371,8 +1367,7 @@ static void *hidthread(void *arg)
 						if (o->eeprom[EEPROM_USER_MAGIC_ADDR] != EEPROM_MAGIC) {
 							ast_log(LOG_ERROR, "Channel %s: EEPROM bad magic number\n", o->name);
 						} else {
-							if (!o->plus_presquelch_gain_configured)
-								o->rxmixerset = o->eeprom[EEPROM_USER_RXMIXERSET];
+							o->rxmixerset = o->eeprom[EEPROM_USER_RXMIXERSET];
 							o->txmixaset = o->eeprom[EEPROM_USER_TXMIXASET];
 							o->txmixbset = o->eeprom[EEPROM_USER_TXMIXBSET];
 							if (!o->legacy_rxvoiceadj_configured)
@@ -3433,8 +3428,6 @@ static double mixer_to_presquelch_gain(int setting)
 static int effective_rxmixerset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	if (o->plus_presquelch_gain_configured)
-		return presquelch_gain_to_mixer(o->plus_presquelch_gain_db);
 	return !usbradioplus_processing_get_hardware(&hardware) && hardware.input_gain_configured
 		? presquelch_gain_to_mixer(hardware.input_gain_db) : o->rxmixerset;
 }
@@ -3580,29 +3573,23 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 {
 	const int settingmin = 1;
 	const int settingstart = 2;
-	const int maxtries = 48;
+	const int maxtries = 12;
 
 	int target;
-	int tolerance;
+	int tolerance = 2750;
 	int setting = 0, tries = 0, tmpdiscfactor, meas, measnoise;
-	int bestsetting = 0, bestmeas = 0;
+	unsigned int rms = 0, stats_index;
+	double peak_dbfs, rms_dbfs;
 	float settingmax, f;
 
 	if (o->rxdemod == RX_AUDIO_SPEAKER && o->rxcdtype == CD_XPMR_NOISE) {
 		ast_cli(fd, "ERROR: usbradioplus.conf rxdemod=speaker vs. carrierfrom=dsp \n");
 	}
 
-	/* Menu option 2 requests both flags: put discriminator noise at the PCM
-	 * rail before deriving the DSP squelch threshold from that noise. */
-	if (setsql && intflag) {
-		target = 32767;
-		tolerance = 1;
-	} else if (o->rxdemod == RX_AUDIO_FLAT) {
+	if (o->rxdemod == RX_AUDIO_FLAT) {
 		target = 27000;
-		tolerance = 2750;
 	} else {
 		target = 23000;
-		tolerance = 2750;
 	}
 
 	settingmax = o->micmax;
@@ -3635,14 +3622,15 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		meas = o->radio->spsMeasure->apeak;
 		o->radio->spsMeasure->enabled = 0;
 
-		if (setsql && intflag && meas <= target && meas > bestmeas) {
-			bestmeas = meas;
-			bestsetting = setting;
-		}
 		if (!meas) {
 			meas++;
 		}
-		ast_cli(fd, "tries=%i, setting=%i, meas=%i\n", tries, setting, meas);
+		stats_index = (o->rxaudiostats.index + AUDIO_STATS_LEN - 1) % AUDIO_STATS_LEN;
+		rms = (unsigned int) (sqrt((double) o->rxaudiostats.pwrbuf[stats_index]) + 0.5);
+		peak_dbfs = 20.0 * log10((double) meas / 32768.0);
+		rms_dbfs = rms ? 20.0 * log10((double) rms / 32768.0) : -96.0;
+		ast_cli(fd, "tries=%i, setting=%i, Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS)\n",
+			tries, setting, meas, peak_dbfs, rms, rms_dbfs);
 
 		if ((meas < (target - tolerance) || meas > (target + tolerance)) && tries <= 2) {
 			f = (float) (setting * target) / meas;
@@ -3660,24 +3648,7 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		} else if (setting > settingmax) {
 			setting = settingmax;
 		}
-		/* Reserve the final measurement for the hardware maximum so an input
-		 * that cannot reach the rail still selects its highest attainable peak. */
-		if (setsql && intflag && tries == maxtries - 2
-			&& bestmeas < target - tolerance) {
-			setting = (int) settingmax;
-		}
-
 		tries++;
-	}
-	if (setsql && intflag && bestmeas) {
-		setting = bestsetting;
-		meas = bestmeas;
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_VOL, setting, 0);
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_BOOST, 1, 0);
-		if (ast_radio_wait_or_poll(fd, 100, intflag)) {
-			o->radio->b.tuning = 0;
-			return;
-		}
 	}
 
 	/* Measure HF Noise */
@@ -3700,20 +3671,17 @@ static void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int in
 		return;
 	}
 
-	ast_cli(fd, "DONE tries=%i, setting=%i, meas=%i, sqnoise=%i\n", tries, ((setting * 1000) + (o->micmax / 2)) / o->micmax, meas, measnoise);
+	ast_cli(fd, "DONE tries=%i, setting=%i, Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS), sqnoise=%i\n",
+		tries, ((setting * 1000) + (o->micmax / 2)) / o->micmax,
+		meas, peak_dbfs, rms, rms_dbfs, measnoise);
 
-	if ((setsql && intflag && !bestmeas)
-		|| (!(setsql && intflag)
-			&& (meas < target - tolerance || meas > target + tolerance))) {
+	if (meas < target - tolerance || meas > target + tolerance) {
 		ast_cli(fd, "ERROR: RX INPUT ADJUST FAILED.\n");
 	} else {
 		ast_cli(fd, "INFO: RX INPUT ADJUST SUCCESS.\n");
-		if (setsql && intflag && meas < target - tolerance) {
-			ast_cli(fd, "INFO: Using highest achievable RX noise peak of %d.\n", meas);
-		}
 		setting = ((setting * 1000) + (o->micmax / 2)) / o->micmax;
-		o->plus_presquelch_gain_db = mixer_to_presquelch_gain(setting);
-		o->plus_presquelch_gain_configured = 1;
+		usbradioplus_processing_set_hardware_input_gain(
+			mixer_to_presquelch_gain(setting));
 
 		if (o->rxcdtype == CD_XPMR_NOISE) {
 			int normRssi = ((32767 - o->radio->rxRssi) * AUDIO_ADJUSTMENT / 32767);
@@ -3869,8 +3837,8 @@ static void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 	if (o->rxdemod == RX_AUDIO_FLAT) {
 		f = (float) i / 200.0;
 	} else {
-		o->plus_presquelch_gain_db = mixer_to_presquelch_gain(i);
-		o->plus_presquelch_gain_configured = 1;
+		usbradioplus_processing_set_hardware_input_gain(
+			mixer_to_presquelch_gain(i));
 		/* adjust settings based on the device */
 		adjustment = effective_rxmixerset(o) * o->micmax / AUDIO_ADJUSTMENT;
 		/* get interval step size */
@@ -4825,9 +4793,6 @@ static void tune_write(struct chan_usbradio_pvt *o)
 			o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware")) {
 			ast_log(LOG_WARNING, "Failed to update duplex3mode\n");
 		}
-		if (o->plus_presquelch_gain_configured
-			&& usbradioplus_processing_save_hardware_input_gain(o->plus_presquelch_gain_db))
-			ast_log(LOG_WARNING, "Failed to update hardware_input_gain_db\n");
 		if (ast_config_text_file_save2(CONFIG, cfg, "chan_usbradio", 0)) {
 			ast_log(LOG_WARNING, "Failed to save config %s\n", CONFIG);
 		}
@@ -4839,9 +4804,10 @@ static void tune_write(struct chan_usbradio_pvt *o)
 #undef CONFIG_UPDATE_BOOL
 #undef CONFIG_UPDATE_FLOAT
 #undef CONFIG_UPDATE_SIGNAL
-	if (usbradioplus_processing_save_local_input_gain(
-			effective_rx_input_gain_db(o))) {
-		ast_log(LOG_WARNING, "Failed to save local receive input gain\n");
+	if (usbradioplus_processing_save_input_gains(
+		mixer_to_presquelch_gain(effective_rxmixerset(o)),
+		effective_rx_input_gain_db(o))) {
+		ast_log(LOG_WARNING, "Failed to save receive input gains\n");
 	}
 
 	if (o->wanteeprom) {
@@ -6483,7 +6449,7 @@ static char *handle_radioplus_native_stats(struct ast_cli_entry *e, int cmd,
 		o->plus_tx_program_max_peak_dbfs,
 		o->plus_final_core.lookahead_limited_samples,
 		o->plus_tx_program_rail_samples,
-		o->plus_presquelch_gain_db,
+		mixer_to_presquelch_gain(effective_rxmixerset(o)),
 		o->plus_link_queue_count,
 		PLUS_LINK_QUEUE_FRAMES, o->plus_link_queue_high_water,
 		o->plus_link_queue_underflows, o->plus_link_queue_overflows,
