@@ -109,7 +109,7 @@ jobs:
             libavutil-dev portaudio19-dev autoconf automake libtool patch xz-utils
           python3 -m venv /opt/usbradioplus-quality
           /opt/usbradioplus-quality/bin/pip install --no-cache-dir \
-            coverage==7.10.6 pytest==8.4.2
+            coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0
           echo /opt/usbradioplus-quality/bin >> "$GITHUB_PATH"
           sh ./scripts/install-rnnoise.sh
       - name: Run platform-specific tests and coverage

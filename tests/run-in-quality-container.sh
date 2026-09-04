@@ -29,7 +29,10 @@ cleanup_current()
 }
 
 cleanup_stale
-trap cleanup_current EXIT HUP INT TERM
+trap cleanup_current EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [ "$#" -eq 0 ]; then
 	set -- make platform-verify

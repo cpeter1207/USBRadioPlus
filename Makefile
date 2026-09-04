@@ -160,19 +160,19 @@ static-analysis:
 
 coverage:
 	rm -rf $(BUILD_DIR)/coverage
+	rm -f $(MODULE) $(TUNE) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
 	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
 	# Manual focused runs may place GCC counters at the repository root. Never
 	# allow counters produced by another compiler/image to enter this report.
 	rm -f ./*.gcda ./*.gcno
 	mkdir -p $(BUILD_DIR)/coverage
-	$(PYTHON) -m coverage run --branch -m pytest -q tests_py
-	$(PYTHON) -m coverage html -d $(BUILD_DIR)/coverage/python
-	$(PYTHON) -m coverage xml -o $(BUILD_DIR)/coverage/python.xml
-	$(PYTHON) -m coverage report --fail-under=100
+	$(PYTHON) -m pytest -q -n auto tests_py \
+		--cov=scripts --cov=tools --cov-branch --cov-fail-under=100 \
+		--cov-report=term --cov-report=html:$(BUILD_DIR)/coverage/python \
+		--cov-report=xml:$(BUILD_DIR)/coverage/python.xml
 	C_TEST_CFLAGS="--coverage -O0 -g" \
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
 		sh ./tests/run_c_tests.sh
-	rm -f $(MODULE) $(TUNE)
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
 	sh ./tests/run_coverage_integration.sh
 	# Keep the real-module smoke test mandatory, while using the channel harness
@@ -194,6 +194,7 @@ platform-verify:
 
 docs:
 	mkdir -p $(BUILD_DIR)
+	rm -f $(BUILD_DIR)/doxygen-warnings.log
 	$(DOXYGEN) Doxyfile
 	test ! -s $(BUILD_DIR)/doxygen-warnings.log
 

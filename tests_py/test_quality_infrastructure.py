@@ -60,8 +60,8 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
 
 def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
     makefile = read("Makefile")
-    assert "coverage run --branch" in makefile
-    assert "coverage report --fail-under=100" in makefile
+    assert "pytest -q -n auto" in makefile
+    assert "--cov-branch --cov-fail-under=100" in makefile
     assert "--fail-under-line 100 --fail-under-branch 100" in makefile
 
 
@@ -69,5 +69,7 @@ def test_local_container_runner_cleans_only_labeled_test_containers():
     runner = read("tests/run-in-quality-container.sh")
     assert "org.usbradioplus.test.scope=" in runner
     assert "cleanup_stale" in runner
-    assert "trap cleanup_current EXIT HUP INT TERM" in runner
+    assert "trap cleanup_current EXIT" in runner
+    assert "trap 'exit 130' INT" in runner
+    assert "trap 'exit 143' TERM" in runner
     assert 'docker run --rm --name "$name" --label "$label"' in runner
