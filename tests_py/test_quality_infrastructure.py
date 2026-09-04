@@ -70,7 +70,7 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     smoke = read("tests/container-smoke-test.sh")
     assert "module load res_usbradio.so" in smoke
     assert "module load chan_usbradioplus.so" in smoke
-    assert "module show like chan_usbradioplus" in smoke
+    assert "wait_for_module chan_usbradioplus" in smoke
     assert "radioplus processing show" in smoke
 
 

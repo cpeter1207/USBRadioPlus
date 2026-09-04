@@ -28,41 +28,37 @@ if [ "$ready" != true ]; then
 	exit 1
 fi
 
-# The channel imports the radio-resource HID helpers.  Wait for that provider
-# explicitly instead of racing Asterisk's asynchronous module autoload.
-resource_ready=false
-attempt=0
-while [ "$attempt" -lt 50 ]; do
+wait_for_module()
+{
+	module=$1
+	limit=$2
+	attempt=0
+	while [ "$attempt" -lt "$limit" ]; do
+		if asterisk -rx "module show like $module" 2>/dev/null | grep -E \
+			"${module}[.]so.*Running"; then
+			return 0
+		fi
+		attempt=$((attempt + 1))
+		sleep 0.1
+	done
+	return 1
+}
+
+# Do not issue a load request while asynchronous autoload is still registering
+# the provider.  Debian 13 can otherwise report a transient registration error.
+if ! wait_for_module res_usbradio 100; then
 	asterisk -rx 'module load res_usbradio.so' >/dev/null 2>&1 || true
-	if asterisk -rx 'module show like res_usbradio' 2>/dev/null | grep -E \
-		'res_usbradio[.]so.*Running'; then
-		resource_ready=true
-		break
-	fi
-	attempt=$((attempt + 1))
-	sleep 0.1
-done
-if [ "$resource_ready" != true ]; then
+fi
+if ! wait_for_module res_usbradio 20; then
 	echo "res_usbradio did not become ready" >&2
 	tail -n 100 "$log" >&2
 	exit 1
 fi
 
-module_ready=false
-attempt=0
-while [ "$attempt" -lt 50 ]; do
-	# Autoload may still be running after the Asterisk core becomes responsive.
-	# Loading is idempotent; the status query is the authoritative result.
+if ! wait_for_module chan_usbradioplus 10; then
 	asterisk -rx 'module load chan_usbradioplus.so' >/dev/null 2>&1 || true
-	if asterisk -rx 'module show like chan_usbradioplus' 2>/dev/null | grep -E \
-		'chan_usbradioplus[.]so.*Running'; then
-		module_ready=true
-		break
-	fi
-	attempt=$((attempt + 1))
-	sleep 0.1
-done
-if [ "$module_ready" != true ]; then
+fi
+if ! wait_for_module chan_usbradioplus 20; then
 	echo "chan_usbradioplus did not become ready" >&2
 	tail -n 100 "$log" >&2
 	exit 1
