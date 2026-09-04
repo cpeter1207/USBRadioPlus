@@ -10,7 +10,7 @@ install -m 0644 "$root/examples/usbradioplus.conf.default" /etc/asterisk/usbradi
 install -m 0644 "$root/examples/usbradioplus-processing.conf.sample" \
 	/etc/asterisk/usbradioplus-processing.conf
 
-URP_COVERAGE_INTEGRATION=1 "$root/tests/container-smoke-test.sh"
+URP_COVERAGE_INTEGRATION=1 sh "$root/tests/container-smoke-test.sh"
 
 # Exercise argument validation without requiring an interactive terminal.
 if "$root/build/usbradioplus-tune" --meter invalid 2>/dev/null; then
