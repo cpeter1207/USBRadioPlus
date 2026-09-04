@@ -37,7 +37,7 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
     assert workflow.count("platforms: linux/amd64,linux/arm64") == 3
     assert "ubuntu-24.04-arm" in workflow
     assert "RUN_SMOKE_TEST=1" in workflow
-    assert "needs: [verify, build]" in workflow
+    assert "needs: [verify, build, build-quality, publish-quality]" in workflow
     assert "target: asl3-clean" in workflow
     assert "target: usbradioplus-installed" in workflow
     assert "usbradioplus-asl3-debian" in workflow
@@ -47,7 +47,13 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
     assert "sha-${GITHUB_SHA::12}" in workflow
     assert "release_version" in workflow
     assert "quality_only" in workflow
-    assert 'test "$QUALITY_ONLY" = true || test "$VERIFY_RESULT" = success' in workflow
+    assert "build-quality:" in workflow
+    assert "publish-quality:" in workflow
+    assert "Build prepared quality image natively" in workflow
+    assert "docker buildx imagetools create" in workflow
+    assert 'test "$BUILD_QUALITY_RESULT" = success' in workflow
+    assert 'test "$PUBLISH_QUALITY_RESULT" = success' in workflow
+    assert 'test "$VERIFY_RESULT" = success' in workflow
     assert "Required container gate" in workflow
 
 
