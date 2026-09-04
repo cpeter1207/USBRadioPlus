@@ -1,0 +1,46 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: trixie
+Codename: trixie
+Date: Fri, 04 Sep 2026 20:29:56 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ 17b1e864c7d17e99e5844fb09a6dc3c5 3188 main/binary-amd64/Packages
+ 1d41ae05fc3ddbb16b6e500e332d45ba 1366 main/binary-amd64/Packages.gz
+ d54f289013b4dd2d2fc1ad9476d88868 143 main/binary-amd64/Release
+ 6e0179d771e3ab3dfec30fdcd29f0320 5088 main/binary-arm64/Packages
+ 23633975f655dbec0c2eafa6b72c624b 1756 main/binary-arm64/Packages.gz
+ 93c3386fbe84ff69eaa186077beaa099 143 main/binary-arm64/Release
+SHA1:
+ 099a5b1176a18f8cfe2276e4692a2ca36ed84540 3188 main/binary-amd64/Packages
+ a5422bb44a540dd56c38f80390cf08b6505a466c 1366 main/binary-amd64/Packages.gz
+ 5c3b7e0ccfa25bb832d1ace63468e9f21d9f1482 143 main/binary-amd64/Release
+ 71e449c68a1c26b2e0f0e63e33ed426f2a2043a9 5088 main/binary-arm64/Packages
+ d936ec5a34f8629ee02d934631d119bcf7630ccf 1756 main/binary-arm64/Packages.gz
+ 234a7acd006c30c3dd33e966c9ca4f633beea1e9 143 main/binary-arm64/Release
+SHA256:
+ 59662c8302b6ad49a4b34e32fc0ddd26595be8a9dfbb45b241091df23bbad587 3188 main/binary-amd64/Packages
+ e3d4c39bfcec96b7c72632f2732b8d1e41efbcc9c3b3974558f5b281cd726aa4 1366 main/binary-amd64/Packages.gz
+ 525681390319dc959bc0d941df033274e21b1dab533424b9761470f79a7bfc0d 143 main/binary-amd64/Release
+ 67afb1010fe5b8b348b4fae06b761abf8c11322be2b52a67cb1019e2ee2aa785 5088 main/binary-arm64/Packages
+ 89ce794500fc69ef22265e825d97e0514efee4b39715c0c9f1853bc18ae48135 1756 main/binary-arm64/Packages.gz
+ 4c38a8e8ecc7bae18bdc031fd8aea866c11ab38f33db530244cad1e460c44a23 143 main/binary-arm64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEoNWnng9cRenmNnmVCVFQK6x5XlUFAmqbKkQACgkQCVFQK6x5
+XlVdPgv/UPHyWg8qWK389Op0gVvr6zlU6yCbtB9+NO6XLVZ4K+JmCV3X3f2t2PpT
+Qxm1EqJsEVhCSun3OYEDUSBIHxMhF0V0CaPMA71Ap3wYE39RhLPR5Z/QxtyEt+6P
+cut6SmRsXd/FyImUujiaTjZkDS+lZXEC9yEsywIGV2bbUSukApKmF+0t14EWAlLc
+Gt3L4inHm3Phb7iKErON75ed5omctgZ6ekqs2V+7VeIpO30BxCyhpluAVPftEA1f
+uhdtING803BQ0eYrh9Hia0vuXQMVhPisenIzaOMQHbYuqD5cxIWwHwg13hHF9A9f
+vdkAuDIZMyMIe3IHfR0ZMUx+lE6D21NUfKlRl3MBiFgdYnOmqw86rNXAN0H3nAA9
+2+Bd/LXQi1n2BNfK4LpE5512uHdviOI8BPso3W8duBCJzzMFgrYArsFp8K4qYFJ3
+zyZ6I0C9HjJHGlhVXM8gZnHLlTJQExK4cXotZMXvsLeoZg3XmtSXdq5idEn1ni41
+xQrE/vKT
+=ttDe
+-----END PGP SIGNATURE-----

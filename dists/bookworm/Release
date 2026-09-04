@@ -1,0 +1,29 @@
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: bookworm
+Codename: bookworm
+Date: Fri, 04 Sep 2026 20:29:56 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ 0f439cbcadaf6546a782c5ec3cc1bb99 3183 main/binary-amd64/Packages
+ 75584ffd39a732c61c64d4e71c80d100 1366 main/binary-amd64/Packages.gz
+ 9e67ebc67971f9470745b9ab2f3c0cb3 145 main/binary-amd64/Release
+ c14b48e6aa441ca645b90c656c1d5121 3183 main/binary-arm64/Packages
+ cdb44b017616a4471d7b8b53a21e84f3 1369 main/binary-arm64/Packages.gz
+ 79665d92aee547a136521c140f66ebca 145 main/binary-arm64/Release
+SHA1:
+ 49de918737c5ae4cfd2dfa82842e5ea9ea8e5927 3183 main/binary-amd64/Packages
+ e192b5626c60ace468b8ec0716b8a3a79b63e88a 1366 main/binary-amd64/Packages.gz
+ 27e1f853fc2cf747ba594d70fa6900553bbad892 145 main/binary-amd64/Release
+ 7ba7d033ab06418ce47b98f1a160b6dc7a0445c8 3183 main/binary-arm64/Packages
+ be343ae59940cd53e1d9b82e018b0b65359bd32b 1369 main/binary-arm64/Packages.gz
+ fccdb59b8d190c74de4770b967dbc6169afc17a5 145 main/binary-arm64/Release
+SHA256:
+ 4ff4dba228ccfb93df5b00868e7f09035c4f7bad4b98c4b0a435c2509f986c98 3183 main/binary-amd64/Packages
+ ec6d1aae092d7b7e92978012fce2163a40426b7302e1e3acbe9fc2331b78196e 1366 main/binary-amd64/Packages.gz
+ 667494dd5bbd19db69ae486d0b5098dc0678a53fa8d300c895edc3bbd0c429b2 145 main/binary-amd64/Release
+ 2cc1dffdc999d705643666ab84b98ac86370e3e2096f6eb469ac8ab093da4555 3183 main/binary-arm64/Packages
+ 703ee6923fbe163d3862059aa0b07c0554de489552895bb16d364e8a4fcbed1b 1369 main/binary-arm64/Packages.gz
+ f872b45ed837f8bdf6e230de9b55659b5bdcfca204ce350bd4cd9f7f04555a87 145 main/binary-arm64/Release
