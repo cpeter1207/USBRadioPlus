@@ -17,7 +17,10 @@ def test_quality_matrix_covers_every_supported_platform():
     ):
         assert f'debian: "{debian}"\n            arch: {architecture}' in workflow
         assert f"runner: {runner}" in workflow
-    assert "make ci" in workflow
+    assert workflow.count("make lint static-analysis") == 1
+    assert "Build API documentation (informational)\n        continue-on-error: true" in workflow
+    assert "needs: quality" in workflow
+    assert "make check coverage distcheck" in workflow
     assert "Required quality gate" in workflow
 
 

@@ -72,12 +72,15 @@ struct urp_rtx_words urp_hardware_rtx_words(uint32_t rx_freq, uint32_t tx_freq, 
 
 void urp_hardware_set_channel(struct urp_parallel_bus *bus, uint8_t channel)
 {
+	uint8_t channel_mask;
+
 	if (!bus || !bus->write)
 		return;
 	bus->value |= URP_BIN_PROG_MASK;
 	urp_hardware_write(bus);
 	/* The four legacy channel-select outputs are active low. */
-	bus->value &= (uint8_t)~(channel << 4);
+	channel_mask = (uint8_t)(channel << 4);
+	bus->value &= (uint8_t)~channel_mask;
 	urp_hardware_write(bus);
 }
 
