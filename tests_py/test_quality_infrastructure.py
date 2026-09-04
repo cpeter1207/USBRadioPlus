@@ -17,18 +17,12 @@ def test_quality_matrix_covers_every_supported_platform():
     ):
         assert f'debian: "{debian}"\n            arch: {architecture}' in workflow
         assert f"runner: {runner}" in workflow
-    for command in (
-        "make lint",
-        "make static-cppcheck",
-        "make static-channel-tidy",
-        "make static-tune-tidy",
-        "make static-shared-tidy",
-        "make docs",
-    ):
-        assert command in workflow
-    assert "Clang-Tidy channel (modern API)" in workflow
-    assert "ASTERISK_INCLUDEDIR=/opt/asl-modern/include" in workflow
-    assert "continue-on-error: ${{ matrix.informational || false }}" in workflow
+    assert workflow.count("make lint & lint_pid=$!") == 1
+    assert workflow.count("make static-analysis & static_pid=$!") == 1
+    assert workflow.count("make docs & docs_pid=$!") == 1
+    assert 'wait "$lint_pid"' in workflow
+    assert 'wait "$static_pid"' in workflow
+    assert 'wait "$docs_pid"' in workflow
     assert "needs: quality" in workflow
     assert "make platform-verify" in workflow
     assert "usbradioplus-quality-debian13:latest" in workflow
