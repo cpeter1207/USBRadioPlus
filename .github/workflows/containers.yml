@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   verify:
-    if: ${{ !inputs.quality_only }}
+    if: ${{ !inputs.quality_only && !(github.event_name == 'push' || inputs.publish) }}
     strategy:
       fail-fast: false
       matrix:
@@ -128,7 +128,9 @@ jobs:
           file: containers/Dockerfile
           target: usbradioplus-installed
           platforms: ${{ matrix.architecture.platform }}
-          build-args: DEBIAN_VERSION=${{ matrix.debian }}
+          build-args: |
+            DEBIAN_VERSION=${{ matrix.debian }}
+            RUN_SMOKE_TEST=1
           push: true
           tags: ${{ steps.tags.outputs.installed }}
           cache-from: type=gha,scope=installed-${{ matrix.debian }}-${{ matrix.architecture.suffix }}
@@ -283,11 +285,12 @@ jobs:
             test "$BUILD_QUALITY_RESULT" = success
             test "$PUBLISH_QUALITY_RESULT" = success
           else
-            test "$VERIFY_RESULT" = success
             if [[ "$PUBLISH" == true ]]; then
+              test "$VERIFY_RESULT" = skipped
               test "$BUILD_RESULT" = success
               test "$PUBLISH_RESULT" = success
             else
+              test "$VERIFY_RESULT" = success
               test "$BUILD_RESULT" = skipped
               test "$PUBLISH_RESULT" = skipped
             fi

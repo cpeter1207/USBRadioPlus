@@ -58,6 +58,7 @@ def test_container_workflow_builds_and_publishes_native_multiarch_images():
     assert 'test "$PUBLISH_QUALITY_RESULT" = success' in workflow
     assert 'test "$PUBLISH_RESULT" = success' in workflow
     assert 'test "$VERIFY_RESULT" = success' in workflow
+    assert 'test "$VERIFY_RESULT" = skipped' in workflow
     assert 'test "$BUILD_RESULT" = skipped' in workflow
     assert "Required container gate" in workflow
 
