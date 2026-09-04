@@ -596,8 +596,15 @@ typedef void (*child_test)(void);
 
 static void expect_child_exit(child_test test, int expected)
 {
+	void (*previous_handler)(int);
 	int status;
-	pid_t child = fork();
+	pid_t child;
+
+	/* The utility's asynchronous reaper must not collect this test-owned child
+	 * before the synchronous wait below. */
+	previous_handler = signal(SIGCHLD, SIG_DFL);
+	assert(previous_handler != SIG_ERR);
+	child = fork();
 
 	assert(child >= 0);
 	if (!child) {
@@ -605,6 +612,7 @@ static void expect_child_exit(child_test test, int expected)
 		exit(EXIT_SUCCESS);
 	}
 	assert(waitpid(child, &status, 0) == child);
+	assert(signal(SIGCHLD, previous_handler) != SIG_ERR);
 	assert(WIFEXITED(status));
 	assert(WEXITSTATUS(status) == expected);
 }
