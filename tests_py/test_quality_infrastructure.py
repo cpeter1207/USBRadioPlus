@@ -13,7 +13,9 @@ def test_quality_matrix_covers_every_supported_platform():
     assert "pull_request:" in workflow
     assert "workflow_dispatch:" in workflow
     assert f"uses: {WORKFLOW_REF.format('quality.yml')}" in workflow
-    assert "contents: read" in workflow
+    assert "contents: write" in workflow
+    assert "pages: write" in workflow
+    assert "id-token: write" in workflow
     assert "runs-on:" not in workflow
     assert "make " not in workflow
 
