@@ -56,6 +56,7 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     quality = dockerfile.split("FROM quality AS staged", maxsplit=1)[0]
     assert "COPY . ." not in quality
     assert "COPY scripts/install-rnnoise.sh" in quality
+    assert "COPY packaging/rnnoise/debian/patches/" in quality
     assert "FROM asl3-clean AS usbradioplus-installed" in dockerfile
     assert "COPY --from=staged /stage/ /" in dockerfile
     assert "container-smoke-test.sh" in dockerfile

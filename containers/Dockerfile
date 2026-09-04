@@ -27,8 +27,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 ENV PATH="/opt/usbradioplus-quality/bin:${PATH}"
 
-COPY scripts/install-rnnoise.sh /tmp/install-rnnoise.sh
-RUN sh /tmp/install-rnnoise.sh && rm -f /tmp/install-rnnoise.sh
+COPY scripts/install-rnnoise.sh /tmp/usbradioplus/scripts/
+COPY packaging/rnnoise/debian/patches/ \
+  /tmp/usbradioplus/packaging/rnnoise/debian/patches/
+RUN sh /tmp/usbradioplus/scripts/install-rnnoise.sh && rm -rf /tmp/usbradioplus
 
 WORKDIR /usr/src/usbradioplus
 
