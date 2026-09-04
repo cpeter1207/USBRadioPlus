@@ -85,7 +85,8 @@ DIST_DIRS := .github containers debian packaging src scripts examples man doc te
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
 
-.PHONY: all check ci coverage docs lint static-analysis platform-verify \
+.PHONY: all check ci coverage docs lint static-analysis static-cppcheck \
+	static-channel-tidy static-tune-tidy static-shared-tidy platform-verify \
 	clean dist distcheck install install-strip install-from-dist \
 	print-asl-radio-api uninstall validate-release
 
@@ -129,34 +130,34 @@ lint:
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 
-static-analysis:
-	@set +e; \
+static-cppcheck:
 	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 --check-level=exhaustive \
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
 		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
-		-Isrc src & cppcheck_pid=$$!; \
+		-Isrc src
+
+static-channel-tidy:
 	clang-tidy $(CHANNEL_SOURCE) \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
-		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
-		& channel_tidy_pid=$$!; \
+		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self
+
+static-tune-tidy:
 	clang-tidy src/usbradioplus-tune.c -- $(COMMON_CPPFLAGS) -std=gnu11 -fblocks \
-		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self \
-		& tune_tidy_pid=$$!; \
+		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self
+
+static-shared-tidy:
 	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dsp.c \
 		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
 		src/txagc/rnnoise_processor.c \
-		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
-		& shared_tidy_pid=$$!; \
-	status=0; \
-	for pid in $$cppcheck_pid $$channel_tidy_pid $$tune_tidy_pid $$shared_tidy_pid; do \
-		wait $$pid || status=1; \
-	done; \
-	exit $$status
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11
+
+static-analysis:
+	$(MAKE) -j4 static-cppcheck static-channel-tidy static-tune-tidy static-shared-tidy
 
 coverage:
 	rm -rf $(BUILD_DIR)/coverage
