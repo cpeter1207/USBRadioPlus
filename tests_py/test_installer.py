@@ -9,16 +9,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_staged_install_manifest(tmp_path):
     stage = tmp_path / "stage"
+    build = tmp_path / "build"
     fixture = ROOT / "tests/fixtures/asterisk-dev"
     environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
     subprocess.run(
         [
             "make",
-            "clean",
             "install",
             f"DESTDIR={stage}",
             "prefix=/usr",
             f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+            f"BUILD_DIR={build}",
         ],
         cwd=ROOT,
         env=environment,
@@ -61,6 +62,7 @@ def test_staged_install_manifest(tmp_path):
 
 def test_install_preserves_existing_processing_configuration(tmp_path):
     stage = tmp_path / "stage"
+    build = tmp_path / "build"
     config = stage / "etc/asterisk/usbradioplus-processing.conf"
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
@@ -73,6 +75,7 @@ def test_install_preserves_existing_processing_configuration(tmp_path):
             f"DESTDIR={stage}",
             "prefix=/usr",
             f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+            f"BUILD_DIR={build}",
         ],
         cwd=ROOT,
         env=environment,
@@ -86,6 +89,7 @@ def test_install_preserves_existing_processing_configuration(tmp_path):
 
 def test_install_preserves_existing_channel_configuration(tmp_path):
     stage = tmp_path / "stage"
+    build = tmp_path / "build"
     config = stage / "etc/asterisk/usbradioplus.conf"
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
@@ -98,6 +102,7 @@ def test_install_preserves_existing_channel_configuration(tmp_path):
             f"DESTDIR={stage}",
             "prefix=/usr",
             f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+            f"BUILD_DIR={build}",
         ],
         cwd=ROOT,
         env=environment,
@@ -158,8 +163,10 @@ def test_installer_includes_asterisk_transitive_header_dependencies():
 
 def test_dist_archive_has_one_versioned_root(tmp_path):
     environment = dict(os.environ, SOURCE_DATE_EPOCH="0")
+    build = tmp_path / "build"
+    dist = tmp_path / "dist"
     subprocess.run(
-        ["make", "clean", "dist"],
+        ["make", "dist", f"BUILD_DIR={build}", f"DIST_DIR={dist}"],
         cwd=ROOT,
         env=environment,
         check=True,
@@ -168,7 +175,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         stderr=subprocess.STDOUT,
     )
     version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    archive = ROOT / "dist" / f"usbradioplus-{version}.tar.xz"
+    archive = dist / f"usbradioplus-{version}.tar.xz"
     assert archive.is_file()
     with tarfile.open(archive) as bundle:
         names = bundle.getnames()

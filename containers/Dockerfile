@@ -23,15 +23,19 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/usbradioplus-quality && \
     /opt/usbradioplus-quality/bin/pip install --no-cache-dir \
-      coverage==7.10.6 pytest==8.4.2 ruff==0.16.5
+      coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0 ruff==0.16.5
 
 ENV PATH="/opt/usbradioplus-quality/bin:${PATH}"
 
+COPY scripts/install-rnnoise.sh /tmp/usbradioplus/scripts/
+COPY packaging/rnnoise/debian/patches/ \
+  /tmp/usbradioplus/packaging/rnnoise/debian/patches/
+RUN sh /tmp/usbradioplus/scripts/install-rnnoise.sh && rm -rf /tmp/usbradioplus
+
 WORKDIR /usr/src/usbradioplus
-COPY . .
-RUN sh ./scripts/install-rnnoise.sh
 
 FROM quality AS staged
+COPY . .
 RUN make clean all && make DESTDIR=/stage prefix=/usr install
 
 FROM asl3-clean AS usbradioplus-installed
