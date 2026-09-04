@@ -1,6 +1,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW_REF = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/{}@main"
 
 
 def read(path):
@@ -9,58 +10,24 @@ def read(path):
 
 def test_quality_matrix_covers_every_supported_platform():
     workflow = read(".github/workflows/quality.yml")
-    for debian, architecture, runner in (
-        ("12", "amd64", "ubuntu-24.04"),
-        ("12", "arm64", "ubuntu-24.04-arm"),
-        ("13", "amd64", "ubuntu-24.04"),
-        ("13", "arm64", "ubuntu-24.04-arm"),
-    ):
-        assert f'debian: "{debian}"\n            arch: {architecture}' in workflow
-        assert f"runner: {runner}" in workflow
-    assert workflow.count("make lint & lint_pid=$!") == 1
-    assert workflow.count("make static-analysis & static_pid=$!") == 1
-    assert workflow.count("make docs & docs_pid=$!") == 1
-    assert 'wait "$lint_pid"' in workflow
-    assert 'wait "$static_pid"' in workflow
-    assert 'wait "$docs_pid"' in workflow
-    assert "needs: quality" in workflow
-    assert "make platform-verify" in workflow
-    assert "usbradioplus-quality-debian13:latest" in workflow
-    assert "usbradioplus-quality-debian${{ matrix.debian }}:latest" in workflow
-    assert "Install ASL3 and quality dependencies" not in workflow
-    assert "Required quality gate" in workflow
+    assert "pull_request:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert f"uses: {WORKFLOW_REF.format('quality.yml')}" in workflow
+    assert "contents: read" in workflow
+    assert "runs-on:" not in workflow
+    assert "make " not in workflow
 
 
 def test_container_workflow_builds_and_publishes_native_multiarch_images():
     workflow = read(".github/workflows/containers.yml")
-    assert "debian: ['12', '13']" in workflow
-    assert "docker/setup-qemu-action" not in workflow
-    assert workflow.count("platforms: ${{ matrix.architecture.platform }}") >= 4
-    assert "ubuntu-24.04-arm" in workflow
-    assert "RUN_SMOKE_TEST=1" in workflow
-    assert "needs: [verify, build, publish, build-quality, publish-quality]" in workflow
-    assert "target: asl3-clean" in workflow
-    assert "target: usbradioplus-installed" in workflow
-    assert "usbradioplus-asl3-debian" in workflow
-    assert "usbradioplus-debian" in workflow
-    assert "usbradioplus-quality-debian" in workflow
-    assert "target: quality" in workflow
-    assert "sha-${GITHUB_SHA::12}" in workflow
-    assert "release_version" in workflow
-    assert "quality_only" in workflow
-    assert "github.event_name == 'push' || inputs.publish" in workflow
-    assert "build-quality:" in workflow
-    assert "publish-quality:" in workflow
-    assert "publish:" in workflow
-    assert "Build prepared quality image natively" in workflow
-    assert "docker buildx imagetools create" in workflow
-    assert 'test "$BUILD_QUALITY_RESULT" = success' in workflow
-    assert 'test "$PUBLISH_QUALITY_RESULT" = success' in workflow
-    assert 'test "$PUBLISH_RESULT" = success' in workflow
-    assert 'test "$VERIFY_RESULT" = success' in workflow
-    assert 'test "$VERIFY_RESULT" = skipped' in workflow
-    assert 'test "$BUILD_RESULT" = skipped' in workflow
-    assert "Required container gate" in workflow
+    assert "pull_request:" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert f"uses: {WORKFLOW_REF.format('containers.yml')}" in workflow
+    for value in ("publish", "quality_only", "release_version"):
+        assert f"{value}: ${{{{ inputs.{value} }}}}" in workflow
+    assert "packages: write" in workflow
+    assert "runs-on:" not in workflow
+    assert "docker/" not in workflow
 
 
 def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
