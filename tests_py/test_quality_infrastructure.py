@@ -25,8 +25,9 @@ def test_container_workflow_builds_and_publishes_native_multiarch_images():
     assert "pull_request:" in workflow
     assert "workflow_dispatch:" in workflow
     assert f"uses: {WORKFLOW_REF.format('containers.yml')}" in workflow
-    for value in ("publish", "quality_only", "release_version"):
-        assert f"{value}: ${{{{ inputs.{value} }}}}" in workflow
+    assert "publish: ${{ inputs.publish == true }}" in workflow
+    assert "quality_only: ${{ inputs.quality_only == true }}" in workflow
+    assert "release_version: ${{ inputs.release_version || '' }}" in workflow
     assert "packages: write" in workflow
     assert "runs-on:" not in workflow
     assert "docker/" not in workflow

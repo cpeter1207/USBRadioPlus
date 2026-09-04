@@ -28,6 +28,6 @@ jobs:
   containers:
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/containers.yml@main
     with:
-      publish: ${{ inputs.publish }}
-      quality_only: ${{ inputs.quality_only }}
-      release_version: ${{ inputs.release_version }}
+      publish: ${{ inputs.publish == true }}
+      quality_only: ${{ inputs.quality_only == true }}
+      release_version: ${{ inputs.release_version || '' }}
