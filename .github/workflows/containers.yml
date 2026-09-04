@@ -13,6 +13,12 @@ on:
         type: string
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish prepared images to GitHub Container Registry
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -71,6 +77,8 @@ jobs:
           owner=$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           clean="ghcr.io/$owner/usbradioplus-asl3-debian${{ matrix.debian }}:clean"
           clean="$clean,ghcr.io/$owner/usbradioplus-asl3-debian${{ matrix.debian }}:sha-${GITHUB_SHA::12}"
+          quality="ghcr.io/$owner/usbradioplus-quality-debian${{ matrix.debian }}:latest"
+          quality="$quality,ghcr.io/$owner/usbradioplus-quality-debian${{ matrix.debian }}:sha-${GITHUB_SHA::12}"
           installed="ghcr.io/$owner/usbradioplus-debian${{ matrix.debian }}:sha-${GITHUB_SHA::12}"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version=${GITHUB_REF_NAME#v}
@@ -82,6 +90,7 @@ jobs:
             installed="$installed,ghcr.io/$owner/usbradioplus-debian${{ matrix.debian }}:${{ inputs.release_version }}"
           fi
           echo "clean=$clean" >> "$GITHUB_OUTPUT"
+          echo "quality=$quality" >> "$GITHUB_OUTPUT"
           echo "installed=$installed" >> "$GITHUB_OUTPUT"
       - name: Build clean ASL3 image
         uses: docker/build-push-action@v7
@@ -107,6 +116,18 @@ jobs:
           tags: ${{ steps.tags.outputs.installed }}
           cache-from: type=gha,scope=installed-${{ matrix.debian }}
           cache-to: type=gha,mode=max,scope=installed-${{ matrix.debian }}
+      - name: Build prepared quality image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: containers/Dockerfile
+          target: quality
+          platforms: linux/amd64,linux/arm64
+          build-args: DEBIAN_VERSION=${{ matrix.debian }}
+          push: ${{ github.event_name == 'push' || inputs.publish }}
+          tags: ${{ steps.tags.outputs.quality }}
+          cache-from: type=gha,scope=quality-${{ matrix.debian }}
+          cache-to: type=gha,mode=max,scope=quality-${{ matrix.debian }}
 
   required:
     name: Required container gate

@@ -15,7 +15,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 FROM asl3-clean AS quality
 ARG DEBIAN_VERSION
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      asl3-asterisk-dev build-essential clang clang-format clang-tidy cppcheck doxygen graphviz \
+      asl3-asterisk-dev build-essential clang clang-format clang-tidy cppcheck doxygen git graphviz \
       gcovr pkg-config python3 python3-pytest python3-venv shellcheck \
       libasound2-dev libusb-dev libusb-1.0-0-dev libsamplerate0-dev \
       libavfilter-dev libavutil-dev portaudio19-dev autoconf automake libtool \

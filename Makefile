@@ -36,6 +36,7 @@ WARNFLAGS ?= -Wall -Wextra -Werror -Wno-old-style-declaration
 ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
+PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 
 ASL_RADIO_API ?= $(strip $(shell \
@@ -84,8 +85,9 @@ DIST_DIRS := .github containers debian packaging src scripts examples man doc te
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
 
-.PHONY: all check ci coverage docs lint static-analysis clean dist distcheck \
-	install install-strip install-from-dist print-asl-radio-api uninstall
+.PHONY: all check ci coverage docs lint static-analysis platform-verify \
+	clean dist distcheck install install-strip install-from-dist \
+	print-asl-radio-api uninstall validate-release
 
 print-asl-radio-api:
 	@echo $(ASL_RADIO_API)
@@ -114,6 +116,9 @@ $(TUNE): src/usbradioplus-tune.c | $(BUILD_DIR)
 check: all
 	$(PYTHON) -m pytest -q tests_py
 	sh ./tests/run_c_tests.sh
+	$(MAKE) validate-release
+
+validate-release:
 	$(PYTHON) tools/validate_release.py
 
 lint:
@@ -125,24 +130,33 @@ lint:
 		packaging/repository/install-usbradioplus.sh
 
 static-analysis:
-	$(CPPCHECK) --std=c11 --check-level=exhaustive \
+	@set +e; \
+	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 --check-level=exhaustive \
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
 		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
-		-Isrc src
+		-Isrc src & cppcheck_pid=$$!; \
 	clang-tidy $(CHANNEL_SOURCE) \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
-		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self
+		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
+		& channel_tidy_pid=$$!; \
 	clang-tidy src/usbradioplus-tune.c -- $(COMMON_CPPFLAGS) -std=gnu11 -fblocks \
-		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self
+		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self \
+		& tune_tidy_pid=$$!; \
 	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dsp.c \
 		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
 		src/txagc/rnnoise_processor.c \
-		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
+		& shared_tidy_pid=$$!; \
+	status=0; \
+	for pid in $$cppcheck_pid $$channel_tidy_pid $$tune_tidy_pid $$shared_tidy_pid; do \
+		wait $$pid || status=1; \
+	done; \
+	exit $$status
 
 coverage:
 	rm -rf $(BUILD_DIR)/coverage
@@ -159,7 +173,7 @@ coverage:
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
 		sh ./tests/run_c_tests.sh
 	rm -f $(MODULE) $(TUNE)
-	$(MAKE) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
+	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
 	sh ./tests/run_coverage_integration.sh
 	# Keep the real-module smoke test mandatory, while using the channel harness
 	# counters for the adapter source compiled with explicit test interfaces.
@@ -169,6 +183,14 @@ coverage:
 		--html-details $(BUILD_DIR)/coverage/index.html \
 		--xml $(BUILD_DIR)/coverage/coverage.xml \
 		--fail-under-line 100 --fail-under-branch 100 --print-summary
+
+# Coverage already executes every Python and C test.  Follow it with the
+# non-test release validator and a clean build/install from the tarball instead
+# of running the identical suites two more times on every platform.
+platform-verify:
+	$(MAKE) coverage
+	$(MAKE) validate-release
+	$(MAKE) distcheck DISTCHECK_TEST_TARGET=
 
 docs:
 	mkdir -p $(BUILD_DIR)
@@ -233,17 +255,23 @@ $(TARBALL): $(DIST_FILES)
 	chmod 0755 $(BUILD_DIR)/$(DISTNAME)/scripts/* \
 		$(BUILD_DIR)/$(DISTNAME)/install.sh \
 		$(BUILD_DIR)/$(DISTNAME)/tests/run_c_tests.sh \
+		$(BUILD_DIR)/$(DISTNAME)/tests/run-in-quality-container.sh \
 		$(BUILD_DIR)/$(DISTNAME)/tests/container-smoke-test.sh \
 		$(BUILD_DIR)/$(DISTNAME)/tests/fixtures/asterisk-dev/fake-cc
 	$(TAR) --sort=name --mtime=@$(SOURCE_DATE_EPOCH) --owner=0 --group=0 \
 		--numeric-owner -C $(BUILD_DIR) -cJf $@ $(DISTNAME)
 
+DISTCHECK_TEST_TARGET ?= check
+
 distcheck: dist
 	set -eu; tmp=$$(mktemp -d "$(CURDIR)/build/distcheck.XXXXXX"); \
 		trap 'rm -rf "$$tmp"' EXIT; \
 		$(TAR) -C "$$tmp" -xf $(TARBALL); \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" check; \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" DESTDIR="$$tmp/stage" prefix=/usr install
+		if test -n "$(DISTCHECK_TEST_TARGET)"; then \
+			$(MAKE) -C "$$tmp/$(DISTNAME)" $(DISTCHECK_TEST_TARGET); \
+		fi; \
+		$(MAKE) -j$(PARALLEL_JOBS) -C "$$tmp/$(DISTNAME)" \
+			DESTDIR="$$tmp/stage" prefix=/usr install
 
 install-from-dist: dist
 	set -eu; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \

@@ -53,13 +53,19 @@ jobs:
             "$modern_include/res_usbradio.h" \
             7523e77d367ec8cd784711040789da2d3cc47584d2ac47c3b7788fbdc004832c \
             "$modern_include/rpt_chan_shared.h" | sha256sum -c -
-      - name: Run formatting, lint, and static analysis
+      - name: Run independent quality checks concurrently
         env:
           ASL_MODERN_INCLUDEDIR: /opt/asl-modern/include
-        run: make lint static-analysis
-      - name: Build API documentation (informational)
-        continue-on-error: true
-        run: make docs
+        run: |
+          set +e
+          make lint & lint_pid=$!
+          make static-analysis & static_pid=$!
+          make docs & docs_pid=$!
+          wait "$lint_pid"; lint_status=$?
+          wait "$static_pid"; static_status=$?
+          wait "$docs_pid" || echo "Doxygen reported informational warnings"
+          test "$lint_status" -eq 0
+          test "$static_status" -eq 0
 
   test:
     name: Debian ${{ matrix.debian }} / ${{ matrix.arch }}
@@ -122,7 +128,7 @@ jobs:
             "$modern_include/res_usbradio.h" \
             7523e77d367ec8cd784711040789da2d3cc47584d2ac47c3b7788fbdc004832c \
             "$modern_include/rpt_chan_shared.h" | sha256sum -c -
-          make check coverage distcheck
+          make platform-verify
       - name: Upload coverage
         uses: actions/upload-artifact@v7
         with:
