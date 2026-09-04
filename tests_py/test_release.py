@@ -716,25 +716,16 @@ def test_repository_uses_upstream_linux_layout():
 def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     workflow = text(".github/workflows/release.yml")
     makefile = text("Makefile")
-    for required in (
-        "container: debian:12",
-        "asl-apt-repos.deb12_all.deb",
-        "./scripts/install-build-deps.sh",
-        "make distcheck",
-        "git push --atomic origin HEAD:main",
-        "args=(release create",
-        "Start next development version",
-        "permissions:\n  contents: write",
-    ):
-        assert required in workflow
-    install_git = workflow.index("ca-certificates wget git gh")
-    checkout = workflow.index("uses: actions/checkout@v7")
-    assert install_git < checkout
-    assert 'git config --global --add safe.directory "$GITHUB_WORKSPACE"' in workflow
-    assert "TAG_NAME=\"v$(printf '%s' \"$RELEASE_VERSION\" | tr '~' '-')\"" in workflow
-    assert 'git check-ref-format "refs/tags/$TAG_NAME"' in workflow
-    assert 'ASSET_BASENAME="usbradioplus-$ASSET_VERSION.tar.xz"' in workflow
-    assert 'sha256sum "$ASSET_BASENAME" > "$ASSET_BASENAME.sha256"' in workflow
+    base = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/"
+    sha = "@main"
+    for name in ("quality.yml", "containers.yml", "release.yml", "packages.yml"):
+        assert f"uses: {base}{name}{sha}" in workflow
+    assert "needs: [quality, containers]" in workflow
+    assert "needs: release" in workflow
+    assert "source_ref: ${{ needs.release.outputs.tag_name }}" in workflow
+    assert "APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}" in workflow
+    assert "permissions:\n  contents: write" in workflow
+    assert "runs-on:" not in workflow
     assert "DIST_DIRS := .github " in makefile
     assert "CHANGELOG.md" in makefile
     assert (ROOT / "CHANGELOG.md").is_file()
