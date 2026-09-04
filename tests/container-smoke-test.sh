@@ -28,11 +28,25 @@ if [ "$ready" != true ]; then
 	exit 1
 fi
 
-# Autoload may win the startup race, in which case an explicit load reports
-# "already loaded." The running-state check below is the authoritative result.
-asterisk -rx 'module load chan_usbradioplus.so' >/dev/null 2>&1 || true
-asterisk -rx 'module show like chan_usbradioplus' | grep -E \
-	'chan_usbradioplus[.]so.*Running'
+module_ready=false
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	# Autoload may still be running after the Asterisk core becomes responsive.
+	# Loading is idempotent; the status query is the authoritative result.
+	asterisk -rx 'module load chan_usbradioplus.so' >/dev/null 2>&1 || true
+	if asterisk -rx 'module show like chan_usbradioplus' 2>/dev/null | grep -E \
+		'chan_usbradioplus[.]so.*Running'; then
+		module_ready=true
+		break
+	fi
+	attempt=$((attempt + 1))
+	sleep 0.1
+done
+if [ "$module_ready" != true ]; then
+	echo "chan_usbradioplus did not become ready" >&2
+	tail -n 100 "$log" >&2
+	exit 1
+fi
 asterisk -rx 'radioplus processing show' | grep -F 'Chain local:'
 
 if [ "${URP_COVERAGE_INTEGRATION:-0}" = 1 ]; then
