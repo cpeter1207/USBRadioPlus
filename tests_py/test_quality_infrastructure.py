@@ -47,6 +47,7 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
     assert "sha-${GITHUB_SHA::12}" in workflow
     assert "release_version" in workflow
     assert "quality_only" in workflow
+    assert "github.event_name == 'push' || inputs.publish" in workflow
     assert "build-quality:" in workflow
     assert "publish-quality:" in workflow
     assert "Build prepared quality image natively" in workflow
@@ -54,6 +55,7 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
     assert 'test "$BUILD_QUALITY_RESULT" = success' in workflow
     assert 'test "$PUBLISH_QUALITY_RESULT" = success' in workflow
     assert 'test "$VERIFY_RESULT" = success' in workflow
+    assert 'test "$BUILD_RESULT" = skipped' in workflow
     assert "Required container gate" in workflow
 
 

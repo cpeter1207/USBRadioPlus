@@ -64,7 +64,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=verify-${{ matrix.debian }}-${{ matrix.architecture.platform }}
 
   build:
-    if: ${{ !inputs.quality_only }}
+    if: ${{ !inputs.quality_only && (github.event_name == 'push' || inputs.publish) }}
     strategy:
       fail-fast: false
       matrix:
@@ -228,11 +228,16 @@ jobs:
           PUBLISH_QUALITY_RESULT: ${{ needs['publish-quality'].result }}
           VERIFY_RESULT: ${{ needs.verify.result }}
           QUALITY_ONLY: ${{ inputs.quality_only }}
+          PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
         run: |
           if [[ "$QUALITY_ONLY" == true ]]; then
             test "$BUILD_QUALITY_RESULT" = success
             test "$PUBLISH_QUALITY_RESULT" = success
           else
-            test "$BUILD_RESULT" = success
             test "$VERIFY_RESULT" = success
+            if [[ "$PUBLISH" == true ]]; then
+              test "$BUILD_RESULT" = success
+            else
+              test "$BUILD_RESULT" = skipped
+            fi
           fi
