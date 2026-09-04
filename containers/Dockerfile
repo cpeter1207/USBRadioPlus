@@ -27,11 +27,13 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 ENV PATH="/opt/usbradioplus-quality/bin:${PATH}"
 
+COPY scripts/install-rnnoise.sh /tmp/install-rnnoise.sh
+RUN sh /tmp/install-rnnoise.sh && rm -f /tmp/install-rnnoise.sh
+
 WORKDIR /usr/src/usbradioplus
-COPY . .
-RUN sh ./scripts/install-rnnoise.sh
 
 FROM quality AS staged
+COPY . .
 RUN make clean all && make DESTDIR=/stage prefix=/usr install
 
 FROM asl3-clean AS usbradioplus-installed

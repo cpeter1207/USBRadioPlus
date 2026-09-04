@@ -12,31 +12,11 @@ jobs:
   quality:
     name: Platform-independent quality
     runs-on: ubuntu-24.04
-    container: debian:13
+    container: ghcr.io/cpeter1207/usbradioplus-quality-debian13:latest
     steps:
-      - name: Install checkout prerequisites
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates git wget
       - uses: actions/checkout@v7
       - name: Trust workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Install analysis dependencies
-        run: |
-          wget -qO /tmp/asl-repo.deb \
-            "https://repo.allstarlink.org/public/asl-apt-repos.deb13_all.deb"
-          dpkg -i /tmp/asl-repo.deb
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            asl3-asterisk-dev build-essential clang clang-format clang-tidy cppcheck \
-            doxygen graphviz pkg-config python3 python3-venv shellcheck \
-            libasound2-dev libusb-dev libusb-1.0-0-dev libsamplerate0-dev \
-            libavfilter-dev libavutil-dev portaudio19-dev autoconf automake \
-            libtool patch xz-utils
-          python3 -m venv /opt/usbradioplus-quality
-          /opt/usbradioplus-quality/bin/pip install --no-cache-dir ruff==0.16.5
-          echo /opt/usbradioplus-quality/bin >> "$GITHUB_PATH"
-          sh ./scripts/install-rnnoise.sh
       - name: Install pinned modern ASL headers
         env:
           ASL_MODERN_INCLUDEDIR: /opt/asl-modern/include
@@ -87,31 +67,11 @@ jobs:
             arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    container: debian:${{ matrix.debian }}
+    container: ghcr.io/cpeter1207/usbradioplus-quality-debian${{ matrix.debian }}:latest
     steps:
-      - name: Install checkout prerequisites
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates git wget
       - uses: actions/checkout@v7
       - name: Trust workspace
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Install ASL3 and quality dependencies
-        run: |
-          wget -qO /tmp/asl-repo.deb \
-            "https://repo.allstarlink.org/public/asl-apt-repos.deb${{ matrix.debian }}_all.deb"
-          dpkg -i /tmp/asl-repo.deb
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            asl3-asterisk-dev build-essential gcovr pkg-config python3 python3-venv \
-            libasound2-dev libusb-dev \
-            libusb-1.0-0-dev libsamplerate0-dev libavfilter-dev \
-            libavutil-dev portaudio19-dev autoconf automake libtool patch xz-utils
-          python3 -m venv /opt/usbradioplus-quality
-          /opt/usbradioplus-quality/bin/pip install --no-cache-dir \
-            coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0
-          echo /opt/usbradioplus-quality/bin >> "$GITHUB_PATH"
-          sh ./scripts/install-rnnoise.sh
       - name: Run platform-specific tests and coverage
         env:
           ASL_MODERN_INCLUDEDIR: /opt/asl-modern/include

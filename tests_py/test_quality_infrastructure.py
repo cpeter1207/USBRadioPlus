@@ -25,6 +25,9 @@ def test_quality_matrix_covers_every_supported_platform():
     assert 'wait "$docs_pid"' in workflow
     assert "needs: quality" in workflow
     assert "make platform-verify" in workflow
+    assert "usbradioplus-quality-debian13:latest" in workflow
+    assert "usbradioplus-quality-debian${{ matrix.debian }}:latest" in workflow
+    assert "Install ASL3 and quality dependencies" not in workflow
     assert "Required quality gate" in workflow
 
 
@@ -48,11 +51,15 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
 
 def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     dockerfile = read("containers/Dockerfile")
+    quality = dockerfile.split("FROM quality AS staged", maxsplit=1)[0]
+    assert "COPY . ." not in quality
+    assert "COPY scripts/install-rnnoise.sh" in quality
     assert "FROM asl3-clean AS usbradioplus-installed" in dockerfile
     assert "COPY --from=staged /stage/ /" in dockerfile
     assert "container-smoke-test.sh" in dockerfile
     assert "/usr/local/libexec/usbradioplus/container-smoke-test.sh" in dockerfile
     smoke = read("tests/container-smoke-test.sh")
+    assert "module load res_usbradio.so" in smoke
     assert "module load chan_usbradioplus.so" in smoke
     assert "module show like chan_usbradioplus" in smoke
     assert "radioplus processing show" in smoke

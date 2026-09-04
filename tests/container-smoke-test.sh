@@ -28,6 +28,26 @@ if [ "$ready" != true ]; then
 	exit 1
 fi
 
+# The channel imports the radio-resource HID helpers.  Wait for that provider
+# explicitly instead of racing Asterisk's asynchronous module autoload.
+resource_ready=false
+attempt=0
+while [ "$attempt" -lt 50 ]; do
+	asterisk -rx 'module load res_usbradio.so' >/dev/null 2>&1 || true
+	if asterisk -rx 'module show like res_usbradio' 2>/dev/null | grep -E \
+		'res_usbradio[.]so.*Running'; then
+		resource_ready=true
+		break
+	fi
+	attempt=$((attempt + 1))
+	sleep 0.1
+done
+if [ "$resource_ready" != true ]; then
+	echo "res_usbradio did not become ready" >&2
+	tail -n 100 "$log" >&2
+	exit 1
+fi
+
 module_ready=false
 attempt=0
 while [ "$attempt" -lt 50 ]; do
