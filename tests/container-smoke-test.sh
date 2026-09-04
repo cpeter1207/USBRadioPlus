@@ -28,7 +28,9 @@ if [ "$ready" != true ]; then
 	exit 1
 fi
 
-asterisk -rx 'module load chan_usbradioplus.so' | grep -F 'Loaded chan_usbradioplus.so'
+# Autoload may win the startup race, in which case an explicit load reports
+# "already loaded." The running-state check below is the authoritative result.
+asterisk -rx 'module load chan_usbradioplus.so' >/dev/null 2>&1 || true
 asterisk -rx 'module show like chan_usbradioplus' | grep -E \
 	'chan_usbradioplus[.]so.*Running'
 asterisk -rx 'radioplus processing show' | grep -F 'Chain local:'
