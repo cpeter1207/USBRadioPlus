@@ -11,11 +11,20 @@ on:
         required: false
         default: ""
         type: string
+      quality_only:
+        required: false
+        default: false
+        type: boolean
   pull_request:
   workflow_dispatch:
     inputs:
       publish:
         description: Publish prepared images to GitHub Container Registry
+        required: false
+        default: false
+        type: boolean
+      quality_only:
+        description: Build only the reusable quality environments
         required: false
         default: false
         type: boolean
@@ -26,6 +35,7 @@ permissions:
 
 jobs:
   verify:
+    if: ${{ !inputs.quality_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +103,7 @@ jobs:
           echo "quality=$quality" >> "$GITHUB_OUTPUT"
           echo "installed=$installed" >> "$GITHUB_OUTPUT"
       - name: Build clean ASL3 image
+        if: ${{ !inputs.quality_only }}
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -105,6 +116,7 @@ jobs:
           cache-from: type=gha,scope=clean-${{ matrix.debian }}
           cache-to: type=gha,mode=max,scope=clean-${{ matrix.debian }}
       - name: Build installed USBRadioPlus image
+        if: ${{ !inputs.quality_only }}
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -138,4 +150,7 @@ jobs:
       - env:
           BUILD_RESULT: ${{ needs.build.result }}
           VERIFY_RESULT: ${{ needs.verify.result }}
-        run: test "$BUILD_RESULT" = success && test "$VERIFY_RESULT" = success
+          QUALITY_ONLY: ${{ inputs.quality_only }}
+        run: |
+          test "$BUILD_RESULT" = success
+          test "$QUALITY_ONLY" = true || test "$VERIFY_RESULT" = success

@@ -46,6 +46,8 @@ def test_container_workflow_builds_clean_and_installed_multiarch_images():
     assert "target: quality" in workflow
     assert "sha-${GITHUB_SHA::12}" in workflow
     assert "release_version" in workflow
+    assert "quality_only" in workflow
+    assert 'test "$QUALITY_ONLY" = true || test "$VERIFY_RESULT" = success' in workflow
     assert "Required container gate" in workflow
 
 
