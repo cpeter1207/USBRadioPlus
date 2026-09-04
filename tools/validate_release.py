@@ -52,8 +52,8 @@ def validate(root=ROOT):
         (root / path).read_text(encoding="utf-8")
         for path in (
             "src/chan_usbradioplus.c",
-            "src/usbradioplus_channel_common.inc",
-            "src/usbradioplus_native_tick.inc",
+            "src/usbradioplus_channel_common.c",
+            "src/usbradioplus_native_tick.c",
         )
     )
     for option in (root / "tests/data/legacy-options.txt").read_text().splitlines():

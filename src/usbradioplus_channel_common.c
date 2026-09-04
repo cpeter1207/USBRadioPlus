@@ -1,130 +1,109 @@
-/* Shared channel policy and control code used by both hardware adapters. */
-#ifdef URP_CHANNEL_COMMON_DECLARE
-static int hidhdwconfig(struct chan_usbradio_pvt *o);
+#include "asterisk.h"
+#include "asterisk/res_usbradio.h"
 
-static void kickptt(const struct chan_usbradio_pvt *o);
+#include <errno.h>
+#include <math.h>
+#include <search.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-static int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config *cfg, int reload);
+#ifdef HAVE_SYS_IO
+#include <sys/io.h>
+#endif
 
-static int usbradio_digit_begin(struct ast_channel *c, char digit);
+#include "asterisk/abstract_jb.h"
+#include "asterisk/channel.h"
+#include "asterisk/cli.h"
+#include "asterisk/config.h"
+#include "asterisk/dsp.h"
+#include "asterisk/frame.h"
+#include "asterisk/logger.h"
+#include "asterisk/lock.h"
+#include "asterisk/module.h"
+#include "asterisk/musiconhold.h"
+#include "asterisk/options.h"
+#include "asterisk/utils.h"
 
-static int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int duration);
+#include "txagc/avfilter_processor.h"
+#include "txagc/rnnoise_processor.h"
+#include "usbradioplus_channel_core.h"
+#include "usbradioplus_ctcss.h"
+#include "usbradioplus_dsp.h"
+#include "usbradioplus_hardware.h"
+#include "usbradioplus_processing.h"
+#include "usbradioplus_radio.h"
+#include "usbradioplus_repeat.h"
+#include "usbradioplus_channel_common.h"
 
-static int usbradio_answer(struct ast_channel *c);
+/*! \brief Drive timed pulses on configured parallel-port outputs. */
+void *pulserthread(void *arg)
+{
+	(void)arg;
+	struct timeval now, then;
+	register int i, j, k;
 
-static void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples,
-				       size_t count);
+#ifdef HAVE_SYS_IO
+	if (haspp == 2) {
+		ioperm(pbase, 2, 1);
+	}
+#endif
+	stoppulser = 0;
+	pp_lastmask = 0;
+	ast_mutex_lock(&pp_lock);
+	ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
+	ast_mutex_unlock(&pp_lock);
+	then = ast_radio_tvnow();
 
-static int usbradioplus_program_pending(struct chan_usbradio_pvt *o);
+	while (!stoppulser) {
+		usleep(50000);
+		ast_mutex_lock(&pp_lock);
+		now = ast_radio_tvnow();
+		j = ast_tvdiff_ms(now, then);
+		then = now;
+		pp_lastmask = pp_pulsemask;
+		pp_pulsemask = 0;
+		for (i = 2; i <= 9; i++) {
+			k = pp_pulsetimer[i];
+			if (k) {
+				k -= j;
+				if (k < 0) {
+					k = 0;
+				}
+				pp_pulsetimer[i] = k;
+			}
+			if (k) {
+				pp_pulsemask |= 1 << (i - 2);
+			}
+		}
+		if (pp_pulsemask != pp_lastmask) {
+			pp_val ^= pp_lastmask ^ pp_pulsemask;
+			ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
+		}
+		ast_mutex_unlock(&pp_lock);
+	}
+	return NULL;
+}
 
-static int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newchan);
+/*! \brief Release a channel that failed before it was linked into the active list. */
+void destroy_unlinked_channel(struct chan_usbradio_pvt *o)
+{
+	if (!o || o == &usbradio_default) {
+		return;
+	}
+	if (o->dsp) {
+		ast_dsp_free(o->dsp);
+	}
+	usbradioplus_dsp_destroy(o);
+	if (o->radio) {
+		urp_radio_destroy(o->radio);
+	}
+	ast_free(o->name);
+	ast_free(o);
+}
 
-static int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size_t datalen);
-
-static int usbradio_setoption(struct ast_channel *chan, int option, void *data, int datalen);
-
-static int console_key(int fd, int argc, const char *const *argv);
-
-static int console_unkey(int fd, int argc, const char *const *argv);
-
-static void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag);
-
-static int radio_tune(int fd, int argc, const char *const *argv);
-
-static int set_txctcss_level(struct chan_usbradio_pvt *o);
-
-static int legacy_set_tx_soft_limiter(struct chan_usbradio_pvt *o, int setpoint);
-
-static int radio_set_dsp_debug(int fd, int argc, const char *const *argv);
-
-static void store_rxdemod(struct chan_usbradio_pvt *o, const char *s);
-
-static void store_txmixa(struct chan_usbradio_pvt *o, const char *s);
-
-static void store_txmixb(struct chan_usbradio_pvt *o, const char *s);
-
-static void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s);
-
-static void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s);
-
-static void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s);
-
-static double effective_rx_input_gain_db(struct chan_usbradio_pvt *o);
-
-static float effective_legacy_rxvoiceadj(struct chan_usbradio_pvt *o);
-
-static int effective_rxmixerset(const struct chan_usbradio_pvt *o);
-
-static int effective_txmixaset(const struct chan_usbradio_pvt *o);
-
-static int effective_txmixbset(const struct chan_usbradio_pvt *o);
-
-static enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o);
-
-static enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o);
-
-static enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o);
-
-static void refresh_processing_hardware(struct chan_usbradio_pvt *o);
-
-static void store_txtoctype(struct chan_usbradio_pvt *o, const char *s);
-
-static void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag);
-
-static void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o);
-
-static void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o);
-
-static void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str);
-
-static void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr);
-
-static void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str);
-
-static void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr);
-
-static void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag);
-
-static void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag);
-
-static int tune_variable_update(struct ast_config *config, const char *filename,
-				struct ast_category *category, const char *variable,
-				const char *value);
-
-static void mult_set(struct chan_usbradio_pvt *o);
-
-static void usbradioplus_program_radio(struct chan_usbradio_pvt *o);
-
-static void usbradioplus_parallel_program_write(void *opaque, uint8_t value);
-
-static void usbradioplus_set_channel(uint8_t channel);
-
-static int radio_config(struct chan_usbradio_pvt *o);
-
-static int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const char *text);
-
-static int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category);
-
-static int usbradioplus_dsp_init(struct chan_usbradio_pvt *o);
-
-static void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o);
-
-static void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o);
-
-static void plus_link_native_push(struct chan_usbradio_pvt *o, const short *samples, size_t count);
-
-static int plus_link_native_pop(struct chan_usbradio_pvt *o, short *samples);
-
-static int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o);
-
-static void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed);
-
-static int load_config(int reload);
-
-static int reload_module(void);
-#else
-
-static int hidhdwconfig(struct chan_usbradio_pvt *o)
+int hidhdwconfig(struct chan_usbradio_pvt *o)
 {
 	int i;
 
@@ -227,7 +206,7 @@ static int hidhdwconfig(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-static void kickptt(const struct chan_usbradio_pvt *o)
+void kickptt(const struct chan_usbradio_pvt *o)
 {
 	char c = 0;
 	int res;
@@ -244,7 +223,7 @@ static void kickptt(const struct chan_usbradio_pvt *o)
 	}
 }
 
-static int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config *cfg, int reload)
+int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config *cfg, int reload)
 {
 	struct ast_variable *v;
 	struct ast_config *cfg2;
@@ -319,14 +298,14 @@ static int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config
 	return 0;
 }
 
-static int usbradio_digit_begin(struct ast_channel *c, char digit)
+int usbradio_digit_begin(struct ast_channel *c, char digit)
 {
 	(void)c;
 	(void)digit;
 	return 0;
 }
 
-static int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int duration)
+int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int duration)
 {
 	(void)c;
 	/* no better use for received digits than print them */
@@ -334,14 +313,13 @@ static int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int du
 	return 0;
 }
 
-static int usbradio_answer(struct ast_channel *c)
+int usbradio_answer(struct ast_channel *c)
 {
 	ast_setstate(c, AST_STATE_UP);
 	return 0;
 }
 
-static void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples,
-				       size_t count)
+void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
 	unsigned int seed_frames;
 	ast_mutex_lock(&o->plus_link_lock);
@@ -358,7 +336,7 @@ static void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short 
 	ast_mutex_unlock(&o->plus_link_lock);
 }
 
-static int usbradioplus_program_pending(struct chan_usbradio_pvt *o)
+int usbradioplus_program_pending(struct chan_usbradio_pvt *o)
 {
 	int pending;
 	ast_mutex_lock(&o->plus_link_lock);
@@ -367,7 +345,7 @@ static int usbradioplus_program_pending(struct chan_usbradio_pvt *o)
 	return pending || o->plus_native_fifo.count != 0;
 }
 
-static int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newchan)
+int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newchan)
 {
 	(void)oldchan;
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(newchan);
@@ -376,7 +354,7 @@ static int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newch
 	return 0;
 }
 
-static int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size_t datalen)
+int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size_t datalen)
 {
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 	enum ast_control_frame_type cond = cond_in;
@@ -436,9 +414,9 @@ static int usbradio_indicate(struct ast_channel *c, int cond_in, const void *dat
 	return 0;
 }
 
-static int usbradio_setoption(struct ast_channel *chan, int option, void *data, int datalen)
+int usbradio_setoption(struct ast_channel *chan, int option, void *data, int datalen)
 {
-	char *cp;
+	const char *cp;
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(chan);
 
 	/* all supported options require data */
@@ -475,12 +453,14 @@ static int usbradio_setoption(struct ast_channel *chan, int option, void *data, 
 			break;
 		}
 		break;
+	default:
+		break;
 	}
 	errno = 0;
 	return 0;
 }
 
-static int console_key(int fd, int argc, const char *const *argv)
+int console_key(int fd, int argc, const char *const *argv)
 {
 	(void)fd;
 	(void)argv;
@@ -494,7 +474,7 @@ static int console_key(int fd, int argc, const char *const *argv)
 	return RESULT_SUCCESS;
 }
 
-static int console_unkey(int fd, int argc, const char *const *argv)
+int console_unkey(int fd, int argc, const char *const *argv)
 {
 	(void)fd;
 	(void)argv;
@@ -508,7 +488,7 @@ static int console_unkey(int fd, int argc, const char *const *argv)
 	return RESULT_SUCCESS;
 }
 
-static void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
+void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 {
 #define NFLASH 3
 
@@ -534,16 +514,13 @@ static void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 		o->plus_test_tone_enabled = 0;
 		o->radio->txPttIn = 0;
 		o->txtestkey = 0;
-		if (i == (NFLASH - 1)) {
-			break;
-		}
-		if ((fd > 0) && intflag) {
+		if (i < (NFLASH - 1) && (fd > 0) && intflag) {
 			if (ast_radio_wait_or_poll(fd, 1500, intflag)) {
 				o->radio->txPttIn = 0;
 				o->txtestkey = 0;
 				break;
 			}
-		} else {
+		} else if (i < (NFLASH - 1)) {
 			usleep(1500000);
 		}
 	}
@@ -555,10 +532,10 @@ static void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 	o->plus_test_tone_enabled = 0;
 }
 
-static int radio_tune(int fd, int argc, const char *const *argv)
+int radio_tune(int fd, int argc, const char *const *argv)
 {
 	struct chan_usbradio_pvt *o = find_desc(usbradio_active);
-	int i = 0;
+	int i;
 
 	if ((argc < 3) || (argc > 4)) {
 		return RESULT_SHOWUSAGE;
@@ -811,7 +788,7 @@ static int radio_tune(int fd, int argc, const char *const *argv)
 	return RESULT_SUCCESS;
 }
 
-static int set_txctcss_level(struct chan_usbradio_pvt *o)
+int set_txctcss_level(struct chan_usbradio_pvt *o)
 {
 	if (o->txmixa == TX_OUT_LSD) {
 		o->txmixaset = o->txctcssadj;
@@ -829,13 +806,13 @@ static int set_txctcss_level(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-static int legacy_set_tx_soft_limiter(struct chan_usbradio_pvt *o, int setpoint)
+int legacy_set_tx_soft_limiter(struct chan_usbradio_pvt *o, int setpoint)
 {
 	(void)o;
 	return setpoint < 5000 || setpoint > 13000 ? -1 : 0;
 }
 
-static int radio_set_dsp_debug(int fd, int argc, const char *const *argv)
+int radio_set_dsp_debug(int fd, int argc, const char *const *argv)
 {
 	struct chan_usbradio_pvt *o = find_desc(usbradio_active);
 
@@ -852,7 +829,7 @@ static int radio_set_dsp_debug(int fd, int argc, const char *const *argv)
 	return RESULT_SUCCESS;
 }
 
-static void store_rxdemod(struct chan_usbradio_pvt *o, const char *s)
+void store_rxdemod(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_rx_audio_mode mode;
 	if (urp_parse_rx_audio_mode(s, &mode))
@@ -861,7 +838,7 @@ static void store_rxdemod(struct chan_usbradio_pvt *o, const char *s)
 		o->rxdemod = (enum radio_rx_audio)mode;
 }
 
-static void store_txmixa(struct chan_usbradio_pvt *o, const char *s)
+void store_txmixa(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_tx_output_mode mode;
 	if (urp_parse_tx_output_mode(s, &mode))
@@ -870,7 +847,7 @@ static void store_txmixa(struct chan_usbradio_pvt *o, const char *s)
 		o->txmixa = (enum radio_tx_mix)mode;
 }
 
-static void store_txmixb(struct chan_usbradio_pvt *o, const char *s)
+void store_txmixb(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_tx_output_mode mode;
 	if (urp_parse_tx_output_mode(s, &mode))
@@ -879,7 +856,7 @@ static void store_txmixb(struct chan_usbradio_pvt *o, const char *s)
 		o->txmixb = (enum radio_tx_mix)mode;
 }
 
-static void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s)
+void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_carrier_source source;
 	if (urp_parse_carrier_source(s, &source))
@@ -888,7 +865,7 @@ static void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s)
 		o->rxcdtype = (enum radio_carrier_detect)source;
 }
 
-static void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
+void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_ctcss_source source;
 	if (urp_parse_ctcss_source(s, &source))
@@ -897,7 +874,7 @@ static void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
 		o->rxsdtype = (enum radio_squelch_detect)source;
 }
 
-static void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s)
+void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s)
 {
 	float f;
 	sscanf(s, N_FMT(f), &f);
@@ -905,66 +882,68 @@ static void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s)
 	o->legacy_rxvoiceadj_configured = 1;
 }
 
-static double effective_rx_input_gain_db(struct chan_usbradio_pvt *o)
+double effective_rx_input_gain_db(const struct chan_usbradio_pvt *o)
 {
 	struct txagc_chain chain;
-	if (!usbradioplus_processing_get_local(&chain) && chain.input_gain_configured)
+	usbradioplus_processing_get_local(&chain);
+	if (chain.input_gain_configured)
 		return chain.agc.input_gain_db;
 	return 20.0 * log10(fmax(0.000001, 2.0 * o->legacy_rxvoiceadj));
 }
 
-static float effective_legacy_rxvoiceadj(struct chan_usbradio_pvt *o)
+float effective_legacy_rxvoiceadj(const struct chan_usbradio_pvt *o)
 {
 	return (float)(pow(10.0, effective_rx_input_gain_db(o) / 20.0) / 2.0);
 }
 
-static int effective_rxmixerset(const struct chan_usbradio_pvt *o)
+int effective_rxmixerset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	return !usbradioplus_processing_get_hardware(&hardware) && hardware.input_gain_configured
-		       ? urp_gain_db_to_mixer(hardware.input_gain_db)
-		       : o->rxmixerset;
+	usbradioplus_processing_get_hardware(&hardware);
+	return hardware.input_gain_configured ? urp_gain_db_to_mixer(hardware.input_gain_db)
+					      : o->rxmixerset;
 }
 
-static int effective_txmixaset(const struct chan_usbradio_pvt *o)
+int effective_txmixaset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	return !usbradioplus_processing_get_hardware(&hardware) && hardware.output_a_gain_configured
-		       ? urp_gain_db_to_mixer(hardware.output_a_gain_db)
-		       : o->txmixaset;
+	usbradioplus_processing_get_hardware(&hardware);
+	return hardware.output_a_gain_configured ? urp_gain_db_to_mixer(hardware.output_a_gain_db)
+						 : o->txmixaset;
 }
 
-static int effective_txmixbset(const struct chan_usbradio_pvt *o)
+int effective_txmixbset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	return !usbradioplus_processing_get_hardware(&hardware) && hardware.output_b_gain_configured
-		       ? urp_gain_db_to_mixer(hardware.output_b_gain_db)
-		       : o->txmixbset;
+	usbradioplus_processing_get_hardware(&hardware);
+	return hardware.output_b_gain_configured ? urp_gain_db_to_mixer(hardware.output_b_gain_db)
+						 : o->txmixbset;
 }
 
-static enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o)
+enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	return !usbradioplus_processing_get_hardware(&hardware) &&
-			       hardware.output_a_assignment_configured
+	usbradioplus_processing_get_hardware(&hardware);
+	return hardware.output_a_assignment_configured
 		       ? (enum radio_tx_mix)hardware.output_a_assignment
 		       : o->txmixa;
 }
 
-static enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o)
+enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	return !usbradioplus_processing_get_hardware(&hardware) &&
-			       hardware.output_b_assignment_configured
+	usbradioplus_processing_get_hardware(&hardware);
+	return hardware.output_b_assignment_configured
 		       ? (enum radio_tx_mix)hardware.output_b_assignment
 		       : o->txmixb;
 }
 
-static enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
+enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
 	const char *value;
-	if (usbradioplus_processing_get_hardware(&hardware) || !hardware.cos_assignment_configured)
+	usbradioplus_processing_get_hardware(&hardware);
+	if (!hardware.cos_assignment_configured)
 		return o->rxcdtype;
 	value = hardware.cos_assignment;
 	if (!strcasecmp(value, "usb"))
@@ -982,19 +961,18 @@ static enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_p
 	return CD_IGNORE;
 }
 
-static void refresh_processing_hardware(struct chan_usbradio_pvt *o)
+void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
 	const char *rx_frequencies = o->rxctcssfreqs;
 	const char *tx_frequencies = o->txctcssfreqs;
 	int rx = effective_rxmixerset(o), a = effective_txmixaset(o), b = effective_txmixbset(o);
 	int route_a = effective_txmixa(o), route_b = effective_txmixb(o);
-	if (!usbradioplus_processing_get_hardware(&hardware)) {
-		if (hardware.rx_ctcss_frequencies_configured)
-			rx_frequencies = hardware.rx_ctcss_frequencies;
-		if (hardware.tx_ctcss_frequencies_configured)
-			tx_frequencies = hardware.tx_ctcss_frequencies;
-	}
+	usbradioplus_processing_get_hardware(&hardware);
+	if (hardware.rx_ctcss_frequencies_configured)
+		rx_frequencies = hardware.rx_ctcss_frequencies;
+	if (hardware.tx_ctcss_frequencies_configured)
+		tx_frequencies = hardware.tx_ctcss_frequencies;
 	o->radio->rxCdType = effective_rxcdtype(o);
 	if (!o->remoted && (strcmp(rx_frequencies, o->plus_applied_rxctcssfreqs) ||
 			    strcmp(tx_frequencies, o->plus_applied_txctcssfreqs))) {
@@ -1020,7 +998,7 @@ static void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 	mult_set(o);
 }
 
-static void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
+void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_tone_off_mode mode;
 	if (urp_parse_tone_off_mode(s, &mode))
@@ -1029,7 +1007,7 @@ static void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
 		o->txtoctype = (enum usbradio_carrier_type)mode;
 }
 
-static void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag)
+void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag)
 {
 	(void)value;
 	o->txtestkey = 1;
@@ -1053,7 +1031,7 @@ static void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int in
 	o->plus_test_tone_phase = 0.0;
 }
 
-static void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o)
+void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o)
 {
 	int j, waskeyed, meas, ncols = 75;
 	char str[256];
@@ -1111,7 +1089,7 @@ static void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o)
 	o->radio->spsMeasure->enabled = 0;
 }
 
-static void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o)
+void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o)
 {
 	int wasverbose;
 
@@ -1137,9 +1115,23 @@ static void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o)
 	option_verbose = wasverbose;
 }
 
-static void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str)
+int parse_tune_level(const char *text, int *level)
 {
-	int i, x;
+	char *end;
+	unsigned long value;
+
+	if (!text || !*text || !level)
+		return -1;
+	value = strtoul(text, &end, 10);
+	if (*end || value > 999)
+		return -1;
+	*level = (int)value;
+	return 0;
+}
+
+void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str)
+{
+	int i;
 
 	if (!str[0]) {
 		ast_cli(fd, "Current Signal Strength is %d\n",
@@ -1147,12 +1139,7 @@ static void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str
 		ast_cli(fd, "Current Squelch setting is %d\n", o->rxsquelchadj);
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, N_FMT(d), &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_tune_level(str, &i)) {
 		ast_cli(fd, "Entry Error, Rx Squelch Level setting not changed\n");
 		return;
 	}
@@ -1162,10 +1149,10 @@ static void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str
 	*(o->radio->prxSquelchAdjust) = ((999 - i) * 32767) / AUDIO_ADJUSTMENT;
 }
 
-static void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr)
+void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 {
 	const char *str = cstr;
-	int i, j, x, dokey, withctcss;
+	int i, j, dokey, withctcss;
 
 	if ((o->txmixa != TX_OUT_VOICE) && (o->txmixb != TX_OUT_VOICE) &&
 	    (o->txmixa != TX_OUT_COMPOSITE) && (o->txmixb != TX_OUT_COMPOSITE)) {
@@ -1207,12 +1194,7 @@ static void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 		ast_cli(fd, "DONE.\n");
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, N_FMT(d), &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_tune_level(str, &i)) {
 		ast_cli(fd, "Entry Error, Tx Voice Level setting not changed\n");
 		return;
 	}
@@ -1236,9 +1218,9 @@ static void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 	}
 }
 
-static void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
+void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 {
-	int i, x;
+	int i;
 
 	if ((o->txmixa != TX_OUT_AUX) && (o->txmixb != TX_OUT_AUX)) {
 		ast_cli(fd, "Error, No Auxvoice output configured.\n");
@@ -1254,12 +1236,7 @@ static void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 		}
 		return;
 	}
-	for (x = 0; str[x]; x++) {
-		if (!isdigit(str[x])) {
-			break;
-		}
-	}
-	if (str[x] || (sscanf(str, N_FMT(d), &i) < 1) || (i < 0) || (i > 999)) {
+	if (parse_tune_level(str, &i)) {
 		ast_cli(fd, "Entry Error, Aux Voice Level setting not changed\n");
 		return;
 	}
@@ -1274,10 +1251,10 @@ static void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 	mult_set(o);
 }
 
-static void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
+void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 {
 	const char *str = cstr;
-	int i, x, dokey;
+	int i, dokey;
 
 	if (!str[0]) {
 		ast_cli(fd, "Current Tx CTCSS Modulation Level setting = %d\n", o->txctcssadj);
@@ -1289,12 +1266,7 @@ static void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 		str++;
 	}
 	if (str[0]) {
-		for (x = 0; str[x]; x++) {
-			if (!isdigit(str[x])) {
-				break;
-			}
-		}
-		if (str[x] || (sscanf(str, N_FMT(d), &i) < 1) || (i < 0) || (i > 999)) {
+		if (parse_tune_level(str, &i)) {
 			ast_cli(fd, "Entry Error, Tx CTCSS Modulation Level setting not changed\n");
 			return;
 		}
@@ -1311,7 +1283,7 @@ static void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 	}
 }
 
-static void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag)
+void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag)
 {
 	const int target = 7200;   /* peak */
 	const int tolerance = 360; /* peak to peak */
@@ -1388,7 +1360,7 @@ static void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag)
 	o->radio->b.tuning = 0;
 }
 
-static void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
+void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 {
 	const int target = 2400; /* was 4096 pre 20080205 */
 	const int tolerance = 100;
@@ -1469,45 +1441,7 @@ static void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 	o->radio->b.tuning = 0;
 }
 
-static int tune_variable_update(struct ast_config *config, const char *filename,
-				struct ast_category *category, const char *variable,
-				const char *value)
-{
-	int res;
-	struct ast_variable *v, *var = NULL;
-
-	/* ast_variable_retrieve, but returning the variable struct */
-	for (v = ast_variable_browse(config, ast_category_get_name(category)); v; v = v->next) {
-		if (!strcasecmp(variable, v->name)) {
-			var = v;
-		}
-	}
-
-	if (var && !strcmp(var->value, value)) {
-		/* no need to update a matching value */
-		return 0;
-	}
-
-	if (var && !var->inherited) {
-		/* the variable is defined and not inherited from a template category */
-		res = ast_variable_update(category, variable, value, var->value, var->object);
-		if (res == 0) {
-			return 0;
-		}
-	}
-
-	/* create and add the variable / value to the category */
-	var = ast_variable_new(variable, value, filename);
-	if (var == NULL) {
-		return -1;
-	}
-
-	/* and append */
-	ast_variable_append(category, var);
-	return 0;
-}
-
-static void mult_set(struct chan_usbradio_pvt *o)
+void mult_set(struct chan_usbradio_pvt *o)
 {
 	o->radio->txOutputGainA =
 		urp_legacy_multiplier((effective_txmixaset(o) * 152) / AUDIO_ADJUSTMENT);
@@ -1518,7 +1452,7 @@ static void mult_set(struct chan_usbradio_pvt *o)
 			: urp_legacy_multiplier((effective_txmixbset(o) * 152) / AUDIO_ADJUSTMENT);
 }
 
-static void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
+void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
 {
 	struct urp_parallel_bus bus;
 	uint32_t rx_freq = o->remoted ? o->set_rxfreq : o->rxfreq;
@@ -1537,14 +1471,14 @@ static void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
 	ast_mutex_unlock(&pp_lock);
 }
 
-static void usbradioplus_parallel_program_write(void *opaque, uint8_t value)
+void usbradioplus_parallel_program_write(void *opaque, uint8_t value)
 {
 	(void)opaque;
 	pp_val = (int8_t)value;
 	ast_radio_ppwrite(haspp, ppfd, pbase, pport, value);
 }
 
-static void usbradioplus_set_channel(uint8_t channel)
+void usbradioplus_set_channel(uint8_t channel)
 {
 	struct urp_parallel_bus bus;
 	if (!haspp)
@@ -1558,7 +1492,7 @@ static void usbradioplus_set_channel(uint8_t channel)
 	ast_mutex_unlock(&pp_lock);
 }
 
-static int radio_config(struct chan_usbradio_pvt *o)
+int radio_config(struct chan_usbradio_pvt *o)
 {
 	if (o->radio == NULL) {
 		ast_log(LOG_ERROR, "native radio state is unavailable\n");
@@ -1603,7 +1537,7 @@ static int radio_config(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-static int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const char *text)
+int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const char *text)
 {
 	int *legacy = NULL, *enabled = NULL, *exact = NULL;
 	double *frequency = NULL;
@@ -1639,7 +1573,7 @@ static int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const cha
 	return 1;
 }
 
-static int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category)
+int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category)
 {
 	char value[512];
 	char option[32];
@@ -1793,7 +1727,7 @@ invalid:
 	return -1;
 }
 
-static int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
+int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
 	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
@@ -1817,7 +1751,7 @@ static int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-static void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
+void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 {
 	urp_src_destroy(o->plus_up);
 	urp_src_destroy(o->plus_down);
@@ -1832,7 +1766,7 @@ static void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 	o->plus_parrot_capacity = o->plus_parrot_count = o->plus_parrot_play = 0;
 }
 
-static void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o)
+void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o)
 {
 	const short *input = (short *)(o->usbradio_read_buf + AST_FRIENDLY_OFFSET);
 	size_t i;
@@ -1841,17 +1775,61 @@ static void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o)
 	}
 }
 
-static void plus_link_native_push(struct chan_usbradio_pvt *o, const short *samples, size_t count)
+int usbradioplus_carrier_detected(const struct chan_usbradio_pvt *o,
+				  enum radio_carrier_detect source)
+{
+	switch (source) {
+	case CD_HID:
+		return o->rxhidsq;
+	case CD_HID_INVERT:
+		return !o->rxhidsq;
+	case CD_XPMR_NOISE:
+	case CD_XPMR_VOX:
+		return o->radio->rxCarrierDetect;
+	case CD_PP:
+		return o->rxppsq;
+	case CD_PP_INVERT:
+		return !o->rxppsq;
+	default:
+		return 0;
+	}
+}
+
+int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o)
+{
+	return !o->radio->b.ctcssRxEnable ||
+	       (o->radio->rxCtcss->decode > CTCSS_NULL && o->radio->smode == SMODE_CTCSS);
+}
+
+void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o)
+{
+	if (!o->radio->b.ctcssRxEnable || o->radio->rxCtcss->decode == o->rxctcssdecode)
+		return;
+	ast_debug(3, "Channel %s: rxctcssdecode = %i.\n", o->name, o->radio->rxCtcss->decode);
+	o->rxctcssdecode = o->radio->rxCtcss->decode;
+	ast_copy_string(o->rxctcssfreq, o->radio->rxctcssfreq, sizeof(o->rxctcssfreq));
+}
+
+void usbradioplus_wait_for_eeprom_idle(struct chan_usbradio_pvt *o)
+{
+	while (o->eepromctl) {
+		ast_mutex_unlock(&o->eepromlock);
+		usleep(10000);
+		ast_mutex_lock(&o->eepromlock);
+	}
+}
+
+void plus_link_native_push(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
 	o->plus_link_queue_overflows += urp_native_fifo_push(&o->plus_native_fifo, samples, count);
 }
 
-static int plus_link_native_pop(struct chan_usbradio_pvt *o, short *samples)
+int plus_link_native_pop(struct chan_usbradio_pvt *o, short *samples)
 {
 	return urp_native_fifo_pop(&o->plus_native_fifo, samples);
 }
 
-static int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
+int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 {
 	size_t capacity = (size_t)DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES;
 	double *buffer;
@@ -1866,7 +1844,7 @@ static int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-static void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed)
+void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed)
 {
 	if (urp_parrot_rx_transition(&o->plus_parrot_state, was_keyed, o->rxkeyed)) {
 		o->echoing = 1;
@@ -1876,7 +1854,7 @@ static void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int w
 	}
 }
 
-static int load_config(int reload)
+int load_config(int reload)
 {
 	struct ast_config *cfg = NULL;
 	char *ctg = NULL;
@@ -1885,7 +1863,8 @@ static int load_config(int reload)
 	struct ast_flags zeroflag = {reload ? CONFIG_FLAG_FILEUNCHANGED : 0};
 
 	/* load config file */
-	if (!(cfg = ast_config_load(CONFIG, zeroflag))) {
+	cfg = ast_config_load(CONFIG, zeroflag);
+	if (!cfg) {
 		ast_log(LOG_NOTICE, "Unable to load config %s.\n", CONFIG);
 		return AST_MODULE_LOAD_DECLINE;
 	} else if (cfg == CONFIG_STATUS_FILEUNCHANGED) {
@@ -1930,12 +1909,10 @@ static int load_config(int reload)
 	return 0;
 }
 
-static int reload_module(void)
+int reload_module(void)
 {
 	int result = usbradioplus_processing_reload();
 	if (!result)
 		result = load_config(1);
 	return result;
 }
-
-#endif

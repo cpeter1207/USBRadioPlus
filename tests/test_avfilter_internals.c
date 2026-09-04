@@ -1,4 +1,4 @@
-#include "../src/txagc/avfilter_processor.c"
+#include "../src/txagc/avfilter_processor_internal.h"
 
 #include <assert.h>
 #include <locale.h>

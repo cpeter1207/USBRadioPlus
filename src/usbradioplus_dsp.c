@@ -1,3 +1,7 @@
+#ifdef AST_MODULE
+#include "asterisk.h"
+#endif
+
 #include "usbradioplus_dsp.h"
 
 #include <limits.h>
@@ -185,8 +189,7 @@ void urp_src_destroy(struct urp_src *src)
 {
 	if (!src)
 		return;
-	if (src->state)
-		src_delete(src->state);
+	src_delete(src->state);
 	URP_FREE(src->input);
 	URP_FREE(src->output);
 	URP_FREE(src);
@@ -194,7 +197,7 @@ void urp_src_destroy(struct urp_src *src)
 
 void urp_src_reset(struct urp_src *src)
 {
-	if (src && src->state)
+	if (src)
 		src_reset(src->state);
 }
 

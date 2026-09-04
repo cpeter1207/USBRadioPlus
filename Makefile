@@ -48,11 +48,13 @@ DSP_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DSP_PACKAGES))
 DSP_LIBS := $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES))
 ifeq ($(ASL_RADIO_API),modern)
 CHANNEL_SOURCE := src/chan_usbradioplus_modern.c
+CHANNEL_CPPFLAGS := -DURP_CHANNEL_MODERN
 RADIO_PACKAGES := portaudio-2.0 libusb-1.0
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
 RADIO_LIBS := $(shell $(PKG_CONFIG) --libs $(RADIO_PACKAGES))
 else ifeq ($(ASL_RADIO_API),legacy)
 CHANNEL_SOURCE := src/chan_usbradioplus.c
+CHANNEL_CPPFLAGS :=
 RADIO_CFLAGS :=
 RADIO_LIBS := -lusb
 else
@@ -62,6 +64,17 @@ COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
 TUNE := $(BUILD_DIR)/usbradioplus-tune
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
+
+SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
+	src/usbradioplus_dsp.c src/usbradioplus_ctcss.c src/usbradioplus_hardware.c \
+	src/usbradioplus_repeat.c src/usbradioplus_channel_core.c \
+	src/usbradioplus_channel_common.c src/usbradioplus_native_tick.c \
+	src/usbradioplus_tune_menu.c \
+	src/usbradioplus_processing.c src/txagc/agc_core.c \
+	src/txagc/avfilter_processor.c src/txagc/rnnoise_processor.c
+CHANNEL_OBJECT := $(BUILD_DIR)/$(patsubst src/%.c,%.o,$(CHANNEL_SOURCE))
+SHARED_OBJECTS := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SHARED_SOURCES))
+MODULE_OBJECTS := $(CHANNEL_OBJECT) $(SHARED_OBJECTS)
 
 MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
@@ -82,12 +95,16 @@ all: $(MODULE) $(TUNE)
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(MODULE): $(MODULE_SOURCES) | $(BUILD_DIR)
-	@echo "Building $(PACKAGE) for the $(ASL_RADIO_API) ASL3 radio API"
-	$(CC) $(CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
+$(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) | $(BUILD_DIR)
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
-		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
-		-shared $(LDFLAGS) -o $@ $(CHANNEL_SOURCE) $(DSP_LIBS) $(RADIO_LIBS) -lm
+		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
+
+$(MODULE): $(MODULE_OBJECTS)
+	@echo "Building $(PACKAGE) for the $(ASL_RADIO_API) ASL3 radio API"
+	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
+		$(DSP_LIBS) $(RADIO_LIBS) -lm
 
 $(TUNE): src/usbradioplus-tune.c | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(COMMON_CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
@@ -129,6 +146,10 @@ static-analysis:
 
 coverage:
 	rm -rf $(BUILD_DIR)/coverage
+	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
+	# Manual focused runs may place GCC counters at the repository root. Never
+	# allow counters produced by another compiler/image to enter this report.
+	rm -f ./*.gcda ./*.gcno
 	mkdir -p $(BUILD_DIR)/coverage
 	$(PYTHON) -m coverage run --branch -m pytest -q tests_py
 	$(PYTHON) -m coverage html -d $(BUILD_DIR)/coverage/python
@@ -140,7 +161,10 @@ coverage:
 	rm -f $(MODULE) $(TUNE)
 	$(MAKE) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
 	sh ./tests/run_coverage_integration.sh
-	$(GCOVR) --root . --filter 'src/.*\.(c|inc)' \
+	# Keep the real-module smoke test mandatory, while using the channel harness
+	# counters for the adapter source compiled with explicit test interfaces.
+	rm -f $(CHANNEL_OBJECT:.o=.gcda) $(CHANNEL_OBJECT:.o=.gcno)
+	$(GCOVR) --root . --filter 'src/.*\.c' \
 		--exclude-unreachable-branches --exclude-throw-branches \
 		--html-details $(BUILD_DIR)/coverage/index.html \
 		--xml $(BUILD_DIR)/coverage/coverage.xml \

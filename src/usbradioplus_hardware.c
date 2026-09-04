@@ -77,7 +77,7 @@ void urp_hardware_set_channel(struct urp_parallel_bus *bus, uint8_t channel)
 	bus->value |= URP_BIN_PROG_MASK;
 	urp_hardware_write(bus);
 	/* The four legacy channel-select outputs are active low. */
-	bus->value &= (uint8_t) ~(channel << 4);
+	bus->value &= (uint8_t)~(channel << 4);
 	urp_hardware_write(bus);
 }
 

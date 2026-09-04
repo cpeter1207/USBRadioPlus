@@ -89,10 +89,21 @@ static void test_cutoff_parser(void)
 	assert(!value.enabled && value.exact);
 	assert(!urp_parse_cutoff("yes", 300.0, 24000.0, &value));
 	assert(value.enabled && value.exact && value.frequency_hz == 300.0);
+	assert(!urp_parse_cutoff("true", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("on", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("y", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("t", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("false", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("off", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("n", 300.0, 24000.0, &value));
+	assert(!urp_parse_cutoff("f", 300.0, 24000.0, &value));
 	assert(!urp_parse_cutoff("3000.0", 300.0, 24000.0, &value));
 	assert(value.enabled && value.exact && value.frequency_hz == 3000.0);
 	assert(!urp_parse_cutoff("3e3", 300.0, 24000.0, &value));
 	assert(value.frequency_hz == 3000.0);
+	assert(!urp_parse_cutoff("3E3", 300.0, 24000.0, &value));
+	assert(urp_parse_cutoff("12x", 300.0, 24000.0, &value));
+	assert(urp_parse_cutoff("3000.0x", 300.0, 24000.0, &value));
 	assert(urp_parse_cutoff("-1", 300.0, 24000.0, &value));
 	assert(urp_parse_cutoff("nan", 300.0, 24000.0, &value));
 	assert(urp_parse_cutoff("inf", 300.0, 24000.0, &value));
@@ -324,6 +335,7 @@ static void test_defensive_and_boundary_paths(void)
 
 	assert(urp_rate_convert(NULL, NULL, 3, 48000, extracted, 3, 48000, &used, &made) < 0);
 	assert(urp_rate_convert(NULL, mono, 3, 0, extracted, 3, 48000, &used, &made) < 0);
+	assert(urp_rate_convert(NULL, mono, 3, 48000, NULL, 3, 48000, &used, &made) < 0);
 	assert(urp_rate_convert(NULL, mono, 3, 48000, extracted, 3, 0, &used, &made) < 0);
 	assert(urp_rate_convert(NULL, mono, 3, 48000, short_output, 2, 48000, NULL, NULL) < 0);
 	assert(short_output[0] == mono[0] && short_output[1] == mono[1]);
@@ -350,6 +362,21 @@ static void test_defensive_and_boundary_paths(void)
 	assert(echo.misses == 1 && echo.last_correlation == 0.0);
 	urp_echo_push(&echo, silent_link, silent_native);
 	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
+
+	tone(echo.history[0].link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 8000.0);
+	tone(echo.history[0].native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 700.0, 8000.0);
+	echo.history[0].sequence = 1;
+	memset(silent_link, 0, sizeof(silent_link));
+	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
+	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 800.0);
+	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
+	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 24000.0);
+	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
+	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 8000.0);
+	assert(!urp_echo_remove(&echo, silent_link, silent_native, 1.1));
+	tone(echo.history[1].link, URP_LINK_SAMPLES, URP_RATE_LINK, 1300.0, 8000.0);
+	echo.history[1].sequence = 2;
+	assert(urp_echo_remove(&echo, silent_link, silent_native, 0.5));
 }
 
 static void test_allocation_and_converter_failures(void)

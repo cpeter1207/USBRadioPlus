@@ -137,9 +137,50 @@ int main(void)
 	assert(!urp_tx_output_has_program(URP_TX_OUTPUT_TONE));
 	assert(urp_tx_output_has_program(URP_TX_OUTPUT_COMPOSITE));
 	assert(urp_tx_output_has_program(URP_TX_OUTPUT_AUX_VOICE));
+	assert(!urp_tx_output_has_voice(URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_output_has_voice(URP_TX_OUTPUT_VOICE));
+	assert(!urp_tx_output_has_voice(URP_TX_OUTPUT_TONE));
+	assert(urp_tx_output_has_voice(URP_TX_OUTPUT_COMPOSITE));
+	assert(!urp_tx_output_has_voice(URP_TX_OUTPUT_AUX_VOICE));
+	assert(!urp_tx_output_has_tone(URP_TX_OUTPUT_DISABLED));
+	assert(!urp_tx_output_has_tone(URP_TX_OUTPUT_VOICE));
+	assert(urp_tx_output_has_tone(URP_TX_OUTPUT_TONE));
+	assert(urp_tx_output_has_tone(URP_TX_OUTPUT_COMPOSITE));
+	assert(!urp_tx_output_has_tone(URP_TX_OUTPUT_AUX_VOICE));
+	assert(!urp_tx_pair_has_voice(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_TONE));
+	assert(urp_tx_pair_has_voice(URP_TX_OUTPUT_VOICE, URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_pair_has_voice(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_COMPOSITE));
+	assert(!urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
+	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_COMPOSITE));
+	assert(!urp_tx_tone_route_missing("", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
+	assert(!urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
+	assert(!urp_parallel_pulser_needed(0, 0));
+	assert(!urp_parallel_pulser_needed(0, 1));
+	assert(!urp_parallel_pulser_needed(1, 0));
+	assert(urp_parallel_pulser_needed(1, 1));
 	assert(!urp_native_echo_enabled(0, 1));
 	assert(!urp_native_echo_enabled(999, 0));
 	assert(urp_native_echo_enabled(999, 1));
+	{
+		int32_t usb;
+		int8_t parallel;
+
+		for (int asserted = 0; asserted <= 1; ++asserted) {
+			for (int inverted = 0; inverted <= 1; ++inverted) {
+				usb = 0xff;
+				parallel = 0xff;
+				urp_apply_ptt_outputs(asserted, inverted, 0x03, 0x08, &usb,
+						      &parallel);
+				assert(!!(usb & 0x08) == (asserted != inverted));
+				assert((parallel & 0x03) == (asserted != inverted ? 0x03 : 0x00));
+			}
+		}
+		usb = parallel = 0x55;
+		urp_apply_ptt_outputs(1, 0, 0, 0x08, &usb, &parallel);
+		assert((usb & 0x08) && parallel == 0x55);
+	}
 	assert(urp_legacy_filter_name("rxlpf") == URP_FILTER_RX_LOWPASS);
 	assert(urp_legacy_filter_name("rxhpf") == URP_FILTER_RX_HIGHPASS);
 	assert(urp_legacy_filter_name("txlpf") == URP_FILTER_TX_LOWPASS);

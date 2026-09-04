@@ -19,16 +19,26 @@
 #include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
+#ifdef URP_AVFILTER_TESTING
+#include "avfilter_processor_internal.h"
+#endif
+
+#ifdef URP_AVFILTER_TESTING
+#define AVFILTER_PRIVATE
+#else
+#define AVFILTER_PRIVATE static
+#endif
+
 #define GRAPH_SIZE 16384
 #define NAME_SIZE 32
 #define CTCSS_NOTCH_SECTIONS 8
 
-static double db_to_linear(double db)
+AVFILTER_PRIVATE double db_to_linear(double db)
 {
 	return pow(10.0, db / 20.0);
 }
 
-static double clamp(double value, double low, double high)
+AVFILTER_PRIVATE double clamp(double value, double low, double high)
 {
 	if (value < low) {
 		return low;
@@ -39,7 +49,7 @@ static double clamp(double value, double low, double high)
 	return value;
 }
 
-static int graph_append(char *graph, size_t size, const char *format, ...)
+AVFILTER_PRIVATE int graph_append(char *graph, size_t size, const char *format, ...)
 {
 	va_list ap;
 	size_t used = strlen(graph);
@@ -57,7 +67,7 @@ static int graph_append(char *graph, size_t size, const char *format, ...)
 	return 0;
 }
 
-static int astats_value(const AVFrame *frame, const char *name, double *value)
+AVFILTER_PRIVATE int astats_value(const AVFrame *frame, const char *name, double *value)
 {
 	const AVDictionaryEntry *entry = av_dict_get(frame->metadata, name, NULL, 0);
 	char *end;
@@ -68,7 +78,7 @@ static int astats_value(const AVFrame *frame, const char *name, double *value)
 	return end != entry->value ? 0 : -1;
 }
 
-static void update_astats(struct txagc_avfilter *state, const AVFrame *frame, int input)
+AVFILTER_PRIVATE void update_astats(struct txagc_avfilter *state, const AVFrame *frame, int input)
 {
 	double peak;
 	double rms;
@@ -97,6 +107,7 @@ static void update_astats(struct txagc_avfilter *state, const AVFrame *frame, in
 	}
 }
 
+#ifndef URP_AVFILTER_TESTING
 enum cleanup_meter {
 	CLEANUP_PRE_FULL,
 	CLEANUP_PRE_5_8,
@@ -104,9 +115,10 @@ enum cleanup_meter {
 	CLEANUP_POST_5_8,
 	CLEANUP_POST_8_PLUS,
 };
+#endif
 
-static void update_cleanup_astats(struct txagc_avfilter *state, const AVFrame *frame,
-				  enum cleanup_meter meter)
+AVFILTER_PRIVATE void update_cleanup_astats(struct txagc_avfilter *state, const AVFrame *frame,
+					    enum cleanup_meter meter)
 {
 	double peak;
 	double rms;
@@ -154,9 +166,9 @@ static void update_cleanup_astats(struct txagc_avfilter *state, const AVFrame *f
 	}
 }
 
-static int add_sidechain_stage(char *graph, size_t size, const char *input, const char *output,
-			       const char *prefix, const char *filter, double highpass,
-			       double lowpass, const char *options)
+AVFILTER_PRIVATE int add_sidechain_stage(char *graph, size_t size, const char *input,
+					 const char *output, const char *prefix, const char *filter,
+					 double highpass, double lowpass, const char *options)
 {
 	return graph_append(graph, size,
 			    "[%s]asplit=2[%smain][%ssc];"
@@ -166,8 +178,9 @@ static int add_sidechain_stage(char *graph, size_t size, const char *input, cons
 			    prefix, filter, options, output);
 }
 
-static int add_brickwall_bandpass(char *graph, size_t size, const char *input, const char *output,
-				  const char *prefix, double highpass, double lowpass)
+AVFILTER_PRIVATE int add_brickwall_bandpass(char *graph, size_t size, const char *input,
+					    const char *output, const char *prefix, double highpass,
+					    double lowpass)
 {
 	return graph_append(graph, size,
 			    "[%s]acrossover=split=%.9g:order=20th[%slo][%spass];"
@@ -178,9 +191,9 @@ static int add_brickwall_bandpass(char *graph, size_t size, const char *input, c
 			    prefix, prefix);
 }
 
-static int add_emphasis(char *graph, size_t size, const char *input, const char *output,
-			int production, double corner_hz, double reference_hz,
-			unsigned int sample_rate)
+AVFILTER_PRIVATE int add_emphasis(char *graph, size_t size, const char *input, const char *output,
+				  int production, double corner_hz, double reference_hz,
+				  unsigned int sample_rate)
 {
 	double pole = exp(-2.0 * M_PI * corner_hz / sample_rate);
 	double omega = 2.0 * M_PI * reference_hz / sample_rate;
@@ -200,9 +213,9 @@ static int add_emphasis(char *graph, size_t size, const char *input, const char 
 			    input, inverse_at_reference * (1.0 - pole), -pole, output);
 }
 
-static int add_dynamic_stage(char *graph, size_t size, const struct txagc_config *cfg,
-			     enum txagc_stage kind, const char *current, const char *next,
-			     unsigned int serial)
+AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct txagc_config *cfg,
+				       enum txagc_stage kind, const char *current, const char *next,
+				       unsigned int serial)
 {
 	char options[1024];
 	char prefix[32];
@@ -330,8 +343,8 @@ static int add_dynamic_stage(char *graph, size_t size, const struct txagc_config
 	return AVERROR(EINVAL);
 }
 
-static int build_description(char *graph, size_t size, const struct txagc_config *cfg,
-			     unsigned int sample_rate)
+AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct txagc_config *cfg,
+				       unsigned int sample_rate)
 {
 	char current[NAME_SIZE] = "s0";
 	const char *graph_input = "in";
@@ -529,7 +542,7 @@ static int build_description(char *graph, size_t size, const struct txagc_config
 			    current);
 }
 
-static void free_graph(struct txagc_avfilter *state)
+AVFILTER_PRIVATE void free_graph(struct txagc_avfilter *state)
 {
 	avfilter_graph_free(&state->graph);
 	state->source = NULL;
@@ -547,15 +560,15 @@ static void free_graph(struct txagc_avfilter *state)
 	state->configured = 0;
 }
 
-static void set_double_sample_format(AVFilterContext *sink)
+AVFILTER_PRIVATE void set_double_sample_format(AVFilterContext *sink)
 {
 	const int formats[] = {AV_SAMPLE_FMT_DBL, AV_SAMPLE_FMT_NONE};
 	av_opt_set_bin(sink, "sample_fmts", (const uint8_t *)formats, sizeof(formats[0]),
 		       AV_OPT_SEARCH_CHILDREN);
 }
 
-static int configure(struct txagc_avfilter *state, const struct txagc_config *config,
-		     unsigned int sample_rate)
+AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_config *config,
+			       unsigned int sample_rate)
 {
 	const AVFilter *source_filter;
 	const AVFilter *sink_filter;
@@ -715,8 +728,8 @@ void txagc_avfilter_reset(struct txagc_avfilter *state)
 	free_graph(state);
 }
 
-static int drain_cleanup_meter(struct txagc_avfilter *state, struct AVFilterContext *sink,
-			       AVFrame *frame, enum cleanup_meter meter)
+AVFILTER_PRIVATE int drain_cleanup_meter(struct txagc_avfilter *state, struct AVFilterContext *sink,
+					 AVFrame *frame, enum cleanup_meter meter)
 {
 	int result;
 

@@ -1,15 +1,8 @@
-#define rnnoise_create test_rnnoise_create
-#define rnnoise_destroy test_rnnoise_destroy
-#define rnnoise_process_frame test_rnnoise_process_frame
-#define src_delete test_src_delete
-#define src_new test_src_new
-#define src_process test_src_process
-#define src_reset test_src_reset
-
-#include "../src/txagc/rnnoise_processor.c"
+#include "../src/txagc/rnnoise_processor_internal.h"
 
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 static int create_call;
 static int fail_create_call;
@@ -17,26 +10,26 @@ static int process_call;
 static int fail_process_call;
 static int short_input;
 
-DenoiseState *test_rnnoise_create(RNNModel *model)
+DenoiseState *__wrap_rnnoise_create(RNNModel *model)
 {
 	(void)model;
 	create_call++;
 	return create_call == fail_create_call ? NULL : (DenoiseState *)(uintptr_t)1;
 }
 
-void test_rnnoise_destroy(DenoiseState *state)
+void __wrap_rnnoise_destroy(DenoiseState *state)
 {
 	(void)state;
 }
 
-float test_rnnoise_process_frame(DenoiseState *state, float *output, const float *input)
+float __wrap_rnnoise_process_frame(DenoiseState *state, float *output, const float *input)
 {
 	(void)state;
 	memcpy(output, input, TXAGC_RNNOISE_FRAME * sizeof(*output));
 	return 0.5F;
 }
 
-SRC_STATE *test_src_new(int converter_type, int channels, int *error)
+SRC_STATE *__wrap_src_new(int converter_type, int channels, int *error)
 {
 	(void)converter_type;
 	(void)channels;
@@ -45,18 +38,18 @@ SRC_STATE *test_src_new(int converter_type, int channels, int *error)
 	return create_call == fail_create_call ? NULL : (SRC_STATE *)(uintptr_t)1;
 }
 
-SRC_STATE *test_src_delete(SRC_STATE *state)
+SRC_STATE *__wrap_src_delete(SRC_STATE *state)
 {
 	return state;
 }
 
-int test_src_reset(SRC_STATE *state)
+int __wrap_src_reset(SRC_STATE *state)
 {
 	(void)state;
 	return 0;
 }
 
-int test_src_process(SRC_STATE *state, SRC_DATA *data)
+int __wrap_src_process(SRC_STATE *state, SRC_DATA *data)
 {
 	long generated;
 	(void)state;

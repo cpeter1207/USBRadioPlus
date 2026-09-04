@@ -6,12 +6,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def text(name):
     body = (ROOT / name).read_text(encoding="utf-8")
+    body = body.replace("PROCESSING_PRIVATE", "static")
     if name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         shared = "".join(
             (ROOT / path).read_text(encoding="utf-8")
             for path in (
-                "src/usbradioplus_channel_common.inc",
-                "src/usbradioplus_native_tick.inc",
+                "src/usbradioplus_channel_common.c",
+                "src/usbradioplus_tune_menu.c",
+                "src/usbradioplus_native_tick.c",
                 "src/usbradioplus_channel_core.c",
             )
         )
@@ -21,7 +23,9 @@ def text(name):
 
 def function_definition(source, name):
     """Return one complete top-level C function without relying on source order."""
-    match = re.search(rf"^static .*\b{re.escape(name)}\([^;]*\)\n\{{", source, re.MULTILINE)
+    match = re.search(
+        rf"^(?:static )?[^;\n]*\b{re.escape(name)}\([^;]*\)\n\{{", source, re.MULTILINE
+    )
     assert match, name
     end = source.index("\n}\n", match.start()) + 3
     return source[match.start() : end]
@@ -91,9 +95,9 @@ def test_deesser_is_default_disabled_before_every_compressor():
 def test_legacy_default_initializer_is_preserved():
     source = text("src/chan_usbradioplus.c")
     block = source[
-        source.index("static struct chan_usbradio_pvt usbradio_default") : source.index(
+        source.index("struct chan_usbradio_pvt usbradio_default") : source.index(
             "/*\tDECLARE FUNCTION PROTOTYPES",
-            source.index("static struct chan_usbradio_pvt usbradio_default"),
+            source.index("struct chan_usbradio_pvt usbradio_default"),
         )
     ]
     expected = text("tests/fixtures/chan_usbradio-default-initializer.txt").splitlines()
@@ -189,13 +193,25 @@ def test_software_duplex3_honors_dtmf_mute_state():
         source = text(path)
         assert "urp_native_repeat_prepare(local_program, o->plus_local_native" in source
         assert "o->usedtmf && o->dsp && o->toneflag" in source
-        assert '#include "usbradioplus_repeat.c"' in source
+        assert '#include "usbradioplus_repeat.h"' in source
     assert "urp_rate_convert(o->plus_down" in source
     assert "urp_src_process(o->plus_up" in source
     assert "o->plus_app_rpt_rate == URP_RATE_NATIVE" in source
     assert "urp_clock_recovery_update" in source
     assert ".plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT" in source
     assert not (ROOT / "patches/app_rpt-radioplus-duplex.patch").exists()
+
+
+def test_implementation_sources_are_never_textually_included():
+    include_pattern = re.compile(r'^\s*#\s*include\s+["<][^">]+\.(?:c|inc)[">]', re.MULTILINE)
+    offenders = []
+    for directory in (ROOT / "src", ROOT / "tests"):
+        for path in directory.rglob("*"):
+            if path.suffix in {".c", ".h", ".inc"} and include_pattern.search(
+                path.read_text(encoding="utf-8")
+            ):
+                offenders.append(str(path.relative_to(ROOT)))
+    assert offenders == []
 
 
 def test_echo_uses_native_buffer_only_for_software_duplex3():
@@ -214,7 +230,7 @@ def test_native_transmit_only_clamps_at_pcm_boundary():
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         defaults = source[
-            source.index("static struct chan_usbradio_pvt usbradio_default") : source.index(
+            source.index("struct chan_usbradio_pvt usbradio_default") : source.index(
                 "/*\tDECLARE FUNCTION PROTOTYPES"
             )
         ]
@@ -663,10 +679,7 @@ def test_auxiliary_level_updates_selected_mixer():
 def test_tuning_commands_and_persistence_cover_all_levels():
     module = text("src/chan_usbradioplus.c")
     utility = text("src/usbradioplus-tune.c")
-    handler_start = module.rindex("static void tune_menusupport")
-    handler = module[
-        handler_start : module.index("static struct chan_usbradio_pvt *store_config", handler_start)
-    ]
+    handler = function_definition(module, "tune_menusupport")
     cases = set(re.findall(r"case '([0-9a-z])'", handler))
     assert set("0123abcdefghijklopqrstuvwxyz") <= cases
     for command in ("c", "d", "e", "f", "g", "h", "j"):

@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def source(name):
     body = (ROOT / "src" / name).read_text(encoding="utf-8")
     if name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
-        body += source("usbradioplus_channel_common.inc")
-        body += source("usbradioplus_native_tick.inc")
+        body += source("usbradioplus_channel_common.c")
+        body += source("usbradioplus_native_tick.c")
     return body
 
 
@@ -43,10 +43,13 @@ def test_modern_port_uses_shared_device_audio_and_hid_services():
 
 
 def test_ports_share_the_same_configuration_and_dsp_implementation():
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
     for name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
         text = source(name)
         assert '#define CONFIG "usbradioplus.conf"' in text
-        assert '#include "usbradioplus_dsp.c"' in text
-        assert '#include "usbradioplus_radio.c"' in text
+        assert '#include "usbradioplus_dsp.h"' in text
+        assert '#include "usbradioplus_radio.h"' in text
         assert "usbradioplus_processing_load()" in text
         assert "usbradioplus_processing_reload()" in text
+    assert "src/usbradioplus_dsp.c" in makefile
+    assert "src/usbradioplus_radio.c" in makefile

@@ -65,6 +65,7 @@
 #include "asterisk.h"
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
@@ -73,10 +74,33 @@
 
 #include "usbradioplus_radio.h"
 #include "usbradioplus_radio_coefficients.h"
+#include "asterisk/utils.h"
 #include "asterisk/logger.h"
 
 static i16 radioIndex = 0; /* Count live detector instances. */
 static char disabled_code[] = "0";
+
+static int urp_radio_debug_atleast(int level)
+{
+	if (option_debug >= level)
+		return 1;
+	if (!ast_opt_dbg_module)
+		return 0;
+	return (int)ast_debug_get_by_module(AST_MODULE) >= level ||
+	       (int)ast_debug_get_by_module(__FILE__) >= level;
+}
+
+void urp_radio_trace_log(int configured_level, int level, const char *format, ...)
+{
+	va_list arguments;
+
+	if (configured_level < level || !urp_radio_debug_atleast(level)) {
+		return;
+	}
+	va_start(arguments, format);
+	ast_log_ap(__LOG_DEBUG, __FILE__, __LINE__, __func__, format, arguments);
+	va_end(arguments);
+}
 
 /*
 	Trace Routines
@@ -84,7 +108,7 @@ static char disabled_code[] = "0";
 void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value)
 {
 	/* make dbg_trace buffer in structure */
-	if (!sdbg->mode || sdbg->point[point] < 0) {
+	if (!sdbg || !sdbg->mode || sdbg->point[point] < 0) {
 		return;
 	} else {
 		sdbg->buffer[(index * URP_RADIO_DEBUG_CHANNELS) + sdbg->point[point]] = value;
@@ -97,6 +121,9 @@ void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value)
 void strace2(t_sdbg *sdbg)
 {
 	int i;
+	if (!sdbg) {
+		return;
+	}
 	for (i = 0; i < URP_RADIO_DEBUG_CHANNELS; i++) {
 		if (sdbg->source[i]) {
 			int ii;
@@ -115,7 +142,7 @@ void strace2(t_sdbg *sdbg)
 	count set pointers
 	string_parse( char *src, char *dest, char **sub)
 */
-i16 string_parse(char *src, char **dest, char ***ptrs)
+i16 string_parse(const char *src, char **dest, char ***ptrs)
 {
 	char *p, *pd;
 	char *ptstr[1000];
@@ -158,7 +185,7 @@ i16 string_parse(char *src, char **dest, char ***ptrs)
 	}
 
 	if (*ptrs) {
-		ast_free(*ptrs);
+		ast_free((void *)*ptrs);
 		*ptrs = NULL;
 	}
 	*ptrs = ast_calloc(numsub, sizeof(char *));
@@ -859,11 +886,13 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 			}
 		}
 
-		if ((amax -= discfactor) < amin) {
+		amax -= discfactor;
+		if (amax < amin) {
 			amax = amin;
 		}
 
-		if ((amin += discfactor) > amax) {
+		amin += discfactor;
+		if (amin > amax) {
 			amin = amax;
 		}
 
@@ -1252,6 +1281,16 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 	samples are all 16 bits
 	samples are filtered and decimated by 1/6th
 */
+static urp_radio_stage *urp_radio_stage_append(urp_radio_state *channel, urp_radio_stage *tail)
+{
+	urp_radio_stage *next = urp_radio_stage_create(channel);
+
+	if (next) {
+		tail->nextSps = next;
+	}
+	return next;
+}
+
 urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 {
 #define ALLOCATE_OR_FAIL(target, count, size)                                                      \
@@ -1552,10 +1591,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	/* allocate space for next sps and set pointers */
 	/* Rx SubAudible Decoder Low Pass Filter */
-	pSps = pChan->spsRxLsd = pSps->nextSps = urp_radio_stage_create(pChan);
+	pSps = urp_radio_stage_append(pChan, pSps);
 	if (!pSps) {
 		goto allocation_failed;
 	}
+	pChan->spsRxLsd = pSps;
 	pSps->source = pChan->pRxBase;
 	pSps->sink = pChan->pRxLsd;
 	pSps->sigProc = urp_radio_fir;
@@ -1581,10 +1621,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pChan->prxCtcssAdjust = &(pSps->outputGain);
 
 	/* CTCSS CenterSlicer */
-	pSps = pChan->spsRxLsdNrz = pSps->nextSps = urp_radio_stage_create(pChan);
+	pSps = urp_radio_stage_append(pChan, pSps);
 	if (!pSps) {
 		goto allocation_failed;
 	}
+	pChan->spsRxLsdNrz = pSps;
 	pSps->source = pChan->pRxLsd;
 	pSps->sink = pChan->pRxDcTrack;
 	pSps->buff = pChan->pRxLsdLimit;
@@ -1598,7 +1639,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	pSps->enabled = 0;
 
 	/* Rx HPF */
-	pSps = pSps->nextSps = urp_radio_stage_create(pChan);
+	pSps = urp_radio_stage_append(pChan, pSps);
 	if (!pSps) {
 		goto allocation_failed;
 	}
@@ -1627,7 +1668,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	/* allocate space for next sps and set pointers */
 	/* Rx DeEmp */
 	if (pChan->rxDeEmpEnable) {
-		pSps = pSps->nextSps = urp_radio_stage_create(pChan);
+		pSps = urp_radio_stage_append(pChan, pSps);
 		if (!pSps) {
 			goto allocation_failed;
 		}
@@ -1663,10 +1704,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	}
 	if (pChan->rxSquelchDelay > 0) {
 		TRACEF(1, "create rx squelch delay\n");
-		pSps = pChan->spsDelayLine = pSps->nextSps = urp_radio_stage_create(pChan);
+		pSps = urp_radio_stage_append(pChan, pSps);
 		if (!pSps) {
 			goto allocation_failed;
 		}
+		pChan->spsDelayLine = pSps;
 		pChan->spsRxSquelchDelay = pSps;
 		pSps->sigProc = DelayLine;
 		if (pChan->rxDeEmpEnable) {
@@ -1693,10 +1735,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		TRACEF(1, "create vox measureblock\n");
 		ALLOCATE_OR_FAIL(pChan->prxVoxMeas, pChan->nSamplesRx, 2);
 
-		pSps = pChan->spsRxVox = pSps->nextSps = urp_radio_stage_create(pChan);
+		pSps = urp_radio_stage_append(pChan, pSps);
 		if (!pSps) {
 			goto allocation_failed;
 		}
+		pChan->spsRxVox = pSps;
 		pSps->sigProc = MeasureBlock;
 		pSps->parentChan = pChan;
 		pSps->source = pChan->pRxBase;
@@ -1716,10 +1759,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	}
 
 	/* tuning measure block */
-	pSps = pChan->spsMeasure = pSps->nextSps = urp_radio_stage_create(pChan);
+	pSps = urp_radio_stage_append(pChan, pSps);
 	if (!pSps) {
 		goto allocation_failed;
 	}
+	pChan->spsMeasure = pSps;
 	pSps->source = pChan->spsRx->sink;
 	pSps->sink = pChan->prxMeasure;
 	pSps->sigProc = MeasureBlock;
@@ -1786,9 +1830,9 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 		ast_free(pChan->prxMeasure);
 	}
 	ast_free(pChan->prxVoxMeas);
-	ast_free(pChan->pRxCode);
+	ast_free((void *)pChan->pRxCode);
 	ast_free(pChan->pRxCodeStr);
-	ast_free(pChan->pTxCode);
+	ast_free((void *)pChan->pTxCode);
 	ast_free(pChan->pTxCodeStr);
 
 #if URP_RADIO_DEBUG == 1
@@ -1890,12 +1934,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	float f = 0;
 	urp_radio_stage *pmr_sps;
 
-	TRACEC(5, "urp_radio_process(%p %p %p %p)\n", pChan, input, outputrx, outputtx);
-
 	if (pChan == NULL) {
 		ast_log(LOG_ERROR, "urp_radio_process() pChan == NULL\n");
 		return 1;
 	}
+	TRACEC(5, "urp_radio_process(%p %p %p %p)\n", pChan, input, outputrx, outputtx);
 
 	pChan->frameCountRx++;
 

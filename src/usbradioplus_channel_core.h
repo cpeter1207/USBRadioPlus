@@ -2,6 +2,7 @@
 #define USBRADIOPLUS_CHANNEL_CORE_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "usbradioplus_dsp.h"
 
@@ -151,8 +152,31 @@ double urp_double_peak(const double *samples, size_t count);
 /** Return nonzero when a transmitter assignment contains program audio. */
 int urp_tx_output_has_program(enum urp_tx_output_mode mode);
 
+/** Return nonzero when an output assignment carries transmitter voice audio. */
+int urp_tx_output_has_voice(enum urp_tx_output_mode mode);
+
+/** Return nonzero when an output assignment carries transmitter CTCSS. */
+int urp_tx_output_has_tone(enum urp_tx_output_mode mode);
+
+/** Return nonzero when either output assignment carries transmitter voice audio. */
+int urp_tx_pair_has_voice(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b);
+
+/** Return nonzero when either output assignment carries transmitter CTCSS. */
+int urp_tx_pair_has_tone(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b);
+
+/** Return nonzero when configured transmitter CTCSS has no assigned output. */
+int urp_tx_tone_route_missing(const char *frequency, enum urp_tx_output_mode output_a,
+			      enum urp_tx_output_mode output_b);
+
+/** Return nonzero when configured parallel outputs require the pulse worker. */
+int urp_parallel_pulser_needed(int parallel_port_enabled, int output_configured);
+
 /** Return nonzero when duplex-3 uses the native software repeat path. */
 int urp_native_echo_enabled(int duplex3_level, int software_mode);
+
+/** Apply logical PTT and polarity to the USB and optional parallel outputs. */
+void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int usb_mask,
+			   int32_t *usb_value, int8_t *parallel_value);
 
 /** Resolve a legacy cutoff option name to its filter role. */
 enum urp_legacy_filter urp_legacy_filter_name(const char *name);

@@ -12,6 +12,20 @@ fi
 
 common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-}"
 completed=0
+sys_io_tests=0
+channel_shared_sources="$root/src/usbradioplus_config.c $root/src/usbradioplus_radio.c \
+$root/src/usbradioplus_dsp.c $root/src/usbradioplus_ctcss.c \
+$root/src/usbradioplus_hardware.c $root/src/usbradioplus_repeat.c \
+$root/src/usbradioplus_channel_core.c $root/src/usbradioplus_channel_common.c \
+$root/src/usbradioplus_native_tick.c \
+$root/src/usbradioplus_tune_menu.c $root/src/usbradioplus_processing.c \
+$root/src/txagc/agc_core.c $root/src/txagc/avfilter_processor.c \
+$root/src/txagc/rnnoise_processor.c"
+channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process \
+-Wl,--wrap=pthread_join -Wl,--wrap=read -Wl,--wrap=write -Wl,--wrap=usleep \
+-Wl,--wrap=ioctl -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=poll -Wl,--wrap=pipe \
+-Wl,--wrap=pipe2 -Wl,--wrap=ioperm -Wl,--wrap=usb_open -Wl,--wrap=usb_close \
+-Wl,--wrap=usb_claim_interface -Wl,--wrap=usb_detach_kernel_driver_np"
 
 # shellcheck disable=SC2086
 cc $common "$root/tests/test_stage_order.c" \
@@ -28,7 +42,7 @@ completed=$((completed + 1))
 
 # shellcheck disable=SC2086
 cc $common -Wno-unused-variable "$root/tools/legacy_ctcss_reference.c" \
-	"$root/src/usbradioplus_ctcss.c" -O2 -o "$out/ctcss-reference" -lm
+	"$root/src/usbradioplus_ctcss.c" -o "$out/ctcss-reference" -lm
 "$out/ctcss-reference"
 completed=$((completed + 1))
 
@@ -63,39 +77,83 @@ cc $common "$root/tests/test_micor_squelch.c" -o "$out/micor-squelch"
 "$out/micor-squelch"
 completed=$((completed + 1))
 
-# shellcheck disable=SC2086
-cc $common "$root/tests/test_radio_core.c" "$root/src/usbradioplus_radio.c" \
-	-DAST_MODULE_SELF_SYM=test_module_self -DAST_MODULE='"chan_usbradioplus"' \
-	-DURP_RADIO_TRACE=0 -I"$root/src" -o "$out/radio-core" -lm
-"$out/radio-core"
-completed=$((completed + 1))
+C_TEST_OUTPUT="$out" C_TEST_CFLAGS="${C_TEST_CFLAGS:-}" sh "$root/tests/run_radio_core_tests.sh"
+completed=$((completed + 2))
 
-# Include the tuning utility so its private parsing and terminal helpers can be
-# tested without exporting implementation details in the installed program.
 # shellcheck disable=SC2086
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-	-DAST_MODULE_SELF_SYM=test_module_self "$root/tests/test_tune_core.c" \
-	-I/usr/include -I"$root/src" -Wl,--gc-sections -o "$out/tune-core"
+	-DURP_TUNE_TESTING -Dmain=usbradioplus_tune_main \
+	-DAST_MODULE_SELF_SYM=test_module_self -I/usr/include -I"$root/src" \
+	-c "$root/src/usbradioplus-tune.c" -o "$out/usbradioplus-tune-test.o"
+# shellcheck disable=SC2086
+cc $common -DURP_TUNE_TESTING "$root/tests/test_tune_core.c" \
+	"$out/usbradioplus-tune-test.o" -I/usr/include -I"$root/src" \
+	-Wl,--gc-sections -o "$out/tune-core"
 "$out/tune-core"
 completed=$((completed + 1))
 
-# Compile the legacy channel port as one translation unit and retain only the
-# pure helpers reached by this focused harness. The modern port is exercised by
-# the modern-header jobs in the container matrix.
+# Compile the channel driver independently so the test exercises the same
+# linked-object boundary as the installed module.
+# shellcheck disable=SC2086
+cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
+	-DURP_CHANNEL_UNIT_TEST -DURP_PROCESSING_TESTING \
+	-DAST_MODULE='"chan_usbradioplus"' -DAST_MODULE_SELF_SYM=test_module_self \
+	-I/usr/include -I"$root/src" -c "$root/src/chan_usbradioplus.c" \
+	-o "$out/chan-usbradioplus-test.o"
 # shellcheck disable=SC2046,SC2086
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-	"$root/tests/test_channel_core.c" -I/usr/include -I"$root/src" \
-	-Wl,--gc-sections -o "$out/channel-core" \
+	-DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
+	-DAST_MODULE_SELF_SYM=test_module_self \
+	"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-test.o" \
+	$channel_shared_sources -I/usr/include -I"$root/src" \
+	-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core" \
 	$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm
 "$out/channel-core"
 completed=$((completed + 1))
 
-if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
+# Architectures with the legacy port-I/O ABI include two ioperm() call sites
+# that are absent from the normal Debian build. The harness redirects them to a
+# safe test boundary. ARM has no sys/io.h; its ppdev path is covered above.
+if printf '#include <sys/io.h>\n' | cc -E -x c - >/dev/null 2>&1; then
+	# shellcheck disable=SC2086
+	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
+		-DHAVE_SYS_IO -DURP_CHANNEL_UNIT_TEST -DURP_PROCESSING_TESTING \
+		-DAST_MODULE='"chan_usbradioplus"' -DAST_MODULE_SELF_SYM=test_module_self \
+		-I/usr/include -I"$root/src" -c "$root/src/chan_usbradioplus.c" \
+		-o "$out/chan-usbradioplus-sysio-test.o"
 	# shellcheck disable=SC2046,SC2086
 	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-		-DURP_TEST_MODERN "$root/tests/test_channel_core.c" \
+		-DHAVE_SYS_IO -DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
+		-DAST_MODULE_SELF_SYM=test_module_self \
+		"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-sysio-test.o" \
+		$channel_shared_sources \
+		-I/usr/include -I"$root/src" \
+		-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core-sysio" \
+		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm
+	"$out/channel-core-sysio"
+	completed=$((completed + 1))
+	sys_io_tests=1
+fi
+
+if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
+	# shellcheck disable=SC2086
+	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
+		-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_CHANNEL_UNIT_TEST \
+		-DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
+		-DAST_MODULE_SELF_SYM=test_module_self -I"$ASL_MODERN_INCLUDEDIR" \
+		-I/usr/include -I"$root/src" -c "$root/src/chan_usbradioplus_modern.c" \
+		-o "$out/chan-usbradioplus-modern-test.o"
+	# shellcheck disable=SC2046,SC2086
+	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
+		-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_PROCESSING_TESTING \
+		-DAST_MODULE='"chan_usbradioplus"' \
+		-DAST_MODULE_SELF_SYM=test_module_self \
+		"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-modern-test.o" \
+		$channel_shared_sources \
 		-I"$ASL_MODERN_INCLUDEDIR" -I/usr/include -I"$root/src" \
-		-Wl,--gc-sections -o "$out/channel-core-modern" \
+		-Wl,--gc-sections $channel_wrap_flags -Wl,--wrap=libusb_open \
+		-Wl,--wrap=libusb_close -Wl,--wrap=libusb_claim_interface \
+		-Wl,--wrap=libusb_detach_kernel_driver -o "$out/channel-core-modern" \
 		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa \
 			portaudio-2.0 libusb-1.0) -lm
 	"$out/channel-core-modern"
@@ -110,17 +168,19 @@ cc $common "$root/tests/test_rnnoise_processor.c" \
 completed=$((completed + 1))
 
 # shellcheck disable=SC2046,SC2086
-cc $common "$root/tests/test_rnnoise_failures.c" -o "$out/rnnoise-failures" \
+cc $common -DURP_RNNOISE_TESTING "$root/tests/test_rnnoise_failures.c" \
+	"$root/src/txagc/rnnoise_processor.c" -o "$out/rnnoise-failures" \
+	-Wl,--wrap=rnnoise_create -Wl,--wrap=rnnoise_destroy \
+	-Wl,--wrap=rnnoise_process_frame -Wl,--wrap=src_delete -Wl,--wrap=src_new \
+	-Wl,--wrap=src_process -Wl,--wrap=src_reset \
 	$(pkg-config --cflags --libs rnnoise samplerate) -lm
 "$out/rnnoise-failures"
 completed=$((completed + 1))
 
-# Include the processing implementation so private validation can be exercised.
-# Other static module functions are retained in the production build and are
-# intentionally discarded from this focused executable by section GC.
 # shellcheck disable=SC2086
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-	-DAST_MODULE_SELF_SYM=test_module_self "$root/tests/test_processing_validation.c" \
+	-DURP_PROCESSING_TESTING -DAST_MODULE_SELF_SYM=test_module_self \
+	"$root/tests/test_processing_validation.c" "$root/src/usbradioplus_processing.c" \
 	"$root/src/txagc/agc_core.c" -I/usr/include -I"$root/src" -Wl,--gc-sections \
 	-o "$out/processing-validation" -lm
 "$out/processing-validation"
@@ -139,10 +199,9 @@ for name in avfilter_bandpass avfilter_ctcss avfilter_emphasis \
 	completed=$((completed + 1))
 done
 
-# This test includes the implementation so private graph-construction helpers
-# can be checked without widening the production API.
 # shellcheck disable=SC2046,SC2086
 cc $common "$root/tests/test_avfilter_internals.c" "$root/src/txagc/agc_core.c" \
+	-DURP_AVFILTER_TESTING "$root/src/txagc/avfilter_processor.c" \
 	-o "$out/avfilter-internals" $(pkg-config --cflags --libs libavfilter libavutil) -lm
 "$out/avfilter-internals"
 completed=$((completed + 1))
@@ -161,9 +220,9 @@ cc $common "$root/tests/test_avfilter_failures.c" "$root/src/txagc/agc_core.c" \
 "$out/avfilter-failures"
 completed=$((completed + 1))
 
-expected=23
+expected=$((24 + sys_io_tests))
 if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
-	expected=24
+	expected=$((expected + 1))
 fi
 test "$completed" -eq "$expected"
 echo "All $completed C test executables passed"

@@ -186,9 +186,51 @@ int urp_tx_output_has_program(enum urp_tx_output_mode mode)
 	       mode == URP_TX_OUTPUT_AUX_VOICE;
 }
 
+int urp_tx_output_has_voice(enum urp_tx_output_mode mode)
+{
+	return mode == URP_TX_OUTPUT_VOICE || mode == URP_TX_OUTPUT_COMPOSITE;
+}
+
+int urp_tx_output_has_tone(enum urp_tx_output_mode mode)
+{
+	return mode == URP_TX_OUTPUT_TONE || mode == URP_TX_OUTPUT_COMPOSITE;
+}
+
+int urp_tx_pair_has_voice(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b)
+{
+	return urp_tx_output_has_voice(output_a) || urp_tx_output_has_voice(output_b);
+}
+
+int urp_tx_pair_has_tone(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b)
+{
+	return urp_tx_output_has_tone(output_a) || urp_tx_output_has_tone(output_b);
+}
+
+int urp_tx_tone_route_missing(const char *frequency, enum urp_tx_output_mode output_a,
+			      enum urp_tx_output_mode output_b)
+{
+	return frequency[0] && !urp_tx_pair_has_tone(output_a, output_b);
+}
+
+int urp_parallel_pulser_needed(int parallel_port_enabled, int output_configured)
+{
+	return parallel_port_enabled && output_configured;
+}
+
 int urp_native_echo_enabled(int duplex3_level, int software_mode)
 {
 	return duplex3_level > 0 && software_mode;
+}
+
+void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int usb_mask,
+			   int32_t *usb_value, int8_t *parallel_value)
+{
+	*usb_value &= ~usb_mask;
+	*parallel_value &= (int8_t)~parallel_mask;
+	if (!!asserted != !!inverted) {
+		*usb_value |= usb_mask;
+		*parallel_value |= (int8_t)parallel_mask;
+	}
 }
 
 enum urp_legacy_filter urp_legacy_filter_name(const char *name)

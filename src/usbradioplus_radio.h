@@ -90,35 +90,20 @@
 #define URP_RADIO_TRACE_AMP 8192
 
 #if (URP_RADIO_TRACE == 1)
-#define TRACEX(a)                                                                                  \
-	{                                                                                          \
-		ast_debug a;                                                                       \
-	}
 #define TRACEC(level, ...)                                                                         \
 	{                                                                                          \
-		if (pChan->tracelevel >= level) {                                                  \
-			ast_debug(level, "%08i ", pChan->frameCountRx);                            \
-			ast_debug(level, __VA_ARGS__);                                             \
-		}                                                                                  \
+		urp_radio_trace_log(pChan->tracelevel, level, "%08i ", pChan->frameCountRx);       \
+		urp_radio_trace_log(pChan->tracelevel, level, __VA_ARGS__);                        \
 	}
 #define TRACEF(level, ...)                                                                         \
 	{                                                                                          \
-		if (pChan->tracelevel >= level) {                                                  \
-			ast_debug(level, __VA_ARGS__);                                             \
-		}                                                                                  \
-	}
-#define TRACEJ(level, ...)                                                                         \
-	{                                                                                          \
-		if (URP_RADIO_TRACE_LEVEL >= level) {                                              \
-			ast_debug(level, __VA_ARGS__);                                             \
-		}                                                                                  \
+		urp_radio_trace_log(pChan->tracelevel, level, __VA_ARGS__);                        \
 	}
 #else
-#define TRACEX(a)
 #define TRACEC(...)
 #define TRACEF(...)
-#define TRACEJ(...)
 #endif
+#define TRACEJ(...)
 
 #define i8 int8_t
 #define u8 uint8_t
@@ -813,6 +798,8 @@ typedef struct urp_radio_state {
 */
 void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value);
 void strace2(t_sdbg *sdbg);
+void urp_radio_trace_log(int configured_level, int level, const char *format, ...)
+	__attribute__((format(printf, 3, 4)));
 
 urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples);
 urp_radio_stage *urp_radio_stage_create(urp_radio_state *pChan);
@@ -827,7 +814,7 @@ i16 DelayLine(urp_radio_stage *mySps);
 
 i16 urp_radio_process(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx);
 
-i16 string_parse(char *src, char **dest, char ***ptrs);
+i16 string_parse(const char *src, char **dest, char ***ptrs);
 i16 urp_radio_parse_codes(urp_radio_state *pChan);
 
 i16 urp_ctcss_frequency_index(float freq);

@@ -19,21 +19,22 @@
 
 #include "./txagc/agc_core.h"
 #include "./txagc/avfilter_processor.h"
+#include "usbradioplus_config.h"
 #include "usbradioplus_processing.h"
+#include "usbradioplus_processing_internal.h"
 
 #define CONFIG_FILE "usbradioplus-processing.conf"
 #define SCAN_INTERVAL_US 250000
-#define MAX_SECTION_OVERRIDES 96
 
-struct section_override {
-	char section[16];
-	char name[64];
-	char value[512];
-};
+#ifdef URP_PROCESSING_TESTING
+#define PROCESSING_PRIVATE
+#else
+#define PROCESSING_PRIVATE static
+#endif
 
 static const char *source_names[TXAGC_SOURCE_COUNT] = {"local", "link", "voice_telemetry"};
 
-static const char *ctcss_filter_name(int mode)
+PROCESSING_PRIVATE const char *ctcss_filter_name(int mode)
 {
 	switch (mode) {
 	case TXAGC_CTCSS_FILTER_NOTCH:
@@ -45,33 +46,22 @@ static const char *ctcss_filter_name(int mode)
 	}
 }
 
-struct txagc_settings {
-	int enabled;
-	char channel[AST_CHANNEL_NAME];
-	struct usbradioplus_hardware_settings hardware;
-	struct section_override overrides[MAX_SECTION_OVERRIDES];
-	size_t override_count;
-	struct txagc_chain chains[TXAGC_SOURCE_COUNT];
-	/* Compatibility view used by the detailed CLI display. */
-	int local_enabled;
-	int link_enabled;
-	int rnnoise_enabled;
-	struct txagc_config agc;
-};
-
+#ifndef URP_PROCESSING_TESTING
 struct txagc_hook {
 	struct ast_audiohook audiohook;
 	struct txagc_avfilter avfilter[TXAGC_SOURCE_COUNT];
 	char channel[AST_CHANNEL_NAME];
 };
+#endif
 
 AST_MUTEX_DEFINE_STATIC(settings_lock);
-static struct txagc_settings settings;
-static pthread_t scan_thread = AST_PTHREADT_NULL;
-static int stopping;
-static int settings_parse_error;
+PROCESSING_PRIVATE struct txagc_settings settings;
+PROCESSING_PRIVATE pthread_t scan_thread = AST_PTHREADT_NULL;
+PROCESSING_PRIVATE int stopping;
+PROCESSING_PRIVATE int settings_parse_error;
 
-static int channel_is_eligible(struct ast_channel *chan, const struct txagc_settings *current)
+PROCESSING_PRIVATE int channel_is_eligible(struct ast_channel *chan,
+					   const struct txagc_settings *current)
 {
 	const char *name = ast_channel_name(chan);
 	const char *application = ast_channel_appl(chan);
@@ -84,7 +74,7 @@ static int channel_is_eligible(struct ast_channel *chan, const struct txagc_sett
 	       !strcmp(application, "Rpt") && data && !strcmp(data, "Remote Rx");
 }
 
-static void settings_defaults(struct txagc_settings *value)
+PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *value)
 {
 	struct txagc_chain *base;
 
@@ -214,7 +204,7 @@ static void settings_defaults(struct txagc_settings *value)
 	base->agc.output_gain_db = 0.0;
 }
 
-static int validate_chain(const struct txagc_chain *value)
+PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 {
 	unsigned int index;
 	unsigned int seen = 0;
@@ -401,7 +391,7 @@ static int validate_chain(const struct txagc_chain *value)
 	return 0;
 }
 
-static int validate_settings(const struct txagc_settings *value)
+PROCESSING_PRIVATE int validate_settings(const struct txagc_settings *value)
 {
 	int source;
 	if (ast_strlen_zero(value->channel)) {
@@ -456,8 +446,8 @@ static int validate_settings(const struct txagc_settings *value)
 	return 0;
 }
 
-static void read_double(struct ast_config *cfg, const char *section, const char *name,
-			double *value)
+PROCESSING_PRIVATE void read_double(struct ast_config *cfg, const char *section, const char *name,
+				    double *value)
 {
 	const char *text = ast_variable_retrieve(cfg, section, name);
 	char *end = NULL;
@@ -479,8 +469,8 @@ static void read_double(struct ast_config *cfg, const char *section, const char 
 /* Keep early-alpha configuration files readable while exposing one consistent
  * stage-first naming scheme.  A file must not set both spellings because the
  * intended value would otherwise depend on parser order. */
-static const char *read_option_alias(struct ast_config *cfg, const char *section, const char *name,
-				     const char *legacy_name)
+PROCESSING_PRIVATE const char *read_option_alias(struct ast_config *cfg, const char *section,
+						 const char *name, const char *legacy_name)
 {
 	const char *text = ast_variable_retrieve(cfg, section, name);
 	const char *legacy = legacy_name ? ast_variable_retrieve(cfg, section, legacy_name) : NULL;
@@ -499,8 +489,8 @@ static const char *read_option_alias(struct ast_config *cfg, const char *section
 	return text;
 }
 
-static void read_double_alias(struct ast_config *cfg, const char *section, const char *name,
-			      const char *legacy_name, double *value)
+PROCESSING_PRIVATE void read_double_alias(struct ast_config *cfg, const char *section,
+					  const char *name, const char *legacy_name, double *value)
 {
 	const char *text = read_option_alias(cfg, section, name, legacy_name);
 	char *end = NULL;
@@ -518,7 +508,8 @@ static void read_double_alias(struct ast_config *cfg, const char *section, const
 	}
 }
 
-static void read_bool(struct ast_config *cfg, const char *section, const char *name, int *value)
+PROCESSING_PRIVATE void read_bool(struct ast_config *cfg, const char *section, const char *name,
+				  int *value)
 {
 	const char *text = ast_variable_retrieve(cfg, section, name);
 	if (!text)
@@ -534,7 +525,7 @@ static void read_bool(struct ast_config *cfg, const char *section, const char *n
 	}
 }
 
-static int known_chain_option(const char *name)
+PROCESSING_PRIVATE int known_chain_option(const char *name)
 {
 	static const char *const names[] = {
 		"enabled",
@@ -657,7 +648,7 @@ static int known_chain_option(const char *name)
 	return 0;
 }
 
-static const char *const hardware_override_options[] = {
+PROCESSING_PRIVATE const char *const hardware_override_options[] = {
 	"hardware_device_identifier",
 	"hardware_serial",
 	"hardware_interface_type",
@@ -727,7 +718,7 @@ static const char *const hardware_override_options[] = {
 	"hardware_parallel_pin_15_assignment",
 	"hardware_emphasis_corner_hz",
 };
-static const char *const hardware_legacy_options[] = {
+PROCESSING_PRIVATE const char *const hardware_legacy_options[] = {
 	"devstr",
 	"serial",
 	"hdwtype",
@@ -797,7 +788,7 @@ static const char *const hardware_legacy_options[] = {
 	"pp15",
 	"emphasis_corner_hz",
 };
-static const char *const asterisk_override_options[] = {
+PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_enabled",
 	"asterisk_jitter_buffer_max_size_ms",
 	"asterisk_jitter_buffer_resync_threshold_ms",
@@ -807,24 +798,25 @@ static const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_target_extra_ms",
 	"asterisk_jitter_buffer_video_sync_enabled",
 };
-static const char *const asterisk_legacy_options[] = {
+PROCESSING_PRIVATE const char *const asterisk_legacy_options[] = {
 	"jbenable", "jbmaxsize", "jbresyncthreshold", "jbimpl",
 	"jblog",    "jbforce",	 "jbtargetextra",     "jbsyncvideo",
 };
-static const char *const duplex_override_options[] = {
+PROCESSING_PRIVATE const char *const duplex_override_options[] = {
 	"duplex_radio_mode",
 	"duplex_local_repeat_level",
 	"duplex_local_repeat_mode",
 };
-static const char *const duplex_legacy_options[] = {"duplex", "duplex3", "duplex3mode"};
-static const char *const diagnostics_override_options[] = {
+PROCESSING_PRIVATE const char *const duplex_legacy_options[] = {"duplex", "duplex3", "duplex3mode"};
+PROCESSING_PRIVATE const char *const diagnostics_override_options[] = {
 	"diagnostics_trace_type",
 	"diagnostics_trace_level",
 	"diagnostics_fever",
 };
-static const char *const diagnostics_legacy_options[] = {"tracetype", "tracelevel", "fever"};
+PROCESSING_PRIVATE const char *const diagnostics_legacy_options[] = {"tracetype", "tracelevel",
+								     "fever"};
 
-static int option_in_list(const char *name, const char *const *options, size_t count)
+PROCESSING_PRIVATE int option_in_list(const char *name, const char *const *options, size_t count)
 {
 	size_t option;
 	for (option = 0; option < count; ++option)
@@ -833,7 +825,7 @@ static int option_in_list(const char *name, const char *const *options, size_t c
 	return 0;
 }
 
-static int validate_option_names(struct ast_config *cfg)
+PROCESSING_PRIVATE int validate_option_names(struct ast_config *cfg)
 {
 	static const char *const sections[] = {"general", "asterisk",	    "hardware",
 					       "duplex",  "diagnostics",    "local",
@@ -916,8 +908,8 @@ static int validate_option_names(struct ast_config *cfg)
 	return 0;
 }
 
-static int add_override(struct txagc_settings *updated, struct ast_config *cfg, const char *section,
-			const char *name)
+PROCESSING_PRIVATE int add_override(struct txagc_settings *updated, struct ast_config *cfg,
+				    const char *section, const char *name)
 {
 	const char *value = ast_variable_retrieve(cfg, section, name);
 	struct section_override *entry;
@@ -1006,7 +998,8 @@ invalid:
 	return -1;
 }
 
-static int read_section_overrides(struct txagc_settings *updated, struct ast_config *cfg)
+PROCESSING_PRIVATE int read_section_overrides(struct txagc_settings *updated,
+					      struct ast_config *cfg)
 {
 	size_t i;
 	for (i = 0; i < ARRAY_LEN(asterisk_override_options); ++i)
@@ -1024,7 +1017,8 @@ static int read_section_overrides(struct txagc_settings *updated, struct ast_con
 	return add_override(updated, cfg, "general", "channel_enabled");
 }
 
-static int read_assignment(struct ast_config *cfg, const char *name, int *value, int *configured)
+PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *name, int *value,
+				       int *configured)
 {
 	const char *text = ast_variable_retrieve(cfg, "hardware", name);
 	if (!text)
@@ -1047,7 +1041,7 @@ static int read_assignment(struct ast_config *cfg, const char *name, int *value,
 	return 0;
 }
 
-static int valid_frequency_list(const char *text)
+PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 {
 	const char *cursor = text;
 	if (ast_strlen_zero(text))
@@ -1071,7 +1065,8 @@ static int valid_frequency_list(const char *text)
 	}
 }
 
-static int read_hardware(struct ast_config *cfg, struct usbradioplus_hardware_settings *hardware)
+PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg,
+				     struct usbradioplus_hardware_settings *hardware)
 {
 	const char *text;
 	if (ast_variable_retrieve(cfg, "hardware", "hardware_input_gain_db")) {
@@ -1134,7 +1129,8 @@ static int read_hardware(struct ast_config *cfg, struct usbradioplus_hardware_se
 			       &hardware->output_b_assignment_configured);
 }
 
-static int read_stage_order(struct ast_config *cfg, const char *section, struct txagc_chain *chain)
+PROCESSING_PRIVATE int read_stage_order(struct ast_config *cfg, const char *section,
+					struct txagc_chain *chain)
 {
 	const char *configured = ast_variable_retrieve(cfg, section, "stage_order");
 	char error[128];
@@ -1148,7 +1144,8 @@ static int read_stage_order(struct ast_config *cfg, const char *section, struct 
 	return 0;
 }
 
-static int read_chain(struct ast_config *cfg, const char *section, struct txagc_chain *chain)
+PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
+				  struct txagc_chain *chain)
 {
 #define READ_BOOL(name, field) read_bool(cfg, section, name, &(field))
 	READ_BOOL("enabled", chain->enabled);
@@ -1300,7 +1297,7 @@ static int read_chain(struct ast_config *cfg, const char *section, struct txagc_
 	return read_stage_order(cfg, section, chain);
 }
 
-static int load_settings(void)
+PROCESSING_PRIVATE int load_settings(void)
 {
 	struct ast_flags flags = {0};
 	struct ast_config *cfg;
@@ -1386,7 +1383,7 @@ invalid:
 	return -1;
 }
 
-static void hook_destroy(void *data)
+PROCESSING_PRIVATE void hook_destroy(void *data)
 {
 	struct txagc_hook *hook = data;
 	int source;
@@ -1409,8 +1406,9 @@ static const struct ast_datastore_info txagc_datastore = {
 
 /* The Asterisk callback ABI requires a mutable audiohook pointer. */
 // cppcheck-suppress constParameterCallback
-static int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *chan,
-			  struct ast_frame *frame, enum ast_audiohook_direction direction)
+PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *chan,
+				      struct ast_frame *frame,
+				      enum ast_audiohook_direction direction)
 {
 	struct txagc_hook *hook;
 	const struct ast_datastore *datastore;
@@ -1428,7 +1426,11 @@ static int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *c
 	}
 
 	datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
-	if (!datastore || !(hook = datastore->data)) {
+	if (!datastore) {
+		return 0;
+	}
+	hook = datastore->data;
+	if (!hook) {
 		return 0;
 	}
 	ast_mutex_lock(&settings_lock);
@@ -1473,7 +1475,7 @@ static int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *c
 	return 0;
 }
 
-static int attach_hook(struct ast_channel *chan)
+PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan)
 {
 	struct ast_datastore *datastore;
 	struct txagc_hook *hook;
@@ -1525,7 +1527,7 @@ static int attach_hook(struct ast_channel *chan)
 	return 0;
 }
 
-static void scan_channels(void)
+PROCESSING_PRIVATE void scan_channels(void)
 {
 	struct ast_channel_iterator *iterator;
 	struct ast_channel *chan;
@@ -1562,7 +1564,7 @@ static void scan_channels(void)
 	ast_channel_iterator_destroy(iterator);
 }
 
-static void detach_all(void)
+PROCESSING_PRIVATE void detach_all(void)
 {
 	struct ast_channel_iterator *iterator;
 	struct ast_channel *chan;
@@ -1588,7 +1590,7 @@ static void detach_all(void)
 	ast_channel_iterator_destroy(iterator);
 }
 
-static void *scanner(void *unused)
+PROCESSING_PRIVATE void *scanner(void *unused)
 {
 	(void)unused;
 	while (!stopping) {
@@ -1598,7 +1600,8 @@ static void *scanner(void *unused)
 	return NULL;
 }
 
-static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)
+PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
+				  struct ast_cli_args *args)
 {
 	struct txagc_settings current;
 
@@ -1610,6 +1613,8 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
@@ -1712,7 +1717,8 @@ static char *cli_show(struct ast_cli_entry *entry, int command, struct ast_cli_a
 	return CLI_SUCCESS;
 }
 
-static char *cli_stats(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)
+PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
+				   struct ast_cli_args *args)
 {
 	struct ast_channel_iterator *iterator;
 	struct ast_channel *chan;
@@ -1730,6 +1736,8 @@ static char *cli_stats(struct ast_cli_entry *entry, int command, struct ast_cli_
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
@@ -1741,7 +1749,8 @@ static char *cli_stats(struct ast_cli_entry *entry, int command, struct ast_cli_
 	while ((chan = ast_channel_iterator_next(iterator))) {
 		ast_channel_lock(chan);
 		datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
-		if (datastore && (hook = datastore->data)) {
+		hook = datastore ? datastore->data : NULL;
+		if (hook) {
 			ast_audiohook_lock(&hook->audiohook);
 			for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
 				filter = &hook->avfilter[source];
@@ -1774,7 +1783,8 @@ static char *cli_stats(struct ast_cli_entry *entry, int command, struct ast_cli_
 	return CLI_SUCCESS;
 }
 
-static char *cli_enable(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)
+PROCESSING_PRIVATE char *cli_enable(struct ast_cli_entry *entry, int command,
+				    struct ast_cli_args *args)
 {
 	switch (command) {
 	case CLI_INIT:
@@ -1784,6 +1794,8 @@ static char *cli_enable(struct ast_cli_entry *entry, int command, struct ast_cli
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
@@ -1796,7 +1808,8 @@ static char *cli_enable(struct ast_cli_entry *entry, int command, struct ast_cli
 	return CLI_SUCCESS;
 }
 
-static char *cli_disable(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)
+PROCESSING_PRIVATE char *cli_disable(struct ast_cli_entry *entry, int command,
+				     struct ast_cli_args *args)
 {
 	switch (command) {
 	case CLI_INIT:
@@ -1806,6 +1819,8 @@ static char *cli_disable(struct ast_cli_entry *entry, int command, struct ast_cl
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
@@ -1818,7 +1833,8 @@ static char *cli_disable(struct ast_cli_entry *entry, int command, struct ast_cl
 	return CLI_SUCCESS;
 }
 
-static char *cli_reload(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)
+PROCESSING_PRIVATE char *cli_reload(struct ast_cli_entry *entry, int command,
+				    struct ast_cli_args *args)
 {
 	switch (command) {
 	case CLI_INIT:
@@ -1828,6 +1844,8 @@ static char *cli_reload(struct ast_cli_entry *entry, int command, struct ast_cli
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
@@ -1973,7 +1991,8 @@ int usbradioplus_processing_save_input_gains(double hardware_gain_db, double loc
 		ast_category_append(cfg, category);
 	}
 	snprintf(value, sizeof(value), "%.3f", hardware_gain_db);
-	if (tune_variable_update(cfg, CONFIG_FILE, category, "hardware_input_gain_db", value)) {
+	if (usbradioplus_config_variable_update(cfg, CONFIG_FILE, category,
+						"hardware_input_gain_db", value)) {
 		ast_config_destroy(cfg);
 		return -1;
 	}
@@ -1987,7 +2006,8 @@ int usbradioplus_processing_save_input_gains(double hardware_gain_db, double loc
 		ast_category_append(cfg, category);
 	}
 	snprintf(value, sizeof(value), "%.3f", local_gain_db);
-	if (tune_variable_update(cfg, CONFIG_FILE, category, "input_gain_db", value) ||
+	if (usbradioplus_config_variable_update(cfg, CONFIG_FILE, category, "input_gain_db",
+						value) ||
 	    ast_config_text_file_save2(CONFIG_FILE, cfg, "chan_usbradioplus", 0)) {
 		ast_log(LOG_WARNING, "Failed to save input gains to %s\n", CONFIG_FILE);
 		ast_config_destroy(cfg);
@@ -2008,7 +2028,7 @@ int usbradioplus_processing_get_composite(struct txagc_chain *chain)
 	return 0;
 }
 
-static int usbradioplus_processing_unload(void)
+int usbradioplus_processing_unload(void)
 {
 	stopping = 1;
 	if (scan_thread != AST_PTHREADT_NULL) {
@@ -2020,7 +2040,7 @@ static int usbradioplus_processing_unload(void)
 	return 0;
 }
 
-static int usbradioplus_processing_load(void)
+int usbradioplus_processing_load(void)
 {
 	settings_defaults(&settings);
 	if (load_settings()) {
@@ -2037,13 +2057,13 @@ static int usbradioplus_processing_load(void)
 	return AST_MODULE_LOAD_SUCCESS;
 }
 
-static int usbradioplus_processing_prime(void)
+int usbradioplus_processing_prime(void)
 {
 	settings_defaults(&settings);
 	return load_settings();
 }
 
-static int usbradioplus_processing_reload(void)
+int usbradioplus_processing_reload(void)
 {
 	if (load_settings())
 		return -1;

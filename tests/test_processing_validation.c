@@ -1,10 +1,6 @@
 struct ast_config;
 struct ast_category;
-static int tune_variable_update(struct ast_config *config, const char *filename,
-				struct ast_category *category, const char *variable,
-				const char *value);
-
-#include "../src/usbradioplus_processing.c"
+#include "../src/usbradioplus_processing_internal.h"
 
 #include <assert.h>
 #include <stddef.h>
@@ -465,9 +461,9 @@ int ast_false(const char *value)
 	return !strcasecmp(value, "no") || !strcmp(value, "0");
 }
 
-static int tune_variable_update(struct ast_config *config, const char *filename,
-				struct ast_category *category, const char *variable,
-				const char *value)
+int usbradioplus_config_variable_update(struct ast_config *config, const char *filename,
+					struct ast_category *category, const char *variable,
+					const char *value)
 {
 	(void)config;
 	(void)filename;
@@ -484,10 +480,7 @@ struct range_case {
 	double maximum;
 };
 
-#define RANGE(field, low, high)                                                                    \
-	{                                                                                          \
-		offsetof(struct txagc_config, field), low, high                                    \
-	}
+#define RANGE(field, low, high) {offsetof(struct txagc_config, field), low, high}
 
 static const struct range_case ranges[] = {
 	RANGE(ctcss_notch_width_hz, 0.2, 10.0),

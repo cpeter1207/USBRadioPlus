@@ -1,8 +1,14 @@
-#define main usbradioplus_tune_main
-#include "../src/usbradioplus-tune.c"
-#undef main
+#include "../src/usbradioplus_tune_internal.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <getopt.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static int flat_configuration = 1;
 static int response_result;

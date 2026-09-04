@@ -1,5 +1,26 @@
+#include "asterisk.h"
+
+#include <math.h>
+#include <search.h>
+#include <string.h>
+
+#include "asterisk/logger.h"
+#include "asterisk/lock.h"
+#include "asterisk/frame.h"
+#include "asterisk/res_usbradio.h"
+#include "asterisk/utils.h"
+
+#include "txagc/avfilter_processor.h"
+#include "txagc/rnnoise_processor.h"
+#include "usbradioplus_channel_core.h"
+#include "usbradioplus_ctcss.h"
+#include "usbradioplus_processing.h"
+#include "usbradioplus_radio.h"
+#include "usbradioplus_repeat.h"
+#include "usbradioplus_channel_private.h"
+
 /* Shared native-rate channel engine instantiated by each hardware adapter. */
-static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
+void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 {
 	struct txagc_chain chain;
 	double program[URP_NATIVE_SAMPLES];
@@ -17,7 +38,10 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	enum radio_tx_mix txmixb = effective_txmixb(o);
 
 	refresh_processing_hardware(o);
-	local_chain_enabled = !usbradioplus_processing_get_local(&chain) && chain.enabled;
+	/* A non-null destination is infallible; only the configured state controls
+	 * whether the optional local chain runs. */
+	usbradioplus_processing_get_local(&chain);
+	local_chain_enabled = chain.enabled;
 	ctcss_phase_reverse = o->radio->txCtcssPhaseShift;
 	ctcss_frequency = o->radio->txCtcssFreq10 / 10.0;
 	ctcss_filter_250 = o->radio->txCtcssFilter250;
@@ -217,7 +241,7 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		double duplex3_gain = (double)o->duplex3 / DUPLEX3_LEVEL_MAX;
 		urp_native_repeat_prepare(local_program, o->plus_local_native, URP_NATIVE_SAMPLES,
 					  1.0, o->usedtmf && o->dsp && o->toneflag);
-		if (o->echomode && usbradioplus_native_echo(o) && o->plus_parrot) {
+		if (o->echomode && o->plus_parrot) {
 			size_t record_capacity = (size_t)DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES;
 			urp_parrot_record(&o->plus_parrot_state, local_program, URP_NATIVE_SAMPLES,
 					  record_capacity);
@@ -251,45 +275,15 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		struct txagc_config final_cfg;
 		struct txagc_chain composite_chain;
 
-		if (!usbradioplus_processing_get_composite(&composite_chain)) {
-			final_cfg = composite_chain.agc;
-			/* The source master gates reorderable dynamics. Fixed transmitter-tail
-			 * stages retain their own explicit enable controls. */
-			if (!composite_chain.enabled) {
-				final_cfg.agc_enabled = 0;
-				final_cfg.expander_enabled = 0;
-				final_cfg.compressor_enabled = 0;
-				final_cfg.limiter_enabled = 0;
-			}
-		} else {
-			memset(&final_cfg, 0, sizeof(final_cfg));
-			final_cfg.input_gain_db = 6.0;
-			final_cfg.sidechain_highpass_hz = 800.0;
-			final_cfg.sidechain_lowpass_hz = 1500.0;
-			final_cfg.expander_sidechain_highpass_hz = 800.0;
-			final_cfg.expander_sidechain_lowpass_hz = 1500.0;
-			final_cfg.compressor_sidechain_highpass_hz = 300.0;
-			final_cfg.compressor_sidechain_lowpass_hz = 1500.0;
-			final_cfg.attack_ms = final_cfg.release_ms = final_cfg.reset_after_ms =
-				100.0;
-			final_cfg.expander_attack_ms = final_cfg.expander_release_ms = 100.0;
-			final_cfg.compressor_attack_ms = final_cfg.compressor_release_ms = 100.0;
-			final_cfg.expander_ratio = final_cfg.compressor_ratio = 1.0;
-			final_cfg.low_limiter_ratio = final_cfg.mid_limiter_ratio =
-				final_cfg.high_limiter_ratio = 1.0;
-			final_cfg.low_limiter_attack_ms = final_cfg.low_limiter_release_ms = 10.0;
-			final_cfg.mid_limiter_attack_ms = final_cfg.mid_limiter_release_ms = 10.0;
-			final_cfg.high_limiter_attack_ms = final_cfg.high_limiter_release_ms = 10.0;
-			final_cfg.limiter_low_crossover_hz = 500.0;
-			final_cfg.limiter_high_crossover_hz = 2000.0;
-			final_cfg.output_highpass_hz = 300.0;
-			final_cfg.output_lowpass_hz = 3000.0;
-			final_cfg.splatter_filter_enabled = 1;
-			final_cfg.lookahead_limiter_enabled = 0;
-			final_cfg.lookahead_limit_dbfs = -3.0;
-			final_cfg.lookahead_ms = 5.0;
-			final_cfg.lookahead_attack_ms = 1.0;
-			final_cfg.lookahead_release_ms = 100.0;
+		usbradioplus_processing_get_composite(&composite_chain);
+		final_cfg = composite_chain.agc;
+		/* The source master gates reorderable dynamics. Fixed transmitter-tail
+		 * stages retain their own explicit enable controls. */
+		if (!composite_chain.enabled) {
+			final_cfg.agc_enabled = 0;
+			final_cfg.expander_enabled = 0;
+			final_cfg.compressor_enabled = 0;
+			final_cfg.limiter_enabled = 0;
 		}
 		/* Pre-emphasis belongs to the native composite graph regardless of which
 		 * source supplied the audio. */
@@ -365,7 +359,7 @@ static void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			ctcss_bias_b, stereo, stats_stereo);
 		/* Meter program audio before CM119 mixer gain, regardless of whether
 		 * the configured voice/composite output is channel A or channel B. */
-		URP_CHECK_TX_AUDIO(o, stats_stereo, URP_NATIVE_SAMPLES * 2);
+		usbradioplus_check_tx_audio(o, stats_stereo, URP_NATIVE_SAMPLES * 2);
 	}
 	o->plus_native_frames++;
 }

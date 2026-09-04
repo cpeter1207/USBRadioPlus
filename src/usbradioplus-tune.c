@@ -72,6 +72,13 @@
 #include <getopt.h>
 
 #include "asterisk/utils.h"
+#include "usbradioplus_tune_internal.h"
+
+#ifdef URP_TUNE_TESTING
+#define TUNE_PRIVATE
+#else
+#define TUNE_PRIVATE static
+#endif
 
 /*! \brief type of signal detection used for carrier (cd) or ctcss (sd) */
 static const char *const cd_signal_type[] = {"no",	  "dsp", "vox",	    "usb",
@@ -82,39 +89,34 @@ static const char *const sd_signal_type[] = {"no", "usb", "usbinvert", "dsp", "p
 static const char *const demodulation_type[] = {"no", "speaker", "flat"};
 
 /*! \brief mixer type */
-enum { TX_OUT_OFF, TX_OUT_VOICE, TX_OUT_LSD, TX_OUT_COMPOSITE, TX_OUT_AUX };
-static const char *const mixer_type[] = {"no", "voice", "tone", "composite", "auxvoice"};
+TUNE_PRIVATE const char *const mixer_type[] = {"no", "voice", "tone", "composite", "auxvoice"};
 static const char *const duplex3_mode_type[] = {"hardware", "software"};
 
-typedef int (*asterisk_line_reader)(char *cmd, char *str, int max);
-typedef int (*asterisk_response_reader)(char *cmd);
-typedef int (*command_runner)(const char *command);
+TUNE_PRIVATE int astgetline_real(char *cmd, char *str, int max);
+TUNE_PRIVATE int astgetresp_real(char *cmd);
+TUNE_PRIVATE asterisk_line_reader astgetline = astgetline_real;
+TUNE_PRIVATE asterisk_response_reader astgetresp = astgetresp_real;
+TUNE_PRIVATE command_runner run_command = system;
+TUNE_PRIVATE const char *asterisk_binary = "/usr/sbin/asterisk";
 
-static int astgetline_real(char *cmd, char *str, int max);
-static int astgetresp_real(char *cmd);
-static asterisk_line_reader astgetline = astgetline_real;
-static asterisk_response_reader astgetresp = astgetresp_real;
-static command_runner run_command = system;
-static const char *asterisk_binary = "/usr/sbin/asterisk";
-
-static int set_nonblocking_real(int fd)
+TUNE_PRIVATE int set_nonblocking_real(int fd)
 {
 	return fcntl(fd, F_SETFL, O_NONBLOCK);
 }
 
-static int open_null_real(void)
+TUNE_PRIVATE int open_null_real(void)
 {
 	return open("/dev/null", O_RDWR);
 }
 
-static int (*make_pipe)(int pipefd[2]) = pipe;
-static int (*set_nonblocking)(int fd) = set_nonblocking_real;
-static int (*open_null_device)(void) = open_null_real;
-static pid_t (*make_child)(void) = fork;
-static int (*copy_fd)(int oldfd, int newfd) = dup2;
-static int waitfds_real(int fd1, int fd2, int ms);
-static int (*waitfds)(int fd1, int fd2, int ms) = waitfds_real;
-static ssize_t (*read_bytes)(int fd, void *buffer, size_t count) = read;
+TUNE_PRIVATE int (*make_pipe)(int pipefd[2]) = pipe;
+TUNE_PRIVATE int (*set_nonblocking)(int fd) = set_nonblocking_real;
+TUNE_PRIVATE int (*open_null_device)(void) = open_null_real;
+TUNE_PRIVATE pid_t (*make_child)(void) = fork;
+TUNE_PRIVATE int (*copy_fd)(int oldfd, int newfd) = dup2;
+TUNE_PRIVATE int waitfds_real(int fd1, int fd2, int ms);
+TUNE_PRIVATE int (*waitfds)(int fd1, int fd2, int ms) = waitfds_real;
+TUNE_PRIVATE ssize_t (*read_bytes)(int fd, void *buffer, size_t count) = read;
 
 /*! \brief command prefix for Asterisk - simpleusb channel driver access */
 #define COMMAND_PREFIX "radioplus "
@@ -123,7 +125,7 @@ static ssize_t (*read_bytes)(int fd, void *buffer, size_t count) = read;
  * \brief Signal handler
  * \param sig		Signal to watch.
  */
-static void ourhandler(int sig)
+TUNE_PRIVATE void ourhandler(int sig)
 {
 	int i;
 
@@ -133,7 +135,7 @@ static void ourhandler(int sig)
 	}
 }
 
-static void launch_processing_tune(void)
+TUNE_PRIVATE void launch_processing_tune(void)
 {
 	int status;
 
@@ -159,7 +161,7 @@ static void launch_processing_tune(void)
  * \retval -1		If less than.
  * \retval 1		If greater than.
  */
-static int qcompar(const void *a, const void *b)
+TUNE_PRIVATE int qcompar(const void *a, const void *b)
 {
 	char **sa = (char **)a, **sb = (char **)b;
 	return (strcmp(*sa, *sb));
@@ -179,7 +181,7 @@ static int qcompar(const void *a, const void *b)
  *
  * \retval 			Returns number of substrings found.
  */
-static int explode_string(char *str, char *strp[], size_t limit, char delim, char quote)
+TUNE_PRIVATE int explode_string(char *str, char *strp[], size_t limit, char delim, char quote)
 {
 	int i, inquo;
 
@@ -215,7 +217,7 @@ static int explode_string(char *str, char *strp[], size_t limit, char delim, cha
 	return i;
 }
 
-static int parse_integer(const char *text, int minimum, int maximum, int *value)
+TUNE_PRIVATE int parse_integer(const char *text, int minimum, int maximum, int *value)
 {
 	char *end;
 	long parsed;
@@ -230,7 +232,7 @@ static int parse_integer(const char *text, int minimum, int maximum, int *value)
 	return 0;
 }
 
-static void strip_newline(char *text)
+TUNE_PRIVATE void strip_newline(char *text)
 {
 	size_t length = strlen(text);
 
@@ -246,7 +248,7 @@ static void strip_newline(char *text)
  * \param cmd		Pointer to command to execute.
  * \returns			Pipe FD or -1 on failure.
  */
-static int doastcmd(char *cmd)
+TUNE_PRIVATE int doastcmd(char *cmd)
 {
 	int pfd[2], pid, nullfd;
 
@@ -320,7 +322,7 @@ static int doastcmd(char *cmd)
  * \param ms		Milliseconds to wait.
  * \returns			-1 on error, 0 if nothing ready, or fd+1.
  */
-static int waitfds_real(int fd1, int fd2, int ms)
+TUNE_PRIVATE int waitfds_real(int fd1, int fd2, int ms)
 {
 	fd_set fds;
 	struct timeval tv;
@@ -356,7 +358,7 @@ static int waitfds_real(int fd1, int fd2, int ms)
  * \param fd		fd to read.
  * \returns			-1 nothing read, or character read.
  */
-static int getcharfd(int fd)
+TUNE_PRIVATE int getcharfd(int fd)
 {
 	char c;
 
@@ -374,7 +376,7 @@ static int getcharfd(int fd)
  * \param max		Maximum number of characters to read.
  * \returns			Number of characters read.
  */
-static int getstrfd(int fd, char *str, int max)
+TUNE_PRIVATE int getstrfd(int fd, char *str, int max)
 {
 	int i, j;
 	char c;
@@ -425,7 +427,7 @@ static int getstrfd(int fd, char *str, int max)
  * \param max		Size of string buffer.
  * \returns			-1 on error, 0 if successful, 1 if nothing was returned.
  */
-static int astgetline_real(char *cmd, char *str, int max)
+TUNE_PRIVATE int astgetline_real(char *cmd, char *str, int max)
 {
 	int fd, rv;
 
@@ -454,7 +456,7 @@ static int astgetline_real(char *cmd, char *str, int max)
  * \param cmd		Pointer to command to send to asterisk.
  * \returns			-1 on error, 0 if successful.
  */
-static int astgetresp_real(char *cmd)
+TUNE_PRIVATE int astgetresp_real(char *cmd)
 {
 	int i, fd;
 	char str[256];
@@ -504,7 +506,7 @@ static int astgetresp_real(char *cmd)
 /*!
  * \brief Menu option to select the usb device.
  */
-static void menu_selectusb(void)
+TUNE_PRIVATE void menu_selectusb(void)
 {
 	int i, n, x;
 	char str[100], buf[256], *strs[100];
@@ -525,7 +527,7 @@ static void menu_selectusb(void)
 		fprintf(stderr, "No USB devices found\n");
 		return;
 	}
-	qsort(strs, n, sizeof(char *), qcompar);
+	qsort((void *)strs, n, sizeof(char *), qcompar);
 
 	printf("Please select from the following USB devices:\n");
 	for (x = 0; x < n; x++) {
@@ -554,7 +556,7 @@ static void menu_selectusb(void)
 /*!
  * \brief Menu option to swap the usb device.
  */
-static void menu_swapusb(void)
+TUNE_PRIVATE void menu_swapusb(void)
 {
 	int i, n, x;
 	char str[100], buf[256], *strs[100];
@@ -575,7 +577,7 @@ static void menu_swapusb(void)
 		fprintf(stderr, "No additional USB devices found\n");
 		return;
 	}
-	qsort(strs, n, sizeof(char *), qcompar);
+	qsort((void *)strs, n, sizeof(char *), qcompar);
 
 	printf("Please select from the following USB devices:\n");
 	for (x = 0; x < n; x++) {
@@ -603,7 +605,7 @@ static void menu_swapusb(void)
 /*!
  * \brief Menu option to set rxvoice level.
  */
-static void menu_rxvoice(void)
+TUNE_PRIVATE void menu_rxvoice(void)
 {
 	int i;
 	char str[100];
@@ -642,7 +644,7 @@ static void menu_rxvoice(void)
 /*!
  * \brief Menu option to set rxsquelch level.
  */
-static void menu_rxsquelch(void)
+TUNE_PRIVATE void menu_rxsquelch(void)
 {
 	char str[100];
 	int i;
@@ -673,7 +675,7 @@ static void menu_rxsquelch(void)
  * \brief Menu option to set txvoice level.
  * \param keying	Boolean to indicate if we are currently keying.
  */
-static void menu_txvoice(int keying)
+TUNE_PRIVATE void menu_txvoice(int keying)
 {
 	char str[100];
 	int i;
@@ -713,7 +715,7 @@ static void menu_txvoice(int keying)
 /*!
  * \brief Menu option to set auxvoice level.
  */
-static void menu_auxvoice(void)
+TUNE_PRIVATE void menu_auxvoice(void)
 {
 	char str[100];
 	int i;
@@ -746,7 +748,7 @@ static void menu_auxvoice(void)
  * \param keying	Boolean to indicate if we are currently keying.
  */
 
-static void menu_txtone(int keying)
+TUNE_PRIVATE void menu_txtone(int keying)
 {
 	char str[100];
 	int i;
@@ -786,7 +788,7 @@ static void menu_txtone(int keying)
 /*!
  * \brief Menu option view cos, ctcss and ptt status.
  */
-static void menu_view_status(void)
+TUNE_PRIVATE void menu_view_status(void)
 {
 	printf("Live COS, CTCSS, and PTT status. Press Enter to return.\n");
 	astgetresp(COMMAND_PREFIX "tune menu-support v");
@@ -799,8 +801,8 @@ static void menu_view_status(void)
  * \param max_items		Number of items in the items array.
  * \param selection		Current selected item.
  */
-static int menu_select_value(const char *value_name, const char *const *items, int max_items,
-			     int selection)
+TUNE_PRIVATE int menu_select_value(const char *value_name, const char *const *items, int max_items,
+				   int selection)
 {
 	char str[100];
 	int i;
@@ -830,7 +832,7 @@ static int menu_select_value(const char *value_name, const char *const *items, i
  * \param menu_option	Pointer to the menusupport option to update.
  * \param delay			The current delay setting.
  */
-static int menu_get_delay(const char *delay_type, const char *menu_option, int delay)
+TUNE_PRIVATE int menu_get_delay(const char *delay_type, const char *menu_option, int delay)
 {
 	char str[100];
 	int value;
@@ -859,7 +861,7 @@ static int menu_get_delay(const char *delay_type, const char *menu_option, int d
 }
 
 /*! \brief Prompt for an integer setting with an explicit range. */
-static int menu_get_integer(const char *name, int current, int minimum, int maximum)
+TUNE_PRIVATE int menu_get_integer(const char *name, int current, int minimum, int maximum)
 {
 	char str[100];
 	int value;
@@ -885,7 +887,7 @@ static int menu_get_integer(const char *name, int current, int minimum, int maxi
 /*!
  * \brief Options menu.
  */
-static void options_menu(void)
+TUNE_PRIVATE void options_menu(void)
 {
 	int flatrx = 0, txhasctcss = 0, echomode = 0;
 	int reserved_field_1 = 0, reserved_field_2 = 0, carrierfrom = 0, ctcssfrom = 0;

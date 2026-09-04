@@ -1,4 +1,6 @@
 #include "../src/usbradioplus_radio.h"
+#include <sys/types.h>
+#include "asterisk/options.h"
 
 #include <assert.h>
 #include <stdarg.h>
@@ -7,6 +9,23 @@
 #include <string.h>
 
 static int allocations_until_failure = -1;
+struct ast_flags64 {
+	uint64_t flags;
+};
+struct ast_flags64 ast_options;
+int option_debug = 100;
+static unsigned int module_debug_level = 100;
+static unsigned int file_debug_level = 100;
+
+int ast_test_flag64(const struct ast_flags64 *flags, uint64_t flag)
+{
+	return (flags->flags & flag) != 0;
+}
+
+unsigned int ast_debug_get_by_module(const char *module)
+{
+	return !strcmp(module, AST_MODULE) ? module_debug_level : file_debug_level;
+}
 
 void ast_log(int level, const char *file, int line, const char *function, const char *format, ...)
 {
@@ -15,6 +34,17 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)line;
 	(void)function;
 	(void)format;
+}
+
+void ast_log_ap(int level, const char *file, int line, const char *function, const char *format,
+		va_list arguments)
+{
+	(void)level;
+	(void)file;
+	(void)line;
+	(void)function;
+	(void)format;
+	(void)arguments;
 }
 
 void *__ast_calloc(size_t count, size_t size, const char *file, int line, const char *function)
@@ -71,6 +101,26 @@ static void test_debug_buffers(void)
 	t_sdbg debug = {0};
 	int16_t source[SAMPLES_PER_BLOCK];
 
+	option_debug = 0;
+	module_debug_level = 0;
+	file_debug_level = 0;
+	ast_options.flags = 0;
+	urp_radio_trace_log(0, 1, "disabled trace\n");
+	urp_radio_trace_log(1, 1, "disabled debug\n");
+	ast_options.flags = AST_OPT_FLAG_DEBUG_MODULE;
+	urp_radio_trace_log(1, 1, "disabled module and file debug\n");
+	module_debug_level = 1;
+	urp_radio_trace_log(1, 1, "enabled module debug\n");
+	module_debug_level = 0;
+	file_debug_level = 1;
+	urp_radio_trace_log(1, 1, "enabled file debug\n");
+	option_debug = 100;
+	module_debug_level = 100;
+	file_debug_level = 100;
+	urp_radio_trace_log(1, 1, "enabled trace\n");
+
+	strace(0, NULL, 0, 123);
+	strace2(NULL);
 	for (int i = 0; i < SAMPLES_PER_BLOCK; ++i) {
 		source[i] = (int16_t)i;
 	}
@@ -253,6 +303,7 @@ static void test_create_process_destroy(void)
 	template.rxDemod = RX_AUDIO_FLAT;
 	template.rxSquelchPoint = 50;
 	template.rxCarrierHyst = 2500;
+	template.tracelevel = 100;
 	template.rxlpf = 0;
 	template.rxhpf = 0;
 	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
@@ -290,6 +341,7 @@ static void test_create_variants(void)
 		template.rxlpf = variant == 4 ? -1 : (variant == 5 ? 999 : 0);
 		template.rxhpf = variant == 4 ? -1 : (variant == 5 ? 999 : 0);
 		template.tracetype = (int16_t)(variant + 1);
+		template.tracelevel = variant & 1U ? 100 : 0;
 		urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 		assert(state);
 		state->b.rxCapture = 1;
@@ -633,6 +685,20 @@ static void test_ctcss_decoder_states(void)
 	detector->decode = 2;
 	assert(urp_ctcss_decode(state) == 0);
 
+	/* Let an earlier enabled detector win, then visit a later enabled detector
+	 * while thit names the first one. */
+	const int first_index = urp_ctcss_frequency_index(67.0F);
+	prepare_single_ctcss_detector(state, first_index);
+	state->rxCtcssMap[index] = index;
+	detector = &state->rxCtcss->tdet[index];
+	detector->counter = 0;
+	detector->counterFactor = CTCSS_SCOUNT_MUL;
+	detector->binFactor = M_Q15;
+	detector->fudgeFactor = 1;
+	detector->setpt = 1000;
+	detector->decode = 0;
+	assert(urp_ctcss_decode(state) == 0);
+
 	state->rxCtcss->enabled = 0;
 	assert(urp_ctcss_decode(state) == 1);
 	state->nSamplesRx = SAMPLES_PER_BLOCK;
@@ -764,18 +830,28 @@ static void test_allocation_failures(void)
 
 int main(void)
 {
-	test_frequency_lookup();
-	test_string_parser();
-	test_debug_buffers();
-	test_signal_primitives();
-	test_create_process_destroy();
-	test_create_variants();
-	test_runtime_state_machine();
-	test_ctcss_decoder_states();
-	test_frontend_edges();
-	test_cpu_saver_predicates();
-	test_lifecycle_edges();
-	test_allocation_failures();
+#ifdef URP_TEST_TRACE_PROGRESS
+#define RUN_TEST(test)                                                                             \
+	do {                                                                                       \
+		fprintf(stderr, "running %s\n", #test);                                            \
+		test();                                                                            \
+	} while (0)
+#else
+#define RUN_TEST(test) test()
+#endif
+	RUN_TEST(test_frequency_lookup);
+	RUN_TEST(test_string_parser);
+	RUN_TEST(test_debug_buffers);
+	RUN_TEST(test_signal_primitives);
+	RUN_TEST(test_create_process_destroy);
+	RUN_TEST(test_create_variants);
+	RUN_TEST(test_runtime_state_machine);
+	RUN_TEST(test_ctcss_decoder_states);
+	RUN_TEST(test_frontend_edges);
+	RUN_TEST(test_cpu_saver_predicates);
+	RUN_TEST(test_lifecycle_edges);
+	RUN_TEST(test_allocation_failures);
+#undef RUN_TEST
 	puts("native radio core tests passed");
 	return 0;
 }

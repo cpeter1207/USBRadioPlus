@@ -58,9 +58,9 @@ int usbradioplus_processing_get_option(const char *section, const char *name, ch
 int usbradioplus_processing_set_local_input_gain(double gain_db);
 int usbradioplus_processing_set_hardware_input_gain(double gain_db);
 int usbradioplus_processing_save_input_gains(double hardware_gain_db, double local_gain_db);
-static int usbradioplus_processing_load(void);
-static int usbradioplus_processing_prime(void);
-static int usbradioplus_processing_unload(void);
-static int usbradioplus_processing_reload(void);
+int usbradioplus_processing_load(void);
+int usbradioplus_processing_prime(void);
+int usbradioplus_processing_unload(void);
+int usbradioplus_processing_reload(void);
 
 #endif

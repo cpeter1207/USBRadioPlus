@@ -3,7 +3,14 @@
 #include <math.h>
 #include <string.h>
 
-static void reset_stream(struct txagc_rnnoise *state)
+#ifdef URP_RNNOISE_TESTING
+#include "rnnoise_processor_internal.h"
+#define RNNOISE_PRIVATE
+#else
+#define RNNOISE_PRIVATE static
+#endif
+
+RNNOISE_PRIVATE void reset_stream(struct txagc_rnnoise *state)
 {
 	if (state->upsampler) {
 		src_reset(state->upsampler);
@@ -48,7 +55,7 @@ void txagc_rnnoise_bypass(struct txagc_rnnoise *state)
 	}
 }
 
-static int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
+RNNOISE_PRIVATE int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
 {
 	int error;
 
@@ -73,7 +80,7 @@ static int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
 	return 0;
 }
 
-static int append(float *fifo, size_t *fifo_count, const float *data, size_t count)
+RNNOISE_PRIVATE int append(float *fifo, size_t *fifo_count, const float *data, size_t count)
 {
 	if (*fifo_count + count > TXAGC_RNNOISE_FIFO) {
 		return -1;
@@ -83,13 +90,13 @@ static int append(float *fifo, size_t *fifo_count, const float *data, size_t cou
 	return 0;
 }
 
-static void consume(float *fifo, size_t *fifo_count, size_t count)
+RNNOISE_PRIVATE void consume(float *fifo, size_t *fifo_count, size_t count)
 {
 	memmove(fifo, fifo + count, (*fifo_count - count) * sizeof(*fifo));
 	*fifo_count -= count;
 }
 
-static int16_t pcm_from_double(double sample)
+RNNOISE_PRIVATE int16_t pcm_from_double(double sample)
 {
 	if (sample > 32767.0)
 		return 32767;
