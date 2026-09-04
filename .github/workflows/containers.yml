@@ -28,6 +28,11 @@ on:
         required: false
         default: false
         type: boolean
+      release_version:
+        description: Optional Debian version to publish as a Docker-compatible release tag
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -104,7 +109,8 @@ jobs:
             installed="$installed,ghcr.io/$owner/usbradioplus-debian${{ matrix.debian }}:edge-$suffix"
           fi
           if [[ -n '${{ inputs.release_version }}' ]]; then
-            installed="$installed,ghcr.io/$owner/usbradioplus-debian${{ matrix.debian }}:${{ inputs.release_version }}-$suffix"
+            release_tag=$(printf '%s' '${{ inputs.release_version }}' | tr '~' '-')
+            installed="$installed,ghcr.io/$owner/usbradioplus-debian${{ matrix.debian }}:$release_tag-$suffix"
           fi
           echo "clean=$clean" >> "$GITHUB_OUTPUT"
           echo "quality=$quality" >> "$GITHUB_OUTPUT"
@@ -189,7 +195,8 @@ jobs:
             publish_manifest "$installed" edge
           fi
           if [[ -n '${{ inputs.release_version }}' ]]; then
-            publish_manifest "$installed" '${{ inputs.release_version }}'
+            release_tag=$(printf '%s' '${{ inputs.release_version }}' | tr '~' '-')
+            publish_manifest "$installed" "$release_tag"
           fi
 
   build-quality:
