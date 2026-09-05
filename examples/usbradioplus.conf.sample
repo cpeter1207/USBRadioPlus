@@ -99,7 +99,8 @@ channel_enabled = yes
 ;hardware_voter_reporting = 0
 ;hardware_clip_led_gpio = 0
 ; Configure each available CM119 GPIO as an input or as an output with its
-; initial level. When omitted, gpio1 through gpio8 in usbradioplus.conf are used.
+; initial level. Scoped hardware profiles inherit omitted values from this
+; flat section; omitted flat values use the module defaults.
 ;hardware_gpio_1_mode = in
 ;hardware_gpio_2_mode = in
 ;hardware_gpio_3_mode = in
@@ -109,7 +110,8 @@ channel_enabled = yes
 ;hardware_gpio_7_mode = in
 ;hardware_gpio_8_mode = in
 ; Parallel-port device selection. The base address accepts decimal or 0x-prefixed
-; notation. When omitted, pport and pbase in usbradioplus.conf are used.
+; notation. Scoped hardware profiles inherit omitted values from this flat
+; section; omitted flat values use the module defaults.
 ;hardware_parallel_port_device = /dev/parport0
 ;hardware_parallel_port_base_address = 0x378
 ; Parallel-port outputs may start low or high, or carry PTT.
@@ -128,14 +130,15 @@ channel_enabled = yes
 ;hardware_parallel_pin_15_assignment = in
 
 [duplex]
-; Radio duplex mode and local 48 kHz repeat route. The matching
+; Radio duplex mode and local 48 kHz repeat route. Scoped duplex profiles
+; inherit omitted values from this flat section.
 ;duplex_radio_mode = 0
 ;duplex_local_repeat_level = 0
 ;duplex_local_repeat_mode = hardware
 
 [diagnostics]
-; Diagnostic controls. The matching usbradioplus.conf option is used when an
-; option is omitted.
+; Diagnostic controls. Scoped diagnostics profiles inherit omitted values from
+; this flat section.
 ;diagnostics_trace_type = 0
 ;diagnostics_trace_level = 0
 ;diagnostics_fever = 0

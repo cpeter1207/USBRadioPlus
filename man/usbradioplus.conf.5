@@ -342,9 +342,7 @@ Set the receive band-pass high-frequency cutoff. Default is 5000 Hz.
 Choose the single PL-removal filter after the receive band-pass and before
 RNNoise and dynamics. Notch follows and removes the currently
 decoded PL tone. Highpass removes the subaudible band. Notch never runs in
-series with a high-pass. If this option is absent,
-.B rxhpf
-in usbradioplus.conf selects and configures a high-pass for compatibility.
+series with a high-pass. Default is highpass.
 .TP
 .B ctcss_notch_width_hz = 0.2..10
 Set each CTCSS notch's -3 dB width. Default is 5 Hz, providing at least 50 dB
