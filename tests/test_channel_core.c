@@ -2845,10 +2845,7 @@ static void test_modern_hid_worker_retries(void)
 static void test_modern_module_lifecycle_baseline(void)
 {
 	struct chan_usbradio_pvt no_radio = {0};
-	struct ast_variable parallel_output = {
-		.name = "hardware_parallel_pin_2_assignment", .value = "out0"};
-	struct ast_variable active = {
-		.name = "channel_enabled", .value = "yes", .next = &parallel_output};
+	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
 
 	haspp = hasout = 0;
 	usbradio_start_parallel_pulser();
