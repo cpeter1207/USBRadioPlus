@@ -2209,11 +2209,15 @@ static void test_modern_audio_worker_baseline(void)
 	radio.lasthidtime = 0;
 
 	radio.rxcdtype = CD_HID_INVERT;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usbinvert");
 	radio.rxhidsq = 0;
 	radio.rxsdtype = SD_HID_INVERT;
 	radio.rxhidctcss = 0;
 	run_modern_audio_iteration(&radio);
+	radio.radio->rxExtCarrierDetect = 1;
+	run_modern_audio_iteration(&radio);
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxhidsq = 1;
 	radio.rxsdtype = SD_PP;
 	radio.rxppctcss = 1;
@@ -2270,11 +2274,15 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	radio.radio->b.ctcssRxEnable = 0;
 	radio.rxcdtype = CD_IGNORE;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ignore");
+	radio.rxsdtype = SD_HID;
+	run_modern_audio_iteration(&radio);
 	radio.rxsdtype = SD_IGNORE;
 	run_modern_audio_iteration(&radio);
 	radio.rxsdtype = SD_HID;
 	run_modern_audio_iteration(&radio);
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxsdtype = SD_HID;
 
 	mock_audio_clipping = 1;
@@ -2867,6 +2875,16 @@ static void test_modern_module_lifecycle_baseline(void)
 	test_config_variables = &active;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	test_config_category = "modern-test";
+	separate_processing_config_result = 0;
+	test_config_load_calls = 0;
+	test_config_load_second_result = CONFIG_STATUS_FILEINVALID;
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	test_config_load_second_result = NULL;
+	separate_processing_config_result = 1;
+	ast_strdup_calls = 0;
+	fail_ast_strdup_call = 1;
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	fail_ast_strdup_call = 0;
 	channel_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	channel_register_result = 0;
