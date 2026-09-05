@@ -22,8 +22,8 @@ on:
         type: boolean
 
 permissions:
-  actions: write
   contents: write
+  actions: write
   packages: write
   pages: write
   pull-requests: write
