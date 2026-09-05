@@ -52,7 +52,7 @@ def test_removed_legacy_options_are_not_accepted_or_documented():
         for option in options
         if re.search(rf"(?m)^;?{re.escape(option)}\s*=", public_artifacts)
     ]
-    assert len(options) == 63
+    assert len(options) == 97
 
 
 def test_optional_processors_default_off():
