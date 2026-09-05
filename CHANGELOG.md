@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha11 - 2026-09-05
+
+- Fix a processing-scanner lock-order inversion that could deadlock app_rpt and RadioPlus CLI commands on an active node.- Add regression coverage that prevents Asterisk channel lookup while the processing settings lock is held.
+
 ## 0.1.0~alpha10 - 2026-09-05
 
 - Consolidate channel, hardware, and processing settings in `usbradioplus.conf`.- Replace the two tuning programs with the unified `usbradioplus-tune` utility.- Remove inherited chan_usbradio compatibility fallbacks and obsolete configuration paths.- Expand validation and coverage for the clean-break configuration model.
