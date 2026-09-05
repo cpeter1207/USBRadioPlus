@@ -172,7 +172,7 @@ coverage:
 	rm -f $(CHANNEL_OBJECT:.o=.gcda) $(CHANNEL_OBJECT:.o=.gcno)
 	$(GCOVR) --root . --filter 'src/.*\.c' \
 		--exclude-unreachable-branches --exclude-throw-branches \
-		--branches --txt - \
+		--txt - \
 		--html-details $(BUILD_DIR)/coverage/index.html \
 		--xml $(BUILD_DIR)/coverage/coverage.xml \
 		--fail-under-line 100 --fail-under-branch 100 --print-summary

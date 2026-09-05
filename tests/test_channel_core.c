@@ -4150,6 +4150,9 @@ static void test_config_update_and_radio_programming(void)
 	radio.numrxctcssfreqs = 0;
 	radio.radio->numrxcodes = 0;
 	radio.radio->numtxcodes = 0;
+#ifdef URP_TEST_MODERN
+	radio.radio_device = NULL;
+#endif
 	assert(call_radio_tune(&radio, 3, "dump", NULL) == RESULT_SUCCESS);
 	assert(!urp_radio_destroy(radio.radio));
 	test_config_variables = NULL;
