@@ -1540,22 +1540,28 @@ PROCESSING_PRIVATE void scan_channels(void)
 	profile = ast_calloc(1, sizeof(*profile));
 	if (!profile)
 		return;
-	ast_mutex_lock(&settings_lock);
 	/* A link audiohook belongs to the first enabled radio whose primary channel
-	 * is active. app_rpt exposes no node identifier on its Remote Rx channel. */
-	for (i = 0; i < settings.profile_count; ++i) {
+	 * is active. app_rpt exposes no node identifier on its Remote Rx channel.
+	 * Copy each candidate while holding settings_lock, then release it before
+	 * entering Asterisk's channel container to preserve the global lock order. */
+	for (i = 0;; ++i) {
 		struct ast_channel *primary;
-		if (!settings.profiles[i].enabled)
+		ast_mutex_lock(&settings_lock);
+		if (i >= settings.profile_count) {
+			ast_mutex_unlock(&settings_lock);
+			break;
+		}
+		*profile = settings.profiles[i];
+		ast_mutex_unlock(&settings_lock);
+		if (!profile->enabled)
 			continue;
-		primary = ast_channel_get_by_name(settings.profiles[i].channel);
+		primary = ast_channel_get_by_name(profile->channel);
 		if (primary) {
 			ast_channel_unref(primary);
-			*profile = settings.profiles[i];
 			profile_found = 1;
 			break;
 		}
 	}
-	ast_mutex_unlock(&settings_lock);
 	if (!profile_found) {
 		ast_free(profile);
 		return;
