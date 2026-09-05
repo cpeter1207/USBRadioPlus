@@ -2859,15 +2859,15 @@ static void test_modern_module_lifecycle_baseline(void)
 	assert(load_module() == AST_MODULE_LOAD_DECLINE);
 	fail_format_cap_alloc = 0;
 	test_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	separate_processing_config_result = 1;
 	test_processing_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	test_processing_config_load_result = CONFIG_STATUS_FILEMISSING;
 	test_config_load_result = (struct ast_config *)(uintptr_t)1;
+	test_processing_config_load_result = test_config_load_result;
 	test_config_category = "general";
 	test_config_variables = &active;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	test_config_category = "modern-test";
 	channel_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
