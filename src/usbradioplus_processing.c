@@ -1409,7 +1409,7 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	struct txagc_hook *hook;
 	const struct ast_datastore *datastore;
 	struct txagc_profile current;
-	struct txagc_profile *profile;
+	const struct txagc_profile *profile;
 	struct txagc_chain *chain;
 	enum txagc_source source;
 	unsigned int sample_rate;
@@ -1909,7 +1909,7 @@ int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *c
 int usbradioplus_processing_get_hardware(const char *channel,
 					 struct usbradioplus_hardware_settings *hardware)
 {
-	struct txagc_profile *profile;
+	const struct txagc_profile *profile;
 	if (!hardware)
 		return -1;
 	ast_mutex_lock(&settings_lock);
