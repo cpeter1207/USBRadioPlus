@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha10 - 2026-09-05
+
+Consolidate channel, hardware, signaling, and audio processing into one multi-channel usbradioplus.conf; replace the tuning interfaces with a unified usbradioplus-tune; remove chan_usbradio configuration fallbacks and obsolete compatibility code.
+
 ## 0.1.0~alpha9 - 2026-09-04
 
 - Replaces the remaining XPMR dependencies with native radio signaling, CTCSS, squelch, hardware control, and 48 kHz audio handling.
