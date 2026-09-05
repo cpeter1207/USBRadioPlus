@@ -62,8 +62,6 @@ enum duplex3_mode {
 #define plus_parrot_play plus_parrot_state.play
 #define plus_parrot_playing plus_parrot_state.playing
 #define plus_parrot_truncated plus_parrot_state.truncated
-#define usbradioplus_legacy_cutoff(name, selector)                                                 \
-	urp_legacy_cutoff(urp_legacy_filter_name(name), (selector))
 #define usbradioplus_native_echo(channel)                                                          \
 	urp_native_echo_enabled((channel)->duplex3, (channel)->duplex3mode == DUPLEX3_MODE_SOFTWARE)
 
@@ -71,7 +69,6 @@ double effective_rx_input_gain_db(const struct chan_usbradio_pvt *channel);
 enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *channel);
 enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *channel);
 void refresh_processing_hardware(struct chan_usbradio_pvt *channel);
-int usbradioplus_program_pending(struct chan_usbradio_pvt *channel);
 void plus_link_native_push(struct chan_usbradio_pvt *channel, const short *samples, size_t count);
 int plus_link_native_pop(struct chan_usbradio_pvt *channel, short *samples);
 void usbradioplus_check_tx_audio(struct chan_usbradio_pvt *channel, short *samples, size_t count);
@@ -85,8 +82,8 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag);
 void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str);
 void _menu_print(int fd, struct chan_usbradio_pvt *o);
 void tune_flash(int fd, struct chan_usbradio_pvt *channel, int interactive);
-int legacy_set_tx_soft_limiter(struct chan_usbradio_pvt *channel, int setpoint);
-float effective_legacy_rxvoiceadj(const struct chan_usbradio_pvt *channel);
+int validate_tx_soft_limiter_setpoint(struct chan_usbradio_pvt *channel, int setpoint);
+float effective_rx_decoder_gain(const struct chan_usbradio_pvt *channel);
 int effective_rxmixerset(const struct chan_usbradio_pvt *channel);
 void tune_rxdisplay(int fd, struct chan_usbradio_pvt *channel);
 void tune_rxtx_status(int fd, struct chan_usbradio_pvt *channel);

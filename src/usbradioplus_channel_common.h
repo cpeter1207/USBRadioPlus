@@ -18,8 +18,6 @@ void destroy_unlinked_channel(struct chan_usbradio_pvt *o);
 
 void kickptt(const struct chan_usbradio_pvt *o);
 
-int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config *cfg, int reload);
-
 int usbradio_digit_begin(struct ast_channel *c, char digit);
 
 int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int duration);
@@ -48,15 +46,7 @@ int radio_set_dsp_debug(int fd, int argc, const char *const *argv);
 
 void store_rxdemod(struct chan_usbradio_pvt *o, const char *s);
 
-void store_txmixa(struct chan_usbradio_pvt *o, const char *s);
-
-void store_txmixb(struct chan_usbradio_pvt *o, const char *s);
-
-void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s);
-
 void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s);
-
-void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s);
 
 int effective_txmixaset(const struct chan_usbradio_pvt *o);
 
@@ -78,9 +68,8 @@ void usbradioplus_set_channel(uint8_t channel);
 
 int radio_config(struct chan_usbradio_pvt *o);
 
-int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const char *text);
-
 int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category);
+int save_tuning_config(struct chan_usbradio_pvt *o);
 
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o);
 
@@ -105,7 +94,7 @@ int reload_module(void);
 
 void *pulserthread(void *arg);
 
-struct chan_usbradio_pvt *store_config(struct ast_config *cfg, const char *ctg);
+struct chan_usbradio_pvt *store_config(const char *ctg);
 void radio_dump(struct chan_usbradio_pvt *o, int fd);
 int usb_device_swap(int fd, const char *other);
 

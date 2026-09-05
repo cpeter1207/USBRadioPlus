@@ -131,8 +131,8 @@ int urp_gain_db_to_mixer(double gain_db);
 /** Convert a 0--999 hardware mixer setting to dB relative to its 500 midpoint. */
 double urp_mixer_to_gain_db(int setting);
 
-/** Calculate the legacy fixed-point fine-gain multiplier. */
-int urp_legacy_multiplier(int value);
+/** Calculate the CM119 fixed-point fine-gain multiplier. */
+int urp_hardware_level_multiplier(int value);
 
 /** Add two PCM samples without signed overflow. */
 short urp_saturating_add(short left, short right);
@@ -177,9 +177,6 @@ int urp_native_echo_enabled(int duplex3_level, int software_mode);
 /** Apply logical PTT and polarity to the USB and optional parallel outputs. */
 void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int usb_mask,
 			   int32_t *usb_value, int8_t *parallel_value);
-
-/** Resolve a legacy cutoff option name to its filter role. */
-enum urp_legacy_filter urp_legacy_filter_name(const char *name);
 
 /** Update echo state across an RX carrier transition; returns one when playback starts. */
 int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int is_keyed);

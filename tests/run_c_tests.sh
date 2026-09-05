@@ -32,7 +32,7 @@ channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_
 # mode for tools that need ordered output.
 if [ -z "${C_TEST_GROUP:-}" ] && [ "${C_TEST_PARALLEL:-4}" != 1 ]; then
 	pids=
-	for group in basic tune channels rnnoise validation avfilter_bandpass \
+	for group in basic channels rnnoise validation avfilter_bandpass \
 		avfilter_ctcss avfilter_emphasis avfilter_equalizer avfilter_deesser \
 		avfilter_processor avfilter_permutations avfilter_internals \
 		avfilter_failures; do
@@ -108,20 +108,6 @@ C_TEST_OUTPUT="$out" C_TEST_CFLAGS="${C_TEST_CFLAGS:-}" sh "$root/tests/run_radi
 completed=$((completed + 2))
 fi
 
-if run_group tune; then
-# shellcheck disable=SC2086
-cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-	-DURP_TUNE_TESTING -Dmain=usbradioplus_tune_main \
-	-DAST_MODULE_SELF_SYM=test_module_self -I/usr/include -I"$root/src" \
-	-c "$root/src/usbradioplus-tune.c" -o "$out/usbradioplus-tune-test.o"
-# shellcheck disable=SC2086
-cc $common -DURP_TUNE_TESTING "$root/tests/test_tune_core.c" \
-	"$out/usbradioplus-tune-test.o" -I/usr/include -I"$root/src" \
-	-Wl,--gc-sections -o "$out/tune-core"
-"$out/tune-core"
-completed=$((completed + 1))
-fi
-
 if run_group channels; then
 	compile_channel_shared()
 	{
@@ -167,21 +153,18 @@ if run_group channels; then
 	fi
 
 	compile_pids=
-	compile_channel_shared common "-DURP_PROCESSING_TESTING" \
-		"$channel_invariant_sources" &
-	compile_pids="$compile_pids $!"
 	compile_channel_shared legacy "-DURP_PROCESSING_TESTING" \
-		"$channel_variant_sources" &
+		"$channel_invariant_sources $channel_variant_sources" &
 	compile_pids="$compile_pids $!"
 	if [ "$have_sys_io" -eq 1 ]; then
 		compile_channel_shared sysio "-DHAVE_SYS_IO -DURP_PROCESSING_TESTING" \
-			"$channel_variant_sources" &
+			"$channel_invariant_sources $channel_variant_sources" &
 		compile_pids="$compile_pids $!"
 	fi
 	if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		compile_channel_shared modern \
 			"-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_PROCESSING_TESTING -I$ASL_MODERN_INCLUDEDIR" \
-			"$channel_variant_sources" &
+			"$channel_invariant_sources $channel_variant_sources" &
 		compile_pids="$compile_pids $!"
 	fi
 
@@ -218,10 +201,11 @@ cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 		wait "$compile_pid" || compile_status=1
 	done
 	test "$compile_status" -eq 0
-	common_shared_objects=$(channel_shared_object_list common "$channel_invariant_sources")
-	legacy_shared_objects="$common_shared_objects$(channel_shared_object_list legacy "$channel_variant_sources")"
+	legacy_shared_objects=$(channel_shared_object_list legacy \
+		"$channel_invariant_sources $channel_variant_sources")
 	if [ "$have_sys_io" -eq 1 ]; then
-		sysio_shared_objects="$common_shared_objects$(channel_shared_object_list sysio "$channel_variant_sources")"
+		sysio_shared_objects=$(channel_shared_object_list sysio \
+			"$channel_invariant_sources $channel_variant_sources")
 	fi
 # shellcheck disable=SC2046,SC2086
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
@@ -253,7 +237,8 @@ if [ "$have_sys_io" -eq 1 ]; then
 fi
 
 if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
-	modern_shared_objects="$common_shared_objects$(channel_shared_object_list modern "$channel_variant_sources")"
+	modern_shared_objects=$(channel_shared_object_list modern \
+		"$channel_invariant_sources $channel_variant_sources")
 	# shellcheck disable=SC2046,SC2086
 	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 		-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_PROCESSING_TESTING \

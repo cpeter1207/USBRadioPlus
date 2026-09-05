@@ -49,7 +49,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				flatrx, txhasctcss, o->echomode, 0, 0, o->rxcdtype, o->rxsdtype,
 				o->rxondelay, o->txoffdelay, o->txprelim, o->txlimonly, o->rxdemod,
 				o->txmixa, o->txmixb, effective_rxmixerset(o),
-				effective_legacy_rxvoiceadj(o), o->rxsquelchadj, o->txmixaset,
+				effective_rx_decoder_gain(o), o->rxsquelchadj, o->txmixaset,
 				o->txmixbset, o->txctcssadj, micplaymax, spkrmax, micmax,
 				o->txslimsp);
 		} else if (!strcmp(cmd, "0+9")) {
@@ -59,7 +59,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				flatrx, txhasctcss, o->echomode, 0, 0, o->rxcdtype, o->rxsdtype,
 				o->rxondelay, o->txoffdelay, o->txprelim, o->txlimonly, o->rxdemod,
 				o->txmixa, o->txmixb, effective_rxmixerset(o),
-				effective_legacy_rxvoiceadj(o), o->rxsquelchadj, o->txmixaset,
+				effective_rx_decoder_gain(o), o->rxsquelchadj, o->txmixaset,
 				o->txmixbset, o->txctcssadj, micplaymax, spkrmax, micmax);
 		} else {
 			ast_cli(fd, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", flatrx,
@@ -193,7 +193,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 	case 'L': /* Set TX soft limiter when operating with preemphasized and limited tx audio */
 		if (cmd[1]) {
 			int setpoint = atoi(cmd + 1);
-			if (legacy_set_tx_soft_limiter(o, setpoint)) {
+			if (validate_tx_soft_limiter_setpoint(o, setpoint)) {
 				ast_cli(fd, "TX soft limiting setpoint must be between 5000 and "
 					    "13000\n");
 				break;

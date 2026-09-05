@@ -37,6 +37,7 @@ char *handle_show_settings(struct ast_cli_entry *entry, int command, struct ast_
 char *handle_set_dsp_debug(struct ast_cli_entry *entry, int command, struct ast_cli_args *args);
 char *handle_radioplus_native_stats(struct ast_cli_entry *entry, int command,
 				    struct ast_cli_args *args);
+void usbradio_start_parallel_pulser(void);
 
 #ifdef URP_CHANNEL_MODERN
 extern short silence_buf[];
@@ -61,7 +62,6 @@ int usbradio_start_audio(struct chan_usbradio_pvt *o);
 PaError usbradio_read_pa_stereo(struct chan_usbradio_pvt *o);
 void stream_cleanup(struct chan_usbradio_pvt *o);
 void *usbradio_audio_thread(void *arg);
-void usbradio_start_parallel_pulser(void);
 #endif
 
 #endif

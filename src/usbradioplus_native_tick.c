@@ -40,7 +40,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	refresh_processing_hardware(o);
 	/* A non-null destination is infallible; only the configured state controls
 	 * whether the optional local chain runs. */
-	usbradioplus_processing_get_local(&chain);
+	usbradioplus_processing_get_local(o->name, &chain);
 	local_chain_enabled = chain.enabled;
 	ctcss_phase_reverse = o->radio->txCtcssPhaseShift;
 	ctcss_frequency = o->radio->txCtcssFreq10 / 10.0;
@@ -69,17 +69,6 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	}
 	{
 		struct txagc_config receive_cfg;
-		double rx_high = o->plus_rxhpf_exact
-					 ? o->plus_rxhpf_hz
-					 : usbradioplus_legacy_cutoff("rxhpf", o->rxhpf);
-		double rx_low = o->plus_rxlpf_exact ? o->plus_rxlpf_hz
-						    : usbradioplus_legacy_cutoff("rxlpf", o->rxlpf);
-		if (o->plus_rxhpf_enabled && o->plus_rxlpf_enabled && rx_high >= rx_low) {
-			ast_log(LOG_ERROR,
-				"RadioPlus/%s: rxhpf cutoff must be below rxlpf cutoff\n", o->name);
-			memset(o->plus_local_native, 0, sizeof(o->plus_local_native));
-			return;
-		}
 		/* Keep de-emphasis separate so RNNoise can run immediately after the
 		 * receiver gate and before any optional dynamics. */
 		memset(&receive_cfg, 0, sizeof(receive_cfg));
@@ -92,49 +81,23 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			ast_log(LOG_WARNING, "RadioPlus/%s: receive de-emphasis failed\n", o->name);
 	}
 	{
-		double gain_db = chain.input_gain_configured ? chain.agc.input_gain_db
-							     : effective_rx_input_gain_db(o);
+		double gain_db = chain.agc.input_gain_db;
 		double gain = pow(10.0, gain_db / 20.0);
 		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
 			o->plus_local_native[i] *= gain;
 	}
 	{
 		struct txagc_config filter_cfg;
-		double rx_high = o->plus_rxhpf_exact
-					 ? o->plus_rxhpf_hz
-					 : usbradioplus_legacy_cutoff("rxhpf", o->rxhpf);
-		double rx_low = o->plus_rxlpf_exact ? o->plus_rxlpf_hz
-						    : usbradioplus_legacy_cutoff("rxlpf", o->rxlpf);
 		memset(&filter_cfg, 0, sizeof(filter_cfg));
-		filter_cfg.receive_bandpass_enabled = 1;
-		filter_cfg.receive_bandpass_highpass_hz = 20.0;
-		filter_cfg.receive_bandpass_lowpass_hz = 5000.0;
-		filter_cfg.ctcss_notch_width_hz = 5.0;
-		/* Apply exactly one PL-rejection filter after the qualified receiver
-		 * gate and before RNNoise or dynamics. An explicit processing mode owns
-		 * its type and cutoff; otherwise rxhpf supplies the compatible default. */
-		if (local_chain_enabled && chain.ctcss_filter_configured) {
-			filter_cfg.ctcss_filter_mode = chain.agc.ctcss_filter_mode;
-			filter_cfg.ctcss_highpass_hz = chain.agc.ctcss_highpass_hz;
-			filter_cfg.ctcss_notch_width_hz = chain.agc.ctcss_notch_width_hz;
-			if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)
-				ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreq,
-						sizeof(filter_cfg.ctcss_notch_frequencies));
-		} else {
-			filter_cfg.ctcss_filter_mode = o->plus_rxhpf_enabled
-							       ? TXAGC_CTCSS_FILTER_HIGHPASS
-							       : TXAGC_CTCSS_FILTER_DISABLED;
-			filter_cfg.ctcss_highpass_hz = rx_high;
-		}
-		if (local_chain_enabled) {
-			filter_cfg.receive_bandpass_enabled = chain.agc.receive_bandpass_enabled;
-			filter_cfg.receive_bandpass_highpass_hz =
-				chain.agc.receive_bandpass_highpass_hz;
-			filter_cfg.receive_bandpass_lowpass_hz =
-				chain.agc.receive_bandpass_lowpass_hz;
-		}
-		filter_cfg.splatter_filter_enabled = o->plus_rxlpf_enabled;
-		filter_cfg.output_lowpass_hz = rx_low;
+		filter_cfg.receive_bandpass_enabled = chain.agc.receive_bandpass_enabled;
+		filter_cfg.receive_bandpass_highpass_hz = chain.agc.receive_bandpass_highpass_hz;
+		filter_cfg.receive_bandpass_lowpass_hz = chain.agc.receive_bandpass_lowpass_hz;
+		filter_cfg.ctcss_filter_mode = chain.agc.ctcss_filter_mode;
+		filter_cfg.ctcss_highpass_hz = chain.agc.ctcss_highpass_hz;
+		filter_cfg.ctcss_notch_width_hz = chain.agc.ctcss_notch_width_hz;
+		if (filter_cfg.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)
+			ast_copy_string(filter_cfg.ctcss_notch_frequencies, o->rxctcssfreq,
+					sizeof(filter_cfg.ctcss_notch_frequencies));
 		if (txagc_avfilter_process(&o->plus_rx_filter_after, &filter_cfg,
 					   o->plus_local_native, URP_NATIVE_SAMPLES,
 					   URP_RATE_NATIVE) < 0)
@@ -220,7 +183,8 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	}
 	if (o->plus_native_fifo.primed && !plus_link_native_pop(o, o->plus_link_native)) {
 		o->plus_native_fifo.primed = 0;
-		if (o->txkeyed || usbradioplus_program_pending(o))
+		/* A short SRC remainder is expected while an unkeyed burst drains. */
+		if (o->txkeyed)
 			o->plus_link_queue_underflows++;
 		urp_src_reset(o->plus_up);
 		urp_clock_recovery_reset(&o->plus_link_clock);
@@ -275,7 +239,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		struct txagc_config final_cfg;
 		struct txagc_chain composite_chain;
 
-		usbradioplus_processing_get_composite(&composite_chain);
+		usbradioplus_processing_get_composite(o->name, &composite_chain);
 		final_cfg = composite_chain.agc;
 		/* The source master gates reorderable dynamics. Fixed transmitter-tail
 		 * stages retain their own explicit enable controls. */
@@ -290,30 +254,6 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		final_cfg.preemphasis_enabled = o->txprelim;
 		final_cfg.emphasis_corner_hz = o->plus_emphasis_corner_hz;
 		final_cfg.emphasis_reference_hz = 1000.0;
-		if (!composite_chain.splatter_filter_configured) {
-			final_cfg.splatter_filter_enabled =
-				o->plus_txhpf_enabled || o->plus_txlpf_enabled;
-			final_cfg.output_highpass_hz =
-				o->plus_txhpf_enabled
-					? (o->plus_txhpf_exact
-						   ? o->plus_txhpf_hz
-						   : usbradioplus_legacy_cutoff("txhpf", o->txhpf))
-					: 0.0;
-			final_cfg.output_lowpass_hz =
-				o->plus_txlpf_enabled
-					? (o->plus_txlpf_exact
-						   ? o->plus_txlpf_hz
-						   : usbradioplus_legacy_cutoff("txlpf", o->txlpf))
-					: 0.0;
-		}
-		/* A configured RadioPlus yes/no is authoritative.  Only an omitted
-		 * setting inherits txprelim, txlimonly, and txslimsp semantics. */
-		if (!composite_chain.lookahead_limiter_configured &&
-		    (o->txprelim || o->txlimonly)) {
-			final_cfg.lookahead_limiter_enabled = 1;
-			final_cfg.lookahead_limit_dbfs =
-				urp_legacy_limiter_ceiling_dbfs(o->txslimsp);
-		}
 		if (final_cfg.output_highpass_hz > 0.0 && final_cfg.output_lowpass_hz > 0.0 &&
 		    final_cfg.output_highpass_hz >= final_cfg.output_lowpass_hz) {
 			ast_log(LOG_ERROR,

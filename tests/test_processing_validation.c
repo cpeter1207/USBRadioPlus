@@ -24,13 +24,11 @@ struct fake_option {
 
 static struct fake_option fake_options[128];
 static size_t fake_option_count;
-static char *fake_categories[16];
+static char *fake_categories[40];
 static size_t fake_category_count;
-static struct ast_variable *fake_variables[16];
+static struct ast_variable *fake_variables[40];
 static struct ast_config *fake_config_load_result;
 static int fake_config_destroy_count;
-static struct ast_category *fake_hardware_category;
-static struct ast_category *fake_local_category;
 static int fake_category_new_failure;
 static int fake_category_append_count;
 static int fake_save_result;
@@ -52,6 +50,8 @@ static int fake_audiohook_destroy_calls;
 static int fake_processor_destroy_calls;
 static int fake_datastore_alloc_failure;
 static int fake_calloc_failure;
+static int fake_calloc_call;
+static int fake_calloc_fail_call;
 static int fake_datastore_free_calls;
 static int fake_audiohook_init_result;
 static int fake_audiohook_attach_result;
@@ -129,7 +129,10 @@ struct ast_category *ast_category_get(const struct ast_config *config, const cha
 {
 	(void)config;
 	(void)filter;
-	return !strcmp(name, "hardware") ? fake_hardware_category : fake_local_category;
+	for (size_t index = 0; index < fake_category_count; ++index)
+		if (!strcmp(name, fake_categories[index]))
+			return (struct ast_category *)(uintptr_t)2;
+	return NULL;
 }
 
 struct ast_category *ast_category_new(const char *name, const char *filename, int line)
@@ -352,7 +355,8 @@ void *__ast_calloc(size_t count, size_t size, const char *file, int line, const 
 	(void)file;
 	(void)line;
 	(void)function;
-	if (fake_calloc_failure)
+	++fake_calloc_call;
+	if (fake_calloc_failure || fake_calloc_call == fake_calloc_fail_call)
 		return NULL;
 	return calloc(count, size);
 }
@@ -559,7 +563,7 @@ static void expect_invalid_field(size_t offset, double value)
 	struct txagc_settings settings_value;
 	struct txagc_chain *chain;
 	settings_defaults(&settings_value);
-	chain = &settings_value.chains[TXAGC_LOCAL];
+	chain = &settings_value.profiles[0].chains[TXAGC_LOCAL];
 	*(double *)((char *)&chain->agc + offset) = value;
 	assert(validate_chain(chain) < 0);
 }
@@ -573,11 +577,11 @@ static void test_every_numeric_boundary(void)
 	}
 	struct txagc_settings value;
 	settings_defaults(&value);
-	value.chains[TXAGC_LOCAL].agc.low_limiter_threshold_dbfs = NAN;
-	assert(validate_chain(&value.chains[TXAGC_LOCAL]) < 0);
+	value.profiles[0].chains[TXAGC_LOCAL].agc.low_limiter_threshold_dbfs = NAN;
+	assert(validate_chain(&value.profiles[0].chains[TXAGC_LOCAL]) < 0);
 	settings_defaults(&value);
-	value.chains[TXAGC_LOCAL].agc.low_limiter_attack_ms = NAN;
-	assert(validate_chain(&value.chains[TXAGC_LOCAL]) < 0);
+	value.profiles[0].chains[TXAGC_LOCAL].agc.low_limiter_attack_ms = NAN;
+	assert(validate_chain(&value.profiles[0].chains[TXAGC_LOCAL]) < 0);
 }
 
 static void test_stage_and_relationship_validation(void)
@@ -585,7 +589,7 @@ static void test_stage_and_relationship_validation(void)
 	struct txagc_settings settings_value;
 	struct txagc_chain *chain;
 	settings_defaults(&settings_value);
-	chain = &settings_value.chains[TXAGC_LOCAL];
+	chain = &settings_value.profiles[0].chains[TXAGC_LOCAL];
 	chain->agc.stage_count = TXAGC_MAX_DYNAMICS_STAGES + 1;
 	assert(validate_chain(chain) < 0);
 	settings_defaults(&settings_value);
@@ -607,7 +611,7 @@ static void test_stage_and_relationship_validation(void)
 #define INVALID_RELATION(field, other)                                                             \
 	do {                                                                                       \
 		settings_defaults(&settings_value);                                                \
-		chain = &settings_value.chains[TXAGC_LOCAL];                                       \
+		chain = &settings_value.profiles[0].chains[TXAGC_LOCAL];                           \
 		chain->agc.field = chain->agc.other;                                               \
 		assert(validate_chain(chain) < 0);                                                 \
 	} while (0)
@@ -628,16 +632,16 @@ static void test_settings_scope_and_hardware_validation(void)
 	struct txagc_chain *link;
 
 	settings_defaults(&value);
-	value.channel[0] = '\0';
-	assert(validate_settings(&value) < 0);
+	value.profiles[0].channel[0] = '\0';
+	assert(validate_profile(&value.profiles[0]) < 0);
 
 #define INVALID_HARDWARE(field, configured, number)                                                \
 	do {                                                                                       \
 		settings_defaults(&value);                                                         \
-		hardware = &value.hardware;                                                        \
+		hardware = &value.profiles[0].hardware;                                            \
 		hardware->configured = 1;                                                          \
 		hardware->field = number;                                                          \
-		assert(validate_settings(&value) < 0);                                             \
+		assert(validate_profile(&value.profiles[0]) < 0);                                  \
 	} while (0)
 	INVALID_HARDWARE(input_gain_db, input_gain_configured, -31.0);
 	INVALID_HARDWARE(input_gain_db, input_gain_configured, 31.0);
@@ -647,36 +651,40 @@ static void test_settings_scope_and_hardware_validation(void)
 	INVALID_HARDWARE(output_b_gain_db, output_b_gain_configured, 31.0);
 #undef INVALID_HARDWARE
 	settings_defaults(&value);
-	value.hardware.input_gain_configured = 1;
-	value.hardware.output_a_gain_configured = 1;
-	value.hardware.output_b_gain_configured = 1;
-	assert(!validate_settings(&value));
+	value.profiles[0].hardware.input_gain_configured = 1;
+	value.profiles[0].hardware.output_a_gain_configured = 1;
+	value.profiles[0].hardware.output_b_gain_configured = 1;
+	assert(!validate_profile(&value.profiles[0]));
+	value.profiles[0].hardware.input_gain_configured = 0;
+	value.profiles[0].hardware.output_a_gain_configured = 0;
+	value.profiles[0].hardware.output_b_gain_configured = 0;
+	assert(!validate_profile(&value.profiles[0]));
 
 	settings_defaults(&value);
-	value.chains[TXAGC_LINK].agc.target_dbfs = 0.0;
-	assert(validate_settings(&value) < 0);
+	value.profiles[0].chains[TXAGC_LINK].agc.target_dbfs = 0.0;
+	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	link = &value.chains[TXAGC_LINK];
+	link = &value.profiles[0].chains[TXAGC_LINK];
 	link->rnnoise_enabled = 1;
-	assert(validate_settings(&value) < 0);
+	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	link = &value.chains[TXAGC_LINK];
+	link = &value.profiles[0].chains[TXAGC_LINK];
 	link->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
-	assert(validate_settings(&value) < 0);
+	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	link = &value.chains[TXAGC_LINK];
+	link = &value.profiles[0].chains[TXAGC_LINK];
 	link->agc.receive_bandpass_enabled = 1;
-	assert(validate_settings(&value) < 0);
+	assert(validate_profile(&value.profiles[0]) < 0);
 
 	settings_defaults(&value);
-	value.chains[TXAGC_LOCAL].agc.splatter_filter_enabled = 1;
-	assert(validate_settings(&value) < 0);
+	value.profiles[0].chains[TXAGC_LOCAL].agc.splatter_filter_enabled = 1;
+	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	value.chains[TXAGC_LOCAL].agc.lookahead_limiter_enabled = 1;
-	assert(validate_settings(&value) < 0);
+	value.profiles[0].chains[TXAGC_LOCAL].agc.lookahead_limiter_enabled = 1;
+	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	value.chains[TXAGC_LOCAL].agc.post_limiter_lowpass_enabled = 1;
-	assert(validate_settings(&value) < 0);
+	value.profiles[0].chains[TXAGC_LOCAL].agc.post_limiter_lowpass_enabled = 1;
+	assert(validate_profile(&value.profiles[0]) < 0);
 }
 
 static void set_fake_options(const struct fake_option *options, size_t count)
@@ -693,10 +701,10 @@ static void test_primitive_configuration_parsers(void)
 	int assignment = -1;
 	int configured = 0;
 	const struct fake_option values[] = {
-		{"test", "number", "12.5"},  {"test", "bad_number", "12x"},
-		{"test", "infinite", "inf"}, {"test", "modern", "3.5"},
-		{"test", "legacy", "4.5"},   {"test", "yes", "yes"},
-		{"test", "no", "no"},	     {"test", "bad_bool", "maybe"},
+		{"test", "number", "12.5"},    {"test", "bad_number", "12x"},
+		{"test", "infinite", "inf"},   {"test", "modern", "3.5"},
+		{"test", "yes", "yes"},	       {"test", "no", "no"},
+		{"test", "bad_bool", "maybe"},
 	};
 
 	set_fake_options(values, sizeof(values) / sizeof(values[0]));
@@ -711,20 +719,6 @@ static void test_primitive_configuration_parsers(void)
 	read_double(config, "test", "infinite", &number);
 	assert(settings_parse_error);
 	settings_parse_error = 0;
-	assert(!strcmp(read_option_alias(config, "test", "modern", NULL), "3.5"));
-	assert(!strcmp(read_option_alias(config, "test", "missing", "legacy"), "4.5"));
-	assert(!strcmp(read_option_alias(config, "test", "modern", "legacy"), "3.5"));
-	assert(settings_parse_error);
-	settings_parse_error = 0;
-	read_double_alias(config, "test", "missing", NULL, &number);
-	read_double_alias(config, "test", "modern", NULL, &number);
-	assert(number == 3.5);
-	read_double_alias(config, "test", "bad_number", NULL, &number);
-	assert(settings_parse_error);
-	settings_parse_error = 0;
-	read_double_alias(config, "test", "infinite", NULL, &number);
-	assert(settings_parse_error);
-	settings_parse_error = 0;
 	read_bool(config, "test", "missing", &boolean);
 	assert(boolean == 7);
 	read_bool(config, "test", "yes", &boolean);
@@ -737,7 +731,7 @@ static void test_primitive_configuration_parsers(void)
 	assert(known_chain_option("enabled"));
 	assert(known_chain_option("output_gain_db"));
 	assert(!known_chain_option("not_an_option"));
-	assert(known_chain_option("target_dbfs"));
+	assert(!known_chain_option("target_dbfs"));
 	assert(!option_in_list("missing", asterisk_override_options,
 			       ARRAY_LEN(asterisk_override_options)));
 	assert(valid_frequency_list("67.0, 100.0, 254.1"));
@@ -753,7 +747,8 @@ static void test_primitive_configuration_parsers(void)
 	assert(valid_frequency_list("100\t,\t200"));
 
 	fake_option_count = 0;
-	assert(!read_assignment(config, "hardware_output_a_assignment", &assignment, &configured));
+	assert(!read_assignment(config, "hardware", "hardware_output_a_assignment", &assignment,
+				&configured));
 	assert(!configured);
 	const char *names[] = {"off", "voice", "ctcss", "voice_ctcss", "auxvoice", "invalid"};
 	for (size_t index = 0; index < sizeof(names) / sizeof(names[0]); ++index) {
@@ -761,8 +756,8 @@ static void test_primitive_configuration_parsers(void)
 						   names[index]};
 		set_fake_options(&option, 1);
 		configured = 0;
-		int result = read_assignment(config, "hardware_output_a_assignment", &assignment,
-					     &configured);
+		int result = read_assignment(config, "hardware", "hardware_output_a_assignment",
+					     &assignment, &configured);
 		assert((index < 5 && !result && configured) || (index == 5 && result < 0));
 	}
 	const char *aliases[] = {"no", "tone", "composite"};
@@ -770,8 +765,8 @@ static void test_primitive_configuration_parsers(void)
 		const struct fake_option option = {"hardware", "hardware_output_a_assignment",
 						   aliases[index]};
 		set_fake_options(&option, 1);
-		assert(!read_assignment(config, "hardware_output_a_assignment", &assignment,
-					&configured));
+		assert(!read_assignment(config, "hardware", "hardware_output_a_assignment",
+					&assignment, &configured));
 	}
 }
 
@@ -792,7 +787,7 @@ static void test_hardware_configuration_parser(void)
 
 	set_fake_options(values, ARRAY_LEN(values));
 	settings_parse_error = 0;
-	assert(!read_hardware(config, &hardware));
+	assert(!read_hardware(config, "hardware", &hardware));
 	assert(!settings_parse_error);
 	assert(hardware.input_gain_configured && hardware.input_gain_db == -12.5);
 	assert(hardware.output_a_gain_configured && hardware.output_a_gain_db == 3.0);
@@ -810,7 +805,7 @@ static void test_hardware_configuration_parser(void)
 						   valid_cos[index]};
 		memset(&hardware, 0, sizeof(hardware));
 		set_fake_options(&option, 1);
-		assert(!read_hardware(config, &hardware));
+		assert(!read_hardware(config, "hardware", &hardware));
 	}
 
 	const struct fake_option invalid_cases[] = {
@@ -823,14 +818,14 @@ static void test_hardware_configuration_parser(void)
 	for (size_t index = 0; index < ARRAY_LEN(invalid_cases); ++index) {
 		memset(&hardware, 0, sizeof(hardware));
 		set_fake_options(&invalid_cases[index], 1);
-		assert(read_hardware(config, &hardware) != 0);
+		assert(read_hardware(config, "hardware", &hardware) != 0);
 	}
 
 	const struct fake_option bad_gain = {"hardware", "hardware_input_gain_db", "bad"};
 	memset(&hardware, 0, sizeof(hardware));
 	set_fake_options(&bad_gain, 1);
 	settings_parse_error = 0;
-	assert(!read_hardware(config, &hardware));
+	assert(!read_hardware(config, "hardware", &hardware));
 	assert(settings_parse_error && hardware.input_gain_configured);
 }
 
@@ -847,7 +842,6 @@ static void test_chain_configuration_parser(void)
 		{"local", "ctcss_filter_mode", "notch"},
 		{"local", "input_gain_db", "2.5"},
 		{"local", "agc_target_dbfs", "-10"},
-		{"local", "target_dbfs", "-11"},
 		{"local", "splatter_filter_highpass_hz", "100"},
 		{"local", "stage_order", "equalizer,expander,agc,deesser,compressor,limiter"},
 	};
@@ -855,14 +849,15 @@ static void test_chain_configuration_parser(void)
 	settings_defaults(&value);
 	set_fake_options(values, ARRAY_LEN(values));
 	settings_parse_error = 0;
-	assert(!read_chain(config, "local", &value.chains[TXAGC_LOCAL]));
-	assert(settings_parse_error); /* Conflicting modern and alias names are rejected. */
-	assert(value.chains[TXAGC_LOCAL].enabled);
-	assert(value.chains[TXAGC_LOCAL].rnnoise_enabled);
-	assert(value.chains[TXAGC_LOCAL].input_gain_configured);
-	assert(value.chains[TXAGC_LOCAL].splatter_filter_configured);
-	assert(value.chains[TXAGC_LOCAL].agc.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH);
-	assert(value.chains[TXAGC_LOCAL].agc.stage_count == TXAGC_MAX_DYNAMICS_STAGES);
+	assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
+	assert(!settings_parse_error);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].enabled);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].input_gain_configured);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].splatter_filter_configured);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode ==
+	       TXAGC_CTCSS_FILTER_NOTCH);
+	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.stage_count == TXAGC_MAX_DYNAMICS_STAGES);
 
 	const char *valid_modes[] = {"highpass", "disabled", "off"};
 	for (size_t index = 0; index < ARRAY_LEN(valid_modes); ++index) {
@@ -871,7 +866,7 @@ static void test_chain_configuration_parser(void)
 		settings_defaults(&value);
 		set_fake_options(&option, 1);
 		settings_parse_error = 0;
-		assert(!read_chain(config, "local", &value.chains[TXAGC_LOCAL]));
+		assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
 		assert(!settings_parse_error);
 	}
 
@@ -879,17 +874,17 @@ static void test_chain_configuration_parser(void)
 	settings_defaults(&value);
 	set_fake_options(&invalid_mode, 1);
 	settings_parse_error = 0;
-	assert(!read_chain(config, "local", &value.chains[TXAGC_LOCAL]));
+	assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
 	assert(settings_parse_error);
 
 	const struct fake_option invalid_order = {"local", "stage_order", "agc,agc"};
 	settings_defaults(&value);
 	set_fake_options(&invalid_order, 1);
-	assert(read_chain(config, "local", &value.chains[TXAGC_LOCAL]) < 0);
+	assert(read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]) < 0);
 
 	fake_option_count = 0;
 	settings_defaults(&value);
-	assert(!read_chain(config, "local", &value.chains[TXAGC_LOCAL]));
+	assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
 	const char *splatter_names[] = {"splatter_filter_enabled", "splatter_filter_highpass_hz",
 					"output_highpass_hz", "splatter_filter_lowpass_hz",
 					"output_lowpass_hz"};
@@ -898,8 +893,8 @@ static void test_chain_configuration_parser(void)
 						   index ? "100" : "yes"};
 		settings_defaults(&value);
 		set_fake_options(&option, 1);
-		assert(!read_chain(config, "local", &value.chains[TXAGC_LOCAL]));
-		assert(value.chains[TXAGC_LOCAL].splatter_filter_configured);
+		assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
+		assert(value.profiles[0].chains[TXAGC_LOCAL].splatter_filter_configured);
 	}
 }
 
@@ -910,7 +905,7 @@ static int add_single_override(const char *section, const char *name, const char
 	const struct fake_option option = {section, name, text};
 	settings_defaults(&value);
 	set_fake_options(&option, 1);
-	return add_override(&value, config, section, name);
+	return add_override(&value.profiles[0], config, section, name);
 }
 
 static void test_section_override_parser(void)
@@ -952,7 +947,7 @@ static void test_section_override_parser(void)
 
 	fake_option_count = 0;
 	settings_defaults(&value);
-	assert(!add_override(&value, config, "hardware", "hardware_serial"));
+	assert(!add_override(&value.profiles[0], config, "hardware", "hardware_serial"));
 	for (size_t index = 0; index < ARRAY_LEN(cases); ++index) {
 		assert(!add_single_override(cases[index].section, cases[index].name,
 					    cases[index].valid));
@@ -992,10 +987,10 @@ static void test_section_override_parser(void)
 	assert(add_single_override("hardware", "hardware_tx_soft_limiter_setpoint", "13001") < 0);
 
 	settings_defaults(&value);
-	value.override_count = MAX_SECTION_OVERRIDES;
+	value.profiles[0].override_count = MAX_SECTION_OVERRIDES;
 	const struct fake_option full = {"hardware", "hardware_serial", "serial"};
 	set_fake_options(&full, 1);
-	assert(add_override(&value, config, "hardware", "hardware_serial") < 0);
+	assert(add_override(&value.profiles[0], config, "hardware", "hardware_serial") < 0);
 
 	const struct fake_option all_sections[] = {
 		{"asterisk", asterisk_override_options[0], "yes"},
@@ -1006,8 +1001,9 @@ static void test_section_override_parser(void)
 	};
 	settings_defaults(&value);
 	set_fake_options(all_sections, ARRAY_LEN(all_sections));
-	assert(!read_section_overrides(&value, config));
-	assert(value.override_count == ARRAY_LEN(all_sections));
+	assert(!read_section_overrides(&value.profiles[0], config, "asterisk", "hardware", "duplex",
+				       "diagnostics"));
+	assert(value.profiles[0].override_count == ARRAY_LEN(all_sections) - 1);
 }
 
 static void test_option_name_validation(void)
@@ -1018,27 +1014,25 @@ static void test_option_name_validation(void)
 	fake_category_count = 1;
 	fake_categories[0] = "unknown";
 	fake_variables[0] = NULL;
-	assert(validate_option_names(config) < 0);
+	assert(!validate_option_names(config));
 
 	const struct {
 		char *section;
 		const char *name;
 		int valid;
 	} cases[] = {
-		{"general", "channel", 1},
-		{"general", "local_enabled", 1},
-		{"general", "link_enabled", 1},
-		{"general", "channel_enabled", 1},
-		{"general", "enabled", 1},
-		{"asterisk", asterisk_override_options[0], 1},
-		{"hardware", "hardware_input_gain_db", 1},
-		{"hardware", hardware_override_options[0], 1},
-		{"duplex", duplex_override_options[0], 1},
-		{"diagnostics", diagnostics_override_options[0], 1},
-		{"local", "output_gain_db", 1},
-		{"link", "splatter_filter_enabled", 0},
-		{"voice_telemetry", "receive_bandpass_enabled", 0},
-		{"general", "unknown", 0},
+		{"test", "channel_enabled", 1},
+		{"test", "hardware_profile", 1},
+		{"test", "channel", 0},
+		{"asterisk test", asterisk_override_options[0], 1},
+		{"hardware test", "hardware_input_gain_db", 1},
+		{"hardware test", hardware_override_options[0], 1},
+		{"duplex test", duplex_override_options[0], 1},
+		{"diagnostics test", diagnostics_override_options[0], 1},
+		{"local test", "output_gain_db", 1},
+		{"link test", "splatter_filter_enabled", 0},
+		{"voice_telemetry test", "receive_bandpass_enabled", 0},
+		{"test", "unknown", 0},
 	};
 	for (size_t index = 0; index < ARRAY_LEN(cases); ++index) {
 		memset(&variable, 0, sizeof(variable));
@@ -1053,16 +1047,17 @@ static void test_option_name_validation(void)
 	for (size_t index = 0; index < ARRAY_LEN(link_filters); ++index) {
 		memset(&variable, 0, sizeof(variable));
 		variable.name = link_filters[index];
-		fake_categories[0] = "link";
+		fake_categories[0] = "link test";
 		fake_variables[0] = &variable;
 		assert(validate_option_names(config) < 0);
 	}
 	memset(&variable, 0, sizeof(variable));
 	variable.name = "equalizer_enabled";
-	fake_categories[0] = "link";
+	fake_categories[0] = "link test";
 	fake_variables[0] = &variable;
 	assert(!validate_option_names(config));
-	const char *unknown_sections[] = {"asterisk", "hardware", "duplex", "diagnostics"};
+	const char *unknown_sections[] = {"asterisk test", "hardware test", "duplex test",
+					  "diagnostics test"};
 	for (size_t index = 0; index < ARRAY_LEN(unknown_sections); ++index) {
 		memset(&variable, 0, sizeof(variable));
 		variable.name = "unknown";
@@ -1073,112 +1068,272 @@ static void test_option_name_validation(void)
 	fake_category_count = 0;
 }
 
+static void test_unified_configuration_edge_paths(void)
+{
+	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
+	struct txagc_settings value;
+	struct ast_variable variable = {.name = "channel_enabled"};
+	char section[MAX_CONFIG_SECTION];
+	char long_kind[80];
+
+	assert(!validate_named_option("general", "general", &variable));
+	variable.name = "unknown";
+	assert(validate_named_option("general", "general", &variable) < 0);
+	assert(validate_named_option("unknown", "unknown", &variable) < 0);
+
+	memset(long_kind, 'x', sizeof(long_kind) - 1);
+	long_kind[sizeof(long_kind) - 1] = '\0';
+	assert(resolve_profile_section(config, "usb", long_kind, section, sizeof(section)) < 0);
+	assert(resolve_profile_section(config, "usb", "hardware", section, 2) < 0);
+	const struct fake_option missing_profile = {"usb", "hardware_profile", "missing"};
+	set_fake_options(&missing_profile, 1);
+	assert(resolve_profile_section(config, "usb", "hardware", section, sizeof(section)) < 0);
+	const struct fake_option existing_profile = {"usb", "hardware_profile", "shared"};
+	fake_category_count = 1;
+	fake_categories[0] = "hardware shared";
+	fake_variables[0] = NULL;
+	set_fake_options(&existing_profile, 1);
+	assert(!resolve_profile_section(config, "usb", "hardware", section, sizeof(section)));
+	struct ast_variable enabled_variable = {.name = "enabled"};
+	fake_categories[0] = "local ";
+	fake_variables[0] = &enabled_variable;
+	fake_option_count = 0;
+	assert(validate_option_names(config) < 0);
+	char long_category[MAX_CONFIG_SECTION + 16];
+	memset(long_category, 'x', sizeof(long_category) - 1);
+	long_category[40] = ' ';
+	long_category[sizeof(long_category) - 1] = '\0';
+	fake_categories[0] = long_category;
+	assert(validate_option_names(config) < 0);
+
+	const struct {
+		const char *section;
+		const char *name;
+		const char *value;
+	} invalid_overrides[] = {
+		{"asterisk", "asterisk_jitter_buffer_enabled", "maybe"},
+		{"hardware", "hardware_eeprom_enabled", "maybe"},
+		{"duplex", "duplex_local_repeat_mode", "invalid"},
+		{"diagnostics", "diagnostics_trace_type", "invalid"},
+	};
+	for (size_t index = 0; index < ARRAY_LEN(invalid_overrides); ++index) {
+		const struct fake_option option = {invalid_overrides[index].section,
+						   invalid_overrides[index].name,
+						   invalid_overrides[index].value};
+		settings_defaults(&value);
+		set_fake_options(&option, 1);
+		assert(read_section_overrides(&value.profiles[0], config, "asterisk", "hardware",
+					      "duplex", "diagnostics") < 0);
+	}
+	const struct fake_option scoped = {"hardware usb", "hardware_serial", "serial"};
+	settings_defaults(&value);
+	set_fake_options(&scoped, 1);
+	assert(!add_override(&value.profiles[0], config, "hardware usb", "hardware_serial"));
+	assert(!strcmp(value.profiles[0].overrides[0].section, "hardware"));
+	settings_defaults(&value);
+	value.profiles[0].override_count = MAX_SECTION_OVERRIDES;
+	const struct fake_option enabled = {"usb", "channel_enabled", "yes"};
+	set_fake_options(&enabled, 1);
+	assert(read_profile_overrides(&value.profiles[0], config, "usb", "asterisk usb",
+				      "hardware usb", "duplex usb", "diagnostics usb") < 0);
+	fake_option_count = 0;
+}
+
 static void test_settings_loader(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
 
+	fake_calloc_call = 0;
+	fake_calloc_fail_call = 1;
+	assert(load_settings() < 0);
+	fake_calloc_call = 0;
+	fake_calloc_fail_call = 2;
+	assert(load_settings() < 0);
+	fake_calloc_fail_call = 0;
 	fake_option_count = 0;
 	fake_category_count = 0;
 	fake_config_destroy_count = 0;
 	fake_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(!load_settings());
-	assert(!settings.enabled && !fake_config_destroy_count);
+	assert(load_settings() < 0);
+	assert(!fake_config_destroy_count);
 
 	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(load_settings() < 0);
 
 	fake_config_load_result = valid;
-	assert(!load_settings());
+	assert(load_settings() < 0);
 	assert(fake_config_destroy_count == 1);
-	assert(!strcmp(settings.channel, "RadioPlus/"));
 
 	const struct fake_option configured[] = {
-		{"general", "enabled", "yes"},
-		{"general", "channel", "RadioPlus/test"},
-		{"general", "local_enabled", "no"},
-		{"general", "link_enabled", "yes"},
-		{"local", "agc_enabled", "yes"},
-		{"link", "splatter_filter_enabled", "no"},
-		{"voice_telemetry", "compressor_enabled", "yes"},
+		{"general", "channel_enabled", "yes"},
+		{"local", "enabled", "yes"},
+		{"test", "channel_enabled", "yes"},
+		{"local test", "enabled", "no"},
+		{"link test", "enabled", "yes"},
+		{"local test", "agc_enabled", "yes"},
+		{"voice_telemetry test", "compressor_enabled", "yes"},
 	};
+	static char *const categories[] = {"general",
+					   "local",
+					   "test",
+					   "asterisk test",
+					   "hardware test",
+					   "duplex test",
+					   "diagnostics test",
+					   "local test",
+					   "link test",
+					   "voice_telemetry test"};
+	fake_category_count = ARRAY_LEN(categories);
+	for (size_t index = 0; index < fake_category_count; ++index) {
+		fake_categories[index] = categories[index];
+		fake_variables[index] = NULL;
+	}
 	set_fake_options(configured, ARRAY_LEN(configured));
 	assert(!load_settings());
-	assert(settings.enabled);
-	assert(!strcmp(settings.channel, "RadioPlus/test"));
-	assert(!settings.chains[TXAGC_LOCAL].enabled);
-	assert(settings.chains[TXAGC_LINK].enabled);
-	assert(settings.chains[TXAGC_LOCAL].agc.agc_enabled);
-	assert(settings.chains[TXAGC_VOICE_TELEMETRY].agc.compressor_enabled);
-	assert(!settings.chains[TXAGC_LINK].agc.splatter_filter_enabled);
-
-	const struct fake_option bad_hardware = {"hardware", "hardware_cos_assignment", "bad"};
-	set_fake_options(&bad_hardware, 1);
-	assert(load_settings() < 0);
-
-	const struct fake_option bad_override = {"hardware", "hardware_eeprom_enabled", "bad"};
-	set_fake_options(&bad_override, 1);
-	assert(load_settings() < 0);
-
-	const struct fake_option bad_graph = {"local", "stage_order", "agc,agc"};
-	set_fake_options(&bad_graph, 1);
-	assert(load_settings() < 0);
-	const struct fake_option bad_general_graph = {"general", "stage_order", "agc,agc"};
-	set_fake_options(&bad_general_graph, 1);
-	assert(load_settings() < 0);
-
-	const struct fake_option bad_asterisk = {"asterisk", "asterisk_jitter_buffer_enabled",
-						 "bad"};
-	set_fake_options(&bad_asterisk, 1);
-	assert(load_settings() < 0);
-	const struct fake_option bad_duplex = {"duplex", "duplex_local_repeat_mode", "bad"};
-	set_fake_options(&bad_duplex, 1);
-	assert(load_settings() < 0);
-	const struct fake_option bad_diagnostics = {"diagnostics", "diagnostics_trace_level",
-						    "bad"};
-	set_fake_options(&bad_diagnostics, 1);
-	assert(load_settings() < 0);
-
-	const struct fake_option bad_boolean = {"general", "enabled", "bad"};
-	set_fake_options(&bad_boolean, 1);
-	assert(load_settings() < 0);
-
-	const struct fake_option empty_channel = {"general", "channel", ""};
-	set_fake_options(&empty_channel, 1);
-	assert(load_settings() < 0);
-	const struct fake_option bad_link_graph = {"link", "stage_order", "agc,agc"};
-	set_fake_options(&bad_link_graph, 1);
-	assert(load_settings() < 0);
-	const struct fake_option bad_voice_graph = {"voice_telemetry", "stage_order", "agc,agc"};
-	set_fake_options(&bad_voice_graph, 1);
-	assert(load_settings() < 0);
-	const struct fake_option voice_disabled = {"voice_telemetry", "enabled", "no"};
-	set_fake_options(&voice_disabled, 1);
+	assert(settings.profiles[0].enabled);
+	assert(!strcmp(settings.profiles[0].channel, "RadioPlus/test"));
+	assert(!settings.profiles[0].chains[TXAGC_LOCAL].enabled);
+	assert(settings.profiles[0].chains[TXAGC_LINK].enabled);
+	assert(settings.profiles[0].chains[TXAGC_LOCAL].agc.agc_enabled);
+	assert(settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.compressor_enabled);
+	const struct fake_option disabled = {"usb", "channel_enabled", "no"};
+	fake_category_count = 1;
+	fake_categories[0] = "usb";
+	fake_variables[0] = NULL;
+	set_fake_options(&disabled, 1);
 	assert(!load_settings());
-	assert(!settings.chains[TXAGC_VOICE_TELEMETRY].enabled);
-	const struct fake_option link_disabled = {"general", "link_enabled", "no"};
-	set_fake_options(&link_disabled, 1);
+	assert(!settings.profiles[0].enabled);
+	const struct fake_option flat_disabled[] = {{"general", "channel_enabled", "no"},
+						    {"usb", "channel_enabled", "yes"}};
+	fake_category_count = 2;
+	fake_categories[0] = "general";
+	fake_categories[1] = "usb";
+	fake_variables[0] = fake_variables[1] = NULL;
+	set_fake_options(flat_disabled, ARRAY_LEN(flat_disabled));
 	assert(!load_settings());
-	assert(!settings.chains[TXAGC_LINK].enabled);
+	assert(settings.profiles[0].enabled);
 
-	struct ast_variable unknown = {0};
-	unknown.name = "unknown";
 	fake_option_count = 0;
+	fake_category_count = 0;
+}
+
+static void test_settings_loader_rejections(void)
+{
+	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
+	static char names[MAX_RADIO_PROFILES + 1][16];
+	const struct fake_option bad_general = {"general", "channel_enabled", "maybe"};
+	static char *const flat_categories[] = {"usb",	 "asterisk", "hardware",
+						"local", "link",     "voice_telemetry"};
+	static char *const scoped_categories_all[] = {"usb",	      "asterisk usb",
+						      "hardware usb", "local usb",
+						      "link usb",     "voice_telemetry usb"};
+
+	fake_config_load_result = valid;
 	fake_category_count = 1;
 	fake_categories[0] = "general";
-	fake_variables[0] = &unknown;
+	fake_variables[0] = NULL;
+	set_fake_options(&bad_general, 1);
 	assert(load_settings() < 0);
+	struct ast_variable unknown = {.name = "unknown"};
+	fake_categories[0] = "hardware";
+	fake_variables[0] = &unknown;
+	fake_option_count = 0;
+	assert(load_settings() < 0);
+	fake_variables[0] = NULL;
+	const struct fake_option bad_flat_hardware = {"hardware", "hardware_output_a_assignment",
+						      "invalid"};
+	set_fake_options(&bad_flat_hardware, 1);
+	assert(load_settings() < 0);
+
+	const struct fake_option flat_failures[] = {
+		{"asterisk", "asterisk_jitter_buffer_enabled", "maybe"},
+		{"local", "stage_order", "invalid"},
+		{"link", "stage_order", "invalid"},
+		{"voice_telemetry", "stage_order", "invalid"},
+		{"local", "agc_target_dbfs", "bad"},
+	};
+	for (size_t index = 0; index < ARRAY_LEN(flat_failures); ++index) {
+		fake_category_count = ARRAY_LEN(flat_categories);
+		for (size_t category = 0; category < fake_category_count; ++category) {
+			fake_categories[category] = flat_categories[category];
+			fake_variables[category] = NULL;
+		}
+		set_fake_options(&flat_failures[index], 1);
+		assert(load_settings() < 0);
+	}
+
+	for (size_t index = 0; index < ARRAY_LEN(names); ++index) {
+		snprintf(names[index], sizeof(names[index]), "radio%zu", index);
+		fake_categories[index] = names[index];
+		fake_variables[index] = NULL;
+	}
+	fake_category_count = ARRAY_LEN(names);
+	fake_option_count = 0;
+	assert(load_settings() < 0);
+
+	const struct fake_option bad_channel = {"usb", "channel_enabled", "maybe"};
+	fake_category_count = 1;
+	fake_categories[0] = "usb";
+	set_fake_options(&bad_channel, 1);
+	assert(load_settings() < 0);
+
+	const struct fake_option scoped_failures[] = {
+		{"asterisk usb", "asterisk_jitter_buffer_enabled", "maybe"},
+		{"local usb", "stage_order", "invalid"},
+		{"link usb", "stage_order", "invalid"},
+		{"voice_telemetry usb", "stage_order", "invalid"},
+		{"local usb", "agc_target_dbfs", "bad"},
+	};
+	for (size_t index = 0; index < ARRAY_LEN(scoped_failures); ++index) {
+		fake_category_count = ARRAY_LEN(scoped_categories_all);
+		for (size_t category = 0; category < fake_category_count; ++category) {
+			fake_categories[category] = scoped_categories_all[category];
+			fake_variables[category] = NULL;
+		}
+		set_fake_options(&scoped_failures[index], 1);
+		assert(load_settings() < 0);
+	}
+
+	const char *const profile_options[] = {"asterisk_profile",	 "hardware_profile",
+					       "duplex_profile",	 "diagnostics_profile",
+					       "local_profile",		 "link_profile",
+					       "voice_telemetry_profile"};
+	for (size_t index = 0; index < ARRAY_LEN(profile_options); ++index) {
+		const struct fake_option missing = {"usb", profile_options[index], "missing"};
+		set_fake_options(&missing, 1);
+		assert(load_settings() < 0);
+	}
+	static char *const scoped_categories[] = {"usb", "hardware usb"};
+	for (size_t index = 0; index < ARRAY_LEN(scoped_categories); ++index) {
+		fake_categories[index] = scoped_categories[index];
+		fake_variables[index] = NULL;
+	}
+	fake_category_count = ARRAY_LEN(scoped_categories);
+	const struct fake_option bad_scoped_hardware = {"hardware usb",
+							"hardware_output_a_assignment", "invalid"};
+	set_fake_options(&bad_scoped_hardware, 1);
+	assert(load_settings() < 0);
+	static char *const chain_categories[] = {"usb", "local usb"};
+	for (size_t index = 0; index < ARRAY_LEN(chain_categories); ++index)
+		fake_categories[index] = chain_categories[index];
+	fake_category_count = ARRAY_LEN(chain_categories);
+	const struct fake_option invalid_profile = {"local usb", "equalizer_low_frequency_hz",
+						    "5000"};
+	set_fake_options(&invalid_profile, 1);
+	assert(load_settings() < 0);
+	fake_option_count = 0;
 	fake_category_count = 0;
 }
 
 static void set_override_value(size_t index, const char *section, const char *name,
 			       const char *value)
 {
-	ast_copy_string(settings.overrides[index].section, section,
-			sizeof(settings.overrides[index].section));
-	ast_copy_string(settings.overrides[index].name, name,
-			sizeof(settings.overrides[index].name));
-	ast_copy_string(settings.overrides[index].value, value,
-			sizeof(settings.overrides[index].value));
+	ast_copy_string(settings.profiles[0].overrides[index].section, section,
+			sizeof(settings.profiles[0].overrides[index].section));
+	ast_copy_string(settings.profiles[0].overrides[index].name, name,
+			sizeof(settings.profiles[0].overrides[index].name));
+	ast_copy_string(settings.profiles[0].overrides[index].value, value,
+			sizeof(settings.profiles[0].overrides[index].value));
 }
 
 static void test_public_setting_accessors(void)
@@ -1188,81 +1343,86 @@ static void test_public_setting_accessors(void)
 	char text[32];
 
 	settings_defaults(&settings);
-	assert(usbradioplus_processing_get_local(NULL) < 0);
-	assert(!usbradioplus_processing_get_local(&chain));
+	settings.profiles[0].enabled = 0;
+	assert(usbradioplus_processing_get_local("usb", NULL) < 0);
+	assert(!usbradioplus_processing_get_local("usb", &chain));
+	assert(!usbradioplus_processing_get_local("RadioPlus/usb", &chain));
+	assert(usbradioplus_processing_get_local("missing", &chain) == 1);
 	assert(!chain.enabled);
-	settings.enabled = 1;
-	assert(!usbradioplus_processing_get_local(&chain) && chain.enabled);
-	settings.chains[TXAGC_LOCAL].enabled = 0;
-	assert(!usbradioplus_processing_get_local(&chain) && !chain.enabled);
-	assert(usbradioplus_processing_get_hardware(NULL) < 0);
-	assert(!usbradioplus_processing_get_hardware(&hardware));
-	assert(!hardware.input_gain_configured);
-	assert(usbradioplus_processing_get_composite(NULL) < 0);
-	assert(!usbradioplus_processing_get_composite(&chain));
+	settings.profiles[0].enabled = 1;
+	assert(!usbradioplus_processing_get_local("usb", &chain) && chain.enabled);
+	settings.profiles[0].chains[TXAGC_LOCAL].enabled = 0;
+	assert(!usbradioplus_processing_get_local("usb", &chain) && !chain.enabled);
+	assert(usbradioplus_processing_get_hardware("usb", NULL) < 0);
+	assert(!usbradioplus_processing_get_hardware("usb", &hardware));
+	assert(usbradioplus_processing_get_hardware("missing", &hardware) == 1);
+	assert(hardware.input_gain_configured);
+	assert(usbradioplus_processing_get_composite("usb", NULL) < 0);
+	assert(!usbradioplus_processing_get_composite("usb", &chain));
+	assert(usbradioplus_processing_get_composite("missing", &chain) == 1);
 	assert(chain.enabled);
-	settings.chains[TXAGC_VOICE_TELEMETRY].enabled = 0;
-	assert(!usbradioplus_processing_get_composite(&chain) && !chain.enabled);
-	settings.chains[TXAGC_VOICE_TELEMETRY].enabled = 1;
-	settings.enabled = 0;
-	assert(!usbradioplus_processing_get_composite(&chain) && !chain.enabled);
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].enabled = 0;
+	assert(!usbradioplus_processing_get_composite("usb", &chain) && !chain.enabled);
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].enabled = 1;
+	settings.profiles[0].enabled = 0;
+	assert(!usbradioplus_processing_get_composite("usb", &chain) && !chain.enabled);
 
-	assert(usbradioplus_processing_set_local_input_gain(NAN) < 0);
-	assert(usbradioplus_processing_set_local_input_gain(-31.0) < 0);
-	assert(usbradioplus_processing_set_local_input_gain(31.0) < 0);
-	assert(!usbradioplus_processing_set_local_input_gain(2.0));
-	assert(settings.chains[TXAGC_LOCAL].agc.input_gain_db == 2.0);
-	assert(settings.chains[TXAGC_LOCAL].input_gain_configured);
-	assert(settings.agc.input_gain_db == 2.0);
-	assert(usbradioplus_processing_set_hardware_input_gain(NAN) < 0);
-	assert(usbradioplus_processing_set_hardware_input_gain(-31.0) < 0);
-	assert(usbradioplus_processing_set_hardware_input_gain(31.0) < 0);
-	assert(!usbradioplus_processing_set_hardware_input_gain(-2.0));
-	assert(settings.hardware.input_gain_db == -2.0);
-	assert(settings.hardware.input_gain_configured);
+	assert(usbradioplus_processing_set_local_input_gain("usb", NAN) < 0);
+	assert(usbradioplus_processing_set_local_input_gain("usb", -31.0) < 0);
+	assert(usbradioplus_processing_set_local_input_gain("usb", 31.0) < 0);
+	assert(!usbradioplus_processing_set_local_input_gain("usb", 2.0));
+	assert(usbradioplus_processing_set_local_input_gain("missing", 2.0) == 1);
+	assert(settings.profiles[0].chains[TXAGC_LOCAL].agc.input_gain_db == 2.0);
+	assert(settings.profiles[0].chains[TXAGC_LOCAL].input_gain_configured);
+	assert(settings.profiles[0].agc.input_gain_db == 2.0);
+	assert(usbradioplus_processing_set_hardware_input_gain("usb", NAN) < 0);
+	assert(usbradioplus_processing_set_hardware_input_gain("usb", -31.0) < 0);
+	assert(usbradioplus_processing_set_hardware_input_gain("usb", 31.0) < 0);
+	assert(!usbradioplus_processing_set_hardware_input_gain("usb", -2.0));
+	assert(usbradioplus_processing_set_hardware_input_gain("missing", -2.0) == 1);
+	assert(settings.profiles[0].hardware.input_gain_db == -2.0);
+	assert(settings.profiles[0].hardware.input_gain_configured);
 
-	assert(usbradioplus_processing_get_option(NULL, "x", text, sizeof(text)) < 0);
-	assert(usbradioplus_processing_get_option("x", NULL, text, sizeof(text)) < 0);
-	assert(usbradioplus_processing_get_option("x", "x", NULL, sizeof(text)) < 0);
-	assert(usbradioplus_processing_get_option("x", "x", text, 0) < 0);
-	settings.override_count = 5;
+	assert(usbradioplus_processing_get_option(NULL, "x", "x", text, sizeof(text)) < 0);
+	assert(usbradioplus_processing_get_option("usb", NULL, "x", text, sizeof(text)) < 0);
+	assert(usbradioplus_processing_get_option("usb", "x", NULL, text, sizeof(text)) < 0);
+	assert(usbradioplus_processing_get_option("usb", "x", "x", NULL, sizeof(text)) < 0);
+	assert(usbradioplus_processing_get_option("usb", "x", "x", text, 0) < 0);
+	settings.profiles[0].override_count = 5;
 	set_override_value(0, "asterisk", asterisk_override_options[0], "yes");
 	set_override_value(1, "hardware", hardware_override_options[0], "usb");
 	set_override_value(2, "duplex", duplex_override_options[0], "1");
 	set_override_value(3, "diagnostics", diagnostics_override_options[0], "2");
 	set_override_value(4, "general", "channel_enabled", "no");
-	assert(!usbradioplus_processing_get_option("asterisk", asterisk_legacy_options[0], text,
-						   sizeof(text)) &&
-	       !strcmp(text, "yes"));
-	assert(!usbradioplus_processing_get_option("hardware", hardware_legacy_options[0], text,
-						   sizeof(text)) &&
-	       !strcmp(text, "usb"));
-	assert(!usbradioplus_processing_get_option("duplex", duplex_legacy_options[0], text,
-						   sizeof(text)) &&
-	       !strcmp(text, "1"));
-	assert(!usbradioplus_processing_get_option("diagnostics", diagnostics_legacy_options[0],
-						   text, sizeof(text)) &&
-	       !strcmp(text, "2"));
-	assert(!usbradioplus_processing_get_option("general", "radioactive", text, sizeof(text)) &&
-	       !strcmp(text, "no"));
-	assert(usbradioplus_processing_get_option("hardware", "missing", text, sizeof(text)) == 1);
-	assert(!usbradioplus_processing_get_option("asterisk", asterisk_override_options[0], text,
-						   sizeof(text)));
-	assert(!usbradioplus_processing_get_option("hardware", hardware_override_options[0], text,
-						   sizeof(text)));
-	assert(!usbradioplus_processing_get_option("duplex", duplex_override_options[0], text,
-						   sizeof(text)));
-	assert(!usbradioplus_processing_get_option("diagnostics", diagnostics_override_options[0],
+	assert(usbradioplus_processing_get_option("usb", "hardware", "rxmixerset", text,
+						  sizeof(text)) == 1);
+	assert(usbradioplus_processing_get_option("usb", "hardware", "missing", text,
+						  sizeof(text)) == 1);
+	assert(!usbradioplus_processing_get_option("usb", "asterisk", asterisk_override_options[0],
 						   text, sizeof(text)));
-	assert(usbradioplus_processing_get_option("general", "missing", text, sizeof(text)) == 1);
-	assert(usbradioplus_processing_get_option("other", "missing", text, sizeof(text)) == 1);
+	assert(!usbradioplus_processing_get_option("usb", "hardware", hardware_override_options[0],
+						   text, sizeof(text)));
+	assert(!usbradioplus_processing_get_option("usb", "duplex", duplex_override_options[0],
+						   text, sizeof(text)));
+	assert(!usbradioplus_processing_get_option(
+		"usb", "diagnostics", diagnostics_override_options[0], text, sizeof(text)));
+	assert(usbradioplus_processing_get_option("usb", "general", "missing", text,
+						  sizeof(text)) == 1);
+	assert(usbradioplus_processing_get_option("usb", "other", "missing", text, sizeof(text)) ==
+	       1);
+	assert(usbradioplus_processing_get_option("missing", "other", "missing", text,
+						  sizeof(text)) == 1);
 }
 
 static void reset_save_doubles(void)
 {
+	static char *const categories[] = {"usb", "hardware usb", "local usb"};
 	fake_config_destroy_count = 0;
-	fake_hardware_category = (struct ast_category *)(uintptr_t)1;
-	fake_local_category = (struct ast_category *)(uintptr_t)2;
+	fake_category_count = ARRAY_LEN(categories);
+	for (size_t index = 0; index < fake_category_count; ++index) {
+		fake_categories[index] = categories[index];
+		fake_variables[index] = NULL;
+	}
 	fake_category_new_failure = 0;
 	fake_category_append_count = 0;
 	fake_save_result = 0;
@@ -1274,58 +1434,85 @@ static void test_input_gain_persistence(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
 
-	assert(usbradioplus_processing_save_input_gains(NAN, 0.0) < 0);
-	assert(usbradioplus_processing_save_input_gains(-31.0, 0.0) < 0);
-	assert(usbradioplus_processing_save_input_gains(31.0, 0.0) < 0);
-	assert(usbradioplus_processing_save_input_gains(0.0, NAN) < 0);
-	assert(usbradioplus_processing_save_input_gains(0.0, -31.0) < 0);
-	assert(usbradioplus_processing_save_input_gains(0.0, 31.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", NAN, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", -31.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 31.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, NAN) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, -31.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 31.0) < 0);
 
 	reset_save_doubles();
 	fake_config_load_result = NULL;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
 	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
 
 	reset_save_doubles();
 	fake_config_load_result = valid;
-	assert(!usbradioplus_processing_save_input_gains(1.25, -2.5));
+	assert(!usbradioplus_processing_save_input_gains("usb", 1.25, -2.5));
 	assert(fake_tune_update_calls == 2 && fake_config_destroy_count == 1);
 
 	reset_save_doubles();
 	fake_config_load_result = valid;
-	fake_hardware_category = NULL;
-	fake_local_category = NULL;
-	assert(!usbradioplus_processing_save_input_gains(1.0, 2.0));
-	assert(fake_category_append_count == 2);
-
-	reset_save_doubles();
-	fake_config_load_result = valid;
-	fake_hardware_category = NULL;
-	fake_category_new_failure = 1;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
-	assert(fake_config_destroy_count == 1);
-
-	reset_save_doubles();
-	fake_config_load_result = valid;
 	fake_tune_update_failure_call = 1;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
-
-	reset_save_doubles();
-	fake_config_load_result = valid;
-	fake_local_category = NULL;
-	fake_category_new_failure = 1;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
 
 	reset_save_doubles();
 	fake_config_load_result = valid;
 	fake_tune_update_failure_call = 2;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
 
 	reset_save_doubles();
 	fake_config_load_result = valid;
 	fake_save_result = -1;
-	assert(usbradioplus_processing_save_input_gains(0.0, 0.0) < 0);
+	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
+}
+
+static void test_generic_option_persistence(void)
+{
+	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
+	const struct usbradioplus_config_update valid_update = {"hardware", "setting", "value"};
+	char long_section[MAX_CONFIG_SECTION + 1];
+	const struct usbradioplus_config_update invalid_updates[] = {
+		{NULL, "setting", "value"},
+		{"hardware", NULL, "value"},
+		{"hardware", "setting", NULL},
+	};
+
+	assert(usbradioplus_processing_save_options(NULL, NULL, 0) < 0);
+	assert(usbradioplus_processing_save_options("usb", NULL, 1) < 0);
+	reset_save_doubles();
+	fake_config_load_result = valid;
+	assert(!usbradioplus_processing_save_options("usb", NULL, 0));
+	reset_save_doubles();
+	fake_config_load_result = NULL;
+	assert(usbradioplus_processing_save_options("usb", &valid_update, 1) < 0);
+	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
+	assert(usbradioplus_processing_save_options("usb", &valid_update, 1) < 0);
+
+	for (size_t index = 0; index < ARRAY_LEN(invalid_updates); ++index) {
+		reset_save_doubles();
+		fake_config_load_result = valid;
+		assert(usbradioplus_processing_save_options("usb", &invalid_updates[index], 1) < 0);
+	}
+	memset(long_section, 'x', sizeof(long_section) - 1);
+	long_section[sizeof(long_section) - 1] = '\0';
+	const struct usbradioplus_config_update unresolved = {long_section, "setting", "value"};
+	reset_save_doubles();
+	fake_config_load_result = valid;
+	assert(usbradioplus_processing_save_options("usb", &unresolved, 1) < 0);
+	reset_save_doubles();
+	fake_config_load_result = valid;
+	fake_category_count = 1;
+	fake_categories[0] = "usb";
+	fake_category_new_failure = 1;
+	assert(usbradioplus_processing_save_options("usb", &valid_update, 1) < 0);
+	reset_save_doubles();
+	fake_config_load_result = valid;
+	fake_category_count = 1;
+	fake_categories[0] = "usb";
+	assert(!usbradioplus_processing_save_options("usb", &valid_update, 1));
+	assert(fake_category_append_count == 1);
 }
 
 static void test_module_lifecycle_and_simple_cli(void)
@@ -1336,7 +1523,9 @@ static void test_module_lifecycle_and_simple_cli(void)
 
 	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(usbradioplus_processing_load() == AST_MODULE_LOAD_DECLINE);
-	fake_config_load_result = CONFIG_STATUS_FILEMISSING;
+	reset_save_doubles();
+	fake_config_load_result = (struct ast_config *)(uintptr_t)1;
+	fake_option_count = 0;
 	fake_cli_register_result = -1;
 	assert(usbradioplus_processing_load() == AST_MODULE_LOAD_DECLINE);
 	fake_cli_register_result = 0;
@@ -1353,33 +1542,35 @@ static void test_module_lifecycle_and_simple_cli(void)
 	assert(!usbradioplus_processing_unload());
 
 	fake_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(!usbradioplus_processing_prime());
+	assert(usbradioplus_processing_prime() < 0);
 	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(usbradioplus_processing_prime() < 0);
 	assert(usbradioplus_processing_reload() < 0);
 	fake_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(!usbradioplus_processing_reload());
+	assert(usbradioplus_processing_reload() < 0);
 
 	assert(cli_enable(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_enable(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_enable(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
 	assert(cli_enable(&entry, 99, &arguments) == CLI_SUCCESS);
-	assert(settings.enabled);
+	assert(settings.profiles[0].enabled);
 
 	assert(cli_disable(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_disable(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_disable(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
 	assert(cli_disable(&entry, 99, &arguments) == CLI_SUCCESS);
-	assert(!settings.enabled);
+	assert(!settings.profiles[0].enabled);
 
 	assert(cli_reload(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_reload(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_reload(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
 	fake_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(cli_reload(&entry, 99, &arguments) == CLI_FAILURE);
-	fake_config_load_result = CONFIG_STATUS_FILEMISSING;
+	reset_save_doubles();
+	fake_config_load_result = (struct ast_config *)(uintptr_t)1;
 	assert(cli_reload(&entry, 99, &arguments) == CLI_SUCCESS);
 	assert(fake_cli_print_calls > 0);
+	assert(!usbradioplus_processing_reload());
 	stopping = 0;
 	assert(scanner(NULL) == NULL);
 	assert(stopping);
@@ -1390,26 +1581,26 @@ static void test_channel_eligibility(void)
 	struct txagc_settings value;
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
 	settings_defaults(&value);
-	value.chains[TXAGC_LINK].enabled = 1;
+	value.profiles[0].chains[TXAGC_LINK].enabled = 1;
 	fake_channel_name = "IAX2/test";
 	fake_channel_application = "Rpt";
 	fake_channel_data = "Remote Rx";
-	assert(channel_is_eligible(channel, &value));
-	value.chains[TXAGC_LINK].enabled = 0;
-	assert(!channel_is_eligible(channel, &value));
-	value.chains[TXAGC_LINK].enabled = 1;
+	assert(channel_is_eligible(channel, &value.profiles[0]));
+	value.profiles[0].chains[TXAGC_LINK].enabled = 0;
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
+	value.profiles[0].chains[TXAGC_LINK].enabled = 1;
 	fake_channel_name = "PJSIP/test";
-	assert(!channel_is_eligible(channel, &value));
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
 	fake_channel_name = "IAX2/test";
 	fake_channel_application = NULL;
-	assert(!channel_is_eligible(channel, &value));
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
 	fake_channel_application = "Other";
-	assert(!channel_is_eligible(channel, &value));
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
 	fake_channel_application = "Rpt";
 	fake_channel_data = NULL;
-	assert(!channel_is_eligible(channel, &value));
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
 	fake_channel_data = "Other";
-	assert(!channel_is_eligible(channel, &value));
+	assert(!channel_is_eligible(channel, &value.profiles[0]));
 	fake_channel_data = "Remote Rx";
 }
 
@@ -1423,13 +1614,14 @@ static void test_audiohook_callback_and_destroy(void)
 	int16_t pcm[] = {100, -100, 2};
 
 	settings_defaults(&settings);
-	settings.enabled = 1;
-	settings.chains[TXAGC_LINK].enabled = 1;
+	settings.profiles[0].enabled = 1;
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
 	fake_channel_name = "IAX2/test";
 	fake_channel_application = "Rpt";
 	fake_channel_data = "Remote Rx";
 	fake_channel_datastore = &datastore;
 	datastore.data = &hook;
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
 	frame.frametype = AST_FRAME_VOICE;
 	frame.data.ptr = pcm;
 	frame.samples = ARRAY_LEN(pcm);
@@ -1453,16 +1645,19 @@ static void test_audiohook_callback_and_destroy(void)
 	datastore.data = NULL;
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
 	datastore.data = &hook;
-	fake_channel_name = "RadioPlus/";
+	ast_copy_string(hook.profile, "missing", sizeof(hook.profile));
+	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
+	fake_channel_name = "RadioPlus/usb";
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
 	fake_channel_name = "IAX2/test";
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_WRITE));
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	settings.enabled = 1;
-	settings.chains[TXAGC_LINK].enabled = 0;
+	settings.profiles[0].enabled = 1;
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 0;
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	settings.chains[TXAGC_LINK].enabled = 1;
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
 	fake_sample_rate = 0;
 	fake_processor_result = -1;
 	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
@@ -1509,40 +1704,40 @@ static void test_audiohook_attachment(void)
 
 	reset_attach_doubles();
 	fake_channel_datastore = &existing;
-	assert(!attach_hook(channel));
+	assert(!attach_hook(channel, "usb"));
 	assert(!fake_datastore_add_calls);
 
 	reset_attach_doubles();
 	fake_datastore_alloc_failure = 1;
-	assert(attach_hook(channel) < 0);
+	assert(attach_hook(channel, "usb") < 0);
 	assert(fake_datastore_free_calls == 1);
 
 	reset_attach_doubles();
 	fake_calloc_failure = 1;
-	assert(attach_hook(channel) < 0);
+	assert(attach_hook(channel, "usb") < 0);
 	assert(fake_datastore_free_calls == 1);
 
 	reset_attach_doubles();
 	fake_audiohook_init_result = -1;
-	assert(attach_hook(channel) < 0);
+	assert(attach_hook(channel, "usb") < 0);
 	assert(fake_datastore_free_calls == 1);
 
 	reset_attach_doubles();
 	fake_find_sequence[0] = NULL;
 	fake_find_sequence[1] = &existing;
 	fake_find_sequence_count = 2;
-	assert(!attach_hook(channel));
+	assert(!attach_hook(channel, "usb"));
 	assert(fake_datastore_free_calls == 1);
 
 	reset_attach_doubles();
 	fake_audiohook_attach_result = -1;
-	assert(attach_hook(channel) < 0);
+	assert(attach_hook(channel, "usb") < 0);
 	assert(fake_datastore_add_calls == 1);
 	assert(fake_datastore_remove_calls == 1);
 	assert(fake_datastore_free_calls == 1);
 
 	reset_attach_doubles();
-	assert(!attach_hook(channel));
+	assert(!attach_hook(channel, "usb"));
 	assert(fake_datastore_add_calls == 1);
 	assert(fake_last_allocated_datastore);
 	hook_destroy(fake_last_allocated_datastore->data);
@@ -1562,12 +1757,20 @@ static void reset_iterator_doubles(void)
 
 static void test_channel_scanning_and_detachment(void)
 {
+	reset_iterator_doubles();
+	fake_calloc_failure = 1;
+	scan_channels();
+	fake_calloc_failure = 0;
+	settings_defaults(&settings);
+	settings.profiles[0].enabled = 0;
+	scan_channels();
+
 	settings_defaults(&settings);
 	reset_iterator_doubles();
 	scan_channels();
 	assert(!fake_iterator_destroy_calls);
 
-	settings.enabled = 1;
+	settings.profiles[0].enabled = 1;
 	scan_channels();
 	assert(!fake_iterator_destroy_calls);
 	fake_primary_channel_available = 1;
@@ -1621,42 +1824,47 @@ static void test_reporting_cli(void)
 	assert(cli_show(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_show(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_show(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
-	settings_defaults(&settings);
-	settings.chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
-	settings.chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	memset(&settings, 0, sizeof(settings));
 	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
-	settings.enabled = 1;
-	settings.local_enabled = 1;
-	settings.link_enabled = 1;
-	settings.rnnoise_enabled = 1;
-	settings.agc.receive_bandpass_enabled = 1;
-	settings.agc.equalizer_enabled = 1;
-	settings.agc.agc_enabled = 1;
-	settings.agc.expander_enabled = 1;
-	settings.agc.deesser_enabled = 1;
-	settings.agc.compressor_enabled = 1;
-	settings.agc.limiter_enabled = 1;
-	settings.agc.splatter_filter_enabled = 1;
-	settings.agc.lookahead_limiter_enabled = 1;
+	settings_defaults(&settings);
+	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
+	settings.profiles[0].enabled = 0;
+	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
+	settings.profiles[0].enabled = 1;
+	settings.profiles[0].local_enabled = 1;
+	settings.profiles[0].link_enabled = 1;
+	settings.profiles[0].rnnoise_enabled = 1;
+	settings.profiles[0].agc.receive_bandpass_enabled = 1;
+	settings.profiles[0].agc.equalizer_enabled = 1;
+	settings.profiles[0].agc.agc_enabled = 1;
+	settings.profiles[0].agc.expander_enabled = 1;
+	settings.profiles[0].agc.deesser_enabled = 1;
+	settings.profiles[0].agc.compressor_enabled = 1;
+	settings.profiles[0].agc.limiter_enabled = 1;
+	settings.profiles[0].agc.splatter_filter_enabled = 1;
+	settings.profiles[0].agc.lookahead_limiter_enabled = 1;
 	for (size_t source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-		settings.chains[source].enabled = 1;
-		settings.chains[source].rnnoise_enabled = 1;
-		settings.chains[source].agc.equalizer_enabled = 1;
-		settings.chains[source].agc.agc_enabled = 1;
-		settings.chains[source].agc.expander_enabled = 1;
-		settings.chains[source].agc.deesser_enabled = 1;
-		settings.chains[source].agc.compressor_enabled = 1;
-		settings.chains[source].agc.limiter_enabled = 1;
-		settings.chains[source].agc.lookahead_limiter_enabled = 1;
+		settings.profiles[0].chains[source].enabled = 1;
+		settings.profiles[0].chains[source].rnnoise_enabled = 1;
+		settings.profiles[0].chains[source].agc.equalizer_enabled = 1;
+		settings.profiles[0].chains[source].agc.agc_enabled = 1;
+		settings.profiles[0].chains[source].agc.expander_enabled = 1;
+		settings.profiles[0].chains[source].agc.deesser_enabled = 1;
+		settings.profiles[0].chains[source].agc.compressor_enabled = 1;
+		settings.profiles[0].chains[source].agc.limiter_enabled = 1;
+		settings.profiles[0].chains[source].agc.lookahead_limiter_enabled = 1;
 	}
-	settings.chains[TXAGC_LOCAL].agc.receive_bandpass_enabled = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.receive_bandpass_enabled = 1;
 	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
 	for (size_t source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		settings.chains[source].enabled = settings.chains[source].rnnoise_enabled = 0;
-	settings.chains[TXAGC_LOCAL].agc.receive_bandpass_enabled = 0;
-	settings.chains[TXAGC_LOCAL].agc.equalizer_enabled = 0;
-	settings.chains[TXAGC_VOICE_TELEMETRY].agc.splatter_filter_enabled = 0;
-	settings.chains[TXAGC_LOCAL].ctcss_filter_configured = 0;
+		settings.profiles[0].chains[source].enabled =
+			settings.profiles[0].chains[source].rnnoise_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.receive_bandpass_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.equalizer_enabled = 0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.splatter_filter_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 0;
 	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
 
 	assert(cli_stats(&entry, CLI_INIT, &arguments) == NULL);
@@ -1688,7 +1896,7 @@ int main(void)
 {
 	struct txagc_settings value;
 	settings_defaults(&value);
-	assert(!validate_settings(&value));
+	assert(!validate_profile(&value.profiles[0]));
 	assert(!strcmp(ctcss_filter_name(TXAGC_CTCSS_FILTER_NOTCH), "notch"));
 	assert(!strcmp(ctcss_filter_name(TXAGC_CTCSS_FILTER_HIGHPASS), "highpass"));
 	assert(!strcmp(ctcss_filter_name(TXAGC_CTCSS_FILTER_DISABLED), "disabled"));
@@ -1700,9 +1908,12 @@ int main(void)
 	test_chain_configuration_parser();
 	test_section_override_parser();
 	test_option_name_validation();
+	test_unified_configuration_edge_paths();
 	test_settings_loader();
+	test_settings_loader_rejections();
 	test_public_setting_accessors();
 	test_input_gain_persistence();
+	test_generic_option_persistence();
 	test_module_lifecycle_and_simple_cli();
 	test_channel_eligibility();
 	test_audiohook_callback_and_destroy();

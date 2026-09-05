@@ -1,351 +1,568 @@
-.TH USBRADIOPLUS.CONF 5 "August 2026" "USBRadioPlus alpha" "File Formats Manual"
+.TH USBRADIOPLUS.CONF 5 "September 2026" "USBRadioPlus alpha" "File Formats Manual"
 .SH NAME
-usbradioplus.conf \- USBRadioPlus radio-interface configuration
+usbradioplus.conf \- USBRadioPlus channel, hardware, and audio-processing configuration
 .SH SYNOPSIS
 .B /etc/asterisk/usbradioplus.conf
 .SH DESCRIPTION
-The file contains one
-.B [general]
-section followed by one named section for each USB radio interface.  Values in
-.B [general]
-become defaults for each interface.  A device section overrides those values.
-The section name forms the Asterisk channel name; section
+This file defines USBRadioPlus radio channels and their hardware, Asterisk,
+duplex, diagnostics, and audio-processing profiles.  Every noise-reduction and
+dynamics stage is disabled unless explicitly enabled.
+.PP
+A bare section name creates a channel.  For example,
 .B [usb]
-is addressed as
+creates
 .BR RadioPlus/usb .
-.PP
-Option names are not case sensitive.  Boolean values are
-.B yes
-or
-.BR no .
-Unless stated otherwise, times are milliseconds and frequencies are hertz.
-.SH JITTER BUFFER
-The standard Asterisk channel jitter-buffer options may be placed in
-.BR [general] .
-.TP
-.B jbenable = yes|no
-Enable a receive-side jitter buffer.  Default is
-.BR no .
-.TP
-.B jbmaxsize = milliseconds
-Maximum jitter-buffer length.  Default is 200.
-.TP
-.B jbresyncthreshold = milliseconds
-Timestamp discontinuity that causes resynchronization.  Default is 1000.
-.TP
-.B jbimpl = fixed|adaptive
-Select the fixed-size or adaptive implementation.  Default is
-.BR fixed .
-.TP
-.B jblog = yes|no
-Write jitter-buffer frame diagnostics.  Default is
-.BR no .
-.SH DEVICE SELECTION AND USB AUDIO
-.TP
-.B devstr = string
-Select a USB audio device by its ALSA device string.  Normally set by the tuning
-utility.
-.TP
-.B serial = string
-Bind the section to a USB interface serial number.  Use this on systems with
-more than one interface.
-.TP
-.B hdwtype = 0|1
-Select the interface wiring.  Use 0 for the usual modified USB sound fob and 1
-for a Dingotel/Sph interface.  Default is 0.
-.PP
-When the selected interface provides a CM1xx input attenuator, the driver
-always bypasses it.
-.TP
-.B eeprom = 0|1
-Read and write tuning values in a supported interface EEPROM.  Default is 1.
-.TP
-.B frags = integer
-Requested USB audio fragment count.  Change only when diagnosing a driver or
-latency problem.  Default is the driver build value.
-.TP
-.B queuesize = integer
-Maximum queued output fragments.  Default is 20.
-.TP
-.B rxcpusaver = yes|no
-Reduce receive processing while the receiver is closed.
-.TP
-.B txcpusaver = yes|no
-Reduce transmit processing while the transmitter is idle.
-.SH RECEIVER AND SQUELCH
-.TP
-.B rxdemod = no|speaker|flat
-Describe the receiver audio connection.  Use
-.B flat
-for discriminator audio requiring de-emphasis,
-.B speaker
-for audio already de-emphasized by the receiver, or
-.B no
-when receive audio is unused.
-.TP
-.B carrierfrom = no|usb|usbinvert|dsp|vox|pp|ppinvert
-Choose the carrier-operated-squelch source:
-.B usb
+The channel selects profiles with
+.BR asterisk_profile ,
+.BR hardware_profile ,
+.BR duplex_profile ,
+.BR diagnostics_profile ,
+.BR local_profile ,
+.BR link_profile ,
 and
-.B usbinvert
-use the interface input;
-.B dsp
-uses the noise detector;
-.B vox
-uses received voice energy; and
-.B pp
-or
-.B ppinvert
-uses the parallel port.
-This setting is used when
-.B hardware_cos_assignment
-is absent from usbradioplus-processing.conf.
-.TP
-.B voxhangtime = integer
-Hold carrier detection after VOX energy ends.  Default is 2000.
-.TP
-.B rxsqvox = integer
-VOX detector threshold adjustment.
-.TP
-.B rxsqhyst = integer
-Hysteresis for DSP carrier detection.  Default is 3000.
-.TP
-.B rxnoisefiltype = integer
-Select the DSP noise-detector filter.  This is an advanced calibration setting.
-.TP
-.B rxsquelchdelay = integer
-Delay receive program audio so the driver can remove a carrier-squelch tail.
-.TP
-.B rxondelay = integer
-After PTT releases, ignore carrier for this many 20 ms intervals.  Use on a
-simplex station to prevent relay racing.  Default is 0.
-.TP
-.B txoffdelay = integer
-After PTT releases, ignore the receiver for this many 20 ms intervals.  This can
-exclude a linked repeater's transmitter hang time.  Default is 0.
-.TP
-.B rxpolarity = yes|no
-Invert the received radio-signaling bit polarity.
-.SH CTCSS AND OTHER LOW-SPEED SIGNALING
-.TP
-.B ctcssfrom = no|usb|usbinvert|dsp|pp|ppinvert
-Choose the receive CTCSS indication source.  The
-.B dsp
-setting decodes tones from flat receiver audio;
-.B usb
+.BR voice_telemetry_profile .
+A profile named
+.B site
+is written as
+.BR [hardware site] ,
+.BR [local site] ,
+and so forth.  Omitted references select a profile having the same name as the
+channel.  Several channels may reference the same profile.
+.PP
+Flat sections such as
+.BR [hardware] ,
+.BR [local] ,
 and
-.B usbinvert
-use the interface input; parallel-port forms use the configured input pin.
-.TP
-.B rxctcssfreqs = list
-Comma-separated receive CTCSS tones.  Frequencies must be supported by the
-decoder. This setting is used when
-.B hardware_rx_ctcss_frequencies
-is absent from usbradioplus-processing.conf.
-.TP
-.B txctcssfreqs = list
-Comma-separated transmit CTCSS tones corresponding to the receive list. This
-setting is used when
-.B hardware_tx_ctcss_frequencies
-is absent from usbradioplus-processing.conf.
-.TP
-.B txctcssdefault = frequency
-Tone transmitted when no received tone selects another entry.
-.TP
-.B rxctcssoverride = yes|no
-Begin in carrier-squelch operation without requiring a decoded CTCSS tone.
-.TP
-.B rxctcssrelax = integer
-Select CTCSS decoder tolerance.  The normal setting is 1.
-.TP
-.B txtoctype = no|phase|notone
-Choose CTCSS turn-off signaling:
-.B no
-drops PTT with the tone,
-.B phase
-sends a reverse burst, and
-.B notone
-removes tone before PTT.
-.TP
-.B dcsrxpolarity, dcstxpolarity = yes|no
-Invert receive or transmit DCS polarity.
-.TP
-.B lsdrxpolarity, lsdtxpolarity = yes|no
-Invert receive or transmit low-speed-data polarity.
-.SH TRANSMIT ROUTING AND CONTROL
-.TP
-.B txprelim = yes|no
-Apply transmit pre-emphasis and limiting for a direct modulator connection.
-.TP
-.B txlimonly = yes|no
-Apply limiting without pre-emphasis, typically for a microphone input whose
-radio supplies pre-emphasis.
-.TP
-.B txmixa, txmixb = no|voice|tone|composite|auxvoice
-Select the signal on the left or right USB playback channel:
-.B voice
-is program audio,
-.B tone
-is CTCSS,
-.B composite
-combines both, and
-.B auxvoice
-is an unkeyed monitor feed.
-These settings are used when the corresponding hardware output assignment is
-absent from usbradioplus-processing.conf.
-.TP
-.B invertptt = yes|no
-Invert the USB PTT output.  Default operation grounds the output to transmit.
-.TP
-.B duplex = 0|1
-Select half-duplex or full-duplex radio-interface operation.
-.TP
-.B duplex3 = 0..999
-Set local receiver-to-transmitter audio.  Zero disables the route and 999 is
-full level.
-.TP
-.B duplex3mode = hardware|software
-Use the CM119 hardware mixer or the 48 kHz software receiver path for the
-.B duplex3
-route.  Default is
-.BR hardware .
-.TP
-.B txsettletime = integer
-Delay transmit audio after asserting PTT so the transmitter can reach steady
-operation.
-.TP
-.B txrxblankingtime = integer
-Blank receive signaling around transmitter switching.
-.TP
-.B txpolarity = yes|no
-Invert the transmitted radio-signaling bit polarity.
-.SH AUDIO FILTERS
-.TP
-.B rxlpf, txlpf = no|yes|selector|frequency
-Set the receive or transmit low-pass cutoff.
-.TP
-.B rxhpf, txhpf = no|yes|selector|frequency
-Set the receive or transmit high-pass cutoff.
+.B [voice_telemetry]
+provide shared defaults.  Settings in a channel's scoped or referenced profile
+override the corresponding flat-section settings.
 .PP
-On transmit,
-.B txhpf
-sets the low-frequency edge and
-.B txlpf
-sets the high-frequency edge of one final brick-wall band-pass. They do not
-create additional filter stages.
+Audio graph settings and live-safe mixer or signaling controls take effect on a
+processing reload. Device selection, buffering, interface layout, and channel
+construction settings take effect when Asterisk loads the module.
 .PP
-.B no
-disables a filter and
-.B yes
-selects its 300 Hz high-pass or 3000 Hz low-pass default.  An integer selects
-the standard radio filter: low-pass selectors 0, 1, and 2 are 3000, 3300, and
-3500 Hz; high-pass selectors 0, 1, and 2 are 300, 250, and 120 Hz.  A decimal
-number specifies the exact cutoff in hertz.  A high-pass cutoff must be lower
-than its paired low-pass cutoff.
-.PP
-Useful initial passbands are 300--3000 Hz for 12.5 kHz narrowband and 15 kHz FM,
-250--4000 Hz for 20 kHz FM, and 250--5000 Hz for 25 kHz FM.  Final settings must
-be verified for intelligibility, CTCSS margin, peak deviation, and occupied
-bandwidth with a service monitor.
-.SH AUDIO-PATH CONTROLS
+Reload validation is strict. An unknown section, unknown option, repeated or
+unknown graph stage, option in an inapplicable chain, non-finite number, or
+out-of-range value rejects the new file and leaves the running configuration
+unchanged.
+.SH NAMED CHANNEL OPTIONS
 .TP
-.B emphasis_corner_hz = frequency
-Set the pre-emphasis and de-emphasis corner.  Default is 212.206590789 Hz,
-corresponding to a 750 microsecond time constant.
-.SH GPIO AND PARALLEL PORT
+.B channel_enabled = yes|no
+Enable this named radio channel. Default is yes.
 .TP
-.B clipledgpio = 0..8
-Pulse the selected GPIO for 500 ms when the receive ADC clips.  Zero disables
-the indication.
+.B asterisk_profile, hardware_profile, duplex_profile, diagnostics_profile
+Select the corresponding settings profiles.
 .TP
-.B gpio1 ... gpio8 = in|out0|out1
-Configure a CM1xx GPIO as an input or as an output with its initial state.
+.B local_profile, link_profile, voice_telemetry_profile
+Select the three source-chain profiles.
+.SH ASTERISK OPTIONS
+The flat or scoped
+.B [asterisk]
+section controls Asterisk's receive jitter buffer.
 .TP
-.B pport = path
-Set the parallel-port device.  Default is
-.BR /dev/parport0 .
-Legacy binary channel selection uses data pins 6 through 9.  RTX synthesizer
-programming uses data pins 2 through 6.  Pins used for either purpose must not
-also be assigned as general-purpose outputs.
+.B asterisk_jitter_buffer_enabled = yes|no
+Enable the receive jitter buffer.
 .TP
-.B pbase = address
-Set a parallel-port I/O base address when no device driver is used.
+.B asterisk_jitter_buffer_max_size_ms = milliseconds
+Set the maximum jitter-buffer length.
 .TP
-.B pp2 ... pp9 = out0|out1|ptt
-Configure a parallel-port output pin and its initial state or assign it to PTT.
+.B asterisk_jitter_buffer_resync_threshold_ms = milliseconds
+Set the timestamp discontinuity that causes resynchronization.
 .TP
-.B pp10, pp12, pp13, pp15 = in|cor|ctcss
-Configure a parallel-port input and optionally assign it to carrier or CTCSS.
-.SH REMOTE AND DIAGNOSTIC OPTIONS
+.B asterisk_jitter_buffer_implementation = fixed|adaptive
+Select the fixed-size or adaptive jitter-buffer implementation.
 .TP
-.B rxfreq, txfreq = integer
-Set receive and transmit frequency in Hz for a legacy parallel-programmed RTX
-radio.  A value of zero disables synthesizer programming.  USBRadioPlus writes
-the synthesizer before changing the physical PTT output.  A remote
-.B SETFREQ
-command supplies temporary frequencies while remote-base operation is active.
+.B asterisk_jitter_buffer_logging_enabled = yes|no
+Enable jitter-buffer frame diagnostics.
 .TP
-.B radioactive = yes|no
-Enable remote radio control for this channel.
+.B asterisk_jitter_buffer_force_enabled = yes|no
+Force jitter-buffer use.
 .TP
-.B rptnum = integer
-Associate the radio with an app_rpt node number for remote operation.
+.B asterisk_jitter_buffer_target_extra_ms = milliseconds
+Add target buffering when using the adaptive implementation.
 .TP
-.B area = integer
-Set the remote-control area identifier.
+.B asterisk_jitter_buffer_video_sync_enabled = yes|no
+Delay video to remain synchronized with buffered audio. USBRadioPlus does not
+normally carry video, but Asterisk accepts this setting.
+.SH HARDWARE OPTIONS
+The flat or scoped
+.B [hardware]
+section configures the CM119 converter and playback-channel routing.
 .TP
-.B ukey = string
-Set the remote-control authentication key.
+.B hardware_input_gain_db = -30..30
+Set CM119 capture gain. Zero dB is the normalized mixer midpoint, 500 on the
+0--999 scale. Values beyond the available mixer range are clamped.
 .TP
-.B idleinterval = integer
-Set the remote-radio idle polling interval.
+.B hardware_output_a_gain_db, hardware_output_b_gain_db = -30..30
+Set playback gain for CM119 output A or B. Zero dB is the normalized mixer
+midpoint.
 .TP
-.B turnoffs = integer
-Set the remote-radio turn-off behavior mask.
+.B hardware_output_a_assignment, hardware_output_b_assignment = off|voice|ctcss|voice_ctcss|auxvoice
+Route no signal, voice, CTCSS, voice mixed with CTCSS, or auxiliary voice to
+the corresponding CM119 output.
 .TP
-.B sendvoter = integer
-Send receiver information to the configured voter path.
+.B hardware_cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
+Select the carrier-operated-squelch source.
 .TP
-.B tracetype = integer
-Select DSP trace output.
+.B hardware_rx_ctcss_frequencies = list
+Set the comma-separated receive CTCSS frequency list.
 .TP
-.B tracelevel = integer
-Set DSP diagnostic verbosity.
+.B hardware_tx_ctcss_frequencies = list
+Set the comma-separated transmit CTCSS frequency list corresponding to the
+receive list.
 .TP
-.B fever = integer
-Enable low-level diagnostic behavior used by the tuning interface.
-.SH TUNING VALUES
-These values are normally written by
-.BR usbradioplus-tune (8).
+.B hardware_emphasis_corner_hz = frequency
+Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
+be greater than zero and less than 300.
+.SS Device and buffering
 .TP
-.B rxmixerset = 0..999
-Set the USB capture mixer level when
-.B hardware_input_gain_db
-is absent.
+.B hardware_device_identifier, hardware_serial
+Select the USB audio interface by device identifier or serial number.
 .TP
-.B rxvoiceadj = number
-Set recovered voice level when the local-chain
-.B input_gain_db
-option is absent from
-.BR usbradioplus-processing.conf (5).
-The value is converted to decibels; 0.5 is unity.
+.B hardware_interface_type
+Select the supported interface wiring layout.
 .TP
-.B rxsquelchadj = 0..999
-Set the DSP carrier-squelch threshold.
+.B hardware_eeprom_enabled = yes|no
+Enable interface EEPROM tuning storage.
 .TP
-.B txmixaset, txmixbset = 0..999
-Set left- and right-channel USB playback levels when the corresponding hardware
-output gain is absent from usbradioplus-processing.conf.
+.B hardware_audio_fragment_count, hardware_audio_queue_size
+Set the audio fragment count and channel-driver queue depth.
 .TP
-.B txctcssadj = 0..999
+.B hardware_rx_cpu_saver_enabled, hardware_tx_cpu_saver_enabled = yes|no
+Reduce idle receive or transmit DSP activity.
+.SS Receiver and squelch
+.TP
+.B hardware_rx_audio_source = no|speaker|flat
+Select the receiver audio connection.
+.TP
+.B hardware_rx_ctcss_source = no|usb|usbinvert|dsp|pp|ppinvert
+Select the receive CTCSS indication source.
+.TP
+.B hardware_vox_hang_ms, hardware_vox_threshold
+Set VOX hang time and detection threshold.
+.TP
+.B hardware_noise_squelch_hysteresis, hardware_noise_filter_type
+Configure native noise-squelch hysteresis and detector filtering.
+.TP
+.B hardware_squelch_delay, hardware_rx_on_delay_frames
+Set receive audio squelch-tail delay and carrier acceptance delay.
+.TP
+.B hardware_rx_polarity_inverted = yes|no
+Invert receive signaling polarity.
+.TP
+.B hardware_squelch_level = 0..999
+Set the native carrier-squelch threshold.
+.TP
+.B hardware_rx_ctcss_level
+Set the receive CTCSS decoder input level.
+.TP
+.B hardware_rx_ctcss_override_enabled = yes|no
+Start in carrier-squelch operation without requiring CTCSS.
+.TP
+.B hardware_rx_ctcss_relax
+Set CTCSS decoder tolerance.
+.SS Transmit signaling and timing
+.TP
+.B hardware_tx_ctcss_default_hz
+Set the default transmitted CTCSS frequency.
+.TP
+.B hardware_tx_ctcss_level = 0..999
 Set transmitted CTCSS deviation.
 .TP
-.B txslimsp = 5000..13000
-Set the transmitter soft-limiter onset used when transmit limiting is selected.
+.B hardware_ctcss_turnoff_mode = no|phase|notone
+Select CTCSS turn-off signaling.
+.TP
+.B hardware_dcs_rx_polarity_inverted, hardware_dcs_tx_polarity_inverted = yes|no
+Invert receive or transmit DCS polarity.
+.TP
+.B hardware_lsd_rx_polarity_inverted, hardware_lsd_tx_polarity_inverted = yes|no
+Invert receive or transmit low-speed-data polarity.
+.TP
+.B hardware_tx_preemphasis_limiter_enabled, hardware_tx_limiter_only_enabled = yes|no
+Select compatibility transmit pre-emphasis and limiting.
+.TP
+.B hardware_tx_soft_limiter_setpoint
+Set compatibility soft-limiter onset.
+.TP
+.B hardware_tx_settle_ms, hardware_tx_rx_blanking_ms
+Set transmitter settling and signaling blanking intervals.
+.TP
+.B hardware_tx_off_delay_frames
+Delay receiver acceptance after transmitter release.
+.TP
+.B hardware_tx_polarity_inverted, hardware_ptt_inverted = yes|no
+Invert transmit signaling or the physical PTT output.
+.SS Radio identity and auxiliary controls
+.TP
+.B hardware_rx_frequency_hz, hardware_tx_frequency_hz
+Record receiver and transmitter frequencies.
+.TP
+.B hardware_repeater_number, hardware_area, hardware_user_key
+Set the native signaling-system identity.
+.TP
+.B hardware_idle_interval, hardware_turnoff_count, hardware_voter_reporting
+Set signaling cadence, turn-off behavior, and voter reporting.
+.TP
+.B hardware_clip_led_gpio = 0..8
+Select the optional clipping-indicator GPIO.
+.SS GPIO and parallel port
+.TP
+.B hardware_gpio_1_mode, hardware_gpio_2_mode, hardware_gpio_3_mode, hardware_gpio_4_mode, hardware_gpio_5_mode, hardware_gpio_6_mode, hardware_gpio_7_mode, hardware_gpio_8_mode = in|out0|out1
+Configure a CM119 GPIO as an input or as an output with its initial state.
+.TP
+.B hardware_parallel_port_device
+Set the parallel-port device path.
+.TP
+.B hardware_parallel_port_base_address
+Set the parallel-port I/O base address in decimal or 0x-prefixed notation.
+.TP
+.B hardware_parallel_pin_2_assignment, hardware_parallel_pin_3_assignment, hardware_parallel_pin_4_assignment, hardware_parallel_pin_5_assignment, hardware_parallel_pin_6_assignment, hardware_parallel_pin_7_assignment, hardware_parallel_pin_8_assignment, hardware_parallel_pin_9_assignment = out0|out1|ptt
+Configure a parallel-port output and its initial state or assign it to PTT.
+.TP
+.B hardware_parallel_pin_10_assignment, hardware_parallel_pin_12_assignment, hardware_parallel_pin_13_assignment, hardware_parallel_pin_15_assignment = in|cor|ctcss
+Configure a parallel-port input as a general-purpose input or assign it to COS
+or CTCSS indication.
+.SH DUPLEX OPTIONS
+The [duplex] section controls radio-interface duplex behavior. Missing options
+use their documented defaults.
+.TP
+.B duplex_radio_mode = 0|1
+Select half- or full-duplex radio operation.
+.TP
+.B duplex_local_repeat_level = 0..999
+Set local receiver-to-transmitter audio level.
+.TP
+.B duplex_local_repeat_mode = hardware|software
+Select the CM119 mixer or native 48 kHz local repeat path.
+.SH DIAGNOSTIC OPTIONS
+.TP
+.B diagnostics_trace_type, diagnostics_trace_level, diagnostics_fever
+Set native trace selection, verbosity, and low-level tuning diagnostics.
+.SH GENERAL CHANNEL OPTION
+.TP
+.B channel_enabled = yes|no
+Enable the configured radio channel.
+.SH CHAIN AND GRAPH OPTIONS
+.TP
+.B enabled = yes|no
+Enable the named chain.
+.TP
+.B stage_order = list
+Set the comma-separated processing order. Permitted stages are equalizer,
+expander, agc, deesser, compressor, and limiter. Each may occur at most once.
+All defaults place deesser immediately before compressor. An enabled stage runs
+only when listed.
+.TP
+.B input_gain_db = -30..30
+Apply source input gain. In the local receiver, this gain runs immediately
+after de-emphasis and before fixed filtering or dynamics. Link defaults to 0 dB;
+voice/telemetry defaults to 6 dB.
+.TP
+.B output_gain_db = -30..30
+Apply gain at the end of the chain. Local and link default to -6.2 dB;
+voice/telemetry defaults to 0 dB.
+.SH PARAMETRIC EQUALIZER
+The three-band equalizer is available in every source chain and is reorderable
+with AGC, expander, compressor, and the multiband limiter. It is enabled by default.
+.TP
+.B equalizer_enabled = yes|no
+Enable the three-band equalizer. Default is yes.
+.TP
+.B equalizer_low_gain_db = -12..12
+Set low-shelf gain. Default is 2 dB.
+.TP
+.B equalizer_low_frequency_hz = 20..1000
+Set low-shelf frequency. Default is 500 Hz.
+.TP
+.B equalizer_low_slope = 0.1..1
+Set low-shelf slope. Default is 0.7.
+.TP
+.B equalizer_mid_gain_db = -12..12
+Set mid-band gain. Default is -0.5 dB.
+.TP
+.B equalizer_mid_frequency_hz = 100..4000
+Set mid-band center frequency. Default is 1000 Hz.
+.TP
+.B equalizer_mid_width_octaves = 0.1..4
+Set mid-band width. Default is one octave.
+.TP
+.B equalizer_high_gain_db = -12..12
+Set high-shelf gain. Default is -1 dB.
+.TP
+.B equalizer_high_frequency_hz = 1000..5000
+Set high-shelf frequency. Default is 2000 Hz.
+.TP
+.B equalizer_high_slope = 0.1..1
+Set high-shelf slope. Default is 0.7.
+.SH SPLIT-BAND DE-ESSER
+The de-esser is available in every source chain. It detects and
+attenuates a bell-shaped sibilance band without reducing the rest of the signal.
+It is reorderable and defaults immediately before the compressor.
+.TP
+.B deesser_enabled = yes|no
+Enable sibilance reduction. Default is no.
+.TP
+.B deesser_frequency_hz = 2000..8000
+Set the detection and attenuation center frequency. Default is 4000 Hz.
+.TP
+.B deesser_width_octaves = 0.1..4
+Set the detection and attenuation bandwidth. Default is one octave.
+.TP
+.B deesser_threshold_dbfs = -60..-1
+Set the sibilance-band level that starts attenuation. Default is -18 dBFS.
+.TP
+.B deesser_ratio = 1..20
+Set how strongly levels above threshold increase attenuation. Default is 3:1.
+.TP
+.B deesser_max_reduction_db = 0.1..20
+Limit attenuation in the selected band. Default is 4 dB.
+.TP
+.B deesser_attack_ms = 0.1..100
+Set how quickly attenuation begins. Default is 2 ms.
+.TP
+.B deesser_release_ms = 1..2000
+Set how quickly attenuation ends. Default is 60 ms.
+.SH LOCAL-RECEIVER NOISE AND SIGNALING FILTERS
+.TP
+.B rnnoise_enabled = yes|no
+Enable RNNoise after receiver de-emphasis and squelch gating and before
+dynamics. This applies only to [local]. Default is no.
+.TP
+.B receive_bandpass_enabled = yes|no
+Enable the local-receiver brick-wall band-pass immediately after the squelch
+gate and before PL filtering. Default is yes.
+.TP
+.B receive_bandpass_highpass_hz = 20..2000
+Set the receive band-pass low-frequency cutoff. Default is 20 Hz.
+.TP
+.B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..5000
+Set the receive band-pass high-frequency cutoff. Default is 5000 Hz.
+.TP
+.B ctcss_filter_mode = disabled|notch|highpass
+Choose the single PL-removal filter after the receive band-pass and before
+RNNoise and dynamics. Notch follows and removes the currently
+decoded PL tone. Highpass removes the subaudible band. Notch never runs in
+series with a high-pass. Default is highpass.
+.TP
+.B ctcss_notch_width_hz = 0.2..10
+Set each CTCSS notch's -3 dB width. Default is 5 Hz, providing at least 50 dB
+rejection at the +/-0.5 percent CTCSS encoder tolerance limits.
+.TP
+.B ctcss_highpass_hz = 50..500
+Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.
+.SH AUTOMATIC GAIN CONTROL
+.TP
+.B agc_enabled = yes|no
+Enable automatic gain control. Default is no.
+.TP
+.B agc_target_dbfs = -40..-3
+Set the long-term output target. Default is -10 dBFS.
+.TP
+.B agc_max_gain_db = 0..30
+Limit gain applied to weak audio. Default is 12 dB.
+.TP
+.B agc_max_attenuation_db = 0..60
+Limit attenuation applied to strong audio. Default is 6 dB.
+.TP
+.B agc_floor_dbfs = -100..agc_target_dbfs
+Prevent the AGC from raising noise below this input level. Default is -60 dBFS.
+.TP
+.B agc_attack_ms = 1..10000
+Set AGC attack time. Default is 750 ms.
+.TP
+.B agc_release_ms = 1..30000
+Set AGC release time. Default is 1500 ms.
+.TP
+.B agc_reset_after_ms = 100..60000
+Reset accumulated AGC gain after closed-squelch or idle time. Default is 3000 ms.
+.TP
+.B agc_sidechain_highpass_hz = 50..2000
+Set the AGC detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B agc_sidechain_lowpass_hz = agc_sidechain_highpass_hz..3500
+Set the AGC detector low-pass cutoff. Default is 1500 Hz.
+.SH DOWNWARD EXPANDER
+.TP
+.B expander_enabled = yes|no
+Enable downward expansion to reduce background noise between words. Default is no.
+.TP
+.B expander_threshold_dbfs = -100..-10
+Set the level below which expansion begins. Default is -55 dBFS.
+.TP
+.B expander_ratio = 1..10
+Set reduction below threshold. Default is 1.5:1.
+.TP
+.B expander_max_attenuation_db = 0..40
+Limit expander reduction. Default is 9 dB.
+.TP
+.B expander_attack_ms = 1..1000
+Set how quickly the expander opens for speech. Default is 10 ms.
+.TP
+.B expander_release_ms = 1..10000
+Set how quickly it returns to attenuation. Default is 250 ms.
+.TP
+.B expander_sidechain_highpass_hz = 50..2000
+Set the expander detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B expander_sidechain_lowpass_hz = expander_sidechain_highpass_hz..3500
+Set the expander detector low-pass cutoff. Default is 1500 Hz.
+.SH COMPRESSOR
+.TP
+.B compressor_enabled = yes|no
+Enable compression of strong speech. Default is no.
+.TP
+.B compressor_threshold_dbfs = -60..0
+Set the level above which compression begins. Default is -6 dBFS.
+.TP
+.B compressor_ratio = 1..20
+Set the compression ratio. Default is 2:1.
+.TP
+.B compressor_makeup_gain_db = -30..30
+Apply gain after compression. Default is 0 dB.
+.TP
+.B compressor_attack_ms = 1..1000
+Set compressor attack time. Default is 75 ms.
+.TP
+.B compressor_release_ms = 1..10000
+Set compressor release time. Default is 300 ms.
+.TP
+.B compressor_sidechain_highpass_hz = 50..2000
+Set the compressor detector high-pass cutoff. Default is 800 Hz.
+.TP
+.B compressor_sidechain_lowpass_hz = compressor_sidechain_highpass_hz..3500
+Set the compressor detector low-pass cutoff. Default is 1500 Hz.
+.SH MULTIBAND LIMITER
+.TP
+.B limiter_enabled = yes|no
+Enable the shared FFmpeg three-band limiter in the reorderable graph. Default is no.
+.TP
+.B limiter_low_crossover_hz = 100..2000
+Divide the low and mid limiter bands. Default is 500 Hz.
+.TP
+.B limiter_high_crossover_hz = limiter_low_crossover_hz..5000
+Divide the mid and high limiter bands. Default is 2000 Hz.
+.TP
+.B limiter_low_threshold_dbfs = -40..-1
+Set low-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B limiter_low_ratio = 1..20
+Set low-band ratio. Default is 10:1.
+.TP
+.B limiter_low_knee_db = 0..24
+Set low-band soft-knee width. Default is 6 dB.
+.TP
+.B limiter_low_attack_ms = 0.1..1000
+Set low-band attack. Default is 50 ms.
+.TP
+.B limiter_low_release_ms = 1..10000
+Set low-band release. Default is 250 ms.
+.TP
+.B limiter_mid_threshold_dbfs = -40..-1
+Set mid-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B limiter_mid_ratio = 1..20
+Set mid-band ratio. Default is 10:1.
+.TP
+.B limiter_mid_knee_db = 0..24
+Set mid-band soft-knee width. Default is 6 dB.
+.TP
+.B limiter_mid_attack_ms = 0.1..1000
+Set mid-band attack. Default is 10 ms.
+.TP
+.B limiter_mid_release_ms = 1..10000
+Set mid-band release. Default is 100 ms.
+.TP
+.B limiter_high_threshold_dbfs = -30..-1
+Set high-band limiting threshold. Default is -1.5 dBFS.
+.TP
+.B limiter_high_ratio = 1..20
+Set high-band ratio. Default is 20:1.
+.TP
+.B limiter_high_knee_db = 0..24
+Set high-band soft-knee width. Default is 6 dB.
+.TP
+.B limiter_high_attack_ms = 0.1..100
+Set high-band attack. Default is 0.5 ms.
+.TP
+.B limiter_high_release_ms = 1..1000
+Set high-band release. Default is 25 ms.
+.SH FIXED TRANSMITTER PROCESSING
+These options apply only to [voice_telemetry]. They do not belong in
+stage_order and run in a fixed transmitter-tail order.
+.TP
+.B splatter_filter_enabled = yes|no
+Enable the fixed transmit splatter-control filter. Default is yes.
+.TP
+.B splatter_filter_highpass_hz = 20..2000
+Set the fixed transmitter high-pass cutoff. Default is 300 Hz.
+.TP
+.B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..5000
+Set the fixed transmitter low-pass cutoff. Default is 3000 Hz.
+.TP
+.B lookahead_limiter_enabled = yes|no
+Enable or explicitly disable the final limiter. When omitted, the channel
+transmit limiter settings determine whether it runs and its ceiling.
+.TP
+.B lookahead_limiter_ceiling_dbfs = -30..-0.1
+Set the final-limiter ceiling. Default is -3 dBFS.
+.TP
+.B lookahead_limiter_lookahead_ms = 0.1..20
+Set final-limiter lookahead. Default is 5 ms.
+.TP
+.B lookahead_limiter_attack_ms = 0.1..20
+Set limiter attack. Default is 1 ms.
+.TP
+.B lookahead_limiter_release_ms = 1..5000
+Set limiter release. Default is 100 ms.
+.TP
+.B post_limiter_lowpass_enabled = yes|no
+Enable the fixed cleanup low-pass after final limiting. Default is no.
+.TP
+.B post_limiter_lowpass_hz = 5000..20000
+Set cleanup-filter cutoff. Default is 8000 Hz.
+.SH ORDER OF PROCESSING
+Local receiver audio is de-emphasized and squelch-gated, optionally passed
+through RNNoise, passed through the selected dynamics order, and then passed
+through one selected PL filter. Link audio uses only its dynamics graph;
+source-specific brick-wall filtering is not available. RNNoise and PL removal
+are not available on link or transmitter sources.
+.PP
+The transmitter combines voice and telemetry, applies the voice/telemetry
+dynamics graph, and then applies its fixed filtering and peak-control tail.
+.SH EXAMPLE
+.nf
+[general]
+enabled = yes
+channel = RadioPlus/
+
+[local]
+enabled = yes
+rnnoise_enabled = yes
+stage_order = equalizer,expander,agc,deesser,compressor,limiter
+expander_enabled = yes
+agc_enabled = yes
+ctcss_filter_mode = notch
+
+[link]
+enabled = yes
+stage_order = equalizer,agc,deesser,compressor
+agc_enabled = yes
+compressor_enabled = yes
+
+[voice_telemetry]
+enabled = yes
+input_gain_db = 6.0
+stage_order = equalizer,deesser,compressor,limiter
+compressor_enabled = yes
+limiter_enabled = yes
+splatter_filter_highpass_hz = 250
+splatter_filter_lowpass_hz = 5000
+post_limiter_lowpass_enabled = yes
+post_limiter_lowpass_hz = 5000
+.fi
 .SH FILES
 .B /etc/asterisk/usbradioplus.conf
 .SH SEE ALSO
 .BR usbradioplus (7),
-.BR usbradioplus-processing.conf (5),
-.BR usbradioplus-tune (8),
-.BR rpt.conf (5)
+.BR usbradioplus.conf (5),
+.BR usbradioplus-tune (8)

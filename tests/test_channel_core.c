@@ -134,6 +134,8 @@ static struct ast_variable *test_config_variables;
 static struct ast_config *test_config_load_result;
 static int separate_processing_config_result;
 static struct ast_config *test_processing_config_load_result;
+static struct ast_config *test_config_load_second_result;
+static int test_config_load_calls;
 static int config_destroy_calls;
 static void *test_channel_private;
 static int setstate_calls;
@@ -602,8 +604,10 @@ struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 {
 	(void)who_asked;
 	(void)flags;
-	if (separate_processing_config_result && !strcmp(filename, "usbradioplus-processing.conf"))
+	if (separate_processing_config_result && !strcmp(filename, "usbradioplus.conf"))
 		return test_processing_config_load_result;
+	if (test_config_load_second_result && ++test_config_load_calls > 1)
+		return test_config_load_second_result;
 	return test_config_load_result;
 }
 
@@ -612,7 +616,8 @@ struct ast_variable *ast_variable_browse(const struct ast_config *config, const 
 	(void)category_name;
 	variable_browse_calls++;
 	if (inject_invalid_override_on_browse_call == variable_browse_calls) {
-		struct section_override *entry = &settings.overrides[settings.override_count++];
+		struct section_override *entry =
+			&settings.profiles[0].overrides[settings.profiles[0].override_count++];
 		ast_copy_string(entry->section, "hardware", sizeof(entry->section));
 		ast_copy_string(entry->name, "hardware_audio_fragment_count", sizeof(entry->name));
 		ast_copy_string(entry->value, "invalid", sizeof(entry->value));
@@ -622,7 +627,7 @@ struct ast_variable *ast_variable_browse(const struct ast_config *config, const 
 
 void ast_config_destroy(struct ast_config *config)
 {
-	assert(config == test_config_load_result);
+	assert(config == test_config_load_result || config == test_processing_config_load_result);
 	config_destroy_calls++;
 }
 
@@ -2004,7 +2009,9 @@ static void test_modern_hid_worker_baseline(void)
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
+	strcpy(settings.profiles[0].name, "modern-hid");
+	strcpy(settings.profiles[0].channel, "RadioPlus/modern-hid");
 	radio.name = "modern-hid";
 	radio.pttkick[0] = radio.pttkick[1] = -1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
@@ -2044,7 +2051,9 @@ static void test_modern_hid_worker_baseline(void)
 	modern_stop_hid_target = &radio;
 	mock_poll_enabled = 1;
 	mock_poll_result = 0;
+	variable_browse_calls = 0;
 	assert(hidthread(&radio) == NULL);
+	settings_defaults(&settings);
 	assert(radio.stophid && modern_hid_input_calls == 1);
 	assert(!radio.radio_device);
 	modern_stop_hid_target = NULL;
@@ -2130,7 +2139,9 @@ static void test_modern_audio_worker_baseline(void)
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
+	strcpy(settings.profiles[0].name, "modern-audio");
+	strcpy(settings.profiles[0].channel, "RadioPlus/modern-audio");
 	radio.name = "modern-audio";
 	radio.radio_device = &device;
 	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
@@ -2176,6 +2187,7 @@ static void test_modern_audio_worker_baseline(void)
 	radio.txkeyed = 0;
 	radio.owner = (struct ast_channel *)(uintptr_t)1;
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxsdtype = SD_HID;
 	radio.rxhidsq = 1;
 	radio.rxhidctcss = 1;
@@ -2197,11 +2209,15 @@ static void test_modern_audio_worker_baseline(void)
 	radio.lasthidtime = 0;
 
 	radio.rxcdtype = CD_HID_INVERT;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usbinvert");
 	radio.rxhidsq = 0;
 	radio.rxsdtype = SD_HID_INVERT;
 	radio.rxhidctcss = 0;
 	run_modern_audio_iteration(&radio);
+	radio.radio->rxExtCarrierDetect = 1;
+	run_modern_audio_iteration(&radio);
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxhidsq = 1;
 	radio.rxsdtype = SD_PP;
 	radio.rxppctcss = 1;
@@ -2258,11 +2274,15 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	radio.radio->b.ctcssRxEnable = 0;
 	radio.rxcdtype = CD_IGNORE;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ignore");
+	radio.rxsdtype = SD_HID;
+	run_modern_audio_iteration(&radio);
 	radio.rxsdtype = SD_IGNORE;
 	run_modern_audio_iteration(&radio);
 	radio.rxsdtype = SD_HID;
 	run_modern_audio_iteration(&radio);
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxsdtype = SD_HID;
 
 	mock_audio_clipping = 1;
@@ -2741,7 +2761,6 @@ static void test_modern_hid_worker_retries(void)
 	 * when an explicit receive-level setting must win over the stored value. */
 	radio.stophid = 0;
 	radio.lastaudiotime = 1234;
-	radio.legacy_rxvoiceadj_configured = 1;
 	radio.wanteeprom = 1;
 	radio.eepromctl = 1;
 	test_config_load_result = (struct ast_config *)(uintptr_t)1;
@@ -2771,7 +2790,6 @@ static void test_modern_hid_worker_retries(void)
 	mock_poll_enabled = 0;
 	radio.lastaudiotime = 0;
 	radio.wanteeprom = 0;
-	radio.legacy_rxvoiceadj_configured = 0;
 	modern_eeprom_result = 1;
 	modern_eeprom_valid_magic = 0;
 
@@ -2835,9 +2853,7 @@ static void test_modern_hid_worker_retries(void)
 static void test_modern_module_lifecycle_baseline(void)
 {
 	struct chan_usbradio_pvt no_radio = {0};
-	struct ast_variable parallel_output = {.name = "pp2", .value = "out0"};
-	struct ast_variable active = {
-		.name = "radioactive", .value = "yes", .next = &parallel_output};
+	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
 
 	haspp = hasout = 0;
 	usbradio_start_parallel_pulser();
@@ -2849,16 +2865,26 @@ static void test_modern_module_lifecycle_baseline(void)
 	assert(load_module() == AST_MODULE_LOAD_DECLINE);
 	fail_format_cap_alloc = 0;
 	test_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	separate_processing_config_result = 1;
 	test_processing_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	test_processing_config_load_result = CONFIG_STATUS_FILEMISSING;
 	test_config_load_result = (struct ast_config *)(uintptr_t)1;
+	test_processing_config_load_result = test_config_load_result;
 	test_config_category = "general";
 	test_config_variables = &active;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	test_config_category = "modern-test";
+	separate_processing_config_result = 0;
+	test_config_load_calls = 0;
+	test_config_load_second_result = CONFIG_STATUS_FILEINVALID;
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	test_config_load_second_result = NULL;
+	separate_processing_config_result = 1;
+	ast_strdup_calls = 0;
+	fail_ast_strdup_call = 1;
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	fail_ast_strdup_call = 0;
 	channel_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	channel_register_result = 0;
@@ -2917,7 +2943,7 @@ int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, sh
 	return mock_audio_clipping;
 }
 
-static void test_legacy_option_decoders(void)
+static void test_option_decoders(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 
@@ -2928,149 +2954,33 @@ static void test_legacy_option_decoders(void)
 	store_rxdemod(&radio, "flat");
 	assert(radio.rxdemod == RX_AUDIO_FLAT);
 
-	store_txmixa(&radio, "no");
-	assert(radio.txmixa == TX_OUT_OFF);
-	store_txmixa(&radio, "voice");
-	assert(radio.txmixa == TX_OUT_VOICE);
-	store_txmixa(&radio, "tone");
-	assert(radio.txmixa == TX_OUT_LSD);
-	store_txmixa(&radio, "composite");
-	assert(radio.txmixa == TX_OUT_COMPOSITE);
-	store_txmixa(&radio, "auxvoice");
-	assert(radio.txmixa == TX_OUT_AUX);
-
-	store_txmixb(&radio, "no");
-	assert(radio.txmixb == TX_OUT_OFF);
-	store_txmixb(&radio, "voice");
-	assert(radio.txmixb == TX_OUT_VOICE);
-	store_txmixb(&radio, "tone");
-	assert(radio.txmixb == TX_OUT_LSD);
-	store_txmixb(&radio, "composite");
-	assert(radio.txmixb == TX_OUT_COMPOSITE);
-	store_txmixb(&radio, "auxvoice");
-	assert(radio.txmixb == TX_OUT_AUX);
-
-	store_rxcdtype(&radio, "no");
-	assert(radio.rxcdtype == CD_IGNORE);
-	store_rxcdtype(&radio, "usb");
-	assert(radio.rxcdtype == CD_HID);
-	store_rxcdtype(&radio, "dsp");
-	assert(radio.rxcdtype == CD_XPMR_NOISE);
-	store_rxcdtype(&radio, "vox");
-	assert(radio.rxcdtype == CD_XPMR_VOX);
-	store_rxcdtype(&radio, "usbinvert");
-	assert(radio.rxcdtype == CD_HID_INVERT);
-	store_rxcdtype(&radio, "pp");
-	assert(radio.rxcdtype == CD_PP);
-	store_rxcdtype(&radio, "ppinvert");
-	assert(radio.rxcdtype == CD_PP_INVERT);
-
 	store_rxsdtype(&radio, "no");
-	assert(radio.rxsdtype == SD_IGNORE);
-	store_rxsdtype(&radio, "SD_IGNORE");
 	assert(radio.rxsdtype == SD_IGNORE);
 	store_rxsdtype(&radio, "usb");
 	assert(radio.rxsdtype == SD_HID);
-	store_rxsdtype(&radio, "SD_HID");
-	assert(radio.rxsdtype == SD_HID);
 	store_rxsdtype(&radio, "usbinvert");
 	assert(radio.rxsdtype == SD_HID_INVERT);
-	store_rxsdtype(&radio, "SD_HID_INVERT");
-	assert(radio.rxsdtype == SD_HID_INVERT);
 	store_rxsdtype(&radio, "dsp");
-	assert(radio.rxsdtype == SD_XPMR);
-	store_rxsdtype(&radio, "SD_XPMR");
 	assert(radio.rxsdtype == SD_XPMR);
 	store_rxsdtype(&radio, "pp");
 	assert(radio.rxsdtype == SD_PP);
 	store_rxsdtype(&radio, "ppinvert");
 	assert(radio.rxsdtype == SD_PP_INVERT);
 
-	store_rxvoiceadj(&radio, "0.75");
-	assert(fabs(radio.legacy_rxvoiceadj - 0.75F) < 0.0001F);
-	assert(radio.legacy_rxvoiceadj_configured == 1);
-
 	radio.rxdemod = RX_AUDIO_FLAT;
 	store_rxdemod(&radio, "invalid");
 	assert(radio.rxdemod == RX_AUDIO_FLAT);
-	radio.txmixa = TX_OUT_VOICE;
-	store_txmixa(&radio, "invalid");
-	assert(radio.txmixa == TX_OUT_VOICE);
-	radio.txmixb = TX_OUT_VOICE;
-	store_txmixb(&radio, "invalid");
-	assert(radio.txmixb == TX_OUT_VOICE);
-	radio.rxcdtype = CD_HID;
-	store_rxcdtype(&radio, "invalid");
-	assert(radio.rxcdtype == CD_HID);
 	radio.rxsdtype = SD_HID;
 	store_rxsdtype(&radio, "invalid");
 	assert(radio.rxsdtype == SD_HID);
 	store_txtoctype(&radio, "no");
 	assert(radio.txtoctype == TOC_NONE);
-	store_txtoctype(&radio, "TOC_NONE");
 	store_txtoctype(&radio, "phase");
 	assert(radio.txtoctype == TOC_PHASE);
-	store_txtoctype(&radio, "TOC_PHASE");
 	store_txtoctype(&radio, "notone");
 	assert(radio.txtoctype == TOC_NOTONE);
-	store_txtoctype(&radio, "TOC_NOTONE");
 	store_txtoctype(&radio, "invalid");
 	assert(radio.txtoctype == TOC_NOTONE);
-}
-
-static void test_load_tune_config(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct ast_variable variables[] = {
-		{.name = "rxmixerset", .value = "101"},
-		{.name = "txmixaset", .value = "202"},
-		{.name = "txmixbset", .value = "303"},
-		{.name = "rxvoiceadj", .value = "0.75"},
-		{.name = "rxctcssadj", .value = "1.25"},
-		{.name = "txctcssadj", .value = "404"},
-		{.name = "rxsquelchadj", .value = "505"},
-		{.name = "txslimsp", .value = "6060"},
-		{.name = "fever", .value = "7"},
-		{.name = "devstr", .value = "usb-test"},
-		{.name = "serial", .value = "serial-test"},
-		{.name = "unknown", .value = "ignored"},
-	};
-	struct ast_config *fixture = (struct ast_config *)(uintptr_t)1;
-	size_t i;
-
-	for (i = 0; i + 1 < ARRAY_LEN(variables); ++i)
-		variables[i].next = &variables[i + 1];
-	radio.name = "test";
-	strcpy(radio.devstr, "old-device");
-	strcpy(radio.serial, "old-serial");
-	test_config_variables = variables;
-	assert(load_tune_config(&radio, fixture, 0) == 0);
-	assert(radio.rxmixerset == 101 && radio.txmixaset == 202 && radio.txmixbset == 303);
-	assert(radio.legacy_rxvoiceadj_configured && radio.legacy_rxvoiceadj == 0.75F);
-	assert(radio.rxctcssadj == 1.25F && radio.txctcssadj == 404);
-	assert(radio.rxsquelchadj == 505 && radio.txslimsp == 6060 && radio.fever == 7);
-	assert(!strcmp(radio.devstr, "usb-test") && !strcmp(radio.serial, "serial-test"));
-
-	strcpy(radio.devstr, "preserved-device");
-	strcpy(radio.serial, "preserved-serial");
-	assert(load_tune_config(&radio, fixture, 1) == 0);
-	assert(!strcmp(radio.devstr, "preserved-device"));
-	assert(!strcmp(radio.serial, "preserved-serial"));
-
-	test_config_variables = NULL;
-	assert(load_tune_config(&radio, fixture, 0) == -1);
-	assert(load_tune_config(&radio, fixture, 1) == -1);
-	test_config_load_result = NULL;
-	assert(load_tune_config(&radio, NULL, 0) == -1);
-	assert(load_tune_config(&radio, NULL, 1) == -1);
-
-	test_config_variables = variables;
-	test_config_load_result = fixture;
-	config_destroy_calls = 0;
-	assert(load_tune_config(&radio, NULL, 1) == 0);
-	assert(config_destroy_calls == 1);
-	test_config_load_result = NULL;
-	test_config_variables = NULL;
 }
 
 static void test_channel_callbacks(void)
@@ -3522,16 +3432,20 @@ static void test_radio_tune_dispatch(void)
 	assert(frxoutraw && ftxoutraw);
 	assert(call_radio_tune(&radio, 3, "nocap", NULL) == RESULT_SUCCESS);
 	assert(call_radio_tune(&radio, 3, "nocap", NULL) == RESULT_SUCCESS);
-	assert(call_radio_tune(&radio, 3, "txslimsp", NULL) == RESULT_SUCCESS);
-	assert(call_radio_tune(&radio, 4, "txslimsp", "4999") == RESULT_SHOWUSAGE);
-	assert(call_radio_tune(&radio, 4, "txslimsp", "9000") == RESULT_SUCCESS);
-	assert(radio.txslimsp == 9000);
 	assert(call_radio_tune(&radio, 3, "load", NULL) == RESULT_SUCCESS);
 	assert(radio.eepromctl == 1);
 	clear_eeprom_on_usleep = 1;
 	assert(call_radio_tune(&radio, 3, "load", NULL) == RESULT_SUCCESS);
 	clear_eeprom_on_usleep = 0;
 	assert(call_radio_tune(&radio, 3, "save", NULL) == RESULT_SUCCESS);
+	radio.txslimsp = 9000;
+	assert(call_radio_tune(&radio, 3, "hardware_tx_soft_limiter_setpoint", NULL) ==
+	       RESULT_SUCCESS);
+	assert(call_radio_tune(&radio, 4, "hardware_tx_soft_limiter_setpoint", "4000") ==
+	       RESULT_SHOWUSAGE);
+	assert(call_radio_tune(&radio, 4, "hardware_tx_soft_limiter_setpoint", "6000") ==
+	       RESULT_SUCCESS);
+	assert(radio.txslimsp == 6000);
 	assert(call_radio_tune(&radio, 3, "unknown", NULL) == RESULT_SHOWUSAGE);
 	assert(!radio_state.b.tuning);
 	const char *debug_arguments[] = {"radio", "set", "debug", "50"};
@@ -4075,6 +3989,7 @@ static void test_config_update_and_radio_programming(void)
 	strcpy(radio.txctcssfreqs, "100.0");
 	strcpy(radio.txctcssdefault, "100.0");
 	settings_defaults(&settings);
+	radio.name = "usb";
 	test_channel_private = &radio;
 	option_debug = 0;
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
@@ -4091,13 +4006,13 @@ static void test_config_update_and_radio_programming(void)
 	option_debug = 0;
 	haspp = 2;
 	assert(radio_config(&radio) == 0);
-	assert(radio.radio->pRxCodeSrc == radio.rxctcssfreqs);
-	assert(radio.radio->pTxCodeSrc == radio.txctcssfreqs);
+	assert(!strcmp(radio.radio->pRxCodeSrc, "100.0"));
+	assert(!strcmp(radio.radio->pTxCodeSrc, "100.0"));
 
-	settings.hardware.rx_ctcss_frequencies_configured = 1;
-	settings.hardware.tx_ctcss_frequencies_configured = 1;
-	strcpy(settings.hardware.rx_ctcss_frequencies, "67.0");
-	strcpy(settings.hardware.tx_ctcss_frequencies, "88.5");
+	settings.profiles[0].hardware.rx_ctcss_frequencies_configured = 1;
+	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 1;
+	strcpy(settings.profiles[0].hardware.rx_ctcss_frequencies, "67.0");
+	strcpy(settings.profiles[0].hardware.tx_ctcss_frequencies, "88.5");
 	assert(radio_config(&radio) == 0);
 	assert(!strcmp(radio.radio->pRxCodeSrc, "67.0"));
 	assert(!strcmp(radio.radio->pTxCodeSrc, "88.5"));
@@ -4143,39 +4058,57 @@ static void test_config_update_and_radio_programming(void)
 	settings_defaults(&settings);
 	refresh_processing_hardware(&radio);
 	assert(radio.plus_hardware_applied);
-	assert(radio.plus_applied_rxmixer == 100);
+	assert(radio.plus_applied_rxmixer == 500);
 	refresh_processing_hardware(&radio);
-	settings.hardware.input_gain_configured = 1;
-	settings.hardware.input_gain_db = 0.0;
-	settings.hardware.output_a_gain_configured = 1;
-	settings.hardware.output_a_gain_db = 0.0;
-	settings.hardware.output_b_gain_configured = 1;
-	settings.hardware.output_b_gain_db = 0.0;
-	settings.hardware.output_a_assignment_configured = 1;
-	settings.hardware.output_a_assignment = TX_OUT_COMPOSITE;
-	settings.hardware.output_b_assignment_configured = 1;
-	settings.hardware.output_b_assignment = TX_OUT_AUX;
-	settings.hardware.rx_ctcss_frequencies_configured = 1;
-	settings.hardware.tx_ctcss_frequencies_configured = 1;
-	strcpy(settings.hardware.rx_ctcss_frequencies, "67.0");
-	strcpy(settings.hardware.tx_ctcss_frequencies, "71.9");
+	settings.profiles[0].hardware.input_gain_configured = 1;
+	settings.profiles[0].hardware.input_gain_db = 0.0;
+	settings.profiles[0].hardware.output_a_gain_configured = 1;
+	settings.profiles[0].hardware.output_a_gain_db = 0.0;
+	settings.profiles[0].hardware.output_b_gain_configured = 1;
+	settings.profiles[0].hardware.output_b_gain_db = 0.0;
+	settings.profiles[0].hardware.output_a_assignment_configured = 1;
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_COMPOSITE;
+	settings.profiles[0].hardware.output_b_assignment_configured = 1;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_AUX;
+	settings.profiles[0].hardware.rx_ctcss_frequencies_configured = 1;
+	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 1;
+	strcpy(settings.profiles[0].hardware.rx_ctcss_frequencies, "67.0");
+	strcpy(settings.profiles[0].hardware.tx_ctcss_frequencies, "71.9");
 	refresh_processing_hardware(&radio);
 	assert(!strcmp(radio.plus_applied_rxctcssfreqs, "67.0"));
 	assert(!strcmp(radio.plus_applied_txctcssfreqs, "71.9"));
 	radio.remoted = 1;
-	strcpy(settings.hardware.rx_ctcss_frequencies, "74.4");
+	strcpy(settings.profiles[0].hardware.rx_ctcss_frequencies, "74.4");
 	refresh_processing_hardware(&radio);
 	assert(!strcmp(radio.plus_applied_rxctcssfreqs, "67.0"));
 	settings_defaults(&settings);
 	radio.txmixa = radio.txmixb = TX_OUT_VOICE;
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_VOICE;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_VOICE;
 	mult_set(&radio);
 	assert(radio.radio->txOutputGainA == radio.radio->txOutputGainB);
+	radio.txmixb = TX_OUT_LSD;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_LSD;
+	settings.profiles[0].hardware.output_b_gain_configured = 1;
+	settings.profiles[0].hardware.output_b_gain_db = 6.0;
+	mult_set(&radio);
+	assert(radio.radio->txOutputGainA != radio.radio->txOutputGainB);
 	settings_defaults(&settings);
 	radio.remoted = 0;
 	strcpy(radio.rxctcssfreqs, "100.0");
 	strcpy(radio.txctcssfreqs, "123.0");
 	strcpy(radio.plus_applied_rxctcssfreqs, "100.0");
 	strcpy(radio.plus_applied_txctcssfreqs, "100.0");
+	settings.profiles[0].hardware.rx_ctcss_frequencies_configured = 1;
+	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 1;
+	strcpy(settings.profiles[0].hardware.rx_ctcss_frequencies, "103.5");
+	strcpy(settings.profiles[0].hardware.tx_ctcss_frequencies, "123.0");
+	strcpy(radio.plus_applied_rxctcssfreqs, "103.5");
+	strcpy(radio.plus_applied_txctcssfreqs, "100.0");
+	refresh_processing_hardware(&radio);
+	settings.profiles[0].hardware.rx_ctcss_frequencies_configured = 0;
+	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 0;
+	refresh_processing_hardware(&radio);
 	refresh_processing_hardware(&radio);
 #define SET_APPLIED(rx, a, b, route_a, route_b)                                                    \
 	do {                                                                                       \
@@ -4186,22 +4119,40 @@ static void test_config_update_and_radio_programming(void)
 		radio.plus_applied_txmixa = (route_a);                                             \
 		radio.plus_applied_txmixb = (route_b);                                             \
 	} while (0)
-	SET_APPLIED(radio.rxmixerset + 1, radio.txmixaset, radio.txmixbset, radio.txmixa,
-		    radio.txmixb);
+	int effective_rx = effective_rxmixerset(&radio);
+	int effective_a = effective_txmixaset(&radio);
+	int effective_b = effective_txmixbset(&radio);
+	int effective_route_a = effective_txmixa(&radio);
+	int effective_route_b = effective_txmixb(&radio);
+	SET_APPLIED(effective_rx + 1, effective_a, effective_b, effective_route_a,
+		    effective_route_b);
 	refresh_processing_hardware(&radio);
-	SET_APPLIED(radio.rxmixerset, radio.txmixaset + 1, radio.txmixbset, radio.txmixa,
-		    radio.txmixb);
+	SET_APPLIED(effective_rx, effective_a + 1, effective_b, effective_route_a,
+		    effective_route_b);
 	refresh_processing_hardware(&radio);
-	SET_APPLIED(radio.rxmixerset, radio.txmixaset, radio.txmixbset + 1, radio.txmixa,
-		    radio.txmixb);
+	SET_APPLIED(effective_rx, effective_a, effective_b + 1, effective_route_a,
+		    effective_route_b);
 	refresh_processing_hardware(&radio);
-	SET_APPLIED(radio.rxmixerset, radio.txmixaset, radio.txmixbset, radio.txmixa + 1,
-		    radio.txmixb);
+	SET_APPLIED(effective_rx, effective_a, effective_b, effective_route_a + 1,
+		    effective_route_b);
 	refresh_processing_hardware(&radio);
-	SET_APPLIED(radio.rxmixerset, radio.txmixaset, radio.txmixbset, radio.txmixa,
-		    radio.txmixb + 1);
+	SET_APPLIED(effective_rx, effective_a, effective_b, effective_route_a,
+		    effective_route_b + 1);
 	refresh_processing_hardware(&radio);
 #undef SET_APPLIED
+	radio.rxcdtype = CD_XPMR_VOX;
+	radio.voxhangtime = 250;
+	radio.numrxctcssfreqs = 1;
+	radio.rxctcss[0] = "100.0";
+	radio.txctcss[0] = "100.0";
+	assert(call_radio_tune(&radio, 3, "dump", NULL) == RESULT_SUCCESS);
+	radio.rxcdtype = CD_IGNORE;
+	radio.numrxctcssfreqs = 0;
+	radio.radio->numrxcodes = 0;
+	radio.radio->numtxcodes = 0;
+#ifdef URP_TEST_MODERN
+	radio.radio_device = NULL;
+#endif
 	assert(call_radio_tune(&radio, 3, "dump", NULL) == RESULT_SUCCESS);
 	assert(!urp_radio_destroy(radio.radio));
 	test_config_variables = NULL;
@@ -4209,8 +4160,9 @@ static void test_config_update_and_radio_programming(void)
 
 static void add_processing_override(const char *section, const char *name, const char *value)
 {
-	struct section_override *entry = &settings.overrides[settings.override_count++];
-	assert(settings.override_count <= MAX_SECTION_OVERRIDES);
+	struct section_override *entry =
+		&settings.profiles[0].overrides[settings.profiles[0].override_count++];
+	assert(settings.profiles[0].override_count <= MAX_SECTION_OVERRIDES);
 	ast_copy_string(entry->section, section, sizeof(entry->section));
 	ast_copy_string(entry->name, name, sizeof(entry->name));
 	ast_copy_string(entry->value, value, sizeof(entry->value));
@@ -4268,7 +4220,7 @@ static void test_processing_config_overrides(void)
 	for (index = 0; index < ARRAY_LEN(diagnostics_override_options); ++index)
 		add_processing_override("diagnostics", diagnostics_override_options[index], "1");
 	add_processing_override("general", "channel_enabled", "yes");
-	assert(apply_processing_config_overrides(&radio, "test") == 0);
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
 	assert(!strcmp(radio.devstr, "usb-test"));
 	assert(!strcmp(radio.serial, "serial-test"));
 	assert(radio.rxdemod == RX_AUDIO_FLAT);
@@ -4292,7 +4244,7 @@ static void test_processing_config_overrides(void)
 	add_processing_override("hardware", hardware_override_options[15], "999999");
 	add_processing_override("hardware", hardware_override_options[33], "999999");
 	add_processing_override("duplex", duplex_override_options[2], "hardware");
-	assert(apply_processing_config_overrides(&radio, "limits") == 0);
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
 	assert(radio.rxondelay == MS_TO_FRAMES(RX_ON_DELAY_MAX));
 	assert(radio.txoffdelay == MS_TO_FRAMES(TX_OFF_DELAY_MAX));
 	assert(radio.duplex3mode == DUPLEX3_MODE_HARDWARE);
@@ -4302,39 +4254,39 @@ static void test_processing_config_overrides(void)
 		add_processing_override("hardware",
 					hardware_override_options[boolean_hardware[index]], "no");
 	add_processing_override("general", "channel_enabled", "no");
-	assert(apply_processing_config_overrides(&radio, "false-booleans") == 0);
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
 	assert(!radio.rxcpusaver && !radio.txcpusaver && !radio.radioactive);
 
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[2], "bad");
-	assert(apply_processing_config_overrides(&radio, "bad-int") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[3], "bad");
-	assert(apply_processing_config_overrides(&radio, "bad-bool") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[18], "nan");
-	assert(apply_processing_config_overrides(&radio, "bad-float") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("duplex", duplex_override_options[2], "invalid");
-	assert(apply_processing_config_overrides(&radio, "bad-duplex") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[67], "invalid");
-	assert(apply_processing_config_overrides(&radio, "bad-emphasis") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("asterisk", asterisk_override_options[0], "yes");
 	jitter_config_result = -1;
-	assert(apply_processing_config_overrides(&radio, "bad-jitter") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	jitter_config_result = 0;
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[45], "in");
 	ast_strdup_calls = 0;
 	fail_ast_strdup_call = 1;
-	assert(apply_processing_config_overrides(&radio, "gpio-allocation") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[55], "out");
 	ast_strdup_calls = 0;
 	fail_ast_strdup_call = 1;
-	assert(apply_processing_config_overrides(&radio, "pp-allocation") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	fail_ast_strdup_call = 0;
 }
 
@@ -4353,21 +4305,21 @@ static void test_processing_override_parse_edges(void)
 			add_processing_override("hardware",
 						hardware_override_options[integer_hardware[index]],
 						malformed_numbers[malformed]);
-			assert(apply_processing_config_overrides(&radio, "integer-edge") == -1);
+			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
 	for (index = 0; index < ARRAY_LEN(boolean_hardware); ++index) {
 		settings_defaults(&settings);
 		add_processing_override(
 			"hardware", hardware_override_options[boolean_hardware[index]], "invalid");
-		assert(apply_processing_config_overrides(&radio, "boolean-edge") == -1);
+		assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	}
 	for (index = 0; index < ARRAY_LEN(diagnostics_override_options); ++index) {
 		for (size_t malformed = 0; malformed < ARRAY_LEN(malformed_numbers); ++malformed) {
 			settings_defaults(&settings);
 			add_processing_override("diagnostics", diagnostics_override_options[index],
 						malformed_numbers[malformed]);
-			assert(apply_processing_config_overrides(&radio, "diagnostics-edge") == -1);
+			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
 	for (index = 0; index < 2; ++index) {
@@ -4375,7 +4327,7 @@ static void test_processing_override_parse_edges(void)
 			settings_defaults(&settings);
 			add_processing_override("duplex", duplex_override_options[index],
 						malformed_numbers[malformed]);
-			assert(apply_processing_config_overrides(&radio, "duplex-edge") == -1);
+			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
 	for (index = 0; index < 2; ++index) {
@@ -4386,19 +4338,18 @@ static void test_processing_override_parse_edges(void)
 			settings_defaults(&settings);
 			add_processing_override("hardware", floating_names[index],
 						floating_values[malformed]);
-			assert(apply_processing_config_overrides(&radio, "floating-edge") == -1);
+			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
 	settings_defaults(&settings);
 	add_processing_override("general", "channel_enabled", "invalid");
-	assert(apply_processing_config_overrides(&radio, "general-edge") == -1);
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 }
 
 static void test_shared_config_loading(void)
 {
-	struct ast_variable base = {.name = "pbase", .value = "0x378"};
-	struct ast_variable port = {.name = "pport", .value = "/dev/parport-test", .next = &base};
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)0x1234;
+	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
 
 	test_config_category = NULL;
 	test_config_variables = NULL;
@@ -4419,12 +4370,9 @@ static void test_shared_config_loading(void)
 	assert(pbase == PP_IOPORT);
 	test_config_category = "general";
 	assert(load_config(0) == 0);
+	test_config_category = "hardware usb";
+	assert(load_config(0) == 0);
 	test_config_category = NULL;
-
-	test_config_variables = &port;
-	assert(load_config(1) == 0);
-	assert(!strcmp(pport, "/dev/parport-test"));
-	assert(pbase == 0x378);
 
 	settings_defaults(&settings);
 	add_processing_override("hardware", hardware_override_options[53], "/dev/parport-modern");
@@ -4438,7 +4386,19 @@ static void test_shared_config_loading(void)
 	test_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(reload_module() == -1);
 	test_config_load_result = valid;
+	assert(reload_module() != 0);
+	test_config_category = "usb";
+	test_config_variables = &active;
+	mock_dsp_available = 1;
 	assert(reload_module() == 0);
+	if (usbradio_default.next) {
+		struct chan_usbradio_pvt *created = usbradio_default.next;
+		usbradio_default.next = created->next;
+		destroy_unlinked_channel(created);
+	}
+	mock_dsp_available = 0;
+	test_config_category = NULL;
+	test_config_variables = NULL;
 	test_config_load_result = NULL;
 }
 
@@ -4447,12 +4407,12 @@ static void test_effective_processing_settings(void)
 	struct chan_usbradio_pvt radio = {0};
 
 	settings_defaults(&settings);
-	radio.legacy_rxvoiceadj = 0.5F;
+	radio.name = "usb";
 	assert(fabs(effective_rx_input_gain_db(&radio)) < 0.0001);
-	settings.chains[TXAGC_LOCAL].input_gain_configured = 1;
-	settings.chains[TXAGC_LOCAL].agc.input_gain_db = 6.0;
+	settings.profiles[0].chains[TXAGC_LOCAL].input_gain_configured = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.input_gain_db = 6.0;
 	assert(fabs(effective_rx_input_gain_db(&radio) - 6.0) < 0.0001);
-	assert(fabs(effective_legacy_rxvoiceadj(&radio) - 0.997631F) < 0.0001F);
+	assert(fabs(effective_rx_decoder_gain(&radio) - 0.997631F) < 0.0001F);
 
 	radio.rxmixerset = 321;
 	radio.txmixaset = 322;
@@ -4460,43 +4420,43 @@ static void test_effective_processing_settings(void)
 	radio.txmixa = TX_OUT_VOICE;
 	radio.txmixb = TX_OUT_LSD;
 	radio.rxcdtype = CD_HID;
-	assert(effective_rxmixerset(&radio) == 321);
-	assert(effective_txmixaset(&radio) == 322);
-	assert(effective_txmixbset(&radio) == 323);
-	assert(effective_txmixa(&radio) == TX_OUT_VOICE);
-	assert(effective_txmixb(&radio) == TX_OUT_LSD);
-	assert(effective_rxcdtype(&radio) == CD_HID);
+	assert(effective_rxmixerset(&radio) == 500);
+	assert(effective_txmixaset(&radio) == 500);
+	assert(effective_txmixbset(&radio) == 500);
+	assert(effective_txmixa(&radio) == TX_OUT_COMPOSITE);
+	assert(effective_txmixb(&radio) == TX_OUT_OFF);
+	assert(effective_rxcdtype(&radio) == CD_XPMR_NOISE);
 
-	settings.hardware.input_gain_configured = 1;
-	settings.hardware.input_gain_db = 0.0;
-	settings.hardware.output_a_gain_configured = 1;
-	settings.hardware.output_a_gain_db = 0.0;
-	settings.hardware.output_b_gain_configured = 1;
-	settings.hardware.output_b_gain_db = 6.0;
-	settings.hardware.output_a_assignment_configured = 1;
-	settings.hardware.output_a_assignment = TX_OUT_COMPOSITE;
-	settings.hardware.output_b_assignment_configured = 1;
-	settings.hardware.output_b_assignment = TX_OUT_AUX;
+	settings.profiles[0].hardware.input_gain_configured = 1;
+	settings.profiles[0].hardware.input_gain_db = 0.0;
+	settings.profiles[0].hardware.output_a_gain_configured = 1;
+	settings.profiles[0].hardware.output_a_gain_db = 0.0;
+	settings.profiles[0].hardware.output_b_gain_configured = 1;
+	settings.profiles[0].hardware.output_b_gain_db = 6.0;
+	settings.profiles[0].hardware.output_a_assignment_configured = 1;
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_COMPOSITE;
+	settings.profiles[0].hardware.output_b_assignment_configured = 1;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_AUX;
 	assert(effective_rxmixerset(&radio) == 500);
 	assert(effective_txmixaset(&radio) == 500);
 	assert(effective_txmixbset(&radio) == 998);
 	assert(effective_txmixa(&radio) == TX_OUT_COMPOSITE);
 	assert(effective_txmixb(&radio) == TX_OUT_AUX);
 
-	settings.hardware.cos_assignment_configured = 1;
-	strcpy(settings.hardware.cos_assignment, "usb");
+	settings.profiles[0].hardware.cos_assignment_configured = 1;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	assert(effective_rxcdtype(&radio) == CD_HID);
-	strcpy(settings.hardware.cos_assignment, "usbinvert");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usbinvert");
 	assert(effective_rxcdtype(&radio) == CD_HID_INVERT);
-	strcpy(settings.hardware.cos_assignment, "dsp");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "dsp");
 	assert(effective_rxcdtype(&radio) == CD_XPMR_NOISE);
-	strcpy(settings.hardware.cos_assignment, "vox");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "vox");
 	assert(effective_rxcdtype(&radio) == CD_XPMR_VOX);
-	strcpy(settings.hardware.cos_assignment, "pp");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "pp");
 	assert(effective_rxcdtype(&radio) == CD_PP);
-	strcpy(settings.hardware.cos_assignment, "ppinvert");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ppinvert");
 	assert(effective_rxcdtype(&radio) == CD_PP_INVERT);
-	strcpy(settings.hardware.cos_assignment, "no");
+	strcpy(settings.profiles[0].hardware.cos_assignment, "no");
 	assert(effective_rxcdtype(&radio) == CD_IGNORE);
 }
 
@@ -4509,9 +4469,9 @@ static void test_numeric_helpers(void)
 	assert(urp_gain_db_to_mixer(20.0) == 999);
 	assert(fabs(urp_mixer_to_gain_db(500)) < 0.0001);
 	assert(urp_mixer_to_gain_db(0) < -100.0);
-	assert(urp_legacy_multiplier(0) == 64);
-	assert(urp_legacy_multiplier(500) > 0);
-	assert(urp_legacy_multiplier(999) > urp_legacy_multiplier(500));
+	assert(urp_hardware_level_multiplier(0) == 64);
+	assert(urp_hardware_level_multiplier(500) > 0);
+	assert(urp_hardware_level_multiplier(999) > urp_hardware_level_multiplier(500));
 	assert(urp_pcm_peak_dbfs(0) == -INFINITY);
 	assert(fabs(urp_pcm_peak_dbfs(32768)) < 0.0001);
 	assert(fabs(urp_double_peak(samples, ARRAY_LEN(samples)) - 0.75) < 0.0001);
@@ -4529,14 +4489,6 @@ static void test_numeric_helpers(void)
 	assert(!plus_mix_has_program(TX_OUT_LSD));
 	assert(plus_mix_has_program(TX_OUT_COMPOSITE));
 	assert(plus_mix_has_program(TX_OUT_AUX));
-	assert(usbradioplus_legacy_cutoff("rxlpf", 1) ==
-	       urp_legacy_cutoff(URP_FILTER_RX_LOWPASS, 1));
-	assert(usbradioplus_legacy_cutoff("rxhpf", 1) ==
-	       urp_legacy_cutoff(URP_FILTER_RX_HIGHPASS, 1));
-	assert(usbradioplus_legacy_cutoff("txlpf", 1) ==
-	       urp_legacy_cutoff(URP_FILTER_TX_LOWPASS, 1));
-	assert(usbradioplus_legacy_cutoff("txhpf", 1) ==
-	       urp_legacy_cutoff(URP_FILTER_TX_HIGHPASS, 1));
 }
 
 static void test_shared_hardware_layouts(void)
@@ -4581,10 +4533,10 @@ static void test_shared_hardware_layouts(void)
 	assert(hidhdwconfig(&radio) == 0);
 	assert(radio.hid_gpio_ctl & 1);
 
-	assert(legacy_set_tx_soft_limiter(&radio, 4999) == -1);
-	assert(legacy_set_tx_soft_limiter(&radio, 5000) == 0);
-	assert(legacy_set_tx_soft_limiter(&radio, 13000) == 0);
-	assert(legacy_set_tx_soft_limiter(&radio, 13001) == -1);
+	assert(validate_tx_soft_limiter_setpoint(&radio, 4999) == -1);
+	assert(validate_tx_soft_limiter_setpoint(&radio, 5000) == 0);
+	assert(validate_tx_soft_limiter_setpoint(&radio, 13000) == 0);
+	assert(validate_tx_soft_limiter_setpoint(&radio, 13001) == -1);
 }
 
 static void test_shared_control_helpers(void)
@@ -4705,25 +4657,6 @@ static void test_shared_eeprom_wait(void)
 	usbradioplus_wait_for_eeprom_idle(&radio);
 	assert(!radio.eepromctl);
 	clear_eeprom_target = NULL;
-}
-
-static void test_shared_cutoff_storage(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-
-	assert(store_cutoff(&radio, "unknown", "300") == 0);
-	assert(store_cutoff(&radio, "rxlpf", "invalid") == -1);
-	assert(store_cutoff(&radio, "rxlpf", "no") == 1);
-	assert(!radio.plus_rxlpf_enabled && radio.rxlpf == 0);
-	assert(store_cutoff(&radio, "rxhpf", "250.5") == 1);
-	assert(radio.plus_rxhpf_enabled && radio.plus_rxhpf_exact);
-	assert(fabs(radio.plus_rxhpf_hz - 250.5) < 0.0001);
-	assert(store_cutoff(&radio, "txlpf", "1") == 1);
-	assert(radio.plus_txlpf_enabled && !radio.plus_txlpf_exact && radio.txlpf == 1);
-	assert(fabs(radio.plus_txlpf_hz - 3000.0) < 0.0001);
-	assert(store_cutoff(&radio, "txhpf", "yes") == 1);
-	assert(radio.plus_txhpf_enabled && radio.plus_txhpf_exact);
-	assert(fabs(radio.plus_txhpf_hz - 300.0) < 0.0001);
 }
 
 #ifndef URP_TEST_MODERN
@@ -4923,6 +4856,11 @@ static void test_oss_channel_hangup(void)
 static void test_oss_parallel_pulser(void)
 {
 	pthread_t thread;
+
+	haspp = hasout = 0;
+	usbradio_start_parallel_pulser();
+	haspp = hasout = 1;
+	usbradio_start_parallel_pulser();
 
 	haspp = 2;
 	pp_val = 0;
@@ -5169,7 +5107,9 @@ static void test_oss_hid_worker_attach(void)
 	pthread_t thread;
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
+	strcpy(settings.profiles[0].name, "test");
+	strcpy(settings.profiles[0].channel, "RadioPlus/test");
 	radio.name = "test";
 	strcpy(radio.devstr, "usb-test");
 	radio.owner = (struct ast_channel *)(uintptr_t)1;
@@ -5252,13 +5192,11 @@ static void test_oss_hid_worker_attach(void)
 	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
 	assert(pthread_join(thread, NULL) == 0);
 	assert(!radio.eepromctl);
-	assert(radio.legacy_rxvoiceadj == 0.625F);
 	test_config_load_result = NULL;
 	test_config_variables = NULL;
 	radio.stophid = 0;
 	mock_hid_input_calls = 0;
 	radio.eepromctl = 1;
-	radio.legacy_rxvoiceadj_configured = 0;
 	radio.txmixb = TX_OUT_COMPOSITE;
 	eeprom_write_after_read = NULL;
 	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
@@ -5390,7 +5328,7 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	pthread_t thread;
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
 	radio.name = "first-radio";
 	strcpy(radio.devstr, "usb-test");
 	radio.sounddev = -1;
@@ -5549,6 +5487,9 @@ static void test_oss_tune_write_paths(void)
 	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	radio.serial[0] = '\0';
 	tune_write(&radio);
+	radio.devstr[0] = '\0';
+	tune_write(&radio);
+	strcpy(radio.devstr, "usb-test");
 #ifdef URP_TEST_MODERN
 	/* A serial-only explicit selector evaluates both automatic-assignment
 	 * predicates, and an existing serial variable is updated from an empty
@@ -5593,318 +5534,6 @@ static void test_oss_tune_write_paths(void)
 	test_category_get_result = (struct ast_category *)(uintptr_t)1;
 	test_config_load_result = NULL;
 	usbradio_default.next = NULL;
-}
-
-static void test_oss_store_all_legacy_options(void)
-{
-	static const struct {
-		const char *name;
-		const char *value;
-	} options[] = {
-		{"txhpf", "150.0"},
-		{"txlpf", "5000.0"},
-		{"rxhpf", "150.0"},
-		{"rxlpf", "5000.0"},
-		{"frags", "4"},
-		{"queuesize", "8"},
-		{"rxcpusaver", "yes"},
-		{"txcpusaver", "yes"},
-		{"invertptt", "yes"},
-		{"rxdemod", "flat"},
-		{"txlimonly", "yes"},
-		{"txprelim", "yes"},
-		{"txmixa", "voice"},
-		{"txmixb", "tone"},
-		{"carrierfrom", "usb"},
-		{"voxhangtime", "200"},
-		{"ctcssfrom", "dsp"},
-		{"rxsqvox", "300"},
-		{"rxsqhyst", "400"},
-		{"rxnoisefiltype", "1"},
-		{"rxsquelchdelay", "999"},
-		{"txctcssdefault", "100.0"},
-		{"rxctcssfreqs", "100.0"},
-		{"txctcssfreqs", "100.0"},
-		{"rxctcssoverride", "yes"},
-		{"rxfreq", "146520000"},
-		{"txfreq", "146520000"},
-		{"rxctcssrelax", "1"},
-		{"txtoctype", "phase"},
-		{"hdwtype", "0"},
-		{"eeprom", "0"},
-		{"duplex", "1"},
-		{"txsettletime", "50"},
-		{"txrxblankingtime", "100"},
-		{"rxpolarity", "yes"},
-		{"txpolarity", "yes"},
-		{"dcsrxpolarity", "yes"},
-		{"dcstxpolarity", "yes"},
-		{"lsdrxpolarity", "yes"},
-		{"lsdtxpolarity", "yes"},
-		{"radioactive", "yes"},
-		{"rptnum", "2"},
-		{"idleinterval", "30"},
-		{"turnoffs", "4"},
-		{"tracetype", "1"},
-		{"tracelevel", "2"},
-		{"rxondelay", "99999"},
-		{"txoffdelay", "99999"},
-		{"area", "3"},
-		{"ukey", "secret"},
-		{"duplex3", "500"},
-		{"duplex3mode", "hardware"},
-		{"emphasis_corner_hz", "250"},
-		{"sendvoter", "1"},
-		{"clipledgpio", "1"},
-		{"gpio1", "in"},
-		{"pp2", "out1"},
-		{"pp3", "in"},
-		{"pp10", "in"},
-		{"pp12", "cor"},
-		{"pp13", "ctcss"},
-		{"pp15", "in"},
-	};
-	struct ast_variable variables[ARRAY_LEN(options)];
-	struct chan_usbradio_pvt *radio;
-	struct chan_usbradio_pvt saved_default = usbradio_default;
-	int saved_haspp = haspp;
-	int saved_hasout = hasout;
-	unsigned char saved_pp_val = pp_val;
-	size_t index;
-
-	usbradio_default.next = NULL;
-	settings_defaults(&settings);
-	for (index = 0; index < ARRAY_LEN(options); ++index) {
-		variables[index].name = options[index].name;
-		variables[index].value = options[index].value;
-		variables[index].next =
-			index + 1 < ARRAY_LEN(options) ? &variables[index + 1] : NULL;
-		variables[index].inherited = 0;
-	}
-	test_config_variables = variables;
-	jitter_config_result = 1;
-	mock_dsp_available = 1;
-	test_config_load_result = CONFIG_STATUS_FILEMISSING;
-	radio = store_config((struct ast_config *)(uintptr_t)1, "all-options");
-	assert(radio);
-	assert(radio->frags == 4 && radio->queuesize == 8);
-	assert(radio->rxdemod == RX_AUDIO_FLAT && radio->rxcdtype == CD_HID);
-	assert(radio->duplex3 == 500 && radio->duplex3mode == DUPLEX3_MODE_HARDWARE);
-	assert(radio->rxondelay == MS_TO_FRAMES(RX_ON_DELAY_MAX));
-	assert(radio->txoffdelay == MS_TO_FRAMES(TX_OFF_DELAY_MAX));
-	assert(radio->gpios[0] && radio->pps[2] && radio->pps[10]);
-	assert(haspp && hasout && (pp_val & 1));
-	radio->rxcdtype = CD_XPMR_VOX;
-	radio->voxhangtime = 200;
-	radio->numrxctcssfreqs = 1;
-	radio->rxctcss[0] = "100.0";
-	radio->txctcss[0] = "100.0";
-	radio_dump(radio, -1);
-	radio->radio->numrxcodes = 0;
-	radio->radio->numtxcodes = 0;
-	radio_dump(radio, -1);
-	usbradioplus_dsp_destroy(radio);
-	urp_radio_destroy(radio->radio);
-	test_config_variables = NULL;
-	jitter_config_result = 0;
-	mock_dsp_available = 0;
-	usbradio_default = saved_default;
-	haspp = saved_haspp;
-	hasout = saved_hasout;
-	pp_val = saved_pp_val;
-	usbradio_active = NULL;
-}
-
-static void test_oss_store_config_failures(void)
-{
-	struct chan_usbradio_pvt saved_default = usbradio_default;
-	struct ast_variable first = {0};
-	struct ast_variable second = {0};
-	struct ast_variable third = {0};
-	struct chan_usbradio_pvt *radio;
-	struct chan_usbradio_pvt *cleanup;
-	struct chan_usbradio_pvt existing = {.name = "existing", .radioactive = 1};
-	urp_radio_state cleanup_configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-
-	usbradio_default.next = NULL;
-	usbradio_default.plus_emphasis_corner_hz = 250.0;
-	settings_defaults(&settings);
-	destroy_unlinked_channel(NULL);
-	destroy_unlinked_channel(&usbradio_default);
-	cleanup = ast_calloc(1, sizeof(*cleanup));
-	assert(cleanup);
-	cleanup->name = ast_strdup("cleanup");
-	mock_dsp_available = 1;
-	cleanup->dsp = ast_dsp_new();
-	cleanup->radio = urp_radio_create(&cleanup_configuration, FRAME_SIZE);
-	assert(cleanup->name && cleanup->dsp && cleanup->radio);
-	destroy_unlinked_channel(cleanup);
-	mock_dsp_available = 0;
-	jitter_config_result = 1;
-	ast_calloc_calls = 0;
-	fail_ast_calloc_call = 1;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "allocation-failure"));
-	fail_ast_calloc_call = 0;
-	ast_strdup_calls = 0;
-	fail_ast_strdup_call = 1;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "name-failure"));
-	fail_ast_strdup_call = 0;
-
-#define EXPECT_STORE_FAILURE(option_name, option_value)                                            \
-	do {                                                                                       \
-		first = (struct ast_variable){.name = (option_name), .value = (option_value)};     \
-		test_config_variables = &first;                                                    \
-		assert(!store_config((struct ast_config *)(uintptr_t)1, "invalid"));               \
-	} while (0)
-	EXPECT_STORE_FAILURE("txlpf", "invalid");
-	EXPECT_STORE_FAILURE("duplex3mode", "invalid");
-	EXPECT_STORE_FAILURE("duplex3", "1000");
-	EXPECT_STORE_FAILURE("duplex3", "-1");
-	EXPECT_STORE_FAILURE("emphasis_corner_hz", "0");
-	EXPECT_STORE_FAILURE("emphasis_corner_hz", "300");
-
-#define EXPECT_DEFAULT_STORE_FAILURE(option_name, option_value)                                    \
-	do {                                                                                       \
-		usbradio_default = saved_default;                                                  \
-		first = (struct ast_variable){.name = (option_name), .value = (option_value)};     \
-		test_config_variables = &first;                                                    \
-		assert(!store_config((struct ast_config *)(uintptr_t)1, "general"));               \
-	} while (0)
-	EXPECT_DEFAULT_STORE_FAILURE("txlpf", "invalid");
-	EXPECT_DEFAULT_STORE_FAILURE("duplex3mode", "invalid");
-	EXPECT_DEFAULT_STORE_FAILURE("duplex3", "1000");
-	usbradio_default = saved_default;
-	settings_defaults(&settings);
-	add_processing_override("hardware", "hardware_audio_fragment_count", "invalid");
-	first = (struct ast_variable){.name = "radioactive", .value = "no"};
-	test_config_variables = &first;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "invalid-processing"));
-	settings_defaults(&settings);
-	variable_browse_calls = 0;
-	inject_invalid_override_on_browse_call = 2;
-	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	first = (struct ast_variable){.name = "radioactive", .value = "no"};
-	test_config_variables = &first;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "late-processing-failure"));
-	inject_invalid_override_on_browse_call = 0;
-	settings_defaults(&settings);
-
-	first = (struct ast_variable){.name = "rxhpf", .value = "5000.0", .next = &second};
-	second = (struct ast_variable){.name = "rxlpf", .value = "150.0"};
-	test_config_variables = &first;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "invalid-rx-band"));
-	first = (struct ast_variable){.name = "txhpf", .value = "5000.0", .next = &second};
-	second = (struct ast_variable){.name = "txlpf", .value = "150.0"};
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "invalid-tx-band"));
-
-	/* Either endpoint may be disabled without imposing a band-order constraint. */
-	first = (struct ast_variable){.name = "rxhpf", .value = "no"};
-	second = (struct ast_variable){0};
-	test_config_variables = &first;
-	radio = store_config((struct ast_config *)(uintptr_t)1, "rx-highpass-disabled");
-	assert(radio && !radio->plus_rxhpf_enabled);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-	first = (struct ast_variable){.name = "rxlpf", .value = "no"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "rx-lowpass-disabled");
-	assert(radio && !radio->plus_rxlpf_enabled);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-	first = (struct ast_variable){.name = "txhpf", .value = "no"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "tx-highpass-disabled");
-	assert(radio && !radio->plus_txhpf_enabled);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-	first = (struct ast_variable){.name = "txlpf", .value = "no"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "tx-lowpass-disabled");
-	assert(radio && !radio->plus_txlpf_enabled);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-
-	first = (struct ast_variable){.name = "txmixa", .value = "composite", .next = &second};
-	second = (struct ast_variable){.name = "txmixb", .value = "voice"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "mixed-output-warning");
-	assert(radio);
-	usbradioplus_dsp_destroy(radio);
-	urp_radio_destroy(radio->radio);
-	ast_free(radio->name);
-	ast_free(radio);
-	first = (struct ast_variable){.name = "duplex3mode", .value = "software"};
-	second = (struct ast_variable){0};
-	test_config_variables = &first;
-	radio = store_config((struct ast_config *)(uintptr_t)1, "software-duplex");
-	assert(radio && radio->duplex3mode == DUPLEX3_MODE_SOFTWARE);
-	usbradioplus_dsp_destroy(radio);
-	urp_radio_destroy(radio->radio);
-	ast_free(radio->name);
-	ast_free(radio);
-
-	src_new_calls = 0;
-	fail_src_new_call = 1;
-	first = (struct ast_variable){.name = "radioactive", .value = "no"};
-	test_config_variables = &first;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "dsp-init-failure"));
-	fail_src_new_call = 0;
-	fail_radio_state_allocation = 1;
-	assert(!store_config((struct ast_config *)(uintptr_t)1, "radio-init-failure"));
-	fail_radio_state_allocation = 0;
-
-	/* A newly active channel deactivates its predecessor and reports a
-	 * configured tone when neither hardware output carries CTCSS. */
-	strcpy(usbradio_default.txctcssfreq, "100.0");
-	usbradio_default.next = &existing;
-	first = (struct ast_variable){.name = "radioactive", .value = "yes", .next = &second};
-	second = (struct ast_variable){.name = "txmixa", .value = "voice", .next = &third};
-	third = (struct ast_variable){.name = "txmixb", .value = "no"};
-	test_config_variables = &first;
-	radio = store_config((struct ast_config *)(uintptr_t)1, "active-no-tone-output");
-	assert(radio && !existing.radioactive && radio->radioactive);
-	usbradio_default.next = NULL;
-	usbradioplus_dsp_destroy(radio);
-	urp_radio_destroy(radio->radio);
-	ast_free(radio->name);
-	ast_free(radio);
-	usbradio_default.txctcssfreq[0] = '\0';
-	first = (struct ast_variable){.name = "pp2", .value = "out0", .next = &second};
-	second = (struct ast_variable){.name = "pp3", .value = "ptt"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "parallel-output-forms");
-	assert(radio && radio->pps[2] && radio->pps[3]);
-	ast_free(radio->pps[2]);
-	ast_free(radio->pps[3]);
-	radio->pps[2] = radio->pps[3] = NULL;
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-
-	first = (struct ast_variable){.name = "txmixa", .value = "voice", .next = &second};
-	second = (struct ast_variable){.name = "txmixb", .value = "composite"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "opposite-mixed-output-warning");
-	assert(radio);
-	usbradioplus_dsp_destroy(radio);
-	urp_radio_destroy(radio->radio);
-	ast_free(radio->name);
-	ast_free(radio);
-	first = (struct ast_variable){.name = "txmixa", .value = "composite", .next = &second};
-	second = (struct ast_variable){.name = "txmixb", .value = "composite"};
-	radio = store_config((struct ast_config *)(uintptr_t)1, "both-composite");
-	assert(radio);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-	first = (struct ast_variable){.name = "txctcssdefault", .value = "100.0", .next = &second};
-	second = (struct ast_variable){.name = "txmixa", .value = "composite"};
-	strcpy(usbradio_default.txctcssfreq, "100.0");
-	radio = store_config((struct ast_config *)(uintptr_t)1, "tone-output-present");
-	assert(radio);
-	destroy_unlinked_channel(radio);
-	usbradio_default.next = NULL;
-	usbradio_default.txctcssfreq[0] = '\0';
-#undef EXPECT_STORE_FAILURE
-#undef EXPECT_DEFAULT_STORE_FAILURE
-
-	test_config_variables = NULL;
-	jitter_config_result = 0;
-	usbradio_default = saved_default;
-	usbradio_active = NULL;
 }
 
 #ifndef URP_TEST_MODERN
@@ -6049,7 +5678,9 @@ static void test_oss_complete_read_frame(void)
 	struct ast_frame *frame;
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	settings.profiles[0].enabled = 0;
+	strcpy(settings.profiles[0].name, "test");
+	strcpy(settings.profiles[0].channel, "RadioPlus/test");
 	radio.name = "test";
 	radio.owner = channel;
 	radio.sounddev = 7;
@@ -6092,6 +5723,10 @@ static void test_oss_complete_read_frame(void)
 	assert(radio.hid_gpio_pulsetimer[0] == CLIP_LED_HOLD_TIME_MS);
 	radio.hid_gpio_pulsetimer[0] = 1;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ignore");
+	radio.rxsdtype = SD_HID;
+	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	assert(radio.hid_gpio_pulsetimer[0] == 1);
 	radio.clipledgpio = 0;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
@@ -6125,6 +5760,7 @@ static void test_oss_complete_read_frame(void)
 
 	/* Hardware COS drives key/unkey signaling independently of the audio DSP. */
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxsdtype = SD_IGNORE;
 	radio.rxhidsq = 1;
 	radio.duplex3 = 999;
@@ -6153,21 +5789,26 @@ static void test_oss_complete_read_frame(void)
 	assert(!radio.rxkeyed && !radio.lastrx);
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	radio.rxcdtype = CD_HID_INVERT;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usbinvert");
 	radio.rxhidsq = 0;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
 	assert(radio.rxkeyed);
 	radio.rxcdtype = CD_PP;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "pp");
 	radio.rxppsq = 1;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
 	radio.rxcdtype = CD_PP_INVERT;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ppinvert");
 	radio.rxppsq = 0;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
 	radio.rxcdtype = CD_HID_INVERT;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usbinvert");
 	radio.rxhidsq = 1;
 	radio.radio->rxExtCarrierDetect = 0;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
 	assert(!radio.radio->rxExtCarrierDetect);
 	radio.rxcdtype = CD_HID;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 	radio.rxhidsq = 1;
 	radio.radio->txPttOut = 1;
 	radio.radioduplex = 1;
@@ -6240,11 +5881,13 @@ static void test_oss_complete_read_frame(void)
 	radio.echoing = 1;
 	radio.rxcdtype = CD_IGNORE;
 	radio.rxsdtype = SD_IGNORE;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "ignore");
 	radio.rxkeyed = 1;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
 	radio.echomode = 0;
 	radio.rxhidsq = 0;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
 
 	/* Exercise the external CTCSS indication choices and override. */
 	radio.rxcdtype = CD_HID;
@@ -6391,8 +6034,7 @@ static void test_oss_complete_read_frame(void)
 
 static void test_oss_module_lifecycle_guards(void)
 {
-	struct ast_variable parallel = {.name = "pp2", .value = "out1"};
-	struct ast_variable active = {.name = "radioactive", .value = "yes", .next = &parallel};
+	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
 	struct chan_usbradio_pvt active_owner = {0};
 
 	fail_format_cap_alloc = 1;
@@ -6402,24 +6044,38 @@ static void test_oss_module_lifecycle_guards(void)
 	assert(load_module() == AST_MODULE_LOAD_DECLINE);
 	hid_mklist_result = 0;
 	test_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	separate_processing_config_result = 1;
 	test_processing_config_load_result = CONFIG_STATUS_FILEINVALID;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	test_processing_config_load_result = CONFIG_STATUS_FILEMISSING;
+	test_processing_config_load_result = (struct ast_config *)(uintptr_t)1;
 	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_config_category = "general";
-	test_config_variables = &active;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
-	test_config_category = "test";
+	usbradio_default.next = NULL;
 	active.next = NULL;
+	test_config_category = "usb";
+	test_config_variables = &active;
+	ast_strdup_calls = 0;
+	fail_ast_strdup_call = 1;
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	fail_ast_strdup_call = 0;
+	usbradio_default.next = NULL;
+
+	separate_processing_config_result = 0;
+	test_config_load_calls = 0;
+	test_config_load_second_result = CONFIG_STATUS_FILEINVALID;
+	test_config_category = "usb";
+	assert(load_module() == AST_MODULE_LOAD_DECLINE);
+	test_config_load_second_result = NULL;
+	settings_defaults(&settings);
+	usbradio_default.next = NULL;
+
+	test_config_category = "usb";
+	test_config_variables = &active;
 	haspp = 0;
 	memset(usbradio_default.pps, 0, sizeof(usbradio_default.pps));
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	assert(unload_module() == 0);
 	usbradio_default.next = NULL;
-	active.next = &parallel;
-	test_config_variables = &active;
 	channel_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	assert(unload_module() == 0);
@@ -6438,14 +6094,7 @@ static void test_oss_module_lifecycle_guards(void)
 	usbradio_default.next = NULL;
 	active.next = NULL;
 	haspp = 0;
-	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
-	assert(unload_module() == 0);
-	usbradio_default.next = NULL;
-	parallel.name = "pp3";
-	parallel.value = "in";
-	active.next = &parallel;
-	haspp = 0;
-	memset(usbradio_default.pps, 0, sizeof(usbradio_default.pps));
+	hasout = 0;
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	assert(unload_module() == 0);
 	usbradio_default.next = NULL;
@@ -6536,7 +6185,6 @@ static void test_program_queue_and_parrot_storage(void)
 	radio.plus_app_rpt_samples = 160;
 	for (i = 0; i < ARRAY_LEN(samples); ++i)
 		samples[i] = (short)i;
-	assert(!usbradioplus_program_pending(&radio));
 	usbradioplus_queue_program(&radio, samples, ARRAY_LEN(samples));
 	assert(radio.plus_program_queue.count ==
 	       PLUS_LINK_NATIVE_TARGET_SAMPLES / URP_NATIVE_SAMPLES);
@@ -6545,7 +6193,6 @@ static void test_program_queue_and_parrot_storage(void)
 	assert(radio.plus_program_queue
 		       .frames[(radio.plus_program_queue.tail + URP_PROGRAM_QUEUE_FRAMES - 1) %
 			       URP_PROGRAM_QUEUE_FRAMES][159] == 159);
-	assert(usbradioplus_program_pending(&radio));
 	seeded.plus_app_rpt_samples = 160;
 	seeded.plus_native_fifo.count = 1;
 	usbradioplus_queue_program(&seeded, samples, 1);
@@ -6556,7 +6203,6 @@ static void test_program_queue_and_parrot_storage(void)
 	usbradioplus_queue_program(&seeded, samples, 1);
 	radio.plus_native_fifo.count = 1;
 	radio.plus_program_queue.count = 0;
-	assert(usbradioplus_program_pending(&radio));
 
 	radio.plus_native_fifo.count = 0;
 	radio.plus_native_fifo.primed = 1;
@@ -6598,7 +6244,10 @@ static void test_native_tick_baseline(void)
 	size_t i;
 
 	settings_defaults(&settings);
-	settings.enabled = 0;
+	ast_copy_string(settings.profiles[0].name, "test", sizeof(settings.profiles[0].name));
+	ast_copy_string(settings.profiles[0].channel, "RadioPlus/test",
+			sizeof(settings.profiles[0].channel));
+	settings.profiles[0].enabled = 0;
 	channel.name = "test";
 	channel.plus_app_rpt_rate = 8000;
 	channel.plus_app_rpt_samples = 160;
@@ -6619,27 +6268,11 @@ static void test_native_tick_baseline(void)
 	assert(channel.plus_adc_peak_dbfs > -40.0);
 	assert(channel.plus_app_rpt_samples == 160);
 
-	channel.plus_rxhpf_enabled = 1;
-	channel.plus_rxhpf_exact = 1;
-	channel.plus_rxhpf_hz = 5000.0;
-	channel.plus_rxlpf_enabled = 1;
-	channel.plus_rxlpf_exact = 1;
-	channel.plus_rxlpf_hz = 1000.0;
 	usbradioplus_native_tick(&channel);
-	assert(channel.plus_native_frames == 1);
-	channel.plus_rxhpf_hz = 150.0;
-	channel.plus_rxlpf_hz = 5000.0;
-	channel.plus_txhpf_enabled = 1;
-	channel.plus_txhpf_exact = 1;
-	channel.plus_txhpf_hz = 5000.0;
-	channel.plus_txlpf_enabled = 1;
-	channel.plus_txlpf_exact = 1;
-	channel.plus_txlpf_hz = 1000.0;
+	assert(channel.plus_native_frames == 2);
 	usbradioplus_native_tick(&channel);
-	assert(channel.plus_native_frames == 1);
+	assert(channel.plus_native_frames == 3);
 
-	channel.plus_txhpf_hz = 150.0;
-	channel.plus_txlpf_hz = 5000.0;
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
 	for (i = 0; i < ARRAY_LEN(native_program); ++i)
@@ -6649,7 +6282,7 @@ static void test_native_tick_baseline(void)
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_native_fifo.primed);
 	assert(channel.plus_native_fifo.count == 2 * URP_NATIVE_SAMPLES);
-	assert(channel.plus_native_frames == 2);
+	assert(channel.plus_native_frames == 4);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
 	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
@@ -6659,14 +6292,14 @@ static void test_native_tick_baseline(void)
 	assert(!channel.plus_native_fifo.primed);
 	assert(channel.plus_link_queue_underflows == 1);
 
-	settings.enabled = 1;
-	settings.chains[TXAGC_LOCAL].enabled = 1;
-	settings.chains[TXAGC_LOCAL].rnnoise_enabled = 1;
-	settings.chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
-	settings.chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
-	settings.chains[TXAGC_LOCAL].agc.ctcss_notch_width_hz = 5.0;
+	settings.profiles[0].enabled = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].enabled = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_notch_width_hz = 5.0;
 	ast_copy_string(channel.rxctcssfreq, "100.0", sizeof(channel.rxctcssfreq));
-	settings.chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
 	channel.txprelim = 1;
 	channel.txslimsp = 9000;
 	channel.txkeyed = 0;
@@ -6675,7 +6308,7 @@ static void test_native_tick_baseline(void)
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.usedtmf = 0;
 	usbradioplus_native_tick(&channel);
-	settings.chains[TXAGC_LOCAL].rnnoise_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled = 0;
 	for (i = 0; i < 4; ++i)
 		usbradioplus_native_tick(&channel);
 	assert(isfinite(channel.plus_local_tx_max_peak_dbfs));
@@ -6723,12 +6356,12 @@ static void test_native_tick_baseline(void)
 	}
 	fail_av_frame_alloc_call = 0;
 
-	settings.chains[TXAGC_LOCAL].rnnoise_enabled = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled = 1;
 	src_process_calls = 0;
 	fail_src_process_call = 1;
 	usbradioplus_native_tick(&channel);
 	assert(src_process_calls >= 1);
-	settings.chains[TXAGC_LOCAL].rnnoise_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled = 0;
 	fail_src_process_call = 0;
 
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
@@ -6764,9 +6397,10 @@ static void test_native_tick_baseline(void)
 	/* Exercise the remaining independent policy choices without relying on
 	 * attached hardware. */
 	channel.rxsquelchdelay = 1;
-	settings.chains[TXAGC_LOCAL].input_gain_configured = 0;
-	settings.chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
-	settings.chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
+	settings.profiles[0].chains[TXAGC_LOCAL].input_gain_configured = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode =
+		TXAGC_CTCSS_FILTER_HIGHPASS;
 	channel.radio->txCtcssEnabled = 1;
 	channel.radio->b.txCtcssOff = 1;
 	channel.rxkeyed = 1;
@@ -6789,25 +6423,21 @@ static void test_native_tick_baseline(void)
 	usbradioplus_native_tick(&channel);
 
 	channel.plus_native_fifo.primed = 1;
-	channel.plus_native_fifo.count = 0;
+	channel.plus_native_fifo.count = 1;
 	channel.txkeyed = 0;
 	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
 	errors = channel.plus_link_queue_underflows;
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_link_queue_underflows == errors);
 
-	settings.chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 1;
-	settings.chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 1;
-	channel.plus_txhpf_enabled = 0;
-	channel.plus_txlpf_enabled = 0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 1;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 1;
 	channel.txprelim = 0;
 	channel.txlimonly = 0;
 	usbradioplus_native_tick(&channel);
 
-	settings.chains[TXAGC_LOCAL].input_gain_configured = 1;
-	settings.chains[TXAGC_LOCAL].ctcss_filter_configured = 0;
-	channel.plus_rxhpf_enabled = 1;
-	channel.plus_rxlpf_enabled = 0;
+	settings.profiles[0].chains[TXAGC_LOCAL].input_gain_configured = 1;
+	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 0;
 	usbradioplus_native_tick(&channel);
 
 	channel.plus_parrot_count = 2 * URP_NATIVE_SAMPLES;
@@ -6827,21 +6457,166 @@ static void test_native_tick_baseline(void)
 	channel.echomode = 0;
 	usbradioplus_native_tick(&channel);
 
-	settings.chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 0;
-	settings.chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
-	channel.plus_txhpf_enabled = 1;
-	channel.plus_txhpf_exact = 0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
 	channel.txhpf = 1;
-	channel.plus_txlpf_enabled = 0;
 	channel.txlimonly = 1;
 	usbradioplus_native_tick(&channel);
-	channel.plus_txhpf_enabled = 0;
-	channel.plus_txlpf_enabled = 1;
-	channel.plus_txlpf_exact = 0;
 	channel.txlpf = 1;
+	usbradioplus_native_tick(&channel);
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_highpass_hz = 0.0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_lowpass_hz = 1000.0;
+	usbradioplus_native_tick(&channel);
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_highpass_hz = 500.0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_lowpass_hz = 0.0;
+	usbradioplus_native_tick(&channel);
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_highpass_hz = 5000.0;
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_lowpass_hz = 1000.0;
 	usbradioplus_native_tick(&channel);
 	usbradioplus_dsp_destroy(&channel);
 	urp_radio_destroy(channel.radio);
+}
+
+static void test_unlinked_channel_cleanup(void)
+{
+	urp_radio_state configuration = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	struct chan_usbradio_pvt *channel;
+
+	destroy_unlinked_channel(NULL);
+	destroy_unlinked_channel(&usbradio_default);
+	channel = calloc(1, sizeof(*channel));
+	assert(channel);
+	channel->name = ast_strdup("cleanup");
+	mock_dsp_available = 1;
+	channel->dsp = ast_dsp_new();
+	channel->radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
+	assert(channel->name && channel->dsp && channel->radio);
+	destroy_unlinked_channel(channel);
+}
+
+static void test_store_config_failure_and_option_edges(void)
+{
+	struct chan_usbradio_pvt saved_default = usbradio_default;
+	struct chan_usbradio_pvt existing = {.radioactive = 1};
+	struct chan_usbradio_pvt *created;
+
+	memset(&usbradio_default, 0, sizeof(usbradio_default));
+	usbradio_default.plus_emphasis_corner_hz = 250.0;
+	usbradio_default.plus_app_rpt_rate = URP_RATE_LINK;
+	usbradio_default.plus_app_rpt_samples = URP_LINK_SAMPLES;
+	usbradio_default.rxsdtype = SD_XPMR;
+	usbradio_default.txmixa = TX_OUT_VOICE;
+	usbradio_default.txmixb = TX_OUT_LSD;
+	usbradio_default.rxsquelchadj = 500;
+	usbradio_default.rxctcssadj = 0.5;
+	ast_copy_string(usbradio_default.rxctcssfreqs, "0", sizeof(usbradio_default.rxctcssfreqs));
+	ast_copy_string(usbradio_default.txctcssfreqs, "0", sizeof(usbradio_default.txctcssfreqs));
+	ast_copy_string(usbradio_default.txctcssdefault, "0",
+			sizeof(usbradio_default.txctcssdefault));
+	settings_defaults(&settings);
+
+	ast_calloc_calls = 0;
+	fail_ast_calloc_call = 1;
+	assert(store_config("allocation-failure") == NULL);
+	fail_ast_calloc_call = 0;
+	ast_strdup_calls = 0;
+	fail_ast_strdup_call = 1;
+	assert(store_config("name-failure") == NULL);
+	fail_ast_strdup_call = 0;
+
+	settings_defaults(&settings);
+	assert(store_config("general") == NULL);
+	add_processing_override("general", "channel_enabled", "invalid");
+	assert(store_config("usb") == NULL);
+	settings_defaults(&settings);
+	settings.profiles[0].override_count = 0;
+	usbradio_default.duplex3 = DUPLEX3_LEVEL_MAX + 1;
+	assert(store_config("usb") == NULL);
+	usbradio_default.duplex3 = -1;
+	assert(store_config("usb") == NULL);
+	usbradio_default.duplex3 = 0;
+	usbradio_default.plus_emphasis_corner_hz = 0.0;
+	assert(store_config("usb") == NULL);
+	usbradio_default.plus_emphasis_corner_hz = 300.0;
+	assert(store_config("usb") == NULL);
+	usbradio_default.plus_emphasis_corner_hz = 250.0;
+
+	ast_calloc_calls = 0;
+	fail_ast_calloc_call = 2;
+	assert(store_config("usb") == NULL);
+	fail_ast_calloc_call = 0;
+	fail_radio_state_allocation = 1;
+	assert(store_config("usb") == NULL);
+	fail_radio_state_allocation = 0;
+	mock_dsp_available = 1;
+	created = store_config("usb");
+	assert(created);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+
+	settings_defaults(&settings);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_COMPOSITE;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_VOICE;
+	add_processing_override("hardware", "hardware_parallel_pin_2_assignment", "input");
+	add_processing_override("hardware", "hardware_parallel_pin_3_assignment", "out1");
+	add_processing_override("hardware", "hardware_parallel_pin_4_assignment", "ptt");
+	add_processing_override("hardware", "hardware_parallel_pin_5_assignment", "out0");
+	usbradio_default.rxsquelchdelay = RXSQDELAYBUFSIZE;
+	usbradio_default.txlimonly = 1;
+	usbradio_default.txprelim = 1;
+	usbradio_default.radioactive = 1;
+	usbradio_default.next = &existing;
+	created = store_config("usb");
+	assert(created);
+	assert(created->radio->txMod == 2);
+	assert(created->rxsquelchdelay == RXSQDELAYBUFSIZE / 8 - 1);
+	assert(created->radioactive && !existing.radioactive && hasout);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+
+	settings_defaults(&settings);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_VOICE;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_COMPOSITE;
+	usbradio_default.rxsquelchdelay = 0;
+	usbradio_default.txlimonly = 0;
+	usbradio_default.txprelim = 0;
+	usbradio_default.rxsqhyst = 1;
+	usbradio_default.radioactive = 0;
+	created = store_config("usb");
+	assert(created);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+
+	settings_defaults(&settings);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_LSD;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_LSD;
+	ast_copy_string(usbradio_default.txctcssfreq, "100.0",
+			sizeof(usbradio_default.txctcssfreq));
+	created = store_config("usb");
+	assert(created);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+
+	settings_defaults(&settings);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_VOICE;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_VOICE;
+	created = store_config("usb");
+	assert(created);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+
+	settings_defaults(&settings);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_OFF;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_COMPOSITE;
+	created = store_config("usb");
+	assert(created);
+	usbradio_default.next = created->next;
+	destroy_unlinked_channel(created);
+	mock_dsp_available = 0;
+
+	usbradio_default = saved_default;
+	settings_defaults(&settings);
 }
 
 static void test_dsp_init_failures(void)
@@ -6874,8 +6649,7 @@ int main(void)
 	RUN_TEST(test_modern_audio_worker_baseline);
 	RUN_TEST(test_modern_module_lifecycle_baseline);
 #endif
-	RUN_TEST(test_legacy_option_decoders);
-	RUN_TEST(test_load_tune_config);
+	RUN_TEST(test_option_decoders);
 	RUN_TEST(test_channel_callbacks);
 	RUN_TEST(test_text_controls);
 	RUN_TEST(test_console_keying);
@@ -6897,10 +6671,7 @@ int main(void)
 	RUN_TEST(test_shared_control_helpers);
 	RUN_TEST(test_shared_receive_signaling_helpers);
 	RUN_TEST(test_shared_eeprom_wait);
-	RUN_TEST(test_shared_cutoff_storage);
 	RUN_TEST(test_oss_tune_write_paths);
-	RUN_TEST(test_oss_store_all_legacy_options);
-	RUN_TEST(test_oss_store_config_failures);
 #ifndef URP_TEST_MODERN
 	RUN_TEST(test_oss_audio_helpers);
 	RUN_TEST(test_oss_channel_write_and_call);
@@ -6930,6 +6701,8 @@ int main(void)
 	RUN_TEST(test_program_queue_and_parrot_storage);
 	RUN_TEST(test_dsp_init_failures);
 	RUN_TEST(test_native_tick_baseline);
+	RUN_TEST(test_unlinked_channel_cleanup);
+	RUN_TEST(test_store_config_failure_and_option_edges);
 #undef RUN_TEST
 	puts("channel core tests passed");
 	return 0;

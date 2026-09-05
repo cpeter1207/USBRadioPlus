@@ -21,7 +21,7 @@ the exactly matching USBRadioPlus package from the signed project repository.
       --dry-run  report the selected package without changing the node
   -h, --help     show this help
 
-The package creates a default usbradioplus-processing.conf only when absent.
+The package creates a default usbradioplus.conf only when absent.
 It does not replace existing configuration, activate the module, or restart
 Asterisk.
 EOF
@@ -85,7 +85,7 @@ USBRadioPlus installation plan
   Package:        $package
 
 The signed USBRadioPlus repository will be configured and the matching package
-will be installed. A missing usbradioplus-processing.conf will be created;
+will be installed. A missing usbradioplus.conf will be created;
 existing configuration will not be changed. Asterisk will not be restarted.
 EOF
 
