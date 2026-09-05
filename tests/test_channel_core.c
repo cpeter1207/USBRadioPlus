@@ -2140,6 +2140,8 @@ static void test_modern_audio_worker_baseline(void)
 
 	settings_defaults(&settings);
 	settings.profiles[0].enabled = 0;
+	strcpy(settings.profiles[0].name, "modern-audio");
+	strcpy(settings.profiles[0].channel, "RadioPlus/modern-audio");
 	radio.name = "modern-audio";
 	radio.radio_device = &device;
 	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
