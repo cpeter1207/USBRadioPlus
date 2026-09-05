@@ -22,9 +22,11 @@ on:
         type: boolean
 
 permissions:
+  actions: write
   contents: write
   packages: write
   pages: write
+  pull-requests: write
   id-token: write
 
 jobs:
