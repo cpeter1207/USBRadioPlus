@@ -127,37 +127,6 @@ int urp_parse_cutoff(const char *text, double default_hz, double nyquist_hz,
 	return 0;
 }
 
-double urp_legacy_cutoff(enum urp_legacy_filter filter, int selector)
-{
-	static const double values[][3] = {
-		[URP_FILTER_RX_LOWPASS] = {3000.0, 3300.0, 3700.0},
-		[URP_FILTER_RX_HIGHPASS] = {300.0, 250.0, 0.0},
-		[URP_FILTER_TX_LOWPASS] = {3000.0, 3300.0, 0.0},
-		[URP_FILTER_TX_HIGHPASS] = {300.0, 250.0, 120.0},
-	};
-	static const unsigned int counts[] = {3, 2, 2, 3};
-
-	if (filter < URP_FILTER_RX_LOWPASS || filter > URP_FILTER_TX_HIGHPASS)
-		return 0.0;
-	if (selector < 0 || (unsigned int)selector >= counts[filter])
-		selector = 0;
-	return values[filter][selector];
-}
-
-double urp_legacy_limiter_ceiling_dbfs(int setpoint)
-{
-	double peak;
-
-	/* XPMR limits voice before its composite mixer, which then applies 2x
-	 * voice gain.  Express the equivalent final-output ceiling in dBFS. */
-	if (setpoint < 5000)
-		setpoint = 5000;
-	if (setpoint > 13000)
-		setpoint = 13000;
-	peak = fmin(32766.0, 2.0 * setpoint);
-	return 20.0 * log10(peak / 32768.0);
-}
-
 static int16_t saturate(double value)
 {
 	if (value > 32767.0)

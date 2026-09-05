@@ -74,21 +74,16 @@
 #include "asterisk/utils.h"
 
 /*! \brief type of signal detection used for carrier (cd) or ctcss (sd) */
-static const char *const cd_signal_type[] = { "no", "dsp", "vox", "usb", "usbinvert", "pp", "ppinvert" };
-static const char *const sd_signal_type[] = { "no", "usb", "usbinvert", "dsp", "pp", "ppinvert" };
+static const char *const cd_signal_type[] = {"no",	  "dsp", "vox",	    "usb",
+					     "usbinvert", "pp",	 "ppinvert"};
+static const char *const sd_signal_type[] = {"no", "usb", "usbinvert", "dsp", "pp", "ppinvert"};
 
 /*! \brief demodulation type */
-static const char *const demodulation_type[] = { "no", "speaker", "flat" };
+static const char *const demodulation_type[] = {"no", "speaker", "flat"};
 
 /*! \brief mixer type */
-enum {
-	TX_OUT_OFF,
-	TX_OUT_VOICE,
-	TX_OUT_LSD,
-	TX_OUT_COMPOSITE,
-	TX_OUT_AUX
-};
-static const char *const mixer_type[] = { "no", "voice", "tone", "composite", "auxvoice" };
+enum { TX_OUT_OFF, TX_OUT_VOICE, TX_OUT_LSD, TX_OUT_COMPOSITE, TX_OUT_AUX };
+static const char *const mixer_type[] = {"no", "voice", "tone", "composite", "auxvoice"};
 
 /*! \brief command prefix for Asterisk - simpleusb channel driver access */
 #define COMMAND_PREFIX "radio "
@@ -117,7 +112,7 @@ static void ourhandler(int sig)
  */
 static int qcompar(const void *a, const void *b)
 {
-	char **sa = (char **) a, **sb = (char **) b;
+	char **sa = (char **)a, **sb = (char **)b;
 	return (strcmp(*sa, *sb));
 }
 
@@ -127,10 +122,11 @@ static int qcompar(const void *a, const void *b)
  * \note This modifies the string str, be sure to save an intact copy if you need it later.
  *
  * \param str		Pointer to string to process (it will be modified).
- * \param strp		Pointer to a list of substrings created, NULL will be placed at the end of the list.
- * \param limit		Maximum number of substrings to process.
- * \param delim		Specified delimiter
- * \param quote		User specified quote for escaping a substring. Set to zero to escape nothing.
+ * \param strp		Pointer to a list of substrings created, NULL will be placed at the end of
+ * the list. \param limit		Maximum number of substrings to process. \param delim
+ * Specified delimiter
+ * \param quote		User specified quote for escaping a substring. Set to zero to escape
+ * nothing.
  *
  * \retval 			Returns number of substrings found.
  */
@@ -761,7 +757,8 @@ static void menu_view_status(void)
  * \param max_items		Number of items in the items array.
  * \param selection		Current selected item.
  */
-static int menu_select_value(const char *value_name, const char *const *items, int max_items, int selection)
+static int menu_select_value(const char *value_name, const char *const *items, int max_items,
+			     int selection)
 {
 	char str[100];
 	int i;
@@ -845,8 +842,9 @@ static void options_menu(void)
 		if (astgetline(COMMAND_PREFIX "tune menu-support 0", str, sizeof(str) - 1)) {
 			return;
 		}
-		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode, &rxboost, &txboost,
-				&carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb) != 14) {
+		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss,
+			   &echomode, &rxboost, &txboost, &carrierfrom, &ctcssfrom, &rxondelay,
+			   &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb) != 14) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			return;
 		}
@@ -857,8 +855,10 @@ static void options_menu(void)
 		printf("3) Change RX Demodulation (currently '%s')\n", demodulation_type[rxdemod]);
 		printf("4) Change RX On Delay (currently '%d')\n", rxondelay);
 		printf("5) Change TX Off Delay (currently '%d')\n", txoffdelay);
-		printf("6) Toggle TX Prelimiting (currently '%s')\n", rxboost ? "enabled" : "disabled");
-		printf("7) Toggle TX Limiting Only (currently '%s')\n", txboost ? "enabled" : "disabled");
+		printf("6) Toggle TX Prelimiting (currently '%s')\n",
+		       rxboost ? "enabled" : "disabled");
+		printf("7) Toggle TX Limiting Only (currently '%s')\n",
+		       txboost ? "enabled" : "disabled");
 		printf("8) Change TX Mixer A (currently '%s')\n", mixer_type[txmixa]);
 		printf("9) Change Tx Mixer B (currently '%s')\n", mixer_type[txmixb]);
 		printf("0) Exit Menu\n");
@@ -901,9 +901,11 @@ static void options_menu(void)
 			}
 			break;
 		case '3': /* select rx demodulation */
-			result = menu_select_value("RX Demodulation", demodulation_type, 3, rxdemod);
+			result =
+				menu_select_value("RX Demodulation", demodulation_type, 3, rxdemod);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support u%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support u%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -942,14 +944,16 @@ static void options_menu(void)
 		case '8': /* select tx mixer a */
 			result = menu_select_value("TX Mixer A", mixer_type, 5, txmixa);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support w%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support w%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
 		case '9': /* select tx mixer b */
 			result = menu_select_value("TX Mixer B", mixer_type, 5, txmixb);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support x%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support x%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1007,13 +1011,17 @@ int main(int argc, char *argv[])
 	for (;;) {
 		/* get device parameters from Asterisk */
 		if (astgetline(COMMAND_PREFIX "tune menu-support 0+9", str, sizeof(str) - 1)) {
-			printf("The setup information for chan_usbradio could not be retrieved!\n\n");
+			printf("The setup information for chan_usbradio could not be "
+			       "retrieved!\n\n");
 			printf("Verify that Asterisk is running and chan_usbradio is loaded.\n\n");
 			exit(255);
 		}
-		if (sscanf(str, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,%d", &flatrx, &txhasctcss, &echomode,
-				&rxboost, &txboost, &carrierfrom, &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod, &txmixa, &txmixb,
-				&rxmixerset, &rxvoiceadj, &rxsquelchadj, &txmixaset, &txmixbset, &txctcssadj, &micplaymax, &spkrmax, &micmax) != 23) {
+		if (sscanf(str,
+			   "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,%d",
+			   &flatrx, &txhasctcss, &echomode, &rxboost, &txboost, &carrierfrom,
+			   &ctcssfrom, &rxondelay, &txoffdelay, &txprelim, &txlimonly, &rxdemod,
+			   &txmixa, &txmixb, &rxmixerset, &rxvoiceadj, &rxsquelchadj, &txmixaset,
+			   &txmixbset, &txctcssadj, &micplaymax, &spkrmax, &micmax) != 23) {
 			fprintf(stderr, "Error parsing device parameters: %s\n", str);
 			exit(255);
 		}
@@ -1027,31 +1035,40 @@ int main(int argc, char *argv[])
 		if (flatrx) {
 			printf("2) Auto-Detect Rx Noise Level Value (with no carrier)\n");
 		} else {
-			printf("2) Auto-Detect Rx Noise Level does not apply to this devices configuration\n");
+			printf("2) Auto-Detect Rx Noise Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
-			printf("3) Set Rx Voice Level using display (currently '%d')\n", (int) ((rxvoiceadj * 200.0) + .5));
+			printf("3) Set Rx Voice Level using display (currently '%d')\n",
+			       (int)((rxvoiceadj * 200.0) + .5));
 		} else {
-			printf("3) Set Rx Voice Level using display (currently '%d')\n", rxmixerset);
+			printf("3) Set Rx Voice Level using display (currently '%d')\n",
+			       rxmixerset);
 		}
 		if (flatrx) {
 			printf("4) Auto-Detect Rx CTCSS Level Value (with carrier + CTCSS)\n");
 		} else {
-			printf("4) Auto-Detect Rx CTCSS Level does not apply to this devices configuration\n");
+			printf("4) Auto-Detect Rx CTCSS Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
 			printf("5) Set Rx Squelch Level (currently '%d')\n", rxsquelchadj);
 		} else {
-			printf("5) Set Rx Squelch Level does not apply to this devices configuration\n");
+			printf("5) Set Rx Squelch Level does not apply to this devices "
+			       "configuration\n");
 		}
-		if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE) || (txmixb == TX_OUT_VOICE) || (txmixb == TX_OUT_COMPOSITE)) {
+		if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE) ||
+		    (txmixb == TX_OUT_VOICE) || (txmixb == TX_OUT_COMPOSITE)) {
 			if (keying) {
-				printf("6) Set Transmit Voice Level and send test tone (no CTCSS)\n");
+				printf("6) Set Transmit Voice Level and send test tone (no "
+				       "CTCSS)\n");
 			} else {
 				if ((txmixa == TX_OUT_VOICE) || (txmixa == TX_OUT_COMPOSITE)) {
-					printf("6) Set Transmit Voice Level (currently '%d')\n", txmixaset);
+					printf("6) Set Transmit Voice Level (currently '%d')\n",
+					       txmixaset);
 				} else {
-					printf("6) Set Transmit Voice Level (currently '%d')\n", txmixbset);
+					printf("6) Set Transmit Voice Level (currently '%d')\n",
+					       txmixbset);
 				}
 			}
 		} else {
@@ -1059,9 +1076,11 @@ int main(int argc, char *argv[])
 		}
 		if ((txmixa == TX_OUT_AUX) || (txmixb == TX_OUT_AUX)) {
 			if (txmixa == TX_OUT_AUX) {
-				printf("7) Set Transmit Aux Voice Level (currently '%d')\n", txmixaset);
+				printf("7) Set Transmit Aux Voice Level (currently '%d')\n",
+				       txmixaset);
 			} else {
-				printf("7) Set Transmit Aux Voice Level (currently '%d')\n", txmixbset);
+				printf("7) Set Transmit Aux Voice Level (currently '%d')\n",
+				       txmixbset);
 			}
 		} else {
 			printf("7) Set Transmit Aux Voice Level not available as configured\n");
@@ -1070,17 +1089,22 @@ int main(int argc, char *argv[])
 			if (keying) {
 				printf("8) Set Transmit CTCSS Level and send CTCSS tone\n");
 			} else {
-				printf("8) Set Transmit CTCSS Level (currently '%d')\n", txctcssadj);
+				printf("8) Set Transmit CTCSS Level (currently '%d')\n",
+				       txctcssadj);
 			}
 		} else {
-			printf("8) Set Transmit CTCSS Level does not apply to this devices configuration\n");
+			printf("8) Set Transmit CTCSS Level does not apply to this devices "
+			       "configuration\n");
 		}
 		if (flatrx) {
-			printf("9) Auto-Detect Rx Voice Level Value (with carrier + 1KHz @ 3KHz Dev)\n");
+			printf("9) Auto-Detect Rx Voice Level Value (with carrier + 1KHz @ 3KHz "
+			       "Dev)\n");
 		} else {
-			printf("9) Auto-Detect Rx Voice Level does not apply to this devices configuration\n");
+			printf("9) Auto-Detect Rx Voice Level does not apply to this devices "
+			       "configuration\n");
 		}
-		printf("E) Toggle Echo Mode (currently '%s')\n", (echomode) ? "enabled" : "disabled");
+		printf("E) Toggle Echo Mode (currently '%s')\n",
+		       (echomode) ? "enabled" : "disabled");
 		printf("F) Flash (Toggle PTT and Tone output several times)\n");
 		printf("G) Change Carrier From (currently '%s')\n", cd_signal_type[carrierfrom]);
 		printf("H) Change CTCSS From (currently '%s')\n", sd_signal_type[ctcssfrom]);
@@ -1088,7 +1112,8 @@ int main(int argc, char *argv[])
 		printf("O) Options Menu\n");
 		printf("R) View Rx Audio Statistics\n");
 		printf("S) Swap Current USB device with another USB device\n");
-		printf("T) Toggle Transmit Test Tone/Keying (currently '%s')\n", (keying) ? "enabled" : "disabled");
+		printf("T) Toggle Transmit Test Tone/Keying (currently '%s')\n",
+		       (keying) ? "enabled" : "disabled");
 		printf("V) View COS, CTCSS and PTT Status\n");
 		printf("W) Write (Save) Current Parameter Values\n");
 		printf("X) View Tx Audio Statistics\n");
@@ -1179,7 +1204,8 @@ int main(int argc, char *argv[])
 		case 'G':
 			result = menu_select_value("Carrier From", cd_signal_type, 7, carrierfrom);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support o%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support o%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1187,7 +1213,8 @@ int main(int argc, char *argv[])
 		case 'H':
 			result = menu_select_value("CTCSS From", sd_signal_type, 6, ctcssfrom);
 			if (result > 0) {
-				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support p%d", result - 1);
+				snprintf(str, sizeof(str), COMMAND_PREFIX "tune menu-support p%d",
+					 result - 1);
 				astgetresp(str);
 			}
 			break;
@@ -1212,7 +1239,8 @@ int main(int argc, char *argv[])
 		case 't': /* toggle test tone */
 		case 'T':
 			keying = !keying;
-			printf("Transmit Test Tone/Keying is now %s\n", (keying) ? "Enabled" : "Disabled");
+			printf("Transmit Test Tone/Keying is now %s\n",
+			       (keying) ? "Enabled" : "Disabled");
 			break;
 		case 'v': /* view cos, ctcss, and ptt status - live */
 		case 'V':

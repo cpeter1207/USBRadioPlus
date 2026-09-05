@@ -27,17 +27,8 @@ struct urp_cutoff_setting {
 	double frequency_hz;
 };
 
-enum urp_legacy_filter {
-	URP_FILTER_RX_LOWPASS,
-	URP_FILTER_RX_HIGHPASS,
-	URP_FILTER_TX_LOWPASS,
-	URP_FILTER_TX_HIGHPASS,
-};
-
 int urp_parse_cutoff(const char *text, double default_hz, double nyquist_hz,
 		     struct urp_cutoff_setting *setting);
-double urp_legacy_cutoff(enum urp_legacy_filter filter, int selector);
-double urp_legacy_limiter_ceiling_dbfs(int setpoint);
 
 struct urp_src;
 

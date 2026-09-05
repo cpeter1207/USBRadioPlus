@@ -7,7 +7,7 @@ Usage: sudo ./install.sh [--skip-deps] [--destdir DIR]
 
 Installs build dependencies, builds and tests USBRadioPlus, then copies its
 files. It does not activate the module, restart Asterisk, or edit Asterisk
-configuration other than creating usbradioplus-processing.conf when absent.
+configuration other than creating usbradioplus.conf when absent.
 EOF
 }
 
@@ -40,7 +40,7 @@ make -C "$root" clean check
 make -C "$root" DESTDIR="$destdir" prefix=/usr install
 
 cat <<'EOF'
-USBRadioPlus files were installed. A default usbradioplus-processing.conf was
+USBRadioPlus files were installed. A default usbradioplus.conf was
 created if none existed. Existing configuration was preserved. Nothing was
 activated and Asterisk was not restarted. Review the test results and
 documentation before changing modules.conf or rpt.conf.

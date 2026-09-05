@@ -53,10 +53,9 @@ COPY --chmod=0755 tests/container-smoke-test.sh /usr/local/libexec/usbradioplus/
 RUN ln -s librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
     ln -s librnnoise.so.0 /usr/local/lib/librnnoise.so && \
     ldconfig && \
-    test "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" != "" && \
-    test -x /usr/sbin/usbradioplus-tune && \
-    test -x /usr/sbin/usbradioplus-processing-tune && \
-    ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
+	 test "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" != "" && \
+	 test -x /usr/sbin/usbradioplus-tune && \
+	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
       tee /tmp/module-libraries && \
     ! grep -q 'not found' /tmp/module-libraries && \
     if [ "$RUN_SMOKE_TEST" = 1 ]; then \

@@ -21,11 +21,9 @@ int main(void)
 	static const char *const tx_names[] = {"no", "VOICE", "tone", "composite", "auxvoice"};
 	static const char *const carrier_names[] = {"no",	 "dsp", "vox",	   "usb",
 						    "usbinvert", "pp",	"ppinvert"};
-	static const char *const ctcss_names[] = {
-		"no",	    "usb",	 "usbinvert", "dsp",	       "pp",
-		"ppinvert", "SD_IGNORE", "SD_HID",    "SD_HID_INVERT", "SD_XPMR"};
-	static const char *const tone_names[] = {"no",	     "phase",	  "notone",
-						 "TOC_NONE", "TOC_PHASE", "TOC_NOTONE"};
+	static const char *const ctcss_names[] = {"no",	 "usb", "usbinvert",
+						  "dsp", "pp",	"ppinvert"};
+	static const char *const tone_names[] = {"no", "phase", "notone"};
 
 	for (i = 0; i < sizeof(input) / sizeof(input[0]); ++i)
 		input[i] = (short)(i + 1);
@@ -84,16 +82,13 @@ int main(void)
 	for (i = 0; i < sizeof(ctcss_names) / sizeof(ctcss_names[0]); ++i) {
 		static const enum urp_ctcss_source expected[] = {
 			URP_CTCSS_DISABLED, URP_CTCSS_USB,	URP_CTCSS_USB_INVERTED,
-			URP_CTCSS_DSP,	    URP_CTCSS_PARALLEL, URP_CTCSS_PARALLEL_INVERTED,
-			URP_CTCSS_DISABLED, URP_CTCSS_USB,	URP_CTCSS_USB_INVERTED,
-			URP_CTCSS_DSP,
-		};
+			URP_CTCSS_DSP,	    URP_CTCSS_PARALLEL, URP_CTCSS_PARALLEL_INVERTED};
 		assert(!urp_parse_ctcss_source(ctcss_names[i], &ctcss));
 		assert(ctcss == expected[i]);
 	}
 	for (i = 0; i < sizeof(tone_names) / sizeof(tone_names[0]); ++i) {
 		assert(!urp_parse_tone_off_mode(tone_names[i], &tone_off));
-		assert((size_t)tone_off == i % 3);
+		assert((size_t)tone_off == i);
 	}
 	assert(urp_parse_rx_audio_mode(NULL, &rx_audio));
 	assert(urp_parse_rx_audio_mode("invalid", &rx_audio));
@@ -103,8 +98,10 @@ int main(void)
 	assert(urp_parse_carrier_source("invalid", &carrier));
 	assert(urp_parse_carrier_source("no", NULL));
 	assert(urp_parse_ctcss_source("invalid", &ctcss));
+	assert(urp_parse_ctcss_source("SD_XPMR", &ctcss));
 	assert(urp_parse_ctcss_source("no", NULL));
 	assert(urp_parse_tone_off_mode("invalid", &tone_off));
+	assert(urp_parse_tone_off_mode("TOC_PHASE", &tone_off));
 	assert(urp_parse_tone_off_mode("no", NULL));
 
 	assert(urp_gain_db_to_mixer(0.0) == 500);
@@ -112,10 +109,10 @@ int main(void)
 	assert(urp_gain_db_to_mixer(-200.0) == 0);
 	assert(fabs(urp_mixer_to_gain_db(500)) < 0.000001);
 	assert(urp_mixer_to_gain_db(0) < -100.0);
-	assert(urp_legacy_multiplier(0) == 64);
-	assert(urp_legacy_multiplier(1) == 128);
-	assert(urp_legacy_multiplier(2) == 192);
-	assert(urp_legacy_multiplier(3) == 256);
+	assert(urp_hardware_level_multiplier(0) == 64);
+	assert(urp_hardware_level_multiplier(1) == 128);
+	assert(urp_hardware_level_multiplier(2) == 192);
+	assert(urp_hardware_level_multiplier(3) == 256);
 	assert(urp_saturating_add(100, 200) == 300);
 	assert(urp_saturating_add(30000, 30000) == 32767);
 	assert(urp_saturating_add(-30000, -30000) == -32768);
@@ -181,10 +178,6 @@ int main(void)
 		urp_apply_ptt_outputs(1, 0, 0, 0x08, &usb, &parallel);
 		assert((usb & 0x08) && parallel == 0x55);
 	}
-	assert(urp_legacy_filter_name("rxlpf") == URP_FILTER_RX_LOWPASS);
-	assert(urp_legacy_filter_name("rxhpf") == URP_FILTER_RX_HIGHPASS);
-	assert(urp_legacy_filter_name("txlpf") == URP_FILTER_TX_LOWPASS);
-	assert(urp_legacy_filter_name("txhpf") == URP_FILTER_TX_HIGHPASS);
 	{
 		double storage[8] = {0};
 		double source[6] = {1, 2, 3, 4, 5, 6};

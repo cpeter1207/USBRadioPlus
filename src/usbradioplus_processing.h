@@ -50,14 +50,25 @@ struct usbradioplus_hardware_settings {
 	int tx_ctcss_frequencies_configured;
 };
 
-int usbradioplus_processing_get_local(struct txagc_chain *chain);
-int usbradioplus_processing_get_composite(struct txagc_chain *chain);
-int usbradioplus_processing_get_hardware(struct usbradioplus_hardware_settings *hardware);
-int usbradioplus_processing_get_option(const char *section, const char *name, char *value,
-				       size_t value_size);
-int usbradioplus_processing_set_local_input_gain(double gain_db);
-int usbradioplus_processing_set_hardware_input_gain(double gain_db);
-int usbradioplus_processing_save_input_gains(double hardware_gain_db, double local_gain_db);
+struct usbradioplus_config_update {
+	const char *section;
+	const char *name;
+	const char *value;
+};
+
+int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain);
+int usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain);
+int usbradioplus_processing_get_hardware(const char *channel,
+					 struct usbradioplus_hardware_settings *hardware);
+int usbradioplus_processing_get_option(const char *channel, const char *section, const char *name,
+				       char *value, size_t value_size);
+int usbradioplus_processing_set_local_input_gain(const char *channel, double gain_db);
+int usbradioplus_processing_set_hardware_input_gain(const char *channel, double gain_db);
+int usbradioplus_processing_save_input_gains(const char *channel, double hardware_gain_db,
+					     double local_gain_db);
+int usbradioplus_processing_save_options(const char *channel,
+					 const struct usbradioplus_config_update *updates,
+					 size_t update_count);
 int usbradioplus_processing_load(void);
 int usbradioplus_processing_prime(void);
 int usbradioplus_processing_unload(void);

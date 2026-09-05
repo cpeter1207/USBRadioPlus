@@ -43,17 +43,12 @@ def test_staged_install_manifest(tmp_path):
             + "/"
         )
     assert files == [
-        "etc/asterisk/usbradioplus-processing.conf",
         "etc/asterisk/usbradioplus.conf",
         f"usr/lib/{multiarch}asterisk/modules/chan_usbradioplus.so",
-        "usr/sbin/usbradioplus-processing-tune",
         "usr/sbin/usbradioplus-tune",
-        "usr/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
         "usr/share/doc/usbradioplus/usbradioplus.conf.sample",
-        "usr/share/man/man5/usbradioplus-processing.conf.5",
         "usr/share/man/man5/usbradioplus.conf.5",
         "usr/share/man/man7/usbradioplus.7",
-        "usr/share/man/man8/usbradioplus-processing-tune.8",
         "usr/share/man/man8/usbradioplus-tune.8",
     ]
     assert not list(stage.rglob("modules.conf"))
@@ -63,7 +58,7 @@ def test_staged_install_manifest(tmp_path):
 def test_install_preserves_existing_processing_configuration(tmp_path):
     stage = tmp_path / "stage"
     build = tmp_path / "build"
-    config = stage / "etc/asterisk/usbradioplus-processing.conf"
+    config = stage / "etc/asterisk/usbradioplus.conf"
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
     fixture = ROOT / "tests/fixtures/asterisk-dev"

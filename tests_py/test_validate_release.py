@@ -42,7 +42,7 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
         "service asterisk restart\n",
         encoding="utf-8",
     )
-    (tmp_path / "src/chan_usbradioplus.c").write_text("incomplete\n", encoding="utf-8")
+    (tmp_path / "src/usbradioplus_native_tick.c").write_text("incomplete\n", encoding="utf-8")
     (tmp_path / "examples/usbradioplus.conf.sample").write_text("incomplete\n", encoding="utf-8")
     patch = tmp_path / "patches/app_rpt-radioplus-duplex.patch"
     patch.parent.mkdir(exist_ok=True)
@@ -51,7 +51,6 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
     errors = VALIDATOR.validate(tmp_path)
     assert "missing artifact: README.md" in errors
     assert any("installer may alter runtime state" in error for error in errors)
-    assert any("module does not recognize legacy option" in error for error in errors)
     assert any("missing 'DUPLEX3_MODE_SOFTWARE'" in error for error in errors)
     assert "obsolete app_rpt duplex patch is still shipped" in errors
 

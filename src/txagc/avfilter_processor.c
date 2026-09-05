@@ -577,7 +577,7 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	AVFilterInOut *meter_input = NULL;
 	AVFilterInOut *meter_tail = NULL;
 	AVFilterInOut *cleanup_input;
-	AVFilterContext **cleanup_sinks[] = {
+	AVFilterContext **cleanup_sink_slots[] = {
 		&state->cleanup_pre_sink,	  &state->cleanup_pre_5_8_sink,
 		&state->cleanup_pre_8_plus_sink,  &state->cleanup_post_5_8_sink,
 		&state->cleanup_post_8_plus_sink,
@@ -615,13 +615,14 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	}
 	if (config->post_limiter_lowpass_enabled) {
 		for (size_t index = 0; index < 5; ++index) {
-			result = avfilter_graph_create_filter(cleanup_sinks[index], sink_filter,
+			AVFilterContext **sink_slot = cleanup_sink_slots[index];
+			result = avfilter_graph_create_filter(sink_slot, sink_filter,
 							      cleanup_filter_names[index], NULL,
 							      NULL, state->graph);
 			if (result < 0) {
 				goto fail;
 			}
-			set_double_sample_format(*cleanup_sinks[index]);
+			set_double_sample_format(*sink_slot);
 		}
 	}
 	result = avfilter_graph_create_filter(&state->sink, sink_filter, "sink", NULL, NULL,
@@ -665,7 +666,7 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 			meter_tail->next = cleanup_input;
 			meter_tail = cleanup_input;
 			cleanup_input->name = av_strdup(cleanup_pad_names[index]);
-			cleanup_input->filter_ctx = *cleanup_sinks[index];
+			cleanup_input->filter_ctx = *cleanup_sink_slots[index];
 			cleanup_input->pad_idx = 0;
 		}
 	}

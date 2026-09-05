@@ -2,6 +2,11 @@
 
 ## Automated evidence
 
+When arm64 tests run through instruction-set emulation, set
+`USBRADIOPLUS_TEST_BLOCK_LIMIT_MS` to the measured emulation allowance. This
+changes only the wall-clock assertion; every permutation and audio-result test
+still runs.
+
 - [x] Python release tests pass (35 tests, 2026-08-30).
 - [x] Static artifact validation passes (2026-08-30).
 - [x] C DSP tests compile and pass with `-Wall -Wextra -Werror` (7 binaries,
@@ -17,19 +22,19 @@
 - [x] Versioned source archive passes extracted-tree build, test, and staged-install checks.
 - [x] One-command node wrapper passes an extracted-tarball staged installation.
 
-## Compatibility evidence
+## Configuration evidence
 
-- [x] Every option in `tests/data/legacy-options.txt` is recognized (67 options).
-- [x] Every explicit legacy default initializer matches the baseline
-  chan_usbradio source; legacy fields without initializers remain zero-filled.
-- [x] Legacy integer filter selectors reproduce every XPMR table cutoff and
-  selector-zero fallback behavior.
-- [x] Exact-frequency and yes/no filter forms have positive and invalid-input tests.
+- [x] One `usbradioplus.conf` defines named radio channels and their hardware,
+  Asterisk, duplex, diagnostics, and processing settings.
+- [x] Flat sections provide shared defaults and scoped or explicitly referenced
+  profiles override them for each named channel.
+- [x] Unknown sections, options, profiles, values, and graph orders reject reload
+  without replacing the active configuration.
 - [x] RX, TX voice, auxiliary, CTCSS, squelch, configuration-save, and EEPROM
   command paths are covered; the mixer-A auxiliary setter defect is fixed.
-- [x] Missing RadioPlus-only settings leave all optional stages disabled.
-- [x] Native receive preserves `rxvoiceadj` scaling and `rxsquelchdelay`
-  timing while the native detector receives the undelayed pre-squelch copy.
+- [x] Missing optional processing settings leave their stages disabled.
+- [x] Native receive preserves configured squelch-delay timing while the native
+  detector receives the undelayed pre-squelch copy.
 - [x] The bundled XPMR directory and dependency are absent. USBRadioPlus owns
   COR, VOX, CTCSS decoding, measurements, and transmitter signaling state.
 - [x] Every allowed graph permutation executes in the declared order.

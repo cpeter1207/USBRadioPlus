@@ -3,7 +3,6 @@
 
 import argparse
 import fcntl
-import glob
 import math
 import os
 import pwd
@@ -14,18 +13,16 @@ import sys
 import tempfile
 from datetime import datetime
 
-CONFIG = "/etc/asterisk/usbradioplus-processing.conf"
-MAIN_CONFIG = "/etc/asterisk/usbradioplus.conf"
-LOCK = "/run/lock/usbradioplus-processing-tune.lock"
-RADIO_TUNE = "usbradioplus-tune"
+CONFIG = "/etc/asterisk/usbradioplus.conf"
+LOCK = "/run/lock/usbradioplus-tune.lock"
 NODE = None
 DEFAULT_CONFIG_CANDIDATES = (
-    "/usr/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
-    "/usr/local/share/doc/usbradioplus/usbradioplus-processing.conf.sample",
+    "/usr/share/doc/usbradioplus/usbradioplus.conf.sample",
+    "/usr/local/share/doc/usbradioplus/usbradioplus.conf.sample",
     os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "examples",
-        "usbradioplus-processing.conf.sample",
+        "usbradioplus.conf.sample",
     ),
 )
 
@@ -34,6 +31,7 @@ SOURCES = [
     ("link", "Linked audio"),
     ("voice_telemetry", "Voice + telemetry"),
 ]
+SOURCE_KEYS = {source for source, _label in SOURCES}
 
 HARDWARE_SETTINGS = {
     "hardware_input_gain_db": ("Hardware input gain", "gain"),
@@ -229,84 +227,6 @@ DIAGNOSTICS_SETTINGS = {
     "diagnostics_trace_level": ("Trace level", "integer"),
     "diagnostics_fever": ("Low-level diagnostic setting", "integer"),
 }
-
-LEGACY_OPTION_MAP = {
-    "hardware_input_gain_db": "rxmixerset",
-    "hardware_output_a_gain_db": "txmixaset",
-    "hardware_output_b_gain_db": "txmixbset",
-    "hardware_output_a_assignment": "txmixa",
-    "hardware_output_b_assignment": "txmixb",
-    "hardware_cos_assignment": "carrierfrom",
-    "hardware_rx_ctcss_frequencies": "rxctcssfreqs",
-    "hardware_tx_ctcss_frequencies": "txctcssfreqs",
-    "hardware_device_identifier": "devstr",
-    "hardware_serial": "serial",
-    "hardware_interface_type": "hdwtype",
-    "hardware_eeprom_enabled": "eeprom",
-    "hardware_audio_fragment_count": "frags",
-    "hardware_audio_queue_size": "queuesize",
-    "hardware_rx_cpu_saver_enabled": "rxcpusaver",
-    "hardware_tx_cpu_saver_enabled": "txcpusaver",
-    "hardware_rx_audio_source": "rxdemod",
-    "hardware_rx_ctcss_source": "ctcssfrom",
-    "hardware_vox_hang_ms": "voxhangtime",
-    "hardware_vox_threshold": "rxsqvox",
-    "hardware_noise_squelch_hysteresis": "rxsqhyst",
-    "hardware_noise_filter_type": "rxnoisefiltype",
-    "hardware_squelch_delay": "rxsquelchdelay",
-    "hardware_rx_on_delay_frames": "rxondelay",
-    "hardware_rx_polarity_inverted": "rxpolarity",
-    "hardware_squelch_level": "rxsquelchadj",
-    "hardware_rx_ctcss_level": "rxctcssadj",
-    "hardware_rx_ctcss_override_enabled": "rxctcssoverride",
-    "hardware_rx_ctcss_relax": "rxctcssrelax",
-    "hardware_tx_ctcss_default_hz": "txctcssdefault",
-    "hardware_tx_ctcss_level": "txctcssadj",
-    "hardware_ctcss_turnoff_mode": "txtoctype",
-    "hardware_dcs_rx_polarity_inverted": "dcsrxpolarity",
-    "hardware_dcs_tx_polarity_inverted": "dcstxpolarity",
-    "hardware_lsd_rx_polarity_inverted": "lsdrxpolarity",
-    "hardware_lsd_tx_polarity_inverted": "lsdtxpolarity",
-    "hardware_tx_preemphasis_limiter_enabled": "txprelim",
-    "hardware_tx_limiter_only_enabled": "txlimonly",
-    "hardware_tx_soft_limiter_setpoint": "txslimsp",
-    "hardware_tx_settle_ms": "txsettletime",
-    "hardware_tx_rx_blanking_ms": "txrxblankingtime",
-    "hardware_tx_off_delay_frames": "txoffdelay",
-    "hardware_tx_polarity_inverted": "txpolarity",
-    "hardware_ptt_inverted": "invertptt",
-    "hardware_rx_frequency_hz": "rxfreq",
-    "hardware_tx_frequency_hz": "txfreq",
-    "hardware_repeater_number": "rptnum",
-    "hardware_area": "area",
-    "hardware_user_key": "ukey",
-    "hardware_idle_interval": "idleinterval",
-    "hardware_turnoff_count": "turnoffs",
-    "hardware_voter_reporting": "sendvoter",
-    "hardware_clip_led_gpio": "clipledgpio",
-    "hardware_parallel_port_device": "pport",
-    "hardware_parallel_port_base_address": "pbase",
-    "hardware_emphasis_corner_hz": "emphasis_corner_hz",
-    "duplex_radio_mode": "duplex",
-    "duplex_local_repeat_level": "duplex3",
-    "duplex_local_repeat_mode": "duplex3mode",
-    "channel_enabled": "radioactive",
-    "diagnostics_trace_type": "tracetype",
-    "diagnostics_trace_level": "tracelevel",
-    "diagnostics_fever": "fever",
-    "asterisk_jitter_buffer_enabled": "jbenable",
-    "asterisk_jitter_buffer_max_size_ms": "jbmaxsize",
-    "asterisk_jitter_buffer_resync_threshold_ms": "jbresyncthreshold",
-    "asterisk_jitter_buffer_implementation": "jbimpl",
-    "asterisk_jitter_buffer_logging_enabled": "jblog",
-    "asterisk_jitter_buffer_force_enabled": "jbforce",
-    "asterisk_jitter_buffer_target_extra_ms": "jbtargetextra",
-    "asterisk_jitter_buffer_video_sync_enabled": "jbsyncvideo",
-}
-for _pin in range(1, 9):
-    LEGACY_OPTION_MAP[f"hardware_gpio_{_pin}_mode"] = f"gpio{_pin}"
-for _pin in (2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15):
-    LEGACY_OPTION_MAP[f"hardware_parallel_pin_{_pin}_assignment"] = f"pp{_pin}"
 
 MODERN_SECTION_SETTINGS = {
     "asterisk": ASTERISK_SETTINGS,
@@ -723,8 +643,7 @@ DEFAULTS = {
 }
 
 SOURCE_DEFAULTS = {
-    # An absent local mode inherits rxhpf; highpass is the effective legacy
-    # mode shown by the tuner without silently selecting notch filtering.
+    # High-pass is the built-in PL-removal mode unless a profile selects notch.
     "local": {
         "ctcss_filter_mode": "highpass",
         "receive_bandpass_enabled": "yes",
@@ -787,17 +706,10 @@ def run(args, check=False):
 
 
 def launch_radio_meter(mode):
-    """Run a continuous meter without exposing the legacy tuner's menu UI."""
-    command = [RADIO_TUNE, "--meter", mode]
-    if active_node():
-        command[1:1] = ["-n", active_node()]
-    try:
-        result = subprocess.run(command, check=False).returncode
-    except OSError as error:
-        dialog(["--msgbox", f"Unable to start {RADIO_TUNE}: {error}", "9", "70"])
-        return
-    if result:
-        dialog(["--msgbox", f"Radio meter exited with status {result}.", "8", "58"])
+    """Show the module's combined live signaling and audio meter."""
+    if mode != "all":
+        raise ValueError(f"unsupported meter mode: {mode}")
+    show_radio_result("COS, CTCSS, PTT, and audio levels", "A")
 
 
 def complete_configuration():
@@ -827,7 +739,7 @@ def read_config():
 
 
 def ensure_config():
-    """Install the shipped defaults when no processing file exists."""
+    """Install the shipped defaults when no configuration file exists."""
     if os.path.exists(CONFIG):
         return
     for candidate in DEFAULT_CONFIG_CANDIDATES:
@@ -841,7 +753,8 @@ def ensure_config():
     )
 
 
-def section_values(text, section):
+def raw_section_values(text, section):
+    """Return literal values from one Asterisk configuration section."""
     values, active = {}, False
     for line in text.splitlines():
         match = re.match(r"\s*\[([^]]+)\]", line)
@@ -854,60 +767,37 @@ def section_values(text, section):
     return values
 
 
-def _asterisk_config_lines(path, visited=None):
-    """Expand Asterisk include directives while retaining their file order."""
-    visited = set() if visited is None else visited
-    path = os.path.abspath(path)
-    if path in visited or not os.path.isfile(path):
-        return []
-    visited.add(path)
-    lines = []
-    with open(path, encoding="utf-8") as stream:
-        for line in stream:
-            include = re.match(r'\s*#(?:try)?include\s+["\']?([^"\'\s]+)', line)
-            if include:
-                pattern = include.group(1)
-                if not os.path.isabs(pattern):
-                    pattern = os.path.join(os.path.dirname(path), pattern)
-                for included in sorted(glob.glob(pattern)):
-                    lines.extend(_asterisk_config_lines(included, visited))
-            else:
-                lines.append(line)
-    return lines
+def configured_radios(text):
+    """Return bare section names, which are the configured radio channels."""
+    radios = []
+    shared = {"general", "asterisk", "hardware", "duplex", "diagnostics", *SOURCE_KEYS}
+    for line in text.splitlines():
+        match = re.match(r"\s*\[([^]]+)\]", line)
+        if match and " " not in match.group(1).strip() and match.group(1).strip() not in shared:
+            radios.append(match.group(1).strip())
+    return radios
 
 
-def parse_asterisk_channel_config(path, node):
-    """Resolve general, template, and channel values like an Asterisk config."""
-    sections, parents, current = {}, {}, None
-    for line in _asterisk_config_lines(path):
-        header = re.match(r"\s*\[([^]]+)\]\s*(?:\(([^)]*)\))?", line)
-        if header:
-            current = header.group(1).strip()
-            sections.setdefault(current, {})
-            inherited = [
-                item.strip()
-                for item in (header.group(2) or "").split(",")
-                if item.strip() and item.strip() != "!"
-            ]
-            if inherited:
-                parents[current] = inherited
-            continue
-        if current:
-            setting = re.match(r"\s*([A-Za-z0-9_]+)\s*=\s*([^;#]*?)\s*(?:[;#].*)?$", line)
-            if setting:
-                sections[current][setting.group(1).lower()] = setting.group(2).strip()
+def resolved_section(text, section):
+    """Resolve a logical settings group to the selected radio's profile."""
+    if section not in {"general", "asterisk", "hardware", "duplex", "diagnostics", *SOURCE_KEYS}:
+        return section
+    radios = configured_radios(text)
+    node = NODE or (radios[0] if radios else None)
+    if not node:
+        return section
+    if section == "general":
+        return node
+    reference = raw_section_values(text, node).get(f"{section}_profile", node)
+    scoped = f"{section} {reference}"
+    section_names = set(re.findall(r"(?m)^\s*\[([^]]+)\]", text))
+    return scoped if scoped in section_names else section
 
-    def resolved(section, stack=()):
-        if section in stack:
-            raise ValueError("circular Asterisk configuration inheritance")
-        values = {}
-        for parent in parents.get(section, []):
-            values.update(resolved(parent, stack + (section,)))
-        values.update(sections.get(section, {}))
-        return values
 
-    values = resolved("general")
-    values.update(resolved(str(node)))
+def section_values(text, section):
+    resolved = resolved_section(text, section)
+    values = raw_section_values(text, section) if resolved != section else {}
+    values.update(raw_section_values(text, resolved))
     return values
 
 
@@ -916,59 +806,6 @@ def active_node():
         return NODE
     match = re.search(r"\[([^]]+)\]", run(["asterisk", "-rx", "radioplus active"]))
     return match.group(1) if match else None
-
-
-def modern_fallback_value(key, value):
-    """Translate a configured chan_usbradio spelling and scale to RadioPlus."""
-    value = value.strip()
-    if key in {"hardware_input_gain_db", "hardware_output_a_gain_db", "hardware_output_b_gain_db"}:
-        mixer = max(0.0, float(value))
-        gain = 20.0 * math.log10(max(0.000001, mixer / 500.0))
-        return f"{max(-30.0, min(30.0, gain)):.6g}"
-    if key in {"hardware_output_a_assignment", "hardware_output_b_assignment"}:
-        return {"no": "off", "tone": "ctcss", "composite": "voice_ctcss"}.get(
-            value.lower(), value.lower()
-        )
-    settings = next((group for group in MODERN_SECTION_SETTINGS.values() if key in group), {})
-    kind = settings.get(key, (None, None))[1]
-    if kind == "bool":
-        if value.lower() in {"yes", "true", "y", "t", "1", "on"}:
-            return "yes"
-        if value.lower() in {"no", "false", "n", "f", "0", "off"}:
-            return "no"
-    if kind in {
-        "assignment",
-        "cos",
-        "rx_audio_source",
-        "rx_ctcss_source",
-        "ctcss_turnoff",
-        "duplex_mode",
-        "jitter_impl",
-        "gpio_mode",
-        "parallel_output",
-        "parallel_input",
-    }:
-        lowered = value.lower()
-        if kind in {"gpio_mode", "parallel_output"} and lowered == "out":
-            return "out0"
-        return lowered
-    return value
-
-
-def legacy_fallback_values(path=None, node=None):
-    path = MAIN_CONFIG if path is None else path
-    node = active_node() if node is None else node
-    if not node or not os.path.isfile(path):
-        return {}
-    legacy = parse_asterisk_channel_config(path, node)
-    values = {}
-    for modern, old in LEGACY_OPTION_MAP.items():
-        if old in legacy:
-            try:
-                values[modern] = modern_fallback_value(modern, legacy[old])
-            except ValueError:
-                continue
-    return values
 
 
 def shipped_modern_defaults():
@@ -982,7 +819,13 @@ def shipped_modern_defaults():
             for line in stream:
                 header = re.match(r"\s*\[([^]]+)\]", line)
                 if header:
-                    section = header.group(1).strip()
+                    section_name = header.group(1).strip()
+                    if section_name in MODERN_SECTION_SETTINGS:
+                        section = section_name
+                    elif " " in section_name:
+                        section = section_name.split(" ", 1)[0]
+                    else:
+                        section = "general"
                     continue
                 if section not in MODERN_SECTION_SETTINGS:
                     continue
@@ -997,20 +840,8 @@ def shipped_modern_defaults():
     )
 
 
-def materialize_legacy_fallbacks(text, fallbacks=None):
-    """Persist configured legacy values under their modern section names."""
-    fallbacks = legacy_fallback_values() if fallbacks is None else fallbacks
-    updated = text
-    for section, settings in MODERN_SECTION_SETTINGS.items():
-        present = section_values(updated, section)
-        for key in settings:
-            if key not in present and key in fallbacks:
-                updated = replace_value(updated, section, key, fallbacks[key])
-                present[key] = fallbacks[key]
-    return updated
-
-
 def replace_value(text, section, key, value):
+    section = resolved_section(text, section)
     lines, active, found = text.splitlines(keepends=True), False, False
     for index, line in enumerate(lines):
         match = re.match(r"\s*\[([^]]+)\]", line)
@@ -1032,7 +863,7 @@ def replace_value(text, section, key, value):
                 found = True
                 break
     if not found:
-        if section in {"general", "asterisk", "hardware", "duplex", "diagnostics"}:
+        if " " in section or section in MODERN_SECTION_SETTINGS:
             if lines and not lines[-1].endswith("\n"):
                 lines[-1] += "\n"
             lines.extend([f"\n[{section}]\n", f"{key} = {value}\n"])
@@ -1044,7 +875,7 @@ def replace_value(text, section, key, value):
 def atomic_write(text):
     directory = os.path.dirname(CONFIG)
     original = os.stat(CONFIG)
-    fd, path = tempfile.mkstemp(prefix=".usbradioplus-processing.", dir=directory, text=True)
+    fd, path = tempfile.mkstemp(prefix=".usbradioplus.", dir=directory, text=True)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             stream.write(text)
@@ -1233,7 +1064,7 @@ def display_value(kind, value):
 
 def edit_setting(source, key):
     text = read_config()
-    writable = materialize_legacy_fallbacks(text)
+    writable = text
     values = section_values(text, source)
     label, kind, low, high, units, _group = SETTINGS[key]
     current = values.get(key, default_value(source, key))
@@ -1263,7 +1094,7 @@ def edit_setting(source, key):
 def edit_text_setting(source, key):
     """Edit the processing-stage order through the common text dialog."""
     text = read_config()
-    writable = materialize_legacy_fallbacks(text)
+    writable = text
     values = section_values(text, source)
     label = SETTINGS[key][0]
     current = values.get(key, default_value(source, key))
@@ -1550,6 +1381,28 @@ def swap_radio_device():
     dialog(["--msgbox", output or "USB-device assignments swapped.", "8", "72"])
 
 
+def select_radio_channel():
+    """Select the named radio whose profiles and live controls are edited."""
+    global NODE
+    names = configured_radios(read_config())
+    if not names:
+        dialog(["--msgbox", "No named radio channels are configured.", "8", "58"])
+        return
+    current = NODE or active_node() or names[0]
+    code, selected = prompt_choice(
+        "Radio channel",
+        current if current in names else names[0],
+        tuple((name, f"RadioPlus/{name}") for name in names),
+    )
+    if code:
+        return
+    output = run(["asterisk", "-rx", f"radioplus active {selected}"])
+    if "set to" not in output.lower():
+        dialog(["--msgbox", output.strip() or f"Unable to select {selected}.", "9", "70"])
+        return
+    NODE = selected
+
+
 def toggle_echo_mode():
     try:
         enabled = bool(radio_state()["echo"])
@@ -1562,17 +1415,16 @@ def toggle_echo_mode():
 
 
 def section_options_menu(section, settings, title, actions=()):
-    """Edit non-graph channel settings while preserving main-file fallbacks."""
+    """Edit one settings profile using concrete shipped defaults."""
     keys = list(settings)
     selected = "1"
     while True:
         values = section_values(read_config(), section)
-        fallbacks = legacy_fallback_values()
         defaults = shipped_modern_defaults()
         items = []
         for index, key in enumerate(keys, 1):
             label, kind = settings[key]
-            current = values.get(key, fallbacks.get(key, defaults[key]))
+            current = values.get(key, defaults[key])
             items += [str(index), f"{label}: {display_value(kind, current)}"]
         for tag, label, _callback in actions:
             items += [tag, label]
@@ -1602,8 +1454,8 @@ def section_options_menu(section, settings, title, actions=()):
         key = keys[int(choice) - 1]
         label, kind = settings[key]
         old_text = read_config()
-        writable = materialize_legacy_fallbacks(old_text, fallbacks)
-        current = values.get(key, fallbacks.get(key, defaults[key]))
+        writable = old_text
+        current = values.get(key, defaults[key])
         if kind == "bool":
             code, entered = prompt_boolean(label, current)
         elif kind in CHOICES:
@@ -1743,11 +1595,11 @@ def hardware_menu():
 
 def interactive():
     if os.geteuid() != 0:
-        sys.exit("Run this menu with sudo: sudo usbradioplus-processing-tune")
+        sys.exit("Run this menu with sudo: sudo usbradioplus-tune")
     if not shutil.which("whiptail"):
         sys.exit("whiptail is required")
     if not sys.stdin.isatty() or not sys.stdout.isatty() or not sys.stderr.isatty():
-        sys.exit("usbradioplus-processing-tune requires an interactive terminal.")
+        sys.exit("usbradioplus-tune requires an interactive terminal.")
     if os.environ.get("TERM", "").lower() in ("", "dumb", "unknown"):
         sys.exit(
             "The terminal type is not usable for a menu (TERM is unset or dumb). "
@@ -1793,6 +1645,8 @@ def interactive():
                     "General channel settings",
                     "8",
                     "Diagnostics",
+                    "C",
+                    "Select active radio channel",
                     "S",
                     "Show complete active configuration",
                     "W",
@@ -1851,6 +1705,8 @@ def interactive():
                 section_options_menu("general", GENERAL_SETTINGS, "General channel settings")
             elif choice == "8":
                 section_options_menu("diagnostics", DIAGNOSTICS_SETTINGS, "Diagnostics")
+            elif choice.upper() == "C":
+                select_radio_channel()
             elif choice.upper() == "S":
                 dialog(
                     [
@@ -1936,16 +1792,20 @@ def main():
         missing = (
             []
             if args.offline
-            else [name for name in ("whiptail", "asterisk", RADIO_TUNE) if not shutil.which(name)]
+            else [name for name in ("whiptail", "asterisk") if not shutil.which(name)]
         )
         if missing:
             sys.exit("Missing: " + ", ".join(missing))
         text = read_config()
         section_names = set(re.findall(r"(?m)^\s*\[([^]]+)\]", text))
-        absent = [section for section, _label in SOURCES if section not in section_names]
+        absent = [
+            section
+            for section, _label in SOURCES
+            if resolved_section(text, section) not in section_names
+        ]
         if absent:
             sys.exit("Missing configuration sections: " + ", ".join(absent))
-        print("usbradioplus-processing-tune: configuration and prerequisites are valid")
+        print("usbradioplus-tune: configuration and prerequisites are valid")
         return
     if NODE:
         output = run(["asterisk", "-rx", f"radioplus active {NODE}"])

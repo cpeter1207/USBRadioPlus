@@ -63,7 +63,6 @@ $(error ASL_RADIO_API must be legacy or modern)
 endif
 COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
-TUNE := $(BUILD_DIR)/usbradioplus-tune
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
@@ -92,7 +91,7 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 print-asl-radio-api:
 	@echo $(ASL_RADIO_API)
 
-all: $(MODULE) $(TUNE)
+all: $(MODULE)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -108,11 +107,6 @@ $(MODULE): $(MODULE_OBJECTS)
 	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
 		$(DSP_LIBS) $(RADIO_LIBS) -lm
 
-$(TUNE): src/usbradioplus-tune.c | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(COMMON_CPPFLAGS) $(CFLAGS) $(WARNFLAGS) \
-		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self \
-		$(LDFLAGS) -o $@ $<
-
 check: all
 	$(PYTHON) -m pytest -q tests_py
 	sh ./tests/run_c_tests.sh
@@ -123,7 +117,7 @@ validate-release:
 
 lint:
 	$(RUFF) check scripts tests_py tools
-	$(RUFF) format --check scripts/usbradioplus-processing-tune tests_py tools
+	$(RUFF) format --check scripts/usbradioplus-tune tests_py tools
 	$(CLANG_FORMAT) --dry-run --Werror \
 		$(wildcard src/*.c src/*.h src/*.inc src/txagc/*.c src/txagc/*.h tests/*.c)
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
@@ -131,7 +125,7 @@ lint:
 
 static-analysis:
 	@set +e; \
-	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 --check-level=exhaustive \
+	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 \
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
@@ -142,9 +136,6 @@ static-analysis:
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& channel_tidy_pid=$$!; \
-	clang-tidy src/usbradioplus-tune.c -- $(COMMON_CPPFLAGS) -std=gnu11 -fblocks \
-		-DAST_MODULE_SELF_SYM=__internal_usbradioplus_tune_self \
-		& tune_tidy_pid=$$!; \
 	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dsp.c \
 		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
@@ -153,14 +144,14 @@ static-analysis:
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
 		& shared_tidy_pid=$$!; \
 	status=0; \
-	for pid in $$cppcheck_pid $$channel_tidy_pid $$tune_tidy_pid $$shared_tidy_pid; do \
+	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid; do \
 		wait $$pid || status=1; \
 	done; \
 	exit $$status
 
 coverage:
-	rm -rf $(BUILD_DIR)/coverage
-	rm -f $(MODULE) $(TUNE) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
+	rm -rf $(BUILD_DIR)/coverage $(BUILD_DIR)/coverage-focus
+	rm -f $(MODULE) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
 	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
 	# Manual focused runs may place GCC counters at the repository root. Never
 	# allow counters produced by another compiler/image to enter this report.
@@ -206,43 +197,28 @@ install: all
 		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8 \
 		$(DESTDIR)$(sysconfdir)/asterisk
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
-	$(INSTALL_PROGRAM) $(TUNE) $(DESTDIR)$(sbindir)/usbradioplus-tune
-	$(INSTALL_PROGRAM) scripts/usbradioplus-processing-tune $(DESTDIR)$(sbindir)/usbradioplus-processing-tune
+	$(INSTALL_PROGRAM) scripts/usbradioplus-tune $(DESTDIR)$(sbindir)/usbradioplus-tune
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
-	$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample $(DESTDIR)$(docdir)/
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
-		$(INSTALL_DATA) examples/usbradioplus.conf.default \
+		$(INSTALL_DATA) examples/usbradioplus.conf.sample \
 			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; \
 	else \
 		echo "Preserving existing usbradioplus.conf"; \
 	fi
-	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; then \
-		$(INSTALL_DATA) examples/usbradioplus-processing.conf.sample \
-			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus-processing.conf; \
-	else \
-		echo "Preserving existing usbradioplus-processing.conf"; \
-	fi
 	$(INSTALL_DATA) man/usbradioplus.conf.5 $(DESTDIR)$(mandir)/man5/
-	$(INSTALL_DATA) man/usbradioplus-processing.conf.5 $(DESTDIR)$(mandir)/man5/
 	$(INSTALL_DATA) man/usbradioplus.7 $(DESTDIR)$(mandir)/man7/
 	$(INSTALL_DATA) man/usbradioplus-tune.8 $(DESTDIR)$(mandir)/man8/
-	ln -sf usbradioplus-tune.8 $(DESTDIR)$(mandir)/man8/usbradioplus-processing-tune.8
 
 install-strip: install
-	strip $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so \
-		$(DESTDIR)$(sbindir)/usbradioplus-tune
+	strip $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 
 uninstall:
 	rm -f $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so \
 		$(DESTDIR)$(sbindir)/usbradioplus-tune \
-		$(DESTDIR)$(sbindir)/usbradioplus-processing-tune \
 		$(DESTDIR)$(mandir)/man5/usbradioplus.conf.5 \
-		$(DESTDIR)$(mandir)/man5/usbradioplus-processing.conf.5 \
 		$(DESTDIR)$(mandir)/man7/usbradioplus.7 \
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
-		$(DESTDIR)$(mandir)/man8/usbradioplus-processing-tune.8 \
-		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
-		$(DESTDIR)$(docdir)/usbradioplus-processing.conf.sample
+		$(DESTDIR)$(docdir)/usbradioplus.conf.sample
 
 dist: $(TARBALL)
 

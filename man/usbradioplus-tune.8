@@ -4,18 +4,16 @@ usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
 .SH SYNOPSIS
 .B usbradioplus-tune
 .br
-.B usbradioplus-processing-tune
+.B usbradioplus-tune
 [-n node] [--check] [--offline] [--config path] [--lock path]
 .SH DESCRIPTION
-These utilities configure USBRadioPlus from a keyboard-operated terminal.
-Run them as root on the Asterisk node. Changes made by the interactive menus
-take effect immediately; use the explicit save command to retain radio tuning
-values after a restart.
+This utility configures USBRadioPlus from a keyboard-operated terminal.
+Run it as root on the Asterisk node. Processing edits are written and applied
+immediately. Live calibration values are retained by the explicit save action.
 .PP
 Menu buttons use consistent action names. Select opens the highlighted item,
 Apply commits an edit, Back returns one menu level, Exit leaves the utility,
 Cancel abandons an edit, and Close dismisses information without changing it.
-.SH USBRADIOPLUS-TUNE
 The main menu operates on the active RadioPlus device. It provides:
 .TP
 .B Select active USB device
@@ -64,9 +62,9 @@ calibrated signal.
 .B Echo mode
 Record a received transmission and return it to the transmitter for alignment.
 With software duplex-3 local repeat active, echo uses the native 48 kHz receive
-and transmit path. Otherwise it retains the 8 kHz Asterisk-path playback used
-by chan_usbradio. Keying, maximum duration, and start and stop behavior are the
-same for both paths. Disable echo when the test is complete.
+and transmit path. Otherwise it uses the 8 kHz Asterisk-path playback. Keying,
+maximum duration, and start and stop behavior are the same for both paths.
+Disable echo when the test is complete.
 .TP
 .B Flash transmitter
 Send three one-second PTT and 1 kHz tone bursts separated by 1.5 seconds.
@@ -74,22 +72,20 @@ Send three one-second PTT and 1 kHz tone bursts separated by 1.5 seconds.
 .B Carrier and CTCSS source
 Select the COS and tone indication sources supported by usbradioplus.conf(5).
 .TP
-.B Options
-Set RX boost, TX boost, RX demodulation, RX-on and TX-off delays, transmit
-pre-limiting, limiting-only operation, and USB output A and B routing.
+.B Hardware and processing options
+Set receiver audio source, RX-on and TX-off delays, transmit pre-emphasis and
+limiting selections, and USB output A and B routing.
 It also sets the transmit soft-limiter onset from 5000 through 13000, the
 duplex-3 repeat level from 0 through 999, and whether duplex-3 repeat audio uses
 the CM119 hardware mixer or the native software path.
 .TP
 .B Configure audio processing
-Open
-.BR usbradioplus-processing-tune .
-Its Stages menu enables or disables the equalizer and de-esser and edits their
+The source-chain menus enable or disable the equalizer and de-esser and edit their
 positions in the processing order. The Equalizer menu edits the low shelf,
 mid-band bell, and high shelf. The De-esser menu edits its center frequency,
 bandwidth, threshold, ratio, maximum reduction, attack, and release.
 See
-.BR usbradioplus-processing.conf (5)
+.BR usbradioplus.conf (5)
 for option definitions and ranges.
 On return, the radio tuning menu refreshes its displayed values.
 .TP
@@ -106,15 +102,14 @@ the transmitter is idle.
 Write device selection, signal sources, mixer and radio levels, squelch,
 delays, boosts, transmitter processing selections, and limiter setpoint to
 usbradioplus.conf. EEPROM values are also written when EEPROM storage is enabled.
-.SH USBRADIOPLUS-PROCESSING-TUNE
+.SH CONFIGURATION MENUS
 The processing menu selects local receiver, linked audio, or voice and telemetry.
-If its configuration file is absent, it installs a copy of the shipped default
-before opening. The Radio calibration and continuous meters entry opens the
-canonical radio-tuning menu. It therefore provides the same device selection
-and swapping, automatic RX calibration, live RX level adjustment, CTCSS
-calibration, service-monitor transmit adjustment, auxiliary-output adjustment,
-test-tone keying, transmitter flash, echo control, and one continuous combined
-RX, TX, COS, CTCSS, and PTT display without duplicating its implementation.
+If the configuration file is absent, the utility installs a copy of the shipped
+default before opening. Hardware menus provide device selection and swapping,
+automatic RX calibration, live RX level adjustment, CTCSS calibration,
+service-monitor transmit adjustment, auxiliary-output adjustment, test-tone
+keying, transmitter flash, echo control, and one continuous combined RX, TX,
+COS, CTCSS, and PTT display.
 Only controls applicable to the selected source are shown. Stage toggles use
 single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
 pages validate both the documented range and dependent relationships such as a
@@ -146,7 +141,7 @@ With --check, do not require Asterisk or the terminal menu package. This is
 intended for installation and package tests.
 .TP
 .B --config path
-Use another processing configuration for --check.
+Use another USBRadioPlus configuration file.
 .TP
 .B --lock path
 Use another menu lock file.
@@ -164,16 +159,12 @@ after restarting Asterisk.
 .SH FILES
 .TP
 .B /etc/asterisk/usbradioplus.conf
-Radio-interface and saved tuning values.
+Named radio channels, hardware settings, saved tuning, and processing graphs.
 .TP
-.B /etc/asterisk/usbradioplus-processing.conf
-Optional processing graphs.
-.TP
-.B /run/lock/usbradioplus-processing-tune.lock
+.B /run/lock/usbradioplus-tune.lock
 Processing-menu single-instance lock.
 .SH SEE ALSO
 .BR usbradioplus (7),
 .BR usbradioplus.conf (5),
-.BR usbradioplus-processing.conf (5),
 .BR modules.conf (5),
 .BR rpt.conf (5)

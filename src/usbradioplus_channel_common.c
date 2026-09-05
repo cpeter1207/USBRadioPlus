@@ -223,81 +223,6 @@ void kickptt(const struct chan_usbradio_pvt *o)
 	}
 }
 
-int load_tune_config(struct chan_usbradio_pvt *o, const struct ast_config *cfg, int reload)
-{
-	struct ast_variable *v;
-	struct ast_config *cfg2;
-	int opened = 0;
-	int configured = 0;
-	char devstr[sizeof(o->devstr)];
-	char serial[sizeof(o->serial)];
-
-	/* No load defaults */
-	o->rxmixerset = 500;
-	o->txmixaset = 500;
-	o->txmixbset = 500;
-	o->legacy_rxvoiceadj = 0.5;
-	o->legacy_rxvoiceadj_configured = 0;
-	o->rxctcssadj = 1.0;
-	o->txctcssadj = 200;
-	o->rxsquelchadj = 500;
-	o->txslimsp = DEFAULT_TX_SOFT_LIMITER_SETPOINT;
-
-	devstr[0] = '\0';
-	serial[0] = '\0';
-	if (!reload) {
-		o->devstr[0] = 0;
-		o->serial[0] = 0;
-	}
-
-	if (!cfg) {
-		struct ast_flags zeroflag = {0};
-		cfg2 = ast_config_load(CONFIG, zeroflag);
-		if (!cfg2) {
-			ast_log(LOG_WARNING,
-				"Can't %sload settings for %s, using default parameters\n",
-				reload ? "re" : "", o->name);
-			return -1;
-		}
-		opened = 1;
-		cfg = cfg2;
-	}
-
-	for (v = ast_variable_browse(cfg, o->name); v; v = v->next) {
-		configured = 1;
-		CV_START(v->name, v->value);
-		CV_UINT("rxmixerset", o->rxmixerset);
-		CV_UINT("txmixaset", o->txmixaset);
-		CV_UINT("txmixbset", o->txmixbset);
-		CV_F("rxvoiceadj", store_rxvoiceadj(o, v->value));
-		CV_F("rxctcssadj", sscanf(v->value, N_FMT(f), &o->rxctcssadj));
-		CV_UINT("txctcssadj", o->txctcssadj);
-		CV_UINT("rxsquelchadj", o->rxsquelchadj);
-		CV_UINT("txslimsp", o->txslimsp);
-		CV_UINT("fever", o->fever);
-		CV_STR("devstr", devstr);
-		CV_STR("serial", serial);
-		CV_END;
-	}
-	if (!reload) {
-		/* Using the ternary operator in CV_STR won't work, due to butchering the sizeof, so
-		 * copy after if needed */
-		ast_copy_string(o->devstr, devstr, sizeof(o->devstr));
-		ast_copy_string(o->serial, serial, sizeof(o->serial));
-	}
-	if (opened) {
-		ast_config_destroy(cfg2);
-	}
-	if (!configured) {
-		ast_log(LOG_WARNING,
-			"Can't %sload settings for %s (no section available), using default "
-			"parameters\n",
-			reload ? "re" : "", o->name);
-		return -1;
-	}
-	return 0;
-}
-
 int usbradio_digit_begin(struct ast_channel *c, char digit)
 {
 	(void)c;
@@ -334,15 +259,6 @@ void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *sample
 		o->plus_link_queue_overflows++;
 	}
 	ast_mutex_unlock(&o->plus_link_lock);
-}
-
-int usbradioplus_program_pending(struct chan_usbradio_pvt *o)
-{
-	int pending;
-	ast_mutex_lock(&o->plus_link_lock);
-	pending = urp_program_queue_pending(&o->plus_program_queue);
-	ast_mutex_unlock(&o->plus_link_lock);
-	return pending || o->plus_native_fifo.count != 0;
 }
 
 int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newchan)
@@ -768,12 +684,12 @@ int radio_tune(int fd, int argc, const char *const *argv)
 
 		ast_cli(fd, "Requesting loading of tuning settings from EEPROM for channel %s\n",
 			o->name);
-	} else if (!strcasecmp(argv[2], "txslimsp")) {
+	} else if (!strcasecmp(argv[2], "hardware_tx_soft_limiter_setpoint")) {
 		if (argc == 3) {
 			ast_cli(fd, "Current tx limiter setpoint: %i\n", (int)o->txslimsp);
 		} else {
 			int new_slsetpoint = atoi(argv[3]);
-			if (legacy_set_tx_soft_limiter(o, new_slsetpoint)) {
+			if (validate_tx_soft_limiter_setpoint(o, new_slsetpoint)) {
 				ast_cli(fd, "Limiter set point out of range, needs to be between "
 					    "5000 and 13000\n");
 				return RESULT_SHOWUSAGE;
@@ -806,7 +722,7 @@ int set_txctcss_level(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-int legacy_set_tx_soft_limiter(struct chan_usbradio_pvt *o, int setpoint)
+int validate_tx_soft_limiter_setpoint(struct chan_usbradio_pvt *o, int setpoint)
 {
 	(void)o;
 	return setpoint < 5000 || setpoint > 13000 ? -1 : 0;
@@ -838,33 +754,6 @@ void store_rxdemod(struct chan_usbradio_pvt *o, const char *s)
 		o->rxdemod = (enum radio_rx_audio)mode;
 }
 
-void store_txmixa(struct chan_usbradio_pvt *o, const char *s)
-{
-	enum urp_tx_output_mode mode;
-	if (urp_parse_tx_output_mode(s, &mode))
-		ast_log(LOG_WARNING, "Unrecognized txmixa parameter: %s\n", s);
-	else
-		o->txmixa = (enum radio_tx_mix)mode;
-}
-
-void store_txmixb(struct chan_usbradio_pvt *o, const char *s)
-{
-	enum urp_tx_output_mode mode;
-	if (urp_parse_tx_output_mode(s, &mode))
-		ast_log(LOG_WARNING, "Unrecognized txmixb parameter: %s\n", s);
-	else
-		o->txmixb = (enum radio_tx_mix)mode;
-}
-
-void store_rxcdtype(struct chan_usbradio_pvt *o, const char *s)
-{
-	enum urp_carrier_source source;
-	if (urp_parse_carrier_source(s, &source))
-		ast_log(LOG_WARNING, "Unrecognized rxcdtype parameter: %s\n", s);
-	else
-		o->rxcdtype = (enum radio_carrier_detect)source;
-}
-
 void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
 {
 	enum urp_ctcss_source source;
@@ -874,24 +763,14 @@ void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
 		o->rxsdtype = (enum radio_squelch_detect)source;
 }
 
-void store_rxvoiceadj(struct chan_usbradio_pvt *o, const char *s)
-{
-	float f;
-	sscanf(s, N_FMT(f), &f);
-	o->legacy_rxvoiceadj = f;
-	o->legacy_rxvoiceadj_configured = 1;
-}
-
 double effective_rx_input_gain_db(const struct chan_usbradio_pvt *o)
 {
 	struct txagc_chain chain;
-	usbradioplus_processing_get_local(&chain);
-	if (chain.input_gain_configured)
-		return chain.agc.input_gain_db;
-	return 20.0 * log10(fmax(0.000001, 2.0 * o->legacy_rxvoiceadj));
+	usbradioplus_processing_get_local(o->name, &chain);
+	return chain.agc.input_gain_db;
 }
 
-float effective_legacy_rxvoiceadj(const struct chan_usbradio_pvt *o)
+float effective_rx_decoder_gain(const struct chan_usbradio_pvt *o)
 {
 	return (float)(pow(10.0, effective_rx_input_gain_db(o) / 20.0) / 2.0);
 }
@@ -899,52 +778,43 @@ float effective_legacy_rxvoiceadj(const struct chan_usbradio_pvt *o)
 int effective_rxmixerset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(&hardware);
-	return hardware.input_gain_configured ? urp_gain_db_to_mixer(hardware.input_gain_db)
-					      : o->rxmixerset;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	return urp_gain_db_to_mixer(hardware.input_gain_db);
 }
 
 int effective_txmixaset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(&hardware);
-	return hardware.output_a_gain_configured ? urp_gain_db_to_mixer(hardware.output_a_gain_db)
-						 : o->txmixaset;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	return urp_gain_db_to_mixer(hardware.output_a_gain_db);
 }
 
 int effective_txmixbset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(&hardware);
-	return hardware.output_b_gain_configured ? urp_gain_db_to_mixer(hardware.output_b_gain_db)
-						 : o->txmixbset;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	return urp_gain_db_to_mixer(hardware.output_b_gain_db);
 }
 
 enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(&hardware);
-	return hardware.output_a_assignment_configured
-		       ? (enum radio_tx_mix)hardware.output_a_assignment
-		       : o->txmixa;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	return (enum radio_tx_mix)hardware.output_a_assignment;
 }
 
 enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(&hardware);
-	return hardware.output_b_assignment_configured
-		       ? (enum radio_tx_mix)hardware.output_b_assignment
-		       : o->txmixb;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	return (enum radio_tx_mix)hardware.output_b_assignment;
 }
 
 enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
 	const char *value;
-	usbradioplus_processing_get_hardware(&hardware);
-	if (!hardware.cos_assignment_configured)
-		return o->rxcdtype;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
 	value = hardware.cos_assignment;
 	if (!strcasecmp(value, "usb"))
 		return CD_HID;
@@ -964,15 +834,13 @@ enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
 void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	const char *rx_frequencies = o->rxctcssfreqs;
-	const char *tx_frequencies = o->txctcssfreqs;
+	const char *rx_frequencies;
+	const char *tx_frequencies;
 	int rx = effective_rxmixerset(o), a = effective_txmixaset(o), b = effective_txmixbset(o);
 	int route_a = effective_txmixa(o), route_b = effective_txmixb(o);
-	usbradioplus_processing_get_hardware(&hardware);
-	if (hardware.rx_ctcss_frequencies_configured)
-		rx_frequencies = hardware.rx_ctcss_frequencies;
-	if (hardware.tx_ctcss_frequencies_configured)
-		tx_frequencies = hardware.tx_ctcss_frequencies;
+	usbradioplus_processing_get_hardware(o->name, &hardware);
+	rx_frequencies = hardware.rx_ctcss_frequencies;
+	tx_frequencies = hardware.tx_ctcss_frequencies;
 	o->radio->rxCdType = effective_rxcdtype(o);
 	if (!o->remoted && (strcmp(rx_frequencies, o->plus_applied_rxctcssfreqs) ||
 			    strcmp(tx_frequencies, o->plus_applied_txctcssfreqs))) {
@@ -1354,8 +1222,8 @@ void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag)
 		ast_cli(fd, "ERROR: RX VOICE GAIN ADJUST FAILED.\n");
 	} else {
 		ast_cli(fd, "INFO: RX VOICE GAIN ADJUST SUCCESS.\n");
-		usbradioplus_processing_set_local_input_gain(20.0 *
-							     log10(fmax(0.000001, 2.0 * setting)));
+		usbradioplus_processing_set_local_input_gain(
+			o->name, 20.0 * log10(fmax(0.000001, 2.0 * setting)));
 	}
 	o->radio->b.tuning = 0;
 }
@@ -1444,12 +1312,13 @@ void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 void mult_set(struct chan_usbradio_pvt *o)
 {
 	o->radio->txOutputGainA =
-		urp_legacy_multiplier((effective_txmixaset(o) * 152) / AUDIO_ADJUSTMENT);
-	/* Preserve the legacy rule: matching routes use channel A gain. */
+		urp_hardware_level_multiplier((effective_txmixaset(o) * 152) / AUDIO_ADJUSTMENT);
+	/* Matching output routes share channel A's gain to keep both DAC legs equal. */
 	o->radio->txOutputGainB =
 		effective_txmixa(o) == effective_txmixb(o)
 			? o->radio->txOutputGainA
-			: urp_legacy_multiplier((effective_txmixbset(o) * 152) / AUDIO_ADJUSTMENT);
+			: urp_hardware_level_multiplier((effective_txmixbset(o) * 152) /
+							AUDIO_ADJUSTMENT);
 }
 
 void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
@@ -1510,19 +1379,13 @@ int radio_config(struct chan_usbradio_pvt *o)
 		struct usbradioplus_hardware_settings hardware;
 
 		o->radio->pTxCodeDefault = o->txctcssdefault;
-		usbradioplus_processing_get_hardware(&hardware);
-		if (hardware.rx_ctcss_frequencies_configured) {
-			ast_copy_string(o->plus_applied_rxctcssfreqs, hardware.rx_ctcss_frequencies,
-					sizeof(o->plus_applied_rxctcssfreqs));
-			o->radio->pRxCodeSrc = o->plus_applied_rxctcssfreqs;
-		} else
-			o->radio->pRxCodeSrc = o->rxctcssfreqs;
-		if (hardware.tx_ctcss_frequencies_configured) {
-			ast_copy_string(o->plus_applied_txctcssfreqs, hardware.tx_ctcss_frequencies,
-					sizeof(o->plus_applied_txctcssfreqs));
-			o->radio->pTxCodeSrc = o->plus_applied_txctcssfreqs;
-		} else
-			o->radio->pTxCodeSrc = o->txctcssfreqs;
+		usbradioplus_processing_get_hardware(o->name, &hardware);
+		ast_copy_string(o->plus_applied_rxctcssfreqs, hardware.rx_ctcss_frequencies,
+				sizeof(o->plus_applied_rxctcssfreqs));
+		o->radio->pRxCodeSrc = o->plus_applied_rxctcssfreqs;
+		ast_copy_string(o->plus_applied_txctcssfreqs, hardware.tx_ctcss_frequencies,
+				sizeof(o->plus_applied_txctcssfreqs));
+		o->radio->pTxCodeSrc = o->plus_applied_txctcssfreqs;
 	}
 
 	if (o->forcetxcode) {
@@ -1537,58 +1400,32 @@ int radio_config(struct chan_usbradio_pvt *o)
 	return 0;
 }
 
-int store_cutoff(struct chan_usbradio_pvt *o, const char *name, const char *text)
-{
-	int *legacy = NULL, *enabled = NULL, *exact = NULL;
-	double *frequency = NULL;
-	double defaults = 0.0;
-	struct urp_cutoff_setting setting;
-
-#define SELECT_CUTOFF(field, hz)                                                                   \
-	do {                                                                                       \
-		legacy = &o->field;                                                                \
-		enabled = &o->plus_##field##_enabled;                                              \
-		exact = &o->plus_##field##_exact;                                                  \
-		frequency = &o->plus_##field##_hz;                                                 \
-		defaults = (hz);                                                                   \
-	} while (0)
-	if (!strcasecmp(name, "rxlpf"))
-		SELECT_CUTOFF(rxlpf, 3000.0);
-	else if (!strcasecmp(name, "rxhpf"))
-		SELECT_CUTOFF(rxhpf, 300.0);
-	else if (!strcasecmp(name, "txlpf"))
-		SELECT_CUTOFF(txlpf, 3000.0);
-	else if (!strcasecmp(name, "txhpf"))
-		SELECT_CUTOFF(txhpf, 300.0);
-	else
-		return 0;
-#undef SELECT_CUTOFF
-
-	if (urp_parse_cutoff(text, defaults, URP_RATE_NATIVE / 2.0, &setting))
-		return -1;
-	*legacy = setting.selector;
-	*enabled = setting.enabled;
-	*exact = setting.exact;
-	*frequency = setting.frequency_hz;
-	return 1;
-}
-
 int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category)
 {
+	struct usbradioplus_hardware_settings hardware;
 	char value[512];
-	char option[32];
+	char option[64];
 	char *end;
 	int i;
 	long number;
 	size_t option_index;
 	static const int parallel_pins[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15};
-	static const char *const jitter_options[] = {
+	static const char *const asterisk_jitter_options[] = {
 		"jbenable", "jbmaxsize", "jbresyncthreshold", "jbimpl",
 		"jblog",    "jbforce",	 "jbtargetextra",     "jbsyncvideo",
 	};
-
+	static const char *const modern_jitter_options[] = {
+		"asterisk_jitter_buffer_enabled",
+		"asterisk_jitter_buffer_max_size_ms",
+		"asterisk_jitter_buffer_resync_threshold_ms",
+		"asterisk_jitter_buffer_implementation",
+		"asterisk_jitter_buffer_logging_enabled",
+		"asterisk_jitter_buffer_force_enabled",
+		"asterisk_jitter_buffer_target_extra_ms",
+		"asterisk_jitter_buffer_video_sync_enabled",
+	};
 #define GET(section, name)                                                                         \
-	(!usbradioplus_processing_get_option((section), (name), value, sizeof(value)))
+	(!usbradioplus_processing_get_option(category, (section), (name), value, sizeof(value)))
 #define INTEGER(section, name, field)                                                              \
 	do {                                                                                       \
 		if (GET((section), (name))) {                                                      \
@@ -1612,65 +1449,76 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 			ast_copy_string(o->field, value, sizeof(o->field));                        \
 	} while (0)
 
-	STRING("hardware", "devstr", devstr);
-	STRING("hardware", "serial", serial);
-	INTEGER("hardware", "hdwtype", hdwtype);
-	BOOLEAN("hardware", "eeprom", wanteeprom);
-	INTEGER("hardware", "frags", frags);
-	INTEGER("hardware", "queuesize", queuesize);
-	BOOLEAN("hardware", "rxcpusaver", rxcpusaver);
-	BOOLEAN("hardware", "txcpusaver", txcpusaver);
-	if (GET("hardware", "rxdemod"))
+	/* Typed hardware settings include inherited flat-section defaults.  Mirror
+	 * values needed by channel initialization before creating the signaling
+	 * engine; live mixer levels continue to use the typed accessors directly. */
+	if (usbradioplus_processing_get_hardware(category, &hardware))
+		goto invalid;
+	o->txmixa = (enum radio_tx_mix)hardware.output_a_assignment;
+	o->txmixb = (enum radio_tx_mix)hardware.output_b_assignment;
+	o->rxcdtype = effective_rxcdtype(o);
+	ast_copy_string(o->rxctcssfreqs, hardware.rx_ctcss_frequencies, sizeof(o->rxctcssfreqs));
+	ast_copy_string(o->txctcssfreqs, hardware.tx_ctcss_frequencies, sizeof(o->txctcssfreqs));
+
+	STRING("hardware", "hardware_device_identifier", devstr);
+	STRING("hardware", "hardware_serial", serial);
+	INTEGER("hardware", "hardware_interface_type", hdwtype);
+	BOOLEAN("hardware", "hardware_eeprom_enabled", wanteeprom);
+	INTEGER("hardware", "hardware_audio_fragment_count", frags);
+	INTEGER("hardware", "hardware_audio_queue_size", queuesize);
+	BOOLEAN("hardware", "hardware_rx_cpu_saver_enabled", rxcpusaver);
+	BOOLEAN("hardware", "hardware_tx_cpu_saver_enabled", txcpusaver);
+	if (GET("hardware", "hardware_rx_audio_source"))
 		store_rxdemod(o, value);
-	if (GET("hardware", "ctcssfrom"))
+	if (GET("hardware", "hardware_rx_ctcss_source"))
 		store_rxsdtype(o, value);
-	INTEGER("hardware", "voxhangtime", voxhangtime);
-	INTEGER("hardware", "rxsqvox", rxsqvoxadj);
-	INTEGER("hardware", "rxsqhyst", rxsqhyst);
-	INTEGER("hardware", "rxnoisefiltype", rxnoisefiltype);
-	INTEGER("hardware", "rxsquelchdelay", rxsquelchdelay);
-	INTEGER("hardware", "rxondelay", rxondelay);
+	INTEGER("hardware", "hardware_vox_hang_ms", voxhangtime);
+	INTEGER("hardware", "hardware_vox_threshold", rxsqvoxadj);
+	INTEGER("hardware", "hardware_noise_squelch_hysteresis", rxsqhyst);
+	INTEGER("hardware", "hardware_noise_filter_type", rxnoisefiltype);
+	INTEGER("hardware", "hardware_squelch_delay", rxsquelchdelay);
+	INTEGER("hardware", "hardware_rx_on_delay_frames", rxondelay);
 	if (o->rxondelay > MS_TO_FRAMES(RX_ON_DELAY_MAX))
 		o->rxondelay = MS_TO_FRAMES(RX_ON_DELAY_MAX);
-	BOOLEAN("hardware", "rxpolarity", rxpolarity);
-	INTEGER("hardware", "rxsquelchadj", rxsquelchadj);
-	if (GET("hardware", "rxctcssadj")) {
+	BOOLEAN("hardware", "hardware_rx_polarity_inverted", rxpolarity);
+	INTEGER("hardware", "hardware_squelch_level", rxsquelchadj);
+	if (GET("hardware", "hardware_rx_ctcss_level")) {
 		double adjustment = strtod(value, &end);
 		if (end == value || *end || !isfinite(adjustment))
 			goto invalid;
 		o->rxctcssadj = adjustment;
 	}
-	BOOLEAN("hardware", "rxctcssoverride", rxctcssoverride);
-	INTEGER("hardware", "rxctcssrelax", rxctcssrelax);
-	STRING("hardware", "txctcssdefault", txctcssdefault);
-	INTEGER("hardware", "txctcssadj", txctcssadj);
-	if (GET("hardware", "txtoctype"))
+	BOOLEAN("hardware", "hardware_rx_ctcss_override_enabled", rxctcssoverride);
+	INTEGER("hardware", "hardware_rx_ctcss_relax", rxctcssrelax);
+	STRING("hardware", "hardware_tx_ctcss_default_hz", txctcssdefault);
+	INTEGER("hardware", "hardware_tx_ctcss_level", txctcssadj);
+	if (GET("hardware", "hardware_ctcss_turnoff_mode"))
 		store_txtoctype(o, value);
-	BOOLEAN("hardware", "dcsrxpolarity", dcsrxpolarity);
-	BOOLEAN("hardware", "dcstxpolarity", dcstxpolarity);
-	BOOLEAN("hardware", "lsdrxpolarity", lsdrxpolarity);
-	BOOLEAN("hardware", "lsdtxpolarity", lsdtxpolarity);
-	BOOLEAN("hardware", "txprelim", txprelim);
-	BOOLEAN("hardware", "txlimonly", txlimonly);
-	INTEGER("hardware", "txslimsp", txslimsp);
-	INTEGER("hardware", "txsettletime", txsettletime);
-	INTEGER("hardware", "txrxblankingtime", txrxblankingtime);
-	INTEGER("hardware", "txoffdelay", txoffdelay);
+	BOOLEAN("hardware", "hardware_dcs_rx_polarity_inverted", dcsrxpolarity);
+	BOOLEAN("hardware", "hardware_dcs_tx_polarity_inverted", dcstxpolarity);
+	BOOLEAN("hardware", "hardware_lsd_rx_polarity_inverted", lsdrxpolarity);
+	BOOLEAN("hardware", "hardware_lsd_tx_polarity_inverted", lsdtxpolarity);
+	BOOLEAN("hardware", "hardware_tx_preemphasis_limiter_enabled", txprelim);
+	BOOLEAN("hardware", "hardware_tx_limiter_only_enabled", txlimonly);
+	INTEGER("hardware", "hardware_tx_soft_limiter_setpoint", txslimsp);
+	INTEGER("hardware", "hardware_tx_settle_ms", txsettletime);
+	INTEGER("hardware", "hardware_tx_rx_blanking_ms", txrxblankingtime);
+	INTEGER("hardware", "hardware_tx_off_delay_frames", txoffdelay);
 	if (o->txoffdelay > MS_TO_FRAMES(TX_OFF_DELAY_MAX))
 		o->txoffdelay = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
-	BOOLEAN("hardware", "txpolarity", txpolarity);
-	BOOLEAN("hardware", "invertptt", invertptt);
-	INTEGER("hardware", "rxfreq", rxfreq);
-	INTEGER("hardware", "txfreq", txfreq);
-	INTEGER("hardware", "rptnum", rptnum);
-	INTEGER("hardware", "area", area);
-	STRING("hardware", "ukey", ukey);
-	INTEGER("hardware", "idleinterval", idleinterval);
-	INTEGER("hardware", "turnoffs", turnoffs);
-	INTEGER("hardware", "sendvoter", sendvoter);
-	INTEGER("hardware", "clipledgpio", clipledgpio);
+	BOOLEAN("hardware", "hardware_tx_polarity_inverted", txpolarity);
+	BOOLEAN("hardware", "hardware_ptt_inverted", invertptt);
+	INTEGER("hardware", "hardware_rx_frequency_hz", rxfreq);
+	INTEGER("hardware", "hardware_tx_frequency_hz", txfreq);
+	INTEGER("hardware", "hardware_repeater_number", rptnum);
+	INTEGER("hardware", "hardware_area", area);
+	STRING("hardware", "hardware_user_key", ukey);
+	INTEGER("hardware", "hardware_idle_interval", idleinterval);
+	INTEGER("hardware", "hardware_turnoff_count", turnoffs);
+	INTEGER("hardware", "hardware_voter_reporting", sendvoter);
+	INTEGER("hardware", "hardware_clip_led_gpio", clipledgpio);
 	for (i = 0; i < GPIO_PINCOUNT; ++i) {
-		snprintf(option, sizeof(option), "gpio%d", i + 1);
+		snprintf(option, sizeof(option), "hardware_gpio_%d_mode", i + 1);
 		if (GET("hardware", option)) {
 			ast_free(o->gpios[i]);
 			o->gpios[i] = ast_strdup(value);
@@ -1680,7 +1528,7 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	}
 	for (option_index = 0; option_index < ARRAY_LEN(parallel_pins); ++option_index) {
 		int pin = parallel_pins[option_index];
-		snprintf(option, sizeof(option), "pp%d", pin);
+		snprintf(option, sizeof(option), "hardware_parallel_pin_%d_assignment", pin);
 		if (GET("hardware", option)) {
 			ast_free(o->pps[pin]);
 			o->pps[pin] = ast_strdup(value);
@@ -1689,9 +1537,9 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 			haspp = 1;
 		}
 	}
-	INTEGER("duplex", "duplex", radioduplex);
-	INTEGER("duplex", "duplex3", duplex3);
-	if (GET("duplex", "duplex3mode")) {
+	INTEGER("duplex", "duplex_radio_mode", radioduplex);
+	INTEGER("duplex", "duplex_local_repeat_level", duplex3);
+	if (GET("duplex", "duplex_local_repeat_mode")) {
 		if (!strcasecmp(value, "hardware"))
 			o->duplex3mode = DUPLEX3_MODE_HARDWARE;
 		else if (!strcasecmp(value, "software"))
@@ -1699,19 +1547,19 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 		else
 			goto invalid;
 	}
-	if (GET("hardware", "emphasis_corner_hz")) {
+	if (GET("hardware", "hardware_emphasis_corner_hz")) {
 		double frequency = strtod(value, &end);
 		if (end == value || *end || !isfinite(frequency))
 			goto invalid;
 		o->plus_emphasis_corner_hz = frequency;
 	}
-	BOOLEAN("general", "radioactive", radioactive);
-	INTEGER("diagnostics", "tracetype", tracetype);
-	INTEGER("diagnostics", "tracelevel", tracelevel);
-	INTEGER("diagnostics", "fever", fever);
-	for (option_index = 0; option_index < ARRAY_LEN(jitter_options); ++option_index)
-		if (GET("asterisk", jitter_options[option_index]) &&
-		    ast_jb_read_conf(&global_jbconf, jitter_options[option_index], value))
+	BOOLEAN("general", "channel_enabled", radioactive);
+	INTEGER("diagnostics", "diagnostics_trace_type", tracetype);
+	INTEGER("diagnostics", "diagnostics_trace_level", tracelevel);
+	INTEGER("diagnostics", "diagnostics_fever", fever);
+	for (option_index = 0; option_index < ARRAY_LEN(asterisk_jitter_options); ++option_index)
+		if (GET("asterisk", modern_jitter_options[option_index]) &&
+		    ast_jb_read_conf(&global_jbconf, asterisk_jitter_options[option_index], value))
 			goto invalid;
 #undef STRING
 #undef BOOLEAN
@@ -1725,6 +1573,58 @@ invalid:
 #undef INTEGER
 #undef GET
 	return -1;
+}
+
+int save_tuning_config(struct chan_usbradio_pvt *o)
+{
+	static const char *const demodulation[] = {"no", "speaker", "flat"};
+	static const char *const assignments[] = {"off", "voice", "ctcss", "voice_ctcss",
+						  "auxvoice"};
+	struct usbradioplus_config_update updates[24];
+	char values[24][64];
+	size_t count = 0;
+
+#define ADD_TEXT(group, key, text)                                                                 \
+	do {                                                                                       \
+		updates[count] = (struct usbradioplus_config_update){(group), (key), (text)};      \
+		++count;                                                                           \
+	} while (0)
+#define ADD_NUMBER(group, key, format, number)                                                     \
+	do {                                                                                       \
+		snprintf(values[count], sizeof(values[count]), (format), (number));                \
+		ADD_TEXT((group), (key), values[count]);                                           \
+	} while (0)
+	if (!ast_strlen_zero(o->devstr))
+		ADD_TEXT("hardware", "hardware_device_identifier", o->devstr);
+	if (!ast_strlen_zero(o->serial))
+		ADD_TEXT("hardware", "hardware_serial", o->serial);
+	ADD_NUMBER("hardware", "hardware_input_gain_db", "%.3f",
+		   urp_mixer_to_gain_db(effective_rxmixerset(o)));
+	ADD_NUMBER("hardware", "hardware_output_a_gain_db", "%.3f",
+		   urp_mixer_to_gain_db(effective_txmixaset(o)));
+	ADD_NUMBER("hardware", "hardware_output_b_gain_db", "%.3f",
+		   urp_mixer_to_gain_db(effective_txmixbset(o)));
+	ADD_NUMBER("hardware", "hardware_rx_ctcss_level", "%.6f", o->rxctcssadj);
+	ADD_NUMBER("hardware", "hardware_tx_ctcss_level", "%d", o->txctcssadj);
+	ADD_NUMBER("hardware", "hardware_squelch_level", "%d", o->rxsquelchadj);
+	ADD_TEXT("hardware", "hardware_cos_assignment", cd_signal_type[o->rxcdtype]);
+	ADD_TEXT("hardware", "hardware_rx_ctcss_source", sd_signal_type[o->rxsdtype]);
+	ADD_NUMBER("hardware", "hardware_rx_on_delay_frames", "%d", o->rxondelay);
+	ADD_NUMBER("hardware", "hardware_tx_off_delay_frames", "%d", o->txoffdelay);
+	ADD_TEXT("hardware", "hardware_tx_preemphasis_limiter_enabled", o->txprelim ? "yes" : "no");
+	ADD_TEXT("hardware", "hardware_tx_limiter_only_enabled", o->txlimonly ? "yes" : "no");
+	ADD_TEXT("hardware", "hardware_rx_audio_source", demodulation[o->rxdemod]);
+	ADD_TEXT("hardware", "hardware_output_a_assignment", assignments[o->txmixa]);
+	ADD_TEXT("hardware", "hardware_output_b_assignment", assignments[o->txmixb]);
+	ADD_NUMBER("hardware", "hardware_tx_soft_limiter_setpoint", "%d", o->txslimsp);
+	ADD_NUMBER("diagnostics", "diagnostics_fever", "%d", o->fever);
+	ADD_NUMBER("duplex", "duplex_local_repeat_level", "%d", o->duplex3);
+	ADD_TEXT("duplex", "duplex_local_repeat_mode",
+		 o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware");
+	ADD_NUMBER("local", "input_gain_db", "%.3f", effective_rx_input_gain_db(o));
+#undef ADD_NUMBER
+#undef ADD_TEXT
+	return usbradioplus_processing_save_options(o->name, updates, count);
 }
 
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
@@ -1854,6 +1754,21 @@ void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keye
 	}
 }
 
+static int is_radio_channel_section(const char *section)
+{
+	static const char *const reserved[] = {"general", "asterisk",	    "hardware",
+					       "duplex",  "diagnostics",    "local",
+					       "link",	  "voice_telemetry"};
+	size_t i;
+
+	if (strchr(section, ' '))
+		return 0;
+	for (i = 0; i < ARRAY_LEN(reserved); ++i)
+		if (!strcasecmp(section, reserved[i]))
+			return 0;
+	return 1;
+}
+
 int load_config(int reload)
 {
 	struct ast_config *cfg = NULL;
@@ -1876,28 +1791,35 @@ int load_config(int reload)
 	}
 
 	/* store the configuration */
-	do {
-		store_config(cfg, ctg);
-	} while ((ctg = ast_category_browse(cfg, ctg)) != NULL);
+	store_config(NULL);
+	while ((ctg = ast_category_browse(cfg, ctg)) != NULL) {
+		/* Scoped profile sections supply settings; only bare section names
+		 * instantiate RadioPlus channels. */
+		if (is_radio_channel_section(ctg))
+			store_config(ctg);
+	}
 
 	/* load parallel port information */
 	ppfd = -1;
 	pbase = 0;
-	if (!usbradioplus_processing_get_option("hardware", "pport", processing_value,
-						sizeof(processing_value)))
+	if (usbradio_active && !usbradioplus_processing_get_option(
+				       usbradio_active, "hardware", "hardware_parallel_port_device",
+				       processing_value, sizeof(processing_value)))
 		val = processing_value;
 	else
-		val = ast_variable_retrieve(cfg, "general", "pport");
+		val = NULL;
 	if (val) {
 		ast_copy_string(pport, val, sizeof(pport));
 	} else {
 		ast_copy_string(pport, PP_PORT, sizeof(pport));
 	}
-	if (!usbradioplus_processing_get_option("hardware", "pbase", processing_value,
-						sizeof(processing_value)))
+	if (usbradio_active &&
+	    !usbradioplus_processing_get_option(usbradio_active, "hardware",
+						"hardware_parallel_port_base_address",
+						processing_value, sizeof(processing_value)))
 		val = processing_value;
 	else
-		val = ast_variable_retrieve(cfg, "general", "pbase");
+		val = NULL;
 	if (val) {
 		pbase = strtoul(val, NULL, 0);
 	}

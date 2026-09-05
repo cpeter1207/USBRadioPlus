@@ -26,9 +26,8 @@ def validate(root=ROOT):
         "Makefile",
         "man/usbradioplus.7",
         "man/usbradioplus.conf.5",
-        "man/usbradioplus-processing.conf.5",
         "man/usbradioplus-tune.8",
-        "src/usbradioplus-tune.c",
+        "scripts/usbradioplus-tune",
         "COPYING",
         "VERSION",
         "doc/packaging.md",
@@ -48,20 +47,8 @@ def validate(root=ROOT):
         if re.search(pattern, installer):
             errors.append(f"installer may alter runtime state: {pattern}")
 
-    module = "".join(
-        (root / path).read_text(encoding="utf-8")
-        for path in (
-            "src/chan_usbradioplus.c",
-            "src/usbradioplus_channel_common.c",
-            "src/usbradioplus_native_tick.c",
-        )
-    )
-    for option in (root / "tests/data/legacy-options.txt").read_text().splitlines():
-        if option and not option.startswith("#") and f'"{option}"' not in module:
-            errors.append(f"module does not recognize legacy option {option}")
-
-    require("src/chan_usbradioplus.c", "DUPLEX3_MODE_SOFTWARE")
-    require("examples/usbradioplus.conf.sample", "duplex3mode = hardware")
+    require("src/usbradioplus_native_tick.c", "DUPLEX3_MODE_SOFTWARE")
+    require("examples/usbradioplus.conf.sample", "duplex_local_repeat_mode = hardware")
     require("README.md", "replacement for the ASL3 `chan_usbradio` channel driver")
     if (root / "patches/app_rpt-radioplus-duplex.patch").exists():
         errors.append("obsolete app_rpt duplex patch is still shipped")
