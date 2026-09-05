@@ -55,63 +55,12 @@ def test_configuration_creation_skips_missing_candidate(tmp_path, monkeypatch):
     assert config.read_text(encoding="utf-8") == "defaults\n"
 
 
-def test_asterisk_parser_handles_missing_cycles_and_absolute_include(tmp_path):
-    assert MODULE["_asterisk_config_lines"](tmp_path / "missing") == []
-    included = tmp_path / "included.conf"
-    included.write_text("[base](!)\nrxdemod = flat\n", encoding="utf-8")
-    main = tmp_path / "main.conf"
-    main.write_text(
-        f'#include "{included}"\n[general]\ncarrierfrom = dsp\n[node](base)\n',
-        encoding="utf-8",
-    )
-    assert MODULE["parse_asterisk_channel_config"](main, "node") == {
-        "carrierfrom": "dsp",
-        "rxdemod": "flat",
-    }
-    main.write_text("[a](b)\n[b](a)\n[node](a)\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="circular"):
-        MODULE["parse_asterisk_channel_config"](main, "node")
-
-    main.write_text("ignored before a section\n[node]\nignored in section\n", encoding="utf-8")
-    assert MODULE["parse_asterisk_channel_config"](main, "node") == {}
-
-
-def test_active_node_and_legacy_fallback_absence(monkeypatch, tmp_path):
+def test_active_node_selection(monkeypatch):
     monkeypatch.setitem(globals_for("active_node"), "NODE", "1234")
     assert MODULE["active_node"]() == "1234"
     monkeypatch.setitem(globals_for("active_node"), "NODE", None)
     monkeypatch.setitem(globals_for("active_node"), "run", lambda _args: "none")
     assert MODULE["active_node"]() is None
-    assert MODULE["legacy_fallback_values"](tmp_path / "missing", None) == {}
-
-
-@pytest.mark.parametrize(
-    ("key", "legacy", "modern"),
-    (
-        ("hardware_input_gain_db", "0", "-30"),
-        ("hardware_output_a_gain_db", "1000", "6.0206"),
-        ("hardware_output_a_assignment", "no", "off"),
-        ("hardware_output_b_assignment", "composite", "voice_ctcss"),
-        ("hardware_eeprom_enabled", "ON", "yes"),
-        ("hardware_eeprom_enabled", "off", "no"),
-        ("hardware_gpio_1_mode", "out", "out0"),
-        ("hardware_rx_audio_source", "FLAT", "flat"),
-        ("hardware_device_identifier", "  usb  ", "usb"),
-    ),
-)
-def test_every_legacy_value_class_is_normalized(key, legacy, modern):
-    assert MODULE["modern_fallback_value"](key, legacy) == modern
-
-
-def test_legacy_boolean_false_and_invalid_values_are_normalized():
-    assert MODULE["modern_fallback_value"]("hardware_eeprom_enabled", "false") == "no"
-    assert MODULE["modern_fallback_value"]("hardware_eeprom_enabled", "perhaps") == "perhaps"
-
-
-def test_invalid_legacy_numeric_value_is_ignored(tmp_path):
-    config = tmp_path / "main.conf"
-    config.write_text("[node]\nrxmixerset = invalid\n", encoding="utf-8")
-    assert "hardware_input_gain_db" not in MODULE["legacy_fallback_values"](config, "node")
 
 
 def test_missing_shipped_defaults_are_reported(tmp_path, monkeypatch):
@@ -271,7 +220,7 @@ def test_atomic_write_replaces_file_and_cleans_failed_temporary(tmp_path, monkey
     )
     with pytest.raises(OSError, match="replace"):
         MODULE["atomic_write"]("failed")
-    assert not list(tmp_path.glob(".usbradioplus-processing.*"))
+    assert not list(tmp_path.glob(".usbradioplus.*"))
 
 
 def test_permission_helper_nonroot_branch(tmp_path, monkeypatch):
@@ -299,12 +248,10 @@ def test_executable_tuner_check_entry_point(monkeypatch, capsys):
     monkeypatch.setattr(
         globals_for("main")["sys"],
         "argv",
-        ["usbradioplus-processing-tune", "--check", "--offline", "--config", sample],
+        ["usbradioplus-tune", "--check", "--offline", "--config", sample],
     )
     runpy.run_path(
-        sample.replace(
-            "examples/usbradioplus-processing.conf.sample", "scripts/usbradioplus-processing-tune"
-        ),
+        sample.replace("examples/usbradioplus.conf.sample", "scripts/usbradioplus-tune"),
         run_name="__main__",
     )
     assert "configuration and prerequisites are valid" in capsys.readouterr().out
@@ -312,36 +259,65 @@ def test_executable_tuner_check_entry_point(monkeypatch, capsys):
 
 def test_meter_launch_success_failure_and_os_error(monkeypatch):
     messages = []
-    monkeypatch.setitem(globals_for("launch_radio_meter"), "active_node", lambda: "123")
-    monkeypatch.setitem(
-        globals_for("launch_radio_meter"), "dialog", lambda args: messages.append(args)
-    )
-
-    class Result:
-        returncode = 0
-
-    monkeypatch.setattr(
-        globals_for("launch_radio_meter")["subprocess"], "run", lambda *_a, **_k: Result()
-    )
+    namespace = globals_for("launch_radio_meter")
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
+    monkeypatch.setitem(namespace, "radio_command", lambda _option: "meter output")
     MODULE["launch_radio_meter"]("all")
-    assert messages == []
-    Result.returncode = 2
-    MODULE["launch_radio_meter"]("rx")
-    assert "status 2" in " ".join(messages[-1])
-    monkeypatch.setattr(
-        globals_for("launch_radio_meter")["subprocess"],
-        "run",
-        lambda *_a, **_k: (_ for _ in ()).throw(OSError("missing")),
-    )
-    MODULE["launch_radio_meter"]("tx")
-    assert "Unable to start" in " ".join(messages[-1])
+    assert "meter output" in " ".join(messages[-1])
+    with pytest.raises(ValueError, match="unsupported meter mode"):
+        MODULE["launch_radio_meter"]("rx")
 
-    monkeypatch.setitem(globals_for("launch_radio_meter"), "active_node", lambda: None)
-    monkeypatch.setattr(
-        globals_for("launch_radio_meter")["subprocess"], "run", lambda *_a, **_k: Result()
+
+def test_resolved_sections_cover_passthrough_and_named_general(monkeypatch):
+    namespace = globals_for("resolved_section")
+    monkeypatch.setitem(namespace, "NODE", "usb")
+    config = "[usb]\nchannel_enabled = yes\n[hardware usb]\nhardware_eeprom_enabled = no\n"
+    assert MODULE["resolved_section"](config, "unknown") == "unknown"
+    assert MODULE["resolved_section"](config, "general") == "usb"
+    assert MODULE["resolved_section"](config, "hardware") == "hardware usb"
+
+
+def test_defaults_and_replacement_cover_scoped_and_missing_newline(tmp_path, monkeypatch):
+    defaults = tmp_path / "defaults.conf"
+    defaults.write_text("[local profile]\nagc_enabled = yes\n", encoding="utf-8")
+    monkeypatch.setitem(
+        globals_for("shipped_modern_defaults"), "DEFAULT_CONFIG_CANDIDATES", (str(defaults),)
     )
-    Result.returncode = 0
-    MODULE["launch_radio_meter"]("status")
+    monkeypatch.setitem(
+        globals_for("shipped_modern_defaults"),
+        "MODERN_SECTION_SETTINGS",
+        {"local": {"agc_enabled": None}},
+    )
+    assert MODULE["shipped_modern_defaults"]()["agc_enabled"] == "yes"
+    assert MODULE["replace_value"]("text", "hardware usb", "key", "value") == (
+        "text\n\n[hardware usb]\nkey = value\n"
+    )
+    assert MODULE["replace_value"]("text\n", "hardware usb", "key", "value") == (
+        "text\n\n[hardware usb]\nkey = value\n"
+    )
+
+
+def test_radio_channel_selection_paths(monkeypatch):
+    namespace = globals_for("select_radio_channel")
+    messages = []
+    monkeypatch.setitem(namespace, "read_config", lambda: "")
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
+    MODULE["select_radio_channel"]()
+    assert "No named radio channels" in " ".join(messages[-1])
+
+    monkeypatch.setitem(namespace, "read_config", lambda: "[usb]\nchannel_enabled = yes\n")
+    monkeypatch.setitem(namespace, "active_node", lambda: None)
+    monkeypatch.setitem(namespace, "prompt_choice", lambda *_args: (1, "usb"))
+    MODULE["select_radio_channel"]()
+
+    monkeypatch.setitem(namespace, "prompt_choice", lambda *_args: (0, "usb"))
+    monkeypatch.setitem(namespace, "run", lambda _args: "selection failed")
+    MODULE["select_radio_channel"]()
+    assert "selection failed" in " ".join(messages[-1])
+
+    monkeypatch.setitem(namespace, "run", lambda _args: "Active radio set to usb")
+    MODULE["select_radio_channel"]()
+    assert namespace["NODE"] == "usb"
 
 
 def test_radio_state_failure_result_swap_and_echo_paths(monkeypatch):
@@ -444,7 +420,6 @@ def test_text_editor_non_stage_order_branch(monkeypatch):
     namespace = globals_for("edit_text_setting")
     applied = []
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text: text)
     monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, " value "))
     monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append((old, new)))
     MODULE["edit_text_setting"]("local", "enabled")

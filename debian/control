@@ -14,6 +14,6 @@ Package: usbradioplus
 Architecture: amd64 arm64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${usbradioplus:ASLDepends}, python3
 Description: enhanced USB radio channel driver for AllStarLink
- USBRadioPlus is a drop-in replacement for chan_usbradio with configurable
- audio filtering and dynamics processing for amateur-radio and land-mobile
- interfaces using CM119-class USB audio devices.
+ USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
+ filtering and dynamics processing for amateur-radio and land-mobile interfaces
+ using CM119-class USB audio devices.

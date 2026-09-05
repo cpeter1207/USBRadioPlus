@@ -24,7 +24,6 @@ def test_edit_setting_applies_each_value_kind(monkeypatch, key, editor, new_valu
     called = []
     namespace = globals_for("edit_setting")
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text: text)
     monkeypatch.setitem(namespace, editor, lambda *_args: (0, new_value))
     monkeypatch.setitem(namespace, "apply_config", lambda old, new: called.append((old, new)))
     MODULE["edit_setting"]("local", key)
@@ -35,7 +34,6 @@ def test_edit_setting_cancel_relation_error_apply_error_and_text_dispatch(monkey
     namespace = globals_for("edit_setting")
     messages = []
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text: text)
     monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
     monkeypatch.setitem(namespace, "prompt_boolean", lambda *_args: (1, ""))
     MODULE["edit_setting"]("local", "enabled")
@@ -61,7 +59,6 @@ def test_text_setting_validation_cancel_success_and_apply_error(monkeypatch):
     messages = []
     applied = []
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text: text)
     monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
     monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (1, ""))
     MODULE["edit_text_setting"]("local", "stage_order")
@@ -175,9 +172,7 @@ def test_section_options_edits_every_setting_kind(monkeypatch, kind, editor, ent
     applied = []
     settings = {"test_key": ("Test value", kind)}
     monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
-    monkeypatch.setitem(namespace, "legacy_fallback_values", lambda: {})
     monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {"test_key": "0"})
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text, _fallbacks: text)
     monkeypatch.setitem(namespace, editor, lambda *_args: (0, entered))
     monkeypatch.setitem(
         namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
@@ -193,9 +188,7 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
     action_calls = []
     settings = {"test_key": ("Frequencies", "frequencies")}
     monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
-    monkeypatch.setitem(namespace, "legacy_fallback_values", lambda: {})
     monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {"test_key": "100"})
-    monkeypatch.setitem(namespace, "materialize_legacy_fallbacks", lambda text, _fallbacks: text)
 
     menu_replies = iter(((0, "A"), (0, "1"), (0, "1"), (1, "")))
     prompt_replies = iter(((0, "bad"), (0, "")))
@@ -306,6 +299,18 @@ def test_interactive_dispatches_every_configuration_section(
     monkeypatch.setitem(namespace, "hardware_menu", lambda: calls.append(("hardware",)))
     MODULE["interactive"]()
     assert calls == [expected]
+
+
+def test_interactive_dispatches_radio_selection(monkeypatch, tmp_path):
+    namespace, _config = prepare_interactive(monkeypatch, tmp_path)
+    calls = []
+    menus = iter(((0, "C"), (1, "")))
+    monkeypatch.setitem(
+        namespace, "dialog", lambda args: next(menus) if "--menu" in args else (0, "")
+    )
+    monkeypatch.setitem(namespace, "select_radio_channel", lambda: calls.append("select"))
+    MODULE["interactive"]()
+    assert calls == ["select"]
 
 
 @pytest.mark.parametrize("choice", ("S", "W", "E", "B"))

@@ -56,10 +56,12 @@ if ! wait_for_module res_usbradio 20; then
 fi
 
 if ! wait_for_module chan_usbradioplus 10; then
-	asterisk -rx 'module load chan_usbradioplus.so' >/dev/null 2>&1 || true
+	module_load_output=$(asterisk -rx 'module load chan_usbradioplus.so' 2>&1 || true)
 fi
 if ! wait_for_module chan_usbradioplus 20; then
 	echo "chan_usbradioplus did not become ready" >&2
+	printf '%s\n' "${module_load_output:-no module-load response}" >&2
+	asterisk -rx 'module show like chan_usbradioplus' >&2 || true
 	tail -n 100 "$log" >&2
 	exit 1
 fi

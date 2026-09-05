@@ -20,25 +20,6 @@ void urp_clock_recovery_reset(struct urp_clock_recovery *clock);
 double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued_samples,
 				 size_t target_samples);
 
-struct urp_cutoff_setting {
-	int enabled;
-	int exact;
-	int selector;
-	double frequency_hz;
-};
-
-enum urp_legacy_filter {
-	URP_FILTER_RX_LOWPASS,
-	URP_FILTER_RX_HIGHPASS,
-	URP_FILTER_TX_LOWPASS,
-	URP_FILTER_TX_HIGHPASS,
-};
-
-int urp_parse_cutoff(const char *text, double default_hz, double nyquist_hz,
-		     struct urp_cutoff_setting *setting);
-double urp_legacy_cutoff(enum urp_legacy_filter filter, int selector);
-double urp_legacy_limiter_ceiling_dbfs(int setpoint);
-
 struct urp_src;
 
 struct urp_echo_frame {

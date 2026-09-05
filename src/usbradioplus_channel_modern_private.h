@@ -165,12 +165,6 @@ struct chan_usbradio_pvt {
 	int rxhpf;
 	int txlpf;
 	int txhpf;
-	int plus_rxlpf_enabled, plus_rxhpf_enabled;
-	int plus_txlpf_enabled, plus_txhpf_enabled;
-	int plus_rxlpf_exact, plus_rxhpf_exact;
-	int plus_txlpf_exact, plus_txhpf_exact;
-	double plus_rxlpf_hz, plus_rxhpf_hz;
-	double plus_txlpf_hz, plus_txhpf_hz;
 
 	char rxctcssrelax;
 	float rxctcssadj;
@@ -212,8 +206,6 @@ struct chan_usbradio_pvt {
 	/*      end remote operation info */
 
 	int rxmixerset;
-	float legacy_rxvoiceadj;
-	int legacy_rxvoiceadj_configured;
 	int txmixaset;
 	int txmixbset;
 	int txctcssadj;

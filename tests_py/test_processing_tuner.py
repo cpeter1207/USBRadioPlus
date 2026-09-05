@@ -4,7 +4,7 @@ import runpy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE = runpy.run_path(str(ROOT / "scripts/usbradioplus-processing-tune"), run_name="test_module")
+MODULE = runpy.run_path(str(ROOT / "scripts/usbradioplus-tune"), run_name="test_module")
 
 
 def test_tuner_covers_every_chain_option():
@@ -23,43 +23,6 @@ def test_section_parser_and_non_destructive_insert():
     updated = MODULE["replace_value"](original, "local", "agc_target_dbfs", "-12")
     assert MODULE["section_values"](updated, "local")["agc_target_dbfs"] == "-12"
     assert MODULE["section_values"](updated, "link") == {"enabled": "no"}
-
-
-def test_legacy_templates_are_presented_and_saved_as_modern_values(tmp_path):
-    main = tmp_path / "usbradioplus.conf"
-    main.write_text(
-        "[radio-template](!)\n"
-        "rxmixerset = 250\n"
-        "txmixb = composite\n"
-        "carrierfrom = dsp\n"
-        "eeprom = 1\n"
-        "[524950](radio-template)\n"
-        "txmixb = tone\n",
-        encoding="utf-8",
-    )
-    fallbacks = MODULE["legacy_fallback_values"](str(main), "524950")
-    assert float(fallbacks["hardware_input_gain_db"]) == -6.0206
-    assert fallbacks["hardware_output_b_assignment"] == "ctcss"
-    assert fallbacks["hardware_cos_assignment"] == "dsp"
-    assert fallbacks["hardware_eeprom_enabled"] == "yes"
-    migrated = MODULE["materialize_legacy_fallbacks"]("[local]\nenabled = yes\n", fallbacks)
-    hardware = MODULE["section_values"](migrated, "hardware")
-    assert hardware["hardware_output_b_assignment"] == "ctcss"
-    assert hardware["hardware_cos_assignment"] == "dsp"
-    assert "legacy fallback" not in migrated
-
-
-def test_legacy_includes_and_assignment_names_are_normalized(tmp_path):
-    custom = tmp_path / "custom.conf"
-    custom.write_text("[radio-template](!)\ntxmixa = no\npp2 = out\n", encoding="utf-8")
-    main = tmp_path / "usbradioplus.conf"
-    main.write_text(
-        '#tryinclude "custom.conf"\n[524950](radio-template)\ntxmixa = auxvoice\n',
-        encoding="utf-8",
-    )
-    fallbacks = MODULE["legacy_fallback_values"](str(main), "524950")
-    assert fallbacks["hardware_output_a_assignment"] == "auxvoice"
-    assert fallbacks["hardware_parallel_pin_2_assignment"] == "out0"
 
 
 def test_hardware_pin_assignments_require_restart():
@@ -86,7 +49,7 @@ def test_every_nonchain_setting_has_a_concrete_shipped_default():
 
 
 def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch):
-    path = tmp_path / "usbradioplus-processing.conf"
+    path = tmp_path / "usbradioplus.conf"
     path.write_text("[general]\nenabled = yes\n", encoding="utf-8")
     account = type("Account", (), {"pw_uid": os.getuid(), "pw_gid": os.getgid()})()
     monkeypatch.setattr(MODULE["pwd"], "getpwnam", lambda _name: account)
@@ -95,7 +58,7 @@ def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch
 
 
 def test_tuner_uses_current_cli_and_accessible_keys():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "txagc reload" not in source
     for command in (
         "radioplus processing reload",
@@ -106,19 +69,19 @@ def test_tuner_uses_current_cli_and_accessible_keys():
         "radioplus active",
     ):
         assert command in source
-    assert "subprocess.run(command, check=False)" in source
+    assert "subprocess.run(" in source
     assert 'parser.add_argument("-n", "--node"' in source
 
 
 def test_whiptail_menus_preserve_the_selected_item():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert len(re.findall(r'"--default-item",\s*selected', source)) >= 3
     assert source.count("selected = choice") >= 3
     assert 'if initial.startswith("-"):' in source
 
 
 def test_value_types_use_shared_accessible_editors():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     for helper in ("prompt_boolean", "prompt_choice", "prompt_number", "prompt_text"):
         assert f"def {helper}(" in source
     assert (
@@ -180,7 +143,7 @@ def test_numeric_editor_normalizes_values_and_protects_negative_initial_value(mo
 
 
 def test_all_settings_menus_use_the_same_persistent_selection_widget():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "def read_menu_key(" not in source
     assert "def read_key(" not in source
     for menu in (
@@ -197,11 +160,11 @@ def test_all_settings_menus_use_the_same_persistent_selection_widget():
 
 
 def test_hardware_submenus_place_calibration_with_related_settings():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "def calibration_menu():" not in source
     assert "def hardware_menu():" in source
     assert "launch_radio_tune" not in source
-    assert 'command = [RADIO_TUNE, "--meter", mode]' in source
+    assert 'show_radio_result("COS, CTCSS, PTT, and audio levels", "A")' in source
     for label, key in (
         ("USB interface", "usb"),
         ("Receiver", "receive"),
@@ -213,20 +176,11 @@ def test_hardware_submenus_place_calibration_with_related_settings():
         assert re.search(rf'"{label}",\s*"{key}"', source)
     interactive = source[source.index("def interactive():") :]
     assert '"T", "Radio calibration' not in interactive
-    tune = (ROOT / "src/usbradioplus-tune.c").read_text(encoding="utf-8")
-    assert '"meter", required_argument' in tune
-    for mode in (
-        '!strcmp(meter, "rx")',
-        '!strcmp(meter, "tx")',
-        '!strcmp(meter, "status")',
-        '!strcmp(meter, "all")',
-    ):
-        assert mode in tune
     assert '"M", "Continuous status and RX/TX audio meters"' in source
 
 
 def test_hardware_actions_exclude_redundant_calibration_options():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     start = source.index("def hardware_menu():")
     end = source.index("\ndef interactive", start)
     menu = source[start:end]
@@ -266,7 +220,7 @@ def test_live_radio_state_parser(monkeypatch):
 
 
 def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
-    config = tmp_path / "usbradioplus-processing.conf"
+    config = tmp_path / "usbradioplus.conf"
     sample = tmp_path / "sample.conf"
     sample.write_text("[local]\nenabled = yes\n", encoding="utf-8")
     old_config = MODULE["CONFIG"]
@@ -339,7 +293,7 @@ def test_equalizer_defaults_and_source_placement():
 
 
 def test_stage_menu_and_input_output_labels():
-    source = (ROOT / "scripts/usbradioplus-processing-tune").read_text(encoding="utf-8")
+    source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert '("Z", "equalizer_enabled", "Three-band equalizer")' in source
     assert '("D", "deesser_enabled", "Split-band de-esser")' in source
     assert '"input_gain_db": ("Input gain", "float", -30, 30, "dB", "Input/output")' in source

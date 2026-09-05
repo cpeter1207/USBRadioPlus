@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -133,6 +134,18 @@ int main(void)
 	unsigned int number = 0;
 	double seconds = 0.0;
 	double milliseconds;
+	const char *performance_limit_text;
+	double performance_limit = 20.0;
+	char *performance_limit_end;
+	double configured_limit;
+
+	performance_limit_text = getenv("USBRADIOPLUS_TEST_BLOCK_LIMIT_MS");
+	if (performance_limit_text) {
+		configured_limit = strtod(performance_limit_text, &performance_limit_end);
+		if (*performance_limit_end || configured_limit <= 0.0)
+			return 1;
+		performance_limit = configured_limit;
+	}
 	av_log_set_level(AV_LOG_ERROR);
 	if (permute(order, 0, &number, &seconds))
 		return 1;
@@ -144,7 +157,7 @@ int main(void)
 	milliseconds = seconds * 1000.0 / PERFORMANCE_BLOCKS;
 	printf("%u permutations, representative average %.3f ms per 20 ms block\n", number,
 	       milliseconds);
-	if (milliseconds >= 20.0) {
+	if (milliseconds >= performance_limit) {
 		fprintf(stderr, "processing did not maintain real-time average\n");
 		return 1;
 	}

@@ -78,63 +78,6 @@ static void test_same_rate_bypass(void)
 	assert(!memcmp(input, output, sizeof(input)));
 }
 
-static void test_cutoff_parser(void)
-{
-	struct urp_cutoff_setting value;
-	assert(!urp_parse_cutoff("0", 300.0, 24000.0, &value));
-	assert(value.enabled && !value.exact && value.selector == 0);
-	assert(!urp_parse_cutoff("2", 300.0, 24000.0, &value));
-	assert(value.enabled && !value.exact && value.selector == 2);
-	assert(!urp_parse_cutoff("no", 300.0, 24000.0, &value));
-	assert(!value.enabled && value.exact);
-	assert(!urp_parse_cutoff("yes", 300.0, 24000.0, &value));
-	assert(value.enabled && value.exact && value.frequency_hz == 300.0);
-	assert(!urp_parse_cutoff("true", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("on", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("y", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("t", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("false", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("off", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("n", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("f", 300.0, 24000.0, &value));
-	assert(!urp_parse_cutoff("3000.0", 300.0, 24000.0, &value));
-	assert(value.enabled && value.exact && value.frequency_hz == 3000.0);
-	assert(!urp_parse_cutoff("3e3", 300.0, 24000.0, &value));
-	assert(value.frequency_hz == 3000.0);
-	assert(!urp_parse_cutoff("3E3", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("12x", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("3000.0x", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("-1", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("nan", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("inf", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("0.0", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("24000.0", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("junk", 300.0, 24000.0, &value));
-	assert(urp_parse_cutoff("999999999999999999999", 300.0, 24000.0, &value));
-}
-
-static void test_legacy_filter_selectors(void)
-{
-	assert(urp_legacy_cutoff(URP_FILTER_RX_LOWPASS, 0) == 3000.0);
-	assert(urp_legacy_cutoff(URP_FILTER_RX_LOWPASS, 1) == 3300.0);
-	assert(urp_legacy_cutoff(URP_FILTER_RX_LOWPASS, 2) == 3700.0);
-	assert(urp_legacy_cutoff(URP_FILTER_RX_HIGHPASS, 0) == 300.0);
-	assert(urp_legacy_cutoff(URP_FILTER_RX_HIGHPASS, 1) == 250.0);
-	assert(urp_legacy_cutoff(URP_FILTER_TX_LOWPASS, 1) == 3300.0);
-	assert(urp_legacy_cutoff(URP_FILTER_TX_HIGHPASS, 2) == 120.0);
-	assert(urp_legacy_cutoff(URP_FILTER_TX_HIGHPASS, 99) == 300.0);
-	assert(urp_legacy_cutoff(URP_FILTER_TX_HIGHPASS, -1) == 300.0);
-}
-
-static void test_legacy_limiter_ceiling(void)
-{
-	assert(fabs(urp_legacy_limiter_ceiling_dbfs(12000) - (-2.704774)) < 0.0001);
-	assert(fabs(urp_legacy_limiter_ceiling_dbfs(5000) - (-10.308999)) < 0.0001);
-	assert(fabs(urp_legacy_limiter_ceiling_dbfs(13000) - (-2.009532)) < 0.0001);
-	assert(urp_legacy_limiter_ceiling_dbfs(1) == urp_legacy_limiter_ceiling_dbfs(5000));
-	assert(urp_legacy_limiter_ceiling_dbfs(32000) == urp_legacy_limiter_ceiling_dbfs(13000));
-}
-
 static void test_clock_recovery(void)
 {
 	struct urp_clock_recovery clock = {0};
@@ -296,7 +239,6 @@ static void test_echo(void)
 static void test_defensive_and_boundary_paths(void)
 {
 	struct urp_clock_recovery clock = {.correction = 0.25};
-	struct urp_cutoff_setting cutoff;
 	struct urp_echo_replacer echo;
 	struct urp_src *src;
 	int16_t mono[] = {20000, -20000, 100};
@@ -310,14 +252,6 @@ static void test_defensive_and_boundary_paths(void)
 	assert(urp_clock_recovery_update(&clock, 1, 0) == 0.0);
 	clock.correction = 0.0;
 	assert(urp_clock_recovery_update(&clock, 10000, 1) < 0.0);
-	assert(urp_parse_cutoff(NULL, 300.0, 24000.0, &cutoff) < 0);
-	assert(urp_parse_cutoff("", 300.0, 24000.0, &cutoff) < 0);
-	assert(urp_parse_cutoff("yes", NAN, 24000.0, &cutoff) < 0);
-	assert(urp_parse_cutoff("yes", 0.0, 24000.0, &cutoff) < 0);
-	assert(urp_parse_cutoff("yes", 24000.0, 24000.0, &cutoff) < 0);
-	assert(urp_parse_cutoff("yes", 300.0, 24000.0, NULL) < 0);
-	assert(urp_legacy_cutoff((enum urp_legacy_filter) - 1, 0) == 0.0);
-	assert(urp_legacy_cutoff((enum urp_legacy_filter)99, 0) == 0.0);
 	assert(!urp_src_create(0, 0));
 	assert(!urp_src_create(999999, 1));
 	urp_src_destroy(NULL);
@@ -406,9 +340,6 @@ int main(void)
 {
 	test_src();
 	test_same_rate_bypass();
-	test_cutoff_parser();
-	test_legacy_filter_selectors();
-	test_legacy_limiter_ceiling();
 	test_clock_recovery();
 	test_simulated_clock_drift();
 	test_src_clock_drift();

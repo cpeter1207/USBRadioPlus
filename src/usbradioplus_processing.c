@@ -23,7 +23,7 @@
 #include "usbradioplus_processing.h"
 #include "usbradioplus_processing_internal.h"
 
-#define CONFIG_FILE "usbradioplus-processing.conf"
+#define CONFIG_FILE "usbradioplus.conf"
 #define SCAN_INTERVAL_US 250000
 
 #ifdef URP_PROCESSING_TESTING
@@ -51,6 +51,7 @@ struct txagc_hook {
 	struct ast_audiohook audiohook;
 	struct txagc_avfilter avfilter[TXAGC_SOURCE_COUNT];
 	char channel[AST_CHANNEL_NAME];
+	char profile[MAX_PROFILE_NAME];
 };
 #endif
 
@@ -59,9 +60,22 @@ PROCESSING_PRIVATE struct txagc_settings settings;
 PROCESSING_PRIVATE pthread_t scan_thread = AST_PTHREADT_NULL;
 PROCESSING_PRIVATE int stopping;
 PROCESSING_PRIVATE int settings_parse_error;
+static int is_flat_section(const char *category);
+
+static struct txagc_profile *find_profile(struct txagc_settings *current, const char *channel)
+{
+	size_t i;
+	if (!channel)
+		return NULL;
+	for (i = 0; i < current->profile_count; ++i)
+		if (!strcasecmp(current->profiles[i].name, channel) ||
+		    !strcasecmp(current->profiles[i].channel, channel))
+			return &current->profiles[i];
+	return NULL;
+}
 
 PROCESSING_PRIVATE int channel_is_eligible(struct ast_channel *chan,
-					   const struct txagc_settings *current)
+					   const struct txagc_profile *current)
 {
 	const char *name = ast_channel_name(chan);
 	const char *application = ast_channel_appl(chan);
@@ -74,19 +88,25 @@ PROCESSING_PRIVATE int channel_is_eligible(struct ast_channel *chan,
 	       !strcmp(application, "Rpt") && data && !strcmp(data, "Remote Rx");
 }
 
-PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *value)
+PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 {
+	struct txagc_profile *value;
 	struct txagc_chain *base;
 
-	memset(value, 0, sizeof(*value));
-	/* A missing processing file must preserve chan_usbradio behaviour.  All
-	 * RadioPlus-only processing is opt-in; there is deliberately no node-
-	 * specific default here. */
-	value->enabled = 0;
-	ast_copy_string(value->channel, "RadioPlus/", sizeof(value->channel));
+	memset(all, 0, sizeof(*all));
+	all->profile_count = 1;
+	value = &all->profiles[0];
+	/* Each named radio starts from the same safe processing defaults. */
+	value->enabled = 1;
+	ast_copy_string(value->name, "usb", sizeof(value->name));
+	ast_copy_string(value->channel, "RadioPlus/usb", sizeof(value->channel));
 	base = &value->chains[TXAGC_LOCAL];
 	base->enabled = 1;
 	base->rnnoise_enabled = 0;
+	base->input_gain_configured = 1;
+	base->ctcss_filter_configured = 1;
+	base->splatter_filter_configured = 1;
+	base->lookahead_limiter_configured = 1;
 	base->agc.stage_count = 6;
 	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
 	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
@@ -97,7 +117,7 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *value)
 	base->agc.receive_bandpass_enabled = 1;
 	base->agc.receive_bandpass_highpass_hz = 20.0;
 	base->agc.receive_bandpass_lowpass_hz = 5000.0;
-	base->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	base->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
 	base->agc.ctcss_notch_width_hz = 5.0;
 	base->agc.ctcss_highpass_hz = 300.0;
 	base->agc.agc_enabled = 0;
@@ -176,6 +196,8 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *value)
 	base->agc.output_gain_db = -6.2;
 	value->chains[TXAGC_LINK] = *base;
 	value->chains[TXAGC_VOICE_TELEMETRY] = *base;
+	value->chains[TXAGC_LINK].ctcss_filter_configured = 1;
+	value->chains[TXAGC_VOICE_TELEMETRY].ctcss_filter_configured = 1;
 	value->chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
 	value->chains[TXAGC_VOICE_TELEMETRY].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
 	value->chains[TXAGC_LINK].agc.receive_bandpass_enabled = 0;
@@ -199,9 +221,30 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *value)
 	base->agc.equalizer_mid_gain_db = -0.5;
 	base->agc.equalizer_high_gain_db = -1.0;
 	base->agc.splatter_filter_enabled = 1;
+	base->splatter_filter_configured = 1;
 	base->agc.lookahead_limiter_enabled = 0;
+	base->lookahead_limiter_configured = 1;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.output_gain_db = 0.0;
+	value->hardware.input_gain_db = 0.0;
+	value->hardware.output_a_gain_db = 0.0;
+	value->hardware.output_b_gain_db = 0.0;
+	value->hardware.input_gain_configured = 1;
+	value->hardware.output_a_gain_configured = 1;
+	value->hardware.output_b_gain_configured = 1;
+	value->hardware.output_a_assignment = USBRADIOPLUS_HW_VOICE_CTCSS;
+	value->hardware.output_b_assignment = USBRADIOPLUS_HW_OFF;
+	value->hardware.output_a_assignment_configured = 1;
+	value->hardware.output_b_assignment_configured = 1;
+	value->hardware.cos_assignment_configured = 1;
+	ast_copy_string(value->hardware.cos_assignment, "dsp",
+			sizeof(value->hardware.cos_assignment));
+	value->hardware.rx_ctcss_frequencies_configured = 1;
+	value->hardware.tx_ctcss_frequencies_configured = 1;
+	ast_copy_string(value->hardware.rx_ctcss_frequencies, "100.0",
+			sizeof(value->hardware.rx_ctcss_frequencies));
+	ast_copy_string(value->hardware.tx_ctcss_frequencies, "100.0",
+			sizeof(value->hardware.tx_ctcss_frequencies));
 }
 
 PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
@@ -391,7 +434,7 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	return 0;
 }
 
-PROCESSING_PRIVATE int validate_settings(const struct txagc_settings *value)
+PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 {
 	int source;
 	if (ast_strlen_zero(value->channel)) {
@@ -456,48 +499,6 @@ PROCESSING_PRIVATE void read_double(struct ast_config *cfg, const char *section,
 	if (!text) {
 		return;
 	}
-	parsed = strtod(text, &end);
-	if (*end == '\0' && isfinite(parsed)) {
-		*value = parsed;
-	} else {
-		ast_log(LOG_ERROR, "RadioPlus [%s]: %s requires a finite number, got '%s'\n",
-			section, name, text);
-		settings_parse_error = 1;
-	}
-}
-
-/* Keep early-alpha configuration files readable while exposing one consistent
- * stage-first naming scheme.  A file must not set both spellings because the
- * intended value would otherwise depend on parser order. */
-PROCESSING_PRIVATE const char *read_option_alias(struct ast_config *cfg, const char *section,
-						 const char *name, const char *legacy_name)
-{
-	const char *text = ast_variable_retrieve(cfg, section, name);
-	const char *legacy = legacy_name ? ast_variable_retrieve(cfg, section, legacy_name) : NULL;
-
-	if (text && legacy) {
-		ast_log(LOG_ERROR, "RadioPlus [%s]: use %s or deprecated %s, not both\n", section,
-			name, legacy_name);
-		settings_parse_error = 1;
-		return text;
-	}
-	if (legacy) {
-		ast_log(LOG_WARNING, "RadioPlus [%s]: %s is deprecated; use %s\n", section,
-			legacy_name, name);
-		return legacy;
-	}
-	return text;
-}
-
-PROCESSING_PRIVATE void read_double_alias(struct ast_config *cfg, const char *section,
-					  const char *name, const char *legacy_name, double *value)
-{
-	const char *text = read_option_alias(cfg, section, name, legacy_name);
-	char *end = NULL;
-	double parsed;
-
-	if (!text)
-		return;
 	parsed = strtod(text, &end);
 	if (*end == '\0' && isfinite(parsed)) {
 		*value = parsed;
@@ -612,38 +613,9 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"splatter_filter_lowpass_hz",
 		"output_gain_db",
 	};
-	static const char *const legacy_names[] = {
-		"target_dbfs",
-		"max_gain_db",
-		"max_attenuation_db",
-		"attack_ms",
-		"release_ms",
-		"reset_after_ms",
-		"sidechain_highpass_hz",
-		"sidechain_lowpass_hz",
-		"low_limiter_threshold_dbfs",
-		"low_limiter_ratio",
-		"low_limiter_knee_db",
-		"low_limiter_attack_ms",
-		"low_limiter_release_ms",
-		"high_clip_dbfs",
-		"high_limiter_ratio",
-		"high_limiter_knee_db",
-		"high_limiter_attack_ms",
-		"high_limiter_release_ms",
-		"lookahead_limit_dbfs",
-		"lookahead_ms",
-		"lookahead_attack_ms",
-		"lookahead_release_ms",
-		"output_highpass_hz",
-		"output_lowpass_hz",
-	};
 	size_t index;
 	for (index = 0; index < ARRAY_LEN(names); ++index)
 		if (!strcasecmp(name, names[index]))
-			return 1;
-	for (index = 0; index < ARRAY_LEN(legacy_names); ++index)
-		if (!strcasecmp(name, legacy_names[index]))
 			return 1;
 	return 0;
 }
@@ -718,76 +690,6 @@ PROCESSING_PRIVATE const char *const hardware_override_options[] = {
 	"hardware_parallel_pin_15_assignment",
 	"hardware_emphasis_corner_hz",
 };
-PROCESSING_PRIVATE const char *const hardware_legacy_options[] = {
-	"devstr",
-	"serial",
-	"hdwtype",
-	"eeprom",
-	"frags",
-	"queuesize",
-	"rxcpusaver",
-	"txcpusaver",
-	"rxdemod",
-	"ctcssfrom",
-	"voxhangtime",
-	"rxsqvox",
-	"rxsqhyst",
-	"rxnoisefiltype",
-	"rxsquelchdelay",
-	"rxondelay",
-	"rxpolarity",
-	"rxsquelchadj",
-	"rxctcssadj",
-	"rxctcssoverride",
-	"rxctcssrelax",
-	"txctcssdefault",
-	"txctcssadj",
-	"txtoctype",
-	"dcsrxpolarity",
-	"dcstxpolarity",
-	"lsdrxpolarity",
-	"lsdtxpolarity",
-	"txprelim",
-	"txlimonly",
-	"txslimsp",
-	"txsettletime",
-	"txrxblankingtime",
-	"txoffdelay",
-	"txpolarity",
-	"invertptt",
-	"rxfreq",
-	"txfreq",
-	"rptnum",
-	"area",
-	"ukey",
-	"idleinterval",
-	"turnoffs",
-	"sendvoter",
-	"clipledgpio",
-	"gpio1",
-	"gpio2",
-	"gpio3",
-	"gpio4",
-	"gpio5",
-	"gpio6",
-	"gpio7",
-	"gpio8",
-	"pport",
-	"pbase",
-	"pp2",
-	"pp3",
-	"pp4",
-	"pp5",
-	"pp6",
-	"pp7",
-	"pp8",
-	"pp9",
-	"pp10",
-	"pp12",
-	"pp13",
-	"pp15",
-	"emphasis_corner_hz",
-};
 PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_enabled",
 	"asterisk_jitter_buffer_max_size_ms",
@@ -798,23 +700,16 @@ PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_target_extra_ms",
 	"asterisk_jitter_buffer_video_sync_enabled",
 };
-PROCESSING_PRIVATE const char *const asterisk_legacy_options[] = {
-	"jbenable", "jbmaxsize", "jbresyncthreshold", "jbimpl",
-	"jblog",    "jbforce",	 "jbtargetextra",     "jbsyncvideo",
-};
 PROCESSING_PRIVATE const char *const duplex_override_options[] = {
 	"duplex_radio_mode",
 	"duplex_local_repeat_level",
 	"duplex_local_repeat_mode",
 };
-PROCESSING_PRIVATE const char *const duplex_legacy_options[] = {"duplex", "duplex3", "duplex3mode"};
 PROCESSING_PRIVATE const char *const diagnostics_override_options[] = {
 	"diagnostics_trace_type",
 	"diagnostics_trace_level",
 	"diagnostics_fever",
 };
-PROCESSING_PRIVATE const char *const diagnostics_legacy_options[] = {"tracetype", "tracelevel",
-								     "fever"};
 
 PROCESSING_PRIVATE int option_in_list(const char *name, const char *const *options, size_t count)
 {
@@ -825,90 +720,95 @@ PROCESSING_PRIVATE int option_in_list(const char *name, const char *const *optio
 	return 0;
 }
 
-PROCESSING_PRIVATE int validate_option_names(struct ast_config *cfg)
+PROCESSING_PRIVATE int validate_named_option(const char *category, const char *kind,
+					     const struct ast_variable *variable)
 {
-	static const char *const sections[] = {"general", "asterisk",	    "hardware",
-					       "duplex",  "diagnostics",    "local",
-					       "link",	  "voice_telemetry"};
+	static const char *const radio_options[] = {
+		"channel_enabled", "asterisk_profile",	      "hardware_profile",
+		"duplex_profile",  "diagnostics_profile",     "local_profile",
+		"link_profile",	   "voice_telemetry_profile",
+	};
 	static const char *const hardware_options[] = {
 		"hardware_input_gain_db",	 "hardware_output_a_gain_db",
 		"hardware_output_b_gain_db",	 "hardware_output_a_assignment",
 		"hardware_output_b_assignment",	 "hardware_cos_assignment",
 		"hardware_rx_ctcss_frequencies", "hardware_tx_ctcss_frequencies",
 	};
-	size_t section;
+	if (!strcmp(kind, "radio"))
+		return option_in_list(variable->name, radio_options, ARRAY_LEN(radio_options)) ? 0
+											       : -1;
+	if (!strcmp(kind, "general"))
+		return !strcasecmp(variable->name, "channel_enabled") ? 0 : -1;
+	if (!strcmp(kind, "asterisk"))
+		return option_in_list(variable->name, asterisk_override_options,
+				      ARRAY_LEN(asterisk_override_options))
+			       ? 0
+			       : -1;
+	if (!strcmp(kind, "hardware"))
+		return (option_in_list(variable->name, hardware_options,
+				       ARRAY_LEN(hardware_options)) ||
+			option_in_list(variable->name, hardware_override_options,
+				       ARRAY_LEN(hardware_override_options)))
+			       ? 0
+			       : -1;
+	if (!strcmp(kind, "duplex"))
+		return option_in_list(variable->name, duplex_override_options,
+				      ARRAY_LEN(duplex_override_options))
+			       ? 0
+			       : -1;
+	if (!strcmp(kind, "diagnostics"))
+		return option_in_list(variable->name, diagnostics_override_options,
+				      ARRAY_LEN(diagnostics_override_options))
+			       ? 0
+			       : -1;
+	if (strcmp(kind, "local") && strcmp(kind, "link") && strcmp(kind, "voice_telemetry"))
+		return -1;
+	if (strcmp(kind, "local") && !strncasecmp(variable->name, "receive_bandpass_", 17))
+		return -1;
+	if (!strcmp(kind, "link") && (!strcasecmp(variable->name, "splatter_filter_enabled") ||
+				      !strcasecmp(variable->name, "splatter_filter_highpass_hz") ||
+				      !strcasecmp(variable->name, "splatter_filter_lowpass_hz")))
+		return -1;
+	(void)category;
+	return known_chain_option(variable->name) ? 0 : -1;
+}
+
+static int validate_named_sections(struct ast_config *cfg)
+{
 	const char *category = NULL;
-	const struct ast_variable *variable;
 	while ((category = ast_category_browse(cfg, category))) {
-		int known = 0;
-		for (section = 0; section < ARRAY_LEN(sections); ++section)
-			if (!strcasecmp(category, sections[section]))
-				known = 1;
-		if (!known) {
-			ast_log(LOG_ERROR, "RadioPlus: unknown processing section [%s]\n",
-				category);
-			return -1;
-		}
-	}
-	for (section = 0; section < ARRAY_LEN(sections); ++section) {
-		for (variable = ast_variable_browse(cfg, sections[section]); variable;
+		const struct ast_variable *variable;
+		const char *separator = strchr(category, ' ');
+		char kind[32] = "radio";
+		if (separator) {
+			size_t length = (size_t)(separator - category);
+			if (!separator[1])
+				return -1;
+			if (length >= sizeof(kind))
+				return -1;
+			memcpy(kind, category, length);
+			kind[length] = '\0';
+		} else if (is_flat_section(category))
+			ast_copy_string(kind, category, sizeof(kind));
+		for (variable = ast_variable_browse(cfg, category); variable;
 		     variable = variable->next) {
-			if (strcmp(sections[section], "local") &&
-			    (!strncasecmp(variable->name, "receive_bandpass_", 17))) {
+			if (validate_named_option(category, kind, variable)) {
 				ast_log(LOG_ERROR,
-					"RadioPlus [%s]: receive band-pass is "
-					"local-receiver-only\n",
-					sections[section]);
+					"RadioPlus [%s]: unknown or misplaced option '%s'\n",
+					category, variable->name);
 				return -1;
 			}
-			if (!strcmp(sections[section], "link") &&
-			    (!strcasecmp(variable->name, "splatter_filter_enabled") ||
-			     !strcasecmp(variable->name, "splatter_filter_highpass_hz") ||
-			     !strcasecmp(variable->name, "splatter_filter_lowpass_hz") ||
-			     !strcasecmp(variable->name, "output_highpass_hz") ||
-			     !strcasecmp(variable->name, "output_lowpass_hz"))) {
-				ast_log(LOG_ERROR, "RadioPlus [link]: brick-wall band-pass "
-						   "filtering is not available\n");
-				return -1;
-			}
-			if (!strcmp(sections[section], "asterisk")) {
-				if (option_in_list(variable->name, asterisk_override_options,
-						   ARRAY_LEN(asterisk_override_options)))
-					continue;
-			} else if (!strcmp(sections[section], "hardware")) {
-				size_t option;
-				for (option = 0; option < ARRAY_LEN(hardware_options); ++option)
-					if (!strcasecmp(variable->name, hardware_options[option]))
-						break;
-				if (option < ARRAY_LEN(hardware_options) ||
-				    option_in_list(variable->name, hardware_override_options,
-						   ARRAY_LEN(hardware_override_options)))
-					continue;
-			} else if (!strcmp(sections[section], "duplex")) {
-				if (option_in_list(variable->name, duplex_override_options,
-						   ARRAY_LEN(duplex_override_options)))
-					continue;
-			} else if (!strcmp(sections[section], "diagnostics")) {
-				if (option_in_list(variable->name, diagnostics_override_options,
-						   ARRAY_LEN(diagnostics_override_options)))
-					continue;
-			} else if (known_chain_option(variable->name))
-				continue;
-			if (!strcmp(sections[section], "general") &&
-			    (!strcasecmp(variable->name, "channel") ||
-			     !strcasecmp(variable->name, "local_enabled") ||
-			     !strcasecmp(variable->name, "link_enabled") ||
-			     !strcasecmp(variable->name, "channel_enabled")))
-				continue;
-			ast_log(LOG_ERROR, "RadioPlus [%s]: unknown option '%s'\n",
-				sections[section], variable->name);
-			return -1;
 		}
 	}
 	return 0;
 }
 
-PROCESSING_PRIVATE int add_override(struct txagc_settings *updated, struct ast_config *cfg,
+PROCESSING_PRIVATE int validate_option_names(struct ast_config *cfg)
+{
+	return validate_named_sections(cfg);
+}
+
+PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_config *cfg,
 				    const char *section, const char *name)
 {
 	const char *value = ast_variable_retrieve(cfg, section, name);
@@ -989,7 +889,10 @@ PROCESSING_PRIVATE int add_override(struct txagc_settings *updated, struct ast_c
 	if (updated->override_count >= MAX_SECTION_OVERRIDES)
 		return -1;
 	entry = &updated->overrides[updated->override_count++];
-	ast_copy_string(entry->section, section, sizeof(entry->section));
+	ast_copy_string(entry->section, !strcasecmp(name, "channel_enabled") ? "general" : section,
+			sizeof(entry->section));
+	if (strchr(entry->section, ' '))
+		*strchr(entry->section, ' ') = '\0';
 	ast_copy_string(entry->name, name, sizeof(entry->name));
 	ast_copy_string(entry->value, value, sizeof(entry->value));
 	return 0;
@@ -998,29 +901,45 @@ invalid:
 	return -1;
 }
 
-PROCESSING_PRIVATE int read_section_overrides(struct txagc_settings *updated,
-					      struct ast_config *cfg)
+PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, struct ast_config *cfg,
+					      const char *asterisk_section,
+					      const char *hardware_section,
+					      const char *duplex_section,
+					      const char *diagnostics_section)
 {
 	size_t i;
 	for (i = 0; i < ARRAY_LEN(asterisk_override_options); ++i)
-		if (add_override(updated, cfg, "asterisk", asterisk_override_options[i]))
+		if (add_override(updated, cfg, asterisk_section, asterisk_override_options[i]))
 			return -1;
 	for (i = 0; i < ARRAY_LEN(hardware_override_options); ++i)
-		if (add_override(updated, cfg, "hardware", hardware_override_options[i]))
+		if (add_override(updated, cfg, hardware_section, hardware_override_options[i]))
 			return -1;
 	for (i = 0; i < ARRAY_LEN(duplex_override_options); ++i)
-		if (add_override(updated, cfg, "duplex", duplex_override_options[i]))
+		if (add_override(updated, cfg, duplex_section, duplex_override_options[i]))
 			return -1;
 	for (i = 0; i < ARRAY_LEN(diagnostics_override_options); ++i)
-		if (add_override(updated, cfg, "diagnostics", diagnostics_override_options[i]))
+		if (add_override(updated, cfg, diagnostics_section,
+				 diagnostics_override_options[i]))
 			return -1;
-	return add_override(updated, cfg, "general", "channel_enabled");
+	return 0;
 }
 
-PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *name, int *value,
-				       int *configured)
+PROCESSING_PRIVATE int read_profile_overrides(struct txagc_profile *updated, struct ast_config *cfg,
+					      const char *radio, const char *asterisk_section,
+					      const char *hardware_section,
+					      const char *duplex_section,
+					      const char *diagnostics_section)
 {
-	const char *text = ast_variable_retrieve(cfg, "hardware", name);
+	if (read_section_overrides(updated, cfg, asterisk_section, hardware_section, duplex_section,
+				   diagnostics_section))
+		return -1;
+	return add_override(updated, cfg, radio, "channel_enabled");
+}
+
+PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *section,
+				       const char *name, int *value, int *configured)
+{
+	const char *text = ast_variable_retrieve(cfg, section, name);
 	if (!text)
 		return 0;
 	*configured = 1;
@@ -1065,25 +984,23 @@ PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 	}
 }
 
-PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg,
+PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg, const char *section,
 				     struct usbradioplus_hardware_settings *hardware)
 {
 	const char *text;
-	if (ast_variable_retrieve(cfg, "hardware", "hardware_input_gain_db")) {
+	if (ast_variable_retrieve(cfg, section, "hardware_input_gain_db")) {
 		hardware->input_gain_configured = 1;
-		read_double(cfg, "hardware", "hardware_input_gain_db", &hardware->input_gain_db);
+		read_double(cfg, section, "hardware_input_gain_db", &hardware->input_gain_db);
 	}
-	if (ast_variable_retrieve(cfg, "hardware", "hardware_output_a_gain_db")) {
+	if (ast_variable_retrieve(cfg, section, "hardware_output_a_gain_db")) {
 		hardware->output_a_gain_configured = 1;
-		read_double(cfg, "hardware", "hardware_output_a_gain_db",
-			    &hardware->output_a_gain_db);
+		read_double(cfg, section, "hardware_output_a_gain_db", &hardware->output_a_gain_db);
 	}
-	if (ast_variable_retrieve(cfg, "hardware", "hardware_output_b_gain_db")) {
+	if (ast_variable_retrieve(cfg, section, "hardware_output_b_gain_db")) {
 		hardware->output_b_gain_configured = 1;
-		read_double(cfg, "hardware", "hardware_output_b_gain_db",
-			    &hardware->output_b_gain_db);
+		read_double(cfg, section, "hardware_output_b_gain_db", &hardware->output_b_gain_db);
 	}
-	text = ast_variable_retrieve(cfg, "hardware", "hardware_cos_assignment");
+	text = ast_variable_retrieve(cfg, section, "hardware_cos_assignment");
 	if (text) {
 		if (strcasecmp(text, "no") && strcasecmp(text, "usb") &&
 		    strcasecmp(text, "usbinvert") && strcasecmp(text, "dsp") &&
@@ -1097,7 +1014,7 @@ PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg,
 		hardware->cos_assignment_configured = 1;
 		ast_copy_string(hardware->cos_assignment, text, sizeof(hardware->cos_assignment));
 	}
-	text = ast_variable_retrieve(cfg, "hardware", "hardware_rx_ctcss_frequencies");
+	text = ast_variable_retrieve(cfg, section, "hardware_rx_ctcss_frequencies");
 	if (text) {
 		if (!valid_frequency_list(text)) {
 			ast_log(LOG_ERROR,
@@ -1110,7 +1027,7 @@ PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg,
 		ast_copy_string(hardware->rx_ctcss_frequencies, text,
 				sizeof(hardware->rx_ctcss_frequencies));
 	}
-	text = ast_variable_retrieve(cfg, "hardware", "hardware_tx_ctcss_frequencies");
+	text = ast_variable_retrieve(cfg, section, "hardware_tx_ctcss_frequencies");
 	if (text) {
 		if (!valid_frequency_list(text)) {
 			ast_log(LOG_ERROR,
@@ -1123,9 +1040,11 @@ PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg,
 		ast_copy_string(hardware->tx_ctcss_frequencies, text,
 				sizeof(hardware->tx_ctcss_frequencies));
 	}
-	return read_assignment(cfg, "hardware_output_a_assignment", &hardware->output_a_assignment,
+	return read_assignment(cfg, section, "hardware_output_a_assignment",
+			       &hardware->output_a_assignment,
 			       &hardware->output_a_assignment_configured) ||
-	       read_assignment(cfg, "hardware_output_b_assignment", &hardware->output_b_assignment,
+	       read_assignment(cfg, section, "hardware_output_b_assignment",
+			       &hardware->output_b_assignment,
 			       &hardware->output_b_assignment_configured);
 }
 
@@ -1202,19 +1121,15 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 		chain->input_gain_configured = 1;
 		read_double(cfg, section, "input_gain_db", &chain->agc.input_gain_db);
 	}
-	read_double_alias(cfg, section, "agc_target_dbfs", "target_dbfs", &chain->agc.target_dbfs);
-	read_double_alias(cfg, section, "agc_max_gain_db", "max_gain_db", &chain->agc.max_gain_db);
-	read_double_alias(cfg, section, "agc_max_attenuation_db", "max_attenuation_db",
-			  &chain->agc.max_attenuation_db);
+	read_double(cfg, section, "agc_target_dbfs", &chain->agc.target_dbfs);
+	read_double(cfg, section, "agc_max_gain_db", &chain->agc.max_gain_db);
+	read_double(cfg, section, "agc_max_attenuation_db", &chain->agc.max_attenuation_db);
 	read_double(cfg, section, "agc_floor_dbfs", &chain->agc.agc_floor_dbfs);
-	read_double_alias(cfg, section, "agc_attack_ms", "attack_ms", &chain->agc.attack_ms);
-	read_double_alias(cfg, section, "agc_release_ms", "release_ms", &chain->agc.release_ms);
-	read_double_alias(cfg, section, "agc_reset_after_ms", "reset_after_ms",
-			  &chain->agc.reset_after_ms);
-	read_double_alias(cfg, section, "agc_sidechain_highpass_hz", "sidechain_highpass_hz",
-			  &chain->agc.sidechain_highpass_hz);
-	read_double_alias(cfg, section, "agc_sidechain_lowpass_hz", "sidechain_lowpass_hz",
-			  &chain->agc.sidechain_lowpass_hz);
+	read_double(cfg, section, "agc_attack_ms", &chain->agc.attack_ms);
+	read_double(cfg, section, "agc_release_ms", &chain->agc.release_ms);
+	read_double(cfg, section, "agc_reset_after_ms", &chain->agc.reset_after_ms);
+	read_double(cfg, section, "agc_sidechain_highpass_hz", &chain->agc.sidechain_highpass_hz);
+	read_double(cfg, section, "agc_sidechain_lowpass_hz", &chain->agc.sidechain_lowpass_hz);
 	READ_BOOL("expander_enabled", chain->agc.expander_enabled);
 	read_double(cfg, section, "expander_threshold_dbfs", &chain->agc.expander_threshold_dbfs);
 	read_double(cfg, section, "expander_ratio", &chain->agc.expander_ratio);
@@ -1241,145 +1156,226 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	READ_BOOL("limiter_enabled", chain->agc.limiter_enabled);
 	if (ast_variable_retrieve(cfg, section, "splatter_filter_enabled") ||
 	    ast_variable_retrieve(cfg, section, "splatter_filter_highpass_hz") ||
-	    ast_variable_retrieve(cfg, section, "output_highpass_hz") ||
-	    ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz") ||
-	    ast_variable_retrieve(cfg, section, "output_lowpass_hz"))
+	    ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz"))
 		chain->splatter_filter_configured = 1;
 	READ_BOOL("splatter_filter_enabled", chain->agc.splatter_filter_enabled);
 	read_double(cfg, section, "limiter_low_crossover_hz", &chain->agc.limiter_low_crossover_hz);
 	read_double(cfg, section, "limiter_high_crossover_hz",
 		    &chain->agc.limiter_high_crossover_hz);
-	read_double_alias(cfg, section, "limiter_low_threshold_dbfs", "low_limiter_threshold_dbfs",
-			  &chain->agc.low_limiter_threshold_dbfs);
-	read_double_alias(cfg, section, "limiter_low_ratio", "low_limiter_ratio",
-			  &chain->agc.low_limiter_ratio);
-	read_double_alias(cfg, section, "limiter_low_knee_db", "low_limiter_knee_db",
-			  &chain->agc.low_limiter_knee_db);
-	read_double_alias(cfg, section, "limiter_low_attack_ms", "low_limiter_attack_ms",
-			  &chain->agc.low_limiter_attack_ms);
-	read_double_alias(cfg, section, "limiter_low_release_ms", "low_limiter_release_ms",
-			  &chain->agc.low_limiter_release_ms);
+	read_double(cfg, section, "limiter_low_threshold_dbfs",
+		    &chain->agc.low_limiter_threshold_dbfs);
+	read_double(cfg, section, "limiter_low_ratio", &chain->agc.low_limiter_ratio);
+	read_double(cfg, section, "limiter_low_knee_db", &chain->agc.low_limiter_knee_db);
+	read_double(cfg, section, "limiter_low_attack_ms", &chain->agc.low_limiter_attack_ms);
+	read_double(cfg, section, "limiter_low_release_ms", &chain->agc.low_limiter_release_ms);
 	read_double(cfg, section, "limiter_mid_threshold_dbfs",
 		    &chain->agc.mid_limiter_threshold_dbfs);
 	read_double(cfg, section, "limiter_mid_ratio", &chain->agc.mid_limiter_ratio);
 	read_double(cfg, section, "limiter_mid_knee_db", &chain->agc.mid_limiter_knee_db);
 	read_double(cfg, section, "limiter_mid_attack_ms", &chain->agc.mid_limiter_attack_ms);
 	read_double(cfg, section, "limiter_mid_release_ms", &chain->agc.mid_limiter_release_ms);
-	read_double_alias(cfg, section, "limiter_high_threshold_dbfs", "high_clip_dbfs",
-			  &chain->agc.high_limiter_threshold_dbfs);
-	read_double_alias(cfg, section, "limiter_high_ratio", "high_limiter_ratio",
-			  &chain->agc.high_limiter_ratio);
-	read_double_alias(cfg, section, "limiter_high_knee_db", "high_limiter_knee_db",
-			  &chain->agc.high_limiter_knee_db);
-	read_double_alias(cfg, section, "limiter_high_attack_ms", "high_limiter_attack_ms",
-			  &chain->agc.high_limiter_attack_ms);
-	read_double_alias(cfg, section, "limiter_high_release_ms", "high_limiter_release_ms",
-			  &chain->agc.high_limiter_release_ms);
+	read_double(cfg, section, "limiter_high_threshold_dbfs",
+		    &chain->agc.high_limiter_threshold_dbfs);
+	read_double(cfg, section, "limiter_high_ratio", &chain->agc.high_limiter_ratio);
+	read_double(cfg, section, "limiter_high_knee_db", &chain->agc.high_limiter_knee_db);
+	read_double(cfg, section, "limiter_high_attack_ms", &chain->agc.high_limiter_attack_ms);
+	read_double(cfg, section, "limiter_high_release_ms", &chain->agc.high_limiter_release_ms);
 	chain->lookahead_limiter_configured =
 		ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL;
 	READ_BOOL("lookahead_limiter_enabled", chain->agc.lookahead_limiter_enabled);
-	read_double_alias(cfg, section, "lookahead_limiter_ceiling_dbfs", "lookahead_limit_dbfs",
-			  &chain->agc.lookahead_limit_dbfs);
-	read_double_alias(cfg, section, "lookahead_limiter_lookahead_ms", "lookahead_ms",
-			  &chain->agc.lookahead_ms);
-	read_double_alias(cfg, section, "lookahead_limiter_attack_ms", "lookahead_attack_ms",
-			  &chain->agc.lookahead_attack_ms);
-	read_double_alias(cfg, section, "lookahead_limiter_release_ms", "lookahead_release_ms",
-			  &chain->agc.lookahead_release_ms);
+	read_double(cfg, section, "lookahead_limiter_ceiling_dbfs",
+		    &chain->agc.lookahead_limit_dbfs);
+	read_double(cfg, section, "lookahead_limiter_lookahead_ms", &chain->agc.lookahead_ms);
+	read_double(cfg, section, "lookahead_limiter_attack_ms", &chain->agc.lookahead_attack_ms);
+	read_double(cfg, section, "lookahead_limiter_release_ms", &chain->agc.lookahead_release_ms);
 	READ_BOOL("post_limiter_lowpass_enabled", chain->agc.post_limiter_lowpass_enabled);
 	read_double(cfg, section, "post_limiter_lowpass_hz", &chain->agc.post_limiter_lowpass_hz);
-	read_double_alias(cfg, section, "splatter_filter_highpass_hz", "output_highpass_hz",
-			  &chain->agc.output_highpass_hz);
-	read_double_alias(cfg, section, "splatter_filter_lowpass_hz", "output_lowpass_hz",
-			  &chain->agc.output_lowpass_hz);
+	read_double(cfg, section, "splatter_filter_highpass_hz", &chain->agc.output_highpass_hz);
+	read_double(cfg, section, "splatter_filter_lowpass_hz", &chain->agc.output_lowpass_hz);
 	read_double(cfg, section, "output_gain_db", &chain->agc.output_gain_db);
 #undef READ_BOOL
 	return read_stage_order(cfg, section, chain);
+}
+
+static int scoped_section(char *destination, size_t size, const char *kind, const char *name)
+{
+	size_t kind_length = strlen(kind);
+	size_t name_length = strlen(name);
+
+	if (kind_length + name_length + 2 > size)
+		return -1;
+	memcpy(destination, kind, kind_length);
+	destination[kind_length] = ' ';
+	memcpy(destination + kind_length + 1, name, name_length + 1);
+	return 0;
+}
+
+static int is_profile_section(const char *category)
+{
+	static const char *const prefixes[] = {"asterisk ",	  "hardware ", "duplex ",
+					       "diagnostics ",	  "local ",    "link ",
+					       "voice_telemetry "};
+	size_t i;
+	for (i = 0; i < ARRAY_LEN(prefixes); ++i)
+		if (!strncasecmp(category, prefixes[i], strlen(prefixes[i])))
+			return 1;
+	return 0;
+}
+
+static int is_flat_section(const char *category)
+{
+	static const char *const sections[] = {"general", "asterisk",	    "hardware",
+					       "duplex",  "diagnostics",    "local",
+					       "link",	  "voice_telemetry"};
+	size_t i;
+	for (i = 0; i < ARRAY_LEN(sections); ++i)
+		if (!strcasecmp(category, sections[i]))
+			return 1;
+	return 0;
+}
+
+PROCESSING_PRIVATE int resolve_profile_section(struct ast_config *cfg, const char *radio,
+					       const char *kind, char *section, size_t section_size)
+{
+	char option[64];
+	const char *profile;
+	if (snprintf(option, sizeof(option), "%s_profile", kind) >= (int)sizeof(option))
+		return -1;
+	profile = ast_variable_retrieve(cfg, radio, option);
+	if (scoped_section(section, section_size, kind, profile ? profile : radio))
+		return -1;
+	if (profile && !ast_category_get(cfg, section, NULL)) {
+		ast_log(LOG_ERROR, "RadioPlus [%s]: %s references missing section [%s]\n", radio,
+			option, section);
+		return -1;
+	}
+	return 0;
 }
 
 PROCESSING_PRIVATE int load_settings(void)
 {
 	struct ast_flags flags = {0};
 	struct ast_config *cfg;
-	struct txagc_settings updated;
-	const char *text;
+	struct txagc_settings *defaults;
+	struct txagc_settings *updated;
+	const char *category = NULL;
 
-	settings_defaults(&updated);
+	defaults = ast_calloc(1, sizeof(*defaults));
+	updated = ast_calloc(1, sizeof(*updated));
+	if (!defaults || !updated) {
+		ast_free(defaults);
+		ast_free(updated);
+		return -1;
+	}
+	settings_defaults(defaults);
 	settings_parse_error = 0;
 	cfg = ast_config_load2(CONFIG_FILE, "chan_usbradioplus", flags);
-	if (cfg == CONFIG_STATUS_FILEMISSING) {
-		ast_mutex_lock(&settings_lock);
-		settings = updated;
-		ast_mutex_unlock(&settings_lock);
-		ast_log(LOG_NOTICE, "%s not present; optional RadioPlus processing is disabled\n",
-			CONFIG_FILE);
-		return 0;
-	}
-	if (cfg == CONFIG_STATUS_FILEINVALID) {
+	if (cfg == CONFIG_STATUS_FILEMISSING || cfg == CONFIG_STATUS_FILEINVALID) {
 		ast_log(LOG_ERROR, "Unable to load valid %s\n", CONFIG_FILE);
+		ast_free(defaults);
+		ast_free(updated);
 		return -1;
 	}
-	if (validate_option_names(cfg)) {
-		ast_config_destroy(cfg);
-		return -1;
+	if (validate_option_names(cfg))
+		goto invalid;
+	{
+		struct txagc_profile *shared = &defaults->profiles[0];
+		const char *enabled = ast_variable_retrieve(cfg, "general", "channel_enabled");
+		if (enabled) {
+			if (ast_true(enabled))
+				shared->enabled = 1;
+			else if (ast_false(enabled))
+				shared->enabled = 0;
+			else
+				goto invalid;
+		}
+		if (read_hardware(cfg, "hardware", &shared->hardware) ||
+		    read_section_overrides(shared, cfg, "asterisk", "hardware", "duplex",
+					   "diagnostics") ||
+		    read_chain(cfg, "local", &shared->chains[TXAGC_LOCAL]) ||
+		    read_chain(cfg, "link", &shared->chains[TXAGC_LINK]) ||
+		    read_chain(cfg, "voice_telemetry", &shared->chains[TXAGC_VOICE_TELEMETRY]) ||
+		    settings_parse_error)
+			goto invalid;
 	}
 
-	read_bool(cfg, "general", "enabled", &updated.enabled);
-	if (read_hardware(cfg, &updated.hardware))
-		goto invalid;
-	if (read_section_overrides(&updated, cfg))
-		goto invalid;
-	text = ast_variable_retrieve(cfg, "general", "channel");
-	if (text) {
-		ast_copy_string(updated.channel, text, sizeof(updated.channel));
+	while ((category = ast_category_browse(cfg, category))) {
+		struct txagc_profile *profile;
+		char asterisk_section[MAX_CONFIG_SECTION];
+		char hardware_section[MAX_CONFIG_SECTION];
+		char duplex_section[MAX_CONFIG_SECTION];
+		char diagnostics_section[MAX_CONFIG_SECTION];
+		char local_section[MAX_CONFIG_SECTION];
+		char link_section[MAX_CONFIG_SECTION];
+		char voice_section[MAX_CONFIG_SECTION];
+		const char *enabled;
+		if (is_profile_section(category) || is_flat_section(category))
+			continue;
+		if (updated->profile_count >= MAX_RADIO_PROFILES) {
+			ast_log(LOG_ERROR, "RadioPlus: too many named radio sections\n");
+			goto invalid;
+		}
+		profile = &updated->profiles[updated->profile_count];
+		*profile = defaults->profiles[0];
+		ast_copy_string(profile->name, category, sizeof(profile->name));
+		snprintf(profile->channel, sizeof(profile->channel), "RadioPlus/%s", category);
+		if (resolve_profile_section(cfg, category, "asterisk", asterisk_section,
+					    sizeof(asterisk_section)) ||
+		    resolve_profile_section(cfg, category, "hardware", hardware_section,
+					    sizeof(hardware_section)) ||
+		    resolve_profile_section(cfg, category, "duplex", duplex_section,
+					    sizeof(duplex_section)) ||
+		    resolve_profile_section(cfg, category, "diagnostics", diagnostics_section,
+					    sizeof(diagnostics_section)) ||
+		    resolve_profile_section(cfg, category, "local", local_section,
+					    sizeof(local_section)) ||
+		    resolve_profile_section(cfg, category, "link", link_section,
+					    sizeof(link_section)) ||
+		    resolve_profile_section(cfg, category, "voice_telemetry", voice_section,
+					    sizeof(voice_section)))
+			goto invalid;
+		enabled = ast_variable_retrieve(cfg, category, "channel_enabled");
+		if (enabled) {
+			if (!ast_true(enabled) && !ast_false(enabled))
+				goto invalid;
+			profile->enabled = ast_true(enabled);
+		}
+		if (read_hardware(cfg, hardware_section, &profile->hardware) ||
+		    read_profile_overrides(profile, cfg, category, asterisk_section,
+					   hardware_section, duplex_section, diagnostics_section) ||
+		    read_chain(cfg, local_section, &profile->chains[TXAGC_LOCAL]) ||
+		    read_chain(cfg, link_section, &profile->chains[TXAGC_LINK]) ||
+		    read_chain(cfg, voice_section, &profile->chains[TXAGC_VOICE_TELEMETRY]))
+			goto invalid;
+		profile->chains[TXAGC_LINK].agc.splatter_filter_enabled = 0;
+		profile->local_enabled = profile->chains[TXAGC_LOCAL].enabled;
+		profile->link_enabled = profile->chains[TXAGC_LINK].enabled;
+		profile->rnnoise_enabled = profile->chains[TXAGC_LOCAL].rnnoise_enabled;
+		profile->agc = profile->chains[TXAGC_LOCAL].agc;
+		if (settings_parse_error || validate_profile(profile))
+			goto invalid;
+		++updated->profile_count;
 	}
-	/* Legacy flat settings remain accepted and seed local/link chains. */
-	if (read_chain(cfg, "general", &updated.chains[TXAGC_LOCAL]))
+	if (!updated->profile_count) {
+		ast_log(LOG_ERROR, "RadioPlus: %s contains no named radio sections\n", CONFIG_FILE);
 		goto invalid;
-	read_bool(cfg, "general", "local_enabled", &updated.chains[TXAGC_LOCAL].enabled);
-	updated.chains[TXAGC_LINK] = updated.chains[TXAGC_LOCAL];
-	updated.chains[TXAGC_LINK].rnnoise_enabled = 0;
-	updated.chains[TXAGC_LINK].ctcss_filter_configured = 0;
-	updated.chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
-	updated.chains[TXAGC_LINK].agc.receive_bandpass_enabled = 0;
-	read_bool(cfg, "general", "link_enabled", &updated.chains[TXAGC_LINK].enabled);
-	if (read_chain(cfg, "local", &updated.chains[TXAGC_LOCAL]) ||
-	    read_chain(cfg, "link", &updated.chains[TXAGC_LINK]) ||
-	    read_chain(cfg, "voice_telemetry", &updated.chains[TXAGC_VOICE_TELEMETRY]))
-		goto invalid;
-	/* Link audio receives the common transmitter tail after source mixing.
-	 * It must never carry a second, source-specific brick-wall band-pass. */
-	updated.chains[TXAGC_LINK].agc.splatter_filter_enabled = 0;
-	if (settings_parse_error)
-		goto invalid;
-	updated.local_enabled = updated.chains[TXAGC_LOCAL].enabled;
-	updated.link_enabled = updated.chains[TXAGC_LINK].enabled;
-	updated.rnnoise_enabled = updated.chains[TXAGC_LOCAL].rnnoise_enabled;
-	updated.agc = updated.chains[TXAGC_LOCAL].agc;
+	}
 	ast_config_destroy(cfg);
-
-	if (validate_settings(&updated)) {
-		ast_log(LOG_ERROR, "Invalid setting in %s; keeping existing configuration\n",
-			CONFIG_FILE);
-		return -1;
-	}
-
 	ast_mutex_lock(&settings_lock);
-	settings = updated;
+	settings = *updated;
 	ast_mutex_unlock(&settings_lock);
-	ast_log(LOG_NOTICE,
-		"RadioPlus processing %s (local %s, link %s, voice+telemetry %s for %s)\n",
-		updated.enabled ? "enabled" : "disabled",
-		updated.chains[TXAGC_LOCAL].enabled ? "enabled" : "disabled",
-		updated.chains[TXAGC_LINK].enabled ? "enabled" : "disabled",
-		updated.chains[TXAGC_VOICE_TELEMETRY].enabled ? "enabled" : "disabled",
-		updated.channel);
+	ast_log(LOG_NOTICE, "RadioPlus loaded %zu named radio configuration(s)\n",
+		updated->profile_count);
+	ast_free(defaults);
+	ast_free(updated);
 	return 0;
 
 invalid:
 	ast_config_destroy(cfg);
-	ast_log(LOG_ERROR, "Invalid graph definition in %s; keeping existing configuration\n",
+	ast_log(LOG_ERROR, "Invalid configuration in %s; keeping existing configuration\n",
 		CONFIG_FILE);
+	ast_free(defaults);
+	ast_free(updated);
 	return -1;
 }
 
@@ -1412,7 +1408,8 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 {
 	struct txagc_hook *hook;
 	const struct ast_datastore *datastore;
-	struct txagc_settings current;
+	struct txagc_profile current;
+	const struct txagc_profile *profile;
 	struct txagc_chain *chain;
 	enum txagc_source source;
 	unsigned int sample_rate;
@@ -1434,8 +1431,12 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 		return 0;
 	}
 	ast_mutex_lock(&settings_lock);
-	current = settings;
+	profile = find_profile(&settings, hook->profile);
+	if (profile)
+		current = *profile;
 	ast_mutex_unlock(&settings_lock);
+	if (!profile)
+		return 0;
 	if (!strcmp(ast_channel_name(chan), current.channel)) {
 		/* Native RadioPlus processing owns both directions.  This also makes
 		 * stale hooks harmless across an in-place configuration reload. */
@@ -1475,7 +1476,7 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	return 0;
 }
 
-PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan)
+PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile)
 {
 	struct ast_datastore *datastore;
 	struct txagc_hook *hook;
@@ -1499,6 +1500,7 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan)
 		txagc_avfilter_init(&hook->avfilter[source]);
 	}
 	ast_copy_string(hook->channel, ast_channel_name(chan), sizeof(hook->channel));
+	ast_copy_string(hook->profile, profile, sizeof(hook->profile));
 	if (ast_audiohook_init(&hook->audiohook, AST_AUDIOHOOK_TYPE_MANIPULATE, "TXAGC",
 			       AST_AUDIOHOOK_MANIPULATE_ALL_RATES)) {
 		ast_datastore_free(datastore);
@@ -1531,37 +1533,50 @@ PROCESSING_PRIVATE void scan_channels(void)
 {
 	struct ast_channel_iterator *iterator;
 	struct ast_channel *chan;
-	struct ast_channel *primary;
-	struct txagc_settings current;
+	struct txagc_profile *profile;
+	int profile_found = 0;
+	size_t i;
 
+	profile = ast_calloc(1, sizeof(*profile));
+	if (!profile)
+		return;
 	ast_mutex_lock(&settings_lock);
-	current = settings;
+	/* A link audiohook belongs to the first enabled radio whose primary channel
+	 * is active. app_rpt exposes no node identifier on its Remote Rx channel. */
+	for (i = 0; i < settings.profile_count; ++i) {
+		struct ast_channel *primary;
+		if (!settings.profiles[i].enabled)
+			continue;
+		primary = ast_channel_get_by_name(settings.profiles[i].channel);
+		if (primary) {
+			ast_channel_unref(primary);
+			*profile = settings.profiles[i];
+			profile_found = 1;
+			break;
+		}
+	}
 	ast_mutex_unlock(&settings_lock);
-	if (!current.enabled) {
+	if (!profile_found) {
+		ast_free(profile);
 		return;
 	}
-	/* Do not attach to unrelated live IAX channels when RadioPlus is merely
-	 * loaded side-by-side for validation and its primary channel is absent. */
-	primary = ast_channel_get_by_name(current.channel);
-	if (!primary) {
-		return;
-	}
-	ast_channel_unref(primary);
 	iterator = ast_channel_iterator_all_new();
 	if (!iterator) {
+		ast_free(profile);
 		return;
 	}
 	while ((chan = ast_channel_iterator_next(iterator))) {
 		ast_channel_lock(chan);
-		if (channel_is_eligible(chan, &current)) {
+		if (channel_is_eligible(chan, profile)) {
 			ast_channel_unlock(chan);
-			attach_hook(chan);
+			attach_hook(chan, profile->name);
 		} else {
 			ast_channel_unlock(chan);
 		}
 		ast_channel_unref(chan);
 	}
 	ast_channel_iterator_destroy(iterator);
+	ast_free(profile);
 }
 
 PROCESSING_PRIVATE void detach_all(void)
@@ -1603,7 +1618,7 @@ PROCESSING_PRIVATE void *scanner(void *unused)
 PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 				  struct ast_cli_args *args)
 {
-	struct txagc_settings current;
+	struct txagc_profile current;
 
 	switch (command) {
 	case CLI_INIT:
@@ -1620,7 +1635,12 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		return CLI_SHOWUSAGE;
 	}
 	ast_mutex_lock(&settings_lock);
-	current = settings;
+	if (!settings.profile_count) {
+		ast_mutex_unlock(&settings_lock);
+		ast_cli(args->fd, "No named RadioPlus channels are configured.\n");
+		return CLI_SUCCESS;
+	}
+	current = settings.profiles[0];
 	ast_mutex_unlock(&settings_lock);
 	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
 		struct txagc_chain *chain = &current.chains[source];
@@ -1651,7 +1671,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 	ast_cli(args->fd,
 		"Enabled: %s\nLocal receiver: %s\nLinked audio: %s\n"
 		"Channel: %s\nRNNoise: %s\nReceive band-pass: %s (%.0f-%.0f Hz)\n"
-		"PL filter: %s%s\n"
+		"PL filter: %s\n"
 		"AGC stage: %s\nTarget: %.1f dBFS\nMax gain: %.1f dB\n"
 		"Max attenuation: %.1f dB\nAGC detector floor: %.1f dBFS\nAttack: %.0f ms\n"
 		"Release: %.0f ms\nReset after: %.0f ms\nSidechain band-pass: %.0f-%.0f Hz\n"
@@ -1678,12 +1698,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.rnnoise_enabled ? "enabled" : "disabled",
 		current.agc.receive_bandpass_enabled ? "enabled" : "disabled",
 		current.agc.receive_bandpass_highpass_hz, current.agc.receive_bandpass_lowpass_hz,
-		current.chains[TXAGC_LOCAL].ctcss_filter_configured
-			? ctcss_filter_name(current.agc.ctcss_filter_mode)
-			: "rxhpf",
-		current.chains[TXAGC_LOCAL].ctcss_filter_configured
-			? " (explicit)"
-			: " (usbradioplus.conf fallback)",
+		ctcss_filter_name(current.agc.ctcss_filter_mode),
 		current.agc.agc_enabled ? "enabled" : "disabled", current.agc.target_dbfs,
 		current.agc.max_gain_db, current.agc.max_attenuation_db, current.agc.agc_floor_dbfs,
 		current.agc.attack_ms, current.agc.release_ms, current.agc.reset_after_ms,
@@ -1801,7 +1816,8 @@ PROCESSING_PRIVATE char *cli_enable(struct ast_cli_entry *entry, int command,
 		return CLI_SHOWUSAGE;
 	}
 	ast_mutex_lock(&settings_lock);
-	settings.enabled = 1;
+	for (size_t i = 0; i < settings.profile_count; ++i)
+		settings.profiles[i].enabled = 1;
 	ast_mutex_unlock(&settings_lock);
 	scan_channels();
 	ast_cli(args->fd, "RadioPlus processing enabled.\n");
@@ -1826,7 +1842,8 @@ PROCESSING_PRIVATE char *cli_disable(struct ast_cli_entry *entry, int command,
 		return CLI_SHOWUSAGE;
 	}
 	ast_mutex_lock(&settings_lock);
-	settings.enabled = 0;
+	for (size_t i = 0; i < settings.profile_count; ++i)
+		settings.profiles[i].enabled = 0;
 	ast_mutex_unlock(&settings_lock);
 	detach_all();
 	ast_cli(args->fd, "RadioPlus processing disabled and detached.\n");
@@ -1840,7 +1857,7 @@ PROCESSING_PRIVATE char *cli_reload(struct ast_cli_entry *entry, int command,
 	case CLI_INIT:
 		entry->command = "radioplus processing reload";
 		entry->usage = "Usage: radioplus processing reload\n       Reload "
-			       "usbradioplus-processing.conf.\n";
+			       "usbradioplus.conf.\n";
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
@@ -1874,67 +1891,48 @@ static struct ast_cli_entry cli_entries[] = {
 	AST_CLI_DEFINE(cli_reload, "Reload RadioPlus processing configuration"),
 };
 
-int usbradioplus_processing_get_local(struct txagc_chain *chain)
+int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain)
 {
+	struct txagc_profile *profile;
 	if (!chain)
 		return -1;
 	ast_mutex_lock(&settings_lock);
-	*chain = settings.chains[TXAGC_LOCAL];
-	chain->enabled = chain->enabled && settings.enabled;
+	profile = find_profile(&settings, channel);
+	if (profile) {
+		*chain = profile->chains[TXAGC_LOCAL];
+		chain->enabled = chain->enabled && profile->enabled;
+	}
 	ast_mutex_unlock(&settings_lock);
-	return 0;
+	return profile ? 0 : 1;
 }
 
-int usbradioplus_processing_get_hardware(struct usbradioplus_hardware_settings *hardware)
+int usbradioplus_processing_get_hardware(const char *channel,
+					 struct usbradioplus_hardware_settings *hardware)
 {
+	const struct txagc_profile *profile;
 	if (!hardware)
 		return -1;
 	ast_mutex_lock(&settings_lock);
-	*hardware = settings.hardware;
+	profile = find_profile(&settings, channel);
+	if (profile)
+		*hardware = profile->hardware;
 	ast_mutex_unlock(&settings_lock);
-	return 0;
+	return profile ? 0 : 1;
 }
 
-int usbradioplus_processing_get_option(const char *section, const char *name, char *value,
-				       size_t value_size)
+int usbradioplus_processing_get_option(const char *channel, const char *section, const char *name,
+				       char *value, size_t value_size)
 {
 	size_t i;
-	const char *modern_name = name;
-	if (!section || !name || !value || !value_size)
+	struct txagc_profile *profile;
+	if (!channel || !section || !name || !value || !value_size)
 		return -1;
-	if (!strcasecmp(section, "asterisk")) {
-		for (i = 0; i < ARRAY_LEN(asterisk_legacy_options); ++i)
-			if (!strcasecmp(name, asterisk_legacy_options[i])) {
-				modern_name = asterisk_override_options[i];
-				break;
-			}
-	} else if (!strcasecmp(section, "hardware")) {
-		for (i = 0; i < ARRAY_LEN(hardware_legacy_options); ++i)
-			if (!strcasecmp(name, hardware_legacy_options[i])) {
-				modern_name = hardware_override_options[i];
-				break;
-			}
-	} else if (!strcasecmp(section, "duplex")) {
-		for (i = 0; i < ARRAY_LEN(duplex_legacy_options); ++i)
-			if (!strcasecmp(name, duplex_legacy_options[i])) {
-				modern_name = duplex_override_options[i];
-				break;
-			}
-	} else if (!strcasecmp(section, "diagnostics")) {
-		for (i = 0; i < ARRAY_LEN(diagnostics_legacy_options); ++i)
-			if (!strcasecmp(name, diagnostics_legacy_options[i])) {
-				modern_name = diagnostics_override_options[i];
-				break;
-			}
-	} else if (!strcasecmp(section, "general")) {
-		if (!strcasecmp(name, "radioactive"))
-			modern_name = "channel_enabled";
-	}
 	ast_mutex_lock(&settings_lock);
-	for (i = 0; i < settings.override_count; ++i) {
-		if (!strcasecmp(settings.overrides[i].section, section) &&
-		    !strcasecmp(settings.overrides[i].name, modern_name)) {
-			ast_copy_string(value, settings.overrides[i].value, value_size);
+	profile = find_profile(&settings, channel);
+	for (i = 0; profile && i < profile->override_count; ++i) {
+		if (!strcasecmp(profile->overrides[i].section, section) &&
+		    !strcasecmp(profile->overrides[i].name, name)) {
+			ast_copy_string(value, profile->overrides[i].value, value_size);
 			ast_mutex_unlock(&settings_lock);
 			return 0;
 		}
@@ -1943,89 +1941,107 @@ int usbradioplus_processing_get_option(const char *section, const char *name, ch
 	return 1;
 }
 
-int usbradioplus_processing_set_local_input_gain(double gain_db)
+int usbradioplus_processing_set_local_input_gain(const char *channel, double gain_db)
 {
+	struct txagc_profile *profile;
 	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0)
 		return -1;
 	ast_mutex_lock(&settings_lock);
-	settings.chains[TXAGC_LOCAL].agc.input_gain_db = gain_db;
-	settings.chains[TXAGC_LOCAL].input_gain_configured = 1;
-	settings.agc.input_gain_db = gain_db;
+	profile = find_profile(&settings, channel);
+	if (profile) {
+		profile->chains[TXAGC_LOCAL].agc.input_gain_db = gain_db;
+		profile->chains[TXAGC_LOCAL].input_gain_configured = 1;
+		profile->agc.input_gain_db = gain_db;
+	}
 	ast_mutex_unlock(&settings_lock);
-	return 0;
+	return profile ? 0 : 1;
 }
 
-int usbradioplus_processing_set_hardware_input_gain(double gain_db)
+int usbradioplus_processing_set_hardware_input_gain(const char *channel, double gain_db)
 {
+	struct txagc_profile *profile;
 	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0)
 		return -1;
 	ast_mutex_lock(&settings_lock);
-	settings.hardware.input_gain_db = gain_db;
-	settings.hardware.input_gain_configured = 1;
+	profile = find_profile(&settings, channel);
+	if (profile) {
+		profile->hardware.input_gain_db = gain_db;
+		profile->hardware.input_gain_configured = 1;
+	}
 	ast_mutex_unlock(&settings_lock);
-	return 0;
+	return profile ? 0 : 1;
 }
 
-int usbradioplus_processing_save_input_gains(double hardware_gain_db, double local_gain_db)
+int usbradioplus_processing_save_options(const char *channel,
+					 const struct usbradioplus_config_update *updates,
+					 size_t update_count)
 {
 	struct ast_flags flags = {CONFIG_FLAG_WITHCOMMENTS | CONFIG_FLAG_NOCACHE};
 	struct ast_config *cfg;
-	struct ast_category *category;
-	char value[32];
+	size_t i;
+
+	if (!channel || (!updates && update_count))
+		return -1;
+	cfg = ast_config_load2(CONFIG_FILE, "chan_usbradioplus", flags);
+	if (!cfg || cfg == CONFIG_STATUS_FILEINVALID)
+		return -1;
+	for (i = 0; i < update_count; ++i) {
+		struct ast_category *category;
+		char section[MAX_CONFIG_SECTION];
+		if (!updates[i].section || !updates[i].name || !updates[i].value ||
+		    resolve_profile_section(cfg, channel, updates[i].section, section,
+					    sizeof(section)))
+			goto invalid;
+		category = ast_category_get(cfg, section, NULL);
+		if (!category) {
+			category = ast_category_new(section, CONFIG_FILE, -1);
+			if (!category)
+				goto invalid;
+			ast_category_append(cfg, category);
+		}
+		if (usbradioplus_config_variable_update(cfg, CONFIG_FILE, category, updates[i].name,
+							updates[i].value))
+			goto invalid;
+	}
+	if (ast_config_text_file_save2(CONFIG_FILE, cfg, "chan_usbradioplus", 0))
+		goto invalid;
+	ast_config_destroy(cfg);
+	return 0;
+invalid:
+	ast_config_destroy(cfg);
+	return -1;
+}
+
+int usbradioplus_processing_save_input_gains(const char *channel, double hardware_gain_db,
+					     double local_gain_db)
+{
+	struct usbradioplus_config_update updates[2];
+	char values[2][32];
 
 	if (!isfinite(hardware_gain_db) || hardware_gain_db < -30.0 || hardware_gain_db > 30.0 ||
 	    !isfinite(local_gain_db) || local_gain_db < -30.0 || local_gain_db > 30.0)
 		return -1;
-	cfg = ast_config_load2(CONFIG_FILE, "chan_usbradioplus", flags);
-	if (!cfg || cfg == CONFIG_STATUS_FILEINVALID) {
-		ast_log(LOG_ERROR, "Unable to save input gains: invalid %s\n", CONFIG_FILE);
-		return -1;
-	}
-	category = ast_category_get(cfg, "hardware", NULL);
-	if (!category) {
-		category = ast_category_new("hardware", CONFIG_FILE, 0);
-		if (!category) {
-			ast_config_destroy(cfg);
-			return -1;
-		}
-		ast_category_append(cfg, category);
-	}
-	snprintf(value, sizeof(value), "%.3f", hardware_gain_db);
-	if (usbradioplus_config_variable_update(cfg, CONFIG_FILE, category,
-						"hardware_input_gain_db", value)) {
-		ast_config_destroy(cfg);
-		return -1;
-	}
-	category = ast_category_get(cfg, "local", NULL);
-	if (!category) {
-		category = ast_category_new("local", CONFIG_FILE, 0);
-		if (!category) {
-			ast_config_destroy(cfg);
-			return -1;
-		}
-		ast_category_append(cfg, category);
-	}
-	snprintf(value, sizeof(value), "%.3f", local_gain_db);
-	if (usbradioplus_config_variable_update(cfg, CONFIG_FILE, category, "input_gain_db",
-						value) ||
-	    ast_config_text_file_save2(CONFIG_FILE, cfg, "chan_usbradioplus", 0)) {
-		ast_log(LOG_WARNING, "Failed to save input gains to %s\n", CONFIG_FILE);
-		ast_config_destroy(cfg);
-		return -1;
-	}
-	ast_config_destroy(cfg);
-	return 0;
+	snprintf(values[0], sizeof(values[0]), "%.3f", hardware_gain_db);
+	snprintf(values[1], sizeof(values[1]), "%.3f", local_gain_db);
+	updates[0] = (struct usbradioplus_config_update){"hardware", "hardware_input_gain_db",
+							 values[0]};
+	updates[1] = (struct usbradioplus_config_update){"local", "input_gain_db", values[1]};
+	return usbradioplus_processing_save_options(channel, updates, ARRAY_LEN(updates));
 }
 
-int usbradioplus_processing_get_composite(struct txagc_chain *chain)
+int usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain)
 {
+	struct txagc_profile *profile;
 	if (!chain)
 		return -1;
 	ast_mutex_lock(&settings_lock);
-	*chain = settings.chains[TXAGC_VOICE_TELEMETRY];
-	chain->enabled = chain->enabled && settings.enabled;
+	profile = find_profile(&settings, channel);
+	if (profile) {
+		*chain = profile->chains[TXAGC_VOICE_TELEMETRY];
+		chain->enabled = chain->enabled && profile->enabled;
+	}
 	ast_mutex_unlock(&settings_lock);
-	return 0;
+	return profile ? 0 : 1;
 }
 
 int usbradioplus_processing_unload(void)

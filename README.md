@@ -3,7 +3,7 @@
 USBRadioPlus is a replacement for the ASL3 `chan_usbradio` channel driver. It
 is intended for operators who want to improve their node's audio quality with
 more configurable filtering and additional dynamics processing while retaining
-compatibility with existing USB radio interfaces and `usbradio.conf` settings.
+support for common CM108-, CM109-, and CM119-family USB radio interfaces.
 
 This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
@@ -38,14 +38,12 @@ commands.
 
 - [The module manual](man/usbradioplus.7) covers installation, activation, and
   the available configuration and tuning facilities.
-- [The channel configuration manual](man/usbradioplus.conf.5) covers radio
-  interface, signaling, routing, filtering, and level options.
-- [The processing configuration manual](man/usbradioplus-processing.conf.5)
-  covers optional audio graphs and their controls.
+- [The configuration manual](man/usbradioplus.conf.5) covers named radio
+  channels, hardware profiles, signaling, routing, and audio processing.
 - [The tuning manual](man/usbradioplus-tune.8) covers the tuning utilities and
   service-monitor procedure.
-- [Configuration examples](examples/) contain annotated channel and processing
-  configuration files.
+- [The configuration example](examples/usbradioplus.conf.sample) is an annotated
+  multi-channel-capable starting point.
 - [Packaging notes](doc/packaging.md) describe the upstream archive and future
   Debian packaging interface.
 - [Native radio notes](doc/native-radio.md) describe carrier detection,

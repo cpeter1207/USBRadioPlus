@@ -31,14 +31,28 @@ def function_definition(source, name):
     return source[match.start() : end]
 
 
-def test_all_legacy_options_are_recognized():
-    module = text("src/chan_usbradioplus.c")
+def test_removed_legacy_options_are_not_accepted_or_documented():
+    parser = text("src/usbradioplus_processing.c")
+    public_artifacts = "".join(
+        text(path)
+        for path in (
+            "examples/usbradioplus.conf.sample",
+            "man/usbradioplus.conf.5",
+            "scripts/usbradioplus-tune",
+        )
+    )
     options = [
         x for x in text("tests/data/legacy-options.txt").splitlines() if x and not x.startswith("#")
     ]
-    missing = [x for x in options if f'"{x}"' not in module]
-    assert not missing
-    assert len(options) == 63
+    assert not [
+        option for option in options if option not in {"duplex"} and f'"{option}"' in parser
+    ]
+    assert not [
+        option
+        for option in options
+        if re.search(rf"(?m)^;?{re.escape(option)}\s*=", public_artifacts)
+    ]
+    assert len(options) == 97
 
 
 def test_optional_processors_default_off():
@@ -111,57 +125,43 @@ def test_legacy_default_initializer_is_preserved():
         position = found + len(item)
 
 
-def test_missing_optional_file_is_not_fatal():
+def test_unified_configuration_file_is_required():
     source = text("src/usbradioplus_processing.c")
     block = source[source.index("CONFIG_STATUS_FILEMISSING") :]
-    assert "return 0;" in block[:500]
+    assert "return -1;" in block[:500]
+    assert '#define CONFIG_FILE "usbradioplus.conf"' in source
 
 
-def test_legacy_seed_does_not_leak_local_filters_into_link():
+def test_flat_defaults_are_copied_before_named_overrides():
     source = text("src/usbradioplus_processing.c")
     loader = source[
         source.index("static int load_settings(void)") : source.index("static void hook_destroy")
     ]
-    copied = loader.index("updated.chains[TXAGC_LINK] = updated.chains[TXAGC_LOCAL]")
-    reset = loader.index(
-        "updated.chains[TXAGC_LINK].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED", copied
-    )
-    link_read = loader.index('read_chain(cfg, "link"', reset)
-    assert copied < reset < link_read
-    receive_reset = loader.index(
-        "updated.chains[TXAGC_LINK].agc.receive_bandpass_enabled = 0", copied
-    )
-    assert copied < receive_reset < link_read
+    flat = loader.index('read_chain(cfg, "local", &shared->chains[TXAGC_LOCAL])')
+    copy = loader.index("*profile = defaults->profiles[0]")
+    scoped = loader.index("read_chain(cfg, local_section", copy)
+    assert flat < copy < scoped
 
 
 def test_link_rejects_brickwall_filter_options():
     source = text("src/usbradioplus_processing.c")
-    validator = source[
-        source.index("static int validate_option_names") : source.index(
-            "static int read_stage_order"
-        )
-    ]
-    assert 'strcmp(sections[section], "link")' in validator
+    validator = function_definition(source, "validate_named_option")
+    assert '!strcmp(kind, "link")' in validator
     for option in (
         "splatter_filter_enabled",
         "splatter_filter_highpass_hz",
         "splatter_filter_lowpass_hz",
-        "output_highpass_hz",
-        "output_lowpass_hz",
     ):
         assert f'"{option}"' in validator
 
 
-def test_explicit_pl_filter_replaces_legacy_rxhpf():
+def test_pl_filter_comes_only_from_unified_processing_settings():
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         block = source[source.index("struct txagc_config filter_cfg;") :]
-        block = block[: block.index("filter_cfg.splatter_filter_enabled")]
-        explicit = block.index("chain.ctcss_filter_configured")
-        processing_cutoff = block.index("chain.agc.ctcss_highpass_hz", explicit)
-        legacy_fallback = block.index("o->plus_rxhpf_enabled", processing_cutoff)
-        assert explicit < processing_cutoff < legacy_fallback
-        assert "o->rxctcssfreqs" not in block
+        assert "filter_cfg.ctcss_filter_mode = chain.agc.ctcss_filter_mode" in block
+        assert "filter_cfg.ctcss_highpass_hz = chain.agc.ctcss_highpass_hz" in block
+        assert "plus_rxhpf" not in block
 
 
 def test_invalid_reload_cannot_replace_live_settings():
@@ -169,11 +169,11 @@ def test_invalid_reload_cannot_replace_live_settings():
     loader = source[
         source.index("static int load_settings(void)") : source.index("static void hook_destroy")
     ]
-    commit = loader.rindex("settings = updated")
+    commit = loader.rindex("settings = *updated")
     assert loader.index("validate_option_names(cfg)") < commit
     assert loader.index("settings_parse_error") < commit
-    assert loader.index("validate_settings(&updated)") < commit
-    assert "keeping existing configuration" in loader[:commit]
+    assert loader.index("validate_profile(profile)") < commit
+    assert "keeping existing configuration" in loader
 
 
 def test_duplex_routes_are_distinct():
@@ -185,7 +185,6 @@ def test_duplex_routes_are_distinct():
     assert re.search(r"\(double\)\s*o->duplex3\s*/\s*DUPLEX3_LEVEL_MAX", source)
     assert "o->duplex3 * o->micplaymax" in source
     assert "duplex3 must be between 0 and %d" in source
-    assert "duplex3mode must be hardware or software" in source
 
 
 def test_software_duplex3_honors_dtmf_mute_state():
@@ -246,26 +245,22 @@ def test_native_transmit_gain_and_limiter_precedence():
     processing = text("src/usbradioplus_processing.c")
     header = text("src/usbradioplus_processing.h")
     module = text("src/chan_usbradioplus.c")
-    sample = text("examples/usbradioplus-processing.conf.sample")
     assert "base->agc.input_gain_db = 6.0" in processing
     assert "lookahead_limiter_configured" in header
     assert 'ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL' in processing
-    assert "!composite_chain.lookahead_limiter_configured" in module
-    assert "urp_legacy_limiter_ceiling_dbfs(o->txslimsp)" in module
+    assert "final_cfg = composite_chain.agc" in module
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         for removed in ("rxgain", "legacyaudioscaling", "txboost", "rxboost"):
             assert removed not in source
-    assert "Toggle TX Boost" not in text("src/usbradioplus-tune.c")
-    assert "When omitted, txprelim, txlimonly, and txslimsp" in sample
+    assert "Toggle TX Boost" not in text("scripts/usbradioplus-tune")
     assert "nativeaudio" not in text("examples/usbradioplus.conf.sample")
     assert "PmrTx(" not in text("src/usbradioplus_radio.c")
 
 
-def test_native_receive_preserves_legacy_level_and_delay():
+def test_native_receive_uses_modern_level_and_delay():
     source = text("src/chan_usbradioplus.c")
     processing = text("src/usbradioplus_processing.c")
-    assert "2.0 * o->legacy_rxvoiceadj" in source
     assert "effective_rx_input_gain_db(o) / 20.0" in source
     assert "dynamics_cfg.input_gain_db = 0.0" in source
     assert "chain->input_gain_configured = 1" in processing
@@ -277,20 +272,17 @@ def test_native_receive_preserves_legacy_level_and_delay():
     assert detector < receiver
 
 
-def test_hardware_input_gain_controls_capture_with_rxmixerset_fallback():
+def test_hardware_input_gain_controls_capture():
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         assert "plus_presquelch_gain" not in source
         assert "usbradioplus_processing_set_hardware_input_gain" in source
         assert "500.0 * pow(10.0, gain_db / 20.0)" in source
-        assert "hardware.input_gain_configured" in source
-        assert re.search(
-            r"urp_gain_db_to_mixer\(hardware\.input_gain_db\)\s*:\s*o->rxmixerset",
-            source,
-        )
+        assert "urp_gain_db_to_mixer(hardware.input_gain_db)" in source
+        assert "o->rxmixerset" not in function_definition(source, "effective_rxmixerset")
         prepare = function_definition(source, "usbradioplus_prepare_squelch_audio")
         assert "pow(" not in prepare
-    docs = text("man/usbradioplus-processing.conf.5")
+    docs = text("man/usbradioplus.conf.5")
     assert "normalized mixer midpoint, 500" in docs
     assert "hardware_input_gain_db" in docs
 
@@ -309,11 +301,11 @@ def test_rx_noise_calibration_matches_usbradio_and_reports_levels():
     assert "peak and RMS levels" in manual
 
 
-def test_processing_hardware_section_covers_gain_routing_and_fallbacks():
+def test_hardware_section_covers_gain_and_routing():
     parser = text("src/usbradioplus_processing.c")
-    sample = text("examples/usbradioplus-processing.conf.sample")
-    manual = text("man/usbradioplus-processing.conf.5")
-    tuner = text("scripts/usbradioplus-processing-tune")
+    sample = text("examples/usbradioplus.conf.sample")
+    manual = text("man/usbradioplus.conf.5")
+    tuner = text("scripts/usbradioplus-tune")
     options = (
         "hardware_input_gain_db",
         "hardware_output_a_gain_db",
@@ -331,21 +323,20 @@ def test_processing_hardware_section_covers_gain_routing_and_fallbacks():
         assert option in manual
         assert option in tuner
     assert "500.0 * pow(10.0, gain_db / 20.0)" in text("src/chan_usbradioplus.c")
-    assert "LEGACY_OPTION_MAP" in tuner
-    assert "materialize_legacy_fallbacks" in tuner
+    assert "LEGACY_OPTION_MAP" not in tuner
+    assert "materialize_legacy_fallbacks" not in tuner
     for assignment in ("off", "voice", "ctcss", "voice_ctcss", "auxvoice"):
         assert assignment in parser
-    module = text("src/chan_usbradioplus.c")
-    assert "hardware.cos_assignment_configured" in module
-    assert "hardware.rx_ctcss_frequencies_configured" in module
-    assert "hardware.tx_ctcss_frequencies_configured" in module
+    assert "hardware->cos_assignment_configured = 1" in parser
+    assert "hardware->rx_ctcss_frequencies_configured = 1" in parser
+    assert "hardware->tx_ctcss_frequencies_configured = 1" in parser
 
 
-def test_modern_channel_options_overlay_legacy_fallbacks():
+def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
     parser = text("src/usbradioplus_processing.c")
-    sample = text("examples/usbradioplus-processing.conf.sample")
-    manual = text("man/usbradioplus-processing.conf.5")
-    tuner = text("scripts/usbradioplus-processing-tune")
+    sample = text("examples/usbradioplus.conf.sample")
+    manual = text("man/usbradioplus.conf.5")
+    tuner = text("scripts/usbradioplus-tune")
     modules = text("src/chan_usbradioplus.c") + text("src/chan_usbradioplus_modern.c")
     modern = (
         "hardware_device_identifier hardware_serial hardware_interface_type "
@@ -501,33 +492,15 @@ def test_native_stats_do_not_use_retired_dynamics_state():
     assert "FFmpeg local: input peak" in source
 
 
-def test_cutoff_parser_is_independent_and_legacy_first():
-    parser = text("src/usbradioplus_dsp.c")
-    integer = parser.index("strtol(text")
-    boolean = parser.index("urp_text_is_false(text)")
-    assert integer < boolean
-    assert "ast_true" not in parser and "ast_false" not in parser
-
-
 def test_tuning_utility_uses_radioplus_cli():
-    source = text("src/usbradioplus-tune.c")
-    assert '#define COMMAND_PREFIX "radioplus "' in source
-    for command in (
-        "menu-support b",
-        "menu-support d",
-        "menu-support f",
-        "menu-support h",
-        "menu-support v",
-        "menu-support y",
-    ):
-        assert command in source
+    source = text("scripts/usbradioplus-tune")
+    assert 'f"radioplus tune menu-support {option}"' in source
+    assert '"radioplus processing reload"' in source
 
 
 def test_tuning_menus_report_the_correct_state_and_ranges():
-    tune = text("src/usbradioplus-tune.c")
-    processing = text("scripts/usbradioplus-processing-tune")
-    assert re.search(r"TX Prelimiting \(currently '%s'\)\\n\",\s*txprelim\s*\?", tune)
-    assert re.search(r"TX Limiting Only \(currently '%s'\)\\n\",\s*txlimonly\s*\?", tune)
+    tune = text("scripts/usbradioplus-tune")
+    processing = text("scripts/usbradioplus-tune")
     assert "rxboost" not in tune
     assert "txboost" not in tune
     expected_ranges = {
@@ -563,21 +536,8 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert '"splatter_filter_enabled": "yes"' in processing
     assert 'groups.remove("Filters")' in processing
     assert 'groups.remove("Final limiter")' in processing
-    for wording in (
-        "Live RX level display. Press Enter",
-        "Live COS, CTCSS, and PTT status. Press Enter",
-        "Live RX audio statistics. Press Enter",
-        "Live TX audio statistics. Press Enter",
-        "0) Back",
-        "0) Exit",
-    ):
-        assert wording in tune
-    assert "L) Change TX Soft Limiter Setpoint" in tune
-    assert 'menu_get_integer("TX soft limiter setpoint", txslimsp, 5000, 13000)' in tune
-    assert 'COMMAND_PREFIX "tune menu-support L%d"' in tune
-    assert 'COMMAND_PREFIX "tune menu-support D%d"' in tune
-    assert 'COMMAND_PREFIX "tune menu-support M%d"' in tune
-    assert "/usr/sbin/usbradioplus-processing-tune" in tune
+    assert "Continuous status and RX/TX audio meters" in tune
+    assert "Save changes and exit" in tune
     for constraint in ("relationship_error", "pairs = {", 'key == "agc_floor_dbfs"'):
         assert constraint in processing
 
@@ -601,12 +561,12 @@ def test_ffmpeg_is_the_only_graph_processing_implementation():
 
 
 def test_duplex3_tuning_is_live_and_persistent():
-    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(path)
-        assert "CONFIG_UPDATE_INT(duplex3)" in source
-        assert '"duplex3mode"' in source
-        assert "case 'D': /* Set local repeat level" in source
-        assert "case 'M': /* Select hardware-mixer" in source
+    source = text("src/usbradioplus_channel_common.c")
+    assert 'ADD_NUMBER("duplex", "duplex_local_repeat_level"' in source
+    assert 'ADD_TEXT("duplex", "duplex_local_repeat_mode"' in source
+    utility = text("scripts/usbradioplus-tune")
+    assert '"duplex_local_repeat_level"' in utility
+    assert '"duplex_local_repeat_mode"' in utility
 
 
 def test_tuning_tone_uses_native_transmitter_path():
@@ -678,24 +638,13 @@ def test_auxiliary_level_updates_selected_mixer():
 
 def test_tuning_commands_and_persistence_cover_all_levels():
     module = text("src/chan_usbradioplus.c")
-    utility = text("src/usbradioplus-tune.c")
+    utility = text("scripts/usbradioplus-tune")
     handler = function_definition(module, "tune_menusupport")
     cases = set(re.findall(r"case '([0-9a-z])'", handler))
     assert set("0123abcdefghijklopqrstuvwxyz") <= cases
-    for command in ("c", "d", "e", "f", "g", "h", "j"):
-        assert f"tune menu-support {command}" in utility
-    saver = function_definition(module, "tune_write")
-    for field in ("rxmixerset", "rxsquelchadj", "txmixaset", "txmixbset", "txctcssadj"):
-        assert "CONFIG_UPDATE_" in saver and field in saver
-    assert "usbradioplus_processing_save_input_gains" in saver
-    for field in (
-        "EEPROM_USER_TXMIXASET",
-        "EEPROM_USER_TXMIXBSET",
-        "EEPROM_USER_RXVOICEADJ",
-        "EEPROM_USER_TXCTCSSADJ",
-        "EEPROM_USER_RXSQUELCHADJ",
-    ):
-        assert field in saver
+    assert 'f"radioplus tune menu-support {option}"' in utility
+    saver = function_definition(module, "save_tuning_config")
+    assert "usbradioplus_processing_save_options" in saver
 
 
 def test_installer_never_activates_or_restarts():
@@ -740,7 +689,7 @@ def test_readme_is_a_short_project_entry_point():
         "install.md",
         "man/usbradioplus.7",
         "man/usbradioplus.conf.5",
-        "man/usbradioplus-processing.conf.5",
+        "man/usbradioplus.conf.5",
         "man/usbradioplus-tune.8",
         "examples/",
         "doc/packaging.md",
@@ -759,15 +708,7 @@ def test_readme_is_a_short_project_entry_point():
 
 
 def test_configuration_manuals_cover_parser_options():
-    channel_man = text("man/usbradioplus.conf.5").lower()
-    processing_man = text("man/usbradioplus-processing.conf.5").lower()
-    legacy = [
-        line
-        for line in text("tests/data/legacy-options.txt").splitlines()
-        if line and not line.startswith("#")
-    ]
-    channel_extra = ("duplex3mode emphasis_corner_hz pport pbase").split()
-    assert not [option for option in legacy + channel_extra if option.lower() not in channel_man]
+    processing_man = text("man/usbradioplus.conf.5").lower()
 
     parser = text("src/usbradioplus_processing.c")
     start = parser.index(
@@ -775,7 +716,7 @@ def test_configuration_manuals_cover_parser_options():
     )
     end = parser.index("};", start)
     chain_options = re.findall(r'"([a-z][a-z0-9_]*)"', parser[start:end])
-    general_options = ["enabled", "channel", "local_enabled", "link_enabled"]
+    general_options = ["channel_enabled"]
     hardware_options = [
         "hardware_input_gain_db",
         "hardware_output_a_gain_db",
@@ -794,9 +735,9 @@ def test_configuration_manuals_cover_parser_options():
 
 
 def test_processing_options_use_stage_first_names():
-    canonical = text("examples/usbradioplus-processing.conf.sample")
-    tuner = text("scripts/usbradioplus-processing-tune")
-    manual = text("man/usbradioplus-processing.conf.5")
+    canonical = text("examples/usbradioplus.conf.sample")
+    tuner = text("scripts/usbradioplus-tune")
+    manual = text("man/usbradioplus.conf.5")
     parser = text("src/usbradioplus_processing.c")
     old_names = (
         "target_dbfs",
@@ -829,7 +770,7 @@ def test_processing_options_use_stage_first_names():
         assert not re.search(assignment, canonical)
         assert not re.search(rf"\.B {re.escape(name)}\s*=", manual)
         assert f'    "{name}": (' not in tuner
-        assert f'"{name}"' in parser  # Accepted as a deprecated alias.
+        assert f'"{name}"' not in parser
     for prefix in (
         "agc_",
         "expander_",
@@ -843,23 +784,7 @@ def test_processing_options_use_stage_first_names():
 
 
 def test_example_files_cover_every_documented_option():
-    channel = text("examples/usbradioplus.conf.sample").lower()
-    processing = text("examples/usbradioplus-processing.conf.sample").lower()
-    legacy = [
-        line
-        for line in text("tests/data/legacy-options.txt").splitlines()
-        if line and not line.startswith("#")
-    ]
-    channel_extra = ("duplex3mode emphasis_corner_hz pport pbase").split()
-    assert not [
-        option
-        for option in legacy + channel_extra
-        if not re.search(rf"(?m)^;?{re.escape(option)}\s*=", channel)
-    ]
-    for pin in [f"gpio{number}" for number in range(1, 9)]:
-        assert re.search(rf"(?m)^;?{pin}\s*=", channel)
-    for pin in [f"pp{number}" for number in range(2, 16) if number not in (11, 14)]:
-        assert re.search(rf"(?m)^;?{pin}\s*=", channel)
+    processing = text("examples/usbradioplus.conf.sample").lower()
 
     parser = text("src/usbradioplus_processing.c")
     start = parser.index(
@@ -867,7 +792,7 @@ def test_example_files_cover_every_documented_option():
     )
     end = parser.index("};", start)
     options = set(re.findall(r'"([a-z][a-z0-9_]*)"', parser[start:end]))
-    options.update(("channel", "local_enabled", "link_enabled"))
+    options.update(("channel_enabled",))
     assert not [
         option
         for option in options
@@ -875,7 +800,7 @@ def test_example_files_cover_every_documented_option():
     ]
 
     # Every assignment is introduced by a comment in the same short paragraph.
-    for body in (channel, processing):
+    for body in (processing,):
         lines = body.splitlines()
         for index, line in enumerate(lines):
             if re.match(r"^;?[a-z][a-z0-9_]*\s*=", line):
@@ -891,12 +816,8 @@ def test_manual_sections_and_install_layout():
     assert not (ROOT / "man/usbradioplus.5").exists()
     assert text("man/usbradioplus.7").startswith(".TH USBRADIOPLUS 7")
     assert text("man/usbradioplus.conf.5").startswith(".TH USBRADIOPLUS.CONF 5")
-    assert text("man/usbradioplus-processing.conf.5").startswith(
-        ".TH USBRADIOPLUS-PROCESSING.CONF 5"
-    )
     for installed in (
         "man5/usbradioplus.conf.5",
-        "man5/usbradioplus-processing.conf.5",
         "man7/usbradioplus.7",
         "man8/usbradioplus-tune.8",
     ):
@@ -919,7 +840,7 @@ def test_transmitter_has_only_final_brickwall_bandpass():
         assert "plus_tx_hpf" not in source
         assert '"txvoicehighpass"' not in source
         assert '"txvoicehighpass_hz"' not in source
-        assert "final_cfg.splatter_filter_enabled" in source
+        assert "final_cfg = composite_chain.agc" in source
     for path in ("examples/usbradioplus.conf.sample", "man/usbradioplus.conf.5"):
         assert "txvoicehighpass" not in text(path).lower()
 
@@ -944,6 +865,8 @@ def test_receive_bandpass_precedes_pl_filter():
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         fixed = source[source.index("struct txagc_config filter_cfg;") :]
-        assert "filter_cfg.receive_bandpass_enabled = 1;" in fixed
-        assert "filter_cfg.receive_bandpass_highpass_hz = 20.0;" in fixed
-        assert "filter_cfg.receive_bandpass_lowpass_hz = 5000.0;" in fixed
+        assert "filter_cfg.receive_bandpass_enabled = chain.agc.receive_bandpass_enabled;" in fixed
+        assert "filter_cfg.receive_bandpass_highpass_hz =" in fixed
+        assert "chain.agc.receive_bandpass_highpass_hz;" in fixed
+        assert "filter_cfg.receive_bandpass_lowpass_hz =" in fixed
+        assert "chain.agc.receive_bandpass_lowpass_hz;" in fixed

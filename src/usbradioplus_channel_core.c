@@ -123,7 +123,7 @@ double urp_mixer_to_gain_db(int setting)
 	return 20.0 * log10(fmax(0.000001, (double)setting / 500.0));
 }
 
-int urp_legacy_multiplier(int value)
+int urp_hardware_level_multiplier(int value)
 {
 	const int unity = 256;
 	int pot = (value / 4) * 4 + 2;
@@ -231,18 +231,6 @@ void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int us
 		*usb_value |= usb_mask;
 		*parallel_value |= (int8_t)parallel_mask;
 	}
-}
-
-enum urp_legacy_filter urp_legacy_filter_name(const char *name)
-{
-	enum urp_legacy_filter filter = URP_FILTER_TX_HIGHPASS;
-	if (!strcmp(name, "rxlpf"))
-		filter = URP_FILTER_RX_LOWPASS;
-	else if (!strcmp(name, "rxhpf"))
-		filter = URP_FILTER_RX_HIGHPASS;
-	else if (!strcmp(name, "txlpf"))
-		filter = URP_FILTER_TX_LOWPASS;
-	return filter;
 }
 
 int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int is_keyed)
@@ -417,13 +405,9 @@ int urp_parse_ctcss_source(const char *text, enum urp_ctcss_source *source)
 {
 	static const struct urp_named_value values[] = {
 		{"no", URP_CTCSS_DISABLED},
-		{"SD_IGNORE", URP_CTCSS_DISABLED},
 		{"usb", URP_CTCSS_USB},
-		{"SD_HID", URP_CTCSS_USB},
 		{"usbinvert", URP_CTCSS_USB_INVERTED},
-		{"SD_HID_INVERT", URP_CTCSS_USB_INVERTED},
 		{"dsp", URP_CTCSS_DSP},
-		{"SD_XPMR", URP_CTCSS_DSP},
 		{"pp", URP_CTCSS_PARALLEL},
 		{"ppinvert", URP_CTCSS_PARALLEL_INVERTED},
 	};
@@ -440,11 +424,8 @@ int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode)
 {
 	static const struct urp_named_value values[] = {
 		{"no", URP_TONE_OFF_NONE},
-		{"TOC_NONE", URP_TONE_OFF_NONE},
 		{"phase", URP_TONE_OFF_PHASE_REVERSE},
-		{"TOC_PHASE", URP_TONE_OFF_PHASE_REVERSE},
 		{"notone", URP_TONE_OFF_REMOVE},
-		{"TOC_NOTONE", URP_TONE_OFF_REMOVE},
 	};
 	int result;
 	if (!mode)

@@ -11,10 +11,8 @@ CTCSS, and tuning are provided in the same channel driver.
 .PP
 Each configured interface appears to Asterisk as
 .BR RadioPlus/ name .
-Channel and hardware settings are read from
+Channel, hardware, and audio-processing settings are read from
 .BR usbradioplus.conf (5).
-Optional audio-processing graphs are read from
-.BR usbradioplus-processing.conf (5).
 .SH INSTALLATION
 Install the matching ASL3 Asterisk development package and the DSP development
 libraries, then build, test, and install with:
@@ -50,9 +48,9 @@ noload => chan_usbradio.so
 load => chan_usbradioplus.so
 .fi
 .PP
-Copy or rename the working channel configuration to
-.BR /etc/asterisk/usbradioplus.conf .
-Review it using
+Configure the named radio channels and their hardware and processing profiles in
+.BR /etc/asterisk/usbradioplus.conf
+using
 .BR usbradioplus.conf (5).
 .PP
 In the applicable node section of
@@ -72,27 +70,17 @@ station to service.  Do not replace a running module with
 .B module reload;
 on some ASL3 systems the CM119 remains unassigned until Asterisk restarts.
 .SH CONFIGURATION
-The channel file contains hardware selection, radio signaling, audio routing,
-filters, levels, delays, duplex operation, and GPIO assignments.  See
+The configuration file contains hardware selection, radio signaling, audio
+routing, filters, levels, delays, duplex operation, GPIO assignments, and the
+local-receiver, link, and transmitter audio graphs. See
 .BR usbradioplus.conf (5)
-for every option, accepted value, and default.
-.PP
-The processing file contains the local-receiver, link, and transmitter audio
-graphs.  See
-.BR usbradioplus-processing.conf (5)
-for graph order, processing controls, limits, and defaults.
+for every option, graph rule, accepted value, and default.
 .SH TUNING UTILITIES
 .TP
 .B usbradioplus-tune
 Interactive, keyboard-operated setup for USB mixer levels, receive voice and
 CTCSS levels, squelch, transmit voice and CTCSS deviation, PTT, test tone,
 statistics, and EEPROM storage.
-.TP
-.B usbradioplus-processing-tune
-Checks and edits the optional processing graphs and can display live processing
-statistics. Its processing menus include the three-band equalizer and
-split-band de-esser controls documented in
-.BR usbradioplus-processing.conf (5).
 .PP
 See
 .BR usbradioplus-tune (8)
@@ -104,12 +92,8 @@ Asterisk channel module.
 .TP
 .B /etc/asterisk/usbradioplus.conf
 Channel, radio-interface, and tuning configuration.
-.TP
-.B /etc/asterisk/usbradioplus-processing.conf
-Optional audio-processing configuration.
 .SH SEE ALSO
 .BR usbradioplus.conf (5),
-.BR usbradioplus-processing.conf (5),
 .BR usbradioplus-tune (8),
 .BR modules.conf (5),
 .BR rpt.conf (5)
