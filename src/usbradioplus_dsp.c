@@ -4,12 +4,10 @@
 
 #include "usbradioplus_dsp.h"
 
-#include <limits.h>
 #include <math.h>
 #include <samplerate.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 
 #ifdef AST_MODULE
 #include "asterisk/utils.h"
@@ -63,68 +61,6 @@ double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued
 	/* Smooth ratio changes so clock correction cannot modulate speech abruptly. */
 	clock->correction += (desired - clock->correction) * 0.02;
 	return clock->correction;
-}
-
-static int urp_text_is_true(const char *text)
-{
-	return !strcasecmp(text, "yes") || !strcasecmp(text, "true") || !strcasecmp(text, "on") ||
-	       !strcasecmp(text, "y") || !strcasecmp(text, "t");
-}
-
-static int urp_text_is_false(const char *text)
-{
-	return !strcasecmp(text, "no") || !strcasecmp(text, "false") || !strcasecmp(text, "off") ||
-	       !strcasecmp(text, "n") || !strcasecmp(text, "f");
-}
-
-int urp_parse_cutoff(const char *text, double default_hz, double nyquist_hz,
-		     struct urp_cutoff_setting *setting)
-{
-	char *end;
-	double frequency;
-
-	if (!text || !*text || !setting || !isfinite(default_hz) || default_hz <= 0.0 ||
-	    default_hz >= nyquist_hz)
-		return -1;
-
-	/* Preserve legacy integer selectors, especially 0, before parsing booleans. */
-	if (!strchr(text, '.') && !strchr(text, 'e') && !strchr(text, 'E')) {
-		long selector;
-
-		selector = strtol(text, &end, 10);
-		if (end != text && !*end) {
-			if (selector < 0 || selector > INT_MAX)
-				return -1;
-			setting->enabled = 1;
-			setting->exact = 0;
-			setting->selector = (int)selector;
-			setting->frequency_hz = default_hz;
-			return 0;
-		}
-	}
-	if (urp_text_is_false(text)) {
-		setting->enabled = 0;
-		setting->exact = 1;
-		setting->selector = 0;
-		setting->frequency_hz = default_hz;
-		return 0;
-	}
-	if (urp_text_is_true(text)) {
-		setting->enabled = 1;
-		setting->exact = 1;
-		setting->selector = 0;
-		setting->frequency_hz = default_hz;
-		return 0;
-	}
-	frequency = strtod(text, &end);
-	if (end == text || *end || !isfinite(frequency) || frequency <= 0.0 ||
-	    frequency >= nyquist_hz)
-		return -1;
-	setting->enabled = 1;
-	setting->exact = 1;
-	setting->selector = 0;
-	setting->frequency_hz = frequency;
-	return 0;
 }
 
 static int16_t saturate(double value)

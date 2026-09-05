@@ -492,14 +492,6 @@ def test_native_stats_do_not_use_retired_dynamics_state():
     assert "FFmpeg local: input peak" in source
 
 
-def test_cutoff_parser_is_independent_and_legacy_first():
-    parser = text("src/usbradioplus_dsp.c")
-    integer = parser.index("strtol(text")
-    boolean = parser.index("urp_text_is_false(text)")
-    assert integer < boolean
-    assert "ast_true" not in parser and "ast_false" not in parser
-
-
 def test_tuning_utility_uses_radioplus_cli():
     source = text("scripts/usbradioplus-tune")
     assert 'f"radioplus tune menu-support {option}"' in source
