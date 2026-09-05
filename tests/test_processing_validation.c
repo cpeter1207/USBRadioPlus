@@ -66,6 +66,7 @@ static int fake_iterator_available;
 static int fake_iterator_channels_remaining;
 static int fake_iterator_destroy_calls;
 static int fake_pthread_join_calls;
+static int fake_mutex_depth;
 
 struct ast_module *test_module_self(void)
 {
@@ -170,6 +171,7 @@ int __ast_pthread_mutex_lock(const char *filename, int line, const char *functio
 	(void)function;
 	(void)mutex_name;
 	(void)mutex;
+	++fake_mutex_depth;
 	return 0;
 }
 
@@ -181,6 +183,8 @@ int __ast_pthread_mutex_unlock(const char *filename, int line, const char *funct
 	(void)function;
 	(void)mutex_name;
 	(void)mutex;
+	assert(fake_mutex_depth > 0);
+	--fake_mutex_depth;
 	return 0;
 }
 
@@ -244,6 +248,9 @@ struct ast_channel_iterator *ast_channel_iterator_destroy(struct ast_channel_ite
 struct ast_channel *ast_channel_get_by_name(const char *name)
 {
 	(void)name;
+	/* Channel lookup takes Asterisk container locks.  The processing settings
+	 * lock must never be held here or app_rpt can form the reciprocal order. */
+	assert(fake_mutex_depth == 0);
 	return fake_primary_channel_available ? (struct ast_channel *)(uintptr_t)1 : NULL;
 }
 
