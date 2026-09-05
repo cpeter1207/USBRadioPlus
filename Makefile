@@ -128,6 +128,7 @@ static-analysis:
 	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 \
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
+		--suppress=normalCheckLevelMaxBranches \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
 		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
 		-Isrc src & cppcheck_pid=$$!; \
