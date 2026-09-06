@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha13 - 2026-09-06
+
+Fix uninitialized hardware and audio snapshots for missing profiles, preventing intermittent CTCSS parsing crashes. Correct AGC dependency tests for the modern-ASL package variant. Includes alpha12 audio and tuner improvements. Debian builds now install the required LADSPA headers.
+
 ## 0.1.0~alpha12 - 2026-09-06
 
 Continuous audio I/O and improved transmit FIFO recovery; gated RMS AGC and configurable single-/three-band compression and limiting; continuous Micor squelch; tuner echo, stage-order and defaults fixes; independent transmit pre-emphasis with obsolete compatibility limiter controls removed. Configuration migration is required for renamed pre-emphasis and revised dynamics controls.
