@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha12 - 2026-09-06
+
+Continuous audio I/O and improved transmit FIFO recovery; gated RMS AGC and configurable single-/three-band compression and limiting; continuous Micor squelch; tuner echo, stage-order and defaults fixes; independent transmit pre-emphasis with obsolete compatibility limiter controls removed. Configuration migration is required for renamed pre-emphasis and revised dynamics controls.
+
 - Replace AGC with a gated RMS speech gain rider in the shared FFmpeg graph.
   Add detector filtering, independent dB-per-second gain rates, activity hold,
   hysteresis, and a target deadband without lookahead or added audio buffering.
