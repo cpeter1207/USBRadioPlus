@@ -54,7 +54,14 @@ static void configure(struct txagc_config *cfg)
 	cfg->compressor_enabled = cfg->limiter_enabled = 1;
 	cfg->target_dbfs = -12.0;
 	cfg->max_gain_db = 6.0;
-	cfg->agc_floor_dbfs = -60.0;
+	cfg->max_attenuation_db = 6.0;
+	cfg->agc_rms_averaging_ms = 200.0;
+	cfg->agc_gain_increase_db_per_second = 2.0;
+	cfg->agc_gain_decrease_db_per_second = 6.0;
+	cfg->agc_activity_threshold_dbfs = -60.0;
+	cfg->agc_activity_hysteresis_db = 3.0;
+	cfg->agc_hold_ms = 500.0;
+	cfg->agc_deadband_db = 1.0;
 	cfg->expander_threshold_dbfs = -55.0;
 	cfg->expander_ratio = 1.5;
 	cfg->expander_max_attenuation_db = 9.0;

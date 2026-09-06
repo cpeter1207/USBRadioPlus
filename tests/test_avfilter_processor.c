@@ -149,7 +149,14 @@ int main(void)
 	config.agc_enabled = 1;
 	config.target_dbfs = -16.0;
 	config.max_gain_db = 12.0;
-	config.agc_floor_dbfs = -55.0;
+	config.max_attenuation_db = 6.0;
+	config.agc_rms_averaging_ms = 200.0;
+	config.agc_gain_increase_db_per_second = 2.0;
+	config.agc_gain_decrease_db_per_second = 6.0;
+	config.agc_activity_threshold_dbfs = -55.0;
+	config.agc_activity_hysteresis_db = 3.0;
+	config.agc_hold_ms = 500.0;
+	config.agc_deadband_db = 1.0;
 	config.expander_enabled = 1;
 	config.expander_threshold_dbfs = -55.0;
 	config.expander_ratio = 1.5;

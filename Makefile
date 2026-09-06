@@ -13,6 +13,7 @@ mandir ?= $(datarootdir)/man
 sysconfdir ?= /etc
 MULTIARCH ?= $(strip $(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null))
 asteriskmoduledir ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))/asterisk/modules
+agcplugindir ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))/usbradioplus
 DESTDIR ?=
 
 CC ?= cc
@@ -63,6 +64,8 @@ $(error ASL_RADIO_API must be legacy or modern)
 endif
 COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
+AGC_PLUGIN := $(BUILD_DIR)/usbradioplus_agc.so
+AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
@@ -88,17 +91,27 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	clean dist distcheck install install-strip install-from-dist \
 	print-asl-radio-api uninstall validate-release
 
+.PHONY: force-agc-path
+
 print-asl-radio-api:
 	@echo $(ASL_RADIO_API)
 
-all: $(MODULE)
+all: $(MODULE) $(AGC_PLUGIN)
 
 $(BUILD_DIR):
 	mkdir -p $@
 
+# A later staged install may select a different prefix from the initial build.
+# Track it so the module cannot retain a stale private-plugin location.
+$(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
+	@printf '%s\n' '$(agcplugindir)/usbradioplus_agc.so' > $@.tmp
+	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; fi
+
+$(BUILD_DIR)/txagc/avfilter_processor.o: $(BUILD_DIR)/agc-plugin-path
+
 $(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
+	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(AGC_PLUGIN_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
@@ -106,6 +119,11 @@ $(MODULE): $(MODULE_OBJECTS)
 	@echo "Building $(PACKAGE) for the $(ASL_RADIO_API) ASL3 radio API"
 	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
 		$(DSP_LIBS) $(RADIO_LIBS) -lm
+
+# The graph loads this private LADSPA effect; it is not an Asterisk module.
+$(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -fPIC -shared $(LDFLAGS) \
+		-o $@ src/txagc/rms_agc_ladspa.c -lm
 
 check: all
 	$(PYTHON) -m pytest -q tests_py
@@ -141,6 +159,7 @@ static-analysis:
 		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
+		src/txagc/rms_agc_ladspa.c \
 		src/txagc/rnnoise_processor.c \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
 		& shared_tidy_pid=$$!; \
@@ -152,7 +171,7 @@ static-analysis:
 
 coverage:
 	rm -rf $(BUILD_DIR)/coverage $(BUILD_DIR)/coverage-focus
-	rm -f $(MODULE) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
+	rm -f $(MODULE) $(AGC_PLUGIN) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
 	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
 	# Manual focused runs may place GCC counters at the repository root. Never
 	# allow counters produced by another compiler/image to enter this report.
@@ -195,13 +214,15 @@ docs:
 ci: lint static-analysis check coverage docs distcheck
 
 install: all
-	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(sbindir) \
+	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(agcplugindir) $(DESTDIR)$(sbindir) \
 		$(DESTDIR)$(docdir) $(DESTDIR)$(mandir)/man5 \
 		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8 \
 		$(DESTDIR)$(sysconfdir)/asterisk
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
+	$(INSTALL_DATA) $(AGC_PLUGIN) $(DESTDIR)$(agcplugindir)/usbradioplus_agc.so
 	$(INSTALL_PROGRAM) scripts/usbradioplus-tune $(DESTDIR)$(sbindir)/usbradioplus-tune
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/agc.md $(DESTDIR)$(docdir)/
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
 		$(INSTALL_DATA) examples/usbradioplus.conf.sample \
 			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; \
@@ -214,14 +235,17 @@ install: all
 
 install-strip: install
 	strip $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
+	strip $(DESTDIR)$(agcplugindir)/usbradioplus_agc.so
 
 uninstall:
 	rm -f $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so \
+		$(DESTDIR)$(agcplugindir)/usbradioplus_agc.so \
 		$(DESTDIR)$(sbindir)/usbradioplus-tune \
 		$(DESTDIR)$(mandir)/man5/usbradioplus.conf.5 \
 		$(DESTDIR)$(mandir)/man7/usbradioplus.7 \
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
-		$(DESTDIR)$(docdir)/usbradioplus.conf.sample
+		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
+		$(DESTDIR)$(docdir)/agc.md
 
 dist: $(TARBALL)
 

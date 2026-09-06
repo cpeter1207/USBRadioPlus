@@ -15,6 +15,12 @@
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavfilter/version.h>
+
+/* Package builds select a private absolute path. Standalone graph tests use
+ * LADSPA_PATH so they exercise the freshly built effect, never a node install. */
+#ifndef URP_AGC_PLUGIN_PATH
+#define URP_AGC_PLUGIN_PATH "usbradioplus_agc"
+#endif
 #include <libavutil/audio_fifo.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/dict.h>
@@ -223,12 +229,20 @@ AVFILTER_PRIVATE int add_sidechain_stage(char *graph, size_t size, const char *i
 					 const char *output, const char *prefix, const char *filter,
 					 double highpass, double lowpass, const char *options)
 {
+	char detector_highpass[64] = "anull";
+	char detector_lowpass[64] = "anull";
+	/* Omit disabled filters rather than asking FFmpeg to accept a zero cutoff. */
+	if (highpass > 0.0)
+		snprintf(detector_highpass, sizeof(detector_highpass), "highpass=f=%.9g:p=2",
+			 highpass);
+	if (lowpass > 0.0)
+		snprintf(detector_lowpass, sizeof(detector_lowpass), "lowpass=f=%.9g:p=2", lowpass);
 	return graph_append(graph, size,
 			    "[%s]asplit=2[%smain][%ssc];"
-			    "[%ssc]highpass=f=%.9g:p=2,lowpass=f=%.9g:p=2[%sdet];"
+			    "[%ssc]%s,%s[%sdet];"
 			    "[%smain][%sdet]%s=%s[%s];",
-			    input, prefix, prefix, prefix, highpass, lowpass, prefix, prefix,
-			    prefix, filter, options, output);
+			    input, prefix, prefix, prefix, detector_highpass, detector_lowpass,
+			    prefix, prefix, prefix, filter, options, output);
 }
 
 /** @brief Append the shared FFT band-pass filter between two graph labels.
@@ -303,8 +317,6 @@ AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct tx
 {
 	char options[1024];
 	char prefix[32];
-	double target;
-	double max_gain;
 
 	snprintf(prefix, sizeof(prefix), "d%u", serial);
 	switch (kind) {
@@ -365,14 +377,23 @@ AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct tx
 	case TXAGC_STAGE_AGC:
 		if (!cfg->agc_enabled)
 			return 0;
-		target = clamp(db_to_linear(cfg->target_dbfs), 0.000001, 1.0);
-		max_gain = clamp(db_to_linear(cfg->max_gain_db), 1.0, 100.0);
-		return graph_append(graph, size,
-				    "[%s]dynaudnorm=framelen=10:gausssize=3:peak=1:"
-				    "maxgain=%.12g:targetrms=%.12g:threshold=%.12g:"
-				    "overlap=0.5:correctdc=0[%s];",
-				    current, max_gain, target,
-				    clamp(db_to_linear(cfg->agc_floor_dbfs), 0.0, 1.0), next);
+		/* Pack program and detector into explicit channels for the LADSPA
+		 * two-input/one-output effect. Only its detector sees the filters.
+		 * FFmpeg 5 needs the effect's single output labeled explicitly as mono. */
+		snprintf(options, sizeof(options),
+			 "inputs=2:channel_layout=stereo:map=0.0-FL|1.0-FR,"
+			 "ladspa=file='%s':plugin=usbradioplus_agc:controls="
+			 "c0=%.12g|c1=%.12g|c2=%.12g|c3=%.12g|c4=%.12g|c5=%.12g|"
+			 "c6=%.12g|c7=%.12g|c8=%.12g|c9=%.12g,"
+			 "aformat=channel_layouts=mono",
+			 URP_AGC_PLUGIN_PATH, cfg->target_dbfs, cfg->agc_rms_averaging_ms,
+			 cfg->agc_gain_increase_db_per_second, cfg->agc_gain_decrease_db_per_second,
+			 cfg->max_gain_db, cfg->max_attenuation_db,
+			 cfg->agc_activity_threshold_dbfs, cfg->agc_activity_hysteresis_db,
+			 cfg->agc_hold_ms, cfg->agc_deadband_db);
+		return add_sidechain_stage(graph, size, current, next, prefix, "join",
+					   cfg->sidechain_highpass_hz, cfg->sidechain_lowpass_hz,
+					   options);
 	case TXAGC_STAGE_EXPANDER:
 		if (!cfg->expander_enabled)
 			return 0;
@@ -998,5 +1019,8 @@ done:
  */
 /** @def CTCSS_NOTCH_SECTIONS
  * @brief Cascaded FFmpeg notch sections used to reach the rejection target.
+ */
+/** @def URP_AGC_PLUGIN_PATH
+ * @brief Private installed LADSPA effect path, or test-only search-path name.
  */
 /** @} */

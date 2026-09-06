@@ -99,23 +99,29 @@ struct txagc_config {
 	double deesser_release_ms;
 	/** Nonzero enables agc. */
 	int agc_enabled;
-	/** AGC target RMS level in dBFS. */
+	/** Target detector-band RMS level in dBFS; gain applies to unfiltered program audio. */
 	double target_dbfs;
 	/** Maximum AGC gain increase in dB. */
 	double max_gain_db;
 	/** Maximum AGC gain reduction in dB. */
 	double max_attenuation_db;
-	/** AGC floor in DBFS. */
-	double agc_floor_dbfs;
-	/** AGC attack time in milliseconds. */
-	double attack_ms;
-	/** AGC release time in milliseconds. */
-	double release_ms;
-	/** Idle interval in milliseconds before AGC history resets. */
-	double reset_after_ms;
-	/** AGC detector's lower passband edge in Hz. */
+	/** RMS averaging time in milliseconds for the AGC level detector. */
+	double agc_rms_averaging_ms;
+	/** Maximum gain increase rate in dB per second. */
+	double agc_gain_increase_db_per_second;
+	/** Maximum gain decrease rate in dB per second. */
+	double agc_gain_decrease_db_per_second;
+	/** Fast detector RMS level in dBFS required to declare active audio. */
+	double agc_activity_threshold_dbfs;
+	/** Activity closes this many dB below its opening threshold. */
+	double agc_activity_hysteresis_db;
+	/** Continuous active, below-target qualification in milliseconds before gain rises. */
+	double agc_hold_ms;
+	/** Absolute target error in dB within which gain remains unchanged. */
+	double agc_deadband_db;
+	/** AGC detector's lower passband edge in Hz; zero disables its high-pass. */
 	double sidechain_highpass_hz;
-	/** AGC detector's upper passband edge in Hz. */
+	/** AGC detector's upper passband edge in Hz; zero disables its low-pass. */
 	double sidechain_lowpass_hz;
 	/** Nonzero enables expander. */
 	int expander_enabled;

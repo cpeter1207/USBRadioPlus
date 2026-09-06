@@ -32,6 +32,8 @@ def validate(root=ROOT):
 
     for path in (
         "src/chan_usbradioplus.c",
+        "src/txagc/rms_agc_ladspa.c",
+        "src/txagc/rms_agc_ladspa.h",
         "examples/usbradioplus.conf.sample",
         "README.md",
         "Makefile",
@@ -42,6 +44,7 @@ def validate(root=ROOT):
         "COPYING",
         "VERSION",
         "doc/packaging.md",
+        "doc/agc.md",
         "install.sh",
         "scripts/install-build-deps.sh",
     ):

@@ -49,6 +49,33 @@ def test_edit_setting_applies_each_value_kind(monkeypatch, key, editor, new_valu
     assert called and f"{key} = {new_value}" in called[0][1]
 
 
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+@pytest.mark.parametrize(
+    "key", tuple(key for key, setting in MODULE["SETTINGS"].items() if setting[-1] == "AGC")
+)
+def test_every_agc_control_uses_the_shared_numeric_editor(monkeypatch, source, key):
+    """Expose each AGC value through the same accessible editor in every chain.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param source Processing chain whose AGC is being edited.
+    @param key Current AGC control selected from the settings menu.
+    """
+    namespace = globals_for("edit_setting")
+    editors = []
+    applied = []
+    value = MODULE["default_value"](source, key)
+    monkeypatch.setitem(namespace, "read_config", lambda: f"[{source}]\n")
+    monkeypatch.setitem(
+        namespace, "prompt_number", lambda *args: (editors.append(args) or 0, value)
+    )
+    monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append(new))
+    MODULE["edit_setting"](source, key)
+    label, _kind, low, high, units, _group = MODULE["SETTINGS"][key]
+    value_type = "gain" if key.endswith("_gain_db") else "float"
+    assert editors == [(label, value, value_type, low, high, units)]
+    assert applied == [f"[{source}]\n{key} = {value}\n"]
+
+
 def test_edit_setting_cancel_relation_error_apply_error_and_text_dispatch(monkeypatch):
     """Verify edit setting cancel relation error apply error and text dispatch.
 

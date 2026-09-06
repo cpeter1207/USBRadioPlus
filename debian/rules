@@ -21,7 +21,7 @@ override_dh_auto_clean:
 	$(MAKE) clean
 
 override_dh_installdocs:
-	dh_installdocs README.md CHANGELOG.md doc/native-radio.md \
+	dh_installdocs README.md CHANGELOG.md doc/native-radio.md doc/agc.md \
 		examples/usbradioplus.conf.sample
 
 override_dh_gencontrol:

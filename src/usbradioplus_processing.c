@@ -174,13 +174,16 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.deesser_max_reduction_db = 4.0;
 	base->agc.deesser_attack_ms = 2.0;
 	base->agc.deesser_release_ms = 60.0;
-	base->agc.target_dbfs = -10.0;
-	base->agc.max_gain_db = 12.0;
+	base->agc.target_dbfs = -24.0;
+	base->agc.max_gain_db = 6.0;
 	base->agc.max_attenuation_db = 6.0;
-	base->agc.agc_floor_dbfs = -60.0;
-	base->agc.attack_ms = 750.0;
-	base->agc.release_ms = 1500.0;
-	base->agc.reset_after_ms = 3000.0;
+	base->agc.agc_rms_averaging_ms = 200.0;
+	base->agc.agc_gain_increase_db_per_second = 2.0;
+	base->agc.agc_gain_decrease_db_per_second = 6.0;
+	base->agc.agc_activity_threshold_dbfs = -50.0;
+	base->agc.agc_activity_hysteresis_db = 3.0;
+	base->agc.agc_hold_ms = 500.0;
+	base->agc.agc_deadband_db = 1.0;
 	base->agc.sidechain_highpass_hz = 800.0;
 	base->agc.sidechain_lowpass_hz = 1500.0;
 	base->agc.expander_enabled = 0;
@@ -319,10 +322,13 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(target_dbfs);
 	REQUIRE_FINITE(max_gain_db);
 	REQUIRE_FINITE(max_attenuation_db);
-	REQUIRE_FINITE(agc_floor_dbfs);
-	REQUIRE_FINITE(attack_ms);
-	REQUIRE_FINITE(release_ms);
-	REQUIRE_FINITE(reset_after_ms);
+	REQUIRE_FINITE(agc_rms_averaging_ms);
+	REQUIRE_FINITE(agc_gain_increase_db_per_second);
+	REQUIRE_FINITE(agc_gain_decrease_db_per_second);
+	REQUIRE_FINITE(agc_activity_threshold_dbfs);
+	REQUIRE_FINITE(agc_activity_hysteresis_db);
+	REQUIRE_FINITE(agc_hold_ms);
+	REQUIRE_FINITE(agc_deadband_db);
 	REQUIRE_FINITE(sidechain_highpass_hz);
 	REQUIRE_FINITE(sidechain_lowpass_hz);
 	REQUIRE_FINITE(expander_threshold_dbfs);
@@ -406,15 +412,25 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	    value->agc.deesser_release_ms > 2000.0 || value->agc.target_dbfs > -3.0 ||
 	    value->agc.target_dbfs < -40.0 || value->agc.max_gain_db < 0.0 ||
 	    value->agc.max_gain_db > 30.0 || value->agc.max_attenuation_db < 0.0 ||
-	    value->agc.max_attenuation_db > 60.0 ||
-	    value->agc.agc_floor_dbfs >= value->agc.target_dbfs ||
-	    value->agc.agc_floor_dbfs < -100.0 || value->agc.attack_ms < 1.0 ||
-	    value->agc.attack_ms > 10000.0 || value->agc.release_ms < 1.0 ||
-	    value->agc.release_ms > 30000.0 || value->agc.reset_after_ms < 100.0 ||
-	    value->agc.reset_after_ms > 60000.0 || value->agc.sidechain_highpass_hz < 50.0 ||
-	    value->agc.sidechain_highpass_hz > 2000.0 ||
-	    value->agc.sidechain_lowpass_hz <= value->agc.sidechain_highpass_hz ||
-	    value->agc.sidechain_lowpass_hz > 3500.0 ||
+	    value->agc.max_attenuation_db > 60.0 || value->agc.agc_rms_averaging_ms < 10.0 ||
+	    value->agc.agc_rms_averaging_ms > 5000.0 ||
+	    value->agc.agc_gain_increase_db_per_second < 0.1 ||
+	    value->agc.agc_gain_increase_db_per_second > 100.0 ||
+	    value->agc.agc_gain_decrease_db_per_second < 0.1 ||
+	    value->agc.agc_gain_decrease_db_per_second > 100.0 ||
+	    value->agc.agc_activity_threshold_dbfs < -100.0 ||
+	    value->agc.agc_activity_threshold_dbfs > -3.0 ||
+	    value->agc.agc_activity_threshold_dbfs >= value->agc.target_dbfs ||
+	    value->agc.agc_activity_hysteresis_db < 0.0 ||
+	    value->agc.agc_activity_hysteresis_db > 12.0 || value->agc.agc_hold_ms < 0.0 ||
+	    value->agc.agc_hold_ms > 10000.0 || value->agc.agc_deadband_db < 0.0 ||
+	    value->agc.agc_deadband_db > 6.0 ||
+	    (value->agc.sidechain_highpass_hz != 0.0 &&
+	     (value->agc.sidechain_highpass_hz < 50.0 ||
+	      value->agc.sidechain_highpass_hz > 2000.0)) ||
+	    value->agc.sidechain_lowpass_hz < 0.0 || value->agc.sidechain_lowpass_hz > 3500.0 ||
+	    (value->agc.sidechain_lowpass_hz != 0.0 &&
+	     value->agc.sidechain_lowpass_hz <= value->agc.sidechain_highpass_hz) ||
 	    value->agc.expander_threshold_dbfs < -100.0 ||
 	    value->agc.expander_threshold_dbfs > -10.0 || value->agc.expander_ratio < 1.0 ||
 	    value->agc.expander_ratio > 10.0 || value->agc.expander_max_attenuation_db < 0.0 ||
@@ -620,10 +636,13 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"agc_target_dbfs",
 		"agc_max_gain_db",
 		"agc_max_attenuation_db",
-		"agc_floor_dbfs",
-		"agc_attack_ms",
-		"agc_release_ms",
-		"agc_reset_after_ms",
+		"agc_rms_averaging_ms",
+		"agc_gain_increase_db_per_second",
+		"agc_gain_decrease_db_per_second",
+		"agc_activity_threshold_dbfs",
+		"agc_activity_hysteresis_db",
+		"agc_hold_ms",
+		"agc_deadband_db",
 		"agc_sidechain_highpass_hz",
 		"agc_sidechain_lowpass_hz",
 		"expander_enabled",
@@ -1264,10 +1283,17 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "agc_target_dbfs", &chain->agc.target_dbfs);
 	read_double(cfg, section, "agc_max_gain_db", &chain->agc.max_gain_db);
 	read_double(cfg, section, "agc_max_attenuation_db", &chain->agc.max_attenuation_db);
-	read_double(cfg, section, "agc_floor_dbfs", &chain->agc.agc_floor_dbfs);
-	read_double(cfg, section, "agc_attack_ms", &chain->agc.attack_ms);
-	read_double(cfg, section, "agc_release_ms", &chain->agc.release_ms);
-	read_double(cfg, section, "agc_reset_after_ms", &chain->agc.reset_after_ms);
+	read_double(cfg, section, "agc_rms_averaging_ms", &chain->agc.agc_rms_averaging_ms);
+	read_double(cfg, section, "agc_gain_increase_db_per_second",
+		    &chain->agc.agc_gain_increase_db_per_second);
+	read_double(cfg, section, "agc_gain_decrease_db_per_second",
+		    &chain->agc.agc_gain_decrease_db_per_second);
+	read_double(cfg, section, "agc_activity_threshold_dbfs",
+		    &chain->agc.agc_activity_threshold_dbfs);
+	read_double(cfg, section, "agc_activity_hysteresis_db",
+		    &chain->agc.agc_activity_hysteresis_db);
+	read_double(cfg, section, "agc_hold_ms", &chain->agc.agc_hold_ms);
+	read_double(cfg, section, "agc_deadband_db", &chain->agc.agc_deadband_db);
 	read_double(cfg, section, "agc_sidechain_highpass_hz", &chain->agc.sidechain_highpass_hz);
 	read_double(cfg, section, "agc_sidechain_lowpass_hz", &chain->agc.sidechain_lowpass_hz);
 	READ_BOOL("expander_enabled", chain->agc.expander_enabled);
@@ -1872,9 +1898,12 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"Enabled: %s\nLocal receiver: %s\nLinked audio: %s\n"
 		"Channel: %s\nRNNoise: %s\nReceive band-pass: %s (%.0f-%.0f Hz)\n"
 		"PL filter: %s\n"
-		"AGC stage: %s\nTarget: %.1f dBFS\nMax gain: %.1f dB\n"
-		"Max attenuation: %.1f dB\nAGC detector floor: %.1f dBFS\nAttack: %.0f ms\n"
-		"Release: %.0f ms\nReset after: %.0f ms\nSidechain band-pass: %.0f-%.0f Hz\n"
+		"AGC stage: %s\nDetector RMS target: %.1f dBFS\nMax gain: %.1f dB\n"
+		"Max attenuation: %.1f dB\nRMS averaging: %.0f ms\n"
+		"Gain increase rate: %.1f dB/s\nGain decrease rate: %.1f dB/s\n"
+		"Activity threshold: %.1f dBFS\nActivity hysteresis: %.1f dB\n"
+		"Gain-increase hold: %.0f ms\nTarget deadband: %.1f dB\n"
+		"Sidechain high-pass/low-pass: %.0f/%.0f Hz (0 disables an edge)\n"
 		"Downward expander: %s\nExpander threshold: %.1f dBFS\nExpander ratio: %.1f:1\n"
 		"Expander maximum attenuation: %.1f dB\nExpander attack: %.0f ms\n"
 		"Expander release: %.0f ms\nExpander sidechain band-pass: %.0f-%.0f Hz\n"
@@ -1900,8 +1929,11 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.agc.receive_bandpass_highpass_hz, current.agc.receive_bandpass_lowpass_hz,
 		ctcss_filter_name(current.agc.ctcss_filter_mode),
 		current.agc.agc_enabled ? "enabled" : "disabled", current.agc.target_dbfs,
-		current.agc.max_gain_db, current.agc.max_attenuation_db, current.agc.agc_floor_dbfs,
-		current.agc.attack_ms, current.agc.release_ms, current.agc.reset_after_ms,
+		current.agc.max_gain_db, current.agc.max_attenuation_db,
+		current.agc.agc_rms_averaging_ms, current.agc.agc_gain_increase_db_per_second,
+		current.agc.agc_gain_decrease_db_per_second,
+		current.agc.agc_activity_threshold_dbfs, current.agc.agc_activity_hysteresis_db,
+		current.agc.agc_hold_ms, current.agc.agc_deadband_db,
 		current.agc.sidechain_highpass_hz, current.agc.sidechain_lowpass_hz,
 		current.agc.expander_enabled ? "enabled" : "disabled",
 		current.agc.expander_threshold_dbfs, current.agc.expander_ratio,

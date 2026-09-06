@@ -13,6 +13,14 @@ else
 fi
 
 common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-}"
+# Each parallel group gets its own instrumented plugin to avoid shared gcov
+# counter writes. FFmpeg discovers only these freshly compiled test effects.
+plugin_dir="$out/plugin-${C_TEST_GROUP:-parent}"
+mkdir -p "$plugin_dir"
+# shellcheck disable=SC2086
+cc $common -fPIC -shared "$root/src/txagc/rms_agc_ladspa.c" \
+	-o "$plugin_dir/usbradioplus_agc.so" -lm
+export LADSPA_PATH="$plugin_dir"
 completed=0
 sys_io_tests=0
 channel_invariant_sources="$root/src/usbradioplus_config.c $root/src/usbradioplus_radio.c \
@@ -34,9 +42,9 @@ channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_
 # mode for tools that need ordered output.
 if [ -z "${C_TEST_GROUP:-}" ] && [ "${C_TEST_PARALLEL:-4}" != 1 ]; then
 	pids=
-	for group in basic channels rnnoise validation avfilter_bandpass \
+	for group in basic channels rnnoise rms_agc validation avfilter_bandpass \
 		avfilter_ctcss avfilter_emphasis avfilter_equalizer avfilter_deesser \
-		avfilter_processor avfilter_permutations avfilter_internals \
+		avfilter_processor avfilter_agc avfilter_permutations avfilter_internals \
 		avfilter_failures; do
 		C_TEST_GROUP=$group C_TEST_OUTPUT="$out" sh "$0" &
 		pids="$pids $!"
@@ -292,10 +300,19 @@ cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 completed=$((completed + 1))
 fi
 
+if run_group rms_agc; then
+# shellcheck disable=SC2086
+cc $common "$root/tests/test_rms_agc_ladspa.c" \
+	"$root/src/txagc/rms_agc_ladspa.c" -Wl,--wrap=calloc \
+	-o "$out/rms-agc" -lm
+"$out/rms-agc"
+completed=$((completed + 1))
+fi
+
 for name in avfilter_bandpass avfilter_ctcss avfilter_emphasis \
 	avfilter_equalizer \
 	avfilter_deesser \
-	avfilter_processor avfilter_permutations; do
+	avfilter_processor avfilter_agc avfilter_permutations; do
 	if run_group "$name"; then
 	# shellcheck disable=SC2046,SC2086
 	cc $common "$root/tests/test_$name.c" \
@@ -333,7 +350,7 @@ completed=$((completed + 1))
 fi
 
 if [ -z "${C_TEST_GROUP:-}" ]; then
-	expected=$((24 + sys_io_tests))
+	expected=$((26 + sys_io_tests))
 	if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		expected=$((expected + 1))
 	fi

@@ -459,6 +459,12 @@ static void test_sink_and_fifo_failures(void)
 	eagain_buffer_sink = state.sink;
 	assert(!txagc_avfilter_process(&state, &cleanup, samples, 960, 48000));
 	assert(state.runtime_underrun_samples == 960);
+	/* A buffering stage can also return nothing before its first output. The
+	 * causal AGC no longer produces this case incidentally, so inject it. */
+	state.output_started = 0;
+	assert(!txagc_avfilter_process(&state, &cleanup, samples, 960, 48000));
+	assert(state.startup_fill_samples == 960);
+	assert(!state.output_started);
 	txagc_avfilter_destroy(&state);
 
 	reset_failures();

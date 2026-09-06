@@ -20,9 +20,14 @@ def globals_for(name):
     ("key", "number", "message"),
     (
         ("agc_sidechain_lowpass_hz", 100, "must be above"),
+        ("agc_sidechain_lowpass_hz", 800, "must be above"),
         ("agc_sidechain_highpass_hz", 9000, "must be below"),
-        ("agc_floor_dbfs", -10, "must be below"),
+        ("agc_sidechain_highpass_hz", 1500, "must be below"),
+        ("agc_sidechain_highpass_hz", 1, "0 (disabled) or 50"),
+        ("agc_activity_threshold_dbfs", -10, "must be below"),
+        ("agc_activity_threshold_dbfs", -24, "must be below"),
         ("agc_target_dbfs", -80, "must be above"),
+        ("agc_target_dbfs", -50, "must be above"),
     ),
 )
 def test_relationship_validation_rejects_invalid_pairs(key, number, message):
@@ -37,11 +42,45 @@ def test_relationship_validation_rejects_invalid_pairs(key, number, message):
 
 def test_relationship_validation_accepts_unrelated_or_valid_values():
     """Verify relationship validation accepts unrelated or valid values."""
-    assert MODULE["relationship_error"]("local", "agc_attack_ms", 10, {}) is None
+    assert MODULE["relationship_error"]("local", "agc_rms_averaging_ms", 200, {}) is None
     assert MODULE["relationship_error"]("local", "agc_sidechain_lowpass_hz", 1000, {}) is None
-    assert MODULE["relationship_error"]("local", "agc_sidechain_highpass_hz", 1, {}) is None
-    assert MODULE["relationship_error"]("local", "agc_floor_dbfs", -90, {}) is None
+    assert MODULE["relationship_error"]("local", "agc_sidechain_highpass_hz", 50, {}) is None
+    assert MODULE["relationship_error"]("local", "agc_activity_threshold_dbfs", -90, {}) is None
     assert MODULE["relationship_error"]("local", "agc_target_dbfs", -10, {}) is None
+    assert (
+        MODULE["relationship_error"](
+            "local", "agc_sidechain_lowpass_hz", 0.1, {"agc_sidechain_highpass_hz": "0"}
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("key", ("agc_sidechain_highpass_hz", "agc_sidechain_lowpass_hz"))
+@pytest.mark.parametrize("other", (0, 1000))
+def test_agc_detector_filters_can_be_disabled_independently(key, other):
+    """Allow either detector filter to be disabled without invalidating its peer.
+
+    @param key Detector filter being edited.
+    @param other Existing peer filter cutoff, or zero to disable it.
+    """
+    peer = {
+        "agc_sidechain_highpass_hz": "agc_sidechain_lowpass_hz",
+        "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
+    }[key]
+    assert MODULE["relationship_error"]("local", key, 0, {peer: str(other)}) is None
+    assert MODULE["relationship_error"]("local", key, 1000, {peer: "0"}) is None
+
+
+@pytest.mark.parametrize(
+    "key", ("expander_sidechain_lowpass_hz", "compressor_sidechain_highpass_hz")
+)
+def test_non_agc_detector_filters_still_require_ordered_edges(key):
+    """Keep the existing expander and compressor filter constraints.
+
+    @param key Non-AGC detector filter being edited.
+    """
+    number = 0 if "lowpass" in key else 2000
+    assert "must be" in MODULE["relationship_error"]("local", key, number, {})
 
 
 def test_configuration_creation_existing_and_missing_defaults(tmp_path, monkeypatch):

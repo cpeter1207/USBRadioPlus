@@ -197,21 +197,32 @@ output_gain_db = 0.0
 
 ; Enable automatic gain control.
 agc_enabled = yes
-; Long-term AGC output target, -40 through -3 dBFS.
-agc_target_dbfs = -28.0
-; Maximum AGC boost for weak audio, 0 through 30 dB.
-agc_max_gain_db = 12.0
-; Maximum AGC reduction for strong audio, 0 through 60 dB.
-agc_max_attenuation_db = 14.0
-; Do not raise signals below this level; it must be below agc_target_dbfs.
-agc_floor_dbfs = -40.0
-; AGC attack and release times in milliseconds.
-agc_attack_ms = 10000.0
-agc_release_ms = 30000.0
-; Reset AGC gain after this much closed-squelch time, 100 through 60000 ms.
-agc_reset_after_ms = 3000.0
-; AGC level-detector bandpass. Low-pass must be above high-pass.
-agc_sidechain_highpass_hz = 300.0
+; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
+agc_target_dbfs = -24.0
+; Maximum boost for active weak speech, 0 through 30 dB.
+agc_max_gain_db = 6.0
+; Maximum attenuation for active loud speech, 0 through 60 dB.
+agc_max_attenuation_db = 6.0
+; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
+agc_rms_averaging_ms = 200.0
+; Maximum gain increase rate, 0.1 through 100 dB per second.
+agc_gain_increase_db_per_second = 2.0
+; Maximum gain decrease rate, 0.1 through 100 dB per second.
+agc_gain_decrease_db_per_second = 6.0
+; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Inactivity freezes gain; it does not mute audio or reset gain to unity.
+agc_activity_threshold_dbfs = -50.0
+; Activity closes below threshold minus this margin, 0 through 12 dB.
+agc_activity_hysteresis_db = 3.0
+; Require continuous active audio below target minus deadband before raising
+; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+agc_hold_ms = 500.0
+; Hold gain within this distance either side of target, 0 through 6 dB.
+agc_deadband_db = 1.0
+; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
+agc_sidechain_highpass_hz = 800.0
+; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
+; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
 agc_sidechain_lowpass_hz = 1500.0
 
 ; Enable downward expansion to reduce noise between words.
@@ -307,10 +318,33 @@ limiter_enabled = yes
 expander_threshold_dbfs = -55.0
 expander_attack_ms = 25.0
 expander_release_ms = 750.0
-; AGC target and deliberately slow timing.
-agc_target_dbfs = -28.0
-agc_attack_ms = 10000.0
-agc_release_ms = 30000.0
+; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
+agc_target_dbfs = -24.0
+; Maximum boost for active weak speech, 0 through 30 dB.
+agc_max_gain_db = 6.0
+; Maximum attenuation for active loud speech, 0 through 60 dB.
+agc_max_attenuation_db = 6.0
+; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
+agc_rms_averaging_ms = 200.0
+; Maximum gain increase rate, 0.1 through 100 dB per second.
+agc_gain_increase_db_per_second = 2.0
+; Maximum gain decrease rate, 0.1 through 100 dB per second.
+agc_gain_decrease_db_per_second = 6.0
+; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Inactivity freezes gain; it does not mute audio or reset gain to unity.
+agc_activity_threshold_dbfs = -50.0
+; Activity closes below threshold minus this margin, 0 through 12 dB.
+agc_activity_hysteresis_db = 3.0
+; Require continuous active audio below target minus deadband before raising
+; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+agc_hold_ms = 500.0
+; Hold gain within this distance either side of target, 0 through 6 dB.
+agc_deadband_db = 1.0
+; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
+agc_sidechain_highpass_hz = 800.0
+; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
+; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
+agc_sidechain_lowpass_hz = 1500.0
 ; Compressor threshold and timing.
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0
@@ -325,8 +359,6 @@ limiter_mid_release_ms = 100.0
 limiter_high_threshold_dbfs = -1.0
 limiter_high_attack_ms = 1.0
 limiter_high_release_ms = 50.0
-agc_max_attenuation_db = 20.0
-agc_floor_dbfs = -40.0
 
 [voice_telemetry]
 ; Enable the final transmitter chain for mixed voice and telemetry.
@@ -387,10 +419,33 @@ output_gain_db = 0.0
 expander_threshold_dbfs = -55.0
 expander_attack_ms = 25.0
 expander_release_ms = 750.0
-; AGC target and deliberately slow timing.
-agc_target_dbfs = -28.0
-agc_attack_ms = 10000.0
-agc_release_ms = 30000.0
+; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
+agc_target_dbfs = -24.0
+; Maximum boost for active weak speech, 0 through 30 dB.
+agc_max_gain_db = 6.0
+; Maximum attenuation for active loud speech, 0 through 60 dB.
+agc_max_attenuation_db = 6.0
+; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
+agc_rms_averaging_ms = 200.0
+; Maximum gain increase rate, 0.1 through 100 dB per second.
+agc_gain_increase_db_per_second = 2.0
+; Maximum gain decrease rate, 0.1 through 100 dB per second.
+agc_gain_decrease_db_per_second = 6.0
+; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Inactivity freezes gain; it does not mute audio or reset gain to unity.
+agc_activity_threshold_dbfs = -50.0
+; Activity closes below threshold minus this margin, 0 through 12 dB.
+agc_activity_hysteresis_db = 3.0
+; Require continuous active audio below target minus deadband before raising
+; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+agc_hold_ms = 500.0
+; Hold gain within this distance either side of target, 0 through 6 dB.
+agc_deadband_db = 1.0
+; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
+agc_sidechain_highpass_hz = 800.0
+; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
+; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
+agc_sidechain_lowpass_hz = 1500.0
 ; Compressor threshold and timing.
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0

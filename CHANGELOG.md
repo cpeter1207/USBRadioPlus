@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Replace AGC with a gated RMS speech gain rider in the shared FFmpeg graph.
+  Add detector filtering, independent dB-per-second gain rates, activity hold,
+  hysteresis, and a target deadband without lookahead or added audio buffering.
+- Update AGC tuning controls and documentation; remove obsolete floor,
+  attack/release, and idle-reset controls. The new default target is -24 dBFS RMS.
+
 ## 0.1.0~alpha11 - 2026-09-05
 
 - Fix a processing-scanner lock-order inversion that could deadlock app_rpt and RadioPlus CLI commands on an active node.- Add regression coverage that prevents Asterisk channel lookup while the processing settings lock is held.

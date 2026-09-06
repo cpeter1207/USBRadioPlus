@@ -399,25 +399,28 @@ SETTINGS = {
     "deesser_release_ms": ("De-esser release", "float", 1, 2000, "ms", "De-esser"),
     "splatter_filter_enabled": ("Transmit brick-wall band-pass", "bool", None, None, "", "Filters"),
     "lookahead_limiter_enabled": ("Final limiter", "bool", None, None, "", "Stages"),
-    "agc_target_dbfs": ("AGC target", "float", -40, -3, "dBFS", "AGC"),
+    "agc_target_dbfs": ("AGC detector-band RMS target", "float", -40, -3, "dBFS", "AGC"),
     "agc_max_gain_db": ("AGC maximum gain", "float", 0, 30, "dB", "AGC"),
     "agc_max_attenuation_db": ("AGC maximum attenuation", "float", 0, 60, "dB", "AGC"),
-    "agc_floor_dbfs": ("AGC detector floor", "float", -100, -3, "dBFS", "AGC"),
-    "agc_attack_ms": ("AGC attack", "float", 1, 10000, "ms", "AGC"),
-    "agc_release_ms": ("AGC release", "float", 1, 30000, "ms", "AGC"),
-    "agc_reset_after_ms": ("AGC reset after", "float", 100, 60000, "ms", "AGC"),
+    "agc_rms_averaging_ms": ("AGC RMS averaging", "float", 10, 5000, "ms", "AGC"),
+    "agc_gain_increase_db_per_second": ("AGC gain increase rate", "float", 0.1, 100, "dB/s", "AGC"),
+    "agc_gain_decrease_db_per_second": ("AGC gain decrease rate", "float", 0.1, 100, "dB/s", "AGC"),
+    "agc_activity_threshold_dbfs": ("AGC activity threshold", "float", -100, -3, "dBFS", "AGC"),
+    "agc_activity_hysteresis_db": ("AGC activity hysteresis", "float", 0, 12, "dB", "AGC"),
+    "agc_hold_ms": ("AGC gain-increase hold", "float", 0, 10000, "ms", "AGC"),
+    "agc_deadband_db": ("AGC target deadband", "float", 0, 6, "dB", "AGC"),
     "agc_sidechain_highpass_hz": (
-        "AGC sidechain band-pass low edge",
+        "AGC detector high-pass (0 disables; otherwise 50-2000 Hz)",
         "float",
-        50,
+        0,
         2000,
         "Hz",
         "AGC",
     ),
     "agc_sidechain_lowpass_hz": (
-        "AGC sidechain band-pass high edge",
+        "AGC detector low-pass (0 disables)",
         "float",
-        50,
+        0,
         3500,
         "Hz",
         "AGC",
@@ -612,13 +615,16 @@ DEFAULTS = {
     "receive_bandpass_lowpass_hz": "5000.0",
     "splatter_filter_enabled": "no",
     "lookahead_limiter_enabled": "no",
-    "agc_target_dbfs": "-10.0",
-    "agc_max_gain_db": "12.0",
+    "agc_target_dbfs": "-24.0",
+    "agc_max_gain_db": "6.0",
     "agc_max_attenuation_db": "6.0",
-    "agc_floor_dbfs": "-60.0",
-    "agc_attack_ms": "750.0",
-    "agc_release_ms": "1500.0",
-    "agc_reset_after_ms": "3000.0",
+    "agc_rms_averaging_ms": "200.0",
+    "agc_gain_increase_db_per_second": "2.0",
+    "agc_gain_decrease_db_per_second": "6.0",
+    "agc_activity_threshold_dbfs": "-50.0",
+    "agc_activity_hysteresis_db": "3.0",
+    "agc_hold_ms": "500.0",
+    "agc_deadband_db": "1.0",
     "agc_sidechain_highpass_hz": "800.0",
     "agc_sidechain_lowpass_hz": "1500.0",
     "expander_threshold_dbfs": "-55.0",
@@ -702,6 +708,8 @@ def relationship_error(source, key, number, values):
     @param number Proposed numeric value.
     @param values Current resolved values used for cross-field validation.
     """
+    if key == "agc_sidechain_highpass_hz" and 0 < number < 50:
+        return "AGC detector high-pass must be 0 (disabled) or 50 through 2000 Hz."
     pairs = {
         "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
         "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
@@ -712,22 +720,26 @@ def relationship_error(source, key, number, values):
     if key in pairs:
         lower_key = pairs[key]
         lower = float(values.get(lower_key, default_value(source, lower_key)))
-        if number <= lower:
+        if number <= lower and (key != "agc_sidechain_lowpass_hz" or number > 0):
             return f"{SETTINGS[key][0]} must be above {SETTINGS[lower_key][0]} ({lower:g} Hz)."
     reverse = {lower: upper for upper, lower in pairs.items()}
     if key in reverse:
         upper_key = reverse[key]
         upper = float(values.get(upper_key, default_value(source, upper_key)))
-        if number >= upper:
+        if number >= upper and (key != "agc_sidechain_highpass_hz" or upper > 0):
             return f"{SETTINGS[key][0]} must be below {SETTINGS[upper_key][0]} ({upper:g} Hz)."
-    if key == "agc_floor_dbfs":
+    if key == "agc_activity_threshold_dbfs":
         target = float(values.get("agc_target_dbfs", default_value(source, "agc_target_dbfs")))
         if number >= target:
-            return f"AGC detector floor must be below AGC target ({target:g} dBFS)."
+            return f"AGC activity threshold must be below AGC target ({target:g} dBFS)."
     if key == "agc_target_dbfs":
-        floor = float(values.get("agc_floor_dbfs", default_value(source, "agc_floor_dbfs")))
-        if number <= floor:
-            return f"AGC target must be above AGC detector floor ({floor:g} dBFS)."
+        threshold = float(
+            values.get(
+                "agc_activity_threshold_dbfs", default_value(source, "agc_activity_threshold_dbfs")
+            )
+        )
+        if number <= threshold:
+            return f"AGC target must be above AGC activity threshold ({threshold:g} dBFS)."
     return None
 
 

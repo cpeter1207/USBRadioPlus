@@ -18,10 +18,18 @@ Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
 `asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
 `libusb-dev`, `portaudio19-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
-`librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
+`ladspa-sdk`, `librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
 publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
+
+The package includes the original gated RMS AGC as a private LADSPA effect:
+`/usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so`. It runs only inside
+the shared FFmpeg graph. The build records that installed path in the channel
+module and refreshes it when the installation prefix changes. The runtime
+requires FFmpeg's `ladspa` filter, included in the supported Debian packages;
+`ladspa-sdk` supplies build headers only. Do not place the effect in Asterisk's
+module directory or add it to `modules.conf`.
 
 The Makefile detects the ASL radio-device API from
 `asterisk/res_usbradio.h`. The legacy build uses OSS and libusb-0.1. The modern

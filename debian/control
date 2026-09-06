@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), pkg-config, asl3-asterisk-dev,
  librnnoise-dev (>= 0.2), libsamplerate0-dev, libavfilter-dev,
- libavutil-dev, libasound2-dev, libusb-dev, libusb-1.0-0-dev,
+ libavutil-dev, ladspa-sdk, libasound2-dev, libusb-dev, libusb-1.0-0-dev,
  portaudio19-dev, python3, python3-pytest
 Standards-Version: 4.7.2
 Homepage: https://github.com/cpeter1207/USBRadioPlus

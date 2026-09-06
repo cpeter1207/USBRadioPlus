@@ -359,36 +359,69 @@ rejection at the +/-0.5 percent CTCSS encoder tolerance limits.
 .B ctcss_highpass_hz = 50..500
 Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.
 .SH AUTOMATIC GAIN CONTROL
+AGC levels active speech using detector-band RMS and a smooth gain change.
+Its two-pole FFmpeg detector filters do not filter the program audio. The
+stage adds no lookahead or audio buffering, peak limiter, clipping, or
+hardware gain adjustment. Existing compressor and limiter stages remain
+separate. Inactive audio retains the last gain; it is not muted.
 .TP
 .B agc_enabled = yes|no
 Enable automatic gain control. Default is no.
 .TP
 .B agc_target_dbfs = -40..-3
-Set the long-term output target. Default is -10 dBFS.
+Set the filtered detector-band RMS target after applied gain, not a
+full-band RMS or peak target. Default is -24 dBFS. The target must be above
+agc_activity_threshold_dbfs.
 .TP
 .B agc_max_gain_db = 0..30
-Limit gain applied to weak audio. Default is 12 dB.
+Limit gain applied to active weak audio. Default is 6 dB.
 .TP
 .B agc_max_attenuation_db = 0..60
-Limit attenuation applied to strong audio. Default is 6 dB.
+Limit attenuation applied to active strong audio. Default is 6 dB.
 .TP
-.B agc_floor_dbfs = -100..agc_target_dbfs
-Prevent the AGC from raising noise below this input level. Default is -60 dBFS.
+.B agc_rms_averaging_ms = 10..5000
+Set RMS detector averaging time. Default is 200 ms. Longer averaging reduces
+gain movement between syllables; it does not delay program audio.
 .TP
-.B agc_attack_ms = 1..10000
-Set AGC attack time. Default is 750 ms.
+.B agc_gain_increase_db_per_second = 0.1..100
+Limit how quickly gain rises for active weak audio after the hold interval.
+Default is 2 dB per second.
 .TP
-.B agc_release_ms = 1..30000
-Set AGC release time. Default is 1500 ms.
+.B agc_gain_decrease_db_per_second = 0.1..100
+Limit how quickly gain falls for active loud audio. Reduction begins without
+the gain-increase hold. Default is 6 dB per second.
 .TP
-.B agc_reset_after_ms = 100..60000
-Reset accumulated AGC gain after closed-squelch or idle time. Default is 3000 ms.
+.B agc_activity_threshold_dbfs = -100..-3
+Set the input activity threshold, strictly below agc_target_dbfs. Default is
+-50 dBFS. A separate 10 ms detector opens at or above this threshold and
+closes below the threshold minus agc_activity_hysteresis_db. Inactivity
+freezes gain without muting audio or resetting gain to unity.
 .TP
-.B agc_sidechain_highpass_hz = 50..2000
-Set the AGC detector high-pass cutoff. Default is 800 Hz.
+.B agc_activity_hysteresis_db = 0..12
+Set the activity detector's closing margin. Default is 3 dB.
 .TP
-.B agc_sidechain_lowpass_hz = agc_sidechain_highpass_hz..3500
-Set the AGC detector low-pass cutoff. Default is 1500 Hz.
+.B agc_hold_ms = 0..10000
+Require continuously active audio below target minus deadband for this long
+before increasing gain. Inactivity, gain reduction, or return to the deadband
+restarts the wait. This never delays gain reduction. Default is 500 ms.
+.TP
+.B agc_deadband_db = 0..6
+Hold gain when the detector-band output is within this distance either side
+of target. Default is 1 dB.
+.TP
+.B agc_sidechain_highpass_hz = 0|50..2000
+Set the two-pole detector high-pass cutoff, or 0 to disable it.
+Default is 800 Hz.
+.TP
+.B agc_sidechain_lowpass_hz = 0..3500
+Set the two-pole detector low-pass cutoff, or 0 to disable it.
+Any positive frequency through 3500 Hz is accepted. When both detector
+filters are enabled, low-pass must be above high-pass. Default is 1500 Hz.
+.SS Migrating AGC settings
+Remove agc_floor_dbfs, agc_attack_ms, agc_release_ms, and agc_reset_after_ms
+from older files. They are not aliases for the activity threshold, gain rates,
+or hold interval. Retune against the detector-band RMS target with the
+current controls; old peak-based targets are not directly equivalent.
 .SH DOWNWARD EXPANDER
 .TP
 .B expander_enabled = yes|no

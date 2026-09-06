@@ -8,6 +8,9 @@ module_dir=$(find /usr/lib -type d -path '*/asterisk/modules' -print -quit)
 
 test -n "$module_dir"
 install -m 0644 "$root/build/chan_usbradioplus.so" "$module_dir/chan_usbradioplus.so"
+plugin_dir="/usr/local/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/usbradioplus"
+install -d "$plugin_dir"
+install -m 0644 "$root/build/usbradioplus_agc.so" "$plugin_dir/usbradioplus_agc.so"
 install -m 0644 "$root/examples/usbradioplus.conf.sample" \
 	/etc/asterisk/usbradioplus.conf
 

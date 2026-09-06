@@ -128,6 +128,14 @@ filtering and sets the applicable cutoff or notch width. For voice and telemetry
 it enables or disables the transmit brick-wall band-pass and post-limiter
 low-pass and sets their cutoff frequencies. Dynamics pages contain the
 high-pass and low-pass detector filters for AGC, expansion, and compression.
+The AGC page also sets detector-band RMS target and averaging, maximum boost
+and attenuation, gain-increase and gain-decrease rates, activity threshold
+and hysteresis, gain-increase hold, and target deadband. Set either AGC
+detector cutoff to 0 to disable that filter. Inactive audio freezes AGC gain
+without muting; the hold delays gain increases only. The target is not a peak
+or full-band RMS target. See the automatic gain control section of
+.BR usbradioplus.conf (5)
+for the ranges and detector behavior.
 .PP
 Each accepted edit is written atomically and reloaded so it can be evaluated
 live. If validation or reload fails, the preceding file and active settings are

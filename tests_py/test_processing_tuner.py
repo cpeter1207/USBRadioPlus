@@ -5,6 +5,8 @@ import re
 import runpy
 from pathlib import Path
 
+import pytest
+
 ## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 ## Module fixture used by these tests.
@@ -19,6 +21,57 @@ def test_tuner_covers_every_chain_option():
     names = set(re.findall(r'"([a-z0-9_]+)"', source[start:end]))
     assert set(MODULE["SETTINGS"]) == names
     assert set(MODULE["DEFAULTS"]) == names
+
+
+@pytest.mark.parametrize(
+    ("key", "default", "low", "high", "units"),
+    (
+        ("agc_target_dbfs", -24, -40, -3, "dBFS"),
+        ("agc_max_gain_db", 6, 0, 30, "dB"),
+        ("agc_max_attenuation_db", 6, 0, 60, "dB"),
+        ("agc_rms_averaging_ms", 200, 10, 5000, "ms"),
+        ("agc_gain_increase_db_per_second", 2, 0.1, 100, "dB/s"),
+        ("agc_gain_decrease_db_per_second", 6, 0.1, 100, "dB/s"),
+        ("agc_activity_threshold_dbfs", -50, -100, -3, "dBFS"),
+        ("agc_activity_hysteresis_db", 3, 0, 12, "dB"),
+        ("agc_hold_ms", 500, 0, 10000, "ms"),
+        ("agc_deadband_db", 1, 0, 6, "dB"),
+        ("agc_sidechain_highpass_hz", 800, 0, 2000, "Hz"),
+        ("agc_sidechain_lowpass_hz", 1500, 0, 3500, "Hz"),
+    ),
+)
+def test_agc_controls_defaults_ranges_and_shipped_chains(key, default, low, high, units):
+    """Keep all source-chain AGC controls, samples, and manual entries aligned.
+
+    @param key Current AGC option name.
+    @param default Expected default used by all source chains.
+    @param low Inclusive numeric editor minimum; coupled constraints are tested separately.
+    @param high Inclusive numeric editor maximum.
+    @param units Displayed engineering units.
+    """
+    assert MODULE["SETTINGS"][key][1:] == ("float", low, high, units, "AGC")
+    sample = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
+    assert f".B {key} = " in manual
+    for chain in ("local", "link", "voice_telemetry"):
+        assert float(MODULE["default_value"](chain, key)) == default
+        assert float(MODULE["section_values"](sample, chain)[key]) == default
+
+
+@pytest.mark.parametrize(
+    "key", ("agc_floor_dbfs", "agc_attack_ms", "agc_release_ms", "agc_reset_after_ms")
+)
+def test_obsolete_agc_controls_are_not_offered_or_shipped(key):
+    """Remove misleading old controls while retaining explicit migration guidance.
+
+    @param key Removed option with no valid one-to-one replacement.
+    """
+    assert key not in MODULE["SETTINGS"]
+    assert key not in MODULE["DEFAULTS"]
+    assert key not in (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
+    assert key in manual.split(".SS Migrating AGC settings", 1)[1]
+    assert f".B {key}" not in manual
 
 
 def test_section_parser_and_non_destructive_insert():

@@ -832,12 +832,15 @@ static const struct range_case ranges[] = {
 	{RANGE(target_dbfs, -40.0, -3.0)},
 	{RANGE(max_gain_db, 0.0, 30.0)},
 	{RANGE(max_attenuation_db, 0.0, 60.0)},
-	{RANGE(agc_floor_dbfs, -100.0, -3.1)},
-	{RANGE(attack_ms, 1.0, 10000.0)},
-	{RANGE(release_ms, 1.0, 30000.0)},
-	{RANGE(reset_after_ms, 100.0, 60000.0)},
-	{RANGE(sidechain_highpass_hz, 50.0, 2000.0)},
-	{RANGE(sidechain_lowpass_hz, 50.0, 3500.0)},
+	{RANGE(agc_rms_averaging_ms, 10.0, 5000.0)},
+	{RANGE(agc_gain_increase_db_per_second, 0.1, 100.0)},
+	{RANGE(agc_gain_decrease_db_per_second, 0.1, 100.0)},
+	{RANGE(agc_activity_threshold_dbfs, -100.0, -3.0)},
+	{RANGE(agc_activity_hysteresis_db, 0.0, 12.0)},
+	{RANGE(agc_hold_ms, 0.0, 10000.0)},
+	{RANGE(agc_deadband_db, 0.0, 6.0)},
+	{RANGE(sidechain_highpass_hz, 0.0, 2000.0)},
+	{RANGE(sidechain_lowpass_hz, 0.0, 3500.0)},
 	{RANGE(expander_threshold_dbfs, -100.0, -10.0)},
 	{RANGE(expander_ratio, 1.0, 10.0)},
 	{RANGE(expander_max_attenuation_db, 0.0, 40.0)},
@@ -898,6 +901,8 @@ static void test_every_numeric_boundary(void)
 {
 	for (size_t index = 0; index < sizeof(ranges) / sizeof(ranges[0]); ++index) {
 		expect_invalid_field(ranges[index].offset, NAN);
+		expect_invalid_field(ranges[index].offset, INFINITY);
+		expect_invalid_field(ranges[index].offset, -INFINITY);
 		expect_invalid_field(ranges[index].offset, ranges[index].minimum - 1.0);
 		expect_invalid_field(ranges[index].offset, ranges[index].maximum + 1.0);
 	}
@@ -943,13 +948,119 @@ static void test_stage_and_relationship_validation(void)
 		assert(validate_chain(chain) < 0);                                                 \
 	} while (0)
 	INVALID_RELATION(receive_bandpass_lowpass_hz, receive_bandpass_highpass_hz);
-	INVALID_RELATION(agc_floor_dbfs, target_dbfs);
+	INVALID_RELATION(agc_activity_threshold_dbfs, target_dbfs);
 	INVALID_RELATION(sidechain_lowpass_hz, sidechain_highpass_hz);
 	INVALID_RELATION(expander_sidechain_lowpass_hz, expander_sidechain_highpass_hz);
 	INVALID_RELATION(compressor_sidechain_lowpass_hz, compressor_sidechain_highpass_hz);
 	INVALID_RELATION(limiter_high_crossover_hz, limiter_low_crossover_hz);
 	INVALID_RELATION(output_lowpass_hz, output_highpass_hz);
 #undef INVALID_RELATION
+}
+
+/** @brief Install a bounded option list in the fake Asterisk configuration.
+ * @param options Filter option string or allowed-name table, as declared.
+ * @param count Number of elements available in the supplied block.
+ */
+static void set_fake_options(const struct fake_option *options, size_t count)
+{
+	memcpy(fake_options, options, count * sizeof(*options));
+	fake_option_count = count;
+}
+
+/** @brief Verify gated-AGC defaults, option mappings, and independent detector filters. */
+static void test_agc_configuration(void)
+{
+	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
+	struct txagc_settings value;
+	static const struct {
+		const char *name;
+		size_t offset;
+		double default_value;
+		double minimum;
+		double maximum;
+		const char *replacement;
+	} controls[] = {
+		{"agc_target_dbfs", offsetof(struct txagc_config, target_dbfs), -24.0, -40.0, -3.0,
+		 "-20"},
+		{"agc_max_gain_db", offsetof(struct txagc_config, max_gain_db), 6.0, 0.0, 30.0,
+		 "9"},
+		{"agc_max_attenuation_db", offsetof(struct txagc_config, max_attenuation_db), 6.0,
+		 0.0, 60.0, "12"},
+		{"agc_rms_averaging_ms", offsetof(struct txagc_config, agc_rms_averaging_ms), 200.0,
+		 10.0, 5000.0, "250"},
+		{"agc_gain_increase_db_per_second",
+		 offsetof(struct txagc_config, agc_gain_increase_db_per_second), 2.0, 0.1, 100.0,
+		 "1"},
+		{"agc_gain_decrease_db_per_second",
+		 offsetof(struct txagc_config, agc_gain_decrease_db_per_second), 6.0, 0.1, 100.0,
+		 "8"},
+		{"agc_activity_threshold_dbfs",
+		 offsetof(struct txagc_config, agc_activity_threshold_dbfs), -50.0, -100.0, -3.1,
+		 "-45"},
+		{"agc_activity_hysteresis_db",
+		 offsetof(struct txagc_config, agc_activity_hysteresis_db), 3.0, 0.0, 12.0, "4"},
+		{"agc_hold_ms", offsetof(struct txagc_config, agc_hold_ms), 500.0, 0.0, 10000.0,
+		 "600"},
+		{"agc_deadband_db", offsetof(struct txagc_config, agc_deadband_db), 1.0, 0.0, 6.0,
+		 "2"},
+		{"agc_sidechain_highpass_hz", offsetof(struct txagc_config, sidechain_highpass_hz),
+		 800.0, 0.0, 2000.0, "300"},
+		{"agc_sidechain_lowpass_hz", offsetof(struct txagc_config, sidechain_lowpass_hz),
+		 1500.0, 0.0, 3500.0, "2000"},
+	};
+	static const char *const sections[] = {"local", "link", "voice_telemetry"};
+	for (size_t index = 0; index < ARRAY_LEN(controls); ++index) {
+		assert(known_chain_option(controls[index].name));
+		for (size_t source = 0; source < ARRAY_LEN(sections); ++source) {
+			const struct fake_option option = {sections[source], controls[index].name,
+							   controls[index].replacement};
+			struct txagc_chain *chain;
+			double *field;
+			settings_defaults(&value);
+			chain = &value.profiles[0].chains[source];
+			field = (double *)((char *)&chain->agc + controls[index].offset);
+			assert(!chain->agc.agc_enabled);
+			assert(*field == controls[index].default_value);
+			set_fake_options(&option, 1);
+			settings_parse_error = 0;
+			assert(!read_chain(config, sections[source], chain));
+			assert(!settings_parse_error);
+			assert(*field == strtod(controls[index].replacement, NULL));
+			assert(!validate_chain(chain));
+			/* Keep dependent bounds clear while checking each accepted endpoint. */
+			chain->agc.target_dbfs = -3.0;
+			chain->agc.sidechain_highpass_hz = 0.0;
+			chain->agc.sidechain_lowpass_hz = 3500.0;
+			*field = controls[index].minimum;
+			assert(!validate_chain(chain));
+			*field = controls[index].maximum;
+			assert(!validate_chain(chain));
+			static const char *const invalid_numbers[] = {"nan", "inf", "-inf", "12x"};
+			for (size_t invalid = 0; invalid < ARRAY_LEN(invalid_numbers); ++invalid) {
+				const struct fake_option bad = {sections[source],
+								controls[index].name,
+								invalid_numbers[invalid]};
+				set_fake_options(&bad, 1);
+				settings_parse_error = 0;
+				assert(!read_chain(config, sections[source], chain));
+				assert(settings_parse_error);
+			}
+		}
+	}
+	settings_defaults(&value);
+	struct txagc_chain *chain = &value.profiles[0].chains[TXAGC_LOCAL];
+	chain->agc.sidechain_highpass_hz = 0.0;
+	chain->agc.sidechain_lowpass_hz = 0.0;
+	assert(!validate_chain(chain));
+	chain->agc.sidechain_highpass_hz = 50.0;
+	assert(!validate_chain(chain));
+	chain->agc.sidechain_highpass_hz = 49.0;
+	assert(validate_chain(chain) < 0);
+	chain->agc.sidechain_highpass_hz = 0.0;
+	chain->agc.sidechain_lowpass_hz = 1.0;
+	assert(!validate_chain(chain));
+	fake_option_count = 0;
+	settings_parse_error = 0;
 }
 
 /** @brief Verify settings scope and hardware validation. */
@@ -1013,16 +1124,6 @@ static void test_settings_scope_and_hardware_validation(void)
 	settings_defaults(&value);
 	value.profiles[0].chains[TXAGC_LOCAL].agc.post_limiter_lowpass_enabled = 1;
 	assert(validate_profile(&value.profiles[0]) < 0);
-}
-
-/** @brief Install a bounded option list in the fake Asterisk configuration.
- * @param options Filter option string or allowed-name table, as declared.
- * @param count Number of elements available in the supplied block.
- */
-static void set_fake_options(const struct fake_option *options, size_t count)
-{
-	memcpy(fake_options, options, count * sizeof(*options));
-	fake_option_count = count;
 }
 
 /** @brief Verify primitive configuration parsers. */
@@ -1358,6 +1459,23 @@ static void test_option_name_validation(void)
 	fake_categories[0] = "unknown";
 	fake_variables[0] = NULL;
 	assert(!validate_option_names(config));
+	static const char *const removed_agc_options[] = {
+		"agc_floor_dbfs",
+		"agc_attack_ms",
+		"agc_release_ms",
+		"agc_reset_after_ms",
+	};
+	static char *const agc_sections[] = {"local",	   "link",	"voice_telemetry",
+					     "local test", "link test", "voice_telemetry test"};
+	for (size_t option = 0; option < ARRAY_LEN(removed_agc_options); ++option) {
+		assert(!known_chain_option(removed_agc_options[option]));
+		for (size_t section = 0; section < ARRAY_LEN(agc_sections); ++section) {
+			variable.name = removed_agc_options[option];
+			fake_categories[0] = agc_sections[section];
+			fake_variables[0] = &variable;
+			assert(validate_option_names(config) < 0);
+		}
+	}
 
 	const struct {
 		char *section;
@@ -2327,6 +2445,7 @@ int main(void)
 	assert(!strcmp(ctcss_filter_name(TXAGC_CTCSS_FILTER_DISABLED), "disabled"));
 	test_every_numeric_boundary();
 	test_stage_and_relationship_validation();
+	test_agc_configuration();
 	test_settings_scope_and_hardware_validation();
 	test_primitive_configuration_parsers();
 	test_hardware_configuration_parser();

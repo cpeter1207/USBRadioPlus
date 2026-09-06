@@ -40,7 +40,7 @@ nodes where `/tmp` is mounted `noexec`. It also restores the support header
 omitted from the archive's ARM NEON sources. The temporary source is removed
 automatically.
 
-USBRadioPlus requires a matching `asl3-asterisk-dev` package plus the libraries
+USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, plus the libraries
 listed in `doc/packaging.md`. Developers with those dependencies already
 installed may use `sudo ./install.sh --skip-deps`.
 
@@ -89,3 +89,10 @@ or the standard GNU installation-directory variables when required. Run
 `make clean` to remove all generated build and distribution artifacts.
 On Debian, the default module path includes the host multiarch tuple so it
 matches the ASL3 Asterisk module directory.
+
+The build also installs `usbradioplus_agc.so` in
+`lib/<multiarch>/usbradioplus` below the chosen prefix. This is a private
+LADSPA effect loaded by the shared FFmpeg graph, not an Asterisk module.
+Install it with the channel module; no separate plugin host or FFmpeg rebuild
+is required on supported Debian systems. See `doc/agc.md` for AGC operation
+and the basis for its defaults.

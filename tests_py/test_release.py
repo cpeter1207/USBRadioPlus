@@ -546,7 +546,9 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     expected_ranges = {
         "agc_target_dbfs": ("-40", "-3"),
         "agc_max_attenuation_db": ("0", "60"),
-        "agc_release_ms": ("1", "30000"),
+        "agc_rms_averaging_ms": ("10", "5000"),
+        "agc_gain_increase_db_per_second": ("0.1", "100"),
+        "agc_gain_decrease_db_per_second": ("0.1", "100"),
         "limiter_low_attack_ms": ("0.1", "1000"),
         "limiter_mid_threshold_dbfs": ("-40", "-1"),
         "limiter_high_threshold_dbfs": ("-30", "-1"),
@@ -578,7 +580,7 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
     assert 'groups.remove("Final limiter")' in processing
     assert "Continuous status and RX/TX audio meters" in tune
     assert "Save changes and exit" in tune
-    for constraint in ("relationship_error", "pairs = {", 'key == "agc_floor_dbfs"'):
+    for constraint in ("relationship_error", "pairs = {", 'key == "agc_activity_threshold_dbfs"'):
         assert constraint in processing
 
 

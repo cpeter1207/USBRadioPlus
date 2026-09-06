@@ -54,7 +54,9 @@ def test_staged_install_manifest(tmp_path):
     assert files == [
         "etc/asterisk/usbradioplus.conf",
         f"usr/lib/{multiarch}asterisk/modules/chan_usbradioplus.so",
+        f"usr/lib/{multiarch}usbradioplus/usbradioplus_agc.so",
         "usr/sbin/usbradioplus-tune",
+        "usr/share/doc/usbradioplus/agc.md",
         "usr/share/doc/usbradioplus/usbradioplus.conf.sample",
         "usr/share/man/man5/usbradioplus.conf.5",
         "usr/share/man/man7/usbradioplus.7",
@@ -62,6 +64,12 @@ def test_staged_install_manifest(tmp_path):
     ]
     assert not list(stage.rglob("modules.conf"))
     assert not list(stage.rglob("rpt.conf"))
+    plugin = stage / f"usr/lib/{multiarch}usbradioplus/usbradioplus_agc.so"
+    assert plugin.read_bytes() == (build / "usbradioplus_agc.so").read_bytes()
+    assert plugin.stat().st_mode & 0o777 == 0o644
+    assert (stage / "usr/share/doc/usbradioplus/agc.md").read_bytes() == (
+        ROOT / "doc/agc.md"
+    ).read_bytes()
 
     # Reproduce dh_compress without allowing checkout or host samples to hide it.
     sample = stage / "usr/share/doc/usbradioplus/usbradioplus.conf.sample"
@@ -159,6 +167,103 @@ def test_install_preserves_existing_channel_configuration(tmp_path):
     assert config.read_text(encoding="utf-8") == "operator configuration\n"
 
 
+def test_private_agc_path_rebuilds_after_build_prefix_changes(tmp_path):
+    """Keep the compiled plugin path consistent when build and install prefixes differ.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
+    fixture = ROOT / "tests/fixtures/asterisk-dev"
+    build = tmp_path / "build"
+    stage = tmp_path / "stage"
+    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    arguments = [
+        "make",
+        f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+        f"BUILD_DIR={build}",
+        "MULTIARCH=test-linux-gnu",
+    ]
+
+    def make(*targets):
+        """Run one fake-compiler build and return its observable compiler commands.
+
+        @param targets Make targets and variable overrides for this invocation.
+        """
+        return subprocess.run(
+            [*arguments, *targets],
+            cwd=ROOT,
+            env=environment,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ).stdout
+
+    def processor_compiles(output):
+        """Identify compilation of the object that embeds the private plugin path.
+
+        @param output Captured Make output.
+        """
+        return [
+            line
+            for line in output.replace("\\\n", " ").splitlines()
+            if " -c " in line and line.endswith(" src/txagc/avfilter_processor.c")
+        ]
+
+    stamp = build / "agc-plugin-path"
+    first = processor_compiles(make("all", "prefix=/usr/local"))
+    assert len(first) == 1
+    assert '"/usr/local/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so"' in first[0]
+    assert stamp.read_text(encoding="utf-8") == (
+        "/usr/local/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so\n"
+    )
+    stamp_time = stamp.stat().st_mtime_ns
+    assert not processor_compiles(make("all", "prefix=/usr/local"))
+    assert stamp.stat().st_mtime_ns == stamp_time
+    installed = processor_compiles(make("install", "prefix=/usr", f"DESTDIR={stage}"))
+    assert len(installed) == 1
+    assert '"/usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so"' in installed[0]
+    assert str(stage) not in installed[0]
+    assert stamp.read_text(encoding="utf-8") == (
+        "/usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so\n"
+    )
+    assert (stage / "usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so").is_file()
+    assert not processor_compiles(make("install", "prefix=/usr", f"DESTDIR={stage}"))
+
+
+def test_uninstall_removes_private_agc_but_preserves_operator_files(tmp_path):
+    """Remove the packaged plugin and manual without deleting operator configuration.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
+    fixture = ROOT / "tests/fixtures/asterisk-dev"
+    stage = tmp_path / "stage"
+    build = tmp_path / "build"
+    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    arguments = [
+        "make",
+        f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+        f"BUILD_DIR={build}",
+        f"DESTDIR={stage}",
+        "prefix=/usr",
+        "MULTIARCH=test-linux-gnu",
+    ]
+    subprocess.run(
+        arguments + ["install"], cwd=ROOT, env=environment, check=True, capture_output=True
+    )
+    config = stage / "etc/asterisk/usbradioplus.conf"
+    config.write_text("operator configuration\n", encoding="utf-8")
+    other = stage / "usr/lib/test-linux-gnu/usbradioplus/operator-plugin.so"
+    other.write_text("operator plugin\n", encoding="utf-8")
+    assert (stage / "usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so").is_file()
+    assert (stage / "usr/share/doc/usbradioplus/agc.md").is_file()
+    subprocess.run(
+        arguments + ["uninstall"], cwd=ROOT, env=environment, check=True, capture_output=True
+    )
+    assert sorted(path for path in stage.rglob("*") if path.is_file()) == sorted([config, other])
+    assert config.read_text(encoding="utf-8") == "operator configuration\n"
+    assert other.read_text(encoding="utf-8") == "operator plugin\n"
+
+
 def test_makefile_is_packaging_ready():
     """Verify makefile is packaging ready."""
     source = (ROOT / "Makefile").read_text(encoding="utf-8")
@@ -238,6 +343,13 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
     assert f"{root}/COPYING" in names
     assert f"{root}/.github/workflows/release.yml" in names
     assert f"{root}/src/chan_usbradioplus_modern.c" in names
+    for artifact in (
+        "src/txagc/rms_agc_ladspa.c",
+        "src/txagc/rms_agc_ladspa.h",
+        "tests/test_rms_agc_ladspa.c",
+        "doc/agc.md",
+    ):
+        assert f"{root}/{artifact}" in names
     assert not any(
         "/.git/" in name
         or name.endswith("/.git")
@@ -245,4 +357,30 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         or "/dist/" in name
         or "/work/" in name
         for name in names
+    )
+    fixture = ROOT / "tests/fixtures/asterisk-dev"
+    stage = tmp_path / "from-dist"
+    environment.update(TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    subprocess.run(
+        [
+            "make",
+            "install-from-dist",
+            f"BUILD_DIR={build}",
+            f"DIST_DIR={dist}",
+            f"DESTDIR={stage}",
+            "prefix=/usr",
+            "MULTIARCH=test-linux-gnu",
+            f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
+        ],
+        cwd=ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+    )
+    assert (stage / "usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so").is_file()
+    assert (stage / "usr/share/doc/usbradioplus/agc.md").read_bytes() == (
+        ROOT / "doc/agc.md"
+    ).read_bytes()
+    assert (build / "agc-plugin-path").read_text(encoding="utf-8") == (
+        "/usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so\n"
     )
