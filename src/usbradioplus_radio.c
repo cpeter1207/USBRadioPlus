@@ -573,6 +573,14 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 			input[i * 2 + 1] = naccum; /* output noise filter results */
 #endif
 			npwr += naccum * naccum;
+			/* The calibration meter remains sqrt(sum(960 samples))/16. Its
+			 * equivalent sample-power scale is 960/256, independent of where
+			 * the USB block boundary falls relative to carrier loss. */
+			mySps->compOut = urp_micor_squelch_update(
+				&mySps->micor_squelch, mySps->compOut,
+				(double)naccum * naccum * 3.75, (uint32_t)mySps->setpt,
+				(uint32_t)mySps->hyst);
+			mySps->parentChan->rxCarrierGate[i] = !mySps->compOut;
 		}
 
 		--decimator;
@@ -609,12 +617,6 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 
 	if (doNoise) {
 		npwr = sqrt(npwr) / 16;
-
-		/* compOut means muted. MICOR-style bi-level timing suppresses clean
-		 * tails while keeping weak, fluttering speech from being chopped. */
-		mySps->compOut = urp_micor_squelch_update(&mySps->micor_squelch, mySps->compOut,
-							  (uint32_t)npwr, (uint32_t)mySps->setpt,
-							  (uint32_t)mySps->hyst, MS_PER_FRAME);
 
 #if URP_RADIO_DEBUG == 1
 		if (mySps->parentChan->tracetype) {
@@ -1425,6 +1427,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	ALLOCATE_OR_FAIL(pChan->pRxDemod, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->pRxNoise, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->pRxBase, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCarrierGate, numSamples * 6, sizeof(*pChan->rxCarrierGate));
 	ALLOCATE_OR_FAIL(pChan->pRxHpf, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->pRxLsd, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->pRxSpeaker, numSamples, 2);
@@ -1830,6 +1833,7 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	ast_free(pChan->pRxDemod);
 	ast_free(pChan->pRxNoise);
 	ast_free(pChan->pRxBase);
+	ast_free(pChan->rxCarrierGate);
 	ast_free(pChan->pRxHpf);
 	ast_free(pChan->pRxLsd);
 	ast_free(pChan->pRxSpeaker);

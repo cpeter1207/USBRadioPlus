@@ -7,6 +7,7 @@
 #include "asterisk/options.h"
 
 #include <assert.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -802,6 +803,148 @@ static void test_frontend_edges(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Preserve sample decisions across block boundaries and the existing RSSI scale. */
+static void test_frontend_sample_gate(void)
+{
+	urp_radio_state template = {.pRxCodeSrc = "0",
+				    .pTxCodeSrc = "0",
+				    .pTxCodeDefault = "0",
+				    .rxCdType = CD_XPMR_NOISE};
+	int16_t input[SAMPLES_PER_BLOCK * 6 * 2] = {0};
+	urp_radio_state *whole = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	urp_radio_state *split = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(whole && split && whole->rxCarrierGate && split->rxCarrierGate);
+	whole->spsRx->setpt = split->spsRx->setpt = 7000;
+	whole->spsRx->hyst = split->spsRx->hyst = 500;
+	split->spsRx->nSamples = SAMPLES_PER_BLOCK / 2;
+
+	for (unsigned int block = 0; block < 97; ++block) {
+		double split_power = 0.0;
+		/* Train the idle reference, receive a fully quieted carrier, then
+		 * remove it halfway through a block. No detector state is reset. */
+		for (size_t i = 0; i < SAMPLES_PER_BLOCK * 6; ++i) {
+			int noise = block < 64 || (block == 96 && i >= SAMPLES_PER_BLOCK * 3);
+			input[2 * i] = noise ? ((i & 2U) ? 12000 : -12000) : 0;
+		}
+		whole->spsRx->source = input;
+		assert(!urp_radio_receive_frontend(whole->spsRx));
+		for (size_t half = 0; half < 2; ++half) {
+			split->spsRx->source = input + half * SAMPLES_PER_BLOCK * 6;
+			assert(!urp_radio_receive_frontend(split->spsRx));
+			assert(!memcmp(whole->rxCarrierGate + half * SAMPLES_PER_BLOCK * 3,
+				       split->rxCarrierGate, SAMPLES_PER_BLOCK * 3));
+			split_power += (double)split->rxRssi * split->rxRssi;
+		}
+		assert(whole->spsRx->compOut == split->spsRx->compOut);
+		/* Integer RSSI truncation loses less than two codes when the same
+		 * block is metered in two halves: sqrt(sum(sample^2))/16. */
+		assert(fabs(whole->rxRssi - sqrt(split_power)) < 2.0);
+	}
+	assert(whole->rxCarrierGate[0]);
+	assert(!whole->rxCarrierGate[SAMPLES_PER_BLOCK * 6 - 1]);
+	assert(whole->spsRx->compOut);
+
+	/* VOX keeps its separate detector and never consumes the DSP mask. */
+	whole->rxCdType = CD_XPMR_VOX;
+	memset(whole->rxCarrierGate, 0x5a, SAMPLES_PER_BLOCK * 6);
+	int previous_rssi = whole->rxRssi;
+	assert(!urp_radio_receive_frontend(whole->spsRx));
+	assert(whole->rxRssi == previous_rssi);
+	for (size_t i = 0; i < SAMPLES_PER_BLOCK * 6; ++i)
+		assert(whole->rxCarrierGate[i] == 0x5a);
+	assert(!urp_radio_destroy(split));
+	assert(!urp_radio_destroy(whole));
+}
+
+/** @brief Fill one stereo block with bounded, reproducible Gaussian-like discriminator noise.
+ * @param input Stereo PCM destination; only the left channel carries discriminator audio.
+ * @param random_state Persistent nonzero xorshift seed, independent of block boundaries.
+ * @param divisor Noise attenuation used to simulate carrier quieting.
+ */
+static void fill_discriminator_noise(int16_t *input, uint32_t *random_state, int divisor)
+{
+	for (size_t sample = 0; sample < SAMPLES_PER_BLOCK * 6; ++sample) {
+		int sum = -1530;
+		/* Twelve uniforms approximate Gaussian noise without unbounded ADC
+		 * peaks. The real frontend supplies the selected detector bandpass. */
+		for (unsigned int term = 0; term < 12; ++term) {
+			*random_state ^= *random_state << 13;
+			*random_state ^= *random_state >> 17;
+			*random_state ^= *random_state << 5;
+			sum += (int)(*random_state >> 24);
+		}
+		input[2 * sample] = (int16_t)(sum * 20 / divisor);
+		input[2 * sample + 1] = 0;
+	}
+}
+
+/** @brief Reject idle noise troughs and close promptly after a genuinely quieted carrier. */
+static void test_frontend_gaussian_noise(void)
+{
+	for (int noise_filter = 0; noise_filter < 2; ++noise_filter) {
+		urp_radio_state template = {.pRxCodeSrc = "0",
+					    .pTxCodeSrc = "0",
+					    .pTxCodeDefault = "0",
+					    .rxCdType = CD_XPMR_NOISE};
+		urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		uint32_t random_state = 0x9e3779b9U;
+		int16_t input[SAMPLES_PER_BLOCK * 6 * 2];
+		double idle_level = 0.0;
+		assert(state);
+		state->spsRx->source = input;
+		state->rxNoiseFilType = noise_filter;
+		state->spsRx->setpt = 0;
+		state->spsRx->hyst = 0;
+		for (unsigned int block = 0; block < 100; ++block) {
+			fill_discriminator_noise(input, &random_state, 1);
+			assert(!urp_radio_receive_frontend(state->spsRx));
+			idle_level += state->rxRssi / 100.0;
+		}
+		assert(idle_level > 1000.0 && idle_level < 30000.0);
+		state->spsRx->setpt = (int16_t)(idle_level * 0.8);
+		state->spsRx->hyst = (int16_t)(idle_level * 0.12);
+
+		/* Thirty seconds before and after a transmission catch slow hold
+		 * accumulation; all comparator and capacitor states remain live. */
+		for (unsigned int phase = 0; phase < 2; ++phase) {
+			for (unsigned int block = 0; block < 1500; ++block) {
+				fill_discriminator_noise(input, &random_state, 1);
+				assert(!urp_radio_receive_frontend(state->spsRx));
+				for (size_t sample = 0; sample < SAMPLES_PER_BLOCK * 6; ++sample)
+					assert(!state->rxCarrierGate[sample]);
+			}
+			if (phase != 0)
+				break;
+			/* A 64:1 voltage reduction is 36 dB of discriminator quieting. */
+			for (unsigned int block = 0; block < 100; ++block) {
+				fill_discriminator_noise(input, &random_state, 64);
+				assert(!urp_radio_receive_frontend(state->spsRx));
+				if (block >= 10) {
+					for (size_t sample = 0; sample < SAMPLES_PER_BLOCK * 6;
+					     ++sample)
+						assert(state->rxCarrierGate[sample]);
+				}
+			}
+			fill_discriminator_noise(input, &random_state, 1);
+			const size_t carrier_loss = SAMPLES_PER_BLOCK * 6 / 4;
+			for (size_t sample = 0; sample < carrier_loss; ++sample)
+				input[2 * sample] /= 64;
+			assert(!urp_radio_receive_frontend(state->spsRx));
+			size_t first_closed = carrier_loss;
+			while (first_closed < SAMPLES_PER_BLOCK * 6 &&
+			       state->rxCarrierGate[first_closed])
+				++first_closed;
+			assert(first_closed - carrier_loss < 480); /* Less than 10 ms at 48 kHz. */
+			for (size_t sample = first_closed; sample < SAMPLES_PER_BLOCK * 6; ++sample)
+				assert(!state->rxCarrierGate[sample]);
+			printf("noise filter %d: idle %.1f, abrupt carrier loss closes in %.3f "
+			       "ms\n",
+			       noise_filter, idle_level, (first_closed - carrier_loss) / 48.0);
+		}
+		assert(!urp_radio_destroy(state));
+	}
+}
+
 /** @brief Verify cpu saver predicates. */
 static void test_cpu_saver_predicates(void)
 {
@@ -923,6 +1066,8 @@ int main(void)
 	RUN_TEST(test_runtime_state_machine);
 	RUN_TEST(test_ctcss_decoder_states);
 	RUN_TEST(test_frontend_edges);
+	RUN_TEST(test_frontend_sample_gate);
+	RUN_TEST(test_frontend_gaussian_noise);
 	RUN_TEST(test_cpu_saver_predicates);
 	RUN_TEST(test_lifecycle_edges);
 	RUN_TEST(test_allocation_failures);

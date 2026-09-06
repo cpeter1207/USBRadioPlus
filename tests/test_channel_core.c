@@ -7300,6 +7300,8 @@ static void test_native_tick_baseline(void)
 	radio_config.pTxCodeDefault = "0";
 	channel.radio = urp_radio_create(&radio_config, 160);
 	assert(channel.radio);
+	/* This rendering harness supplies an already open detector for every sample. */
+	memset(channel.radio->rxCarrierGate, 1, URP_NATIVE_SAMPLES);
 	assert(usbradioplus_dsp_init(&channel) == 0);
 	for (i = 0; i < URP_NATIVE_SAMPLES; i++) {
 		capture[i * 2] = (short)(1000.0 * sin(2.0 * M_PI * i / 48.0));
@@ -7524,6 +7526,54 @@ static void test_native_tick_baseline(void)
 	usbradioplus_native_tick(&channel);
 	usbradioplus_dsp_destroy(&channel);
 	urp_radio_destroy(channel.radio);
+}
+
+/** @brief Apply sample-rate DSP carrier gating without changing non-DSP receive sources. */
+static void test_native_sample_gate(void)
+{
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	static const char *const carrier_sources[] = {"dsp", "usb",	 "usbinvert", "vox",
+						      "pp",  "ppinvert", "no"};
+	short *capture = (short *)(channel.usbradio_read_buf + AST_FRIENDLY_OFFSET);
+	short *network = (short *)(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET);
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "sample-gate");
+	strcpy(settings.profiles[0].channel, "RadioPlus/sample-gate");
+	settings.profiles[0].enabled = 0;
+	memset(&settings.profiles[0].chains[TXAGC_LOCAL], 0,
+	       sizeof(settings.profiles[0].chains[TXAGC_LOCAL]));
+	channel.name = "sample-gate";
+	channel.rxdemod = RX_AUDIO_SPEAKER;
+	channel.rxkeyed = 1; /* Adapter metadata still describes the previous frame. */
+	channel.duplex3 = 999;
+	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
+	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
+	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
+	channel.plus_emphasis_corner_hz = 300.0;
+	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
+	assert(channel.radio);
+	assert(!usbradioplus_dsp_init(&channel));
+	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+		capture[2 * i] = 1000;
+		channel.radio->rxCarrierGate[i] = i < URP_NATIVE_SAMPLES / 2;
+	}
+
+	for (size_t source = 0; source < ARRAY_LEN(carrier_sources); ++source) {
+		strcpy(settings.profiles[0].hardware.cos_assignment, carrier_sources[source]);
+		usbradioplus_native_tick(&channel);
+		for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+			double expected = source == 0 && i >= URP_NATIVE_SAMPLES / 2 ? 0.0 : 1000.0;
+			assert(channel.plus_local_native[i] == expected);
+			assert(network[i] == expected);
+		}
+		assert(channel.rxkeyed); /* No changes to carrier, CTCSS, or PTT qualification. */
+		assert(!channel.radio->txPttIn && !channel.radio->txPttOut);
+	}
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
 }
 
 /** @brief Verify unlinked channel cleanup. */
@@ -7757,6 +7807,7 @@ int main(void)
 	RUN_TEST(test_program_queue_and_parrot_storage);
 	RUN_TEST(test_dsp_init_failures);
 	RUN_TEST(test_native_tick_baseline);
+	RUN_TEST(test_native_sample_gate);
 	RUN_TEST(test_unlinked_channel_cleanup);
 	RUN_TEST(test_store_config_failure_and_option_edges);
 #undef RUN_TEST

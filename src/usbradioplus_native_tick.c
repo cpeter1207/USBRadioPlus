@@ -84,6 +84,15 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 					   URP_NATIVE_SAMPLES, URP_RATE_NATIVE) < 0)
 			ast_log(LOG_WARNING, "RadioPlus/%s: receive de-emphasis failed\n", o->name);
 	}
+	if (o->radio->rxCdType == CD_XPMR_NOISE) {
+		/* Preserve continuous de-emphasis state, then gate at the detector's
+		 * exact sample. app_rpt carrier notifications remain frame-cadenced;
+		 * their previous-frame state must not admit a native squelch tail. */
+		for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+			if (!o->radio->rxCarrierGate[i])
+				o->plus_local_native[i] = 0.0;
+		}
+	}
 	{
 		double gain_db = chain.agc.input_gain_db;
 		double gain = pow(10.0, gain_db / 20.0);

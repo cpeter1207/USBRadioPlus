@@ -143,6 +143,14 @@ Set VOX hang time and detection threshold.
 .TP
 .B hardware_noise_squelch_hysteresis, hardware_noise_filter_type
 Configure native noise-squelch hysteresis and detector filtering.
+Hysteresis is additional discriminator-noise margin while the gate is open,
+not a delay or a SINAD setting.
+DSP COS follows a sample-rate MICOR-style fast detector and long-tail storage
+state: abrupt loss of a signal with at least 20 dB noise quieting closes
+quickly, while weak signals and gradual fading retain about 150 ms of hold.
+The software receive audio gate updates within each 48 kHz frame; Asterisk
+carrier notifications remain frame-based. Hardware local repeat bypasses
+the software audio gate. Noise calibration and meter units are unchanged.
 .TP
 .B hardware_squelch_delay, hardware_rx_on_delay_frames
 Set receive audio squelch-tail delay and carrier acceptance delay.

@@ -1169,6 +1169,8 @@ typedef struct urp_radio_state {
 	i16 *pRxDemod; /* buffers */
 	/** Base-rate detector input workspace. */
 	i16 *pRxBase; /* decimated lpf input */
+	/** Sample-rate noise-squelch gate; one means open at the native input sample. */
+	uint8_t *rxCarrierGate;
 	/** High-frequency discriminator-noise workspace. */
 	i16 *pRxNoise;
 	/** subaudible only */

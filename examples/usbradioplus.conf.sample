@@ -60,6 +60,9 @@ channel_enabled = yes
 ;hardware_rx_ctcss_source = dsp
 ;hardware_vox_hang_ms = 2000
 ;hardware_vox_threshold = 0
+; DSP COS noise margin while open, not a delay or SINAD setting. The sample-rate
+; MICOR-style detector closes strong signals quickly and holds weak or gradually
+; fading signals for about 150 ms. Strong means at least 20 dB noise quieting.
 ;hardware_noise_squelch_hysteresis = 3000
 ;hardware_noise_filter_type = 0
 ;hardware_squelch_delay = 0

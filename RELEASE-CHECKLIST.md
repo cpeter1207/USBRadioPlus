@@ -49,6 +49,10 @@ still runs.
   CTCSS-plus-voice transmission (confirmed by Chris, 2026-08-30).
 - [ ] COS and CTCSS sources and polarities verified.
 - [ ] RX peak/RMS, ADC rails, SINAD, and squelch margin recorded.
+- [ ] Sample-rate DSP squelch: strong-carrier abrupt loss closes under 10 ms;
+  weak-carrier loss holds about 150 ms; gradual fades restore flutter hold.
+  Follow the receiver check in `doc/native-radio.md`, including CTCSS and
+  software-repeat checks. Analog MICOR equivalence still needs bench comparison.
 - [ ] TX voice and CTCSS deviation, clipping, and occupied bandwidth recorded.
 - [ ] Mixer A/B modes and PTT polarity verified.
 - [ ] Normal app_rpt audio verified with `duplex3=0`.
