@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter permutations regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,11 +13,18 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000U
+
 #define BLOCK 960U
+
 #define PERMUTATIONS 720U
+
 #define BLOCKS_PER_PERMUTATION 2U
+
 #define PERFORMANCE_BLOCKS 200U
 
+/** @brief Create the complete optional-stage configuration used by permutation tests.
+ * @param cfg Candidate configuration; the caller retains ownership.
+ */
 static void configure(struct txagc_config *cfg)
 {
 	memset(cfg, 0, sizeof(*cfg));
@@ -76,6 +87,13 @@ static void configure(struct txagc_config *cfg)
 	cfg->compressor_sidechain_lowpass_hz = 3000.0;
 }
 
+/** @brief Process audio through one ordering and record correctness and execution time.
+ * @param order Stage-order text or permutation array.
+ * @param number Receives or supplies the permutation sequence number.
+ * @param block_count Audio blocks processed for this permutation.
+ * @param total_seconds Accumulates measured processing time in seconds.
+ * @return Result used by the test's assertions.
+ */
 static int run_permutation(const enum txagc_stage *order, unsigned int number,
 			   unsigned int block_count, double *total_seconds)
 {
@@ -106,6 +124,13 @@ static int run_permutation(const enum txagc_stage *order, unsigned int number,
 	return 0;
 }
 
+/** @brief Enumerate every stage ordering and execute its audio assertions.
+ * @param order Stage-order text or permutation array.
+ * @param at Current permutation recursion depth.
+ * @param number Receives or supplies the permutation sequence number.
+ * @param seconds Accumulates total processing time in seconds.
+ * @return Result used by the test's assertions.
+ */
 static int permute(enum txagc_stage *order, unsigned int at, unsigned int *number, double *seconds)
 {
 	unsigned int index;
@@ -125,6 +150,9 @@ static int permute(enum txagc_stage *order, unsigned int at, unsigned int *numbe
 	return 0;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	enum txagc_stage order[TXAGC_MAX_DYNAMICS_STAGES] = {
@@ -163,3 +191,19 @@ int main(void)
 	}
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */
+/** @def PERMUTATIONS
+ * @brief PERMUTATIONS selection for this isolated test harness.
+ */
+/** @def BLOCKS_PER_PERMUTATION
+ * @brief BLOCKS PER PERMUTATION selection for this isolated test harness.
+ */
+/** @def PERFORMANCE_BLOCKS
+ * @brief PERFORMANCE BLOCKS selection for this isolated test harness.
+ */

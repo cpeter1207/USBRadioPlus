@@ -1,3 +1,7 @@
+/** @file
+ * @brief Transport-independent PCM conversion, routing, elastic queues, and echo state.
+ */
+
 #include "usbradioplus_channel_core.h"
 
 #include <limits.h>
@@ -6,11 +10,21 @@
 #include <string.h>
 #include <strings.h>
 
+/** A symbolic configuration value and its internal enumeration value. */
 struct urp_named_value {
+	/** Symbolic name used to identify this entry. */
 	const char *name;
+	/** Numeric assignment corresponding to the symbolic name. */
 	int value;
 };
 
+/** @brief Resolve a symbolic option through a bounded name/value table.
+ * @param text Symbolic assignment to resolve.
+ * @param values Allowed symbolic names and their numeric values.
+ * @param count Number of elements available in the supplied block.
+ * @param result Receives the matching numeric assignment.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 static int parse_named_value(const char *text, const struct urp_named_value *values, size_t count,
 			     int *result)
 {

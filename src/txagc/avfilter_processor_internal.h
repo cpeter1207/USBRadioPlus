@@ -1,3 +1,7 @@
+/** @file
+ * @brief Private FFmpeg graph construction and meter-draining test interfaces.
+ */
+
 #ifndef TXAGC_AVFILTER_PROCESSOR_INTERNAL_H
 #define TXAGC_AVFILTER_PROCESSOR_INTERNAL_H
 
@@ -10,12 +14,13 @@
 #ifdef URP_AVFILTER_TESTING
 #define GRAPH_SIZE 16384
 
+/** Spectral measurement taps around the fixed band-pass. */
 enum cleanup_meter {
-	CLEANUP_PRE_FULL,
-	CLEANUP_PRE_5_8,
-	CLEANUP_PRE_8_PLUS,
-	CLEANUP_POST_5_8,
-	CLEANUP_POST_8_PLUS,
+	CLEANUP_PRE_FULL /**< Full-band input before the fixed band-pass. */,
+	CLEANUP_PRE_5_8 /**< 5–8 kHz input energy before filtering. */,
+	CLEANUP_PRE_8_PLUS /**< Input energy above 8 kHz. */,
+	CLEANUP_POST_5_8 /**< 5–8 kHz output energy after filtering. */,
+	CLEANUP_POST_8_PLUS /**< Output energy above 8 kHz after filtering. */
 };
 
 double db_to_linear(double db);

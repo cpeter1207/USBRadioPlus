@@ -80,7 +80,7 @@ MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
 	RELEASE-CHECKLIST.md CONTRIBUTING.md AGENTS.md Doxyfile pyproject.toml \
 	.clang-format .clang-tidy .dockerignore install.sh
-DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tools
+DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tests_docs tools
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
 
@@ -116,8 +116,8 @@ validate-release:
 	$(PYTHON) tools/validate_release.py
 
 lint:
-	$(RUFF) check scripts tests_py tools
-	$(RUFF) format --check scripts/usbradioplus-tune tests_py tools
+	$(RUFF) check scripts tests_py tests_docs tools
+	$(RUFF) format --check scripts/usbradioplus-tune tests_py tests_docs tools
 	$(CLANG_FORMAT) --dry-run --Werror \
 		$(wildcard src/*.c src/*.h src/*.inc src/txagc/*.c src/txagc/*.h tests/*.c)
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
@@ -190,6 +190,7 @@ docs:
 	rm -f $(BUILD_DIR)/doxygen-warnings.log
 	$(DOXYGEN) Doxyfile
 	test ! -s $(BUILD_DIR)/doxygen-warnings.log
+	$(PYTHON) -m pytest -q tests_docs
 
 ci: lint static-analysis check coverage docs distcheck
 

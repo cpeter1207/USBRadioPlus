@@ -1,13 +1,18 @@
+## @file
+## @brief Processing tuner regression checks.
 import os
 import re
 import runpy
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
+## Module fixture used by these tests.
 MODULE = runpy.run_path(str(ROOT / "scripts/usbradioplus-tune"), run_name="test_module")
 
 
 def test_tuner_covers_every_chain_option():
+    """Verify tuner covers every chain option."""
     source = (ROOT / "src/usbradioplus_processing.c").read_text(encoding="utf-8")
     start = source.index("static const char *const names[]")
     end = source.index("};", start)
@@ -17,6 +22,7 @@ def test_tuner_covers_every_chain_option():
 
 
 def test_section_parser_and_non_destructive_insert():
+    """Verify section parser and non destructive insert."""
     original = "[local]\nenabled = no ; comment\n\n[link]\nenabled = no\n"
     values = MODULE["section_values"](original, "local")
     assert values == {"enabled": "no"}
@@ -26,6 +32,7 @@ def test_section_parser_and_non_destructive_insert():
 
 
 def test_hardware_pin_assignments_require_restart():
+    """Verify hardware pin assignments require restart."""
     original = "[hardware]\nhardware_gpio_1_mode = in\n"
     output_routing = MODULE["replace_value"](
         original, "hardware", "hardware_output_a_assignment", "voice"
@@ -40,6 +47,7 @@ def test_hardware_pin_assignments_require_restart():
 
 
 def test_every_nonchain_setting_has_a_concrete_shipped_default():
+    """Verify every nonchain setting has a concrete shipped default."""
     defaults = MODULE["shipped_modern_defaults"]()
     expected = {key for settings in MODULE["MODERN_SECTION_SETTINGS"].values() for key in settings}
     assert defaults.keys() >= expected
@@ -49,6 +57,11 @@ def test_every_nonchain_setting_has_a_concrete_shipped_default():
 
 
 def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch):
+    """Verify processing config permissions allow asterisk save.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     path = tmp_path / "usbradioplus.conf"
     path.write_text("[general]\nenabled = yes\n", encoding="utf-8")
     account = type("Account", (), {"pw_uid": os.getuid(), "pw_gid": os.getgid()})()
@@ -58,6 +71,7 @@ def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch
 
 
 def test_tuner_uses_current_cli_and_accessible_keys():
+    """Verify tuner uses current cli and accessible keys."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "txagc reload" not in source
     for command in (
@@ -74,6 +88,7 @@ def test_tuner_uses_current_cli_and_accessible_keys():
 
 
 def test_whiptail_menus_preserve_the_selected_item():
+    """Verify whiptail menus preserve the selected item."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert len(re.findall(r'"--default-item",\s*selected', source)) >= 3
     assert source.count("selected = choice") >= 3
@@ -81,6 +96,7 @@ def test_whiptail_menus_preserve_the_selected_item():
 
 
 def test_value_types_use_shared_accessible_editors():
+    """Verify value types use shared accessible editors."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     for helper in ("prompt_boolean", "prompt_choice", "prompt_number", "prompt_text"):
         assert f"def {helper}(" in source
@@ -94,6 +110,7 @@ def test_value_types_use_shared_accessible_editors():
 
 
 def test_all_enumerated_values_share_one_choice_table():
+    """Verify all enumerated values share one choice table."""
     choices = MODULE["CHOICES"]
     for kind in (
         "assignment",
@@ -113,9 +130,17 @@ def test_all_enumerated_values_share_one_choice_table():
 
 
 def test_boolean_and_enum_editors_restore_the_current_choice(monkeypatch):
+    """Verify boolean and enum editors restore the current choice.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     calls = []
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         calls.append(args)
         return 1, ""
 
@@ -129,9 +154,17 @@ def test_boolean_and_enum_editors_restore_the_current_choice(monkeypatch):
 
 
 def test_numeric_editor_normalizes_values_and_protects_negative_initial_value(monkeypatch):
+    """Verify numeric editor normalizes values and protects negative initial value.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     calls = []
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         calls.append(args)
         return (0, " -6.200") if "--inputbox" in args else (0, "")
 
@@ -143,6 +176,7 @@ def test_numeric_editor_normalizes_values_and_protects_negative_initial_value(mo
 
 
 def test_all_settings_menus_use_the_same_persistent_selection_widget():
+    """Verify all settings menus use the same persistent selection widget."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "def read_menu_key(" not in source
     assert "def read_key(" not in source
@@ -160,6 +194,7 @@ def test_all_settings_menus_use_the_same_persistent_selection_widget():
 
 
 def test_hardware_submenus_place_calibration_with_related_settings():
+    """Verify hardware submenus place calibration with related settings."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert "def calibration_menu():" not in source
     assert "def hardware_menu():" in source
@@ -180,6 +215,7 @@ def test_hardware_submenus_place_calibration_with_related_settings():
 
 
 def test_hardware_actions_exclude_redundant_calibration_options():
+    """Verify hardware actions exclude redundant calibration options."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     start = source.index("def hardware_menu():")
     end = source.index("\ndef interactive", start)
@@ -201,12 +237,17 @@ def test_hardware_actions_exclude_redundant_calibration_options():
 
 
 def test_every_hardware_setting_appears_in_exactly_one_submenu():
+    """Verify every hardware setting appears in exactly one submenu."""
     grouped = [key for keys in MODULE["HARDWARE_GROUP_KEYS"].values() for key in keys]
     assert set(grouped) == set(MODULE["HARDWARE_SETTINGS"])
     assert len(grouped) == len(set(grouped))
 
 
 def test_live_radio_state_parser(monkeypatch):
+    """Verify live radio state parser.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     state_line = "1,1,0,0,0,1,3,0,0,0,0,2,1,3,500,0.75,650,700,800,450,0,0,0"
     monkeypatch.setitem(
         MODULE["radio_state"].__globals__, "radio_command", lambda _option: "header\n" + state_line
@@ -220,6 +261,10 @@ def test_live_radio_state_parser(monkeypatch):
 
 
 def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
+    """Verify missing configuration is created from shipped defaults.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     config = tmp_path / "usbradioplus.conf"
     sample = tmp_path / "sample.conf"
     sample.write_text("[local]\nenabled = yes\n", encoding="utf-8")
@@ -237,6 +282,7 @@ def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
 
 
 def test_tuner_covers_non_audio_sections():
+    """Verify tuner covers non audio sections."""
     assert set(MODULE["ASTERISK_SETTINGS"]) >= {
         "asterisk_jitter_buffer_force_enabled",
         "asterisk_jitter_buffer_target_extra_ms",
@@ -247,6 +293,7 @@ def test_tuner_covers_non_audio_sections():
 
 
 def test_fixed_filters_have_a_dedicated_menu():
+    """Verify fixed filters have a dedicated menu."""
     settings = MODULE["SETTINGS"]
     for key in (
         "ctcss_filter_mode",
@@ -265,6 +312,7 @@ def test_fixed_filters_have_a_dedicated_menu():
 
 
 def test_receive_filter_prompt_lists_every_valid_mode():
+    """Verify receive filter prompt lists every valid mode."""
     assert MODULE["CHOICES"]["ctcss_filter"] == (
         ("disabled", "Disabled"),
         ("highpass", "High-pass"),
@@ -273,6 +321,7 @@ def test_receive_filter_prompt_lists_every_valid_mode():
 
 
 def test_equalizer_defaults_and_source_placement():
+    """Verify equalizer defaults and source placement."""
     default_value = MODULE["default_value"]
     for source in ("local", "link", "voice_telemetry"):
         assert default_value(source, "equalizer_enabled") == "yes"
@@ -293,6 +342,7 @@ def test_equalizer_defaults_and_source_placement():
 
 
 def test_stage_menu_and_input_output_labels():
+    """Verify stage menu and input output labels."""
     source = (ROOT / "scripts/usbradioplus-tune").read_text(encoding="utf-8")
     assert '("Z", "equalizer_enabled", "Three-band equalizer")' in source
     assert '("D", "deesser_enabled", "Split-band de-esser")' in source

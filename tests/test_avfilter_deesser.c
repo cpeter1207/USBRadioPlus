@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter deesser regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +9,15 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000
+
 #define BLOCK 960
 
+/** @brief Measure the filter response at the requested test frequency.
+ * @param frequency CTCSS frequency in Hz.
+ * @param amplitude Receives the oscillator amplitude in PCM codes.
+ * @param enabled Nonzero enables the operation.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double measure(double frequency, double amplitude, int enabled)
 {
 	struct txagc_avfilter state;
@@ -44,11 +55,19 @@ static double measure(double frequency, double amplitude, int enabled)
 	return sqrt(sum / count);
 }
 
+/** @brief Compare enabled and bypassed de-esser output levels in dB.
+ * @param frequency CTCSS frequency in Hz.
+ * @param amplitude Receives the oscillator amplitude in PCM codes.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double change_db(double frequency, double amplitude)
 {
 	return 20.0 * log10(measure(frequency, amplitude, 1) / measure(frequency, amplitude, 0));
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	double speech = change_db(1000.0, 12000.0);
@@ -65,3 +84,10 @@ int main(void)
 		return 3;
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */

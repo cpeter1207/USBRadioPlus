@@ -1,12 +1,22 @@
+## @file
+## @brief Processing tuner menus regression checks.
 import pytest
 from test_processing_tuner import MODULE
 
 
 def globals_for(name):
+    """Return the tuner function's global namespace for scoped monkeypatching.
+
+    @param name Helper, source file, or symbol name selected by this test.
+    """
     return MODULE[name].__globals__
 
 
 def sequence(*responses):
+    """Return a callback that yields the scripted responses in order.
+
+    @param responses Scripted dialog replies consumed in order.
+    """
     values = iter(responses)
     return lambda _args: next(values)
 
@@ -21,6 +31,13 @@ def sequence(*responses):
     ),
 )
 def test_edit_setting_applies_each_value_kind(monkeypatch, key, editor, new_value):
+    """Verify edit setting applies each value kind.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param key Configuration option name.
+    @param editor Expected shared setting editor.
+    @param new_value Value returned by the fake editor.
+    """
     called = []
     namespace = globals_for("edit_setting")
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
@@ -31,6 +48,10 @@ def test_edit_setting_applies_each_value_kind(monkeypatch, key, editor, new_valu
 
 
 def test_edit_setting_cancel_relation_error_apply_error_and_text_dispatch(monkeypatch):
+    """Verify edit setting cancel relation error apply error and text dispatch.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("edit_setting")
     messages = []
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
@@ -55,6 +76,10 @@ def test_edit_setting_cancel_relation_error_apply_error_and_text_dispatch(monkey
 
 
 def test_text_setting_validation_cancel_success_and_apply_error(monkeypatch):
+    """Verify text setting validation cancel success and apply error.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("edit_text_setting")
     messages = []
     applied = []
@@ -80,6 +105,11 @@ def test_text_setting_validation_cancel_success_and_apply_error(monkeypatch):
 
 
 def test_stage_and_settings_menus_select_then_return(monkeypatch, capsys):
+    """Verify stage and settings menus select then return.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param capsys Pytest fixture capturing terminal output.
+    """
     edits = []
     namespace = globals_for("stages_menu")
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")
@@ -116,6 +146,12 @@ def test_stage_and_settings_menus_select_then_return(monkeypatch, capsys):
     ("source", "choice"), (("local", "1"), ("link", "1"), ("voice_telemetry", "2"))
 )
 def test_source_menu_dispatches_numeric_groups(monkeypatch, source, choice):
+    """Verify source menu dispatches numeric groups.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param source Processing source or source text, as declared.
+    @param choice Menu item selected by the scripted dialog.
+    """
     calls = []
     namespace = globals_for("source_menu")
     monkeypatch.setitem(namespace, "dialog", sequence((0, choice), (1, "")))
@@ -128,10 +164,18 @@ def test_source_menu_dispatches_numeric_groups(monkeypatch, source, choice):
 
 
 def test_source_menu_snapshot_and_configuration(monkeypatch):
+    """Verify source menu snapshot and configuration.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("source_menu")
     dialogs = []
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         dialogs.append(args)
         if len(dialogs) == 1:
             return 0, "S"
@@ -168,6 +212,13 @@ def test_source_menu_snapshot_and_configuration(monkeypatch):
     ),
 )
 def test_section_options_edits_every_setting_kind(monkeypatch, kind, editor, entered):
+    """Verify section options edits every setting kind.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param kind Value-format or setting kind.
+    @param editor Expected shared setting editor.
+    @param entered Operator text supplied by the test.
+    """
     namespace = globals_for("section_options_menu")
     applied = []
     settings = {"test_key": ("Test value", kind)}
@@ -183,6 +234,10 @@ def test_section_options_edits_every_setting_kind(monkeypatch, kind, editor, ent
 
 
 def test_section_options_actions_validation_restart_and_error(monkeypatch):
+    """Verify section options actions validation restart and error.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("section_options_menu")
     messages = []
     action_calls = []
@@ -194,6 +249,10 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
     prompt_replies = iter(((0, "bad"), (0, "")))
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         messages.append(args)
         return next(menu_replies) if "--menu" in args else (0, "")
 
@@ -235,6 +294,10 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
 
 
 def test_hardware_menu_dispatches_group_meter_and_returns(monkeypatch):
+    """Verify hardware menu dispatches group meter and returns.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("hardware_menu")
     calls = []
     monkeypatch.setitem(namespace, "dialog", sequence((0, "M"), (0, "2"), (1, "")))
@@ -249,11 +312,23 @@ def test_hardware_menu_dispatches_group_meter_and_returns(monkeypatch):
 
 
 class Terminal:
+    """Minimal terminal test double for interactive-mode prerequisite checks."""
+
     def isatty(self):
+        """Report that the fake stream supports interactive terminal input.
+
+        @param self Terminal test instance.
+        """
         return True
 
 
 def prepare_interactive(monkeypatch, tmp_path, config_text="unchanged"):
+    """Create an isolated interactive tuner session with scripted system interfaces.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param config_text Initial contents of the isolated configuration.
+    """
     namespace = globals_for("interactive")
     config = tmp_path / "processing.conf"
     config.write_text(config_text, encoding="utf-8")
@@ -284,6 +359,13 @@ def prepare_interactive(monkeypatch, tmp_path, config_text="unchanged"):
 def test_interactive_dispatches_every_configuration_section(
     monkeypatch, tmp_path, choice, expected
 ):
+    """Verify interactive dispatches every configuration section.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param choice Menu item selected by the scripted dialog.
+    @param expected expected supplied by the test scenario.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     calls = []
     menus = iter(((0, choice), (1, "")))
@@ -302,6 +384,11 @@ def test_interactive_dispatches_every_configuration_section(
 
 
 def test_interactive_dispatches_radio_selection(monkeypatch, tmp_path):
+    """Verify interactive dispatches radio selection.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     calls = []
     menus = iter(((0, "C"), (1, "")))
@@ -315,11 +402,21 @@ def test_interactive_dispatches_radio_selection(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("choice", ("S", "W", "E", "B"))
 def test_interactive_executes_information_save_and_backup_actions(monkeypatch, tmp_path, choice):
+    """Verify interactive executes information save and backup actions.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param choice Menu item selected by the scripted dialog.
+    """
     namespace, config = prepare_interactive(monkeypatch, tmp_path)
     dialogs = []
     menus = iter(((0, choice), (1, "")))
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         dialogs.append(args)
         return next(menus) if "--menu" in args else (0, "")
 
@@ -339,11 +436,20 @@ def test_interactive_executes_information_save_and_backup_actions(monkeypatch, t
 
 
 def test_interactive_restore_action_success_and_error(monkeypatch, tmp_path):
+    """Verify interactive restore action success and error.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     calls = []
     menus = iter(((0, "R"), (1, "")))
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         if "--yesno" in args:
             return 0, ""
         return next(menus) if "--menu" in args else (0, "")
@@ -355,6 +461,10 @@ def test_interactive_restore_action_success_and_error(monkeypatch, tmp_path):
     menus = iter(((0, "R"), (1, "")))
 
     def cancel_restore(args):
+        """Simulate cancelling the configuration-restoration prompt.
+
+        @param args Command or dialog argument vector.
+        """
         if "--yesno" in args:
             return 1, ""
         return next(menus) if "--menu" in args else (0, "")
@@ -367,6 +477,10 @@ def test_interactive_restore_action_success_and_error(monkeypatch, tmp_path):
     errors = []
 
     def confirm_restore(args):
+        """Simulate accepting the configuration-restoration prompt.
+
+        @param args Command or dialog argument vector.
+        """
         if "--yesno" in args:
             return 0, ""
         if "--msgbox" in args:
@@ -385,6 +499,11 @@ def test_interactive_restore_action_success_and_error(monkeypatch, tmp_path):
 
 
 def test_interactive_ignores_unknown_action(monkeypatch, tmp_path):
+    """Verify interactive ignores unknown action.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     menus = iter(((0, "unknown"), (1, "")))
     monkeypatch.setitem(namespace, "dialog", lambda _args: next(menus))
@@ -402,6 +521,13 @@ def test_interactive_ignores_unknown_action(monkeypatch, tmp_path):
     ),
 )
 def test_interactive_rejects_invalid_environment(monkeypatch, tmp_path, setup, message):
+    """Verify interactive rejects invalid environment.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param setup Function installing the failing environment condition.
+    @param message Expected validation diagnostic.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     if setup == "user":
         monkeypatch.setattr(namespace["os"], "geteuid", lambda: 1000)
@@ -425,6 +551,12 @@ def test_interactive_rejects_invalid_environment(monkeypatch, tmp_path, setup, m
 
 @pytest.mark.parametrize("decision", ("save", "discard", "continue"))
 def test_interactive_dirty_exit_decisions(monkeypatch, tmp_path, decision):
+    """Verify interactive dirty exit decisions.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param decision Scripted save/discard/cancel choice.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     reads = iter(("original", "changed", "changed", "changed"))
     monkeypatch.setitem(namespace, "read_config", lambda: next(reads, "changed"))
@@ -440,6 +572,11 @@ def test_interactive_dirty_exit_decisions(monkeypatch, tmp_path, decision):
 
 
 def test_interactive_dirty_discard_error_returns_to_menu(monkeypatch, tmp_path):
+    """Verify interactive dirty discard error returns to menu.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     namespace, _config = prepare_interactive(monkeypatch, tmp_path)
     reads = iter(("original", "changed", "changed", "changed"))
     monkeypatch.setitem(namespace, "read_config", lambda: next(reads, "changed"))

@@ -1,5 +1,11 @@
+/** @file
+ * @brief Executable channel core regression and failure-path checks.
+ */
+
 #define URP_CHANNEL_UNIT_TEST 1
+
 #define AST_MODULE_SELF_SYM test_module_self
+
 #define AST_MODULE "chan_usbradioplus"
 
 #include "asterisk.h"
@@ -30,9 +36,28 @@ struct usb_dev_handle;
 AVFrame *test_av_frame_alloc(void);
 int test_src_process(SRC_STATE *state, SRC_DATA *data);
 SRC_STATE *test_src_new(int converter_type, int channels, int *error);
+/** @brief Linker entry point for the real av_frame_alloc operation behind the test wrapper.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFrame *__real_av_frame_alloc(void);
+/** @brief Linker entry point for the real src_process operation behind the test wrapper.
+ * @param state Processor or stream state owned by the caller.
+ * @param data Input payload or owned state being released, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_src_process(SRC_STATE *state, SRC_DATA *data);
+/** @brief Linker entry point for the real src_new operation behind the test wrapper.
+ * @param converter_type libsamplerate converter type.
+ * @param channels Number of interleaved audio channels.
+ * @param error Receives a diagnostic for invalid input.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 SRC_STATE *__real_src_new(int converter_type, int channels, int *error);
+/** @brief Linker entry point for the real pthread_join operation behind the test wrapper.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param result Receives the parsed value or supplies a CLI result, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_pthread_join(pthread_t thread, void **result);
 int __wrap_usleep(unsigned int microseconds);
 int __wrap_ioctl(int descriptor, unsigned long request, ...);
@@ -75,13 +100,56 @@ int __wrap_libusb_detach_kernel_driver(libusb_device_handle *handle, int interfa
 
 #include <assert.h>
 
+/** @brief Linker entry point for the real ioctl operation behind the test wrapper.
+ * @param descriptor Test file or CLI descriptor.
+ * @param request Host I/O or locking operation.
+ * @param ... Values required by the wrapped variadic API.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern int __real_ioctl(int descriptor, unsigned long request, ...);
+/** @brief Linker entry point for the real open operation behind the test wrapper.
+ * @param path Filesystem path to inspect or update.
+ * @param flags Host API option bit mask.
+ * @param ... Values required by the wrapped variadic API.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern int __real_open(const char *path, int flags, ...);
+/** @brief Linker entry point for the real close operation behind the test wrapper.
+ * @param descriptor Test file or CLI descriptor.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern int __real_close(int descriptor);
+/** @brief Linker entry point for the real read operation behind the test wrapper.
+ * @param descriptor Test file or CLI descriptor.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @param count Number of elements available in the supplied block.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern ssize_t __real_read(int descriptor, void *buffer, size_t count);
+/** @brief Linker entry point for the real write operation behind the test wrapper.
+ * @param descriptor Test file or CLI descriptor.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @param count Number of elements available in the supplied block.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern ssize_t __real_write(int descriptor, const void *buffer, size_t count);
+/** @brief Host-API test double for pthread_join; observable effects are recorded in harness state.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param result Receives the parsed value or supplies a CLI result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 extern int pthread_join(pthread_t thread, void **result);
+/** @brief Linker entry point for the real poll operation behind the test wrapper.
+ * @param descriptors Test descriptor array.
+ * @param count Number of elements available in the supplied block.
+ * @param timeout Asterisk call timeout.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern int __real_poll(struct pollfd *descriptors, nfds_t count, int timeout);
+/** @brief Linker entry point for the real pipe operation behind the test wrapper.
+ * @param descriptors Test descriptor array.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 extern int __real_pipe(int descriptors[2]);
 
 void test_ast_debug(int level, const char *format, ...)
@@ -96,6 +164,11 @@ void test_ast_log(int level, const char *format, ...)
 	(void)format;
 }
 
+/** @brief Verify pthread join.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param result Receives the parsed value or supplies a CLI result, as declared.
+ * @return Result used by the test's assertions.
+ */
 int test_pthread_join(pthread_t thread, void **result)
 {
 	(void)thread;
@@ -110,62 +183,118 @@ int test_pthread_join(pthread_t thread, void **result)
 #undef realloc
 #undef calloc
 
+/** Harness ast options used to script and verify host behavior. */
 struct ast_flags64 ast_options;
+/** Harness ast null frame used to script and verify host behavior. */
 struct ast_frame ast_null_frame;
+/** Harness ast format slin used to script and verify host behavior. */
 struct ast_format *ast_format_slin;
+/** @brief Verify module self.
+ * @return Result used by the test's assertions.
+ */
 struct ast_module *test_module_self(void)
 {
 	return NULL;
 }
+/** Harness option debug used to script and verify host behavior. */
 int option_debug;
+/** Harness option verbose used to script and verify host behavior. */
 int option_verbose;
+/** Controls injected realloc failure for this test. */
 static int fail_realloc;
+/** Recorded ast calloc calls for assertions. */
 static int ast_calloc_calls;
+/** Controls injected ast calloc call failure for this test. */
 static int fail_ast_calloc_call;
+/** Controls injected radio state allocation failure for this test. */
 static int fail_radio_state_allocation;
+/** Controls injected av frame alloc call failure for this test. */
 static int fail_av_frame_alloc_call;
+/** Recorded av frame alloc calls for assertions. */
 static int av_frame_alloc_calls;
+/** Controls injected src process call failure for this test. */
 static int fail_src_process_call;
+/** Controls injected src new call failure for this test. */
 static int fail_src_new_call;
+/** Recorded src new calls for assertions. */
 static int src_new_calls;
+/** Recorded src process calls for assertions. */
 static int src_process_calls;
+/** Harness partial src process call used to script and verify host behavior. */
 static int partial_src_process_call;
+/** Harness config variables used to script and verify host behavior. */
 static struct ast_variable *test_config_variables;
+/** Harness config load result used to script and verify host behavior. */
 static struct ast_config *test_config_load_result;
+/** Harness separate processing config result used to script and verify host behavior. */
 static int separate_processing_config_result;
+/** Harness processing config load result used to script and verify host behavior. */
 static struct ast_config *test_processing_config_load_result;
+/** Harness config load second result used to script and verify host behavior. */
 static struct ast_config *test_config_load_second_result;
+/** Recorded test config load calls for assertions. */
 static int test_config_load_calls;
+/** Recorded config destroy calls for assertions. */
 static int config_destroy_calls;
+/** Harness channel private used to script and verify host behavior. */
 static void *test_channel_private;
+/** Recorded setstate calls for assertions. */
 static int setstate_calls;
+/** Recorded moh start calls for assertions. */
 static int moh_start_calls;
+/** Recorded moh stop calls for assertions. */
 static int moh_stop_calls;
+/** Recorded usleep calls for assertions. */
 static int usleep_calls;
+/** Recorded wait or poll calls for assertions. */
 static int wait_or_poll_calls;
+/** Harness wait or poll fail call used to script and verify host behavior. */
 static int wait_or_poll_fail_call;
+/** Harness poll successes before exit used to script and verify host behavior. */
 static int poll_successes_before_exit;
+/** Harness toggle rxkey radio used to script and verify host behavior. */
 static struct chan_usbradio_pvt *toggle_rxkey_radio;
+/** Harness scripted measure stage used to script and verify host behavior. */
 static urp_radio_stage *scripted_measure_stage;
+/** Harness scripted measurements used to script and verify host behavior. */
 static int scripted_measurements[32];
+/** Recorded scripted measurement count for assertions. */
 static size_t scripted_measurement_count;
+/** Harness scripted measurement index used to script and verify host behavior. */
 static size_t scripted_measurement_index;
+/** Harness variable update result used to script and verify host behavior. */
 static int variable_update_result;
+/** Harness variable new failure used to script and verify host behavior. */
 static int variable_new_failure;
+/** Recorded variable append calls for assertions. */
 static int variable_append_calls;
+/** Recorded variable browse calls for assertions. */
 static int variable_browse_calls;
+/** Harness inject invalid override on browse call used to script and verify host behavior. */
 static int inject_invalid_override_on_browse_call;
+/** Harness category get result used to script and verify host behavior. */
 static struct ast_category *test_category_get_result = (struct ast_category *)(uintptr_t)1;
+/** Harness config save result used to script and verify host behavior. */
 static int config_save_result;
+/** Recorded parallel write calls for assertions. */
 static int parallel_write_calls;
+/** Harness jitter config result used to script and verify host behavior. */
 static int jitter_config_result;
+/** Recorded ast strdup calls for assertions. */
 static int ast_strdup_calls;
+/** Controls injected ast strdup call failure for this test. */
 static int fail_ast_strdup_call;
+/** Harness clear eeprom on usleep used to script and verify host behavior. */
 static int clear_eeprom_on_usleep;
+/** Harness clear eeprom target used to script and verify host behavior. */
 static struct chan_usbradio_pvt *clear_eeprom_target;
+/** Harness stop pulser on usleep used to script and verify host behavior. */
 static int stop_pulser_on_usleep;
+/** Harness stop hid radio on usleep used to script and verify host behavior. */
 static struct chan_usbradio_pvt *stop_hid_radio_on_usleep;
+/** Harness stop hid after usleeps used to script and verify host behavior. */
 static int stop_hid_after_usleeps;
+/** Recorded stop hid usleep count for assertions. */
 static int stop_hid_usleep_count;
 #ifdef URP_TEST_MODERN
 static struct chan_usbradio_pvt *modern_swap_first;
@@ -178,83 +307,155 @@ static struct chan_usbradio_pvt *modern_drop_hasusb_on_queue;
 static int modern_radio_time_calls;
 static int modern_drop_hasusb_on_time_call;
 #endif
+/** Controls injected channel alloc failure for this test. */
 static int fail_channel_alloc;
+/** Harness pbx start result used to script and verify host behavior. */
 static int pbx_start_result;
+/** Harness format compatible used to script and verify host behavior. */
 static int format_compatible = 1;
+/** Recorded hangup calls for assertions. */
 static int hangup_calls;
+/** Harness channel state used to script and verify host behavior. */
 static enum ast_channel_state channel_state = AST_STATE_UP;
+/** Harness dsp result type used to script and verify host behavior. */
 static int dsp_result_type = -1;
+/** Harness dsp result digit used to script and verify host behavior. */
 static int dsp_result_digit;
+/** Recorded frame free calls for assertions. */
 static int frame_free_calls;
+/** Harness config category used to script and verify host behavior. */
 static char *test_config_category;
+/** Recorded parallel load calls for assertions. */
 static int parallel_load_calls;
+/** Harness module debug level used to script and verify host behavior. */
 static unsigned int module_debug_level;
+/** Harness file debug level used to script and verify host behavior. */
 static unsigned int file_debug_level;
+/** Harness installed usb device used to script and verify host behavior. */
 static const char *installed_usb_device;
+/** Harness oss io used to script and verify host behavior. */
 static int mock_oss_io;
+/** Harness open result used to script and verify host behavior. */
 static int mock_open_result = 7;
+/** Harness ioctl failure used to script and verify host behavior. */
 static unsigned long mock_ioctl_failure;
+/** Harness oss fragments used to script and verify host behavior. */
 static int mock_oss_fragments = 8;
+/** Harness oss fragment total used to script and verify host behavior. */
 static int mock_oss_fragment_total = 8;
+/** Harness oss speed used to script and verify host behavior. */
 static int mock_oss_speed = 48000;
+/** Harness oss caps used to script and verify host behavior. */
 static int mock_oss_caps = DSP_CAP_DUPLEX;
+/** Harness read result used to script and verify host behavior. */
 static ssize_t mock_read_result = -1;
+/** Harness read errno used to script and verify host behavior. */
 static int mock_read_errno = EAGAIN;
+/** Harness write result used to script and verify host behavior. */
 static int mock_write_result = -2;
+/** Recorded mock close calls for assertions. */
 static int mock_close_calls;
+/** Recorded pthread create calls for assertions. */
 static int pthread_create_calls;
+/** Controls injected pthread create call failure for this test. */
 static int fail_pthread_create_call;
 #ifndef URP_TEST_MODERN
+/** Harness usb device used to script and verify host behavior. */
 static struct usb_device mock_usb_device;
+/** Harness hid device available used to script and verify host behavior. */
 static int mock_hid_device_available;
 #endif
+/** Harness usb open success used to script and verify host behavior. */
 static int mock_usb_open_success;
+/** Harness usb claim result used to script and verify host behavior. */
 static int mock_usb_claim_result;
+/** Harness usb second claim result used to script and verify host behavior. */
 static int mock_usb_second_claim_result;
+/** Recorded mock usb claim calls for assertions. */
 static int mock_usb_claim_calls;
+/** Harness usb detach result used to script and verify host behavior. */
 static int mock_usb_detach_result;
 #ifndef URP_TEST_MODERN
+/** Harness stop hid on input used to script and verify host behavior. */
 static struct chan_usbradio_pvt *stop_hid_on_input;
+/** Harness drop hid on input used to script and verify host behavior. */
 static struct chan_usbradio_pvt *drop_hid_on_input;
+/** Harness eeprom result used to script and verify host behavior. */
 static unsigned short mock_eeprom_result;
+/** Harness eeprom valid magic used to script and verify host behavior. */
 static int mock_eeprom_valid_magic;
+/** Harness eeprom write after read used to script and verify host behavior. */
 static struct chan_usbradio_pvt *eeprom_write_after_read;
 #endif
+/** Controls injected format cap alloc failure for this test. */
 static int fail_format_cap_alloc;
+/** Harness channel register result used to script and verify host behavior. */
 static int channel_register_result;
+/** Recorded channel unregister calls for assertions. */
 static int channel_unregister_calls;
+/** Recorded cli register calls for assertions. */
 static int cli_register_calls;
+/** Harness cli register result used to script and verify host behavior. */
 static int cli_register_result;
+/** Recorded cli unregister calls for assertions. */
 static int cli_unregister_calls;
+/** Harness hid mklist result used to script and verify host behavior. */
 static int hid_mklist_result;
+/** Harness usb device number used to script and verify host behavior. */
 static int mock_usb_device_number;
+/** Harness usb serial result used to script and verify host behavior. */
 static int mock_usb_serial_result;
+/** Harness usb serial used to script and verify host behavior. */
 static const char *mock_usb_serial = "serial-test";
+/** Harness usb serial by device used to script and verify host behavior. */
 static int mock_usb_serial_by_device;
+/** Harness second usb device used to script and verify host behavior. */
 static int mock_second_usb_device;
+/** Harness no usb devices used to script and verify host behavior. */
 static int mock_no_usb_devices;
 #ifndef URP_TEST_MODERN
+/** Harness amixer max used to script and verify host behavior. */
 static int mock_amixer_max = 100;
+/** Harness new mixer name used to script and verify host behavior. */
 static int mock_new_mixer_name;
 #endif
+/** Harness dsp available used to script and verify host behavior. */
 static int mock_dsp_available;
+/** Harness poll enabled used to script and verify host behavior. */
 static int mock_poll_enabled;
+/** Harness poll result used to script and verify host behavior. */
 static int mock_poll_result;
+/** Harness poll revents used to script and verify host behavior. */
 static short mock_poll_revents;
 #ifndef URP_TEST_MODERN
+/** Harness hid inputs used to script and verify host behavior. */
 static unsigned char mock_hid_inputs[4];
+/** Recorded mock hid input calls for assertions. */
 static int mock_hid_input_calls;
+/** Harness stop hid after inputs used to script and verify host behavior. */
 static int stop_hid_after_inputs = 1;
+/** Harness toggle hid input index used to script and verify host behavior. */
 static int toggle_hid_input_index;
+/** Harness toggle hid inputs mask used to script and verify host behavior. */
 static unsigned char toggle_hid_inputs_mask;
 #endif
+/** Harness parallel inputs used to script and verify host behavior. */
 static unsigned char mock_parallel_inputs;
+/** Harness toggle parallel inputs mask used to script and verify host behavior. */
 static unsigned char toggle_parallel_inputs_mask;
+/** Harness tvnow milliseconds used to script and verify host behavior. */
 static long mock_tvnow_milliseconds = 1000;
+/** Harness tvnow step used to script and verify host behavior. */
 static long mock_tvnow_step;
+/** Harness audio clipping used to script and verify host behavior. */
 static int mock_audio_clipping;
+/** Harness pipe failure used to script and verify host behavior. */
 static int mock_pipe_failure;
 
+/** @brief Test wrapper for pipe controlled by the harness's failure-injection state.
+ * @param descriptors Test descriptor array.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_pipe(int descriptors[2])
 {
 	if (mock_pipe_failure) {
@@ -264,12 +465,23 @@ int __wrap_pipe(int descriptors[2])
 	return __real_pipe(descriptors);
 }
 
+/** @brief Test wrapper for pipe2 controlled by the harness's failure-injection state.
+ * @param descriptors Test descriptor array.
+ * @param flags Host API option bit mask.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_pipe2(int descriptors[2], int flags)
 {
 	(void)flags;
 	return __wrap_pipe(descriptors);
 }
 
+/** @brief Test wrapper for ioperm controlled by the harness's failure-injection state.
+ * @param from From supplied by the test scenario.
+ * @param count Number of elements available in the supplied block.
+ * @param turn_on Turn on supplied by the test scenario.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_ioperm(unsigned long from, unsigned long count, int turn_on)
 {
 	(void)from;
@@ -278,6 +490,12 @@ int __wrap_ioperm(unsigned long from, unsigned long count, int turn_on)
 	return 0;
 }
 
+/** @brief Test wrapper for poll controlled by the harness's failure-injection state.
+ * @param descriptors Test descriptor array.
+ * @param count Number of elements available in the supplied block.
+ * @param timeout Asterisk call timeout.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_poll(struct pollfd *descriptors, nfds_t count, int timeout)
 {
 	if (mock_poll_enabled) {
@@ -289,18 +507,31 @@ int __wrap_poll(struct pollfd *descriptors, nfds_t count, int timeout)
 	return __real_poll(descriptors, count, timeout);
 }
 
+/** @brief Test wrapper for usb_open controlled by the harness's failure-injection state.
+ * @param device Channel name or USB device identifier.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 struct usb_dev_handle *__wrap_usb_open(struct usb_device *device)
 {
 	(void)device;
 	return mock_usb_open_success ? (struct usb_dev_handle *)(uintptr_t)1 : NULL;
 }
 
+/** @brief Test wrapper for usb_close controlled by the harness's failure-injection state.
+ * @param handle Simulated acquired USB handle.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_usb_close(struct usb_dev_handle *handle)
 {
 	(void)handle;
 	return 0;
 }
 
+/** @brief Test wrapper for usb_claim_interface controlled by the harness's failure-injection state.
+ * @param handle Simulated acquired USB handle.
+ * @param interface_number Interface number supplied by the test scenario.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_usb_claim_interface(struct usb_dev_handle *handle, int interface_number)
 {
 	(void)handle;
@@ -309,6 +540,12 @@ int __wrap_usb_claim_interface(struct usb_dev_handle *handle, int interface_numb
 	return mock_usb_claim_calls == 1 ? mock_usb_claim_result : mock_usb_second_claim_result;
 }
 
+/** @brief Test wrapper for usb_detach_kernel_driver_np controlled by the harness's
+ * failure-injection state.
+ * @param handle Simulated acquired USB handle.
+ * @param interface_number Interface number supplied by the test scenario.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_usb_detach_kernel_driver_np(struct usb_dev_handle *handle, int interface_number)
 {
 	(void)handle;
@@ -316,6 +553,15 @@ int __wrap_usb_detach_kernel_driver_np(struct usb_dev_handle *handle, int interf
 	return mock_usb_detach_result;
 }
 
+/** @brief Host-API test double for __ast_format_cap_alloc; observable effects are recorded in
+ * harness state.
+ * @param flags Host API option bit mask.
+ * @param tag Host reference-tracking tag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_format_cap *__ast_format_cap_alloc(enum ast_format_cap_flags flags, const char *tag,
 					      const char *file, int line, const char *function)
 {
@@ -327,6 +573,17 @@ struct ast_format_cap *__ast_format_cap_alloc(enum ast_format_cap_flags flags, c
 	return fail_format_cap_alloc ? NULL : (struct ast_format_cap *)(uintptr_t)1;
 }
 
+/** @brief Host-API test double for __ast_format_cap_append; observable effects are recorded in
+ * harness state.
+ * @param capabilities Asterisk audio-format capabilities.
+ * @param format printf-style message format.
+ * @param framing Requested Asterisk audio-frame duration.
+ * @param tag Host reference-tracking tag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_format_cap_append(struct ast_format_cap *capabilities, struct ast_format *format,
 			    unsigned int framing, const char *tag, const char *file, int line,
 			    const char *function)
@@ -341,18 +598,34 @@ int __ast_format_cap_append(struct ast_format_cap *capabilities, struct ast_form
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_register; observable effects are recorded in harness
+ * state.
+ * @param technology Asterisk channel technology callbacks.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_channel_register(const struct ast_channel_tech *technology)
 {
 	(void)technology;
 	return channel_register_result;
 }
 
+/** @brief Host-API test double for ast_channel_unregister; observable effects are recorded in
+ * harness state.
+ * @param technology Asterisk channel technology callbacks.
+ */
 void ast_channel_unregister(const struct ast_channel_tech *technology)
 {
 	(void)technology;
 	channel_unregister_calls++;
 }
 
+/** @brief Host-API test double for __ast_cli_register_multiple; observable effects are recorded in
+ * harness state.
+ * @param entries Entries supplied by the test scenario.
+ * @param count Number of elements available in the supplied block.
+ * @param module Asterisk module reference.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_cli_register_multiple(struct ast_cli_entry *entries, int count, struct ast_module *module)
 {
 	(void)entries;
@@ -362,6 +635,12 @@ int __ast_cli_register_multiple(struct ast_cli_entry *entries, int count, struct
 	return cli_register_result;
 }
 
+/** @brief Host-API test double for ast_cli_unregister_multiple; observable effects are recorded in
+ * harness state.
+ * @param entries Entries supplied by the test scenario.
+ * @param count Number of elements available in the supplied block.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_cli_unregister_multiple(struct ast_cli_entry *entries, int count)
 {
 	(void)entries;
@@ -370,11 +649,20 @@ int ast_cli_unregister_multiple(struct ast_cli_entry *entries, int count)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_dsp_free; observable effects are recorded in harness state.
+ * @param dsp Dsp supplied by the test scenario.
+ */
 void ast_dsp_free(struct ast_dsp *dsp)
 {
 	(void)dsp;
 }
 
+/** @brief Host-API test double for ast_softhangup; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param cause Receives the Asterisk failure cause when channel creation fails.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_softhangup(struct ast_channel *channel, int cause)
 {
 	(void)channel;
@@ -382,6 +670,14 @@ int ast_softhangup(struct ast_channel *channel, int cause)
 	return 0;
 }
 
+/** @brief Host-API test double for __ao2_cleanup_debug; observable effects are recorded in harness
+ * state.
+ * @param object Host reference-counted object.
+ * @param tag Host reference-tracking tag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ */
 void __ao2_cleanup_debug(void *object, const char *tag, const char *file, int line,
 			 const char *function)
 {
@@ -392,6 +688,12 @@ void __ao2_cleanup_debug(void *object, const char *tag, const char *file, int li
 	(void)function;
 }
 
+/** @brief Test wrapper for ioctl controlled by the harness's failure-injection state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param request Host I/O or locking operation.
+ * @param ... Values required by the wrapped variadic API.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_ioctl(int descriptor, unsigned long request, ...)
 {
 	va_list arguments;
@@ -426,6 +728,12 @@ int __wrap_ioctl(int descriptor, unsigned long request, ...)
 	return 0;
 }
 
+/** @brief Test wrapper for open controlled by the harness's failure-injection state.
+ * @param path Filesystem path to inspect or update.
+ * @param flags Host API option bit mask.
+ * @param ... Values required by the wrapped variadic API.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_open(const char *path, int flags, ...)
 {
 	if (mock_oss_io) {
@@ -436,6 +744,10 @@ int __wrap_open(const char *path, int flags, ...)
 	return __real_open(path, flags);
 }
 
+/** @brief Test wrapper for close controlled by the harness's failure-injection state.
+ * @param descriptor Test file or CLI descriptor.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_close(int descriptor)
 {
 	if (mock_oss_io) {
@@ -445,6 +757,12 @@ int __wrap_close(int descriptor)
 	return __real_close(descriptor);
 }
 
+/** @brief Test wrapper for read controlled by the harness's failure-injection state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @param count Number of elements available in the supplied block.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 ssize_t __wrap_read(int descriptor, void *buffer, size_t count)
 {
 	(void)descriptor;
@@ -459,6 +777,12 @@ ssize_t __wrap_read(int descriptor, void *buffer, size_t count)
 	return __real_read(descriptor, buffer, count);
 }
 
+/** @brief Test wrapper for write controlled by the harness's failure-injection state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @param count Number of elements available in the supplied block.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 ssize_t __wrap_write(int descriptor, const void *buffer, size_t count)
 {
 	if (mock_oss_io) {
@@ -469,6 +793,13 @@ ssize_t __wrap_write(int descriptor, const void *buffer, size_t count)
 	return __real_write(descriptor, buffer, count);
 }
 
+/** @brief Host-API test double for ast_jb_read_conf; observable effects are recorded in harness
+ * state.
+ * @param conf Conf supplied by the test scenario.
+ * @param varname Varname supplied by the test scenario.
+ * @param value Input value or writable result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_jb_read_conf(struct ast_jb_conf *conf, const char *varname, const char *value)
 {
 	(void)conf;
@@ -477,18 +808,33 @@ int ast_jb_read_conf(struct ast_jb_conf *conf, const char *varname, const char *
 	return jitter_config_result;
 }
 
+/** @brief Host-API test double for ast_true; observable effects are recorded in harness state.
+ * @param value Input value or writable result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_true(const char *value)
 {
 	return value && (!strcasecmp(value, "yes") || !strcasecmp(value, "true") ||
 			 !strcasecmp(value, "on") || !strcmp(value, "1"));
 }
 
+/** @brief Host-API test double for ast_false; observable effects are recorded in harness state.
+ * @param value Input value or writable result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_false(const char *value)
 {
 	return value && (!strcasecmp(value, "no") || !strcasecmp(value, "false") ||
 			 !strcasecmp(value, "off") || !strcmp(value, "0"));
 }
 
+/** @brief Host-API test double for __ast_strdup; observable effects are recorded in harness state.
+ * @param value Input value or writable result, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 char *__ast_strdup(const char *value, const char *file, int line, const char *function)
 {
 	char *copy;
@@ -504,6 +850,9 @@ char *__ast_strdup(const char *value, const char *file, int line, const char *fu
 	return copy;
 }
 
+/** @brief Verify av frame alloc.
+ * @return Result used by the test's assertions.
+ */
 AVFrame *test_av_frame_alloc(void)
 {
 	av_frame_alloc_calls++;
@@ -512,6 +861,11 @@ AVFrame *test_av_frame_alloc(void)
 	return __real_av_frame_alloc();
 }
 
+/** @brief Verify src process.
+ * @param state Processor or stream state owned by the caller.
+ * @param data Input payload or owned state being released, as declared.
+ * @return Result used by the test's assertions.
+ */
 int test_src_process(SRC_STATE *state, SRC_DATA *data)
 {
 	int result;
@@ -524,6 +878,12 @@ int test_src_process(SRC_STATE *state, SRC_DATA *data)
 	return result;
 }
 
+/** @brief Verify src new.
+ * @param converter_type libsamplerate converter type.
+ * @param channels Number of interleaved audio channels.
+ * @param error Receives a diagnostic for invalid input.
+ * @return Result used by the test's assertions.
+ */
 SRC_STATE *test_src_new(int converter_type, int channels, int *error)
 {
 	src_new_calls++;
@@ -535,21 +895,40 @@ SRC_STATE *test_src_new(int converter_type, int channels, int *error)
 	return __real_src_new(converter_type, channels, error);
 }
 
+/** @brief Test wrapper for av_frame_alloc controlled by the harness's failure-injection state.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFrame *__wrap_av_frame_alloc(void)
 {
 	return test_av_frame_alloc();
 }
 
+/** @brief Test wrapper for src_process controlled by the harness's failure-injection state.
+ * @param state Processor or stream state owned by the caller.
+ * @param data Input payload or owned state being released, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_src_process(SRC_STATE *state, SRC_DATA *data)
 {
 	return test_src_process(state, data);
 }
 
+/** @brief Test wrapper for src_new controlled by the harness's failure-injection state.
+ * @param converter_type libsamplerate converter type.
+ * @param channels Number of interleaved audio channels.
+ * @param error Receives a diagnostic for invalid input.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 SRC_STATE *__wrap_src_new(int converter_type, int channels, int *error)
 {
 	return test_src_new(converter_type, channels, error);
 }
 
+/** @brief Test wrapper for pthread_join controlled by the harness's failure-injection state.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param result Receives the parsed value or supplies a CLI result, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_pthread_join(pthread_t thread, void **result)
 {
 	if ((uintptr_t)thread <= 100) {
@@ -558,6 +937,10 @@ int __wrap_pthread_join(pthread_t thread, void **result)
 	return __real_pthread_join(thread, result);
 }
 
+/** @brief Test wrapper for usleep controlled by the harness's failure-injection state.
+ * @param microseconds Requested sleep interval in microseconds.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_usleep(unsigned int microseconds)
 {
 	(void)microseconds;
@@ -599,6 +982,13 @@ int __wrap_usleep(unsigned int microseconds)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_config_load2; observable effects are recorded in harness
+ * state.
+ * @param filename Configuration or diagnostic source filename.
+ * @param who_asked Module requesting configuration.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 				    struct ast_flags flags)
 {
@@ -611,6 +1001,12 @@ struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 	return test_config_load_result;
 }
 
+/** @brief Host-API test double for ast_variable_browse; observable effects are recorded in harness
+ * state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category_name Configuration category name.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_variable *ast_variable_browse(const struct ast_config *config, const char *category_name)
 {
 	(void)category_name;
@@ -625,12 +1021,22 @@ struct ast_variable *ast_variable_browse(const struct ast_config *config, const 
 	return config ? test_config_variables : NULL;
 }
 
+/** @brief Host-API test double for ast_config_destroy; observable effects are recorded in harness
+ * state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ */
 void ast_config_destroy(struct ast_config *config)
 {
 	assert(config == test_config_load_result || config == test_processing_config_load_result);
 	config_destroy_calls++;
 }
 
+/** @brief Host-API test double for ast_category_browse; observable effects are recorded in harness
+ * state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param previous Previously returned category name, or NULL to start.
+ * @return Scripted host result for the current test scenario.
+ */
 char *ast_category_browse(struct ast_config *config, const char *previous)
 {
 	(void)config;
@@ -639,6 +1045,13 @@ char *ast_category_browse(struct ast_config *config, const char *previous)
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_variable_retrieve; observable effects are recorded in
+ * harness state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category Asterisk category or category name, as declared.
+ * @param variable Configuration variable to inspect or update.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_variable_retrieve(struct ast_config *config, const char *category,
 				  const char *variable)
 {
@@ -651,6 +1064,13 @@ const char *ast_variable_retrieve(struct ast_config *config, const char *categor
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_category_get; observable effects are recorded in harness
+ * state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category_name Configuration category name.
+ * @param filter FFmpeg dynamics filter name.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_category *ast_category_get(const struct ast_config *config, const char *category_name,
 				      const char *filter)
 {
@@ -660,12 +1080,24 @@ struct ast_category *ast_category_get(const struct ast_config *config, const cha
 	return test_category_get_result;
 }
 
+/** @brief Host-API test double for ast_category_get_name; observable effects are recorded in
+ * harness state.
+ * @param category Asterisk category or category name, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_category_get_name(const struct ast_category *category)
 {
 	(void)category;
 	return "test";
 }
 
+/** @brief Host-API test double for ast_category_new; observable effects are recorded in harness
+ * state.
+ * @param name Option, metadata field, or channel name.
+ * @param input_file Configuration source filename.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_category *ast_category_new(const char *name, const char *input_file, int line)
 {
 	(void)name;
@@ -674,12 +1106,26 @@ struct ast_category *ast_category_new(const char *name, const char *input_file, 
 	return (struct ast_category *)(uintptr_t)1;
 }
 
+/** @brief Host-API test double for ast_category_append; observable effects are recorded in harness
+ * state.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category Asterisk category or category name, as declared.
+ */
 void ast_category_append(struct ast_config *config, struct ast_category *category)
 {
 	(void)config;
 	(void)category;
 }
 
+/** @brief Host-API test double for ast_variable_update; observable effects are recorded in harness
+ * state.
+ * @param category Asterisk category or category name, as declared.
+ * @param variable Configuration variable to inspect or update.
+ * @param value Input value or writable result, as declared.
+ * @param match Optional variable-value matching constraint.
+ * @param object Host reference-counted object.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_variable_update(struct ast_category *category, const char *variable, const char *value,
 			const char *match, unsigned int object)
 {
@@ -691,6 +1137,16 @@ int ast_variable_update(struct ast_category *category, const char *variable, con
 	return variable_update_result;
 }
 
+/** @brief Host-API test double for _ast_variable_new; observable effects are recorded in harness
+ * state.
+ * @param name Option, metadata field, or channel name.
+ * @param value Input value or writable result, as declared.
+ * @param filename Configuration or diagnostic source filename.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @return Result used by the test's assertions.
+ */
 struct ast_variable *_ast_variable_new(const char *name, const char *value, const char *filename,
 				       const char *file, const char *function, int line)
 {
@@ -707,6 +1163,11 @@ struct ast_variable *_ast_variable_new(const char *name, const char *value, cons
 	return &variable;
 }
 
+/** @brief Host-API test double for ast_variable_append; observable effects are recorded in harness
+ * state.
+ * @param category Asterisk category or category name, as declared.
+ * @param variable Configuration variable to inspect or update.
+ */
 void ast_variable_append(struct ast_category *category, struct ast_variable *variable)
 {
 	(void)category;
@@ -714,6 +1175,14 @@ void ast_variable_append(struct ast_category *category, struct ast_variable *var
 	variable_append_calls++;
 }
 
+/** @brief Host-API test double for ast_config_text_file_save2; observable effects are recorded in
+ * harness state.
+ * @param filename Configuration or diagnostic source filename.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param generator Name of the component saving configuration.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_config_text_file_save2(const char *filename, const struct ast_config *config,
 			       const char *generator, uint32_t flags)
 {
@@ -724,12 +1193,22 @@ int ast_config_text_file_save2(const char *filename, const struct ast_config *co
 	return config_save_result;
 }
 
+/** @brief Host-API test double for ast_channel_tech_pvt; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 void *ast_channel_tech_pvt(const struct ast_channel *channel)
 {
 	(void)channel;
 	return test_channel_private;
 }
 
+/** @brief Host-API test double for ast_setstate; observable effects are recorded in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param state Processor or stream state owned by the caller.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_setstate(struct ast_channel *channel, enum ast_channel_state state)
 {
 	(void)channel;
@@ -738,6 +1217,12 @@ int ast_setstate(struct ast_channel *channel, enum ast_channel_state state)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_moh_start; observable effects are recorded in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param music_class Requested music-on-hold class.
+ * @param interpretation_class Fallback music-on-hold class.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_moh_start(struct ast_channel *channel, const char *music_class,
 		  const char *interpretation_class)
 {
@@ -748,12 +1233,21 @@ int ast_moh_start(struct ast_channel *channel, const char *music_class,
 	return 0;
 }
 
+/** @brief Host-API test double for ast_moh_stop; observable effects are recorded in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ */
 void ast_moh_stop(struct ast_channel *channel)
 {
 	(void)channel;
 	moh_stop_calls++;
 }
 
+/** @brief Host-API test double for ast_channel_internal_fd_set; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param which Channel descriptor slot.
+ * @param value Input value or writable result, as declared.
+ */
 void ast_channel_internal_fd_set(struct ast_channel *channel, int which, int value)
 {
 	(void)channel;
@@ -761,6 +1255,14 @@ void ast_channel_internal_fd_set(struct ast_channel *channel, int which, int val
 	(void)value;
 }
 
+/** @brief Host-API test double for __ast_verbose; observable effects are recorded in harness state.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void __ast_verbose(const char *file, int line, const char *function, int level, const char *format,
 		   ...)
 {
@@ -771,12 +1273,25 @@ void __ast_verbose(const char *file, int line, const char *function, int level, 
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_cli; observable effects are recorded in harness state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void ast_cli(int descriptor, const char *format, ...)
 {
 	(void)descriptor;
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_radio_ppwrite; observable effects are recorded in harness
+ * state.
+ * @param available Whether the fake hardware is present.
+ * @param descriptor Test file or CLI descriptor.
+ * @param base Parallel-port I/O base address.
+ * @param port Parallel-port device name.
+ * @param value Input value or writable result, as declared.
+ */
 void ast_radio_ppwrite(int available, unsigned int descriptor, unsigned int base, const char *port,
 		       unsigned char value)
 {
@@ -788,6 +1303,15 @@ void ast_radio_ppwrite(int available, unsigned int descriptor, unsigned int base
 	parallel_write_calls++;
 }
 
+/** @brief Host-API test double for ast_radio_load_parallel_port; observable effects are recorded in
+ * harness state.
+ * @param available Whether the fake hardware is present.
+ * @param descriptor Test file or CLI descriptor.
+ * @param base Parallel-port I/O base address.
+ * @param port Parallel-port device name.
+ * @param reload Nonzero selects reload handling for existing channels.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_load_parallel_port(int *available, int *descriptor, int *base, const char *port,
 				 int reload)
 {
@@ -801,46 +1325,89 @@ int ast_radio_load_parallel_port(int *available, int *descriptor, int *base, con
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_name; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_name(const struct ast_channel *channel)
 {
 	(void)channel;
 	return "test";
 }
 
+/** @brief Host-API test double for ast_channel_appl; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_appl(const struct ast_channel *channel)
 {
 	(void)channel;
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_data; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_data(const struct ast_channel *channel)
 {
 	(void)channel;
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_get_by_name; observable effects are recorded in
+ * harness state.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel *ast_channel_get_by_name(const char *name)
 {
 	(void)name;
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_all_new; observable effects are recorded in
+ * harness state.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel_iterator *ast_channel_iterator_all_new(void)
 {
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_next; observable effects are recorded in
+ * harness state.
+ * @param iterator Harness channel iterator.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel *ast_channel_iterator_next(struct ast_channel_iterator *iterator)
 {
 	(void)iterator;
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_destroy; observable effects are recorded in
+ * harness state.
+ * @param iterator Harness channel iterator.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel_iterator *ast_channel_iterator_destroy(struct ast_channel_iterator *iterator)
 {
 	return iterator;
 }
 
+/** @brief Host-API test double for __ao2_ref; observable effects are recorded in harness state.
+ * @param object Host reference-counted object.
+ * @param delta Requested reference-count change.
+ * @param tag Host reference-tracking tag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_ref(void *object, int delta, const char *tag, const char *file, int line,
 	      const char *function)
 {
@@ -853,6 +1420,15 @@ int __ao2_ref(void *object, int delta, const char *tag, const char *file, int li
 	return 0;
 }
 
+/** @brief Host-API test double for __ao2_lock; observable effects are recorded in harness state.
+ * @param object Host reference-counted object.
+ * @param request Host I/O or locking operation.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_lock(void *object, enum ao2_lock_req request, const char *file, const char *function,
 	       int line, const char *name)
 {
@@ -865,6 +1441,14 @@ int __ao2_lock(void *object, enum ao2_lock_req request, const char *file, const 
 	return 0;
 }
 
+/** @brief Host-API test double for __ao2_unlock; observable effects are recorded in harness state.
+ * @param object Host reference-counted object.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_unlock(void *object, const char *file, const char *function, int line, const char *name)
 {
 	(void)object;
@@ -875,6 +1459,16 @@ int __ao2_unlock(void *object, const char *file, const char *function, int line,
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_datastore_alloc; observable effects are recorded in
+ * harness state.
+ * @param info Test module metadata.
+ * @param uid Datastore identifier.
+ * @param module Asterisk module reference.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_datastore *__ast_datastore_alloc(const struct ast_datastore_info *info, const char *uid,
 					    struct ast_module *module, const char *file, int line,
 					    const char *function)
@@ -888,12 +1482,24 @@ struct ast_datastore *__ast_datastore_alloc(const struct ast_datastore_info *inf
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_datastore_free; observable effects are recorded in harness
+ * state.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_datastore_free(struct ast_datastore *datastore)
 {
 	(void)datastore;
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_find; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param info Test module metadata.
+ * @param uid Datastore identifier.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_datastore *ast_channel_datastore_find(struct ast_channel *channel,
 						 const struct ast_datastore_info *info,
 						 const char *uid)
@@ -904,6 +1510,12 @@ struct ast_datastore *ast_channel_datastore_find(struct ast_channel *channel,
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_add; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_channel_datastore_add(struct ast_channel *channel, struct ast_datastore *datastore)
 {
 	(void)channel;
@@ -911,6 +1523,12 @@ int ast_channel_datastore_add(struct ast_channel *channel, struct ast_datastore 
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_remove; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_channel_datastore_remove(struct ast_channel *channel, struct ast_datastore *datastore)
 {
 	(void)channel;
@@ -918,6 +1536,14 @@ int ast_channel_datastore_remove(struct ast_channel *channel, struct ast_datasto
 	return 0;
 }
 
+/** @brief Host-API test double for ast_audiohook_init; observable effects are recorded in harness
+ * state.
+ * @param audiohook Attached link-processing hook.
+ * @param type Requested Asterisk channel technology.
+ * @param source Processing source or source text, as declared.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_init(struct ast_audiohook *audiohook, enum ast_audiohook_type type,
 		       const char *source, enum ast_audiohook_init_flags flags)
 {
@@ -928,6 +1554,12 @@ int ast_audiohook_init(struct ast_audiohook *audiohook, enum ast_audiohook_type 
 	return 0;
 }
 
+/** @brief Host-API test double for ast_audiohook_attach; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_attach(struct ast_channel *channel, struct ast_audiohook *audiohook)
 {
 	(void)channel;
@@ -935,24 +1567,43 @@ int ast_audiohook_attach(struct ast_channel *channel, struct ast_audiohook *audi
 	return 0;
 }
 
+/** @brief Host-API test double for ast_audiohook_detach; observable effects are recorded in harness
+ * state.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_detach(struct ast_audiohook *audiohook)
 {
 	(void)audiohook;
 	return 0;
 }
 
+/** @brief Host-API test double for ast_audiohook_destroy; observable effects are recorded in
+ * harness state.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_destroy(struct ast_audiohook *audiohook)
 {
 	(void)audiohook;
 	return 0;
 }
 
+/** @brief Host-API test double for ast_format_get_sample_rate; observable effects are recorded in
+ * harness state.
+ * @param format printf-style message format.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned int ast_format_get_sample_rate(const struct ast_format *format)
 {
 	(void)format;
 	return 8000;
 }
 
+/** @brief Host-API test double for ast_radio_time; observable effects are recorded in harness
+ * state.
+ * @param seconds Accumulates total processing time in seconds.
+ */
 void ast_radio_time(time_t *seconds)
 {
 	*seconds = 1234;
@@ -966,11 +1617,22 @@ void ast_radio_time(time_t *seconds)
 #endif
 }
 
+/** @brief Host-API test double for ast_radio_hid_device_mklist; observable effects are recorded in
+ * harness state.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_hid_device_mklist(void)
 {
 	return hid_mklist_result;
 }
 
+/** @brief Host-API test double for ast_radio_usb_get_serial; observable effects are recorded in
+ * harness state.
+ * @param device Channel name or USB device identifier.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @param buffer_size Buffer size supplied by the test scenario.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_usb_get_serial(const char *device, char *buffer, size_t buffer_size)
 {
 	if (buffer_size) {
@@ -987,6 +1649,12 @@ int ast_radio_usb_get_serial(const char *device, char *buffer, size_t buffer_siz
 }
 
 #ifndef URP_TEST_MODERN
+/** @brief Host-API test double for ast_radio_amixer_max; observable effects are recorded in harness
+ * state.
+ * @param device_number Simulated ALSA card number.
+ * @param parameter ALSA mixer control name.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_amixer_max(int device_number, char *parameter)
 {
 	(void)device_number;
@@ -995,18 +1663,33 @@ int ast_radio_amixer_max(int device_number, char *parameter)
 	return mock_amixer_max;
 }
 
+/** @brief Host-API test double for ast_radio_hid_device_init; observable effects are recorded in
+ * harness state.
+ * @param device Channel name or USB device identifier.
+ * @return Scripted host result for the current test scenario.
+ */
 struct usb_device *ast_radio_hid_device_init(const char *device)
 {
 	(void)device;
 	return mock_hid_device_available ? &mock_usb_device : NULL;
 }
 
+/** @brief Host-API test double for ast_radio_hid_set_outputs; observable effects are recorded in
+ * harness state.
+ * @param handle Simulated acquired USB handle.
+ * @param outputs USB HID output report.
+ */
 void ast_radio_hid_set_outputs(struct usb_dev_handle *handle, unsigned char *outputs)
 {
 	(void)handle;
 	(void)outputs;
 }
 
+/** @brief Host-API test double for ast_radio_hid_get_inputs; observable effects are recorded in
+ * harness state.
+ * @param handle Simulated acquired USB handle.
+ * @param inputs USB HID input report.
+ */
 void ast_radio_hid_get_inputs(struct usb_dev_handle *handle, unsigned char *inputs)
 {
 	(void)handle;
@@ -1021,6 +1704,12 @@ void ast_radio_hid_get_inputs(struct usb_dev_handle *handle, unsigned char *inpu
 		stop_hid_on_input->stophid = 1;
 }
 
+/** @brief Host-API test double for ast_radio_get_eeprom; observable effects are recorded in harness
+ * state.
+ * @param handle Simulated acquired USB handle.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned short ast_radio_get_eeprom(struct usb_dev_handle *handle, unsigned short *buffer)
 {
 	(void)handle;
@@ -1030,6 +1719,11 @@ unsigned short ast_radio_get_eeprom(struct usb_dev_handle *handle, unsigned shor
 	return mock_eeprom_result;
 }
 
+/** @brief Host-API test double for ast_radio_put_eeprom; observable effects are recorded in harness
+ * state.
+ * @param handle Simulated acquired USB handle.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ */
 void ast_radio_put_eeprom(struct usb_dev_handle *handle, unsigned short *buffer)
 {
 	(void)handle;
@@ -1037,6 +1731,14 @@ void ast_radio_put_eeprom(struct usb_dev_handle *handle, unsigned short *buffer)
 }
 #endif
 
+/** @brief Host-API test double for ast_radio_ppread; observable effects are recorded in harness
+ * state.
+ * @param enabled Nonzero enables the operation.
+ * @param descriptor Test file or CLI descriptor.
+ * @param base Parallel-port I/O base address.
+ * @param port Parallel-port device name.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned char ast_radio_ppread(int enabled, unsigned int descriptor, unsigned int base,
 			       const char *port)
 {
@@ -1051,6 +1753,10 @@ unsigned char ast_radio_ppread(int enabled, unsigned int descriptor, unsigned in
 	}
 }
 
+/** @brief Host-API test double for ast_radio_tvnow; observable effects are recorded in harness
+ * state.
+ * @return Scripted host result for the current test scenario.
+ */
 struct timeval ast_radio_tvnow(void)
 {
 	struct timeval now = {.tv_sec = mock_tvnow_milliseconds / 1000,
@@ -1059,6 +1765,12 @@ struct timeval ast_radio_tvnow(void)
 	return now;
 }
 
+/** @brief Host-API test double for ast_queue_frame; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_queue_frame(struct ast_channel *channel, struct ast_frame *frame)
 {
 	(void)channel;
@@ -1072,12 +1784,24 @@ int ast_queue_frame(struct ast_channel *channel, struct ast_frame *frame)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_tech_pvt_set; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param value Input value or writable result, as declared.
+ */
 void ast_channel_tech_pvt_set(struct ast_channel *channel, void *value)
 {
 	(void)channel;
 	test_channel_private = value;
 }
 
+/** @brief Host-API test double for __ast_module_unref; observable effects are recorded in harness
+ * state.
+ * @param module Asterisk module reference.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ */
 void __ast_module_unref(struct ast_module *module, const char *file, int line, const char *function)
 {
 	(void)module;
@@ -1086,6 +1810,14 @@ void __ast_module_unref(struct ast_module *module, const char *file, int line, c
 	(void)function;
 }
 
+/** @brief Host-API test double for __ast_module_ref; observable effects are recorded in harness
+ * state.
+ * @param module Asterisk module reference.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_module *__ast_module_ref(struct ast_module *module, const char *file, int line,
 				    const char *function)
 {
@@ -1095,6 +1827,26 @@ struct ast_module *__ast_module_ref(struct ast_module *module, const char *file,
 	return module;
 }
 
+/** @brief Host-API test double for __ast_channel_alloc; observable effects are recorded in harness
+ * state.
+ * @param need_queue Whether the allocated channel requires a frame queue.
+ * @param state Processor or stream state owned by the caller.
+ * @param caller_number Caller ID number.
+ * @param caller_name Caller ID name.
+ * @param account_code Asterisk accounting code.
+ * @param extension Asterisk dialplan extension.
+ * @param context Asterisk dialplan context or FFmpeg filter context.
+ * @param assigned_ids Asterisk-assigned channel identifiers.
+ * @param requestor Channel requesting the radio connection.
+ * @param amaflag Asterisk call-accounting mode.
+ * @param endpoint Asterisk endpoint associated with the channel.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param name_format printf-style channel-name format.
+ * @param ... Values required by the wrapped variadic API.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel *__ast_channel_alloc(int need_queue, int state, const char *caller_number,
 					const char *caller_name, const char *account_code,
 					const char *extension, const char *context,
@@ -1121,48 +1873,86 @@ struct ast_channel *__ast_channel_alloc(int need_queue, int state, const char *c
 	return fail_channel_alloc ? NULL : (struct ast_channel *)(uintptr_t)2;
 }
 
+/** @brief Host-API test double for ast_channel_tech_set; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param technology Asterisk channel technology callbacks.
+ */
 void ast_channel_tech_set(struct ast_channel *channel, const struct ast_channel_tech *technology)
 {
 	(void)channel;
 	(void)technology;
 }
 
+/** @brief Host-API test double for ast_channel_nativeformats_set; observable effects are recorded
+ * in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param formats Requested Asterisk audio formats.
+ */
 void ast_channel_nativeformats_set(struct ast_channel *channel, struct ast_format_cap *formats)
 {
 	(void)channel;
 	(void)formats;
 }
 
+/** @brief Host-API test double for ast_channel_set_readformat; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param format printf-style message format.
+ */
 void ast_channel_set_readformat(struct ast_channel *channel, struct ast_format *format)
 {
 	(void)channel;
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_channel_set_writeformat; observable effects are recorded in
+ * harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param format printf-style message format.
+ */
 void ast_channel_set_writeformat(struct ast_channel *channel, struct ast_format *format)
 {
 	(void)channel;
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_jb_configure; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param configuration Configuration supplied by the test scenario.
+ */
 void ast_jb_configure(struct ast_channel *channel, const struct ast_jb_conf *configuration)
 {
 	(void)channel;
 	(void)configuration;
 }
 
+/** @brief Host-API test double for ast_pbx_start; observable effects are recorded in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 enum ast_pbx_result ast_pbx_start(struct ast_channel *channel)
 {
 	(void)channel;
 	return (enum ast_pbx_result)pbx_start_result;
 }
 
+/** @brief Host-API test double for ast_hangup; observable effects are recorded in harness state.
+ * @param channel Radio channel or channel index, as declared.
+ */
 void ast_hangup(struct ast_channel *channel)
 {
 	(void)channel;
 	hangup_calls++;
 }
 
+/** @brief Host-API test double for ast_format_cap_iscompatible; observable effects are recorded in
+ * harness state.
+ * @param first First value or format capability supplied to the stub.
+ * @param second Second value or format capability supplied to the stub.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_format_cap_iscompatible(const struct ast_format_cap *first,
 				const struct ast_format_cap *second)
 {
@@ -1171,6 +1961,12 @@ int ast_format_cap_iscompatible(const struct ast_format_cap *first,
 	return format_compatible;
 }
 
+/** @brief Host-API test double for ast_format_cap_get_names; observable effects are recorded in
+ * harness state.
+ * @param formats Requested Asterisk audio formats.
+ * @param buffer Caller-owned buffer filled or consumed by the stub.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_format_cap_get_names(const struct ast_format_cap *formats, struct ast_str **buffer)
 {
 	(void)formats;
@@ -1178,12 +1974,24 @@ const char *ast_format_cap_get_names(const struct ast_format_cap *formats, struc
 	return "test-format";
 }
 
+/** @brief Host-API test double for ast_channel_state; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 enum ast_channel_state ast_channel_state(const struct ast_channel *channel)
 {
 	(void)channel;
 	return channel_state;
 }
 
+/** @brief Host-API test double for ast_dsp_process; observable effects are recorded in harness
+ * state.
+ * @param channel Radio channel or channel index, as declared.
+ * @param dsp Dsp supplied by the test scenario.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_frame *ast_dsp_process(struct ast_channel *channel, struct ast_dsp *dsp,
 				  struct ast_frame *frame)
 {
@@ -1199,6 +2007,11 @@ struct ast_frame *ast_dsp_process(struct ast_channel *channel, struct ast_dsp *d
 	return frame;
 }
 
+/** @brief Host-API test double for ast_frame_free; observable effects are recorded in harness
+ * state.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @param cache Whether Asterisk may cache the released frame.
+ */
 void ast_frame_free(struct ast_frame *frame, int cache)
 {
 	(void)frame;
@@ -1206,6 +2019,19 @@ void ast_frame_free(struct ast_frame *frame, int cache)
 	frame_free_calls++;
 }
 
+/** @brief Host-API test double for ast_pthread_create_stack; observable effects are recorded in
+ * harness state.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param attributes POSIX thread creation attributes.
+ * @param start_routine Worker entry point supplied by the module.
+ * @param data Input payload or owned state being released, as declared.
+ * @param stack_size Requested worker stack size in bytes.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param caller Calling function name.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param start_function Worker entry-point name for diagnostics.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 			     void *(*start_routine)(void *), void *data, size_t stack_size,
 			     const char *file, const char *caller, int line,
@@ -1226,11 +2052,25 @@ int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 	return 0;
 }
 
+/** @brief Host-API test double for ast_background_stacksize; observable effects are recorded in
+ * harness state.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_background_stacksize(void)
 {
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_pthread_mutex_init; observable effects are recorded in
+ * harness state.
+ * @param tracking Host mutex debug tracking flag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param mutex_name Diagnostic mutex name.
+ * @param mutex Mutex tracked by the harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_pthread_mutex_init(int tracking, const char *file, int line, const char *function,
 			     const char *mutex_name, ast_mutex_t *mutex)
 {
@@ -1243,17 +2083,31 @@ int __ast_pthread_mutex_init(int tracking, const char *file, int line, const cha
 	return 0;
 }
 
+/** @brief Host-API test double for ast_dsp_new; observable effects are recorded in harness state.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_dsp *ast_dsp_new(void)
 {
 	return mock_dsp_available ? (struct ast_dsp *)(uintptr_t)1 : NULL;
 }
 
+/** @brief Host-API test double for ast_dsp_set_features; observable effects are recorded in harness
+ * state.
+ * @param dsp Dsp supplied by the test scenario.
+ * @param features Requested Asterisk DSP feature mask.
+ */
 void ast_dsp_set_features(struct ast_dsp *dsp, int features)
 {
 	(void)dsp;
 	(void)features;
 }
 
+/** @brief Host-API test double for ast_dsp_set_digitmode; observable effects are recorded in
+ * harness state.
+ * @param dsp Dsp supplied by the test scenario.
+ * @param mode Configured routing, detection, or hardware-open mode.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_dsp_set_digitmode(struct ast_dsp *dsp, int mode)
 {
 	(void)dsp;
@@ -1261,6 +2115,13 @@ int ast_dsp_set_digitmode(struct ast_dsp *dsp, int mode)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_radio_wait_or_poll; observable effects are recorded in
+ * harness state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param milliseconds Requested wait duration in milliseconds.
+ * @param interactive Nonzero permits interactive cancellation.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_wait_or_poll(int descriptor, int milliseconds, int interactive)
 {
 	(void)descriptor;
@@ -1273,6 +2134,12 @@ int ast_radio_wait_or_poll(int descriptor, int milliseconds, int interactive)
 	return wait_or_poll_fail_call == wait_or_poll_calls;
 }
 
+/** @brief Host-API test double for ast_radio_poll_input; observable effects are recorded in harness
+ * state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param milliseconds Requested wait duration in milliseconds.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_poll_input(int descriptor, int milliseconds)
 {
 	(void)descriptor;
@@ -1286,6 +2153,12 @@ int ast_radio_poll_input(int descriptor, int milliseconds)
 	return 1;
 }
 
+/** @brief Host-API test double for ast_radio_print_audio_stats; observable effects are recorded in
+ * harness state.
+ * @param descriptor Test file or CLI descriptor.
+ * @param statistics Audio measurement structure updated or displayed by the stub.
+ * @param prefix Unique label prefix for the appended graph fragment.
+ */
 void ast_radio_print_audio_stats(int descriptor, struct audiostatistics *statistics,
 				 const char *prefix)
 {
@@ -1294,17 +2167,32 @@ void ast_radio_print_audio_stats(int descriptor, struct audiostatistics *statist
 	(void)prefix;
 }
 
+/** @brief Host-API test double for ast_radio_usb_get_usbdev; observable effects are recorded in
+ * harness state.
+ * @param device Channel name or USB device identifier.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_usb_get_usbdev(const char *device)
 {
 	(void)device;
 	return mock_usb_device_number;
 }
 
+/** @brief Host-API test double for ast_radio_usb_list_check; observable effects are recorded in
+ * harness state.
+ * @param device Channel name or USB device identifier.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_usb_list_check(char *device)
 {
 	return installed_usb_device && !strcmp(device, installed_usb_device);
 }
 
+/** @brief Host-API test double for ast_radio_usb_get_devstr; observable effects are recorded in
+ * harness state.
+ * @param index Sample position within the trace block.
+ * @return Scripted host result for the current test scenario.
+ */
 char *ast_radio_usb_get_devstr(int index)
 {
 	if (mock_no_usb_devices)
@@ -1314,11 +2202,24 @@ char *ast_radio_usb_get_devstr(int index)
 	return index == 1 && mock_second_usb_device ? "usb-second" : NULL;
 }
 
+/** @brief Host-API test double for ast_debug_get_by_module; observable effects are recorded in
+ * harness state.
+ * @param module Asterisk module reference.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned int ast_debug_get_by_module(const char *module)
 {
 	return !strcmp(module, AST_MODULE) ? module_debug_level : file_debug_level;
 }
 
+/** @brief Host-API test double for ast_log; observable effects are recorded in harness state.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void ast_log(int level, const char *file, int line, const char *function, const char *format, ...)
 {
 	(void)level;
@@ -1328,6 +2229,14 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_log_ap; observable effects are recorded in harness state.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param format printf-style message format.
+ * @param arguments Formatted-message values or filter options.
+ */
 void ast_log_ap(int level, const char *file, int line, const char *function, const char *format,
 		va_list arguments)
 {
@@ -1339,6 +2248,15 @@ void ast_log_ap(int level, const char *file, int line, const char *function, con
 	(void)arguments;
 }
 
+/** @brief Host-API test double for __ast_pthread_mutex_lock; observable effects are recorded in
+ * harness state.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param mutex_name Diagnostic mutex name.
+ * @param mutex Mutex tracked by the harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_pthread_mutex_lock(const char *file, int line, const char *function,
 			     const char *mutex_name, ast_mutex_t *mutex)
 {
@@ -1349,6 +2267,15 @@ int __ast_pthread_mutex_lock(const char *file, int line, const char *function,
 	return pthread_mutex_lock(&mutex->mutex);
 }
 
+/** @brief Host-API test double for __ast_pthread_mutex_unlock; observable effects are recorded in
+ * harness state.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param mutex_name Diagnostic mutex name.
+ * @param mutex Mutex tracked by the harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_pthread_mutex_unlock(const char *file, int line, const char *function,
 			       const char *mutex_name, ast_mutex_t *mutex)
 {
@@ -1359,6 +2286,12 @@ int __ast_pthread_mutex_unlock(const char *file, int line, const char *function,
 	return pthread_mutex_unlock(&mutex->mutex);
 }
 
+/** @brief Host-API test double for __ast_free; observable effects are recorded in harness state.
+ * @param pointer Allocated buffer passed through the failure-injection shim.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ */
 void __ast_free(void *pointer, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -1367,6 +2300,14 @@ void __ast_free(void *pointer, const char *file, int line, const char *function)
 	free(pointer);
 }
 
+/** @brief Host-API test double for __ast_realloc; observable effects are recorded in harness state.
+ * @param pointer Allocated buffer passed through the failure-injection shim.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 void *__ast_realloc(void *pointer, size_t size, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -1375,6 +2316,14 @@ void *__ast_realloc(void *pointer, size_t size, const char *file, int line, cons
 	return fail_realloc ? NULL : realloc(pointer, size);
 }
 
+/** @brief Host-API test double for __ast_calloc; observable effects are recorded in harness state.
+ * @param count Number of elements available in the supplied block.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 void *__ast_calloc(size_t count, size_t size, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -1630,6 +2579,14 @@ int ast_radio_device_set_mixer_paths(const struct ast_radio_device *device,
 	return 0;
 }
 #else
+/** @brief Host-API test double for ast_radio_setamixer; observable effects are recorded in harness
+ * state.
+ * @param device Channel name or USB device identifier.
+ * @param parameter ALSA mixer control name.
+ * @param first First value or format capability supplied to the stub.
+ * @param second Second value or format capability supplied to the stub.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_setamixer(int device, char *parameter, int first, int second)
 {
 	(void)device;
@@ -1639,6 +2596,13 @@ int ast_radio_setamixer(int device, char *parameter, int first, int second)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_radio_make_spkr_playback_value; observable effects are
+ * recorded in harness state.
+ * @param maximum Maximum supported mixer step.
+ * @param requested Requested normalized mixer setting.
+ * @param device_type Simulated USB interface type.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_make_spkr_playback_value(int maximum, int requested, int device_type)
 {
 	(void)maximum;
@@ -2931,6 +3895,13 @@ static void test_modern_module_lifecycle_baseline(void)
 int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, short count,
 			  short mono)
 #else
+/** @brief Host-API test double for ast_radio_check_audio; observable effects are recorded in
+ * harness state.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @param statistics Audio measurement structure updated or displayed by the stub.
+ * @param count Number of elements available in the supplied block.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, short count)
 #endif
 {
@@ -2943,6 +3914,7 @@ int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, sh
 	return mock_audio_clipping;
 }
 
+/** @brief Verify option decoders. */
 static void test_option_decoders(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -2983,6 +3955,7 @@ static void test_option_decoders(void)
 	assert(radio.txtoctype == TOC_NOTONE);
 }
 
+/** @brief Verify channel callbacks. */
 static void test_channel_callbacks(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3040,6 +4013,7 @@ static void test_channel_callbacks(void)
 	assert(errno == 0);
 }
 
+/** @brief Verify text controls. */
 static void test_text_controls(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3100,6 +4074,7 @@ static void test_text_controls(void)
 	test_channel_private = NULL;
 }
 
+/** @brief Verify console keying. */
 static void test_console_keying(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3122,6 +4097,7 @@ static void test_console_keying(void)
 	usbradio_active = NULL;
 }
 
+/** @brief Verify channel selection helpers. */
 static void test_channel_selection_helpers(void)
 {
 	struct chan_usbradio_pvt first = {.name = "first"};
@@ -3217,6 +4193,7 @@ static void test_channel_selection_helpers(void)
 	usbradio_active = NULL;
 }
 
+/** @brief Verify cli handlers. */
 static void test_cli_handlers(void)
 {
 	struct ast_cli_entry entry = {0};
@@ -3243,6 +4220,7 @@ static void test_cli_handlers(void)
 	assert(radio.radio);
 	usbradio_default.next = &radio;
 	usbradio_active = radio.name;
+
 #define EXERCISE_HANDLER(handler)                                                                  \
 	do {                                                                                       \
 		assert((handler)(&entry, CLI_INIT, args) == NULL);                                 \
@@ -3282,6 +4260,7 @@ static void test_cli_handlers(void)
 	usbradio_active = NULL;
 }
 
+/** @brief Verify tune flash sequences. */
 static void test_tune_flash_sequences(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3309,6 +4288,13 @@ static void test_tune_flash_sequences(void)
 	assert(usleep_calls == 5);
 }
 
+/** @brief Run a synthetic calibration CLI command against a selected test channel.
+ * @param radio Named radio profile or signaling state, as declared.
+ * @param argument_count Number of synthetic CLI arguments.
+ * @param command Synthetic tuning command name.
+ * @param value Input value or writable result, as declared.
+ * @return Result used by the test's assertions.
+ */
 static int call_radio_tune(struct chan_usbradio_pvt *radio, int argument_count, const char *command,
 			   const char *value)
 {
@@ -3318,6 +4304,11 @@ static int call_radio_tune(struct chan_usbradio_pvt *radio, int argument_count, 
 	return radio_tune(1, argument_count, arguments);
 }
 
+/** @brief Exercise radio trace decisions at injected module/file debug levels.
+ * @param radio Named radio profile or signaling state, as declared.
+ * @param module_level Injected module debug verbosity.
+ * @param file_level Injected source-file debug verbosity.
+ */
 static void exercise_radio_debug_paths(struct chan_usbradio_pvt *radio, unsigned int module_level,
 				       unsigned int file_level)
 {
@@ -3330,6 +4321,7 @@ static void exercise_radio_debug_paths(struct chan_usbradio_pvt *radio, unsigned
 	assert(radio_config(radio) == 0);
 }
 
+/** @brief Verify radio tune dispatch. */
 static void test_radio_tune_dispatch(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3462,6 +4454,7 @@ static void test_radio_tune_dispatch(void)
 	usbradio_active = NULL;
 }
 
+/** @brief Verify menu adjustment helpers. */
 static void test_menu_adjustment_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3589,6 +4582,7 @@ static void test_menu_adjustment_helpers(void)
 	wait_or_poll_fail_call = 0;
 }
 
+/** @brief Verify menu support dispatch. */
 static void test_menu_support_dispatch(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3709,6 +4703,7 @@ static void test_menu_support_dispatch(void)
 	tune_menusupport(1, &radio, "M");
 }
 
+/** @brief Verify tuning displays. */
 static void test_tuning_displays(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3764,6 +4759,11 @@ static void test_tuning_displays(void)
 	tune_rxtx_status(1, &radio);
 }
 
+/** @brief Install scripted detector readings for a calibration test.
+ * @param stage Stage supplied by the test scenario.
+ * @param value Input value or writable result, as declared.
+ * @param count Number of elements available in the supplied block.
+ */
 static void set_measurements(urp_radio_stage *stage, int value, size_t count)
 {
 	assert(count <= ARRAY_LEN(scripted_measurements));
@@ -3776,6 +4776,7 @@ static void set_measurements(urp_radio_stage *stage, int value, size_t count)
 	wait_or_poll_fail_call = 0;
 }
 
+/** @brief Verify receive calibration helpers. */
 static void test_receive_calibration_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -3933,6 +4934,7 @@ static void test_receive_calibration_helpers(void)
 	usbradio_active = NULL;
 }
 
+/** @brief Verify config update and radio programming. */
 static void test_config_update_and_radio_programming(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -4110,6 +5112,7 @@ static void test_config_update_and_radio_programming(void)
 	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 0;
 	refresh_processing_hardware(&radio);
 	refresh_processing_hardware(&radio);
+
 #define SET_APPLIED(rx, a, b, route_a, route_b)                                                    \
 	do {                                                                                       \
 		radio.plus_hardware_applied = 1;                                                   \
@@ -4158,6 +5161,11 @@ static void test_config_update_and_radio_programming(void)
 	test_config_variables = NULL;
 }
 
+/** @brief Append a synthetic processing configuration value to the harness.
+ * @param section Flat or resolved configuration section name.
+ * @param name Option, metadata field, or channel name.
+ * @param value Input value or writable result, as declared.
+ */
 static void add_processing_override(const char *section, const char *name, const char *value)
 {
 	struct section_override *entry =
@@ -4168,6 +5176,7 @@ static void add_processing_override(const char *section, const char *name, const
 	ast_copy_string(entry->value, value, sizeof(entry->value));
 }
 
+/** @brief Verify processing config overrides. */
 static void test_processing_config_overrides(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4290,6 +5299,7 @@ static void test_processing_config_overrides(void)
 	fail_ast_strdup_call = 0;
 }
 
+/** @brief Verify processing override parse edges. */
 static void test_processing_override_parse_edges(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4346,6 +5356,7 @@ static void test_processing_override_parse_edges(void)
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 }
 
+/** @brief Verify shared config loading. */
 static void test_shared_config_loading(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)0x1234;
@@ -4402,6 +5413,7 @@ static void test_shared_config_loading(void)
 	test_config_load_result = NULL;
 }
 
+/** @brief Verify effective processing settings. */
 static void test_effective_processing_settings(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4460,6 +5472,7 @@ static void test_effective_processing_settings(void)
 	assert(effective_rxcdtype(&radio) == CD_IGNORE);
 }
 
+/** @brief Verify numeric helpers. */
 static void test_numeric_helpers(void)
 {
 	double samples[] = {-0.25, 0.5, -0.75, 0.125};
@@ -4491,6 +5504,7 @@ static void test_numeric_helpers(void)
 	assert(plus_mix_has_program(TX_OUT_AUX));
 }
 
+/** @brief Verify shared hardware layouts. */
 static void test_shared_hardware_layouts(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4539,6 +5553,7 @@ static void test_shared_hardware_layouts(void)
 	assert(validate_tx_soft_limiter_setpoint(&radio, 13001) == -1);
 }
 
+/** @brief Verify shared control helpers. */
 static void test_shared_control_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4577,6 +5592,7 @@ static void test_shared_control_helpers(void)
 	assert(ctcss_adjust == (200 * M_Q8) / AUDIO_ADJUSTMENT);
 }
 
+/** @brief Verify shared receive signaling helpers. */
 static void test_shared_receive_signaling_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4647,6 +5663,7 @@ static void test_shared_receive_signaling_helpers(void)
 	module_debug_level = file_debug_level = 0;
 }
 
+/** @brief Verify shared eeprom wait. */
 static void test_shared_eeprom_wait(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4660,6 +5677,7 @@ static void test_shared_eeprom_wait(void)
 }
 
 #ifndef URP_TEST_MODERN
+/** @brief Verify oss audio helpers. */
 static void test_oss_audio_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4786,6 +5804,7 @@ static void test_oss_audio_helpers(void)
 	mock_oss_io = 0;
 }
 
+/** @brief Verify oss channel write and call. */
 static void test_oss_channel_write_and_call(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4829,6 +5848,7 @@ static void test_oss_channel_write_and_call(void)
 	test_channel_private = NULL;
 }
 
+/** @brief Verify oss channel hangup. */
 static void test_oss_channel_hangup(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4853,6 +5873,7 @@ static void test_oss_channel_hangup(void)
 	usbradioplus_test_set_module_info(NULL);
 }
 
+/** @brief Verify oss parallel pulser. */
 static void test_oss_parallel_pulser(void)
 {
 	pthread_t thread;
@@ -4892,6 +5913,7 @@ static void test_oss_parallel_pulser(void)
 	stop_pulser_on_usleep = 0;
 }
 
+/** @brief Verify oss hid worker device retry. */
 static void test_oss_hid_worker_device_retry(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4912,6 +5934,9 @@ static void test_oss_hid_worker_device_retry(void)
 	usbradio_default.next = NULL;
 }
 
+/** @brief Exercise OSS HID recovery using scripted USB availability.
+ * @param radio Named radio profile or signaling state, as declared.
+ */
 static void run_oss_hid_retry(struct chan_usbradio_pvt *radio)
 {
 	pthread_t thread;
@@ -4924,6 +5949,7 @@ static void run_oss_hid_retry(struct chan_usbradio_pvt *radio)
 	stop_hid_radio_on_usleep = NULL;
 }
 
+/** @brief Verify oss hid attach failures. */
 static void test_oss_hid_attach_failures(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5099,6 +6125,7 @@ static void test_oss_hid_attach_failures(void)
 	usbradio_default.next = NULL;
 }
 
+/** @brief Verify oss hid worker attach. */
 static void test_oss_hid_worker_attach(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5321,6 +6348,7 @@ static void test_oss_hid_worker_attach(void)
 	urp_radio_destroy(radio.radio);
 }
 
+/** @brief Verify oss hid worker first radio construction. */
 static void test_oss_hid_worker_first_radio_construction(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5416,6 +6444,7 @@ static void test_oss_hid_worker_first_radio_construction(void)
 
 #endif
 
+/** @brief Verify oss tune write paths. */
 static void test_oss_tune_write_paths(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5538,6 +6567,7 @@ static void test_oss_tune_write_paths(void)
 
 #ifndef URP_TEST_MODERN
 
+/** @brief Verify oss channel creation and request. */
 static void test_oss_channel_creation_and_request(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5605,6 +6635,7 @@ static void test_oss_channel_creation_and_request(void)
 	usbradio_default.next = NULL;
 }
 
+/** @brief Verify oss channel read guards. */
 static void test_oss_channel_read_guards(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -5663,6 +6694,11 @@ static void test_oss_channel_read_guards(void)
 	test_channel_private = NULL;
 }
 
+/** @brief Drive one complete OSS receiver block through the channel harness.
+ * @param radio Named radio profile or signaling state, as declared.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Result used by the test's assertions.
+ */
 static struct ast_frame *oss_read_complete(struct chan_usbradio_pvt *radio,
 					   struct ast_channel *channel)
 {
@@ -5670,6 +6706,7 @@ static struct ast_frame *oss_read_complete(struct chan_usbradio_pvt *radio,
 	return usbradio_read(channel);
 }
 
+/** @brief Verify oss complete read frame. */
 static void test_oss_complete_read_frame(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -6032,6 +7069,7 @@ static void test_oss_complete_read_frame(void)
 	urp_radio_destroy(radio.radio);
 }
 
+/** @brief Verify oss module lifecycle guards. */
 static void test_oss_module_lifecycle_guards(void)
 {
 	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
@@ -6126,6 +7164,7 @@ static void test_oss_module_lifecycle_guards(void)
 }
 #endif
 
+/** @brief Verify native fifo and squelch copy. */
 static void test_native_fifo_and_squelch_copy(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -6150,6 +7189,7 @@ static void test_native_fifo_and_squelch_copy(void)
 	assert(memcmp(capture, radio.plus_squelch_native, sizeof(radio.plus_squelch_native)) == 0);
 }
 
+/** @brief Verify parrot transitions. */
 static void test_parrot_transitions(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -6175,6 +7215,7 @@ static void test_parrot_transitions(void)
 	assert(!radio.plus_parrot_playing);
 }
 
+/** @brief Verify program queue and parrot storage. */
 static void test_program_queue_and_parrot_storage(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -6235,6 +7276,7 @@ static void test_program_queue_and_parrot_storage(void)
 	fail_realloc = 0;
 }
 
+/** @brief Verify native tick baseline. */
 static void test_native_tick_baseline(void)
 {
 	struct chan_usbradio_pvt channel = {0};
@@ -6477,6 +7519,7 @@ static void test_native_tick_baseline(void)
 	urp_radio_destroy(channel.radio);
 }
 
+/** @brief Verify unlinked channel cleanup. */
 static void test_unlinked_channel_cleanup(void)
 {
 	urp_radio_state configuration = {
@@ -6495,6 +7538,7 @@ static void test_unlinked_channel_cleanup(void)
 	destroy_unlinked_channel(channel);
 }
 
+/** @brief Verify store config failure and option edges. */
 static void test_store_config_failure_and_option_edges(void)
 {
 	struct chan_usbradio_pvt saved_default = usbradio_default;
@@ -6619,6 +7663,7 @@ static void test_store_config_failure_and_option_edges(void)
 	settings_defaults(&settings);
 }
 
+/** @brief Verify dsp init failures. */
 static void test_dsp_init_failures(void)
 {
 	struct chan_usbradio_pvt channel = {.name = "test"};
@@ -6634,8 +7679,12 @@ static void test_dsp_init_failures(void)
 	fail_ast_calloc_call = 0;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
+
 #define RUN_TEST(function)                                                                         \
 	do {                                                                                       \
 		puts(#function);                                                                   \
@@ -6707,3 +7756,22 @@ int main(void)
 	puts("channel core tests passed");
 	return 0;
 }
+
+/** @def URP_CHANNEL_UNIT_TEST
+ * @brief URP CHANNEL UNIT TEST selection for this isolated test harness.
+ */
+/** @def AST_MODULE_SELF_SYM
+ * @brief AST MODULE SELF SYM selection for this isolated test harness.
+ */
+/** @def AST_MODULE
+ * @brief AST MODULE selection for this isolated test harness.
+ */
+/** @def EXERCISE_HANDLER
+ * @brief EXERCISE HANDLER selection for this isolated test harness.
+ */
+/** @def SET_APPLIED
+ * @brief SET APPLIED selection for this isolated test harness.
+ */
+/** @def RUN_TEST
+ * @brief RUN TEST selection for this isolated test harness.
+ */

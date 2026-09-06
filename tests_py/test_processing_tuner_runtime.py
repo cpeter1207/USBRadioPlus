@@ -1,3 +1,5 @@
+## @file
+## @brief Processing tuner runtime regression checks.
 import math
 import runpy
 
@@ -6,6 +8,10 @@ from test_processing_tuner import MODULE
 
 
 def globals_for(name):
+    """Return the tuner function's global namespace for scoped monkeypatching.
+
+    @param name Helper, source file, or symbol name selected by this test.
+    """
     return MODULE[name].__globals__
 
 
@@ -19,10 +25,17 @@ def globals_for(name):
     ),
 )
 def test_relationship_validation_rejects_invalid_pairs(key, number, message):
+    """Verify relationship validation rejects invalid pairs.
+
+    @param key Configuration option name.
+    @param number Receives or supplies the permutation sequence number.
+    @param message Expected validation diagnostic.
+    """
     assert message in MODULE["relationship_error"]("local", key, number, {})
 
 
 def test_relationship_validation_accepts_unrelated_or_valid_values():
+    """Verify relationship validation accepts unrelated or valid values."""
     assert MODULE["relationship_error"]("local", "agc_attack_ms", 10, {}) is None
     assert MODULE["relationship_error"]("local", "agc_sidechain_lowpass_hz", 1000, {}) is None
     assert MODULE["relationship_error"]("local", "agc_sidechain_highpass_hz", 1, {}) is None
@@ -31,6 +44,11 @@ def test_relationship_validation_accepts_unrelated_or_valid_values():
 
 
 def test_configuration_creation_existing_and_missing_defaults(tmp_path, monkeypatch):
+    """Verify configuration creation existing and missing defaults.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     config = tmp_path / "processing.conf"
     config.write_text("existing\n", encoding="utf-8")
     monkeypatch.setitem(globals_for("ensure_config"), "CONFIG", str(config))
@@ -43,6 +61,11 @@ def test_configuration_creation_existing_and_missing_defaults(tmp_path, monkeypa
 
 
 def test_configuration_creation_skips_missing_candidate(tmp_path, monkeypatch):
+    """Verify configuration creation skips missing candidate.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     config = tmp_path / "etc" / "processing.conf"
     shipped = tmp_path / "shipped.conf"
     shipped.write_text("defaults\n", encoding="utf-8")
@@ -56,6 +79,10 @@ def test_configuration_creation_skips_missing_candidate(tmp_path, monkeypatch):
 
 
 def test_active_node_selection(monkeypatch):
+    """Verify active node selection.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     monkeypatch.setitem(globals_for("active_node"), "NODE", "1234")
     assert MODULE["active_node"]() == "1234"
     monkeypatch.setitem(globals_for("active_node"), "NODE", None)
@@ -64,6 +91,11 @@ def test_active_node_selection(monkeypatch):
 
 
 def test_missing_shipped_defaults_are_reported(tmp_path, monkeypatch):
+    """Verify missing shipped defaults are reported.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     monkeypatch.setitem(
         globals_for("shipped_modern_defaults"), "DEFAULT_CONFIG_CANDIDATES", (tmp_path,)
     )
@@ -72,6 +104,11 @@ def test_missing_shipped_defaults_are_reported(tmp_path, monkeypatch):
 
 
 def test_shipped_defaults_skip_an_incomplete_candidate(tmp_path, monkeypatch):
+    """Verify shipped defaults skip an incomplete candidate.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     incomplete = tmp_path / "incomplete.conf"
     complete = tmp_path / "complete.conf"
     incomplete.write_text("[general]\nradio_enabled = yes\n", encoding="utf-8")
@@ -90,6 +127,7 @@ def test_shipped_defaults_skip_an_incomplete_candidate(tmp_path, monkeypatch):
 
 
 def test_replace_value_handles_new_sections_and_rejects_missing_chains():
+    """Verify replace value handles new sections and rejects missing chains."""
     assert MODULE["replace_value"]("text", "general", "radio_enabled", "yes").endswith(
         "[general]\nradio_enabled = yes\n"
     )
@@ -98,6 +136,11 @@ def test_replace_value_handles_new_sections_and_rejects_missing_chains():
 
 
 def test_permission_helper_handles_missing_account_and_nonroot(tmp_path, monkeypatch):
+    """Verify permission helper handles missing account and nonroot.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     path = tmp_path / "config"
     path.write_text("x", encoding="utf-8")
     monkeypatch.setattr(
@@ -109,6 +152,10 @@ def test_permission_helper_handles_missing_account_and_nonroot(tmp_path, monkeyp
 
 
 def test_reload_failure_restores_previous_text(monkeypatch):
+    """Verify reload failure restores previous text.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     writes = []
     commands = []
     monkeypatch.setitem(
@@ -122,6 +169,10 @@ def test_reload_failure_restores_previous_text(monkeypatch):
 
 
 def test_apply_config_reload_restart_success_and_rollback(monkeypatch):
+    """Verify apply config reload restart success and rollback.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     state = {"restart": False, "writes": []}
     monkeypatch.setitem(globals_for("apply_config"), "atomic_write", state["writes"].append)
     monkeypatch.setitem(
@@ -131,6 +182,8 @@ def test_apply_config_reload_restart_success_and_rollback(monkeypatch):
     assert MODULE["apply_config"]("old", "new") is False
 
     class Result:
+        """Supply Result behavior for the test scenario."""
+
         returncode = 0
         stdout = ""
 
@@ -160,9 +213,22 @@ def test_apply_config_reload_restart_success_and_rollback(monkeypatch):
 def test_numeric_prompt_rejects_invalid_input(
     monkeypatch, entered, kind, low, high, expected_message
 ):
+    """Verify numeric prompt rejects invalid input.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param entered Operator text supplied by the test.
+    @param kind Value-format or setting kind.
+    @param low Optional inclusive lower bound.
+    @param high Optional inclusive upper bound.
+    @param expected_message expected message supplied by the test scenario.
+    """
     calls = []
 
     def fake_dialog(args):
+        """Supply scripted dialog input and record the widget arguments.
+
+        @param args Command or dialog argument vector.
+        """
         calls.append(args)
         return (0, entered) if "--inputbox" in args else (0, "")
 
@@ -172,6 +238,10 @@ def test_numeric_prompt_rejects_invalid_input(
 
 
 def test_numeric_prompt_cancel_and_display_helpers(monkeypatch):
+    """Verify numeric prompt cancel and display helpers.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     monkeypatch.setitem(globals_for("prompt_number"), "dialog", lambda _args: (1, "unchanged"))
     assert MODULE["prompt_number"]("Value", "1", "float") == (1, "unchanged")
     assert MODULE["display_value"]("bool", "true") == "On"
@@ -181,9 +251,15 @@ def test_numeric_prompt_cancel_and_display_helpers(monkeypatch):
 
 
 def test_subprocess_dialog_configuration_and_text_helpers(monkeypatch):
+    """Verify subprocess dialog configuration and text helpers.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("run")
 
     class Result:
+        """Supply Result behavior for the test scenario."""
+
         stdout = " output \n"
         stderr = " selected \n"
         returncode = 3
@@ -208,6 +284,11 @@ def test_subprocess_dialog_configuration_and_text_helpers(monkeypatch):
 
 
 def test_atomic_write_replaces_file_and_cleans_failed_temporary(tmp_path, monkeypatch):
+    """Verify atomic write replaces file and cleans failed temporary.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     config = tmp_path / "processing.conf"
     config.write_text("old", encoding="utf-8")
     namespace = globals_for("atomic_write")
@@ -224,6 +305,11 @@ def test_atomic_write_replaces_file_and_cleans_failed_temporary(tmp_path, monkey
 
 
 def test_permission_helper_nonroot_branch(tmp_path, monkeypatch):
+    """Verify permission helper nonroot branch.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     path = tmp_path / "config"
     path.write_text("x", encoding="utf-8")
     account = type("Account", (), {"pw_uid": 1, "pw_gid": 1})()
@@ -235,6 +321,10 @@ def test_permission_helper_nonroot_branch(tmp_path, monkeypatch):
 
 
 def test_reload_success_requires_no_restore(monkeypatch):
+    """Verify reload success requires no restore.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     writes = []
     namespace = globals_for("reload_config")
     monkeypatch.setitem(namespace, "run", lambda _args: "Reloaded in place")
@@ -244,6 +334,11 @@ def test_reload_success_requires_no_restore(monkeypatch):
 
 
 def test_executable_tuner_check_entry_point(monkeypatch, capsys):
+    """Verify executable tuner check entry point.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param capsys Pytest fixture capturing terminal output.
+    """
     sample = globals_for("main")["DEFAULT_CONFIG_CANDIDATES"][-1]
     monkeypatch.setattr(
         globals_for("main")["sys"],
@@ -258,6 +353,10 @@ def test_executable_tuner_check_entry_point(monkeypatch, capsys):
 
 
 def test_meter_launch_success_failure_and_os_error(monkeypatch):
+    """Verify meter launch success failure and os error.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     messages = []
     namespace = globals_for("launch_radio_meter")
     monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
@@ -269,6 +368,10 @@ def test_meter_launch_success_failure_and_os_error(monkeypatch):
 
 
 def test_resolved_sections_cover_passthrough_and_named_general(monkeypatch):
+    """Verify resolved sections cover passthrough and named general.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("resolved_section")
     monkeypatch.setitem(namespace, "NODE", "usb")
     config = "[usb]\nchannel_enabled = yes\n[hardware usb]\nhardware_eeprom_enabled = no\n"
@@ -278,6 +381,11 @@ def test_resolved_sections_cover_passthrough_and_named_general(monkeypatch):
 
 
 def test_defaults_and_replacement_cover_scoped_and_missing_newline(tmp_path, monkeypatch):
+    """Verify defaults and replacement cover scoped and missing newline.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     defaults = tmp_path / "defaults.conf"
     defaults.write_text("[local profile]\nagc_enabled = yes\n", encoding="utf-8")
     monkeypatch.setitem(
@@ -298,6 +406,10 @@ def test_defaults_and_replacement_cover_scoped_and_missing_newline(tmp_path, mon
 
 
 def test_radio_channel_selection_paths(monkeypatch):
+    """Verify radio channel selection paths.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("select_radio_channel")
     messages = []
     monkeypatch.setitem(namespace, "read_config", lambda: "")
@@ -321,6 +433,10 @@ def test_radio_channel_selection_paths(monkeypatch):
 
 
 def test_radio_state_failure_result_swap_and_echo_paths(monkeypatch):
+    """Verify radio state failure result swap and echo paths.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     messages = []
     monkeypatch.setitem(globals_for("radio_state"), "radio_command", lambda _option: "bad state")
     with pytest.raises(RuntimeError, match="Unable to read"):
@@ -372,6 +488,12 @@ def test_radio_state_failure_result_swap_and_echo_paths(monkeypatch):
 
 
 def test_main_check_and_node_selection_paths(tmp_path, monkeypatch, capsys):
+    """Verify main check and node selection paths.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param capsys Pytest fixture capturing terminal output.
+    """
     config = tmp_path / "processing.conf"
     config.write_text("[local]\n[link]\n[voice_telemetry]\n", encoding="utf-8")
     lock = tmp_path / "lock"
@@ -417,6 +539,10 @@ def test_main_check_and_node_selection_paths(tmp_path, monkeypatch, capsys):
 
 
 def test_text_editor_non_stage_order_branch(monkeypatch):
+    """Verify text editor non stage order branch.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     namespace = globals_for("edit_text_setting")
     applied = []
     monkeypatch.setitem(namespace, "read_config", lambda: "[local]\n")

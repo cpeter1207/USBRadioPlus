@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter processor regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +9,14 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000
+
 #define BLOCK 48
 
+/** @brief Calculate the maximum absolute sample value for an audio assertion.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @param count Number of elements available in the supplied block.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double peak(const double *samples, size_t count)
 {
 	double value = 0.0;
@@ -19,6 +29,9 @@ static double peak(const double *samples, size_t count)
 	return value;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct txagc_avfilter state;
@@ -111,3 +124,10 @@ int main(void)
 	txagc_avfilter_destroy(&state);
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */

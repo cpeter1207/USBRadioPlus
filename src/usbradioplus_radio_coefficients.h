@@ -41,13 +41,18 @@
 #define USBRADIOPLUS_RADIO_COEFFICIENTS_H 1
 
 /* frequencies in 0.1 Hz */
+/** DTMF low-group reference frequencies in Hz. */
 static const u32 dtmf_row[] = {6970, 7700, 8520, 9410};
+/** DTMF high-group reference frequencies in Hz. */
 static const u32 dtmf_col[] = {12090, 13360, 14770, 16330};
 
 #define CTCSS_COEF_INT 120
+
 #define CTCSS_SAMPLE_RATE 8000
+
 #define TDIV(x) ((CTCSS_SAMPLE_RATE * 1000 / (x)) + 5) / 10
 
+/** Per-tone fixed-point correlator period divisors. */
 static i16 coef_ctcss_div[] = {
 	2985, /* 00   067.0 */
 	2782, /* 01   071.9 */
@@ -89,6 +94,7 @@ static i16 coef_ctcss_div[] = {
 	799   /* 37   250.3 */
 };
 
+/** Supported CTCSS reference frequencies in Hz. */
 static float freq_ctcss[] = {
 	067.0, /* 00 */
 	071.9, /* 01 */
@@ -133,8 +139,11 @@ static float freq_ctcss[] = {
 /*
 	noise squelch carrier detect filter
 */
+/** Taps FIR bpf noise 1 coefficient count. */
 static const int16_t taps_fir_bpf_noise_1 = 66;
+/** Gain FIR bpf noise 1 normalization divisor. */
 static const int32_t gain_fir_bpf_noise_1 = 65536;
+/** Coef FIR bpf noise 1 fixed-point coefficients. */
 static const int16_t coef_fir_bpf_noise_1[] = {
 	139,   -182,   -269,   -66,   56,    59,    250,   395,	   -80,	   -775,  -557,
 	437,   779,    210,    -17,   123,   -692,  -1664, -256,   2495,   2237,  -1018,
@@ -143,8 +152,11 @@ static const int16_t coef_fir_bpf_noise_1[] = {
 	2237,  2495,   -256,   -1664, -692,  123,   -17,   210,	   779,	   437,	  -557,
 	-775,  -80,    395,    250,   59,    56,    -66,   -269,   -182,   139,	  257};
 
+/** Taps FIR bpf noise 2 coefficient count. */
 static const int16_t taps_fir_bpf_noise_2 = 66;
+/** Gain FIR bpf noise 2 normalization divisor. */
 static const int32_t gain_fir_bpf_noise_2 = 65536;
+/** Coef FIR bpf noise 2 fixed-point coefficients. */
 static const int16_t coef_fir_bpf_noise_2[] = {
 	581,   -251,   -1027,  -766,  63,   346,  148,	 459,	 1165,	 847,	-824,
 	-1994, -1147,  462,    704,   32,   651,  2277,	 1790,	 -1635,	 -4071, -2240,
@@ -153,8 +165,11 @@ static const int16_t coef_fir_bpf_noise_2[] = {
 	-4071, -1635,  1790,   2277,  651,  32,	  704,	 462,	 -1147,	 -1994, -824,
 	847,   1165,   459,    148,   346,  63,	  -766,	 -1027,	 -251,	 581,	537};
 
+/** Taps FIR low-pass filter 3 K 2 coefficient count. */
 static const int16_t taps_fir_lpf_3K_2 = 28;
+/** Gain FIR low-pass filter 3 K 2 normalization divisor. */
 static const int32_t gain_fir_lpf_3K_2 = 65536;
+/** Coef FIR low-pass filter 3 K 2 fixed-point coefficients. */
 static const int16_t coef_fir_lpf_3K_2[] = {545,  -329,	 -579,	369,  -843,  465,   -121,  -779,
 					    1523, -2051, 1683,	-64,  -4016, 19793, 19793, -4016,
 					    -64,  1683,	 -2051, 1523, -779,  -121,  465,   -843,
@@ -170,8 +185,11 @@ Sampling Frequency: 8 KHz
 Cut Frequency: 0.250000 KHz
 Coefficients Quantization: 16-bit
 ***************************************************************/
+/** Taps FIR low-pass filter 250 11 64 coefficient count. */
 static const int16_t taps_fir_lpf_250_11_64 = 64;
+/** Gain FIR low-pass filter 250 11 64 normalization divisor. */
 static const int32_t gain_fir_lpf_250_11_64 = 262144;
+/** Coef FIR low-pass filter 250 11 64 fixed-point coefficients. */
 static const int16_t coef_fir_lpf_250_11_64[] = {
 	366,   -3,    -418,  -865,  -1328, -1788, -2223, -2609, -2922, -3138, -3232, -3181, -2967,
 	-2573, -1988, -1206, -228,  937,   2277,  3767,	 5379,	7077,  8821,  10564, 12259, 13855,
@@ -181,14 +199,20 @@ static const int16_t coef_fir_lpf_250_11_64[] = {
 
 /* de-emphasis integrator 300 Hz with 8KS/s */
 /* a0, b1 */
+/** Taps int low-pass filter 300 1 2 coefficient count. */
 static const int16_t taps_int_lpf_300_1_2 = 2;
+/** Gain int low-pass filter 300 1 2 normalization divisor. */
 static const int32_t gain_int_lpf_300_1_2 = 8182;
+/** Coef int low-pass filter 300 1 2 fixed-point coefficients. */
 static const int16_t coef_int_lpf_300_1_2[] = {6878, 25889};
 
 /* pre-emphasis differentiator 4000 Hz with 8KS/s */
 /* a0,a1,b0, */
+/** Taps int high-pass filter 4000 1 2 coefficient count. */
 static const int16_t taps_int_hpf_4000_1_2 = 2;
+/** hand tweaked for unity gain at 1KHz */
 static const int32_t gain_int_hpf_4000_1_2 = 13404; /* hand tweaked for unity gain at 1KHz */
+/** Coef int high-pass filter 4000 1 2 fixed-point coefficients. */
 static const int16_t coef_int_hpf_4000_1_2[] = {17610, -17610, 2454};
 
 /*
@@ -202,8 +226,11 @@ Sampling Frequency: 8 KHz
 Cut Frequency: 0.250000 KHz
 Coefficients Quantization: 16-bit
 ***************************************************************/
+/** Taps FIR low-pass filter 250 9 66 coefficient count. */
 static const int16_t taps_fir_lpf_250_9_66 = 66;
+/** Gain FIR low-pass filter 250 9 66 normalization divisor. */
 static const int32_t gain_fir_lpf_250_9_66 = 262144;
+/** Coef FIR low-pass filter 250 9 66 fixed-point coefficients. */
 static const int16_t coef_fir_lpf_250_9_66[] = {
 	676,   364,   -3,    -415,  -860,  -1320, -1777, -2209, -2593, -2904, -3119,
 	-3212, -3162, -2949, -2557, -1975, -1198, -226,	 932,	2263,  3744,  5346,
@@ -219,8 +246,11 @@ Sampling Frequency: 8 KHz
 Cut Frequency: 0.215 KHz
 Coefficients Quantization: 16-bit
 ***************************************************************/
+/** Taps FIR low-pass filter 215 9 88 coefficient count. */
 static const int16_t taps_fir_lpf_215_9_88 = 88;
+/** Gain FIR low-pass filter 215 9 88 normalization divisor. */
 static const int32_t gain_fir_lpf_215_9_88 = 524288;
+/** Coef FIR low-pass filter 215 9 88 fixed-point coefficients. */
 static const int16_t coef_fir_lpf_215_9_88[] = {
 	2038,  2049,  1991,  1859,  1650,  1363,  999,	 562,	58,    -502,  -1106, -1739, -2382,
 	-3014, -3612, -4153, -4610, -4959, -5172, -5226, -5098, -4769, -4222, -3444, -2430, -1176,
@@ -237,12 +267,18 @@ static const int16_t coef_fir_lpf_215_9_88[] = {
 
 #define MAX_COEFS 128
 
+/** Fixed-point FIR coefficient table and normalization metadata for radio detectors. */
 typedef struct t_fir {
+	/** Number of FIR coefficients. */
 	i16 taps;
+	/** Fixed-point FIR output normalization divisor. */
 	i32 gain;
+	/** Read-only fixed-point FIR coefficient array. */
 	i16 coefs[MAX_COEFS];
+	/** Alias for FIR coefficient-table metadata. */
 } T_FIR;
 
+/** FIR rxlpf coefficient-table selection. */
 static const T_FIR fir_rxlpf[] = {
 
 	/* Index 0 - 3 kHz corner */
@@ -281,6 +317,7 @@ static const T_FIR fir_rxlpf[] = {
 		       -310,  -298,  -220, -102, 26,	135,   201,   216,   181,   109,   21,
 		       -62,   -122,  -149, -140, -100,	-43,   17}}}; /* end of RX LPFís */
 
+/** FIR rxhpf coefficient-table selection. */
 static const T_FIR fir_rxhpf[] = {
 
 	/* Index 0 - 300 Hz HPF, Butterworth, 9th Order, 16 bit coefs */
@@ -305,6 +342,7 @@ static const T_FIR fir_rxhpf[] = {
 		      -68,   -50,   -32,   -15,	  0,	 15,	27,    37,    45,    51,    54,
 		      54,    53,    50,	   45,	  39,	 32,	25}}}; /* end of RX HPFís */
 
+/** FIR txhpf coefficient-table selection. */
 static const T_FIR fir_txhpf[] = {
 
 	/* Index 0 - 300 Hz HPF */
@@ -340,6 +378,7 @@ static const T_FIR fir_txhpf[] = {
 
 }; /* end of TX HPFís */
 
+/** FIR txlpf coefficient-table selection. */
 static const T_FIR fir_txlpf[] = {
 
 	/* Index 0 - 3 kHz LPF */
@@ -367,9 +406,40 @@ static const T_FIR fir_txlpf[] = {
 }; /* end of TX LPFís */
 
 #define MAX_RXLPF (sizeof(fir_rxlpf) / sizeof(T_FIR))
+
 #define MAX_RXHPF (sizeof(fir_rxhpf) / sizeof(T_FIR))
+
 #define MAX_TXHPF (sizeof(fir_txhpf) / sizeof(T_FIR))
+
 #define MAX_TXLPF (sizeof(fir_txlpf) / sizeof(T_FIR))
 
 #endif /* USBRADIOPLUS_RADIO_COEFFICIENTS_H */
 /* end of file */
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def CTCSS_COEF_INT
+ * @brief Fixed-point scale used by the CTCSS reference coefficients.
+ */
+/** @def CTCSS_SAMPLE_RATE
+ * @brief Sample rate in Hz used to derive CTCSS detector coefficients.
+ */
+/** @def TDIV
+ * @brief Reference tone-period division factor.
+ */
+/** @def MAX_COEFS
+ * @brief Maximum FIR coefficient-table length.
+ */
+/** @def MAX_RXLPF
+ * @brief Number of selectable receiver detector low-pass tables.
+ */
+/** @def MAX_RXHPF
+ * @brief Number of selectable receiver detector high-pass tables.
+ */
+/** @def MAX_TXHPF
+ * @brief Number of transmitter high-pass table slots.
+ */
+/** @def MAX_TXLPF
+ * @brief Number of transmitter low-pass table slots.
+ */
+/** @} */

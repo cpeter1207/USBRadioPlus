@@ -1,3 +1,7 @@
+/** @file
+ * @brief Private RNNoise stream buffering and sample-conversion test interfaces.
+ */
+
 #ifndef TXAGC_RNNOISE_PROCESSOR_INTERNAL_H
 #define TXAGC_RNNOISE_PROCESSOR_INTERNAL_H
 

@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Install Debian/ASL development dependencies and the official RNNoise release.
 set -eu
 
 if [ "$(id -u)" -ne 0 ]; then

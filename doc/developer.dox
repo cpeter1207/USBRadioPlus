@@ -1,0 +1,69 @@
+/** @mainpage USBRadioPlus developer reference
+
+USBRadioPlus implements the RadioPlus Asterisk channel technology, native radio
+signaling, source processing, and the interactive tuning utility. This reference
+describes implementation contracts. The installed manual pages describe radio
+configuration and operation.
+
+@section architecture Source layout
+
+- chan_usbradioplus.c adapts OSS/libusb radio devices to Asterisk.
+- chan_usbradioplus_modern.c adapts the ASL radio-device API and PortAudio.
+- usbradioplus_channel_common.h defines shared channel lifecycle and tuning calls.
+- usbradioplus_channel_core.h defines PCM routing, queues, clock recovery, and echo state.
+- usbradioplus_native_tick.c runs the native receive/transmit block sequence.
+- usbradioplus_processing.h exposes validated profiles and live processing controls.
+- txagc_config describes the shared FFmpeg graph. Filtering, emphasis,
+  equalization, dynamics, and limiting are implemented by that graph.
+- usbradioplus_radio.h contains carrier, CTCSS, measurement, and transmit-signaling state.
+- usbradioplus_ctcss.h and usbradioplus_hardware.h provide tone generation and
+  parallel-port radio programming.
+- scripts/usbradioplus-tune implements the screen-reader-friendly tuner.
+- tests and tests_py contain executable unit, failure-injection, integration,
+  configuration, utility, and install checks. Upstream reference fixtures are test data.
+
+@section units Audio buffers and units
+
+The CM119 path runs at 48,000 samples per second with 960 samples in a 20 ms
+mono block. App_rpt starts at 8,000 samples per second; each channel stores its
+rate explicitly. Equal input and output rates bypass sample-rate conversion.
+Signed PCM spans -32768 through 32767. Native floating-point workspaces retain
+PCM amplitude units. FFmpeg format conversion supplies the graph's normalized
+audio representation. dBFS measurements use the full signed PCM range.
+
+Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
+relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
+it does not change voice gain. Native CTCSS is mixed after transmitter dynamics
+and limiting. Saturating PCM conversion prevents signed wraparound.
+
+@section concurrency Thread and resource ownership
+
+Each channel owns its native graphs, resamplers, detector, queues, and echo
+recording. The app_rpt queue mutex protects frames passed from Asterisk to the
+device worker. The processing settings mutex protects profile snapshots.
+Never hold the processing settings mutex while looking up or locking an
+Asterisk channel: app_rpt can read processing settings while holding channel
+locks. The scanner copies the needed profile data before channel lookup.
+
+An incoming link audiohook owns its graph through an Asterisk datastore.
+Stopping the processing subsystem joins the scanner and detaches those hooks
+before releasing its state. Hardware adapters own their device references and
+coordinate audio/HID workers when swapping USB assignments.
+
+@section verification Building and checking the reference
+
+Run `make docs` with Doxygen 1.9.8 or newer, Graphviz, and Python 3 installed.
+Generated HTML is written to `build/doxygen/html`; XML is written beside it. Doxygen checks
+undocumented symbols and enum values, parameter and return documentation, and
+invalid markup. Every diagnostic fails the target.
+
+The required quality workflow runs Doxygen concurrently with lint and static
+analysis. All three results must succeed before the Debian 12/13 amd64/arm64
+test matrix. Release callers depend on that same required quality workflow.
+Only successful main-branch checks publish this reference to GitHub Pages.
+
+Shell documentation uses double-hash comments. The documentation filter exposes
+actual shell function names and those comments to Doxygen without executing
+shell code or supplying missing documentation. Python uses standard docstrings
+with Doxygen commands for parameters and return values.
+*/

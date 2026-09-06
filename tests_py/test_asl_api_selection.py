@@ -1,11 +1,15 @@
+## @file
+## @brief Asl api selection regression checks.
 import os
 import subprocess
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def detection_environment():
+    """Create a deterministic environment for Asterisk API detection."""
     environment = os.environ.copy()
     for inherited_override in ("ASL_RADIO_API", "MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES"):
         environment.pop(inherited_override, None)
@@ -13,6 +17,11 @@ def detection_environment():
 
 
 def make_database(include_dir: Path) -> str:
+    """Inspect Make's variables for a selected header fixture.
+
+    @param include_dir Header fixture directory used for API selection.
+    @return Make's evaluated variable database as text.
+    """
     return subprocess.run(
         ["make", "-pn", f"ASTERISK_INCLUDEDIR={include_dir}"],
         cwd=ROOT,
@@ -25,6 +34,11 @@ def make_database(include_dir: Path) -> str:
 
 
 def selected_api(include_dir: Path) -> str:
+    """Read the channel-adapter API selected by the Makefile.
+
+    @param include_dir Header fixture directory used for API selection.
+    @return Selected adapter API name.
+    """
     return subprocess.run(
         ["make", "-s", "print-asl-radio-api", f"ASTERISK_INCLUDEDIR={include_dir}"],
         cwd=ROOT,
@@ -36,6 +50,7 @@ def selected_api(include_dir: Path) -> str:
 
 
 def test_legacy_headers_select_oss_backend():
+    """Verify legacy headers select oss backend."""
     database = make_database(ROOT / "tests/fixtures/asterisk-dev/include")
     assert selected_api(ROOT / "tests/fixtures/asterisk-dev/include") == "legacy"
     assert "CHANNEL_SOURCE := src/chan_usbradioplus.c" in database
@@ -43,6 +58,7 @@ def test_legacy_headers_select_oss_backend():
 
 
 def test_shared_device_headers_select_modern_backend():
+    """Verify shared device headers select modern backend."""
     database = make_database(ROOT / "tests/fixtures/asterisk-modern/include")
     assert selected_api(ROOT / "tests/fixtures/asterisk-modern/include") == "modern"
     assert "CHANNEL_SOURCE := src/chan_usbradioplus_modern.c" in database
@@ -50,6 +66,7 @@ def test_shared_device_headers_select_modern_backend():
 
 
 def test_api_override_rejects_unknown_values():
+    """Verify api override rejects unknown values."""
     result = subprocess.run(
         ["make", "-pn", "ASL_RADIO_API=unknown"],
         cwd=ROOT,

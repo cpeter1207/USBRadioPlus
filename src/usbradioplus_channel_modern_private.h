@@ -1,3 +1,7 @@
+/** @file
+ * @brief Per-channel state for the ASL radio-device API adapter.
+ */
+
 #ifndef USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 
@@ -7,8 +11,15 @@ struct chan_usbradio_pvt {
 	char *name;	/* the internal name of our channel */
 	int devtype;	/* actual type of device */
 	int pttkick[2]; /* ptt kick pipe */
+	/** PortAudio stream state for this radio. */
 	struct ast_radio_pa_stream pa;
-	enum { M_UNSET, M_FULL, M_READ, M_WRITE } duplex;
+	/** Audio-device open mode. */
+	enum {
+		M_UNSET /**< Audio device is closed. */,
+		M_FULL /**< Full-duplex capture and playback. */,
+		M_READ /**< Capture-only device mode. */,
+		M_WRITE /**< Playback-only device mode. */
+	} duplex;
 	int hookstate;
 
 	char devstr[128];
@@ -19,28 +30,42 @@ struct chan_usbradio_pvt {
 	unsigned int frags;
 
 	pthread_t hidthread;
+	/** Native audio worker thread. */
 	pthread_t audiothread;
 	int stophid;
+	/** Stop request observed by the audio worker. */
 	volatile sig_atomic_t stopaudiothread;
+	/** Nonzero while a USB interface is acquired. */
 	volatile sig_atomic_t hasusb; /* HID/audio liveness; not a bit-field (cross-thread) */
+	/** Nonzero after the audio worker completes initialization. */
 	char audio_thread_ready;
+	/** Most recent successful audio-worker timestamp. */
 	time_t lastaudiotime;
 	enum {
-		DEVICE_SWAP_IDLE,      /*!< No device swap requested */
-		DEVICE_SWAP_QUIESCING, /*!< Device handles are stopping */
-		DEVICE_SWAP_READY,     /*!< Device is ready for lease exchange */
-	} swap_state;
+		DEVICE_SWAP_IDLE /**< DEVICE SWAP IDLE. */,
+		/*!< No device swap requested */
+		DEVICE_SWAP_QUIESCING,
+		/*!< Device handles are stopping */
+		DEVICE_SWAP_READY,
+		/*!< Device is ready for lease exchange */
+		/** USB assignment swap handshake state. */
+	} swap_state; /**< Audio/HID worker pause handshake for USB reassignment. */
 	unsigned int swap_audio_ready : 1; /*!< PortAudio stopped for pending swap */
-	ast_mutex_t swap_lock;		   /* protects device swap state */
+	/** Mutex protecting the worker swap handshake. */
+	ast_mutex_t swap_lock; /* protects device swap state */
 
 	struct ast_channel *owner;
 
 	/* Shared USB radio device lease */
+	/** Acquired ASL radio-device reference. */
 	struct ast_radio_device *radio_device;
+	/** Mutex protecting the acquired ASL radio-device reference. */
 	ast_mutex_t device_lock;
+	/** Latched USB/audio device error text. */
 	enum ast_radio_device_result device_error;
 
 	/* One native-rate stereo frame rendered for the PortAudio hardware tick. */
+	/** Interleaved native-rate transmitter PCM workspace. */
 	short usbradio_write_buf[AST_RADIO_PA_48K_STEREO_SAMPLES];
 	short plus_rx_native[URP_NATIVE_SAMPLES];
 	double plus_local_native[URP_NATIVE_SAMPLES];
@@ -268,6 +293,7 @@ struct chan_usbradio_pvt {
 					     processing */
 	/* Whole-word latch shared by HID/audio paths (not a bit-field). */
 	volatile sig_atomic_t
+		/** Nonzero while a reported USB/audio failure awaits recovery. */
 		usb_faulted; /* set after USB/audio failure; cleared on recovery log */
 
 	/* EEPROM access variables */

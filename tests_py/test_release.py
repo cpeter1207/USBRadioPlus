@@ -1,10 +1,17 @@
+## @file
+## @brief Release regression checks.
 import re
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def text(name):
+    """Read a repository source or documentation artifact.
+
+    @param name Helper, source file, or symbol name selected by this test.
+    """
     body = (ROOT / name).read_text(encoding="utf-8")
     body = body.replace("PROCESSING_PRIVATE", "static")
     if name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
@@ -22,7 +29,11 @@ def text(name):
 
 
 def function_definition(source, name):
-    """Return one complete top-level C function without relying on source order."""
+    """Extract one C function body for a focused implementation invariant.
+
+    @param source Processing source or source text, as declared.
+    @param name Helper, source file, or symbol name selected by this test.
+    """
     match = re.search(
         rf"^(?:static )?[^;\n]*\b{re.escape(name)}\([^;]*\)\n\{{", source, re.MULTILINE
     )
@@ -32,6 +43,7 @@ def function_definition(source, name):
 
 
 def test_removed_legacy_options_are_not_accepted_or_documented():
+    """Verify removed legacy options are not accepted or documented."""
     parser = text("src/usbradioplus_processing.c")
     public_artifacts = "".join(
         text(path)
@@ -56,6 +68,7 @@ def test_removed_legacy_options_are_not_accepted_or_documented():
 
 
 def test_optional_processors_default_off():
+    """Verify optional processors default off."""
     source = text("src/usbradioplus_processing.c")
     defaults = source[
         source.index("static void settings_defaults") : source.index("static int validate_chain")
@@ -72,6 +85,7 @@ def test_optional_processors_default_off():
 
 
 def test_equalizer_is_enabled_in_every_source_chain():
+    """Verify equalizer is enabled in every source chain."""
     source = text("src/usbradioplus_processing.c")
     defaults = source[
         source.index("static void settings_defaults") : source.index("static int validate_chain")
@@ -94,6 +108,7 @@ def test_equalizer_is_enabled_in_every_source_chain():
 
 
 def test_deesser_is_default_disabled_before_every_compressor():
+    """Verify deesser is default disabled before every compressor."""
     source = text("src/usbradioplus_processing.c")
     defaults = source[
         source.index("static void settings_defaults") : source.index("static int validate_chain")
@@ -107,6 +122,7 @@ def test_deesser_is_default_disabled_before_every_compressor():
 
 
 def test_legacy_default_initializer_is_preserved():
+    """Verify legacy default initializer is preserved."""
     source = text("src/chan_usbradioplus.c")
     block = source[
         source.index("struct chan_usbradio_pvt usbradio_default") : source.index(
@@ -126,6 +142,7 @@ def test_legacy_default_initializer_is_preserved():
 
 
 def test_unified_configuration_file_is_required():
+    """Verify unified configuration file is required."""
     source = text("src/usbradioplus_processing.c")
     block = source[source.index("CONFIG_STATUS_FILEMISSING") :]
     assert "return -1;" in block[:500]
@@ -133,6 +150,7 @@ def test_unified_configuration_file_is_required():
 
 
 def test_flat_defaults_are_copied_before_named_overrides():
+    """Verify flat defaults are copied before named overrides."""
     source = text("src/usbradioplus_processing.c")
     loader = source[
         source.index("static int load_settings(void)") : source.index("static void hook_destroy")
@@ -144,6 +162,7 @@ def test_flat_defaults_are_copied_before_named_overrides():
 
 
 def test_link_rejects_brickwall_filter_options():
+    """Verify link rejects brickwall filter options."""
     source = text("src/usbradioplus_processing.c")
     validator = function_definition(source, "validate_named_option")
     assert '!strcmp(kind, "link")' in validator
@@ -156,6 +175,7 @@ def test_link_rejects_brickwall_filter_options():
 
 
 def test_pl_filter_comes_only_from_unified_processing_settings():
+    """Verify pl filter comes only from unified processing settings."""
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         block = source[source.index("struct txagc_config filter_cfg;") :]
@@ -165,6 +185,7 @@ def test_pl_filter_comes_only_from_unified_processing_settings():
 
 
 def test_invalid_reload_cannot_replace_live_settings():
+    """Verify invalid reload cannot replace live settings."""
     source = text("src/usbradioplus_processing.c")
     loader = source[
         source.index("static int load_settings(void)") : source.index("static void hook_destroy")
@@ -177,6 +198,7 @@ def test_invalid_reload_cannot_replace_live_settings():
 
 
 def test_duplex_routes_are_distinct():
+    """Verify duplex routes are distinct."""
     source = text("src/chan_usbradioplus.c")
     assert "RADIOPLUS DUPLEX" not in source
     assert "DUPLEX3_MODE_HARDWARE" in source
@@ -188,6 +210,7 @@ def test_duplex_routes_are_distinct():
 
 
 def test_software_duplex3_honors_dtmf_mute_state():
+    """Verify software duplex3 honors dtmf mute state."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "urp_native_repeat_prepare(local_program, o->plus_local_native" in source
@@ -202,6 +225,7 @@ def test_software_duplex3_honors_dtmf_mute_state():
 
 
 def test_implementation_sources_are_never_textually_included():
+    """Verify implementation sources are never textually included."""
     include_pattern = re.compile(r'^\s*#\s*include\s+["<][^">]+\.(?:c|inc)[">]', re.MULTILINE)
     offenders = []
     for directory in (ROOT / "src", ROOT / "tests"):
@@ -214,6 +238,7 @@ def test_implementation_sources_are_never_textually_included():
 
 
 def test_echo_uses_native_buffer_only_for_software_duplex3():
+    """Verify echo uses native buffer only for software duplex3."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "urp_native_echo_enabled" in source
@@ -226,6 +251,7 @@ def test_echo_uses_native_buffer_only_for_software_duplex3():
 
 
 def test_native_transmit_only_clamps_at_pcm_boundary():
+    """Verify native transmit only clamps at pcm boundary."""
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         defaults = source[
@@ -242,6 +268,7 @@ def test_native_transmit_only_clamps_at_pcm_boundary():
 
 
 def test_native_transmit_gain_and_limiter_precedence():
+    """Verify native transmit gain and limiter precedence."""
     processing = text("src/usbradioplus_processing.c")
     header = text("src/usbradioplus_processing.h")
     module = text("src/chan_usbradioplus.c")
@@ -259,6 +286,7 @@ def test_native_transmit_gain_and_limiter_precedence():
 
 
 def test_native_receive_uses_modern_level_and_delay():
+    """Verify native receive uses modern level and delay."""
     source = text("src/chan_usbradioplus.c")
     processing = text("src/usbradioplus_processing.c")
     assert "effective_rx_input_gain_db(o) / 20.0" in source
@@ -273,6 +301,7 @@ def test_native_receive_uses_modern_level_and_delay():
 
 
 def test_hardware_input_gain_controls_capture():
+    """Verify hardware input gain controls capture."""
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         assert "plus_presquelch_gain" not in source
@@ -288,6 +317,7 @@ def test_hardware_input_gain_controls_capture():
 
 
 def test_rx_noise_calibration_matches_usbradio_and_reports_levels():
+    """Verify rx noise calibration matches usbradio and reports levels."""
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         calibration = function_definition(source, "tune_rxinput")
@@ -302,6 +332,7 @@ def test_rx_noise_calibration_matches_usbradio_and_reports_levels():
 
 
 def test_hardware_section_covers_gain_and_routing():
+    """Verify hardware section covers gain and routing."""
     parser = text("src/usbradioplus_processing.c")
     sample = text("examples/usbradioplus.conf.sample")
     manual = text("man/usbradioplus.conf.5")
@@ -333,6 +364,7 @@ def test_hardware_section_covers_gain_and_routing():
 
 
 def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
+    """Verify modern channel options cover flat defaults and scoped overrides."""
     parser = text("src/usbradioplus_processing.c")
     sample = text("examples/usbradioplus.conf.sample")
     manual = text("man/usbradioplus.conf.5")
@@ -385,6 +417,7 @@ def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
 
 
 def test_postsquelch_gain_is_removed():
+    """Verify postsquelch gain is removed."""
     names = (
         "src/chan_usbradioplus.c",
         "src/chan_usbradioplus_modern.c",
@@ -399,6 +432,7 @@ def test_postsquelch_gain_is_removed():
 
 
 def test_native_radio_has_no_program_voice_or_obsolete_clock_recovery():
+    """Verify native radio has no program voice or obsolete clock recovery."""
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     for symbol in (
         "PmrTx(",
@@ -417,6 +451,7 @@ def test_native_radio_has_no_program_voice_or_obsolete_clock_recovery():
 
 
 def test_native_radio_interface_is_bounded():
+    """Verify native radio interface is bounded."""
     source = text("src/chan_usbradioplus.c")
     direct = set(
         re.findall(
@@ -444,6 +479,7 @@ def test_native_radio_interface_is_bounded():
 
 
 def test_native_radio_has_no_hardware_access_or_programming_state():
+    """Verify native radio has no hardware access or programming state."""
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     hardware = text("src/usbradioplus_hardware.c")
     module = text("src/chan_usbradioplus.c")
@@ -476,6 +512,7 @@ def test_native_radio_has_no_hardware_access_or_programming_state():
 
 
 def test_rnnoise_has_one_fixed_local_position():
+    """Verify rnnoise has one fixed local position."""
     source = text("src/chan_usbradioplus.c")
     parser = text("src/usbradioplus_processing.c")
     graph_parser = text("src/txagc/agc_core.c")
@@ -487,18 +524,21 @@ def test_rnnoise_has_one_fixed_local_position():
 
 
 def test_native_stats_do_not_use_retired_dynamics_state():
+    """Verify native stats do not use retired dynamics state."""
     source = text("src/chan_usbradioplus.c")
     assert "plus_local_core" not in source
     assert "FFmpeg local: input peak" in source
 
 
 def test_tuning_utility_uses_radioplus_cli():
+    """Verify tuning utility uses radioplus cli."""
     source = text("scripts/usbradioplus-tune")
     assert 'f"radioplus tune menu-support {option}"' in source
     assert '"radioplus processing reload"' in source
 
 
 def test_tuning_menus_report_the_correct_state_and_ranges():
+    """Verify tuning menus report the correct state and ranges."""
     tune = text("scripts/usbradioplus-tune")
     processing = text("scripts/usbradioplus-tune")
     assert "rxboost" not in tune
@@ -543,6 +583,7 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
 
 
 def test_ffmpeg_is_the_only_graph_processing_implementation():
+    """Verify ffmpeg is the only graph processing implementation."""
     graph = text("src/txagc/avfilter_processor.c")
     parser = text("src/txagc/agc_core.c")
     header = text("src/txagc/agc_core.h")
@@ -561,6 +602,7 @@ def test_ffmpeg_is_the_only_graph_processing_implementation():
 
 
 def test_duplex3_tuning_is_live_and_persistent():
+    """Verify duplex3 tuning is live and persistent."""
     source = text("src/usbradioplus_channel_common.c")
     assert 'ADD_NUMBER("duplex", "duplex_local_repeat_level"' in source
     assert 'ADD_TEXT("duplex", "duplex_local_repeat_mode"' in source
@@ -570,6 +612,7 @@ def test_duplex3_tuning_is_live_and_persistent():
 
 
 def test_tuning_tone_uses_native_transmitter_path():
+    """Verify tuning tone uses native transmitter path."""
     module = text("src/chan_usbradioplus.c")
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     assert "plus_test_tone_enabled" in module
@@ -585,6 +628,7 @@ def test_tuning_tone_uses_native_transmitter_path():
 
 
 def test_native_ctcss_has_no_duplicate_signal_rendering_after_voice_processing():
+    """Verify native ctcss has no duplicate signal rendering after voice processing."""
     module = text("src/chan_usbradioplus.c")
     radio = (ROOT / "src/usbradioplus_radio.c").read_text()
     radio_header = (ROOT / "src/usbradioplus_radio.h").read_text()
@@ -629,6 +673,7 @@ def test_native_ctcss_has_no_duplicate_signal_rendering_after_voice_processing()
 
 
 def test_auxiliary_level_updates_selected_mixer():
+    """Verify auxiliary level updates selected mixer."""
     source = text("src/chan_usbradioplus.c")
     function = function_definition(source, "_menu_auxvoice")
     assert "if (o->txmixa == TX_OUT_AUX) {\n\t\to->txmixaset = i;" in function
@@ -637,6 +682,7 @@ def test_auxiliary_level_updates_selected_mixer():
 
 
 def test_tuning_commands_and_persistence_cover_all_levels():
+    """Verify tuning commands and persistence cover all levels."""
     module = text("src/chan_usbradioplus.c")
     utility = text("scripts/usbradioplus-tune")
     handler = function_definition(module, "tune_menusupport")
@@ -648,6 +694,7 @@ def test_tuning_commands_and_persistence_cover_all_levels():
 
 
 def test_installer_never_activates_or_restarts():
+    """Verify installer never activates or restarts."""
     source = text("Makefile")
     assert not re.search(r"sed\s+-i.*(?:modules|rpt)\.conf", source)
     assert not re.search(r"systemctl\s+(?:reload|restart)", source)
@@ -655,6 +702,7 @@ def test_installer_never_activates_or_restarts():
 
 
 def test_repository_uses_upstream_linux_layout():
+    """Verify repository uses upstream linux layout."""
     for path in ("src", "scripts", "examples", "man", "doc", "tests", "tests_py", "tools"):
         assert (ROOT / path).is_dir()
     for obsolete in ("channels", "configs", "utils", "vendor", "build-install.sh"):
@@ -663,6 +711,7 @@ def test_repository_uses_upstream_linux_layout():
 
 
 def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
+    """Verify release workflow uses debian asl packages and atomic tagging."""
     workflow = text(".github/workflows/release.yml")
     makefile = text("Makefile")
     base = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/"
@@ -681,6 +730,7 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
 
 
 def test_readme_is_a_short_project_entry_point():
+    """Verify readme is a short project entry point."""
     readme = text("README.md").lower()
     for phrase in (
         "replacement",
@@ -708,6 +758,7 @@ def test_readme_is_a_short_project_entry_point():
 
 
 def test_configuration_manuals_cover_parser_options():
+    """Verify configuration manuals cover parser options."""
     processing_man = text("man/usbradioplus.conf.5").lower()
 
     parser = text("src/usbradioplus_processing.c")
@@ -735,6 +786,7 @@ def test_configuration_manuals_cover_parser_options():
 
 
 def test_processing_options_use_stage_first_names():
+    """Verify processing options use stage first names."""
     canonical = text("examples/usbradioplus.conf.sample")
     tuner = text("scripts/usbradioplus-tune")
     manual = text("man/usbradioplus.conf.5")
@@ -784,6 +836,7 @@ def test_processing_options_use_stage_first_names():
 
 
 def test_example_files_cover_every_documented_option():
+    """Verify example files cover every documented option."""
     processing = text("examples/usbradioplus.conf.sample").lower()
 
     parser = text("src/usbradioplus_processing.c")
@@ -812,6 +865,7 @@ def test_example_files_cover_every_documented_option():
 
 
 def test_manual_sections_and_install_layout():
+    """Verify manual sections and install layout."""
     makefile = text("Makefile")
     assert not (ROOT / "man/usbradioplus.5").exists()
     assert text("man/usbradioplus.7").startswith(".TH USBRADIOPLUS 7")
@@ -825,6 +879,7 @@ def test_manual_sections_and_install_layout():
 
 
 def test_link_path_has_no_separate_highpass_filter():
+    """Verify link path has no separate highpass filter."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "plus_link_hpf" not in source
@@ -835,6 +890,7 @@ def test_link_path_has_no_separate_highpass_filter():
 
 
 def test_transmitter_has_only_final_brickwall_bandpass():
+    """Verify transmitter has only final brickwall bandpass."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "plus_tx_hpf" not in source
@@ -846,6 +902,7 @@ def test_transmitter_has_only_final_brickwall_bandpass():
 
 
 def test_fixed_pl_filter_precedes_local_dynamics():
+    """Verify fixed pl filter precedes local dynamics."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "struct txagc_config dynamics_cfg = chain.agc;" in source
@@ -858,6 +915,7 @@ def test_fixed_pl_filter_precedes_local_dynamics():
 
 
 def test_receive_bandpass_precedes_pl_filter():
+    """Verify receive bandpass precedes pl filter."""
     graph = text("src/txagc/avfilter_processor.c")
     receive = graph.index('graph_input = "rxbandpass"')
     pl_filter = graph.index("if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)")

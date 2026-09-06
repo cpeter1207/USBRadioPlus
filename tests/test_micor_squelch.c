@@ -1,9 +1,16 @@
+/** @file
+ * @brief Executable micor squelch regression and failure-path checks.
+ */
+
 #include "../src/usbradioplus_squelch.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
+/** @brief Prime the squelch model with no-carrier noise measurements.
+ * @param state Processor or stream state owned by the caller.
+ */
 static void establish_idle(struct urp_micor_squelch *state)
 {
 	int i;
@@ -11,6 +18,7 @@ static void establish_idle(struct urp_micor_squelch *state)
 		assert(urp_micor_squelch_update(state, 1, 10000, 7000, 500, 20));
 }
 
+/** @brief Verify immediate open and clean close. */
 static void test_immediate_open_and_clean_close(void)
 {
 	struct urp_micor_squelch state = {0};
@@ -19,6 +27,7 @@ static void test_immediate_open_and_clean_close(void)
 	assert(urp_micor_squelch_update(&state, 0, 10000, 7000, 500, 20));
 }
 
+/** @brief Verify weak signal has approximately 150 ms tail. */
 static void test_weak_signal_has_approximately_150_ms_tail(void)
 {
 	struct urp_micor_squelch state = {0};
@@ -30,6 +39,7 @@ static void test_weak_signal_has_approximately_150_ms_tail(void)
 	assert(urp_micor_squelch_update(&state, 0, 10000, 7000, 500, 20));
 }
 
+/** @brief Verify flutter cancels pending close. */
 static void test_flutter_cancels_pending_close(void)
 {
 	struct urp_micor_squelch state = {0};
@@ -43,6 +53,7 @@ static void test_flutter_cancels_pending_close(void)
 		assert(!urp_micor_squelch_update(&state, 0, 10000, 7000, 500, 20));
 }
 
+/** @brief Verify counter and threshold saturation. */
 static void test_counter_and_threshold_saturation(void)
 {
 	struct urp_micor_squelch state = {
@@ -62,6 +73,9 @@ static void test_counter_and_threshold_saturation(void)
 	assert(state.strong_signal);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_immediate_open_and_clean_close();

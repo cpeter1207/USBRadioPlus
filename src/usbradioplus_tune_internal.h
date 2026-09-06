@@ -1,14 +1,27 @@
+/** @file
+ * @brief Shared CLI calibration helpers for both Asterisk radio adapters.
+ */
+
 #ifndef USBRADIOPLUS_TUNE_INTERNAL_H
 #define USBRADIOPLUS_TUNE_INTERNAL_H
 
 #include <stddef.h>
 #include <sys/types.h>
 
+/** Read one response line from the Asterisk CLI process. */
 typedef int (*asterisk_line_reader)(char *cmd, char *str, int max);
+/** Read a complete Asterisk CLI response. */
 typedef int (*asterisk_response_reader)(char *cmd);
+/** Launch a command through the tuning host abstraction. */
 typedef int (*command_runner)(const char *command);
 
-enum { TX_OUT_OFF, TX_OUT_VOICE, TX_OUT_LSD, TX_OUT_COMPOSITE, TX_OUT_AUX };
+enum {
+	TX_OUT_OFF /**< Output disabled. */,
+	TX_OUT_VOICE /**< Transmit voice audio. */,
+	TX_OUT_LSD /**< Transmit CTCSS tone. */,
+	TX_OUT_COMPOSITE /**< Transmit voice plus CTCSS. */,
+	TX_OUT_AUX /**< Auxiliary voice audio. */
+};
 
 #ifdef URP_TUNE_TESTING
 extern const char *const mixer_type[];

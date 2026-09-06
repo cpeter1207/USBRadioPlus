@@ -1,14 +1,23 @@
+## @file
+## @brief Debian packaging regression checks.
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
+## Reusable workflow reference required by the code repository's callers.
 WORKFLOW_REF = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/{}@main"
 
 
 def read(path):
+    """Read a repository artifact as UTF-8 text.
+
+    @param path Filesystem path to inspect or update.
+    """
     return (ROOT / path).read_text(encoding="utf-8")
 
 
 def test_usbradioplus_debian_package_is_nonactivating():
+    """Verify usbradioplus debian package is nonactivating."""
     control = read("debian/control")
     rules = read("debian/rules")
     assert "Architecture: amd64 arm64" in control
@@ -27,6 +36,7 @@ def test_usbradioplus_debian_package_is_nonactivating():
 
 
 def test_rnnoise_is_a_companion_shared_library_package():
+    """Verify rnnoise is a companion shared library package."""
     control = read("packaging/rnnoise/debian/control")
     assert "Package: librnnoise0" in control
     assert "Package: librnnoise-dev" in control
@@ -34,6 +44,7 @@ def test_rnnoise_is_a_companion_shared_library_package():
 
 
 def test_repository_workflow_builds_and_verifies_all_targets():
+    """Verify repository workflow builds and verifies all targets."""
     workflow = read(".github/workflows/packages.yml")
     release = read(".github/workflows/release.yml")
     assert f"uses: {WORKFLOW_REF.format('packages.yml')}" in workflow
@@ -48,6 +59,7 @@ def test_repository_workflow_builds_and_verifies_all_targets():
 
 
 def test_static_site_can_publish_without_rebuilding_packages():
+    """Verify static site can publish without rebuilding packages."""
     workflow = read(".github/workflows/site.yml")
     assert f"uses: {WORKFLOW_REF.format('site.yml')}" in workflow
     assert "contents: write" in workflow

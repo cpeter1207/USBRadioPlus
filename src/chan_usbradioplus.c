@@ -62,36 +62,63 @@
 #endif
 
 #define CHAN_USBRADIO 1 /* Enable the channel-driver trace interface. */
+
 #define DEBUG_USBRADIO 0
+
 #define DEBUG_CAPTURES 1
+
 #define DEBUG_CAP_RX_OUT 0
+
 #define DEBUG_CAP_TX_OUT 0
+
 #define DEBUG_FILETEST 0
+
 #define PLUS_LINK_NATIVE_TARGET_SAMPLES (URP_NATIVE_SAMPLES * 3)
+
 #define PLUS_DYNAMICS_SAMPLES 48 /* 1 ms control blocks at 48 kHz */
+
 #define DUPLEX3_LEVEL_MAX 999
+
 #define RX_CAP_RAW_FILE "/tmp/rx_cap_in.pcm"
+
 #define RX_CAP_TRACE_FILE "/tmp/rx_trace.pcm"
+
 #define RX_CAP_OUT_FILE "/tmp/rx_cap_out.pcm"
+
 #define TX_CAP_RAW_FILE "/tmp/tx_cap_in.pcm"
+
 #define TX_CAP_TRACE_FILE "/tmp/tx_trace.pcm"
+
 #define TX_CAP_OUT_FILE "/tmp/tx_cap_out.pcm"
 
 #define DELIMCHR ','
+
 #define QUOTECHR 34
 
 #define DEFAULT_ECHO_MAX 1000 /* 20 secs of echo buffer, max */
+
 #define DEFAULT_ECHO_SECONDS (DEFAULT_ECHO_MAX / 50)
+
 #define DEFAULT_TX_SOFT_LIMITER_SETPOINT 12000
+
 #define PP_MASK 0xbffc
+
 #define PP_PORT "/dev/parport0"
+
 #define PP_IOPORT 0x378
+
 #define RPT_TO_STRING(x) #x
+
 #define S_FMT(x) "%" RPT_TO_STRING(x) "s "
-#define N_FMT(duf) "%30" #duf		       /* Maximum sscanf conversion to numeric strings */
-#define RX_ON_DELAY_MAX 60000		       /* in ms, 60000ms, 60 seconds, 1 minute */
-#define TX_OFF_DELAY_MAX 60000		       /* in ms 60000ms, 60 seconds, 1 minute */
-#define MS_PER_FRAME 20			       /* 20 ms frames */
+
+#define N_FMT(duf) "%30" #duf /* Maximum sscanf conversion to numeric strings */
+
+#define RX_ON_DELAY_MAX 60000 /* in ms, 60000ms, 60 seconds, 1 minute */
+
+#define TX_OFF_DELAY_MAX 60000 /* in ms 60000ms, 60 seconds, 1 minute */
+
+#define MS_PER_FRAME 20 /* 20 ms frames */
+
 #define MS_TO_FRAMES(ms) ((ms) / MS_PER_FRAME) /* convert ms to frames */
 
 #include "usbradioplus_radio.h"
@@ -106,6 +133,7 @@
 #ifdef URP_CHANNEL_UNIT_TEST
 #define URP_CHANNEL_LOCAL
 #else
+
 #define URP_CHANNEL_LOCAL static
 #endif
 #include "usbradioplus_repeat.h"
@@ -144,7 +172,7 @@ _Static_assert((int)URP_CARRIER_PARALLEL_INVERTED == (int)CD_PP_INVERT,
 _Static_assert((int)URP_CTCSS_PARALLEL_INVERTED == (int)SD_PP_INVERT, "CTCSS-source enum mismatch");
 _Static_assert((int)URP_TONE_OFF_REMOVE == (int)TOC_NOTONE, "tone-off enum mismatch");
 
-/*! \brief Global jitterbuffer configuration - by default, jb is disabled */
+/** Default Asterisk jitter-buffer settings. */
 static struct ast_jb_conf default_jbconf = {
 	.flags = 0,
 	.max_size = -1,
@@ -152,6 +180,7 @@ static struct ast_jb_conf default_jbconf = {
 	.impl = "",
 };
 
+/** Asterisk jitter-buffer settings applied to newly created channels. */
 struct ast_jb_conf global_jbconf;
 
 #define URP_LEGACY_TEST_TONE_PEAK 7518.0
@@ -159,55 +188,67 @@ struct ast_jb_conf global_jbconf;
 #define CONFIG "usbradioplus.conf" /* default config file */
 
 /* file handles for writing debug audio packets */
+/** frxoutraw: Receiver output capture stream. */
+/** frxcaptrace: Receiver trace capture stream. */
+/** Receiver raw input capture stream. */
 FILE *frxcapraw = NULL, *frxcaptrace = NULL, *frxoutraw = NULL;
+/** ftxoutraw: Transmitter output capture stream. */
+/** ftxcaptrace: Transmitter trace capture stream. */
+/** Transmitter raw input capture stream. */
 FILE *ftxcapraw = NULL, *ftxcaptrace = NULL, *ftxoutraw = NULL;
 
+/** Mutex protecting legacy USB-device allocation. */
 AST_MUTEX_DEFINE_STATIC(usb_dev_lock);
+/** Mutex protecting shared parallel-port output state. */
 ast_mutex_t pp_lock = AST_MUTEX_INIT_VALUE;
 
 /* variables for communicating with the parallel port */
+/** Cached parallel-port output byte. */
 int8_t pp_val;
+/** Parallel outputs with active timed pulses. */
 int8_t pp_pulsemask;
+/** Previously applied parallel-port pulse mask. */
 int8_t pp_lastmask;
+/** Remaining pulse duration for each parallel output. */
 int pp_pulsetimer[32];
+/** Nonzero when parallel-port hardware is available. */
 int haspp;
+/** Open parallel-port device descriptor. */
 int ppfd;
+/** Parallel-port device path. */
 char pport[50];
+/** Parallel-port I/O base address. */
 int pbase;
+/** Stop request observed by the parallel-port pulse worker. */
 char stoppulser;
+/** Nonzero when any parallel-port output is configured. */
 URP_CHANNEL_LOCAL char hasout;
+/** Parallel-port pulse worker thread. */
 pthread_t pulserid;
 
-/*! \brief type of signal detection used for carrier (cd) or ctcss (sd) */
+/** Names of supported carrier-detection assignments. */
 const char *const cd_signal_type[] = {"no", "dsp", "vox", "usb", "usbinvert", "pp", "ppinvert"};
+/** Names of supported subaudible signaling-source assignments. */
 const char *const sd_signal_type[] = {"no", "usb", "usbinvert", "dsp", "pp", "ppinvert"};
 
-/*! \brief demodulation type */
-
-/*! \brief mixer type */
-
-/*!
- * \brief Descriptor for one of our channels.
- * There is one used for 'default' values (from the [general] entry in
- * the configuration file), and then one instance for each device
- * (the default is cloned from [general], others are only created
- * if the relevant section exists).
- */
 #include "usbradioplus_channel_private.h"
 #ifdef URP_CHANNEL_UNIT_TEST
 #include "usbradioplus_channel_test_shims.h"
 #endif
 
 #define plus_parrot plus_parrot_state.audio
+
 #define plus_parrot_capacity plus_parrot_state.capacity
+
 #define plus_parrot_count plus_parrot_state.count
+
 #define plus_parrot_play plus_parrot_state.play
+
 #define plus_parrot_playing plus_parrot_state.playing
+
 #define plus_parrot_truncated plus_parrot_state.truncated
 
-/*!
- * \brief Default channel descriptor
- */
+/** Template defaults and head of the configured radio-channel list. */
 struct chan_usbradio_pvt usbradio_default = {
 	.sounddev = -1,
 	.duplex = M_UNSET,
@@ -245,12 +286,21 @@ void usbradioplus_test_set_module_info(struct ast_module_info *info)
 
 /*	DECLARE FUNCTION PROTOTYPES	*/
 
+/** @brief Apply the configured USB-interface wiring map to the channel's HID state.
+ * @param o Private state of the selected radio channel.
+ * @return Zero on success; nonzero if configuration fails.
+ */
 int hidhdwconfig(struct chan_usbradio_pvt *o);
 URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode);
 URP_CHANNEL_LOCAL struct ast_channel *usbradio_request(const char *type, struct ast_format_cap *cap,
 						       const struct ast_assigned_ids *assignedids,
 						       const struct ast_channel *requestor,
 						       const char *data, int *cause);
+/** @brief Interpret app_rpt radio-control text commands.
+ * @param c Asterisk radio channel.
+ * @param text Radio-control command text.
+ * @return Zero on success; nonzero for an invalid command.
+ */
 URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text);
 URP_CHANNEL_LOCAL int usbradio_hangup(struct ast_channel *c);
 URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *chan);
@@ -258,6 +308,10 @@ URP_CHANNEL_LOCAL int usbradio_call(struct ast_channel *c, const char *dest, int
 URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *chan, struct ast_frame *f);
 void radio_dump(struct chan_usbradio_pvt *o, int fd);
 
+/** @brief Apply a channel's settings to its radio detector and signaling engine.
+ * @param o Private state of the selected radio channel.
+ * @return Zero on success; nonzero if configuration fails.
+ */
 int radio_config(struct chan_usbradio_pvt *o);
 
 struct chan_usbradio_pvt *store_config(const char *ctg);
@@ -267,17 +321,16 @@ static int RxTestIt(struct chan_usbradio_pvt *o);
 
 #include "usbradioplus_channel_common.h"
 
+/** Name of the radio selected for interactive tuning. */
 char *usbradio_active; /* the active device */
 
+/** Parallel input-pin to register-bit mapping. */
 URP_CHANNEL_LOCAL const int ppinshift[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 5, 4, 0, 3};
 
+/** Asterisk channel technology description. */
 static const char tdesc[] = "USB (CM108) Radio Channel Driver";
 
-/*!
- * \brief Asterisk channel technology struct.
- * This tells Asterisk the functions to call when
- * it needs to interact with our module.
- */
+/** Asterisk channel technology callbacks. */
 static struct ast_channel_tech usbradio_tech = {
 	.type = "RadioPlus",
 	.description = tdesc,
@@ -295,27 +348,6 @@ static struct ast_channel_tech usbradio_tech = {
 	.setoption = usbradio_setoption,
 };
 
-/*!
- * \brief Configure our private structure based on the
- * found hardware type.
- * \param o		Channel private data.
- * \returns 0	Always returns zero.
- */
-
-/*!
- * \brief Indicate that PTT is activate.
- *	This causes the hidthead to to exit from the loop timer and
- *	evaluate the gpio pins.
- * \param o		Channel private data.
- */
-
-/*!
- * \brief Search our configured channels to find the
- *	one with the matching USB descriptor.
- *	Print a message if the descriptor was not found.
- * \param dev		USB descriptor to locate.
- * \returns		Private structure that matches or NULL if not found.
- */
 struct chan_usbradio_pvt *find_desc(const char *dev)
 {
 	struct chan_usbradio_pvt *o = NULL;
@@ -333,11 +365,6 @@ struct chan_usbradio_pvt *find_desc(const char *dev)
 	return o;
 }
 
-/*!
- * \brief Search installed devices for a match with
- *	one of our configured channels.
- * \returns		Matching device string, or NULL.
- */
 URP_CHANNEL_LOCAL char *find_installed_usb_match(void)
 {
 	struct chan_usbradio_pvt *o = NULL;
@@ -353,42 +380,6 @@ URP_CHANNEL_LOCAL char *find_installed_usb_match(void)
 	return match;
 }
 
-/*!
- * \brief Load settings for a specific node
- * \param o
- * \param cfg If provided, will use the provided config. If NULL, cfg will be opened automatically.
- * \param reload 0 for first load, 1 for reload
- */
-
-/*!
- * \brief USB sound device GPIO processing thread
- * This thread is responsible for finding and associating the node with the
- * associated usb sound card device.  It performs setup and initialization of
- * the USB device.
- *
- * The CM-XXX USB devices can support up to 8 GPIO pins that can be input or output.
- * It continuously polls the input GPIO pins on the device to see if they have changed.
- * The default GPIOs for COS, and CTCSS provide the basic functionality. An asterisk
- * text frame is raised in the format 'GPIO%d %d' when GPIOs change. Polling generally
- * occurs every 50 milliseconds.
- *
- * The output PTT (push to talk) GPIO, along with other GPIO outputs are updated as
- * required.
- *
- * If the user has enabled the parallel port for GPIOs, they are polled and updated
- * as appropriate.  An asterisk text frame is raised in the format 'PP%d %d' when
- * GPIOs change. (Parallel port support is not available for all platforms.)
- *
- * This routine also reads and writes to the EPROM attached to the USB device.  The
- * EPROM holds the configuration information (sound level settings) for this device.
- *
- * This routine updates the lasthidtimer during setup and processing.  In the event
- * that this timer update does not occur over a period of 3 seconds, app_rpt will
- * kill the node and restart everything.  This helps to detect problems with a
- * hung USB device.
- *
- * \param arg		chan_usbradio_pvt structure associated with this thread.
- */
 URP_CHANNEL_LOCAL void *hidthread(void *arg)
 {
 	unsigned char buf[4], bufsave[4], keyed, ctcssed;
@@ -1092,11 +1083,6 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 	pthread_exit(0);
 }
 
-/*!
- * \brief Get the number of blocks used in the audio output channel.
- * \param o		Channel private data.
- * \returns		Number of blocks that have been used.
- */
 URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
 {
 	struct audio_buf_info info;
@@ -1127,14 +1113,6 @@ URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
 	return o->total_blocks - info.fragments;
 }
 
-/*!
- * \brief Write a full frame of audio data to the sound card device.
- * \note The input data must be formatted as stereo at 48000 samples per second.
- *		 FRAME_SIZE * 2 * 2 * 6 (2 bytes per sample, 2 channels, 6 for upsample to 48K)
- * \param o		chan_usbradio_pvt.
- * \param data	Audio data to write.
- * \returns		Number bytes written.
- */
 URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
 {
 	int res;
@@ -1195,17 +1173,6 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	return res;
 }
 
-/*!
- * \brief Open the sound card device.
- * If the device is already open, this will close the device
- * and open it again.
- * It initializes the device based on our requirements and triggers
- * reads and writes.
- * \param o		Channel private data.
- * \param mode	The mode to open the file.  This is the flags argument to open.
- * \retval 0	Success.
- * \retval -1	Failed.
- */
 URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
 {
 	int fmt, desired, res, fd;
@@ -1313,36 +1280,13 @@ URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
 	return 0;
 }
 
-/*!
- * \brief Asterisk digit begin function.
- * \param c				Asterisk channel.
- * \param digit			Digit processed.
- * \retval 0
- */
-
-/*!
- * \brief Asterisk digit end function.
- * \param c				Asterisk channel.
- * \param digit			Digit processed.
- * \param duration		Duration of the digit.
- * \retval -1
- */
-
-/*!
- * \brief Asterisk text function.
- * \note SETFREQ - sets spi programmable transceiver
- *  	 SETCHAN - sets binary parallel transceiver
- * \param c				Asterisk channel.
- * \param text			Text message to process.
- * \retval 0			If successful.
- * \retval -1			If unsuccessful.
- */
 URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
 {
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 	char cmd[16], pwr;
 	int cnt, i, j;
 	double tx, rx;
+
 #define STR_SZ 15 /* Size of text strings */
 	char rxs[STR_SZ + 1], txs[STR_SZ + 1], txpl[STR_SZ + 1], rxpl[STR_SZ + 1];
 	if (!o) {
@@ -1477,14 +1421,6 @@ URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
 	return 0;
 }
 
-/*!
- * \brief USBRadio call.
- * \param c				Asterisk channel.
- * \param dest			Destination.
- * \param timeout		Timeout.
- * \retval -1 			if not successful.
- * \retval 0 			if successful.
- */
 URP_CHANNEL_LOCAL int usbradio_call(struct ast_channel *c, const char *dest, int timeout)
 {
 	(void)dest;
@@ -1498,17 +1434,6 @@ URP_CHANNEL_LOCAL int usbradio_call(struct ast_channel *c, const char *dest, int
 	return 0;
 }
 
-/*!
- * \brief Answer the call.
- * \param c				Asterisk channel.
- * \retval 0 			If successful.
- */
-
-/*!
- * \brief Asterisk hangup function.
- * \param c			Asterisk channel.
- * \retval 0		Always returns 0.
- */
 URP_CHANNEL_LOCAL int usbradio_hangup(struct ast_channel *c)
 {
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
@@ -1524,14 +1449,6 @@ URP_CHANNEL_LOCAL int usbradio_hangup(struct ast_channel *c)
 	pthread_join(o->hidthread, NULL);
 	return 0;
 }
-
-/*!
- * \brief Asterisk write function.
- * This routine handles asterisk to radio frames.
- * \param c			Asterisk channel.
- * \param f			Asterisk frame to process.
- * \retval 0			Successful.
- */
 
 URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 {
@@ -1579,11 +1496,6 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 	return 0;
 }
 
-/*!
- * \brief Asterisk read function.
- * \param c			Asterisk channel.
- * \retval 				Asterisk frame.
- */
 URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 {
 	int res, oldpttout;
@@ -1992,44 +1904,6 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 	return f;
 }
 
-/*!
- * \brief Asterisk fixup function.
- * \param oldchan		Old asterisk channel.
- * \param newchan		New asterisk channel.
- * \retval 0			Always returns 0.
- */
-
-/*!
- * \brief Asterisk indicate function.
- * This is used to indicate tx key / unkey.
- * \param c				Asterisk channel.
- * \param cond			Condition.
- * \param data			Data.
- * \param datalen		Data length.
- * \retval 0			If successful.
- * \retval -1			For hangup.
- */
-
-/*!
- * \brief Asterisk setoption function.
- * \param chan			Asterisk channel.
- * \param option		Option.
- * \param data			Data.
- * \param datalen		Data length.
- * \retval 0			If successful.
- * \retval -1			If failed.
- */
-
-/*!
- * \brief Start a new usbradio call.
- * \param o				Private structure.
- * \param ext			Extension.
- * \param ctx			Context.
- * \param state			State.
- * \param assignedids	Unique ID string assigned to the channel.
- * \param requestor		Asterisk channel.
- * \return 				Asterisk channel.
- */
 URP_CHANNEL_LOCAL struct ast_channel *usbradio_new(struct chan_usbradio_pvt *o, char *ext,
 						   char *ctx, int state,
 						   const struct ast_assigned_ids *assignedids,
@@ -2069,19 +1943,6 @@ URP_CHANNEL_LOCAL struct ast_channel *usbradio_new(struct chan_usbradio_pvt *o, 
 	return c;
 }
 
-/*!
- * \brief USBRadio request from Asterisk.
- * This is a standard Asterisk function - requester.
- * Asterisk calls this function to to setup private data structures.
- * \param type			Type of channel to request.
- * \param cap			Format capabilities for the channel.
- * \param assignedids	Unique ID string to assign to the channel.
- * \param requestor		Channel asking for data.
- * \param data			Destination of the call.
- * \param cause			Cause of failure.
- * \retval NULL			Failure
- * \return				ast_channel if successful
- */
 URP_CHANNEL_LOCAL struct ast_channel *usbradio_request(const char *type, struct ast_format_cap *cap,
 						       const struct ast_assigned_ids *assignedids,
 						       const struct ast_channel *requestor,
@@ -2123,29 +1984,6 @@ URP_CHANNEL_LOCAL struct ast_channel *usbradio_request(const char *type, struct 
 	return c;
 }
 
-/*!
- * \brief Process Asterisk CLI request to key radio.
- * \param fd			Asterisk CLI fd
- * \param argc			Number of arguments
- * \param argv			Arguments
- * \return	CLI success, showusage, or failure.
- */
-
-/*!
- * \brief Process Asterisk CLI request to unkey radio.
- * \param fd			Asterisk CLI fd
- * \param argc			Number of arguments
- * \param argv			Arguments
- * \return	CLI success, showusage, or failure.
- */
-
-/*!
- * \brief Process Asterisk CLI request to show or set active USB device.
- * \param fd			Asterisk CLI fd
- * \param argc			Number of arguments
- * \param argv			Arguments
- * \return	Cli success, showusage, or failure.
- */
 URP_CHANNEL_LOCAL int radio_active(int fd, int argc, const char *const *argv)
 {
 	if (argc == 2) {
@@ -2180,12 +2018,6 @@ URP_CHANNEL_LOCAL int radio_active(int fd, int argc, const char *const *argv)
 	return RESULT_SUCCESS;
 }
 
-/*!
- * \brief Process Asterisk CLI request to swap usb devices
- * \param fd			Asterisk CLI fd
- * \param other			Other device.
- * \return	Cli success, showusage, or failure.
- */
 int usb_device_swap(int fd, const char *other)
 {
 	int d;
@@ -2223,105 +2055,6 @@ int usb_device_swap(int fd, const char *other)
 	return 0;
 }
 
-/*!
- * \brief Send 3 second test tone.
- * \param fd			Asterisk cli fd
- * \param o				Private struct.
- * \param intflag		Flag to indicate the type of wait.
- */
-
-/*!
- * \brief Process asterisk CLI request radio tune.
- * \param fd			Asterisk CLI fd
- * \param argc			Number of arguments
- * \param argv			Arguments
- * \return	CLI success, showusage, or failure.
- */
-
-/*!
- * \brief Set transmit CTCSS modulation level.
- *	Set the transmit CTCSS modulation level.  Adjust the mixer output or
- *	internal gain depending on the output type.
- *	Setting ranges is 0.0 to 0.9.
- *
- * \param o				chan_usbradio structure.
- * \return	0			Always returns zero.
- */
-
-/*!
- * \brief Set transmit soft limiting threshold.
- * Validate the configured transmitter soft-limiter setpoint.
- *
- *
- * \param o				chan_usbradio structure.
- * \param setpoint      A value which indicates the onset of soft limiting.
- * \return			    zero if successful, -1 if otherwise
- */
-
-/*!
- * \brief Process Asterisk CLI request to set detector debug level.
- * \param fd			Asterisk CLI fd
- * \param argc			Number of arguments
- * \param argv			Arguments
- * \return	CLI success, showusage, or failure.
- */
-
-/*!
- * \brief Store receive demodulator setting.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Store tx mixer A setting.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Store tx mixer B setting.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Store receive carrier detect type.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Store receiver gain setting.
- * \param o				Private struct.
- * \param s				New setting.
- */
-/*!
- * \brief Store the receive input gain.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Store transmit output tone turn off type.
- * \param o				Private struct.
- * \param s				New setting.
- */
-
-/*!
- * \brief Send test tone.
- * \param fd			Asterisk CLI fd
- * \param o				Private struct.
- * \param intflag		Flag to indicate the type of wait.
- */
-
-/*!
- * \brief Adjust input attenuator with maximum signal input.
- *
- * \param fd			Asterisk CLI fd
- * \param o				chan_usbradio structure.
- * \param setsql		Setting for squelch.
- * \param intflag		Flag to indicate how ast_radio_wait_or_poll waits.
- */
 void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 {
 	const int settingmin = 1;
@@ -2476,26 +2209,6 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 	o->radio->b.tuning = 0;
 }
 
-/*!
- * \brief Process Asterisk CLI request for receiver deviation display.
- * \param fd			Asterisk CLI fd
- * \param o				Private struct
- * \return	CLI success, showusage, or failure.
- */
-
-/*!
- * \brief Process asterisk cli request for cos, ctcss, and ptt live display.
- * \param fd			Asterisk cli fd
- * \param o				Private struct
- * \return	Cli success, showusage, or failure.
- */
-
-/*!
- * \brief Set received voice level.
- * \param fd			Asterisk CLI fd.
- * \param o				chan_usbradio structure.
- * \param str			New voice level.
- */
 void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 {
 	int i;
@@ -2533,11 +2246,6 @@ void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 	ast_cli(fd, "Changed rx voice setting to %d\n", i);
 }
 
-/*!
- * \brief Print settings.
- * \param fd			Asterisk CLI fd
- * \param o				Private struct.
- */
 void _menu_print(int fd, struct chan_usbradio_pvt *o)
 {
 	ast_cli(fd, "Active radio interface is [%s]\n", usbradio_active);
@@ -2585,78 +2293,6 @@ void _menu_print(int fd, struct chan_usbradio_pvt *o)
 	ast_cli(fd, "Tx Tone Level currently set to %d\n", o->txctcssadj);
 }
 
-/*!
- * \brief Set squelch level.
- * \param fd			Asterisk CLI fd.
- * \param o				chan_usbradio structure.
- * \param str			New squelch level.
- */
-
-/*!
- * \brief Set tx voice level.
- * \param fd			Asterisk CLI fd.
- * \param o				chan_usbradio structure.
- * \param str			New voice level.
- */
-
-/*!
- * \brief Set aux voice level.
- * \param fd			Asterisk CLI fd.
- * \param o				chan_usbradio structure.
- * \param str			New voice level.
- */
-
-/*!
- * \brief Set tx tone level.
- * \param fd			Asterisk CLI fd.
- * \param o				chan_usbradio structure.
- * \param str			New voice level.
- */
-
-/*!
- * \brief Process tune menu commands.
- *
- * susb tune menusupport X - where X is one of the following:
- *		0 - get flatrx, ctcssenable, echomode
- *		1 - get node names that are configured in usbradioplus.conf
- *		2 - print parameters
- *		3 - get node names that are configured in usbradioplus.conf, except current device
- *		a - receive rx level
- *		b - receiver tune display
- *		c - receive level
- *		d - receive ctcss level
- *		e - squelch level
- *		f - voice level
- *		g - aux level
- *		h - transmit a test tone
- *		i - tune receive level
- *		j - save current settings for the selected node
- *		k - change echo mode
- *		l - generate test tone
- *		o - change carrier from
- *		p - change ctcss from
- *		q - change rx on delay
- *		r - change tx off delay
- *		s - change tx pre limiting
- *		t - change tx limiting only
- *		u - change rx demodulation
- *		v - view cos, ctcss and ptt status
- *		w - change tx mixer a
- *		x - change tx mixer b
- *		y - receive audio statistics display
- *		z - transmit audio statistics display
- *
- * \param fd			Asterisk CLI fd
- * \param o				Private struct.
- * \param cmd			Command to process.
- */
-/**
- * \brief Return the hardware mixer's adjustment limits.
- * \param channel Channel whose mixer limits are requested.
- * \param microphone_max Receiver capture-mixer maximum.
- * \param speaker_max Transmit playback-mixer maximum.
- * \param microphone_playback_max Hardware sidetone-mixer maximum.
- */
 // cppcheck-suppress constParameterPointer -- modern backend locks channel device state.
 void usbradioplus_tune_mixer_limits(struct chan_usbradio_pvt *channel, int *microphone_max,
 				    int *speaker_max, int *microphone_playback_max)
@@ -2687,12 +2323,6 @@ void tune_write(struct chan_usbradio_pvt *o)
 	}
 }
 
-/*!
- * \brief Update the ALSA mixer settings
- * Update the ALSA mixer settings.
- *
- * \param o		chan_usbradio structure.
- */
 void mixer_write(struct chan_usbradio_pvt *o)
 {
 	int mic_setting;
@@ -2722,13 +2352,6 @@ void mixer_write(struct chan_usbradio_pvt *o)
 	ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_SW, 1, 0);
 }
 
-/*!
- * \brief Adjust DSP multiplier
- * Adjusts the DSP multiplier to add resolution to the tx level adjustment
- *
- * \param		chan_usbradio structure.
- */
-
 /**
  * \brief Print an integer expression for radio_dump().
  * \param x Expression to print.
@@ -2737,24 +2360,22 @@ void mixer_write(struct chan_usbradio_pvt *o)
 	{                                                                                          \
 		ast_cli(fd, #x " = %d\n", x);                                                      \
 	}
+
 #define pp(x)                                                                                      \
 	{                                                                                          \
 		ast_cli(fd, #x " = %p\n", x);                                                      \
 	}
+
 #define ps(x)                                                                                      \
 	{                                                                                          \
 		ast_cli(fd, #x " = %s\n", x);                                                      \
 	}
+
 #define pf(x)                                                                                      \
 	{                                                                                          \
 		ast_cli(fd, #x " = %f\n", x);                                                      \
 	}
 
-/*!
- * \brief Dump radio configuration and detector state.
- * \param o				Private struct.
- * \param fd			Asterisk CLI output descriptor.
- */
 void radio_dump(struct chan_usbradio_pvt *o, int fd)
 {
 	urp_radio_state *p;
@@ -2872,20 +2493,6 @@ void radio_dump(struct chan_usbradio_pvt *o, int fd)
 	takes data from a chan_usbradio_pvt struct (e.g. o->)
 	and configures the native radio detector
 */
-/*!
- * \brief Configure the native radio detector and signaling subsystem.
- * \param o			Private struct.
- * \retval 0		Success.
- * \retval 1		Failure.
- */
-
-/*!
- * \brief Store configuration.
- *	Initializes chan_usbradio and loads it with the configuration data.
- * \param cfg			ast_config structure.
- * \param ctg			Category.
- * \return				chan_usbradio_pvt.
- */
 
 struct chan_usbradio_pvt *store_config(const char *ctg)
 {
@@ -3103,11 +2710,6 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 	return o;
 }
 
-/*!
- * \brief Turns integer response to char CLI response
- * \param r				Response.
- * \return	CLI success, showusage, or failure.
- */
 URP_CHANNEL_LOCAL char *res2cli(int r)
 {
 	switch (r) {
@@ -3120,13 +2722,6 @@ URP_CHANNEL_LOCAL char *res2cli(int r)
 	}
 }
 
-/*!
- * \brief Handle Asterisk CLI request to key transmitter.
- * \param e				Asterisk CLI entry.
- * \param cmd			Cli command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_console_key(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a)
 {
@@ -3144,13 +2739,6 @@ URP_CHANNEL_LOCAL char *handle_console_key(struct ast_cli_entry *e, int cmd, str
 	return res2cli(console_key(a->fd, a->argc, a->argv));
 }
 
-/*!
- * \brief Handle Asterisk CLI request to unkey transmitter.
- * \param e				Asterisk CLI entry.
- * \param cmd			CLI command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_console_unkey(struct ast_cli_entry *e, int cmd,
 					     // cppcheck-suppress constParameterCallback
@@ -3170,13 +2758,6 @@ URP_CHANNEL_LOCAL char *handle_console_unkey(struct ast_cli_entry *e, int cmd,
 	return res2cli(console_unkey(a->fd, a->argc, a->argv));
 }
 
-/*!
- * \brief Handle Asterisk CLI request for usb tune command.
- * \param e				Asterisk CLI entry.
- * \param cmd			CLI command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_radio_tune(struct ast_cli_entry *e, int cmd, struct ast_cli_args *a)
 {
@@ -3209,13 +2790,6 @@ URP_CHANNEL_LOCAL char *handle_radio_tune(struct ast_cli_entry *e, int cmd, stru
 	return res2cli(radio_tune(a->fd, a->argc, a->argv));
 }
 
-/*!
- * \brief Handle Asterisk CLI request active device command.
- * \param e				Asterisk CLI entry.
- * \param cmd			CLI command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_radio_active(struct ast_cli_entry *e, int cmd,
 					    // cppcheck-suppress constParameterCallback
@@ -3239,13 +2813,6 @@ URP_CHANNEL_LOCAL char *handle_radio_active(struct ast_cli_entry *e, int cmd,
 	return res2cli(radio_active(a->fd, a->argc, a->argv));
 }
 
-/*!
- * \brief Handle Asterisk CLI request for radio show settings.
- * \param e				Asterisk CLI entry.
- * \param cmd			CLI command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_show_settings(struct ast_cli_entry *e, int cmd,
 					     // cppcheck-suppress constParameterCallback
@@ -3271,13 +2838,6 @@ URP_CHANNEL_LOCAL char *handle_show_settings(struct ast_cli_entry *e, int cmd,
 	return RESULT_SUCCESS;
 }
 
-/*!
- * \brief Handle Asterisk CLI request to set xdebug.
- * \param e				Asterisk CLI entry.
- * \param cmd			CLI command type.
- * \param a				Asterisk CLI arguments.
- * \return	CLI success or failure.
- */
 // cppcheck-suppress constParameterCallback -- Asterisk fixes this callback signature.
 URP_CHANNEL_LOCAL char *handle_set_dsp_debug(struct ast_cli_entry *e, int cmd,
 					     // cppcheck-suppress constParameterCallback
@@ -3441,6 +3001,7 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 	return CLI_SUCCESS;
 }
 
+/** Asterisk radio CLI command registrations. */
 static struct ast_cli_entry cli_usbradio[] = {
 	AST_CLI_DEFINE(handle_console_key, "Simulate Rx Signal Present"),
 	AST_CLI_DEFINE(handle_console_unkey, "Simulate Rx Signal Loss"),
@@ -3456,12 +3017,6 @@ URP_CHANNEL_LOCAL void usbradio_start_parallel_pulser(void)
 	if (urp_parallel_pulser_needed(haspp, hasout))
 		ast_pthread_create_background(&pulserid, NULL, pulserthread, NULL);
 }
-
-/*!
- * \brief Load configuration.
- * \param reload		Flag to indicate if we are reloading.
- * \return				Success or failure.
- */
 
 URP_CHANNEL_LOCAL int load_module(void)
 {
@@ -3590,3 +3145,136 @@ AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "USB Radio Plus Channel D
 		.support_level = AST_MODULE_SUPPORT_EXTENDED, .load = load_module,
 		.unload = unload_module, .reload = reload_module, .requires = "res_usbradio", );
 #endif
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def CHAN_USBRADIO
+ * @brief Enable the channel-driver trace interface.
+ */
+/** @def DEBUG_USBRADIO
+ * @brief Build-time radio driver debug selection.
+ */
+/** @def DEBUG_CAPTURES
+ * @brief Build-time diagnostic audio-capture enable.
+ */
+/** @def DEBUG_CAP_RX_OUT
+ * @brief Build-time receiver output-capture enable.
+ */
+/** @def DEBUG_CAP_TX_OUT
+ * @brief Build-time transmitter output-capture enable.
+ */
+/** @def DEBUG_FILETEST
+ * @brief Build-time file-input diagnostic selection.
+ */
+/** @def PLUS_LINK_NATIVE_TARGET_SAMPLES
+ * @brief Target occupancy of the native transmitter FIFO in samples.
+ */
+/** @def PLUS_DYNAMICS_SAMPLES
+ * @brief 1 ms control blocks at 48 kHz
+ */
+/** @def DUPLEX3_LEVEL_MAX
+ * @brief Maximum normalized local-repeat level.
+ */
+/** @def RX_CAP_RAW_FILE
+ * @brief Receiver cap raw file path.
+ */
+/** @def RX_CAP_TRACE_FILE
+ * @brief Receiver cap trace file path.
+ */
+/** @def RX_CAP_OUT_FILE
+ * @brief Receiver cap out file path.
+ */
+/** @def TX_CAP_RAW_FILE
+ * @brief Transmitter cap raw file path.
+ */
+/** @def TX_CAP_TRACE_FILE
+ * @brief Transmitter cap trace file path.
+ */
+/** @def TX_CAP_OUT_FILE
+ * @brief Transmitter cap out file path.
+ */
+/** @def DELIMCHR
+ * @brief Configuration token delimiter.
+ */
+/** @def QUOTECHR
+ * @brief Configuration quoted-string delimiter.
+ */
+/** @def DEFAULT_ECHO_MAX
+ * @brief Default app_rpt-rate echo capacity in frames.
+ */
+/** @def DEFAULT_ECHO_SECONDS
+ * @brief Default maximum echo recording duration in seconds.
+ */
+/** @def DEFAULT_TX_SOFT_LIMITER_SETPOINT
+ * @brief Default normalized final-limiter calibration setpoint.
+ */
+/** @def PP_MASK
+ * @brief Parallel-port bits reserved by radio control.
+ */
+/** @def PP_PORT
+ * @brief Default parallel-port device index.
+ */
+/** @def PP_IOPORT
+ * @brief Default parallel-port I/O base address.
+ */
+/** @def RPT_TO_STRING
+ * @brief Stringify a macro value after expansion.
+ */
+/** @def S_FMT
+ * @brief Generate a string-setting format fragment.
+ */
+/** @def N_FMT
+ * @brief Generate a numeric-setting format fragment.
+ */
+/** @def RX_ON_DELAY_MAX
+ * @brief Maximum receiver-on delay in app_rpt frames.
+ */
+/** @def TX_OFF_DELAY_MAX
+ * @brief Maximum post-transmit receiver delay in app_rpt frames.
+ */
+/** @def MS_PER_FRAME
+ * @brief Duration of one app_rpt processing frame in milliseconds.
+ */
+/** @def MS_TO_FRAMES
+ * @brief Convert a millisecond interval to app_rpt frame count.
+ */
+/** @def URP_CHANNEL_LOCAL
+ * @brief Expose adapter-private functions only to the isolated channel test harness.
+ */
+/** @def URP_LEGACY_TEST_TONE_PEAK
+ * @brief PCM peak of the calibrated 1 kHz transmitter test tone.
+ */
+/** @def CONFIG
+ * @brief Unified channel-driver configuration filename.
+ */
+/** @def plus_parrot
+ * @brief Alias for the native echo sample buffer.
+ */
+/** @def plus_parrot_capacity
+ * @brief Alias for native echo allocation capacity.
+ */
+/** @def plus_parrot_count
+ * @brief Alias for the native echo recording length.
+ */
+/** @def plus_parrot_play
+ * @brief Alias for the native echo playback cursor.
+ */
+/** @def plus_parrot_playing
+ * @brief Alias for native echo playback state.
+ */
+/** @def plus_parrot_truncated
+ * @brief Alias for native echo truncation state.
+ */
+/** @def STR_SZ
+ * @brief Bounded radio text-command field width.
+ */
+/** @def pp
+ * @brief Print a channel pointer field in diagnostic output.
+ */
+/** @def ps
+ * @brief Print a channel string field in diagnostic output.
+ */
+/** @def pf
+ * @brief Print a channel floating-point field in diagnostic output.
+ */
+/** @} */

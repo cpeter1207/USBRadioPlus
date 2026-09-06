@@ -1,37 +1,53 @@
+/** @file
+ * @brief Continuous-phase 48 kHz CTCSS generation and reference-level calibration.
+ */
+
 #include "usbradioplus_ctcss.h"
 
 #include <math.h>
 #include <string.h>
 
 #define URP_CTCSS_RATE 48000.0
+
 #define URP_PI 3.14159265358979323846
+
 #define URP_LEGACY_PHASE_REVERSE_STEPS 170.0
+
 #define URP_LEGACY_SINE_STEPS 256.0
 
+/** Reference CTCSS tone frequencies in Hz. */
 static const double frequencies[] = {
 	67.0,  71.9,  74.4,  77.0,  79.7,  82.5,  85.4,	 88.5,	91.5,  94.8,  97.4,  100.0, 103.5,
 	107.2, 110.9, 114.8, 118.8, 123.0, 127.3, 131.8, 136.5, 141.3, 146.2, 151.4, 156.7, 162.2,
 	167.9, 173.8, 179.9, 186.2, 192.8, 203.5, 210.7, 218.1, 225.7, 233.6, 241.8, 250.3};
 
 /* Steady-state peak PCM from XPMR's generator, CTCSS LPF, and output FIR. */
+/** Measured reference CTCSS peak for the 215 Hz calibration table. */
 static const double peak_215[] = {
 	16573, 16619, 16638, 16670, 16701, 16734, 16768, 16812, 16843, 16943, 16915, 16952, 16981,
 	17020, 17049, 17083, 17104, 17101, 17096, 17065, 17015, 16960, 16824, 16653, 16467, 16173,
 	15855, 15456, 14954, 14429, 13719, 12475, 11519, 10591, 9428,  8287,  7070,  5876};
 
+/** Measured reference CTCSS peak for the 250 Hz calibration table. */
 static const double peak_250[] = {
 	17435, 17558, 17614, 17684, 17751, 17819, 17887, 17965, 18024, 18157, 18148, 18204, 18258,
 	18318, 18365, 18417, 18451, 18465, 18476, 18470, 18444, 18425, 18329, 18218, 18106, 17903,
 	17698, 17443, 17118, 16813, 16338, 15540, 14926, 14348, 13524, 12731, 11836, 10905};
 
 /* Positive peak minus negative-peak magnitude after XPMR's integer FIRs. */
+/** Measured reference DC bias for the 215 Hz calibration table. */
 static const signed char bias_215[] = {0,  0, 0, 0, 0,	0,  0, 0,  0, 0, 0, -1, 0,
 				       -1, 0, 0, 0, -2, 0,  0, -1, 0, 0, 0, 0,	0,
 				       0,  0, 0, 0, 0,	-1, 0, 0,  0, 0, 0, 0};
 
+/** Measured reference DC bias for the 250 Hz calibration table. */
 static const signed char bias_250[] = {0, 0, 0, 0, 0, 0,  2, 0, 0, 0, 0, 0, 0,	0, 0, 0, 0, 0, 0,
 				       0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0};
 
+/** @brief Find the nearest entry in the CTCSS reference-frequency table.
+ * @param frequency CTCSS frequency in Hz.
+ * @return Index of the nearest reference tone.
+ */
 static size_t closest_frequency(double frequency)
 {
 	size_t best = 0, i;
@@ -114,3 +130,19 @@ void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, s
 	}
 	generator->phase = fmod(generator->phase + step * (double)count, 2.0 * URP_PI);
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def URP_CTCSS_RATE
+ * @brief Native CTCSS oscillator sample rate in Hz.
+ */
+/** @def URP_PI
+ * @brief Pi used by the native CTCSS oscillator.
+ */
+/** @def URP_LEGACY_PHASE_REVERSE_STEPS
+ * @brief Reference oscillator-table offset for CTCSS reverse burst.
+ */
+/** @def URP_LEGACY_SINE_STEPS
+ * @brief Reference oscillator table length.
+ */
+/** @} */

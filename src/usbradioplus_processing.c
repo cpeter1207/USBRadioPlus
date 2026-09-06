@@ -1,3 +1,7 @@
+/** @file
+ * @brief Named-channel processing configuration, audiohooks, live controls, and meters.
+ */
+
 #include "asterisk.h"
 
 #include <math.h>
@@ -24,16 +28,23 @@
 #include "usbradioplus_processing_internal.h"
 
 #define CONFIG_FILE "usbradioplus.conf"
+
 #define SCAN_INTERVAL_US 250000
 
 #ifdef URP_PROCESSING_TESTING
 #define PROCESSING_PRIVATE
 #else
+
 #define PROCESSING_PRIVATE static
 #endif
 
+/** Configuration names for the local, link, and voice/telemetry chains. */
 static const char *source_names[TXAGC_SOURCE_COUNT] = {"local", "link", "voice_telemetry"};
 
+/** @brief Return the configuration spelling of a PL-filter mode.
+ * @param mode PL-filter selection from enum txagc_ctcss_filter_mode.
+ * @return Static mode-name string; the caller must not free it.
+ */
 PROCESSING_PRIVATE const char *ctcss_filter_name(int mode)
 {
 	switch (mode) {
@@ -47,21 +58,36 @@ PROCESSING_PRIVATE const char *ctcss_filter_name(int mode)
 }
 
 #ifndef URP_PROCESSING_TESTING
+/** Asterisk audiohook and graph state owned by its channel datastore. */
 struct txagc_hook {
+	/** Asterisk hook registered on the incoming link channel. */
 	struct ast_audiohook audiohook;
+	/** Per-source shared FFmpeg graph state. */
 	struct txagc_avfilter avfilter[TXAGC_SOURCE_COUNT];
+	/** Associated Asterisk channel name. */
 	char channel[AST_CHANNEL_NAME];
+	/** Name of the resolved channel profile. */
 	char profile[MAX_PROFILE_NAME];
 };
 #endif
 
+/** Protects live profile settings; release it before Asterisk channel lookup. */
 AST_MUTEX_DEFINE_STATIC(settings_lock);
+/** Live configuration snapshot protected by settings_lock. */
 PROCESSING_PRIVATE struct txagc_settings settings;
+/** Background thread that attaches eligible link audiohooks. */
 PROCESSING_PRIVATE pthread_t scan_thread = AST_PTHREADT_NULL;
+/** Scanner stop request observed during module shutdown. */
 PROCESSING_PRIVATE int stopping;
+/** Set when a candidate configuration contains a malformed value. */
 PROCESSING_PRIVATE int settings_parse_error;
 static int is_flat_section(const char *category);
 
+/** @brief Find a named channel profile in the supplied settings snapshot.
+ * @param current Settings snapshot whose profile table is searched.
+ * @param channel Configured radio channel name.
+ * @return Borrowed profile pointer, or NULL if no channel matches.
+ */
 static struct txagc_profile *find_profile(struct txagc_settings *current, const char *channel)
 {
 	size_t i;
@@ -74,6 +100,11 @@ static struct txagc_profile *find_profile(struct txagc_settings *current, const 
 	return NULL;
 }
 
+/** @brief Identify incoming app_rpt IAX audio that needs a link-processing hook.
+ * @param chan Asterisk channel associated with the radio or link.
+ * @param current Resolved named-channel profile.
+ * @return Nonzero for an incoming link channel whose processing chain is enabled.
+ */
 PROCESSING_PRIVATE int channel_is_eligible(struct ast_channel *chan,
 					   const struct txagc_profile *current)
 {
@@ -88,6 +119,9 @@ PROCESSING_PRIVATE int channel_is_eligible(struct ast_channel *chan,
 	       !strcmp(application, "Rpt") && data && !strcmp(data, "Remote Rx");
 }
 
+/** @brief Initialize the complete named-channel settings tree with shipped defaults.
+ * @param all Settings tree to initialize.
+ */
 PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 {
 	struct txagc_profile *value;
@@ -247,10 +281,15 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 			sizeof(value->hardware.tx_ctcss_frequencies));
 }
 
+/** @brief Check processing parameter ranges, fixed stages, and optional-stage ordering.
+ * @param value Processing-chain settings copied or updated by this operation.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 {
 	unsigned int index;
 	unsigned int seen = 0;
+
 #define REQUIRE_FINITE(field)                                                                      \
 	do {                                                                                       \
 		if (!isfinite(value->agc.field))                                                   \
@@ -434,6 +473,10 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	return 0;
 }
 
+/** @brief Validate all processing chains and hardware settings in one channel profile.
+ * @param value Resolved named-channel profile.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 {
 	int source;
@@ -489,6 +532,12 @@ PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 	return 0;
 }
 
+/** @brief Read a finite numeric option and flag malformed values without committing settings.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param name Numeric option name.
+ * @param value Receives the parsed value; unchanged when the option is absent.
+ */
 PROCESSING_PRIVATE void read_double(struct ast_config *cfg, const char *section, const char *name,
 				    double *value)
 {
@@ -509,6 +558,12 @@ PROCESSING_PRIVATE void read_double(struct ast_config *cfg, const char *section,
 	}
 }
 
+/** @brief Read a yes/no option and flag malformed values without committing settings.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param name Boolean option name.
+ * @param value Receives zero or one; unchanged when the option is absent.
+ */
 PROCESSING_PRIVATE void read_bool(struct ast_config *cfg, const char *section, const char *name,
 				  int *value)
 {
@@ -526,6 +581,10 @@ PROCESSING_PRIVATE void read_bool(struct ast_config *cfg, const char *section, c
 	}
 }
 
+/** @brief Test whether a name belongs to the processing-chain option vocabulary.
+ * @param name Option, metadata field, or channel name.
+ * @return One for a recognized processing option; zero otherwise.
+ */
 PROCESSING_PRIVATE int known_chain_option(const char *name)
 {
 	static const char *const names[] = {
@@ -620,6 +679,7 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 	return 0;
 }
 
+/** Accepted non-audio hardware option names. */
 PROCESSING_PRIVATE const char *const hardware_override_options[] = {
 	"hardware_device_identifier",
 	"hardware_serial",
@@ -690,6 +750,7 @@ PROCESSING_PRIVATE const char *const hardware_override_options[] = {
 	"hardware_parallel_pin_15_assignment",
 	"hardware_emphasis_corner_hz",
 };
+/** Accepted Asterisk jitter-buffer option names. */
 PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_enabled",
 	"asterisk_jitter_buffer_max_size_ms",
@@ -700,17 +761,25 @@ PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
 	"asterisk_jitter_buffer_target_extra_ms",
 	"asterisk_jitter_buffer_video_sync_enabled",
 };
+/** Accepted local-repeat and duplex option names. */
 PROCESSING_PRIVATE const char *const duplex_override_options[] = {
 	"duplex_radio_mode",
 	"duplex_local_repeat_level",
 	"duplex_local_repeat_mode",
 };
+/** Accepted radio diagnostic option names. */
 PROCESSING_PRIVATE const char *const diagnostics_override_options[] = {
 	"diagnostics_trace_type",
 	"diagnostics_trace_level",
 	"diagnostics_fever",
 };
 
+/** @brief Compare a configuration name against an allowed-name table.
+ * @param name Option name to find.
+ * @param options Read-only table of allowed option names.
+ * @param count Number of elements available in the supplied block.
+ * @return One for a matching name; zero otherwise.
+ */
 PROCESSING_PRIVATE int option_in_list(const char *name, const char *const *options, size_t count)
 {
 	size_t option;
@@ -720,6 +789,12 @@ PROCESSING_PRIVATE int option_in_list(const char *name, const char *const *optio
 	return 0;
 }
 
+/** @brief Validate an option against the vocabulary for its section kind.
+ * @param category Configuration section name used in diagnostics.
+ * @param kind Stage or configuration-section kind.
+ * @param variable Candidate configuration option and its value.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int validate_named_option(const char *category, const char *kind,
 					     const struct ast_variable *variable)
 {
@@ -773,6 +848,10 @@ PROCESSING_PRIVATE int validate_named_option(const char *category, const char *k
 	return known_chain_option(variable->name) ? 0 : -1;
 }
 
+/** @brief Reject unknown sections and options in a candidate configuration.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 static int validate_named_sections(struct ast_config *cfg)
 {
 	const char *category = NULL;
@@ -803,11 +882,22 @@ static int validate_named_sections(struct ast_config *cfg)
 	return 0;
 }
 
+/** @brief Validate all section option names before parsing their values.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int validate_option_names(struct ast_config *cfg)
 {
 	return validate_named_sections(cfg);
 }
 
+/** @brief Copy an explicitly configured option into a bounded channel override table.
+ * @param updated Resolved named-channel profile.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param name Option, metadata field, or channel name.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_config *cfg,
 				    const char *section, const char *name)
 {
@@ -901,6 +991,15 @@ invalid:
 	return -1;
 }
 
+/** @brief Read non-audio options from resolved per-channel section names.
+ * @param updated Resolved named-channel profile.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param asterisk_section Resolved Asterisk-options section name.
+ * @param hardware_section Resolved hardware section name.
+ * @param duplex_section Resolved duplex section name.
+ * @param diagnostics_section Resolved diagnostics section name.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, struct ast_config *cfg,
 					      const char *asterisk_section,
 					      const char *hardware_section,
@@ -924,6 +1023,16 @@ PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, str
 	return 0;
 }
 
+/** @brief Apply shared flat defaults followed by a channel's resolved overrides.
+ * @param updated Resolved named-channel profile.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param radio Named radio section supplying channel-level options.
+ * @param asterisk_section Resolved Asterisk-options section name.
+ * @param hardware_section Resolved hardware section name.
+ * @param duplex_section Resolved duplex section name.
+ * @param diagnostics_section Resolved diagnostics section name.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_profile_overrides(struct txagc_profile *updated, struct ast_config *cfg,
 					      const char *radio, const char *asterisk_section,
 					      const char *hardware_section,
@@ -936,6 +1045,14 @@ PROCESSING_PRIVATE int read_profile_overrides(struct txagc_profile *updated, str
 	return add_override(updated, cfg, radio, "channel_enabled");
 }
 
+/** @brief Read a hardware routing choice and record whether it was explicitly supplied.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param name Hardware routing option name.
+ * @param value Receives the parsed output-routing enumeration.
+ * @param configured Set when the option is explicitly present.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *section,
 				       const char *name, int *value, int *configured)
 {
@@ -960,6 +1077,10 @@ PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *secti
 	return 0;
 }
 
+/** @brief Check a comma-separated CTCSS frequency list for valid finite values.
+ * @param text Text to parse; mutable storage may be edited in place.
+ * @return One for a valid frequency list; zero otherwise.
+ */
 PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 {
 	const char *cursor = text;
@@ -984,6 +1105,12 @@ PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 	}
 }
 
+/** @brief Read hardware gains, routing, carrier assignment, and CTCSS frequency lists.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param hardware Receives the resolved hardware settings.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg, const char *section,
 				     struct usbradioplus_hardware_settings *hardware)
 {
@@ -1048,6 +1175,12 @@ PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg, const char *section
 			       &hardware->output_b_assignment_configured);
 }
 
+/** @brief Parse a chain's optional processing order.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param chain Processing-chain settings copied or updated by this operation.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_stage_order(struct ast_config *cfg, const char *section,
 					struct txagc_chain *chain)
 {
@@ -1063,9 +1196,16 @@ PROCESSING_PRIVATE int read_stage_order(struct ast_config *cfg, const char *sect
 	return 0;
 }
 
+/** @brief Apply one processing section to a chain's current defaults.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param chain Processing-chain settings copied or updated by this operation.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 				  struct txagc_chain *chain)
 {
+
 #define READ_BOOL(name, field) read_bool(cfg, section, name, &(field))
 	READ_BOOL("enabled", chain->enabled);
 	READ_BOOL("rnnoise_enabled", chain->rnnoise_enabled);
@@ -1197,6 +1337,13 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	return read_stage_order(cfg, section, chain);
 }
 
+/** @brief Construct a bounded channel-scoped section name.
+ * @param destination Destination text buffer.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param kind Stage or configuration-section kind.
+ * @param name Option, metadata field, or channel name.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 static int scoped_section(char *destination, size_t size, const char *kind, const char *name)
 {
 	size_t kind_length = strlen(kind);
@@ -1210,6 +1357,10 @@ static int scoped_section(char *destination, size_t size, const char *kind, cons
 	return 0;
 }
 
+/** @brief Recognize a scoped processing or hardware profile section.
+ * @param category Configuration section name to classify.
+ * @return One for a scoped profile section; zero otherwise.
+ */
 static int is_profile_section(const char *category)
 {
 	static const char *const prefixes[] = {"asterisk ",	  "hardware ", "duplex ",
@@ -1222,6 +1373,10 @@ static int is_profile_section(const char *category)
 	return 0;
 }
 
+/** @brief Recognize a shared flat defaults section.
+ * @param category Configuration section name to classify.
+ * @return One for a shared defaults section; zero otherwise.
+ */
 static int is_flat_section(const char *category)
 {
 	static const char *const sections[] = {"general", "asterisk",	    "hardware",
@@ -1234,6 +1389,14 @@ static int is_flat_section(const char *category)
 	return 0;
 }
 
+/** @brief Resolve an explicit profile reference or the channel's scoped section.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param radio Named radio section containing optional profile references.
+ * @param kind Stage or configuration-section kind.
+ * @param section Receives the resolved profile section name.
+ * @param section_size Section-name buffer capacity in bytes.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int resolve_profile_section(struct ast_config *cfg, const char *radio,
 					       const char *kind, char *section, size_t section_size)
 {
@@ -1252,6 +1415,9 @@ PROCESSING_PRIVATE int resolve_profile_section(struct ast_config *cfg, const cha
 	return 0;
 }
 
+/** @brief Parse and validate a candidate configuration before replacing the locked live snapshot.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int load_settings(void)
 {
 	struct ast_flags flags = {0};
@@ -1379,6 +1545,9 @@ invalid:
 	return -1;
 }
 
+/** @brief Detach and destroy graph resources owned by a channel audiohook datastore.
+ * @param data Owned txagc_hook datastore payload to destroy.
+ */
 PROCESSING_PRIVATE void hook_destroy(void *data)
 {
 	struct txagc_hook *hook = data;
@@ -1395,6 +1564,7 @@ PROCESSING_PRIVATE void hook_destroy(void *data)
 	ast_free(hook);
 }
 
+/** Asterisk datastore callbacks owning each link-processing hook. */
 static const struct ast_datastore_info txagc_datastore = {
 	.type = "txagc",
 	.destroy = hook_destroy,
@@ -1402,6 +1572,13 @@ static const struct ast_datastore_info txagc_datastore = {
 
 /* The Asterisk callback ABI requires a mutable audiohook pointer. */
 // cppcheck-suppress constParameterCallback
+/** @brief Process eligible link voice frames through their channel's current FFmpeg graph.
+ * @param audiohook Attached link-processing hook.
+ * @param chan Asterisk channel associated with the radio or link.
+ * @param frame Asterisk voice frame processed in place.
+ * @param direction Asterisk audiohook stream direction.
+ * @return Zero after processing or bypassing the frame.
+ */
 PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *chan,
 				      struct ast_frame *frame,
 				      enum ast_audiohook_direction direction)
@@ -1476,6 +1653,11 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	return 0;
 }
 
+/** @brief Attach a link-processing audiohook and its datastore to an Asterisk channel.
+ * @param chan Asterisk channel associated with the radio or link.
+ * @param profile Named channel profile associated with the hook.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile)
 {
 	struct ast_datastore *datastore;
@@ -1529,6 +1711,7 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 	return 0;
 }
 
+/** @brief Discover eligible link channels without holding settings_lock during Asterisk lookup. */
 PROCESSING_PRIVATE void scan_channels(void)
 {
 	struct ast_channel_iterator *iterator;
@@ -1585,6 +1768,7 @@ PROCESSING_PRIVATE void scan_channels(void)
 	ast_free(profile);
 }
 
+/** @brief Remove processing hooks from all channels during shutdown. */
 PROCESSING_PRIVATE void detach_all(void)
 {
 	struct ast_channel_iterator *iterator;
@@ -1611,6 +1795,10 @@ PROCESSING_PRIVATE void detach_all(void)
 	ast_channel_iterator_destroy(iterator);
 }
 
+/** @brief Periodically attach processing hooks until module shutdown is requested.
+ * @param unused Unused POSIX thread argument.
+ * @return NULL after the scanner exits.
+ */
 PROCESSING_PRIVATE void *scanner(void *unused)
 {
 	(void)unused;
@@ -1621,6 +1809,12 @@ PROCESSING_PRIVATE void *scanner(void *unused)
 	return NULL;
 }
 
+/** @brief Report resolved per-channel hardware and processing settings.
+ * @param entry CLI command registration.
+ * @param command CLI initialization, completion, or execution selector.
+ * @param args CLI argument and output descriptor.
+ * @return Asterisk CLI result sentinel, or NULL during registration/completion.
+ */
 PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 				  struct ast_cli_args *args)
 {
@@ -1738,6 +1932,12 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 	return CLI_SUCCESS;
 }
 
+/** @brief Report input, output, and filtering measurements for active processing hooks.
+ * @param entry CLI command registration.
+ * @param command CLI initialization, completion, or execution selector.
+ * @param args CLI argument and output descriptor.
+ * @return Asterisk CLI result sentinel, or NULL during registration/completion.
+ */
 PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
 				   struct ast_cli_args *args)
 {
@@ -1804,6 +2004,12 @@ PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
 	return CLI_SUCCESS;
 }
 
+/** @brief Enable a named processing source in the live settings snapshot.
+ * @param entry CLI command registration.
+ * @param command CLI initialization, completion, or execution selector.
+ * @param args CLI argument and output descriptor.
+ * @return Asterisk CLI result sentinel, or NULL during registration/completion.
+ */
 PROCESSING_PRIVATE char *cli_enable(struct ast_cli_entry *entry, int command,
 				    struct ast_cli_args *args)
 {
@@ -1830,6 +2036,12 @@ PROCESSING_PRIVATE char *cli_enable(struct ast_cli_entry *entry, int command,
 	return CLI_SUCCESS;
 }
 
+/** @brief Disable a named processing source in the live settings snapshot.
+ * @param entry CLI command registration.
+ * @param command CLI initialization, completion, or execution selector.
+ * @param args CLI argument and output descriptor.
+ * @return Asterisk CLI result sentinel, or NULL during registration/completion.
+ */
 PROCESSING_PRIVATE char *cli_disable(struct ast_cli_entry *entry, int command,
 				     struct ast_cli_args *args)
 {
@@ -1856,6 +2068,12 @@ PROCESSING_PRIVATE char *cli_disable(struct ast_cli_entry *entry, int command,
 	return CLI_SUCCESS;
 }
 
+/** @brief Reload and validate the unified configuration through the Asterisk CLI.
+ * @param entry CLI command registration.
+ * @param command CLI initialization, completion, or execution selector.
+ * @param args CLI argument and output descriptor.
+ * @return Asterisk CLI result sentinel, or NULL during registration/completion.
+ */
 PROCESSING_PRIVATE char *cli_reload(struct ast_cli_entry *entry, int command,
 				    struct ast_cli_args *args)
 {
@@ -1889,6 +2107,7 @@ PROCESSING_PRIVATE char *cli_reload(struct ast_cli_entry *entry, int command,
 	return CLI_SUCCESS;
 }
 
+/** Asterisk processing CLI command table. */
 static struct ast_cli_entry cli_entries[] = {
 	AST_CLI_DEFINE(cli_show, "Show RadioPlus processing configuration"),
 	AST_CLI_DEFINE(cli_stats, "Show RadioPlus processing statistics"),
@@ -2092,3 +2311,22 @@ int usbradioplus_processing_reload(void)
 	scan_channels();
 	return 0;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def CONFIG_FILE
+ * @brief Unified processing configuration filename.
+ */
+/** @def SCAN_INTERVAL_US
+ * @brief Delay between link-hook scans in microseconds.
+ */
+/** @def PROCESSING_PRIVATE
+ * @brief Expose processing internals only to the linked test harness.
+ */
+/** @def REQUIRE_FINITE
+ * @brief Reject non-finite or out-of-range graph parameters.
+ */
+/** @def READ_BOOL
+ * @brief Read a boolean processing option into the candidate chain.
+ */
+/** @} */

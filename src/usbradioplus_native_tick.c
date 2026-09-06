@@ -1,3 +1,7 @@
+/** @file
+ * @brief Native receive gating, processing, repeat, echo, and transmitter rendering.
+ */
+
 #include "asterisk.h"
 
 #include <math.h>

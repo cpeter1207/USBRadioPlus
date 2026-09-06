@@ -1,11 +1,21 @@
+/** @file
+ * @brief Executable hardware words regression and failure-path checks.
+ */
+
 #include <assert.h>
 #include <stdio.h>
 
 #include "../src/usbradioplus_hardware.h"
 
+/** Harness writes used to script and verify host behavior. */
 static uint8_t writes[256];
+/** Recorded write count for assertions. */
 static unsigned write_count;
 
+/** @brief Record parallel-port output bytes for protocol verification.
+ * @param opaque Caller-owned hardware callback context.
+ * @param value Input value or writable result, as declared.
+ */
 static void capture_write(void *opaque, uint8_t value)
 {
 	(void)opaque;
@@ -13,6 +23,9 @@ static void capture_write(void *opaque, uint8_t value)
 	writes[write_count++] = value;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct urp_rtx_words words;

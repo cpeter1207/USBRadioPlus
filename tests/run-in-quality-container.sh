@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Run checks in a labeled disposable container with exit and stale-container cleanup.
 set -eu
 
 if [ "$#" -lt 1 ]; then
@@ -13,6 +15,7 @@ scope=$(printf '%s' "$root" | cksum | awk '{print $1}')
 label="org.usbradioplus.test.scope=$scope"
 name="usbradioplus-test-$scope-$$"
 
+## @brief Remove containers matching this workspace's exact test-scope label.
 cleanup_stale()
 {
 	stale=$(docker container ls --all --quiet --filter "label=$label")
@@ -23,6 +26,7 @@ cleanup_stale()
 	fi
 }
 
+## @brief Remove this invocation's test container when the runner exits.
 cleanup_current()
 {
 	docker container rm --force "$name" >/dev/null 2>&1 || true

@@ -1,3 +1,7 @@
+/** @file
+ * @brief Processing-stage identifiers, graph parameters, and strict stage-order parsing.
+ */
+
 #include "agc_core.h"
 
 #include <stdio.h>
@@ -6,6 +10,10 @@
 
 /* This file contains graph-configuration parsing only. Audio processing is
  * intentionally implemented by the shared FFmpeg graph. */
+/** @brief Trim surrounding whitespace from a mutable stage-order token.
+ * @param text Text to parse; mutable storage may be edited in place.
+ * @return Pointer into text after leading whitespace; trailing whitespace is terminated in place.
+ */
 static char *trim_token(char *text)
 {
 	char *end;
@@ -64,6 +72,7 @@ int txagc_parse_stage_order(const char *text, struct txagc_config *config, char 
 		seen |= bit;
 		config->stage_order[config->stage_count++] = stage;
 	}
+
 #define REQUIRE_STAGE(enabled, stage, name)                                                        \
 	do {                                                                                       \
 		if ((enabled) && !(seen & (1U << (stage)))) {                                      \
@@ -86,3 +95,10 @@ unknown:
 		snprintf(error, error_size, "unknown, empty, or fixed stage '%s'", token);
 	return -1;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def REQUIRE_STAGE
+ * @brief Append an enabled optional stage while enforcing order and capacity.
+ */
+/** @} */

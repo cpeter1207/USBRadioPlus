@@ -1,3 +1,7 @@
+/** @file
+ * @brief Shared Asterisk channel lifecycle, radio configuration, and tuning operations.
+ */
+
 #include "asterisk.h"
 #include "asterisk/res_usbradio.h"
 
@@ -406,6 +410,7 @@ int console_unkey(int fd, int argc, const char *const *argv)
 
 void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 {
+
 #define NFLASH 3
 
 	int i;
@@ -1424,8 +1429,10 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 		"asterisk_jitter_buffer_target_extra_ms",
 		"asterisk_jitter_buffer_video_sync_enabled",
 	};
+
 #define GET(section, name)                                                                         \
 	(!usbradioplus_processing_get_option(category, (section), (name), value, sizeof(value)))
+
 #define INTEGER(section, name, field)                                                              \
 	do {                                                                                       \
 		if (GET((section), (name))) {                                                      \
@@ -1435,6 +1442,7 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 			o->field = number;                                                         \
 		}                                                                                  \
 	} while (0)
+
 #define BOOLEAN(section, name, field)                                                              \
 	do {                                                                                       \
 		if (GET((section), (name))) {                                                      \
@@ -1443,6 +1451,7 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 			o->field = ast_true(value);                                                \
 		}                                                                                  \
 	} while (0)
+
 #define STRING(section, name, field)                                                               \
 	do {                                                                                       \
 		if (GET((section), (name)))                                                        \
@@ -1589,6 +1598,7 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 		updates[count] = (struct usbradioplus_config_update){(group), (key), (text)};      \
 		++count;                                                                           \
 	} while (0)
+
 #define ADD_NUMBER(group, key, format, number)                                                     \
 	do {                                                                                       \
 		snprintf(values[count], sizeof(values[count]), (format), (number));                \
@@ -1754,6 +1764,10 @@ void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keye
 	}
 }
 
+/** @brief Distinguish named radio channels from flat and scoped settings sections.
+ * @param section Configuration section name.
+ * @return Nonzero when the stated condition holds; zero otherwise.
+ */
 static int is_radio_channel_section(const char *section)
 {
 	static const char *const reserved[] = {"general", "asterisk",	    "hardware",
@@ -1838,3 +1852,28 @@ int reload_module(void)
 		result = load_config(1);
 	return result;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def NFLASH
+ * @brief Number of transmitter calibration flash bursts.
+ */
+/** @def GET
+ * @brief Resolve a channel-specific option into a bounded temporary string.
+ */
+/** @def INTEGER
+ * @brief Apply a resolved integer radio option.
+ */
+/** @def BOOLEAN
+ * @brief Apply a resolved boolean radio option.
+ */
+/** @def STRING
+ * @brief Apply a resolved text radio option.
+ */
+/** @def ADD_TEXT
+ * @brief Append a text-valued setting to the tuning-save list.
+ */
+/** @def ADD_NUMBER
+ * @brief Append a numeric setting to the tuning-save list.
+ */
+/** @} */

@@ -1,3 +1,7 @@
+/** @file
+ * @brief RNNoise frame buffering and rate adaptation for local receiver denoising.
+ */
+
 #include "rnnoise_processor.h"
 
 #include <math.h>
@@ -7,9 +11,13 @@
 #include "rnnoise_processor_internal.h"
 #define RNNOISE_PRIVATE
 #else
+
 #define RNNOISE_PRIVATE static
 #endif
 
+/** @brief Discard RNNoise stream history and reset both rate converters.
+ * @param state Processor or stream state owned by the caller.
+ */
 RNNOISE_PRIVATE void reset_stream(struct txagc_rnnoise *state)
 {
 	if (state->upsampler) {
@@ -55,6 +63,11 @@ void txagc_rnnoise_bypass(struct txagc_rnnoise *state)
 	}
 }
 
+/** @brief Create or reconfigure the RNNoise converters for the source sample rate.
+ * @param state Processor or stream state owned by the caller.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 RNNOISE_PRIVATE int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
 {
 	int error;
@@ -80,6 +93,13 @@ RNNOISE_PRIVATE int configure_rate(struct txagc_rnnoise *state, unsigned int sam
 	return 0;
 }
 
+/** @brief Append a block to a bounded RNNoise FIFO.
+ * @param fifo Bounded audio FIFO.
+ * @param fifo_count Current FIFO occupancy, updated by the operation.
+ * @param data Input samples to copy into the FIFO.
+ * @param count Number of elements available in the supplied block.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 RNNOISE_PRIVATE int append(float *fifo, size_t *fifo_count, const float *data, size_t count)
 {
 	if (*fifo_count + count > TXAGC_RNNOISE_FIFO) {
@@ -90,12 +110,21 @@ RNNOISE_PRIVATE int append(float *fifo, size_t *fifo_count, const float *data, s
 	return 0;
 }
 
+/** @brief Remove samples from the front of an RNNoise FIFO.
+ * @param fifo Bounded audio FIFO.
+ * @param fifo_count Current FIFO occupancy, updated by the operation.
+ * @param count Number of elements available in the supplied block.
+ */
 RNNOISE_PRIVATE void consume(float *fifo, size_t *fifo_count, size_t count)
 {
 	memmove(fifo, fifo + count, (*fifo_count - count) * sizeof(*fifo));
 	*fifo_count -= count;
 }
 
+/** @brief Quantize a floating-point sample without signed PCM overflow.
+ * @param sample One sample in signed PCM amplitude units.
+ * @return Bounded signed 16-bit PCM sample.
+ */
 RNNOISE_PRIVATE int16_t pcm_from_double(double sample)
 {
 	if (sample > 32767.0)
@@ -206,3 +235,10 @@ int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples, size_t 
 		samples[i] = pcm_from_double(work[i]);
 	return 0;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def RNNOISE_PRIVATE
+ * @brief Expose denoiser internals only to the linked test harness.
+ */
+/** @} */
