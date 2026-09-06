@@ -10,17 +10,19 @@
 
 #include "usbradioplus_dsp.h"
 
-#define URP_PROGRAM_QUEUE_FRAMES 8U
+/** Capacity includes startup padding and the first program frame at the maximum target. */
+#define URP_PROGRAM_QUEUE_FRAMES 10U
 
-#define URP_NATIVE_FIFO_SAMPLES (URP_NATIVE_SAMPLES * 8U)
-/** Lowest adaptive FIFO target: one 20 ms native block. */
-#define URP_FIFO_TARGET_MIN (URP_NATIVE_SAMPLES)
-/** Normal adaptive FIFO target: 30 ms. */
-#define URP_FIFO_TARGET_NORMAL (URP_NATIVE_SAMPLES + URP_NATIVE_SAMPLES / 2U)
+/** 200 ms capacity leaves room for a resampled block above the 170 ms target. */
+#define URP_NATIVE_FIFO_SAMPLES (URP_NATIVE_SAMPLES * 10U)
+/** Lowest adaptive FIFO target: 110 ms. */
+#define URP_FIFO_TARGET_MIN (URP_NATIVE_SAMPLES * 11U / 2U)
+/** Normal adaptive FIFO target: 120 ms, one adjustment above the floor. */
+#define URP_FIFO_TARGET_NORMAL (URP_NATIVE_SAMPLES * 6U)
 /** Adaptive target adjustment: 10 ms. */
 #define URP_FIFO_TARGET_STEP (URP_NATIVE_SAMPLES / 2U)
-/** Highest adaptive FIFO target: 80 ms. */
-#define URP_FIFO_TARGET_MAX (URP_NATIVE_SAMPLES * 4U)
+/** Highest adaptive FIFO target: 170 ms. */
+#define URP_FIFO_TARGET_MAX (URP_NATIVE_SAMPLES * 17U / 2U)
 /** Stable 20 ms blocks required before reducing the target. */
 #define URP_FIFO_TARGET_DECAY_BLOCKS 9000U
 

@@ -115,6 +115,10 @@ receive list.
 Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
 be greater than zero and less than 300.
 .SS Device and buffering
+The app_rpt-to-transmitter elastic FIFO uses a 120 ms startup target, adapting
+between 110 and 170 ms in 10 ms steps. These built-in targets are separate
+from the device queue and IAX jitter-buffer settings. They are not a fixed
+end-to-end delay: FIFO occupancy varies as audio blocks are consumed.
 .TP
 .B hardware_device_identifier, hardware_serial
 Select the USB audio interface by device identifier or serial number.

@@ -7325,7 +7325,9 @@ static void test_native_tick_baseline(void)
 		usbradioplus_queue_program(&channel, native_program, ARRAY_LEN(native_program));
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_native_fifo.primed);
-	assert(channel.plus_native_fifo.count == URP_NATIVE_SAMPLES);
+	assert(channel.plus_native_fifo.count ==
+	       ((URP_FIFO_TARGET_NORMAL + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U) *
+		       URP_NATIVE_SAMPLES);
 	assert(channel.plus_native_frames == 4);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
@@ -7526,6 +7528,75 @@ static void test_native_tick_baseline(void)
 	usbradioplus_native_tick(&channel);
 	usbradioplus_dsp_destroy(&channel);
 	urp_radio_destroy(channel.radio);
+}
+/** @brief Preserve a single native-rate program frame through startup and underrun recovery.
+ * @param target_samples Initial adaptive FIFO target in native samples.
+ */
+static void check_native_fifo_short_burst(unsigned int target_samples)
+{
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	short program[URP_NATIVE_SAMPLES];
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "fifo-burst");
+	strcpy(settings.profiles[0].channel, "RadioPlus/fifo-burst");
+	settings.profiles[0].enabled = 0;
+	channel.name = "fifo-burst";
+	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
+	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
+	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_native_fifo.target_samples = target_samples;
+	channel.txkeyed = 1;
+	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
+	assert(channel.radio);
+	assert(!usbradioplus_dsp_init(&channel));
+	for (size_t i = 0; i < ARRAY_LEN(program); ++i)
+		program[i] = 1000;
+
+	for (unsigned int burst = 0; burst < 2; ++burst) {
+		unsigned int frames =
+			(target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES;
+		usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
+		assert(channel.plus_program_queue.count == frames);
+		assert(!channel.plus_link_queue_overflows);
+		for (unsigned int frame = 0; frame < frames; ++frame) {
+			/* Recovery blends its preceding concealment into the first millisecond. */
+			size_t first_sample = burst && !frame ? URP_NATIVE_SAMPLES / 20U : 0;
+			usbradioplus_native_tick(&channel);
+			assert(channel.plus_native_fifo.primed);
+			assert(channel.plus_native_fifo.target_samples == target_samples);
+			assert(channel.plus_native_fifo.target_samples >=
+			       110U * (URP_RATE_NATIVE / 1000U));
+			assert(channel.plus_native_fifo.count ==
+			       (frames - frame - 1U) * URP_NATIVE_SAMPLES);
+			for (size_t i = first_sample; i < ARRAY_LEN(program); ++i)
+				assert(channel.plus_link_native[i] ==
+				       (frame + 1U == frames ? program[i] : 0));
+		}
+		assert(!channel.plus_program_queue.count);
+		assert(channel.plus_link_queue_underflows == burst);
+		/* A keyed empty tick raises the target and resets startup buffering. */
+		usbradioplus_native_tick(&channel);
+		assert(!channel.plus_native_fifo.primed && !channel.plus_native_fifo.count);
+		assert(channel.plus_link_queue_underflows == burst + 1U);
+		target_samples = target_samples < URP_FIFO_TARGET_MAX
+					 ? target_samples + URP_FIFO_TARGET_STEP
+					 : URP_FIFO_TARGET_MAX;
+		assert(channel.plus_native_fifo.target_samples == target_samples);
+		assert(!channel.plus_link_queue_overflows);
+	}
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
+}
+
+/** @brief Check one-frame bursts at every boundary of the adaptive latency policy. */
+static void test_native_fifo_short_bursts(void)
+{
+	check_native_fifo_short_burst(URP_FIFO_TARGET_MIN);
+	check_native_fifo_short_burst(URP_FIFO_TARGET_NORMAL);
+	check_native_fifo_short_burst(URP_FIFO_TARGET_MAX);
 }
 
 /** @brief Apply sample-rate DSP carrier gating without changing non-DSP receive sources. */
@@ -7807,6 +7878,7 @@ int main(void)
 	RUN_TEST(test_program_queue_and_parrot_storage);
 	RUN_TEST(test_dsp_init_failures);
 	RUN_TEST(test_native_tick_baseline);
+	RUN_TEST(test_native_fifo_short_bursts);
 	RUN_TEST(test_native_sample_gate);
 	RUN_TEST(test_unlinked_channel_cleanup);
 	RUN_TEST(test_store_config_failure_and_option_edges);

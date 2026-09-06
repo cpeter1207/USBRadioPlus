@@ -61,6 +61,12 @@ int main(void)
 
 	{
 		struct urp_native_fifo fifo = {0};
+		assert(URP_FIFO_TARGET_MIN == 110U * (URP_RATE_NATIVE / 1000U));
+		assert(URP_FIFO_TARGET_NORMAL == 120U * (URP_RATE_NATIVE / 1000U));
+		assert(URP_FIFO_TARGET_MAX == 170U * (URP_RATE_NATIVE / 1000U));
+		assert(URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES < URP_NATIVE_FIFO_SAMPLES);
+		assert((URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES <
+		       URP_PROGRAM_QUEUE_FRAMES);
 		for (i = 0; i < sizeof(native_input) / sizeof(native_input[0]); ++i)
 			native_input[i] = (short)i;
 		assert(!urp_native_fifo_pop(&fifo, output));
@@ -89,6 +95,14 @@ int main(void)
 		for (i = 0; i < URP_FIFO_TARGET_DECAY_BLOCKS; ++i)
 			urp_native_fifo_note_stable(&fifo);
 		assert(fifo.target_samples == URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP);
+		/* Sustained clean audio must never decay below the 110 ms floor. */
+		for (i = 0; i < 10U * URP_FIFO_TARGET_DECAY_BLOCKS; ++i) {
+			urp_native_fifo_note_stable(&fifo);
+			assert(fifo.target_samples >= 110U * (URP_RATE_NATIVE / 1000U));
+		}
+		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
+		urp_native_fifo_key_start(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_MIN && !fifo.stable_blocks);
 		fifo.target_samples = 0;
 		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
 		urp_native_fifo_note_stable(&fifo);

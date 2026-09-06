@@ -133,7 +133,9 @@ static void test_clock_recovery(void)
 static void simulate_clock_drift(double producer_ppm)
 {
 	struct urp_clock_recovery clock = {0};
-	double app_phase = 2.0, native_fifo = 0.0;
+	double app_phase =
+		(URP_FIFO_TARGET_NORMAL + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U;
+	double native_fifo = 0.0;
 	size_t target = URP_FIFO_TARGET_NORMAL;
 	unsigned int app_frames = 0, underflows = 0;
 	int tick;
@@ -164,8 +166,8 @@ static void simulate_clock_drift(double producer_ppm)
 	printf("clock drift %+.0f ppm: underruns %u, app frames %u, native %.1f, correction %.6f\n",
 	       producer_ppm, underflows, app_frames, native_fifo, clock.correction);
 	assert(underflows <= 1);
-	assert(app_frames < 8);
-	assert(native_fifo < 8.0 * 960.0);
+	assert(app_frames < URP_PROGRAM_QUEUE_FRAMES);
+	assert(native_fifo < URP_NATIVE_FIFO_SAMPLES);
 }
 
 /** @brief Verify simulated clock drift. */
@@ -177,13 +179,14 @@ static void test_simulated_clock_drift(void)
 
 /** @brief Exercise actual resampling and FIFO recovery under simulated clock drift.
  * @param producer_ppm Simulated producer clock offset in parts per million.
+ * @param target_samples Adaptive FIFO target in native samples.
  */
-static void simulate_src_clock_drift(double producer_ppm)
+static void simulate_src_clock_drift(double producer_ppm, size_t target_samples)
 {
 	struct urp_clock_recovery clock = {0};
 	struct urp_src *src = urp_src_create(0, 1);
 	int16_t input[URP_LINK_SAMPLES], output[URP_NATIVE_SAMPLES * 2];
-	double phase = 3.0;
+	double phase = (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U;
 	size_t native_count = 0;
 	unsigned int app_frames = 0, underflows = 0;
 	int primed = 0, tick;
@@ -195,19 +198,20 @@ static void simulate_src_clock_drift(double producer_ppm)
 			app_frames++;
 			phase -= 1.0;
 		}
-		while (native_count < 3 * URP_NATIVE_SAMPLES && app_frames) {
+		while (native_count < target_samples && app_frames) {
 			double correction = urp_clock_recovery_update(
 				&clock, native_count + app_frames * URP_NATIVE_SAMPLES,
-				3 * URP_NATIVE_SAMPLES);
+				target_samples + URP_FIFO_TARGET_STEP);
 			size_t used = 0, made = 0;
 			assert(!urp_src_process(src, input, URP_LINK_SAMPLES, output,
 						URP_NATIVE_SAMPLES * 2, 6.0 * (1.0 + correction),
 						&used, &made));
 			assert(used == URP_LINK_SAMPLES);
 			native_count += made;
+			assert(native_count < URP_NATIVE_FIFO_SAMPLES);
 			app_frames--;
 		}
-		if (!primed && native_count >= 3 * URP_NATIVE_SAMPLES)
+		if (!primed && native_count >= target_samples)
 			primed = 1;
 		if (primed) {
 			if (native_count >= URP_NATIVE_SAMPLES)
@@ -226,46 +230,10 @@ static void simulate_src_clock_drift(double producer_ppm)
 /** @brief Verify src clock drift. */
 static void test_src_clock_drift(void)
 {
-	simulate_src_clock_drift(-1000.0);
-	simulate_src_clock_drift(1000.0);
-}
-
-/** @brief Verify elastic fifo short burst and recovery. */
-static void test_elastic_fifo_short_burst_and_recovery(void)
-{
-	size_t native_count = 0;
-	unsigned int emitted = 0, program_frames = 0, underflows = 0;
-	int primed = 0;
-
-	/* Two leading safety frames plus one telemetry frame reach the target. */
-	native_count += 3 * URP_NATIVE_SAMPLES;
-	program_frames = 1;
-	if (!primed && native_count >= 3 * URP_NATIVE_SAMPLES)
-		primed = 1;
-	while (primed && native_count >= URP_NATIVE_SAMPLES) {
-		native_count -= URP_NATIVE_SAMPLES;
-		emitted++;
-	}
-	assert(emitted == 3 && program_frames == 1);
-
-	/* An empty tick records the underrun and resets recovery state. */
-	if (primed && native_count < URP_NATIVE_SAMPLES) {
-		underflows++;
-		primed = 0;
-		native_count = 0;
-	}
-	assert(underflows == 1);
-
-	/* Recovery seeds the same margin and preserves its first program frame. */
-	native_count += 3 * URP_NATIVE_SAMPLES;
-	program_frames++;
-	if (!primed && native_count >= 3 * URP_NATIVE_SAMPLES)
-		primed = 1;
-	while (primed && native_count >= URP_NATIVE_SAMPLES) {
-		native_count -= URP_NATIVE_SAMPLES;
-		emitted++;
-	}
-	assert(emitted == 6 && program_frames == 2);
+	simulate_src_clock_drift(-1000.0, URP_FIFO_TARGET_MIN);
+	simulate_src_clock_drift(1000.0, URP_FIFO_TARGET_MIN);
+	simulate_src_clock_drift(-1000.0, URP_FIFO_TARGET_MAX);
+	simulate_src_clock_drift(1000.0, URP_FIFO_TARGET_MAX);
 }
 
 /** @brief Verify echo. */
@@ -399,7 +367,6 @@ int main(void)
 	test_clock_recovery();
 	test_simulated_clock_drift();
 	test_src_clock_drift();
-	test_elastic_fifo_short_burst_and_recovery();
 	test_echo();
 	test_defensive_and_boundary_paths();
 	test_allocation_and_converter_failures();

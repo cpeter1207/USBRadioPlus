@@ -31,6 +31,13 @@ Signed PCM spans -32768 through 32767. Native floating-point workspaces retain
 PCM amplitude units. FFmpeg format conversion supplies the graph's normalized
 audio representation. dBFS measurements use the full signed PCM range.
 
+The app_rpt-to-CM119 elastic FIFO starts with a 120 ms occupancy target. Keyed
+underruns raise it by 10 ms, up to 170 ms; three minutes of stable keyed blocks
+lower it by 10 ms, but never below 110 ms. Both queues hold 200 ms so startup
+padding and a complete resampled frame fit at the maximum target. These are
+occupancy targets, not an end-to-end latency guarantee: each device interval
+consumes 20 ms, and network jitter buffering adds its own delay.
+
 Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
 it does not change voice gain. Native CTCSS is mixed after transmitter dynamics
