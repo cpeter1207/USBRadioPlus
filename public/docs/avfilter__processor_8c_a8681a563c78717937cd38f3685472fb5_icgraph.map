@@ -1,0 +1,114 @@
+<map id="update_astats" name="update_astats">
+<area shape="rect" id="Node000001" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="825,495,940,521"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__internals_8c.html#aec25fc1eb8b4cc62a86a7364f9b1030e" title="Verify meter updates." alt="" coords="617,235,769,261"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="862,486,702,262,706,259,866,482"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a3514e05bc03695f0fd1b564986b58cad" title="Process a mono block in place through the shared FFmpeg graph." alt="" coords="609,519,777,545"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="812,520,778,524,777,519,812,514"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__internals_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="185,31,240,57"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="682,223,667,180,642,128,607,78,585,57,560,40,519,22,474,12,429,8,384,10,302,22,241,38,239,33,300,17,383,4,429,3,475,7,520,17,563,35,588,53,611,75,647,126,672,178,687,221"/>
+<area shape="rect" id="Node000005" href="$test__avfilter__processor_8c.html#a00c3c3ea714b1fea3c04ec54bb35c5b1" title="Measure steady sine&#45;wave amplitude through one unbuffered dynamics graph." alt="" coords="388,343,539,369"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="674,510,627,450,595,418,560,390,518,371,521,366,563,386,599,414,631,446,678,506"/>
+<area shape="rect" id="Node000007" href="$test__avfilter__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,273,60,298"/>
+<area shape="poly" id="edge20_Node000004_Node000007" title=" " alt="" coords="669,511,621,470,592,450,560,434,495,415,436,409,382,412,331,418,280,424,227,423,170,411,107,384,82,365,63,342,37,300,42,297,67,339,86,361,109,379,171,406,227,418,279,418,330,413,382,406,436,403,496,410,562,429,595,446,625,466,672,507"/>
+<area shape="rect" id="Node000009" href="$test__avfilter__processor_8c.html#a27ab5cbbe50b89337c4d08b9dacbb1bf" title="Measure attack or release after a large full&#45;band input&#45;level step." alt="" coords="403,445,523,470"/>
+<area shape="poly" id="edge9_Node000004_Node000009" title=" " alt="" coords="649,517,561,484,521,473,522,467,562,479,651,512"/>
+<area shape="rect" id="Node000011" href="$test__avfilter__failures_8c.html#a894003945a2d2ce6241a08b1224d195e" title="Assert that the requested invalid configuration or injected operation fails." alt="" coords="406,871,521,897"/>
+<area shape="poly" id="edge12_Node000004_Node000011" title=" " alt="" coords="689,559,674,613,650,685,613,761,590,798,563,831,533,856,500,874,497,869,530,852,559,827,585,795,608,759,645,683,669,612,684,557"/>
+<area shape="rect" id="Node000015" href="$test__avfilter__failures_8c.html#a93fc7368a30b6142a6c66315e38a1fc5" title="Exercise a configured graph&#39;s runtime sink/FIFO failure path." alt="" coords="377,715,550,741"/>
+<area shape="poly" id="edge17_Node000004_Node000015" title=" " alt="" coords="679,558,632,622,599,657,563,689,535,705,507,718,505,713,533,701,560,684,596,653,628,618,675,555"/>
+<area shape="rect" id="Node000016" href="$test__avfilter__failures_8c.html#a60a04178c1e29732326310315dde1995" title="Verify sink and fifo failures." alt="" coords="143,807,283,847"/>
+<area shape="poly" id="edge56_Node000004_Node000016" title=" " alt="" coords="687,559,671,602,645,655,609,709,588,733,563,754,530,775,494,791,420,814,347,826,283,830,283,825,346,820,419,809,493,786,527,770,560,750,584,729,605,706,640,653,666,600,682,557"/>
+<area shape="rect" id="Node000017" href="$test__avfilter__deesser_8c.html#ad8de1eca778df542504a272b11dc0529" title="Measure the filter response at the requested test frequency." alt="" coords="424,494,503,519"/>
+<area shape="poly" id="edge21_Node000004_Node000017" title=" " alt="" coords="596,524,503,514,503,508,596,519"/>
+<area shape="rect" id="Node000020" href="$test__avfilter__equalizer_8c.html#aec285d26746224c4ef5159e91830144b" title="Measure the filter response at the requested test frequency." alt="" coords="424,543,503,569"/>
+<area shape="poly" id="edge23_Node000004_Node000020" title=" " alt="" coords="596,545,503,555,503,549,596,539"/>
+<area shape="rect" id="Node000022" href="$test__avfilter__bandpass_8c.html#a9215d2e331fd48c90a31c00d6613a0e3" title="Measure the filter response at the requested test frequency." alt="" coords="424,650,503,675"/>
+<area shape="poly" id="edge25_Node000004_Node000022" title=" " alt="" coords="659,554,488,652,486,647,657,549"/>
+<area shape="rect" id="Node000028" href="$test__avfilter__processor_8c.html#a62fc2182290eac95479e8bb44cd9fdce" title="Measure a steady input through the same live graph at the IAX audio rate." alt="" coords="386,165,541,190"/>
+<area shape="poly" id="edge30_Node000004_Node000028" title=" " alt="" coords="682,507,662,436,631,345,596,259,577,226,560,205,540,192,542,188,563,201,582,223,601,257,636,343,667,434,688,505"/>
+<area shape="rect" id="Node000030" href="$test__avfilter__ctcss_8c.html#a760890fab006c225fce19bada3204003" title="Measure response after a specified settling interval." alt="" coords="395,1283,531,1309"/>
+<area shape="poly" id="edge33_Node000004_Node000030" title=" " alt="" coords="692,558,677,692,650,887,632,989,612,1083,589,1163,564,1220,548,1241,529,1259,491,1285,488,1281,525,1255,544,1237,559,1217,584,1161,607,1082,627,988,645,886,672,692,687,558"/>
+<area shape="rect" id="Node000033" href="$test__avfilter__agc_8c.html#a37937a1b582743889d1e6860cabcef07" title="Pass a stream through a persistent graph in host&#45;selected partitions." alt="" coords="427,1059,499,1085"/>
+<area shape="poly" id="edge37_Node000004_Node000033" title=" " alt="" coords="687,559,641,709,605,809,564,909,516,997,476,1061,471,1058,512,994,559,907,600,807,636,708,682,557"/>
+<area shape="rect" id="Node000040" href="$test__avfilter__emphasis_8c.html#a4ba2395b62e14db91538f52283620079" title="Measure normalized emphasis response for the selected frequency." alt="" coords="423,1182,504,1207"/>
+<area shape="poly" id="edge43_Node000004_Node000040" title=" " alt="" coords="694,558,686,651,666,788,649,866,627,945,599,1023,564,1097,546,1124,524,1148,484,1184,481,1180,521,1144,542,1121,559,1095,594,1021,622,944,644,865,660,787,681,651,688,558"/>
+<area shape="rect" id="Node000042" href="$test__avfilter__permutations_8c.html#a4a2af07e7ddac2461852c524ea279bbd" title="Process audio through one ordering and record correctness and execution time." alt="" coords="398,1385,529,1410"/>
+<area shape="poly" id="edge45_Node000004_Node000042" title=" " alt="" coords="693,558,680,710,655,934,637,1052,616,1162,592,1254,564,1321,548,1342,529,1360,491,1387,488,1382,526,1356,544,1339,559,1319,587,1253,611,1161,632,1051,649,934,675,709,688,558"/>
+<area shape="rect" id="Node000045" href="$test__avfilter__processor_8c.html#ada340e5914536052bc02f77711ee4d1f" title="Live mode and sample&#45;rate changes retain configured crossover frequencies." alt="" coords="388,215,539,255"/>
+<area shape="poly" id="edge50_Node000004_Node000045" title=" " alt="" coords="684,506,669,456,645,392,609,326,586,295,560,269,537,254,540,250,563,265,590,292,613,323,650,390,674,454,689,505"/>
+<area shape="rect" id="Node000046" href="$test__avfilter__internals_8c.html#ab4edbb3dece978ba57c5e67fd4697ae2" title="Verify graph lifecycle and invalid configuration." alt="" coords="365,100,561,140"/>
+<area shape="poly" id="edge52_Node000004_Node000046" title=" " alt="" coords="681,507,615,303,580,202,559,154,544,142,547,138,563,150,585,200,620,302,686,505"/>
+<area shape="rect" id="Node000047" href="$test__avfilter__processor_8c.html#ae63e9e414731bdd66f5c4498264f668e" title="Both three&#45;band stages retain sample&#45;exact state across arbitrary frame boundaries." alt="" coords="380,279,547,319"/>
+<area shape="poly" id="edge54_Node000004_Node000047" title=" " alt="" coords="680,507,662,469,636,422,602,374,560,333,541,321,543,317,563,329,606,370,640,419,667,466,684,505"/>
+<area shape="rect" id="Node000048" href="$usbradioplus__processing_8c.html#afae5e2949c7cf07c57c6b6e4fea61037" title="Process eligible link voice frames through their channel&#39;s current FFmpeg graph." alt="" coords="404,1581,523,1606"/>
+<area shape="poly" id="edge57_Node000004_Node000048" title=" " alt="" coords="694,559,689,694,670,910,654,1035,631,1166,602,1297,564,1424,544,1471,519,1516,476,1582,472,1579,515,1514,539,1469,559,1422,596,1295,626,1165,649,1034,665,909,683,694,689,559"/>
+<area shape="rect" id="Node000068" href="$usbradioplus__native__tick_8c.html#a98790fb21cd1370ab67e4f546b2ed69f" title="Process a native receiver block and render the corresponding transmitter block." alt="" coords="371,50,555,75"/>
+<area shape="poly" id="edge62_Node000004_Node000068" title=" " alt="" coords="681,507,607,273,598,218,596,172,594,152,588,132,577,111,560,90,542,77,545,73,563,86,582,108,593,130,599,151,602,172,603,217,612,271,686,505"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__processor_8c.html#a7ef12412373e363409cf2a7876156ec0" title="Verify unity crossover recombination, arbitrary splits, and independent bands." alt="" coords="135,329,291,369"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="374,356,291,354,291,349,374,351"/>
+<area shape="rect" id="Node000008" href="$test__avfilter__processor_8c.html#a133a513abb16aac27a32c1966dd3582d" title="FFmpeg accepts the complete permitted control ranges, including makeup attenuation." alt="" coords="128,265,297,305"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="399,342,365,333,278,308,280,303,366,328,400,337"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="129,327,107,320,59,300,61,295,109,315,130,322"/>
+<area shape="poly" id="edge8_Node000008_Node000007" title=" " alt="" coords="114,288,60,288,60,283,114,283"/>
+<area shape="rect" id="Node000010" href="$test__avfilter__processor_8c.html#a60007cf6bc8e49f7a0f0a21c9d83236e" title="Both band modes honor independent attack and release at each sample rate." alt="" coords="111,445,314,470"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="390,460,314,460,314,455,390,455"/>
+<area shape="poly" id="edge11_Node000010_Node000007" title=" " alt="" coords="129,441,106,427,78,396,57,360,35,299,40,297,62,358,82,393,110,423,132,437"/>
+<area shape="rect" id="Node000012" href="$test__avfilter__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="143,921,282,961"/>
+<area shape="poly" id="edge13_Node000011_Node000012" title=" " alt="" coords="394,902,283,928,282,923,393,897"/>
+<area shape="rect" id="Node000014" href="$test__avfilter__failures_8c.html#a92de1be931b1fab880476cfa09eba400" title="Verify frame failures." alt="" coords="138,871,287,897"/>
+<area shape="poly" id="edge15_Node000011_Node000014" title=" " alt="" coords="392,887,287,887,287,881,392,881"/>
+<area shape="rect" id="Node000013" href="$test__avfilter__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,871,60,897"/>
+<area shape="poly" id="edge14_Node000012_Node000013" title=" " alt="" coords="135,920,107,910,59,895,61,890,109,905,137,915"/>
+<area shape="poly" id="edge16_Node000014_Node000013" title=" " alt="" coords="124,887,60,887,60,881,124,881"/>
+<area shape="poly" id="edge18_Node000015_Node000016" title=" " alt="" coords="425,749,318,796,281,809,279,804,316,791,423,744"/>
+<area shape="poly" id="edge19_Node000016_Node000013" title=" " alt="" coords="133,853,109,861,61,877,59,872,107,856,132,848"/>
+<area shape="rect" id="Node000018" href="$test__avfilter__deesser_8c.html#ac76bf9a6e824e2ce64881841fc3609da" title="Compare enabled and bypassed de&#45;esser output levels in dB." alt="" coords="167,494,259,519"/>
+<area shape="poly" id="edge22_Node000017_Node000018" title=" " alt="" coords="410,509,259,509,259,504,410,504"/>
+<area shape="rect" id="Node000021" href="$test__avfilter__equalizer_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="185,543,240,569"/>
+<area shape="poly" id="edge24_Node000020_Node000021" title=" " alt="" coords="410,559,240,559,240,553,410,553"/>
+<area shape="rect" id="Node000023" href="$test__avfilter__bandpass_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="185,757,240,782"/>
+<area shape="poly" id="edge26_Node000022_Node000023" title=" " alt="" coords="413,682,367,705,344,726,334,736,319,746,278,761,241,769,240,764,277,756,316,742,330,732,340,722,364,700,410,678"/>
+<area shape="rect" id="Node000024" href="$test__channel__core_8c.html#ac7f5d63c74c2d33746c4f1da589c2d40" title="Verify menu support dispatch." alt="" coords="108,593,317,618"/>
+<area shape="poly" id="edge27_Node000022_Node000024" title=" " alt="" coords="410,653,268,621,269,615,411,648"/>
+<area shape="rect" id="Node000026" href="$test__channel__core_8c.html#a7a2e6c653c5e9455681a4622f165b753" title="Verify receive calibration helpers." alt="" coords="123,643,302,683"/>
+<area shape="poly" id="edge28_Node000022_Node000026" title=" " alt="" coords="410,665,302,665,302,660,410,660"/>
+<area shape="rect" id="Node000027" href="$test__channel__core_8c.html#a4a281b6359176108bbdf300eb66f23b9" title="Verify tuning displays." alt="" coords="135,707,291,733"/>
+<area shape="poly" id="edge29_Node000022_Node000027" title=" " alt="" coords="411,677,269,710,268,705,410,672"/>
+<area shape="rect" id="Node000029" href="$test__avfilter__processor_8c.html#ad1170435bad14df3718fc7bfd8534dbc" title="Toggle every link stage on an existing 8 kHz graph and verify actual audio changes." alt="" coords="125,114,301,139"/>
+<area shape="poly" id="edge31_Node000028_Node000029" title=" " alt="" coords="386,164,276,142,277,137,387,159"/>
+<area shape="poly" id="edge32_Node000029_Node000007" title=" " alt="" coords="133,147,110,161,84,187,64,219,40,273,36,271,59,216,80,184,106,157,130,142"/>
+<area shape="rect" id="Node000031" href="$test__avfilter__ctcss_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,1309,60,1334"/>
+<area shape="poly" id="edge34_Node000030_Node000031" title=" " alt="" coords="382,1303,60,1322,60,1317,382,1298"/>
+<area shape="rect" id="Node000032" href="$test__avfilter__ctcss_8c.html#a0328214452f10a81e52107ac4c61756f" title="Measure the filter response at the requested test frequency." alt="" coords="173,1334,252,1359"/>
+<area shape="poly" id="edge35_Node000030_Node000032" title=" " alt="" coords="387,1314,253,1341,252,1336,385,1309"/>
+<area shape="poly" id="edge36_Node000032_Node000031" title=" " alt="" coords="160,1342,60,1328,61,1322,160,1337"/>
+<area shape="rect" id="Node000034" href="$test__avfilter__agc_8c.html#a819cae5e2bb5f3e1bfa8c56c9b185851" title="Report whole&#45;graph CPU cost without a machine&#45;dependent pass threshold." alt="" coords="165,1035,260,1061"/>
+<area shape="poly" id="edge38_Node000033_Node000034" title=" " alt="" coords="413,1070,260,1055,260,1050,414,1065"/>
+<area shape="rect" id="Node000036" href="$test__avfilter__agc_8c.html#aee1eed7862442b529a3019aa7cc66f8e" title="Detector filters must neither filter program audio nor introduce a limiter." alt="" coords="127,1085,298,1110"/>
+<area shape="poly" id="edge39_Node000033_Node000036" title=" " alt="" coords="414,1080,298,1091,298,1086,413,1074"/>
+<area shape="rect" id="Node000037" href="$test__avfilter__agc_8c.html#ae2581dffde944fa8831038f1fa3802d1" title="Each sidechain edge must affect measurement while both zero means bypass." alt="" coords="125,1134,300,1159"/>
+<area shape="poly" id="edge40_Node000033_Node000037" title=" " alt="" coords="415,1092,318,1124,271,1136,269,1131,317,1119,414,1087"/>
+<area shape="rect" id="Node000038" href="$test__avfilter__agc_8c.html#a2f73c26711831f473496e3b8388fbfbb" title="Host frame boundaries cannot reset smoothing, hold, or the gain ramp." alt="" coords="155,1183,271,1209"/>
+<area shape="poly" id="edge41_Node000033_Node000038" title=" " alt="" coords="438,1096,385,1135,318,1173,272,1188,270,1183,316,1168,382,1131,435,1091"/>
+<area shape="rect" id="Node000039" href="$test__avfilter__agc_8c.html#a01409fbb91bb41d94dcb7beb8a56fe9b" title="Verify rate&#45;independent leveling, immediate output and boost/cut limits." alt="" coords="131,986,294,1011"/>
+<area shape="poly" id="edge42_Node000033_Node000039" title=" " alt="" coords="414,1057,317,1025,273,1014,274,1009,318,1020,416,1052"/>
+<area shape="rect" id="Node000041" href="$test__avfilter__emphasis_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="185,1233,240,1258"/>
+<area shape="poly" id="edge44_Node000040_Node000041" title=" " alt="" coords="409,1208,241,1243,240,1237,408,1203"/>
+<area shape="rect" id="Node000043" href="$test__avfilter__permutations_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,1422,60,1447"/>
+<area shape="poly" id="edge46_Node000042_Node000043" title=" " alt="" coords="385,1404,255,1413,108,1427,61,1433,60,1428,108,1421,255,1408,384,1399"/>
+<area shape="rect" id="Node000044" href="$test__avfilter__permutations_8c.html#aca2c9bacdfd11a0fa633dc327e63ca71" title="Enumerate every stage ordering and execute its audio assertions." alt="" coords="174,1459,251,1485"/>
+<area shape="poly" id="edge47_Node000042_Node000044" title=" " alt="" coords="407,1417,252,1463,251,1458,405,1412"/>
+<area shape="poly" id="edge48_Node000044_Node000043" title=" " alt="" coords="160,1464,60,1443,61,1437,161,1459"/>
+<area shape="poly" id="edge49_Node000044_Node000044" title=" " alt="" coords="244,1449,235,1441,213,1438,194,1440,184,1445,182,1450,187,1458,183,1461,177,1451,180,1441,192,1435,213,1433,237,1436,248,1445"/>
+<area shape="poly" id="edge51_Node000045_Node000007" title=" " alt="" coords="374,220,314,213,247,211,177,216,109,232,74,251,47,275,44,271,71,247,107,227,176,211,247,206,315,208,375,215"/>
+<area shape="poly" id="edge53_Node000046_Node000003" title=" " alt="" coords="383,98,239,55,241,49,384,93"/>
+<area shape="poly" id="edge55_Node000047_Node000007" title=" " alt="" coords="387,277,317,256,258,247,212,244,167,246,109,256,82,264,58,275,56,270,80,259,107,251,166,241,212,238,259,242,318,251,389,272"/>
+<area shape="rect" id="Node000049" href="$usbradioplus__processing_8c.html#a90897146b741433c19b3470c30f25da9" title="Attach a link&#45;processing audiohook and its datastore to an Asterisk channel." alt="" coords="161,1702,264,1727"/>
+<area shape="poly" id="edge58_Node000048_Node000049" title=" " alt="" coords="437,1617,384,1655,318,1692,265,1709,263,1703,316,1687,381,1651,434,1613"/>
+<area shape="rect" id="Node000066" href="$test__processing__validation_8c.html#a55e044cef12e614682a33220aad4cac6" title="Verify audiohook callback and destroy." alt="" coords="121,1509,304,1549"/>
+<area shape="poly" id="edge59_Node000048_Node000066" title=" " alt="" coords="399,1580,291,1552,292,1547,400,1575"/>
+<area shape="rect" id="Node000064" href="$test__processing__validation_8c.html#aa9f8087d14e1c26b55d16aa88926b9c5" title="Reload band modes atomically and deliver every selected and inactive setting live." alt="" coords="139,1573,287,1613"/>
+<area shape="poly" id="edge60_Node000048_Node000064" title=" " alt="" coords="390,1596,287,1596,287,1591,390,1591"/>
+<area shape="rect" id="Node000067" href="$test__processing__validation_8c.html#a60503733b5ae712de64a6bda9fc72b1d" title="An established link uses current stage flags on its next incoming audio frame." alt="" coords="137,1637,289,1677"/>
+<area shape="poly" id="edge61_Node000048_Node000067" title=" " alt="" coords="400,1612,290,1641,288,1635,399,1607"/>
+</map>

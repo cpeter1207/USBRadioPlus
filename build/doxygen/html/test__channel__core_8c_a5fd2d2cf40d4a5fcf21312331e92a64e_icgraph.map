@@ -1,0 +1,31 @@
+<map id="ast_radio_hid_device_mklist" name="ast_radio_hid_device_mklist">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_radio_hid_device_mklist; observable effects are recorded in harness stat..." alt="" coords="728,237,887,277"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="585,157,669,183"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="751,233,653,185,655,180,754,228"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="573,268,680,293"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="715,272,681,276,680,271,714,266"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a3828a145dd4c8132bc9cc4a418949a45" title="Exercise OSS HID recovery using scripted USB availability." alt="" coords="359,5,497,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="609,147,574,99,550,74,524,52,484,33,486,28,527,48,554,70,578,96,613,144"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aecd9d77278c186f6c706970aed2ab3f0" title="Verify oss hid attach failures." alt="" coords="120,22,271,62"/>
+<area shape="poly" id="edge5_Node000002_Node000004" title=" " alt="" coords="591,153,524,122,459,100,391,82,271,57,272,52,392,77,460,95,526,117,593,148"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a2d5d51d9c3c21c546f8bd39edad4ccdc" title="Verify oss hid worker attach." alt="" coords="118,86,273,126"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="571,162,525,154,273,118,274,113,526,149,572,157"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#ae781c1a29acf8c1051764d7f4be23be9" title="Verify oss hid worker device retry." alt="" coords="118,150,273,190"/>
+<area shape="poly" id="edge8_Node000002_Node000007" title=" " alt="" coords="571,173,273,173,273,167,571,167"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a6bb4b32ca69482a5d778d23a9c8bcd8d" title="Verify oss hid worker first radio construction." alt="" coords="337,207,519,247"/>
+<area shape="poly" id="edge10_Node000002_Node000008" title=" " alt="" coords="572,188,499,210,497,205,571,183"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="374,272,482,297"/>
+<area shape="poly" id="edge12_Node000002_Node000009" title=" " alt="" coords="607,195,572,230,527,262,483,278,481,273,524,257,568,226,603,191"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="346,29,271,37,270,32,345,24"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,187,60,212"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="116,71,110,76,85,103,65,134,41,187,36,185,60,131,80,100,106,72,113,67"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="121,134,109,140,75,164,48,189,45,185,72,160,107,136,119,129"/>
+<area shape="poly" id="edge9_Node000007_Node000005" title=" " alt="" coords="105,189,61,197,60,192,104,184"/>
+<area shape="poly" id="edge11_Node000008_Node000005" title=" " alt="" coords="323,223,60,204,60,199,324,217"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#a9b53984771bd0d03afd1ec95fd65bc03" title="Verify oss channel write and call." alt="" coords="108,265,283,305"/>
+<area shape="poly" id="edge13_Node000009_Node000010" title=" " alt="" coords="361,287,283,287,283,282,361,282"/>
+<area shape="poly" id="edge14_Node000010_Node000005" title=" " alt="" coords="132,261,107,248,52,215,54,210,109,244,135,256"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="331,322,525,362"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="573,300,494,324,493,319,571,295"/>
+<area shape="poly" id="edge17_Node000012_Node000005" title=" " alt="" coords="317,359,265,360,211,355,157,342,107,319,79,295,59,266,35,213,40,211,63,263,83,292,109,314,159,337,212,349,266,354,317,354"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="__wrap_pipe" name="__wrap_pipe">
+<area shape="rect" id="Node000001" title="Test wrapper for pipe controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,108,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a80a9b1da7d1041c016a38c50b2f33fc7" title="Linker entry point for the real pipe operation behind the test wrapper." alt="" coords="156,5,252,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,15,142,15,142,21,108,21"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="stream_cleanup" name="stream_cleanup">
+<area shape="rect" id="Node000001" title="Stop the PortAudio stream and clear queued transmitter audio." alt="" coords="5,13,132,38"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#aef52c5db70e841637b3c8f17ab4d7729" title="Publish completion of the audio&#45;worker swap pause." alt="" coords="180,5,343,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,23,166,23,166,28,132,28"/>
+</map>

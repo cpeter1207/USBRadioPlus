@@ -1,0 +1,13 @@
+<map id="usbradio_hangup" name="usbradio_hangup">
+<area shape="rect" id="Node000001" title="Release Asterisk ownership and reset radio call state." alt="" coords="5,80,139,105"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a00c12e682172f97eaf91420a9b5f7374" title="Host&#45;API test double for ast_channel_tech_pvt; observable effects are recorded in harness state." alt="" coords="201,5,363,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,77,186,39,210,32,212,37,188,45,100,82"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#adeb3d3653a71457ffc2c0438a962c866" title="Host&#45;API test double for ast_channel_tech_pvt_set; observable effects are recorded in harness state." alt="" coords="187,55,377,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="139,82,172,78,173,83,139,87"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#a2e8e2812201eb51c184d33029bea66d4" title="Host&#45;API test double for pthread_join; observable effects are recorded in harness state." alt="" coords="231,104,333,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="139,98,218,107,217,112,139,103"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a5052d853da0fc58013ced505c9c8f3ed" title="Open or reopen the OSS device with the required native audio format." alt="" coords="239,153,325,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="101,103,188,138,226,150,225,155,186,143,99,108"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a1d83881fa2abc6efce09f051a44d8d06" title="Host&#45;API test double for ast_channel_internal_fd_set; observable effects are recorded in harness stat..." alt="" coords="425,146,583,186"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="326,163,411,163,411,169,326,169"/>
+</map>

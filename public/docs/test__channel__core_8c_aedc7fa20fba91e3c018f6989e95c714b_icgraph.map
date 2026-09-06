@@ -1,0 +1,22 @@
+<map id="ast_dsp_set_features" name="ast_dsp_set_features">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_dsp_set_features; observable effects are recorded in harness state." alt="" coords="897,107,1057,132"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="748,107,849,132"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="884,122,849,122,849,117,884,117"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="561,67,657,92"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="734,108,656,92,657,87,735,103"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="517,127,700,167"/>
+<area shape="poly" id="edge10_Node000002_Node000009" title=" " alt="" coords="735,131,701,136,700,131,734,126"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="357,5,463,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="553,65,451,33,453,28,555,60"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="351,55,469,80"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="547,78,469,74,470,68,547,73"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="133,77,277,117"/>
+<area shape="poly" id="edge9_Node000003_Node000008" title=" " alt="" coords="547,88,469,94,278,99,277,94,469,89,547,83"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,6,303,46"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="343,23,303,25,303,20,343,18"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,84,60,109"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="142,54,109,67,61,88,59,83,107,62,140,49"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="337,80,278,89,277,84,336,75"/>
+<area shape="poly" id="edge8_Node000008_Node000006" title=" " alt="" coords="120,99,60,99,60,94,120,94"/>
+<area shape="poly" id="edge11_Node000009_Node000006" title=" " alt="" coords="504,157,418,159,318,157,212,149,107,131,56,112,58,107,109,126,212,144,318,152,418,154,504,152"/>
+</map>

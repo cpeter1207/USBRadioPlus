@@ -1,0 +1,5 @@
+<map id="__real_av_buffersink_get_frame" name="__real_av_buffersink_get_frame">
+<area shape="rect" id="Node000001" title="Linker entry point for the real av_buffersink_get_frame operation behind the test wrapper." alt="" coords="216,5,372,45"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#a7c0dbd29a46e45ef4d5d05b5cc303ae2" title="Test wrapper for av_buffersink_get_frame controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,168,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,28,168,28,168,23,202,23"/>
+</map>

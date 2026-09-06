@@ -1,0 +1,5 @@
+<map id="test_src_new" name="test_src_new">
+<area shape="rect" id="Node000001" title="Verify src new." alt="" coords="5,5,112,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a086a42173e6cff574a2cd627721886ee" title="Linker entry point for the real src_new operation behind the test wrapper." alt="" coords="160,5,281,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,15,146,15,146,21,112,21"/>
+</map>

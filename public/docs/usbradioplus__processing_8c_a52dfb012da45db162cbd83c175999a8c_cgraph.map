@@ -1,0 +1,9 @@
+<map id="read_stage_order" name="read_stage_order">
+<area shape="rect" id="Node000001" title="Parse a chain&#39;s optional processing order." alt="" coords="5,31,140,56"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="201,5,361,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,33,186,27,187,32,140,38"/>
+<area shape="rect" id="Node000003" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="188,55,373,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="140,48,175,52,174,58,140,54"/>
+<area shape="rect" id="Node000004" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="421,55,513,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="373,65,408,65,408,70,373,70"/>
+</map>

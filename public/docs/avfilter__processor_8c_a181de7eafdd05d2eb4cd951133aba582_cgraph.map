@@ -1,0 +1,9 @@
+<map id="update_cleanup_astats" name="update_cleanup_astats">
+<area shape="rect" id="Node000001" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="5,55,177,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="225,5,331,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,52,215,32,217,37,141,57"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="251,55,305,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="178,65,237,65,237,70,178,70"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__agc_8c.html#ade8e45af4618ed060e0c7aa96a67ca5b" title="Calculate normalized RMS level from a non&#45;silent sample span." alt="" coords="255,104,301,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="141,77,242,105,241,110,139,83"/>
+</map>

@@ -1,0 +1,25 @@
+var usbradioplus__dsp_8h =
+[
+    [ "urp_clock_recovery", "structurp__clock__recovery.html", "structurp__clock__recovery" ],
+    [ "urp_echo_frame", "structurp__echo__frame.html", "structurp__echo__frame" ],
+    [ "urp_echo_replacer", "structurp__echo__replacer.html", "structurp__echo__replacer" ],
+    [ "URP_APP_RPT_RATE_DEFAULT", "usbradioplus__dsp_8h.html#a6ff4fe71ab38bf90f03943eba58693e2", null ],
+    [ "URP_CLOCK_MAX_CORRECTION", "usbradioplus__dsp_8h.html#a47c80665f7f9e53a26a8c22dc43c4de2", null ],
+    [ "URP_ECHO_HISTORY_FRAMES", "usbradioplus__dsp_8h.html#af9bd49f445018021044c2b515bf8003c", null ],
+    [ "URP_LINK_SAMPLES", "usbradioplus__dsp_8h.html#afa996df8abded688c62a84d10e3322d4", null ],
+    [ "URP_NATIVE_SAMPLES", "usbradioplus__dsp_8h.html#aea72d79996e1612e002e0576dc266129", null ],
+    [ "URP_RATE_LINK", "usbradioplus__dsp_8h.html#a13484531b093dbd8cf4a3b04ff0ca838", null ],
+    [ "URP_RATE_NATIVE", "usbradioplus__dsp_8h.html#a45a5721d703b608f48c4f5da3e643bec", null ],
+    [ "urp_clock_recovery_reset", "usbradioplus__dsp_8h.html#aa7e44596b07a6391f8eb870d05421ccc", null ],
+    [ "urp_clock_recovery_update", "usbradioplus__dsp_8h.html#a4be2f71d64d4f8bef579c2684d5ae312", null ],
+    [ "urp_duplicate_mono", "usbradioplus__dsp_8h.html#a45d11a93d4c866f549ee9efa3b9c9554", null ],
+    [ "urp_echo_init", "usbradioplus__dsp_8h.html#a317947c53ab52faefcd5157e69c0cc6b", null ],
+    [ "urp_echo_push", "usbradioplus__dsp_8h.html#aac5c4a2fe916a695794a9a5443b6a413", null ],
+    [ "urp_echo_remove", "usbradioplus__dsp_8h.html#a050ae3f2a1e1575171fdbda2eddec685", null ],
+    [ "urp_extract_mono", "usbradioplus__dsp_8h.html#a74f1a44f31ff2e835f44630011c94dd3", null ],
+    [ "urp_rate_convert", "usbradioplus__dsp_8h.html#aaca9104f82da02824fec2f6ff0e84e75", null ],
+    [ "urp_src_create", "usbradioplus__dsp_8h.html#a9441082c5203081c60709487f11df580", null ],
+    [ "urp_src_destroy", "usbradioplus__dsp_8h.html#a01c3c33847014294b74858700455d9c8", null ],
+    [ "urp_src_process", "usbradioplus__dsp_8h.html#a1606a7bd14a1f011cade73f4c6c6d32d", null ],
+    [ "urp_src_reset", "usbradioplus__dsp_8h.html#ac386bf618a23376321bd65e0be3eea46", null ]
+];

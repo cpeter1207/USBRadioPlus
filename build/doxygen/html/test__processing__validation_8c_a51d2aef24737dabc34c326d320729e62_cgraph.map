@@ -1,0 +1,26 @@
+<map id="test_public_setting_accessors" name="test_public_setting_accessors">
+<area shape="rect" id="Node000001" title="Verify public setting accessors." alt="" coords="5,201,151,241"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#a2cfc7666698b43849e78bb264e256161" title="Replace one fake section override at the requested index." alt="" coords="221,5,368,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,199,100,165,124,121,157,77,197,40,207,34,210,38,200,44,161,81,129,124,105,167,89,202"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="227,55,362,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="90,199,134,145,163,115,197,90,213,82,216,87,200,95,167,119,138,148,95,202"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a1ec98f39aaa9de143d15bee683e35dba" title="Copy a channel&#39;s final voice/telemetry chain under the settings mutex. An absent profile produces a z..." alt="" coords="203,105,386,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="112,198,198,154,216,147,218,152,200,159,114,203"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="203,169,386,209"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="151,207,189,202,190,207,152,213"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="203,233,386,273"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="152,229,190,235,189,240,151,234"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#a0c9ceb1d5f070d4cff0f785236b0223e" title="Copy a resolved non&#45;audio option from a channel profile." alt="" coords="203,297,386,337"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="114,238,200,282,218,289,216,294,198,287,112,243"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#a77add100bf0d604a3d8b31f2aa13bfce" title="Apply a live CM119 input&#45;gain adjustment under the settings mutex." alt="" coords="199,361,391,401"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="95,239,138,293,168,321,200,346,210,352,208,357,197,351,164,325,134,296,91,243"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#a0764f7d26aa2f4ad51047fdba66b7e94" title="Apply a live local&#45;receiver gain adjustment under the settings mutex." alt="" coords="203,425,386,465"/>
+<area shape="poly" id="edge13_Node000001_Node000010" title=" " alt="" coords="89,240,104,276,128,322,160,370,200,411,207,415,204,420,197,415,156,373,123,325,99,278,84,242"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="439,272,533,297"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="372,143,392,155,419,178,442,206,475,258,470,261,438,209,415,182,389,159,369,147"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="364,206,392,218,428,239,460,261,456,266,425,244,389,223,362,211"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="387,265,425,272,424,277,386,271"/>
+<area shape="poly" id="edge10_Node000008_Node000005" title=" " alt="" coords="386,299,424,292,425,297,387,304"/>
+<area shape="poly" id="edge12_Node000009_Node000005" title=" " alt="" coords="362,358,389,346,425,326,456,304,460,308,428,330,392,351,364,363"/>
+<area shape="poly" id="edge14_Node000010_Node000005" title=" " alt="" coords="369,422,389,411,415,387,438,360,470,308,475,311,442,363,419,391,392,415,372,427"/>
+</map>

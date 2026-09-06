@@ -1,0 +1,8 @@
+<map id="configure" name="configure">
+<area shape="rect" id="Node000001" title="Cache rate&#45;dependent coefficients only when controls change." alt="" coords="5,5,88,31"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#ad2959525ff319b889cf82eb5fa7696aa" title="Restrict a finite scalar to a closed interval." alt="" coords="287,5,365,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,15,273,15,273,21,88,21"/>
+<area shape="rect" id="Node000003" href="$rms__agc__ladspa_8c.html#ac854c2cee75cfad25c2d0a319fc1c0d9" title="Read one control using the same defaults with or without host connection." alt="" coords="136,31,239,56"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="89,23,123,29,122,34,88,28"/>
+<area shape="poly" id="edge3_Node000003_Node000002" title=" " alt="" coords="238,31,273,25,274,30,239,37"/>
+</map>

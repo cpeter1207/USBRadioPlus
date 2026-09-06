@@ -1,0 +1,9 @@
+<map id="add_override" name="add_override">
+<area shape="rect" id="Node000001" title="Copy an explicitly configured option into a bounded channel override table." alt="" coords="5,55,112,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="199,5,281,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,52,185,30,186,35,107,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="203,55,277,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="112,65,189,65,189,70,112,70"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="160,104,320,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="107,77,180,98,179,103,105,83"/>
+</map>

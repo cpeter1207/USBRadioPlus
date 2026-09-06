@@ -1,0 +1,5 @@
+<map id="usbradio_start_parallel_pulser" name="usbradio_start_parallel_pulser">
+<area shape="rect" id="Node000001" title="Start the pulse worker when a parallel&#45;port output is configured." alt="" coords="160,5,331,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="5,13,112,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,28,112,28,112,23,146,23"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="ast_audiohook_destroy" name="ast_audiohook_destroy">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_audiohook_destroy; observable effects are recorded in harness state." alt="" coords="519,63,692,88"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a47bce93f60d48c4348a29e1c3d59ff43" title="Detach and destroy graph resources owned by a channel audiohook datastore." alt="" coords="360,63,471,88"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="505,78,471,78,471,73,505,73"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#ac85fa21d199a65d83aac278636c31751" title="Verify audiohook attachment." alt="" coords="108,5,312,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="362,61,311,46,264,33,265,28,313,41,363,56"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#a55e044cef12e614682a33220aad4cac6" title="Verify audiohook callback and destroy." alt="" coords="119,55,301,95"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="346,78,301,78,301,73,346,73"/>
+<area shape="rect" id="Node000006" href="$test__processing__validation_8c.html#aca3f90bd414c90cabc4edbaef550cec1" title="Verify channel scanning and detachment." alt="" coords="125,119,295,159"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="361,95,276,122,274,117,360,90"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,63,60,88"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="139,37,109,46,61,65,59,60,107,41,137,32"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="105,78,60,78,60,73,105,73"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="128,117,107,110,59,90,61,85,109,105,130,112"/>
+</map>

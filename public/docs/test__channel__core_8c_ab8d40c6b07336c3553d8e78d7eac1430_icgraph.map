@@ -1,0 +1,7 @@
+<map id="assert_resampled_stream_matches" name="assert_resampled_stream_matches">
+<area shape="rect" id="Node000001" title="Compare real rendered samples and retained stream state across key transitions." alt="" coords="324,5,515,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a9986d059e8247ff55081a7a2574e7e79" title="Preserve admitted audio, sinc history, and clock recovery across arbitrary PTT edges." alt="" coords="108,5,276,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="310,28,276,28,276,23,310,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

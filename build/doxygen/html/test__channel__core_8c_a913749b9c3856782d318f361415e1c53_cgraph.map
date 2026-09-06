@@ -1,0 +1,14 @@
+<map id="test_console_keying" name="test_console_keying">
+<area shape="rect" id="Node000001" title="Verify console keying." alt="" coords="5,23,160,48"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a67d7fe2730aeeed9790bf5cfadbbed3b" title="Assert the selected radio&#39;s calibration PTT request." alt="" coords="216,72,319,98"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,46,206,66,205,71,130,51"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="375,23,457,48"/>
+<area shape="poly" id="edge7_Node000001_Node000003" title=" " alt="" coords="134,20,208,8,267,3,327,8,367,17,366,22,326,13,267,8,208,13,135,26"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#acbf160305f6b8ddcbcc747f9335d4a98" title="Release the selected radio&#39;s calibration PTT request." alt="" coords="208,23,327,48"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="160,33,194,33,194,38,160,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="305,70,363,50,365,55,307,75"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker so a changed PTT request is applied promptly." alt="" coords="383,72,449,98"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="319,82,369,82,369,88,319,88"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="327,33,361,33,361,38,327,38"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="307,46,371,67,369,72,305,51"/>
+</map>

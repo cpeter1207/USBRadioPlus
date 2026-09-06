@@ -1,0 +1,28 @@
+<map id="urp_parrot_rx_transition" name="urp_parrot_rx_transition">
+<area shape="rect" id="Node000001" title="Update echo state across an RX carrier transition; returns one when playback starts." alt="" coords="980,49,1159,75"/>
+<area shape="rect" id="Node000002" href="$test__channel__shared__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="829,20,884,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="966,50,884,39,884,34,966,45"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a310527d8e2a5b73b4b7f9a18918097b2" title="Start or complete echo recording when receiver key state changes." alt="" coords="781,70,932,110"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="967,78,933,83,932,77,966,73"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#af890f90fa6d5d09eafee4e672a90a682" title="Verify native tick baseline." alt="" coords="108,5,296,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="767,74,733,69,497,42,296,26,296,21,498,36,734,63,768,69"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#ad6c4d42213519056026fab2cde9bebe0" title="Verify parrot transitions." alt="" coords="117,57,287,83"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="768,90,287,75,287,70,768,85"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="563,103,733,128"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="768,103,734,108,733,102,767,98"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="591,152,705,177"/>
+<area shape="poly" id="edge9_Node000003_Node000009" title=" " alt="" coords="797,118,734,142,695,154,694,149,732,137,795,113"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,89,60,115"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="131,38,109,47,76,69,49,91,45,87,72,64,107,42,129,33"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="121,88,61,100,60,94,120,83"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="375,103,483,128"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="549,118,484,118,484,113,549,113"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="355,152,503,177"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="577,167,504,167,504,162,577,162"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="344,202,515,242"/>
+<area shape="poly" id="edge13_Node000009_Node000012" title=" " alt="" coords="586,183,507,205,505,199,585,178"/>
+<area shape="rect" id="Node000011" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="112,113,292,153"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="341,155,292,148,293,143,342,150"/>
+<area shape="poly" id="edge12_Node000011_Node000005" title=" " alt="" coords="98,117,60,109,61,104,99,111"/>
+<area shape="poly" id="edge14_Node000012_Node000005" title=" " alt="" coords="330,220,220,204,162,189,107,167,70,143,43,117,47,113,74,139,109,162,164,183,221,199,331,215"/>
+</map>

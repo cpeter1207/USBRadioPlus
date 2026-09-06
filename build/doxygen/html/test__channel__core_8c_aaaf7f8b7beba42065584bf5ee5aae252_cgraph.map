@@ -1,0 +1,5 @@
+<map id="test_src_process" name="test_src_process">
+<area shape="rect" id="Node000001" title="Verify src process." alt="" coords="5,5,136,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a07b2ea25f5c36a123ceadd2fdef39a56" title="Linker entry point for the real src_process operation behind the test wrapper." alt="" coords="184,5,328,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="136,15,170,15,170,21,136,21"/>
+</map>

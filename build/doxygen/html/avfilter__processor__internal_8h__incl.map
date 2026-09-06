@@ -1,0 +1,16 @@
+<map id="src/txagc/avfilter_processor_internal.h" name="src/txagc/avfilter_processor_internal.h">
+<area shape="rect" id="Node000001" title="Private FFmpeg graph construction and meter&#45;draining test interfaces." alt="" coords="257,5,419,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,151,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="276,48,130,92,128,87,275,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="175,93,333,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="319,48,278,86,275,82,316,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="357,93,487,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="360,44,401,82,398,86,357,48"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8h.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="511,93,661,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="398,43,538,87,536,92,397,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="547,240,622,265"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="584,120,571,167,572,198,578,226,573,227,567,198,566,166,579,118"/>
+<area shape="rect" id="Node000007" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="581,167,673,192"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="595,118,616,153,611,156,591,120"/>
+<area shape="poly" id="edge7_Node000007_Node000006" title=" " alt="" coords="623,194,601,230,596,227,618,191"/>
+</map>

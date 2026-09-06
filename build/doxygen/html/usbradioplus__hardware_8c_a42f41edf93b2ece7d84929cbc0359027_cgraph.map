@@ -1,0 +1,7 @@
+<map id="urp_hardware_spi" name="urp_hardware_spi">
+<area shape="rect" id="Node000001" title="Clock a synthesizer programming word over the parallel&#45;port serial interface." alt="" coords="5,31,143,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__hardware_8c.html#a4eb72182a04a926355c4ad6ab8cbaf1d" title="Wait the parallel&#45;port protocol interval required for hardware settling." alt="" coords="191,5,345,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="142,32,176,27,177,33,143,37"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="193,55,343,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="143,49,180,54,179,59,142,54"/>
+</map>

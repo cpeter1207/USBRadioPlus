@@ -1,0 +1,24 @@
+<map id="_menu_print" name="_menu_print">
+<area shape="rect" id="Node000001" title="Report active radio tuning and device assignments." alt="" coords="5,104,108,129"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="221,5,285,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="70,102,106,70,155,40,207,23,208,28,157,44,109,75,73,106"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a669c137a67300a2a8ac48ece74d5a3c3" title="Host&#45;API test double for ast_radio_usb_get_usbdev; observable effects are recorded in harness state." alt="" coords="156,55,351,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="106,101,155,89,187,81,188,86,157,94,107,107"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a7129f44681013128808c46977a42bb0c" title="Read the resolved CTCSS decoder&#45;input gain." alt="" coords="157,104,350,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="108,114,143,114,143,119,108,119"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="175,153,331,179"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="109,127,190,147,188,153,107,132"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus__modern_8c.html#ac61148cf7b715227e21078f6c639a388" title="Copy the acquired USB identifier, serial number, and ALSA card number." alt="" coords="161,203,346,228"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="73,127,110,158,157,188,178,196,176,201,155,192,106,162,70,132"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="412,89,551,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="350,111,398,109,399,114,350,116"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="612,101,795,141"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="551,110,598,112,598,118,551,115"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="843,151,937,176"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="792,138,830,147,829,152,791,143"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="399,153,564,179"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="332,163,385,163,385,169,332,169"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="612,175,795,215"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="319,176,399,187,501,193,598,195,598,200,501,199,398,193,318,181"/>
+<area shape="poly" id="edge10_Node000010_Node000007" title=" " alt="" coords="795,177,828,171,829,176,796,182"/>
+</map>

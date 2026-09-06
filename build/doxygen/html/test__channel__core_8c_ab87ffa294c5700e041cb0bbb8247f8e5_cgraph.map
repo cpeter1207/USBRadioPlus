@@ -1,0 +1,7 @@
+<map id="__wrap_pthread_join" name="__wrap_pthread_join">
+<area shape="rect" id="Node000001" title="Test wrapper for pthread_join controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,31,161,56"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a4cf789e9460cff36148cd7df3e9b5d53" title="Linker entry point for the real pthread_join operation behind the test wrapper." alt="" coords="209,5,359,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,31,196,26,196,32,162,36"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a07efb1830f2f0e9a78c569fb34acfbc0" title="Verify pthread join." alt="" coords="217,55,351,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="162,50,203,55,203,60,161,55"/>
+</map>

@@ -1,0 +1,28 @@
+<map id="tests/test_radio_core.c" name="tests/test_radio_core.c">
+<area shape="rect" id="Node000001" title="Executable radio core regression and failure&#45;path checks." alt="" coords="548,5,717,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8h.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="52,79,192,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="548,32,393,52,206,81,205,76,392,46,547,26"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="217,86,313,111"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="562,33,450,54,325,81,313,85,312,79,324,76,449,48,561,28"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="337,86,475,111"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="600,33,453,84,451,79,599,28"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="499,86,574,111"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="620,33,563,79,559,75,617,29"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="599,86,667,111"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="635,31,635,72,630,72,630,31"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="691,86,766,111"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="648,29,706,75,702,79,645,33"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="790,86,857,111"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="661,28,779,76,784,78,782,83,777,81,659,33"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="881,86,952,111"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="686,28,773,49,869,76,877,79,875,84,868,81,771,54,685,33"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="976,86,1047,111"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="718,27,836,46,965,76,973,79,972,84,964,81,835,51,717,32"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="124,240,195,265"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="70,121,42,135,20,152,9,171,9,180,13,191,33,211,57,226,84,237,111,243,109,248,83,242,55,231,29,215,9,193,4,181,4,169,16,148,39,131,67,116"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="23,167,221,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="125,119,125,153,119,153,119,119"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="245,167,420,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="173,116,290,159,288,164,171,121"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="306,194,201,237,199,232,304,190"/>
+</map>

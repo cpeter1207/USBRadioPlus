@@ -1,0 +1,12 @@
+<map id="usbradioplus_set_channel" name="usbradioplus_set_channel">
+<area shape="rect" id="Node000001" title="Select a binary channel on the configured parallel&#45;port interface." alt="" coords="503,42,693,67"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="108,5,296,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="489,49,296,35,296,30,489,44"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a91b1301eb65d07f4f3a37051e8ae653d" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="344,67,455,93"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="489,71,455,76,454,70,488,66"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,42,60,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,47,61,53,60,47,94,41"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a7aa17279fab322817ae6b6989c16fcb3" title="Verify text controls." alt="" coords="133,70,271,95"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="330,84,272,84,271,79,330,78"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="119,72,60,62,61,56,120,66"/>
+</map>

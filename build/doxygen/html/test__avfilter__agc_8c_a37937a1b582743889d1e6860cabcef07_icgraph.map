@@ -1,0 +1,19 @@
+<map id="process" name="process">
+<area shape="rect" id="Node000001" title="Pass a stream through a persistent graph in host&#45;selected partitions." alt="" coords="331,104,403,129"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__agc_8c.html#a819cae5e2bb5f3e1bfa8c56c9b185851" title="Report whole&#45;graph CPU cost without a machine&#45;dependent pass threshold." alt="" coords="148,5,243,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="343,95,316,69,281,44,242,29,244,24,284,40,319,65,347,92"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__agc_8c.html#aee1eed7862442b529a3019aa7cc66f8e" title="Detector filters must neither filter program audio nor introduce a limiter." alt="" coords="110,55,281,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="317,104,282,94,242,83,244,78,283,89,318,99"/>
+<area shape="rect" id="Node000005" href="$test__avfilter__agc_8c.html#ae2581dffde944fa8831038f1fa3802d1" title="Each sidechain edge must affect measurement while both zero means bypass." alt="" coords="108,104,283,129"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="317,119,283,119,283,114,317,114"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__agc_8c.html#a2f73c26711831f473496e3b8388fbfbb" title="Host frame boundaries cannot reset smoothing, hold, or the gain ramp." alt="" coords="137,153,253,179"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="318,133,241,156,240,151,317,128"/>
+<area shape="rect" id="Node000007" href="$test__avfilter__agc_8c.html#a01409fbb91bb41d94dcb7beb8a56fe9b" title="Verify rate&#45;independent leveling, immediate output and boost/cut limits." alt="" coords="114,203,277,228"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="347,141,319,168,284,192,254,205,252,200,281,188,315,164,343,137"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__agc_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute graph&#45;level regressions and a non&#45;gating performance sample." alt="" coords="5,104,60,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="135,33,109,44,72,74,46,105,41,102,68,71,107,40,133,28"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="134,86,109,94,61,110,59,105,107,89,133,81"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="95,119,60,119,60,114,95,114"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="136,152,107,143,60,128,61,123,109,138,138,147"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="122,200,107,192,69,162,42,131,46,128,72,158,109,188,125,195"/>
+</map>

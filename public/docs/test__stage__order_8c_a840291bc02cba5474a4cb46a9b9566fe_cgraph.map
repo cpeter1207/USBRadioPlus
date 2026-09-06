@@ -1,0 +1,12 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,55,60,80"/>
+<area shape="rect" id="Node000002" href="$test__stage__order_8c.html#a2aba464d5d44588de73853fa9c613550" title="Create a valid chain with optional processing disabled." alt="" coords="110,5,221,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="59,55,117,33,118,38,61,60"/>
+<area shape="rect" id="Node000003" href="$test__stage__order_8c.html#aafcbc75f86ed3f21c178f6d2854b1c61" title="Assert that the requested invalid configuration or injected operation fails." alt="" coords="108,55,223,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="60,65,94,65,94,70,60,70"/>
+<area shape="rect" id="Node000004" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="271,80,456,105"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="61,75,108,89,184,96,257,97,257,102,183,101,108,94,60,81"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="224,72,257,76,256,82,223,77"/>
+<area shape="rect" id="Node000005" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="504,80,596,105"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="456,90,490,90,490,95,456,95"/>
+</map>

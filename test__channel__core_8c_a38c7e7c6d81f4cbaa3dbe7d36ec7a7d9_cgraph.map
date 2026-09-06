@@ -1,0 +1,113 @@
+<map id="test_resampled_fifo_short_bursts" name="test_resampled_fifo_short_bursts">
+<area shape="rect" id="Node000001" title="Preserve isolated link&#45;rate bursts at the minimum, normal, and maximum FIFO targets." alt="" coords="5,1089,156,1129"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a3f4eafa59aa669068ef181cbff4d3eac" title="Render one link&#45;rate tone frame through real SRC startup and recovery." alt="" coords="204,1089,368,1129"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,1106,191,1106,191,1111,156,1111"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a80ae2c9c1f5c28dba2753015db7811cb" title="Initialize a channel with the production best&#45;quality sinc converters." alt="" coords="439,141,583,181"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="289,1088,500,193,505,195,295,1089"/>
+<area shape="rect" id="Node000024" href="$usbradioplus__radio_8c.html#aed96fb0a625bf4b7a92d674acf416988" title="Release a radio&#45;signaling engine and every stage it owns." alt="" coords="929,24,1068,49"/>
+<area shape="poly" id="edge12_Node000002_Node000024" title=" " alt="" coords="285,1089,287,908,293,771,303,620,319,468,341,327,356,264,373,209,392,163,414,127,438,100,466,77,496,58,528,42,596,19,668,7,740,3,810,5,926,19,926,24,809,10,741,8,669,12,597,25,530,47,498,63,469,82,442,104,418,130,397,165,378,211,361,265,347,328,324,468,308,621,298,771,293,908,290,1089"/>
+<area shape="rect" id="Node000035" href="$usbradioplus__channel__common_8c.html#af20a166820a4b73e80cd1e1a30470f9e" title="Release native processing, rate&#45;conversion, and echo buffers." alt="" coords="416,1993,607,2019"/>
+<area shape="poly" id="edge13_Node000002_Node000035" title=" " alt="" coords="295,1128,506,1979,501,1981,290,1129"/>
+<area shape="rect" id="Node000040" href="$usbradioplus__native__tick_8c.html#a98790fb21cd1370ab67e4f546b2ed69f" title="Process a native receiver block and render the corresponding transmitter block." alt="" coords="419,1096,603,1121"/>
+<area shape="poly" id="edge17_Node000002_Node000040" title=" " alt="" coords="368,1106,406,1106,406,1111,368,1111"/>
+<area shape="rect" id="Node000110" href="$usbradioplus__channel__common_8c.html#a170c1766b71f78c020eeed0a8bb74a3b" title="Queue app_rpt PCM for asynchronous native&#45;rate transmitter rendering." alt="" coords="435,2109,587,2149"/>
+<area shape="poly" id="edge59_Node000002_Node000110" title=" " alt="" coords="291,1129,303,1296,327,1561,345,1702,365,1835,390,1947,404,1993,418,2029,444,2067,475,2098,471,2102,440,2070,414,2031,399,1995,385,1949,360,1836,339,1703,322,1562,297,1297,286,1129"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="709,148,811,173"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="584,158,696,158,696,163,584,163"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="693,197,827,223"/>
+<area shape="poly" id="edge6_Node000003_Node000018" title=" " alt="" coords="584,172,683,192,682,197,583,178"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__radio_8c.html#acd9dc17ab5d8bfca785969de9d6a9cee" title="Allocate a radio&#45;signaling engine and its detector buffers from channel settings." alt="" coords="695,49,825,75"/>
+<area shape="poly" id="edge7_Node000003_Node000019" title=" " alt="" coords="544,138,595,110,654,84,681,75,682,80,656,89,597,115,547,143"/>
+<area shape="rect" id="Node000031" href="$usbradioplus__channel__common_8c.html#a2978b9bb69b48c3934b247d5d53f51d4" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="679,99,841,124"/>
+<area shape="poly" id="edge11_Node000003_Node000031" title=" " alt="" coords="583,144,682,124,683,129,584,149"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__radio_8c.html#a6ac88139b2fcc40d646f6ed5ea779f1f" title="Resolve receive/transmit signaling lists and CTCSS tone mappings." alt="" coords="913,199,1084,224"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="811,169,926,193,924,199,810,174"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="1132,981,1315,1021"/>
+<area shape="poly" id="edge5_Node000004_Node000008" title=" " alt="" coords="810,146,872,135,945,133,983,138,1020,147,1055,162,1086,184,1107,210,1126,244,1143,285,1157,333,1181,443,1199,564,1211,686,1218,801,1224,967,1219,967,1213,801,1205,687,1193,565,1176,444,1152,334,1138,287,1121,246,1103,213,1082,188,1052,167,1019,152,983,143,945,139,872,141,810,151"/>
+<area shape="poly" id="edge10_Node000019_Node000005" title=" " alt="" coords="826,69,867,84,902,107,933,134,981,186,977,190,930,138,898,111,864,89,824,74"/>
+<area shape="poly" id="edge8_Node000019_Node000024" title=" " alt="" coords="826,53,916,43,916,48,826,58"/>
+<area shape="rect" id="Node000025" href="$usbradioplus__radio_8c.html#af185f61aec66368a31061398138ca3ea" title="Release a detector stage and its allocated sample and coefficient buffers." alt="" coords="1132,24,1315,49"/>
+<area shape="poly" id="edge9_Node000024_Node000025" title=" " alt="" coords="1068,34,1118,34,1118,39,1068,39"/>
+<area shape="rect" id="Node000036" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="677,2017,843,2043"/>
+<area shape="poly" id="edge14_Node000035_Node000036" title=" " alt="" coords="607,2013,663,2018,663,2023,606,2018"/>
+<area shape="rect" id="Node000038" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="675,2067,845,2092"/>
+<area shape="poly" id="edge15_Node000035_Node000038" title=" " alt="" coords="548,2016,655,2052,690,2061,689,2066,654,2057,547,2021"/>
+<area shape="rect" id="Node000039" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="697,1968,823,1993"/>
+<area shape="poly" id="edge16_Node000035_Node000039" title=" " alt="" coords="606,1994,683,1986,684,1991,607,1999"/>
+<area shape="rect" id="Node000041" href="$usbradioplus__channel__common_8c.html#aeab7db6e27d61608b8b56f697ff8c31e" title="Read the resolved output&#45;A program/CTCSS routing assignment." alt="" coords="933,1064,1065,1089"/>
+<area shape="poly" id="edge18_Node000040_Node000041" title=" " alt="" coords="604,1100,919,1079,919,1085,604,1105"/>
+<area shape="rect" id="Node000042" href="$usbradioplus__channel__common_8c.html#a411be591de10fb57b21a1e352fe39346" title="Read the resolved output&#45;B program/CTCSS routing assignment." alt="" coords="933,963,1065,988"/>
+<area shape="poly" id="edge20_Node000040_Node000042" title=" " alt="" coords="513,1095,525,1046,551,978,569,942,592,907,620,877,653,852,709,827,733,822,758,821,808,831,866,852,903,871,935,897,983,950,979,954,932,901,900,876,864,857,806,836,757,826,734,827,710,832,656,856,624,881,597,911,574,944,556,980,530,1048,518,1096"/>
+<area shape="rect" id="Node000043" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="971,1629,1026,1655"/>
+<area shape="poly" id="edge22_Node000040_Node000043" title=" " alt="" coords="517,1121,530,1224,557,1383,577,1466,600,1541,626,1601,641,1623,656,1639,692,1660,731,1673,772,1679,814,1680,894,1670,958,1653,959,1658,895,1675,814,1685,772,1684,730,1678,689,1665,653,1643,637,1626,622,1604,595,1543,571,1467,552,1384,525,1225,511,1122"/>
+<area shape="rect" id="Node000044" href="$usbradioplus__channel__common_8c.html#aaced00a946c9ac8dc5ba03ca51341ffc" title="Append resampled app_rpt audio to the elastic native FIFO." alt="" coords="677,1755,843,1780"/>
+<area shape="poly" id="edge23_Node000040_Node000044" title=" " alt="" coords="516,1121,528,1239,555,1427,574,1525,597,1616,625,1691,640,1719,657,1740,667,1749,663,1753,653,1744,636,1722,620,1693,592,1618,569,1527,550,1428,523,1240,511,1122"/>
+<area shape="rect" id="Node000046" href="$usbradioplus__channel__common_8c.html#a689708e18d1bdcbe3f20768ef4fc471a" title="Apply changed hardware gains, assignments, and CTCSS maps to a live radio." alt="" coords="687,1031,833,1071"/>
+<area shape="poly" id="edge24_Node000040_Node000046" title=" " alt="" coords="567,1093,673,1069,674,1074,568,1099"/>
+<area shape="rect" id="Node000057" href="$avfilter__processor_8c.html#a3514e05bc03695f0fd1b564986b58cad" title="Process a mono block in place through the shared FFmpeg graph." alt="" coords="676,1804,844,1829"/>
+<area shape="poly" id="edge29_Node000040_Node000057" title=" " alt="" coords="516,1122,527,1248,552,1450,571,1557,595,1655,623,1736,639,1767,657,1790,665,1797,662,1801,653,1793,635,1770,618,1738,590,1657,566,1558,547,1451,522,1249,511,1122"/>
+<area shape="rect" id="Node000074" href="$rnnoise__processor_8c.html#a38854c9b8a0fc008feca99996f54457d" title="Reset denoiser history when the local chain bypasses RNNoise." alt="" coords="677,1853,843,1879"/>
+<area shape="poly" id="edge30_Node000040_Node000074" title=" " alt="" coords="516,1121,525,1256,549,1473,568,1588,592,1694,621,1781,638,1814,657,1839,667,1847,663,1851,653,1843,634,1817,616,1783,587,1695,563,1589,544,1474,520,1256,511,1122"/>
+<area shape="rect" id="Node000076" href="$rnnoise__processor_8c.html#a21c7a4e013042b5bdf65c88899891b65" title="Denoise floating&#45;point receiver audio using 480&#45;sample RNNoise frames." alt="" coords="675,1903,845,1943"/>
+<area shape="poly" id="edge31_Node000040_Node000076" title=" " alt="" coords="516,1122,525,1264,548,1495,567,1618,591,1731,621,1825,638,1861,657,1888,665,1896,661,1900,653,1892,633,1864,616,1827,586,1732,562,1618,543,1495,520,1264,511,1122"/>
+<area shape="rect" id="Node000080" href="$usbradioplus__channel__core_8c.html#a385ca4e08912575fcfd3b7a12acf8576" title="Apply linear gain and saturate to the signed 16&#45;bit PCM range." alt="" coords="699,247,821,272"/>
+<area shape="poly" id="edge32_Node000040_Node000080" title=" " alt="" coords="510,1095,517,946,539,701,557,570,581,450,613,351,632,312,653,283,668,271,685,263,687,268,671,276,657,287,636,315,618,352,586,451,562,571,544,701,523,946,516,1096"/>
+<area shape="rect" id="Node000081" href="$usbradioplus__dsp_8c.html#aa7e44596b07a6391f8eb870d05421ccc" title="Reset the elastic&#45;buffer clock correction to nominal rate." alt="" coords="686,297,834,337"/>
+<area shape="poly" id="edge33_Node000040_Node000081" title=" " alt="" coords="511,1096,520,958,544,732,562,613,586,502,616,410,634,374,653,347,672,332,675,336,657,351,638,377,621,412,592,503,568,614,549,733,525,958,516,1096"/>
+<area shape="rect" id="Node000082" href="$usbradioplus__dsp_8c.html#a4be2f71d64d4f8bef579c2684d5ae312" title="Slew the conversion ratio toward the FIFO target without abrupt frame corrections." alt="" coords="686,361,834,401"/>
+<area shape="poly" id="edge34_Node000040_Node000082" title=" " alt="" coords="511,1096,522,968,547,762,566,653,590,552,619,468,635,436,653,411,672,396,675,400,657,415,639,439,624,470,595,553,572,654,553,763,527,969,516,1096"/>
+<area shape="rect" id="Node000083" href="$usbradioplus__ctcss_8c.html#a11478a2232e38963fcf379979a29f5c2" title="Render a phase&#45;continuous CTCSS block at 48 kHz, including optional reverse burst." alt="" coords="686,1705,834,1731"/>
+<area shape="poly" id="edge35_Node000040_Node000083" title=" " alt="" coords="517,1121,531,1230,560,1400,579,1489,602,1571,628,1639,642,1665,657,1684,675,1698,672,1703,653,1688,637,1668,623,1641,597,1573,574,1491,554,1401,526,1231,511,1122"/>
+<area shape="rect" id="Node000085" href="$usbradioplus__ctcss_8c.html#a20af3a7785867986f3c4eebed7be9acf" title="Calculate reference CTCSS amplitude and DC bias after Q8 gain scaling." alt="" coords="669,425,851,465"/>
+<area shape="poly" id="edge37_Node000040_Node000085" title=" " alt="" coords="511,1095,524,978,551,791,571,693,594,602,621,526,636,497,653,475,657,471,660,475,657,479,641,500,626,529,599,603,576,694,557,792,529,978,516,1096"/>
+<area shape="rect" id="Node000087" href="$usbradioplus__channel__core_8c.html#a0ff843df19489f81b39b01fce1457ff0" title="Return the largest absolute value in a floating&#45;point audio buffer." alt="" coords="693,1555,827,1580"/>
+<area shape="poly" id="edge38_Node000040_Node000087" title=" " alt="" coords="516,1122,521,1193,528,1245,540,1304,558,1365,583,1426,615,1484,656,1533,682,1550,679,1555,653,1537,611,1487,578,1429,553,1367,535,1305,523,1246,516,1194,510,1122"/>
+<area shape="rect" id="Node000088" href="$usbradioplus__channel__core_8c.html#ad15fdf8e7c8559cb6c4bd0625cb931e6" title="Decay the adaptive reserve after several stable minutes." alt="" coords="683,489,837,529"/>
+<area shape="poly" id="edge40_Node000040_Node000088" title=" " alt="" coords="512,1096,526,989,555,821,575,733,597,652,623,585,638,559,653,539,668,526,672,531,657,543,642,562,628,587,602,654,580,735,560,822,531,990,517,1096"/>
+<area shape="rect" id="Node000089" href="$usbradioplus__channel__core_8c.html#a0a9141d34da430a0b67e60e06be96a98" title="Raise the adaptive reserve after a genuine keyed underrun." alt="" coords="683,553,837,593"/>
+<area shape="poly" id="edge41_Node000040_Node000089" title=" " alt="" coords="509,1096,511,1013,516,951,526,881,543,807,569,734,605,664,627,632,653,603,669,590,672,595,657,607,631,635,610,667,574,736,549,809,532,882,521,951,516,1013,515,1096"/>
+<area shape="rect" id="Node000090" href="$usbradioplus__channel__core_8c.html#a40a6208a8e823dfbb3ac78b3982934a7" title="Render a block, concealing a shortage without an abrupt zero insertion." alt="" coords="676,617,844,643"/>
+<area shape="poly" id="edge42_Node000040_Node000090" title=" " alt="" coords="510,1096,513,1019,519,963,530,899,547,833,572,767,607,705,653,652,662,645,666,649,657,656,612,709,577,769,552,835,535,901,524,964,518,1020,515,1096"/>
+<area shape="rect" id="Node000092" href="$usbradioplus__channel__core_8c.html#acb7f2f37d8ba1f5749999b927404ed38" title="Empty and de&#45;prime the FIFO after clock&#45;recovery loss." alt="" coords="681,667,839,692"/>
+<area shape="poly" id="edge43_Node000040_Node000092" title=" " alt="" coords="510,1096,516,1026,523,976,536,920,553,861,578,802,611,748,653,701,667,692,670,696,656,705,615,751,583,805,558,862,541,921,529,977,521,1027,516,1096"/>
+<area shape="rect" id="Node000093" href="$usbradioplus__repeat_8c.html#a47837de5a9c94d3e9d175aacffd9bfd3" title="Apply repeat level and native DTMF muting to the transmit&#45;branch copy." alt="" coords="661,716,859,741"/>
+<area shape="poly" id="edge44_Node000040_Node000093" title=" " alt="" coords="511,1096,519,1034,541,940,560,889,584,838,615,791,653,751,659,746,662,751,656,755,619,795,589,841,565,891,547,942,525,1035,516,1096"/>
+<area shape="rect" id="Node000094" href="$usbradioplus__channel__core_8c.html#aedc05ac7f06a992d7a703005ca0c1a8e" title="Copy the next playback block and return its sample count." alt="" coords="698,765,822,791"/>
+<area shape="poly" id="edge45_Node000040_Node000094" title=" " alt="" coords="512,1095,525,1042,550,965,569,923,592,881,620,842,653,808,683,790,686,795,656,812,624,846,597,884,574,925,555,967,530,1044,518,1096"/>
+<area shape="rect" id="Node000095" href="$usbradioplus__channel__core_8c.html#a1bbb62734d6f49a82d803042118451db" title="Append a recording block within a configured sample limit." alt="" coords="691,867,829,892"/>
+<area shape="poly" id="edge46_Node000040_Node000095" title=" " alt="" coords="515,1095,533,1057,562,1004,602,949,626,924,653,903,677,890,679,895,656,907,630,928,606,953,566,1007,537,1059,520,1097"/>
+<area shape="rect" id="Node000096" href="$usbradioplus__channel__core_8c.html#a418a09ed008c78be9021c94d10bf1227" title="Convert an absolute PCM peak to dBFS; zero becomes negative infinity." alt="" coords="684,1604,836,1629"/>
+<area shape="poly" id="edge47_Node000040_Node000096" title=" " alt="" coords="515,1121,516,1202,522,1261,532,1328,549,1398,574,1468,610,1533,632,1563,656,1589,673,1601,670,1606,653,1593,627,1566,605,1536,569,1470,544,1400,527,1329,516,1262,511,1202,510,1122"/>
+<area shape="rect" id="Node000097" href="$usbradioplus__channel__core_8c.html#a6e1f5e65ad0cf22e35c527f09a9b4cbf" title="Extract the left CM119 channel, collect ADC measurements, apply the optional squelch&#45;tail delay,..." alt="" coords="683,917,837,957"/>
+<area shape="poly" id="edge49_Node000040_Node000097" title=" " alt="" coords="520,1094,572,1033,610,998,653,967,669,958,671,963,656,971,614,1002,576,1037,524,1098"/>
+<area shape="rect" id="Node000098" href="$usbradioplus__channel__core_8c.html#a0fc4d03da885bd9f15231925ecb71db7" title="Remove one queued frame." alt="" coords="669,981,851,1007"/>
+<area shape="poly" id="edge50_Node000040_Node000098" title=" " alt="" coords="528,1094,582,1056,654,1017,678,1008,680,1013,656,1022,585,1060,531,1098"/>
+<area shape="rect" id="Node000099" href="$usbradioplus__dsp_8c.html#aaca9104f82da02824fec2f6ff0e84e75" title="Convert between sample rates, copying directly when the rates match." alt="" coords="694,1453,826,1479"/>
+<area shape="poly" id="edge51_Node000040_Node000099" title=" " alt="" coords="517,1121,527,1179,550,1266,568,1313,592,1359,621,1402,656,1439,682,1453,679,1458,653,1443,617,1405,587,1362,563,1315,545,1267,521,1181,511,1122"/>
+<area shape="rect" id="Node000100" href="$usbradioplus__dsp_8c.html#a1606a7bd14a1f011cade73f4c6c6d32d" title="Convert an interleaved PCM block using a caller&#45;supplied rate ratio." alt="" coords="935,1479,1062,1504"/>
+<area shape="poly" id="edge54_Node000040_Node000100" title=" " alt="" coords="515,1122,520,1190,527,1239,538,1292,556,1348,580,1401,614,1449,656,1488,690,1507,727,1519,766,1525,806,1527,882,1519,945,1505,947,1510,883,1525,806,1532,766,1530,726,1524,688,1512,653,1492,609,1452,576,1404,551,1350,533,1294,521,1240,514,1190,510,1122"/>
+<area shape="rect" id="Node000101" href="$usbradioplus__channel__core_8c.html#a84435a5e5abd4cccfd6d8405091ed351" title="Quantize and route one native transmitter block to the CM119 channels." alt="" coords="683,1146,837,1186"/>
+<area shape="poly" id="edge53_Node000040_Node000101" title=" " alt="" coords="568,1119,670,1143,668,1148,567,1124"/>
+<area shape="rect" id="Node000105" href="$usbradioplus__dsp_8c.html#ac386bf618a23376321bd65e0be3eea46" title="Clear resampler history at a stream discontinuity." alt="" coords="705,1211,815,1236"/>
+<area shape="poly" id="edge55_Node000040_Node000105" title=" " alt="" coords="531,1120,585,1157,656,1196,693,1208,691,1213,654,1201,582,1162,528,1124"/>
+<area shape="rect" id="Node000106" href="$chan__usbradioplus_8c.html#a3aa4499b3b92df9ccd3ab749c85c7013" title="Update transmitter peak, RMS, and clipping measurements." alt="" coords="685,1261,835,1301"/>
+<area shape="poly" id="edge56_Node000040_Node000106" title=" " alt="" coords="524,1120,576,1180,614,1215,656,1245,673,1254,671,1259,653,1250,611,1219,572,1183,520,1123"/>
+<area shape="rect" id="Node000108" href="$usbradioplus__processing_8c.html#a1ec98f39aaa9de143d15bee683e35dba" title="Copy a channel&#39;s final voice/telemetry chain under the settings mutex. An absent profile produces a z..." alt="" coords="669,1325,851,1365"/>
+<area shape="poly" id="edge57_Node000040_Node000108" title=" " alt="" coords="520,1120,538,1158,567,1209,607,1264,630,1289,656,1311,665,1316,662,1321,653,1315,627,1293,603,1267,562,1212,533,1160,515,1123"/>
+<area shape="rect" id="Node000109" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="669,1389,851,1429"/>
+<area shape="poly" id="edge58_Node000040_Node000109" title=" " alt="" coords="518,1121,532,1169,559,1237,600,1311,626,1345,656,1375,663,1380,660,1384,653,1379,622,1349,595,1314,554,1239,527,1170,513,1122"/>
+<area shape="poly" id="edge19_Node000041_Node000008" title=" " alt="" coords="1036,1062,1150,1023,1151,1028,1038,1067"/>
+<area shape="poly" id="edge21_Node000042_Node000008" title=" " alt="" coords="1065,980,1119,986,1118,992,1065,986"/>
+<area shape="poly" id="edge27_Node000046_Node000005" title=" " alt="" coords="832,1038,849,1029,863,1016,882,989,898,954,927,862,949,751,966,629,986,395,994,238,999,238,992,396,971,630,954,751,932,863,903,956,886,992,867,1020,852,1033,834,1042"/>
+<area shape="poly" id="edge28_Node000046_Node000008" title=" " alt="" coords="833,1041,1118,1010,1118,1015,833,1046"/>
+<area shape="poly" id="edge25_Node000046_Node000041" title=" " alt="" coords="833,1056,919,1066,919,1071,832,1062"/>
+<area shape="poly" id="edge26_Node000046_Node000042" title=" " alt="" coords="823,1029,865,1016,944,990,946,995,866,1021,825,1034"/>
+<area shape="poly" id="edge36_Node000083_Node000043" title=" " alt="" coords="803,1703,865,1684,957,1653,959,1658,866,1689,804,1708"/>
+<area shape="poly" id="edge39_Node000087_Node000043" title=" " alt="" coords="823,1578,866,1589,959,1623,958,1628,865,1594,822,1583"/>
+<area shape="poly" id="edge48_Node000096_Node000043" title=" " alt="" coords="836,1622,958,1635,957,1641,836,1627"/>
+<area shape="poly" id="edge52_Node000099_Node000100" title=" " alt="" coords="827,1470,922,1481,922,1486,826,1476"/>
+<area shape="rect" id="Node000111" href="$usbradioplus__channel__core_8c.html#ad94e7ef3e25a69008277364a47e212c7" title="Return nonzero when at least one app_rpt frame is queued." alt="" coords="655,2116,865,2141"/>
+<area shape="poly" id="edge60_Node000110_Node000111" title=" " alt="" coords="587,2126,641,2126,641,2131,587,2131"/>
+<area shape="rect" id="Node000112" href="$usbradioplus__channel__core_8c.html#a29557072c8dd4626955f1f94680300ec" title="Queue one app_rpt frame, optionally prefixing silence for clock&#45;recovery startup." alt="" coords="665,2165,855,2191"/>
+<area shape="poly" id="edge61_Node000110_Node000112" title=" " alt="" coords="588,2141,683,2160,682,2165,587,2146"/>
+</map>

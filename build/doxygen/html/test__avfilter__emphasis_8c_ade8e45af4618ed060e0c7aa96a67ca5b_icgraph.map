@@ -1,0 +1,7 @@
+<map id="rms" name="rms">
+<area shape="rect" id="Node000001" title="Calculate sample RMS for an audio&#45;result assertion." alt="" coords="237,5,284,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__emphasis_8c.html#a4ba2395b62e14db91538f52283620079" title="Measure normalized emphasis response for the selected frequency." alt="" coords="108,5,189,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="224,21,189,21,189,15,224,15"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__emphasis_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,5,60,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,21,60,21,60,15,94,15"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="usbradioplus_processing_reload" name="usbradioplus_processing_reload">
+<area shape="rect" id="Node000001" title="Validate and replace live processing settings." alt="" coords="543,95,725,135"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="338,13,457,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="581,91,494,53,453,41,454,35,496,48,583,86"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#a83c3a4ff893717c1469f6b88d0ea9a4b" title="Running reloads reject incompatible active&#45;link crossovers without replacing settings." alt="" coords="300,63,495,103"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="529,103,495,98,495,93,530,98"/>
+<area shape="rect" id="Node000007" href="$test__processing__validation_8c.html#aa9f8087d14e1c26b55d16aa88926b9c5" title="Reload band modes atomically and deliver every selected and inactive setting live." alt="" coords="323,127,471,167"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="530,131,472,139,471,134,529,126"/>
+<area shape="rect" id="Node000008" href="$test__processing__validation_8c.html#a1db0fa5f0c16906780fa9106ecc514da" title="Verify module lifecycle and simple cli." alt="" coords="315,191,480,231"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="581,143,496,181,463,193,462,188,494,176,579,138"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="108,5,252,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="325,28,252,28,252,23,325,23"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+<area shape="rect" id="Node000006" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="153,134,207,159"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="316,109,208,141,207,136,315,104"/>
+<area shape="poly" id="edge7_Node000007_Node000006" title=" " alt="" coords="310,149,208,149,208,144,310,144"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="315,189,207,157,208,152,316,184"/>
+</map>

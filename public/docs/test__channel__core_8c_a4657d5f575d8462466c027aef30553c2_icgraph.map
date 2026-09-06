@@ -1,0 +1,15 @@
+<map id="ast_moh_stop" name="ast_moh_stop">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_moh_stop; observable effects are recorded in harness state." alt="" coords="740,70,853,95"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a9c723740edb97506ba6d5e2cde3a4ca4" title="Apply Asterisk radio key, unkey, and signaling indications." alt="" coords="555,70,692,95"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="726,85,692,85,692,80,726,80"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a2a995a12cc43cac5d2dd7c57ed854ba6" title="Exercise radio trace decisions at injected module/file debug levels." alt="" coords="344,5,507,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="565,69,494,48,496,43,566,63"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="108,56,296,96"/>
+<area shape="poly" id="edge7_Node000002_Node000004" title=" " alt="" coords="541,84,296,80,296,75,541,79"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a7a66d13a7295ae2c95173ec573279025" title="Verify channel callbacks." alt="" coords="115,121,289,146"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="541,95,289,126,288,120,540,90"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="331,49,291,59,290,53,330,44"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,93,60,118"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="95,97,61,103,60,98,94,92"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="111,121,60,112,61,107,112,116"/>
+</map>

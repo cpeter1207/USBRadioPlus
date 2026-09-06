@@ -1,0 +1,12 @@
+<map id="radio_set_dsp_debug" name="radio_set_dsp_debug">
+<area shape="rect" id="Node000001" title="Set the selected radio&#39;s DSP trace verbosity." alt="" coords="560,31,719,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#aa317bb2767e0bc7192a0c2712a48680e" title="Register, complete, or change the radio debug level." alt="" coords="341,5,512,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="546,35,512,31,513,26,547,30"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a0d4aeabb854d0c773c56fbdecca0d1de" title="Verify radio tune dispatch." alt="" coords="108,56,293,81"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="546,51,294,66,293,61,546,46"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="135,7,267,32"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="328,21,267,22,267,16,327,16"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,32,60,57"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="121,34,61,43,60,38,121,29"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="98,57,60,51,60,46,99,51"/>
+</map>

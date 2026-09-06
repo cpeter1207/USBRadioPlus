@@ -1,0 +1,7 @@
+<map id="load_module" name="load_module">
+<area shape="rect" id="Node000001" title="Register the channel technology and start configured radio workers." alt="" coords="351,13,457,38"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,5,303,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="337,28,303,28,303,23,337,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

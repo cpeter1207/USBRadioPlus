@@ -1,0 +1,9 @@
+<map id="urp_pcm_peak" name="urp_pcm_peak">
+<area shape="rect" id="Node000001" title="Return the absolute peak of signed 16&#45;bit PCM, including 32768 for INT16_MIN." alt="" coords="319,31,436,56"/>
+<area shape="rect" id="Node000002" href="$test__channel__shared__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="162,5,217,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="305,36,216,24,217,19,305,31"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a4b71107646e29bb03746944f1e76802c" title="Verify numeric helpers." alt="" coords="108,55,271,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="305,55,271,60,270,54,305,50"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,55,60,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,70,60,70,60,65,94,65"/>
+</map>

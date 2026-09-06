@@ -1,0 +1,15 @@
+<map id="run" name="run">
+<area shape="rect" id="Node000001" title="Process samples in place or out of place without buffering the program audio." alt="" coords="5,48,48,73"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#a9b0867722c1ebeeaf49a9544e4266d28" title="Cache rate&#45;dependent coefficients only when controls change." alt="" coords="106,23,189,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="47,54,92,44,93,49,49,59"/>
+<area shape="rect" id="Node000005" href="$rms__agc__ladspa_8c.html#ac2d1f6a8cf51241e0e781c3a657c078d" title="Update the gain destination at a sample&#45;derived one&#45;kilohertz cadence." alt="" coords="96,73,199,99"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="49,62,83,70,82,75,47,68"/>
+<area shape="rect" id="Node000003" href="$rms__agc__ladspa_8c.html#ad2959525ff319b889cf82eb5fa7696aa" title="Restrict a finite scalar to a closed interval." alt="" coords="397,23,476,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="188,20,246,7,298,3,350,7,388,16,387,21,349,13,298,8,247,13,189,25"/>
+<area shape="rect" id="Node000004" href="$rms__agc__ladspa_8c.html#ac854c2cee75cfad25c2d0a319fc1c0d9" title="Read one control using the same defaults with or without host connection." alt="" coords="247,23,349,48"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="189,33,233,33,233,38,189,38"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="350,33,384,33,384,38,350,38"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="199,79,270,70,349,57,383,48,385,54,350,62,271,75,199,84"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#a38beb42b84ff5b37d5bf5f90a37552e3" title="Set a scalar using its public port number." alt="" coords="265,124,331,149"/>
+<area shape="poly" id="edge7_Node000005_Node000006" title=" " alt="" coords="187,96,252,119,250,124,185,101"/>
+</map>

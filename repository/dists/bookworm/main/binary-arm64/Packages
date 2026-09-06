@@ -1,0 +1,77 @@
+Package: librnnoise-dev
+Source: rnnoise
+Version: 0.2-1.deb12
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1466
+Depends: librnnoise0 (= 0.2-1.deb12)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libdevel
+Filename: pool/main/r/rnnoise/librnnoise-dev_0.2-1.deb12_arm64.deb
+Size: 1195548
+SHA256: 2cc74bf6bc54d637da5e9036ec9d2da0dd11156ee81b7fa33a4532f87c6d472a
+SHA1: 91e6f0dff613478a9de67a9f4640e3c041b33b79
+MD5sum: 1488cdcd6ea42af3cde2933ac9858664
+Description: development files for the RNNoise audio library
+ This package provides the header, shared-library link, and pkg-config metadata
+ required to build applications using RNNoise.
+
+Package: librnnoise0
+Source: rnnoise
+Version: 0.2-1.deb12
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1489
+Depends: libc6 (>= 2.17)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libs
+Filename: pool/main/r/rnnoise/librnnoise0_0.2-1.deb12_arm64.deb
+Size: 1191484
+SHA256: 04a981c74821fd533f2ef8b0518c0080214d392a9b9d12df2fe20d168aedbba2
+SHA1: cd1e6939b658ed9aec2b726e6a8ea7217afcdf6a
+MD5sum: 999be1f80a8076a3e1b2149b99c77bdc
+Description: recurrent neural network audio noise suppression library
+ RNNoise combines signal processing and recurrent neural networks to suppress
+ background noise in speech audio.
+
+Package: usbradioplus
+Version: 0.1.0~alpha11-1.deb12+legacy.asl393
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 638
+Depends: libavfilter8 (>= 7:5.0), libavutil57 (>= 7:5.1), libc6 (>= 2.34), librnnoise0 (>= 0.2), libsamplerate0 (>= 0.1.7), libusb-0.1-4 (>= 2:0.1.12), asl3-asterisk (= 2:22.9.0+asl3-3.9.3-1.deb12), python3
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: hamradio
+Filename: pool/main/u/usbradioplus/usbradioplus_0.1.0~alpha11-1.deb12+legacy.asl393_arm64.deb
+Size: 123080
+SHA256: d20e956800e75772ba04000f105ad8cb45774704950d89671063f90e36780ec2
+SHA1: 3f7e2b83512725bc5d821a68fec0b5117b4a40de
+MD5sum: 8d1e1a2bf432ed5c28ec82a94ef0e078
+Description: enhanced USB radio channel driver for AllStarLink
+ USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
+ filtering and dynamics processing for amateur-radio and land-mobile interfaces
+ using CM119-class USB audio devices.
+
+Package: usbradioplus-dbgsym
+Source: usbradioplus
+Version: 0.1.0~alpha11-1.deb12+legacy.asl393
+Auto-Built-Package: debug-symbols
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 239
+Depends: usbradioplus (= 0.1.0~alpha11-1.deb12+legacy.asl393)
+Priority: optional
+Section: debug
+Filename: pool/main/u/usbradioplus/usbradioplus-dbgsym_0.1.0~alpha11-1.deb12+legacy.asl393_arm64.deb
+Size: 208544
+SHA256: 25f7976bffb49858cb73a03e81a12980f5ae2e2cee396de09118335afeea75b3
+SHA1: 45ed47ab7ec68a666f6d613842ce8c45b9c7c8b4
+MD5sum: 055c05ddd92fcec0a27884867d245676
+Description: debug symbols for usbradioplus
+Build-Ids: 0c5f7fb64010dc82535ca93cbcdfea9b806bd4e5
+

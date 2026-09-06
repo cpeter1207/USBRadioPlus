@@ -1,0 +1,47 @@
+<map id="src/txagc/avfilter_processor.h" name="src/txagc/avfilter_processor.h">
+<area shape="rect" id="Node000001" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="1498,5,1629,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,101,183,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1484,29,1262,32,943,42,572,62,381,77,194,96,148,103,147,98,194,91,381,71,572,56,943,36,1262,27,1484,24"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,93,373,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="1484,30,1290,34,1018,45,705,64,386,96,374,98,373,92,386,91,704,59,1018,39,1290,29,1484,25"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="398,93,529,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1484,30,1313,34,1079,44,811,64,675,78,541,96,529,98,529,93,540,91,674,73,811,58,1079,39,1313,28,1484,25"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor__internal_8h.html" title="Private FFmpeg graph construction and meter&#45;draining test interfaces." alt="" coords="553,93,715,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="1484,33,1154,52,942,71,728,96,715,98,714,93,727,91,941,65,1153,47,1484,27"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="739,93,926,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="1485,36,1240,59,938,96,927,98,926,92,938,91,1240,54,1484,31"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__native__tick_8c.html" title="Native receive gating, processing, repeat, echo, and transmitter rendering." alt="" coords="950,93,1126,133"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="1485,42,1145,96,1127,99,1126,94,1144,91,1484,36"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html" title="Named&#45;channel processing configuration, audiohooks, live controls, and meters." alt="" coords="983,189,1199,214"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1484,29,1418,33,1342,44,1264,64,1190,96,1160,117,1135,143,1100,190,1096,187,1131,140,1157,113,1187,91,1262,59,1341,39,1417,28,1484,24"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing__internal_8h.html" title="Private channel profiles, parser state, and audiohook test interfaces." alt="" coords="1201,93,1406,133"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1494,52,1361,96,1359,91,1492,47"/>
+<area shape="rect" id="Node000011" href="$test__channel__core_8c.html" title="Executable channel core regression and failure&#45;path checks." alt="" coords="1407,181,1549,221"/>
+<area shape="poly" id="edge23_Node000001_Node000011" title=" " alt="" coords="1511,54,1489,72,1472,95,1466,116,1465,139,1473,181,1468,182,1460,140,1460,115,1468,92,1485,69,1508,50"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="1481,93,1645,133"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="1566,59,1566,93,1561,93,1561,59"/>
+<area shape="rect" id="Node000014" href="$test__avfilter__agc_8c.html" title="Exercise the gain rider through the same FFmpeg graph used by the channel." alt="" coords="1670,93,1806,133"/>
+<area shape="poly" id="edge14_Node000001_Node000014" title=" " alt="" coords="1615,49,1701,91,1699,96,1613,54"/>
+<area shape="rect" id="Node000015" href="$test__avfilter__bandpass_8c.html" title="Executable avfilter bandpass regression and failure&#45;path checks." alt="" coords="1830,93,1966,133"/>
+<area shape="poly" id="edge15_Node000001_Node000015" title=" " alt="" coords="1643,44,1830,92,1829,97,1641,49"/>
+<area shape="rect" id="Node000016" href="$test__avfilter__ctcss_8c.html" title="Executable avfilter ctcss regression and failure&#45;path checks." alt="" coords="1990,93,2126,133"/>
+<area shape="poly" id="edge16_Node000001_Node000016" title=" " alt="" coords="1643,35,1798,59,1979,91,1991,93,1989,98,1977,96,1798,64,1642,40"/>
+<area shape="rect" id="Node000017" href="$test__avfilter__deesser_8c.html" title="Executable avfilter deesser regression and failure&#45;path checks." alt="" coords="2150,93,2286,133"/>
+<area shape="poly" id="edge17_Node000001_Node000017" title=" " alt="" coords="1642,30,1866,53,2002,70,2138,91,2150,93,2149,98,2138,96,2002,75,1865,58,1642,36"/>
+<area shape="rect" id="Node000018" href="$test__avfilter__emphasis_8c.html" title="Executable avfilter emphasis regression and failure&#45;path checks." alt="" coords="2310,93,2446,133"/>
+<area shape="poly" id="edge18_Node000001_Node000018" title=" " alt="" coords="1643,28,1932,47,2115,66,2298,91,2310,93,2309,98,2298,96,2114,71,1932,53,1642,33"/>
+<area shape="rect" id="Node000019" href="$test__avfilter__equalizer_8c.html" title="Executable avfilter equalizer regression and failure&#45;path checks." alt="" coords="2470,93,2606,133"/>
+<area shape="poly" id="edge19_Node000001_Node000019" title=" " alt="" coords="1643,26,1794,31,1997,43,2227,62,2458,91,2470,93,2469,98,2458,96,2226,67,1997,48,1794,37,1642,31"/>
+<area shape="rect" id="Node000020" href="$test__avfilter__failures_8c.html" title="Executable avfilter failures regression and failure&#45;path checks." alt="" coords="2630,93,2766,133"/>
+<area shape="poly" id="edge20_Node000001_Node000020" title=" " alt="" coords="1643,25,1819,28,2061,38,2338,58,2480,73,2618,91,2630,93,2629,98,2618,96,2479,78,2338,64,2061,44,1819,34,1643,30"/>
+<area shape="rect" id="Node000021" href="$test__avfilter__permutations_8c.html" title="Executable avfilter permutations regression and failure&#45;path checks." alt="" coords="2790,93,2926,133"/>
+<area shape="poly" id="edge21_Node000001_Node000021" title=" " alt="" coords="1642,24,1842,26,2124,34,2449,55,2615,70,2778,91,2790,93,2789,98,2778,96,2615,76,2448,60,2123,40,1842,31,1642,29"/>
+<area shape="rect" id="Node000022" href="$test__avfilter__processor_8c.html" title="Executable avfilter processor regression and failure&#45;path checks." alt="" coords="2950,93,3086,133"/>
+<area shape="poly" id="edge22_Node000001_Node000022" title=" " alt="" coords="1642,26,2290,48,2665,67,2820,78,2938,91,2950,93,2949,98,2938,96,2820,83,2664,72,2290,53,1642,31"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__internals_8c.html" title="Executable avfilter internals regression and failure&#45;path checks." alt="" coords="566,181,702,221"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="637,147,637,181,631,181,631,147"/>
+<area shape="poly" id="edge10_Node000010_Node000009" title=" " alt="" coords="1245,141,1121,191,1119,186,1243,136"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="1355,137,1441,179,1439,184,1353,142"/>
+<area shape="rect" id="Node000012" href="$test__processing__validation_8c.html" title="Executable processing validation regression and failure&#45;path checks." alt="" coords="1223,181,1383,221"/>
+<area shape="poly" id="edge12_Node000010_Node000012" title=" " alt="" coords="1306,147,1306,181,1301,181,1301,147"/>
+</map>

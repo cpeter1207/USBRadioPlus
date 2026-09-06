@@ -1,0 +1,20 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,85,60,111"/>
+<area shape="rect" id="Node000002" href="$test__hardware__words_8c.html#a0cc94d775869939721a4989086ebdfa6" title="Record parallel&#45;port output bytes for protocol verification." alt="" coords="139,5,250,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="50,83,107,48,140,33,142,38,109,52,53,87"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__hardware_8c.html#abeee3f38f91b6c8b4697248ee607594e" title="Program RTX frequency and power using the parallel&#45;port bus." alt="" coords="108,106,281,146"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="61,100,95,106,94,111,60,105"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__hardware_8c.html#a0758a1c7b137ded20636903be81c2c74" title="Calculate RTX reference and synthesizer words for receive or transmit." alt="" coords="336,56,519,81"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="60,93,322,74,323,79,61,99"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__hardware_8c.html#a79d30d28e38db06cba9169a5fa2b4f65" title="Latch a binary channel number onto the parallel&#45;port radio interface." alt="" coords="329,207,525,232"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="48,109,74,133,109,156,160,176,213,191,316,209,315,214,212,196,158,181,107,160,71,137,44,113"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="275,103,329,90,361,82,362,87,330,95,277,109"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__hardware_8c.html#a42f41edf93b2ece7d84929cbc0359027" title="Clock a synthesizer programming word over the parallel&#45;port serial interface." alt="" coords="359,105,496,131"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="282,120,345,118,345,123,282,126"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="575,156,726,181"/>
+<area shape="poly" id="edge7_Node000003_Node000007" title=" " alt="" coords="282,134,330,139,562,160,561,165,329,145,281,139"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__hardware_8c.html#a4eb72182a04a926355c4ad6ab8cbaf1d" title="Wait the parallel&#45;port protocol interval required for hardware settling." alt="" coords="573,105,728,131"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="496,115,559,115,559,121,496,121"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="485,128,581,150,580,156,484,133"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="484,204,580,182,581,187,485,209"/>
+</map>

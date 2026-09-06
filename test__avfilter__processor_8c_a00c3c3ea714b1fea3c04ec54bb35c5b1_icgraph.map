@@ -1,0 +1,10 @@
+<map id="dynamics_response" name="dynamics_response">
+<area shape="rect" id="Node000001" title="Measure steady sine&#45;wave amplitude through one unbuffered dynamics graph." alt="" coords="325,45,476,70"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#a7ef12412373e363409cf2a7876156ec0" title="Verify unity crossover recombination, arbitrary splits, and independent bands." alt="" coords="115,5,271,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="311,46,270,40,271,35,312,41"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__processor_8c.html#a133a513abb16aac27a32c1966dd3582d" title="FFmpeg accepts the complete permitted control ranges, including makeup attenuation." alt="" coords="108,69,277,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="312,74,278,79,277,74,312,68"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,45,60,70"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="102,46,61,55,60,49,101,41"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="94,72,59,65,61,60,95,67"/>
+</map>

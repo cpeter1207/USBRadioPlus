@@ -1,0 +1,5 @@
+<map id="usbradioplus_processing_set_hardware_input_gain" name="usbradioplus_processing_set_hardware_input_gain">
+<area shape="rect" id="Node000001" title="Apply a live CM119 input&#45;gain adjustment under the settings mutex." alt="" coords="5,5,197,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="245,13,340,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="198,23,232,23,232,28,198,28"/>
+</map>

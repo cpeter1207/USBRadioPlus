@@ -1,0 +1,15 @@
+<map id="pulserthread" name="pulserthread">
+<area shape="rect" id="Node000001" title="Drive timed pulses on configured parallel&#45;port outputs." alt="" coords="796,35,900,60"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#af38f425256dd1cf5f824585046bbefbe" title="Verify oss parallel pulser." alt="" coords="351,5,529,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="782,45,529,27,530,22,782,40"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a018b2520aa76977d95e767948556c56b" title="Start the pulse worker when a parallel&#45;port output is configured." alt="" coords="577,55,748,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="783,60,749,65,748,60,782,55"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,35,60,60"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="337,28,60,48,60,43,337,23"/>
+<area shape="poly" id="edge7_Node000004_Node000002" title=" " alt="" coords="571,54,490,33,491,28,572,49"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="387,63,493,88"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="563,78,493,78,493,73,563,73"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,55,303,95"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="373,78,303,78,303,73,373,73"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="94,60,60,54,60,49,95,55"/>
+</map>

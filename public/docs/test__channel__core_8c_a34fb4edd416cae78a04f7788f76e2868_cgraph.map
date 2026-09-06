@@ -1,0 +1,11 @@
+<map id="test_tune_flash_sequences" name="test_tune_flash_sequences">
+<area shape="rect" id="Node000001" title="Verify tune flash sequences." alt="" coords="5,55,203,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ac802731a334d0fa995cf8dbc27eba090" title="Transmit three calibration bursts while honoring interactive cancellation." alt="" coords="251,55,340,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="203,65,237,65,237,70,203,70"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="440,5,504,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="339,52,426,28,427,33,341,58"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aa550b966d6c1addb1f6d22c77c0eada6" title="Host&#45;API test double for ast_radio_wait_or_poll; observable effects are recorded in harness state." alt="" coords="388,55,556,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="340,65,374,65,374,70,340,70"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="439,104,505,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="341,77,427,101,425,107,339,82"/>
+</map>

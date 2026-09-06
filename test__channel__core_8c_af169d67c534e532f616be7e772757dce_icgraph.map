@@ -1,0 +1,16 @@
+<map id="add_processing_override" name="add_processing_override">
+<area shape="rect" id="Node000001" title="Append a synthetic processing configuration value to the harness." alt="" coords="341,109,525,134"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a61b62b22150c284d1b976782827020ce" title="Verify processing config overrides." alt="" coords="115,5,286,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="393,105,292,60,261,48,263,43,294,55,395,100"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ab2916e8f6ee418c90fa330192799853d" title="Verify processing override parse edges." alt="" coords="108,69,293,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="327,109,293,105,294,99,328,104"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="129,133,273,173"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="328,138,273,146,272,141,327,133"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="109,197,292,237"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="395,142,294,188,263,200,261,195,292,183,393,138"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,109,60,134"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="122,53,109,60,75,85,48,110,44,106,71,81,107,55,119,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="95,112,61,119,60,114,94,107"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="115,140,60,129,61,124,116,134"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="119,194,107,188,71,162,44,136,48,132,75,158,109,183,122,189"/>
+</map>

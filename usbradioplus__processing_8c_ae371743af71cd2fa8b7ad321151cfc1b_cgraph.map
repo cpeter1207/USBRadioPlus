@@ -1,0 +1,21 @@
+<map id="usbradioplus_processing_unload" name="usbradioplus_processing_unload">
+<area shape="rect" id="Node000001" title="Stop the scanner, detach audiohooks, and unregister processing commands." alt="" coords="5,151,188,191"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aa3c3da413e5f68279dd0dfde3d257645" title="Host&#45;API test double for ast_cli_unregister_multiple; observable effects are recorded in harness stat..." alt="" coords="236,94,373,134"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,149,222,134,223,139,171,154"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#af1f022d6853c7b6de1915d63b8f163da" title="Remove processing hooks from all channels during shutdown." alt="" coords="260,159,349,184"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="188,169,246,169,246,174,188,174"/>
+<area shape="rect" id="Node000010" href="$test__processing__validation_8c.html#a2e8e2812201eb51c184d33029bea66d4" title="Host&#45;API test double for pthread_join; observable effects are recorded in harness state." alt="" coords="253,208,356,233"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="182,189,240,203,239,208,181,194"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a22d7bbd2eca5d8c17afc5980372e6316" title="Host&#45;API test double for ast_channel_datastore_find; observable effects are recorded in harness state..." alt="" coords="421,5,621,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="348,158,372,144,382,132,388,119,394,93,400,67,408,54,420,41,428,35,432,39,423,45,412,57,405,69,399,94,393,121,387,135,375,148,351,163"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#aaa3be3a0d8825f7de17386799394880d" title="Host&#45;API test double for ast_channel_datastore_remove; observable effects are recorded in harness sta..." alt="" coords="437,55,606,95"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="345,156,372,144,396,124,420,105,434,98,436,103,423,110,399,129,375,148,347,161"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#af0d24e4522a44067ca4ffb1a942909e4" title="Host&#45;API test double for ast_channel_iterator_all_new; observable effects are recorded in harness sta..." alt="" coords="444,119,599,159"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="349,162,430,150,431,155,350,167"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#ae8337c363763b607a55e777808fd2464" title="Host&#45;API test double for ast_channel_iterator_destroy; observable effects are recorded in harness sta..." alt="" coords="444,183,599,223"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="350,175,431,187,430,193,349,181"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#ac3d9999f796560d0f21520bd09a38906" title="Host&#45;API test double for ast_channel_iterator_next; observable effects are recorded in harness state." alt="" coords="426,248,617,273"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="350,182,375,193,399,214,408,224,423,233,442,241,440,246,420,238,405,228,395,218,372,198,348,187"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#aee27286888b30c6448a9bce928040a14" title="Host&#45;API test double for ast_datastore_free; observable effects are recorded in harness state." alt="" coords="449,297,593,323"/>
+<area shape="poly" id="edge8_Node000003_Node000009" title=" " alt="" coords="351,179,375,193,393,217,399,240,406,262,423,283,438,292,435,297,420,287,401,264,394,241,388,219,372,197,348,184"/>
+</map>

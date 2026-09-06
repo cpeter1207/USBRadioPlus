@@ -1,0 +1,9 @@
+<map id="src/usbradioplus_processing_internal.h" name="src/usbradioplus_processing_internal.h">
+<area shape="rect" id="Node000001" title="Private channel profiles, parser state, and audiohook test interfaces." alt="" coords="213,5,419,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html" title="Named&#45;channel processing configuration, audiohooks, live controls, and meters." alt="" coords="5,101,221,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="260,53,141,103,139,98,258,48"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html" title="Executable channel core regression and failure&#45;path checks." alt="" coords="245,93,387,133"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="319,59,319,93,313,93,313,59"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html" title="Executable processing validation regression and failure&#45;path checks." alt="" coords="411,93,571,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="368,49,454,91,451,96,365,54"/>
+</map>

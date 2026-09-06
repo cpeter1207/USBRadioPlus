@@ -1,0 +1,5 @@
+<map id="urp_radio_stage_append" name="urp_radio_stage_append">
+<area shape="rect" id="Node000001" title="Allocate and append a detector stage to a channel&#39;s stage list." alt="" coords="5,5,187,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#a43893ad572fedf89d66b2400ed6f0fd9" title="Allocate a zeroed detector stage owned by a radio channel." alt="" coords="235,5,409,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,15,221,15,221,21,187,21"/>
+</map>

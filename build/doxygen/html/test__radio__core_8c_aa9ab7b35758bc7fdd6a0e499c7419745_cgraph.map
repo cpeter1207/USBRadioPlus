@@ -1,0 +1,45 @@
+<map id="test_cpu_saver_predicates" name="test_cpu_saver_predicates">
+<area shape="rect" id="Node000001" title="Verify cpu saver predicates." alt="" coords="5,104,200,129"/>
+<area shape="rect" id="Node000002" href="$test__radio__core_8c.html#a215796576c672e5e70f0fc0c592cbd68" title="Advance one radio&#45;signaling block and verify its return status." alt="" coords="258,53,369,79"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,101,246,79,248,84,157,106"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__radio_8c.html#acd9dc17ab5d8bfca785969de9d6a9cee" title="Allocate a radio&#45;signaling engine and its detector buffers from channel settings." alt="" coords="248,301,379,327"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="119,128,290,290,287,294,116,132"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__radio_8c.html#aed96fb0a625bf4b7a92d674acf416988" title="Release a radio&#45;signaling engine and every stage it owns." alt="" coords="457,104,596,129"/>
+<area shape="poly" id="edge22_Node000001_Node000012" title=" " alt="" coords="200,114,444,114,444,119,200,119"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#ad324bc0e605de95d2197fa20067feccc" title="Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block." alt="" coords="457,53,597,79"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="369,63,443,63,443,69,369,69"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__radio_8c.html#a16b22836a4c264c4f8d2b3680c114507" title="Collect the configured radio trace channels into the debug buffer." alt="" coords="737,5,808,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="592,51,723,25,724,30,593,56"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__radio_8c.html#af30e814ead483666930ea4ac4e4b9fb0" title="Update the enabled CTCSS tone detectors and decoded&#45;tone state." alt="" coords="704,55,841,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="597,64,690,64,690,70,597,69"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="919,55,973,80"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="841,65,905,65,905,70,841,70"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__radio_8c.html#a1d1e1e45b2613d34987d2f60a77171a0" title="Track input center and amplitude for subaudible tone discrimination." alt="" coords="476,153,577,179"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="320,300,360,245,390,214,425,188,462,173,464,178,428,192,394,218,364,249,325,303"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__radio_8c.html#ae4fafcab9895e5438e534c2acc5c9597" title="Apply the configured receiver squelch&#45;tail delay." alt="" coords="483,203,570,228"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="328,299,371,268,426,237,469,223,470,228,428,242,373,272,332,303"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__radio_8c.html#a5f0a13b21d31f1737cf57ae373c9a084" title="Integrate the detector input using the stage&#39;s recursive filter coefficients." alt="" coords="480,252,573,277"/>
+<area shape="poly" id="edge9_Node000007_Node000010" title=" " alt="" coords="368,299,466,276,467,281,370,304"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__radio_8c.html#a014b966d6cc60a37d379907c935227a5" title="Measure block extrema and peak&#45;to&#45;peak level for radio calibration." alt="" coords="469,301,584,327"/>
+<area shape="poly" id="edge10_Node000007_Node000011" title=" " alt="" coords="379,311,456,311,456,317,379,317"/>
+<area shape="poly" id="edge11_Node000007_Node000012" title=" " alt="" coords="317,300,330,267,353,223,384,177,425,139,443,129,445,133,428,143,388,181,357,226,335,270,322,302"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__radio_8c.html#a0f2fa98b98144b26ef163508544a289e" title="Run the signaling detector&#39;s fixed&#45;point FIR with its configured rate conversion." alt="" coords="475,351,578,376"/>
+<area shape="poly" id="edge13_Node000007_Node000014" title=" " alt="" coords="370,324,463,346,461,351,368,329"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__radio_8c.html#a6ac88139b2fcc40d646f6ed5ea779f1f" title="Resolve receive/transmit signaling lists and CTCSS tone mappings." alt="" coords="441,400,612,425"/>
+<area shape="poly" id="edge14_Node000007_Node000015" title=" " alt="" coords="332,325,374,355,428,385,450,393,449,398,426,390,371,359,329,329"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__radio_8c.html#a56c539b0f877197af6fe9cedbb550e9d" title="Measure discriminator noise and update DSP carrier qualification." alt="" coords="427,449,627,475"/>
+<area shape="poly" id="edge17_Node000007_Node000018" title=" " alt="" coords="325,325,365,379,394,409,428,434,443,442,441,447,425,439,391,413,361,382,321,329"/>
+<area shape="rect" id="Node000020" href="$usbradioplus__radio_8c.html#a76ece62c69e00b2c0d8b92af65fc0471" title="Allocate and append a detector stage to a channel&#39;s stage list." alt="" coords="436,499,617,524"/>
+<area shape="poly" id="edge19_Node000007_Node000020" title=" " alt="" coords="322,326,335,358,357,401,389,446,428,484,439,491,437,495,425,488,384,449,353,404,330,360,317,328"/>
+<area shape="rect" id="Node000021" href="$usbradioplus__radio_8c.html#a43893ad572fedf89d66b2400ed6f0fd9" title="Allocate a zeroed detector stage owned by a radio channel." alt="" coords="685,528,860,553"/>
+<area shape="poly" id="edge21_Node000007_Node000021" title=" " alt="" coords="319,327,328,369,347,428,362,458,380,488,402,513,428,534,462,552,499,563,538,569,577,571,651,566,714,554,715,559,652,571,577,576,537,574,498,568,460,557,425,539,398,517,375,491,357,461,342,430,323,371,314,328"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__radio_8c.html#af185f61aec66368a31061398138ca3ea" title="Release a detector stage and its allocated sample and coefficient buffers." alt="" coords="681,104,864,129"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="596,114,668,114,668,119,596,119"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__radio_8c.html#a79c18d60196892d1d1ed065d5f16681d" title="Split a comma&#45;separated signaling&#45;code list into owned strings and a pointer table." alt="" coords="721,343,824,368"/>
+<area shape="poly" id="edge15_Node000015_Node000016" title=" " alt="" coords="581,397,707,368,708,373,583,403"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__radio_8c.html#ac665674abe7bea9e08923f5bbda6eeaa" title="Find the CTCSS table index corresponding to a requested tone." alt="" coords="695,393,850,433"/>
+<area shape="poly" id="edge16_Node000015_Node000017" title=" " alt="" coords="612,410,681,410,681,415,612,415"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__squelch_8h.html#a65b1e03895c7ceed3038aba622f93d63" title="Advance the noise detector, three comparators and storage capacitor by one sample." alt="" coords="675,457,871,483"/>
+<area shape="poly" id="edge18_Node000018_Node000019" title=" " alt="" coords="627,463,661,464,661,469,627,468"/>
+<area shape="poly" id="edge20_Node000020_Node000021" title=" " alt="" coords="618,519,672,526,671,531,617,525"/>
+</map>

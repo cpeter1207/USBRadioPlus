@@ -1,0 +1,15 @@
+<map id="usbradio_write" name="usbradio_write">
+<area shape="rect" id="Node000001" title="Queue an outbound app_rpt voice frame for native transmitter rendering." alt="" coords="5,55,124,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a00c12e682172f97eaf91420a9b5f7374" title="Host&#45;API test double for ast_channel_tech_pvt; observable effects are recorded in harness state." alt="" coords="172,5,335,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="113,52,190,32,191,37,115,57"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a5052d853da0fc58013ced505c9c8f3ed" title="Open or reopen the OSS device with the required native audio format." alt="" coords="210,55,297,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="124,65,196,65,196,70,124,70"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a170c1766b71f78c020eeed0a8bb74a3b" title="Queue app_rpt PCM for asynchronous native&#45;rate transmitter rendering." alt="" coords="177,105,329,145"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="108,78,175,98,173,103,106,83"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a1d83881fa2abc6efce09f051a44d8d06" title="Host&#45;API test double for ast_channel_internal_fd_set; observable effects are recorded in harness stat..." alt="" coords="409,47,567,87"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="297,65,396,65,396,70,297,70"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#ad94e7ef3e25a69008277364a47e212c7" title="Return nonzero when at least one app_rpt frame is queued." alt="" coords="383,112,593,137"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="329,122,369,122,369,127,329,127"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__core_8c.html#a29557072c8dd4626955f1f94680300ec" title="Queue one app_rpt frame, optionally prefixing silence for clock&#45;recovery startup." alt="" coords="393,161,583,187"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="330,138,414,156,413,161,329,143"/>
+</map>

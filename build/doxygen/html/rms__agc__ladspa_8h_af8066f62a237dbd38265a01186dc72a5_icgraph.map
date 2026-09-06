@@ -1,0 +1,27 @@
+<map id="ladspa_descriptor" name="ladspa_descriptor">
+<area shape="rect" id="Node000001" title="Return the plugin descriptor for index zero." alt="" coords="541,236,679,261"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="383,153,461,179"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="567,233,451,181,453,176,569,228"/>
+<area shape="rect" id="Node000010" href="$test__rms__agc__ladspa_8c.html#a1b1dfbb1981b05ccdaa7a721bc616af6" title="Exercise descriptor metadata, allocation failures and disconnected ports." alt="" coords="351,260,493,285"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="528,262,494,266,493,261,528,256"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#ab569ecdaf27d62922ab0dd3af8ee4798" title="Report a conservative processing cost including host buffer preparation." alt="" coords="119,5,291,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="402,144,360,93,332,66,301,44,276,33,278,28,304,40,336,62,364,89,406,140"/>
+<area shape="rect" id="Node000005" href="$test__rms__agc__ladspa_8c.html#af6bc8ace7e2e57d73f3696dc71c3e99b" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="108,55,303,80"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="392,147,351,120,302,94,269,83,271,78,304,89,353,115,395,143"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#acdba86bdf5c2ecb7ee1bf4e0d8c0bfc6" title="Exact output must not depend on host block boundaries, including odd rates." alt="" coords="112,104,299,129"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="369,157,261,132,262,127,370,152"/>
+<area shape="rect" id="Node000007" href="$test__rms__agc__ladspa_8c.html#a99387fd032620ac87d547769f2dbc170" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="141,153,269,179"/>
+<area shape="poly" id="edge8_Node000002_Node000007" title=" " alt="" coords="369,169,269,169,269,163,369,163"/>
+<area shape="rect" id="Node000008" href="$test__rms__agc__ladspa_8c.html#ab907061450f372c014c3be48b6f1406f" title="Verify sustained qualification resets during pauses and level reductions." alt="" coords="141,203,270,228"/>
+<area shape="poly" id="edge10_Node000002_Node000008" title=" " alt="" coords="370,180,262,205,261,200,369,175"/>
+<area shape="rect" id="Node000009" href="$test__rms__agc__ladspa_8c.html#a9b21167cb94842fd0a5649d95711d3a2" title="Ensure malformed controls/audio cannot poison subsequent processing." alt="" coords="112,253,299,293"/>
+<area shape="poly" id="edge12_Node000002_Node000009" title=" " alt="" coords="393,189,352,215,304,242,272,255,270,250,302,237,349,211,390,184"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Run all standalone LADSPA gain&#45;rider checks." alt="" coords="5,153,60,179"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="117,39,110,44,84,70,64,100,40,154,35,152,59,98,80,66,106,40,114,35"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="123,87,109,94,72,124,45,154,41,151,68,120,107,89,120,82"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="137,135,109,143,61,159,59,154,107,138,136,130"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="128,169,60,169,60,163,128,163"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="140,202,107,193,59,177,61,172,109,187,141,197"/>
+<area shape="poly" id="edge13_Node000009_Node000004" title=" " alt="" coords="121,249,107,242,69,211,42,181,46,177,73,207,109,237,123,245"/>
+<area shape="poly" id="edge15_Node000010_Node000004" title=" " alt="" coords="383,293,325,314,254,330,216,333,178,331,141,323,107,307,90,294,76,279,54,243,41,208,34,180,39,178,46,206,59,241,80,276,94,290,109,302,143,318,179,325,216,327,253,324,324,309,381,288"/>
+</map>

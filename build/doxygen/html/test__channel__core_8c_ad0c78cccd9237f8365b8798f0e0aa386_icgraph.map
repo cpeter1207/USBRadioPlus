@@ -1,0 +1,5 @@
+<map id="__real_write" name="__real_write">
+<area shape="rect" id="Node000001" title="Linker entry point for the real write operation behind the test wrapper." alt="" coords="161,5,263,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6ebc0a4569aec440b7ea9b1410eed6ef" title="Test wrapper for write controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="148,21,114,21,114,15,148,15"/>
+</map>

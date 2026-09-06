@@ -1,0 +1,21 @@
+<map id="tone" name="tone">
+<area shape="rect" id="Node000001" title="Generate deterministic PCM tone samples for rate&#45;conversion tests." alt="" coords="529,125,580,150"/>
+<area shape="rect" id="Node000002" href="$test__usbradioplus__dsp_8c.html#ad10a3e515b8aa63983ee9d05d34792d1" title="Exercise actual resampling and FIFO recovery under simulated clock drift." alt="" coords="320,5,467,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="532,116,508,91,480,68,445,48,448,43,483,63,512,87,536,112"/>
+<area shape="rect" id="Node000005" href="$test__usbradioplus__dsp_8c.html#a1c608e61420e7f5d2304f12e3b2d37ba" title="Verify defensive and boundary paths." alt="" coords="108,60,257,100"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="515,129,481,121,363,102,257,90,258,84,364,97,482,116,516,124"/>
+<area shape="rect" id="Node000006" href="$test__usbradioplus__dsp_8c.html#ac8879570b236cc912c683354567ce358" title="Verify echo." alt="" coords="140,125,225,150"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="515,140,226,140,226,135,515,135"/>
+<area shape="rect" id="Node000007" href="$test__usbradioplus__dsp_8c.html#aed7ad84531bdc1b35f7db3317ddd4287" title="Verify same rate bypass." alt="" coords="305,175,481,201"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="517,152,435,178,434,173,516,147"/>
+<area shape="rect" id="Node000008" href="$test__usbradioplus__dsp_8c.html#abc8000c76739a5121356ee5e762ce91a" title="Verify src." alt="" coords="357,225,430,250"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="539,163,514,190,483,216,457,227,431,235,429,229,455,222,480,211,511,186,535,159"/>
+<area shape="rect" id="Node000003" href="$test__usbradioplus__dsp_8c.html#a4daca2bd67ad1af33c9d82262375c1c9" title="Verify src clock drift." alt="" coords="109,10,256,35"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="306,27,256,26,256,21,306,22"/>
+<area shape="rect" id="Node000004" href="$test__usbradioplus__dsp_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,125,60,150"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="121,43,110,50,88,68,70,89,44,126,39,123,66,85,85,64,106,46,118,39"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="118,108,61,130,59,125,116,103"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="126,140,60,140,60,135,126,135"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="291,187,201,179,107,164,60,150,61,145,109,159,202,173,292,181"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="343,237,233,223,169,209,107,189,74,172,48,153,51,148,77,167,109,184,170,204,234,218,343,232"/>
+</map>

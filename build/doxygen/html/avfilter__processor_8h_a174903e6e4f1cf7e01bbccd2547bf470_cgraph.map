@@ -1,0 +1,5 @@
+<map id="txagc_avfilter_reset" name="txagc_avfilter_reset">
+<area shape="rect" id="Node000001" title="Discard buffered filter history while retaining a reusable processor state." alt="" coords="5,5,156,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its output FIFO." alt="" coords="204,5,296,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,15,190,15,190,21,156,21"/>
+</map>

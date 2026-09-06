@@ -1,0 +1,10 @@
+<map id="reset_failures" name="reset_failures">
+<area shape="rect" id="Node000001" title="Clear failure&#45;injection state before the next independent test." alt="" coords="336,45,447,70"/>
+<area shape="rect" id="Node000002" href="$test__rnnoise__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="129,5,267,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="322,49,267,39,268,34,323,43"/>
+<area shape="rect" id="Node000004" href="$test__rnnoise__failures_8c.html#a787fff408bc502ef2545bded05083cff" title="Verify processing failures and fifo helpers." alt="" coords="108,69,288,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="323,71,289,77,288,72,322,66"/>
+<area shape="rect" id="Node000003" href="$test__rnnoise__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,45,60,70"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="116,44,61,55,60,50,115,39"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="94,72,60,65,61,60,95,67"/>
+</map>

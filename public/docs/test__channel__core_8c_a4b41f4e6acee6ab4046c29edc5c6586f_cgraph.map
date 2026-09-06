@@ -1,0 +1,5 @@
+<map id="__wrap_read" name="__wrap_read">
+<area shape="rect" id="Node000001" title="Test wrapper for read controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,109,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a92ef4b90db2f5eef1e2a358f59ab6c81" title="Linker entry point for the real read operation behind the test wrapper." alt="" coords="157,5,255,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,15,144,15,144,21,110,21"/>
+</map>

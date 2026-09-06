@@ -1,0 +1,38 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Run all standalone LADSPA gain&#45;rider checks." alt="" coords="5,153,60,179"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#ab569ecdaf27d62922ab0dd3af8ee4798" title="Report a conservative processing cost including host buffer preparation." alt="" coords="119,55,291,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="41,151,68,120,107,89,120,82,123,87,109,94,72,124,45,154"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#af6bc8ace7e2e57d73f3696dc71c3e99b" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="108,104,303,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="59,155,107,139,140,130,141,135,109,145,61,160"/>
+<area shape="rect" id="Node000008" href="$test__rms__agc__ladspa_8c.html#acdba86bdf5c2ecb7ee1bf4e0d8c0bfc6" title="Exact output must not depend on host block boundaries, including odd rates." alt="" coords="112,268,299,293"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="43,178,69,216,88,236,109,253,123,261,121,265,107,258,84,240,65,219,39,181"/>
+<area shape="rect" id="Node000009" href="$test__rms__agc__ladspa_8c.html#a99387fd032620ac87d547769f2dbc170" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="141,153,269,179"/>
+<area shape="poly" id="edge12_Node000001_Node000009" title=" " alt="" coords="60,163,127,163,127,169,60,169"/>
+<area shape="rect" id="Node000010" href="$test__rms__agc__ladspa_8c.html#ab907061450f372c014c3be48b6f1406f" title="Verify sustained qualification resets during pauses and level reductions." alt="" coords="141,5,270,31"/>
+<area shape="poly" id="edge16_Node000001_Node000010" title=" " alt="" coords="35,152,59,98,80,66,106,40,126,29,129,33,110,44,84,70,64,100,40,154"/>
+<area shape="rect" id="Node000011" href="$test__rms__agc__ladspa_8c.html#a1b1dfbb1981b05ccdaa7a721bc616af6" title="Exercise descriptor metadata, allocation failures and disconnected ports." alt="" coords="351,285,493,311"/>
+<area shape="poly" id="edge19_Node000001_Node000011" title=" " alt="" coords="39,178,46,206,59,242,80,277,93,292,109,304,141,319,175,328,210,333,245,333,313,325,370,312,372,317,314,331,246,338,210,338,174,333,139,324,107,308,90,296,76,280,54,244,41,208,34,180"/>
+<area shape="rect" id="Node000012" href="$test__rms__agc__ladspa_8c.html#a9b21167cb94842fd0a5649d95711d3a2" title="Ensure malformed controls/audio cannot poison subsequent processing." alt="" coords="112,203,299,243"/>
+<area shape="poly" id="edge21_Node000001_Node000012" title=" " alt="" coords="61,172,109,189,132,196,130,201,107,194,59,177"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a961cd05034761fccfe1805ab59a346c4" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="395,104,449,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="262,77,382,105,380,110,261,83"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="383,153,461,179"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="278,78,304,89,320,102,329,115,338,127,352,140,371,149,368,154,349,144,334,131,325,118,316,105,301,94,276,82"/>
+<area shape="rect" id="Node000005" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="541,232,679,257"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="455,176,494,193,567,224,565,229,492,198,453,181"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="303,114,381,114,381,119,303,119"/>
+<area shape="poly" id="edge8_Node000006_Node000004" title=" " alt="" coords="262,127,370,152,369,157,261,132"/>
+<area shape="rect" id="Node000007" href="$test__rms__agc__ladspa_8c.html#a38beb42b84ff5b37d5bf5f90a37552e3" title="Set a scalar using its public port number." alt="" coords="389,207,455,232"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="275,127,304,140,320,152,329,164,338,177,352,189,377,202,375,207,349,194,334,180,325,168,316,156,301,144,273,132"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="275,266,301,253,316,239,325,225,334,209,349,193,369,181,372,186,352,197,338,212,329,227,320,243,304,258,278,270"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="256,265,302,253,375,231,376,236,303,258,257,270"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="261,151,380,123,382,128,262,156"/>
+<area shape="poly" id="edge15_Node000009_Node000004" title=" " alt="" coords="270,163,369,163,369,169,270,169"/>
+<area shape="poly" id="edge13_Node000009_Node000007" title=" " alt="" coords="259,176,376,205,375,211,257,181"/>
+<area shape="poly" id="edge17_Node000010_Node000003" title=" " alt="" coords="271,28,304,40,353,66,395,94,392,98,351,70,302,44,269,33"/>
+<area shape="poly" id="edge18_Node000010_Node000004" title=" " alt="" coords="272,23,304,40,316,52,324,65,330,91,335,116,342,128,352,140,371,152,368,156,349,144,337,131,330,118,325,92,319,67,312,55,301,44,269,28"/>
+<area shape="poly" id="edge20_Node000011_Node000005" title=" " alt="" coords="467,283,551,258,553,264,468,288"/>
+<area shape="poly" id="edge23_Node000012_Node000003" title=" " alt="" coords="278,201,301,189,316,177,325,165,334,153,349,140,380,125,383,130,352,144,338,156,329,168,319,181,304,194,281,206"/>
+<area shape="poly" id="edge24_Node000012_Node000004" title=" " alt="" coords="281,201,368,177,370,182,282,206"/>
+<area shape="poly" id="edge22_Node000012_Node000007" title=" " alt="" coords="299,219,375,218,375,223,299,224"/>
+</map>

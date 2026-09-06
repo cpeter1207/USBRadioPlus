@@ -1,0 +1,5 @@
+<map id="usbradioplus_wait_for_eeprom_idle" name="usbradioplus_wait_for_eeprom_idle">
+<area shape="rect" id="Node000001" title="Wait until the HID worker completes a pending EEPROM operation." alt="" coords="5,5,171,45"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="219,13,284,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="171,23,205,23,205,28,171,28"/>
+</map>

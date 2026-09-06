@@ -1,0 +1,9 @@
+<map id="soundcard_writeframe" name="soundcard_writeframe">
+<area shape="rect" id="Node000001" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="5,31,173,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#ad7cb19659650b42c6323e2ea9fbe66f5" title="Report a USB/audio fault and latch recovery state." alt="" coords="229,5,372,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="173,31,215,26,216,31,174,36"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a95c57506604d3aeedaff8443e3a09597" title="Start PortAudio capture and playback for an acquired radio device." alt="" coords="221,55,380,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="174,50,208,54,208,59,173,56"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a73b60fe2eea0e40cc821d3d1771d7d44" title="Adapt transmitter routing when the acquired device has one output channel." alt="" coords="428,47,599,87"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="380,65,414,65,414,70,380,70"/>
+</map>

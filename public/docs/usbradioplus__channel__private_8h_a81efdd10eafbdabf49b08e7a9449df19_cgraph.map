@@ -1,0 +1,11 @@
+<map id="tune_rxvoice" name="tune_rxvoice">
+<area shape="rect" id="Node000001" title="Calibrate receiver voice gain from a 1 kHz reference signal." alt="" coords="5,55,112,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="219,5,283,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,52,205,27,207,32,110,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aa550b966d6c1addb1f6d22c77c0eada6" title="Host&#45;API test double for ast_radio_wait_or_poll; observable effects are recorded in harness state." alt="" coords="167,55,335,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="112,65,154,65,154,70,112,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a0764f7d26aa2f4ad51047fdba66b7e94" title="Apply a live local&#45;receiver gain adjustment under the settings mutex." alt="" coords="160,105,343,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="103,78,172,98,170,103,101,83"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="391,112,485,137"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="343,122,377,122,377,127,343,127"/>
+</map>

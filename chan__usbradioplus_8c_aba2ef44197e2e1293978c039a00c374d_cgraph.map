@@ -1,0 +1,64 @@
+<map id="tune_write" name="tune_write">
+<area shape="rect" id="Node000001" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="5,572,96,597"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="371,576,527,601"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="96,582,357,585,357,590,96,588"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a36c954cd8dfb330c23efb58d2d8503bb" title="Write current radio calibration values to the unified configuration." alt="" coords="153,477,300,503"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="74,570,189,507,191,512,77,574"/>
+<area shape="rect" id="Node000027" href="$usbradioplus__channel__common_8c.html#a4c5d17b9b43d4f7ee0534b9531c3d703" title="Wait until the HID worker completes a pending EEPROM operation." alt="" coords="144,622,309,662"/>
+<area shape="poly" id="edge33_Node000001_Node000027" title=" " alt="" coords="91,595,153,615,151,620,90,600"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="597,499,762,524"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="506,573,539,562,563,548,587,534,610,526,612,531,589,539,565,553,541,567,508,578"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="588,549,771,589"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="527,579,574,575,575,580,527,585"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="861,499,955,524"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="759,546,847,524,848,529,760,551"/>
+<area shape="poly" id="edge9_Node000006_Node000002" title=" " alt="" coords="248,501,297,531,358,562,378,569,376,574,356,567,294,536,245,505"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="379,413,518,453"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="276,475,365,451,367,456,277,480"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#ab658ea7ea27aea944109872bd1d92ab5" title="Convert resolved output&#45;A hardware gain to the normalized CM119 mixer scale." alt="" coords="373,527,525,552"/>
+<area shape="poly" id="edge10_Node000006_Node000009" title=" " alt="" coords="285,500,378,521,377,526,284,505"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a56a64663cee77a43455db316af6b0dae" title="Convert resolved output&#45;B hardware gain to the normalized CM119 mixer scale." alt="" coords="373,477,525,503"/>
+<area shape="poly" id="edge13_Node000006_Node000010" title=" " alt="" coords="300,487,358,487,358,493,300,493"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__core_8c.html#a93a6afc55640158707a1de37361d28ce" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="366,363,531,388"/>
+<area shape="poly" id="edge16_Node000006_Node000011" title=" " alt="" coords="241,475,290,437,356,398,377,390,379,395,359,403,293,442,245,479"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__processing_8c.html#aa11d8d9df4edb892604b97d2e3df7904" title="Persist tuning values to the selected channel&#39;s configuration sections." alt="" coords="357,227,540,267"/>
+<area shape="poly" id="edge17_Node000006_Node000012" title=" " alt="" coords="238,475,418,276,422,280,242,479"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="588,434,771,474"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="519,436,574,442,574,447,518,442"/>
+<area shape="poly" id="edge8_Node000008_Node000005" title=" " alt="" coords="760,471,848,494,847,499,759,477"/>
+<area shape="poly" id="edge11_Node000009_Node000003" title=" " alt="" coords="525,527,583,520,584,526,526,533"/>
+<area shape="poly" id="edge12_Node000009_Node000004" title=" " alt="" coords="526,546,574,553,574,558,525,552"/>
+<area shape="poly" id="edge14_Node000010_Node000003" title=" " alt="" coords="526,494,583,500,582,505,525,500"/>
+<area shape="poly" id="edge15_Node000010_Node000004" title=" " alt="" coords="501,500,541,513,589,534,608,541,606,546,587,539,539,518,499,505"/>
+<area shape="rect" id="Node000013" href="$test__channel__core_8c.html#a8fe6fe2cacf32240f60a554bc15c4d25" title="Host&#45;API test double for ast_category_append; observable effects are recorded in harness state." alt="" coords="599,184,760,209"/>
+<area shape="poly" id="edge18_Node000012_Node000013" title=" " alt="" coords="540,225,607,210,608,215,541,230"/>
+<area shape="rect" id="Node000014" href="$test__channel__core_8c.html#af34bb2b9f6fc3aeb5d5da9b5d36e28c2" title="Host&#45;API test double for ast_category_get; observable effects are recorded in harness state." alt="" coords="841,236,975,261"/>
+<area shape="poly" id="edge19_Node000012_Node000014" title=" " alt="" coords="540,245,827,246,827,251,540,250"/>
+<area shape="rect" id="Node000015" href="$test__channel__core_8c.html#a728a64eb34a612837443b3ab4673fbee" title="Host&#45;API test double for ast_category_new; observable effects are recorded in harness state." alt="" coords="609,335,749,360"/>
+<area shape="poly" id="edge20_Node000012_Node000015" title=" " alt="" coords="484,265,533,293,589,320,613,328,612,333,587,324,530,298,481,270"/>
+<area shape="rect" id="Node000016" href="$test__channel__core_8c.html#a710f0b2a897849572b77dd0854b8dc03" title="Host&#45;API test double for ast_config_destroy; observable effects are recorded in harness state." alt="" coords="607,384,751,409"/>
+<area shape="poly" id="edge21_Node000012_Node000016" title=" " alt="" coords="469,266,520,318,553,345,589,369,606,377,604,382,587,374,550,350,516,321,465,269"/>
+<area shape="rect" id="Node000017" href="$test__channel__core_8c.html#a16f42b42a0566ebe482d0b1d520041c2" title="Host&#45;API test double for ast_config_load2; observable effects are recorded in harness state." alt="" coords="614,5,745,31"/>
+<area shape="poly" id="edge22_Node000012_Node000017" title=" " alt="" coords="456,226,474,187,502,137,539,85,586,41,600,33,603,37,590,45,543,89,506,140,478,189,460,228"/>
+<area shape="rect" id="Node000018" href="$test__channel__core_8c.html#a9a4ed5fe306d3882d89d4fb6a20d71c4" title="Host&#45;API test double for ast_config_text_file_save2; observable effects are recorded in harness state..." alt="" coords="605,55,753,95"/>
+<area shape="poly" id="edge23_Node000012_Node000018" title=" " alt="" coords="463,225,514,166,548,134,587,105,597,99,600,104,589,110,552,138,518,170,467,229"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__processing_8c.html#ab608b17eb36972ea6e363a8017411037" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="593,285,765,311"/>
+<area shape="poly" id="edge24_Node000012_Node000019" title=" " alt="" coords="541,265,608,280,607,285,540,270"/>
+<area shape="rect" id="Node000022" href="$usbradioplus__config_8c.html#a64eeff2da27607aacf81861f6345c0e2" title="Update or append a category variable while preserving its Asterisk configuration context." alt="" coords="604,119,755,159"/>
+<area shape="poly" id="edge28_Node000012_Node000022" title=" " alt="" coords="482,225,531,197,587,169,604,162,606,167,589,174,533,202,485,229"/>
+<area shape="poly" id="edge25_Node000019_Node000014" title=" " alt="" coords="738,283,834,262,835,267,739,288"/>
+<area shape="rect" id="Node000020" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="828,285,988,311"/>
+<area shape="poly" id="edge26_Node000019_Node000020" title=" " alt="" coords="765,295,814,295,814,301,765,301"/>
+<area shape="rect" id="Node000021" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="847,335,969,360"/>
+<area shape="poly" id="edge27_Node000019_Node000021" title=" " alt="" coords="739,308,835,329,834,334,738,313"/>
+<area shape="rect" id="Node000023" href="$test__channel__core_8c.html#a12403e4a17795fd26b4e6a2f2c2ba749" title="Host&#45;API test double for ast_category_get_name; observable effects are recorded in harness state." alt="" coords="819,33,997,59"/>
+<area shape="poly" id="edge29_Node000022_Node000023" title=" " alt="" coords="744,117,769,105,793,86,817,68,833,61,835,66,820,72,796,90,772,110,746,122"/>
+<area shape="rect" id="Node000024" href="$test__channel__core_8c.html#a132ddbd39dd9d26395c410f7647f76db" title="Host&#45;API test double for ast_variable_append; observable effects are recorded in harness state." alt="" coords="829,83,987,108"/>
+<area shape="poly" id="edge30_Node000022_Node000024" title=" " alt="" coords="754,122,827,108,828,113,755,128"/>
+<area shape="rect" id="Node000025" href="$test__channel__core_8c.html#a59049d34098bbc9a35f525239ed4d2d0" title="Host&#45;API test double for ast_variable_browse; observable effects are recorded in harness state." alt="" coords="830,132,986,157"/>
+<area shape="poly" id="edge31_Node000022_Node000025" title=" " alt="" coords="755,138,816,140,816,145,755,144"/>
+<area shape="rect" id="Node000026" href="$test__channel__core_8c.html#a61b77e9b543a66af82d7ac7d4d6b4ac8" title="Host&#45;API test double for ast_variable_update; observable effects are recorded in harness state." alt="" coords="831,181,985,207"/>
+<area shape="poly" id="edge32_Node000022_Node000026" title=" " alt="" coords="755,155,841,175,840,181,754,160"/>
+<area shape="rect" id="Node000028" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="416,629,481,655"/>
+<area shape="poly" id="edge34_Node000027_Node000028" title=" " alt="" coords="310,639,402,639,402,645,310,645"/>
+</map>

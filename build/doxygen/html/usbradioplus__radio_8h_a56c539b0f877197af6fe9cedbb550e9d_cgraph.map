@@ -1,0 +1,5 @@
+<map id="urp_radio_receive_frontend" name="urp_radio_receive_frontend">
+<area shape="rect" id="Node000001" title="Measure discriminator noise and update DSP carrier qualification." alt="" coords="5,5,205,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__squelch_8h.html#a65b1e03895c7ceed3038aba622f93d63" title="Advance the noise detector, three comparators and storage capacitor by one sample." alt="" coords="253,5,449,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="206,15,239,15,239,21,206,21"/>
+</map>

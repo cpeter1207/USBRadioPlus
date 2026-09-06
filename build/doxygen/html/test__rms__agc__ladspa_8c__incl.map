@@ -1,0 +1,21 @@
+<map id="tests/test_rms_agc_ladspa.c" name="tests/test_rms_agc_ladspa.c">
+<area shape="rect" id="Node000001" title="Streaming, gain&#45;law, safety and real&#45;time invariants for the RMS LADSPA gain rider." alt="" coords="374,5,519,45"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8h.html" title="Ports for the FFmpeg&#45;hosted USBRadioPlus RMS gain rider." alt="" coords="5,93,157,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="374,46,171,94,170,89,373,41"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="181,101,256,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="398,48,263,98,261,93,396,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="281,101,343,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="418,48,343,95,340,91,415,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="367,101,435,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="439,47,416,89,412,87,434,44"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="460,101,527,126"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="459,44,483,87,478,90,455,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="551,101,622,126"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="479,43,557,91,555,96,476,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="646,101,717,126"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="502,43,636,91,641,93,639,98,634,96,500,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="741,101,805,126"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="520,38,621,60,730,91,737,93,735,98,729,96,619,65,519,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="43,181,120,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="84,134,84,167,79,167,79,134"/>
+</map>

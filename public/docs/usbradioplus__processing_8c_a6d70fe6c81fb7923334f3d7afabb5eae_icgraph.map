@@ -1,0 +1,16 @@
+<map id="scanner" name="scanner">
+<area shape="rect" id="Node000001" title="Periodically attach processing hooks until module shutdown is requested." alt="" coords="829,38,903,63"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#a1db0fa5f0c16906780fa9106ecc514da" title="Verify module lifecycle and simple cli." alt="" coords="351,5,516,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="815,50,516,33,517,27,816,45"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#aae8223404088f39036d2f86bf10a63be" title="Load settings, register commands, and start the link&#45;hook scanner." alt="" coords="564,63,781,89"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="816,60,770,66,769,61,815,55"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="178,13,233,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="337,28,233,28,233,23,337,23"/>
+<area shape="poly" id="edge7_Node000004_Node000002" title=" " alt="" coords="598,63,516,45,517,40,599,58"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="380,70,487,95"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="550,82,487,84,487,79,550,77"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,63,303,103"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="366,85,303,85,303,80,366,80"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,70,60,95"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="94,85,60,85,60,80,94,80"/>
+</map>

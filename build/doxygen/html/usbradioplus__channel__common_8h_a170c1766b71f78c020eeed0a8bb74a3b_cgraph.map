@@ -1,0 +1,7 @@
+<map id="usbradioplus_queue_program" name="usbradioplus_queue_program">
+<area shape="rect" id="Node000001" title="Queue app_rpt PCM for asynchronous native&#45;rate transmitter rendering." alt="" coords="5,23,157,63"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#ad94e7ef3e25a69008277364a47e212c7" title="Return nonzero when at least one app_rpt frame is queued." alt="" coords="205,5,416,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,32,191,29,192,34,158,38"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a29557072c8dd4626955f1f94680300ec" title="Queue one app_rpt frame, optionally prefixing silence for clock&#45;recovery startup." alt="" coords="215,55,406,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="158,49,202,53,201,59,157,54"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="read_section_overrides" name="read_section_overrides">
+<area shape="rect" id="Node000001" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="5,55,179,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Copy an explicitly configured option into a bounded channel override table." alt="" coords="227,55,333,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="179,65,213,65,213,70,179,70"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="421,5,502,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="327,52,406,30,408,35,328,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="424,55,499,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="333,65,410,65,410,70,333,70"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="381,104,541,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="328,77,401,98,400,103,327,83"/>
+</map>

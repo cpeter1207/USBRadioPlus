@@ -1,0 +1,34 @@
+<map id="test_processing_override_parse_edges" name="test_processing_override_parse_edges">
+<area shape="rect" id="Node000001" title="Verify processing override parse edges." alt="" coords="5,123,191,163"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#af169d67c534e532f616be7e772757dce" title="Append a synthetic processing configuration value to the harness." alt="" coords="239,73,423,99"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="179,121,265,99,266,105,180,126"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a28e17300ff924415d51dc9cd81bcb803" title="Resolve a named channel&#39;s unified hardware and radio options." alt="" coords="240,123,421,163"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="191,141,227,141,227,146,191,146"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="263,188,398,213"/>
+<area shape="poly" id="edge17_Node000001_Node000015" title=" " alt="" coords="180,161,266,182,265,187,179,166"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ae50ad081bd2ae6b58bcfc4687916c586" title="Host&#45;API test double for ast_jb_read_conf; observable effects are recorded in harness state." alt="" coords="476,5,608,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="399,121,421,108,436,92,444,75,453,57,469,40,477,35,480,39,472,44,457,60,449,77,441,94,424,112,402,126"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a799ecbc2598edccb4b691f14af5520bd" title="Read the resolved hardware carrier&#45;detection source." alt="" coords="471,55,613,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="386,121,492,82,493,87,388,126"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="667,70,849,110"/>
+<area shape="poly" id="edge16_Node000003_Node000006" title=" " alt="" coords="421,129,653,100,653,106,422,135"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a1fc26271019e339ec6c26fd081716884" title="Parse the configured receiver audio&#45;source assignment." alt="" coords="482,156,602,181"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="422,152,469,157,468,163,421,157"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#a2b68d7c46e6bf88fa64e3bfd2d2632e3" title="Parse the configured CTCSS indication source." alt="" coords="483,205,601,231"/>
+<area shape="poly" id="edge10_Node000003_Node000011" title=" " alt="" coords="390,161,424,173,494,198,492,203,422,178,388,166"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__channel__common_8c.html#a394f2072d8be25535dca1eecc95129cf" title="Parse the transmitter CTCSS turn&#45;off assignment." alt="" coords="480,255,604,280"/>
+<area shape="poly" id="edge13_Node000003_Node000013" title=" " alt="" coords="404,161,424,173,441,191,449,208,457,225,472,241,480,246,477,251,469,245,453,228,444,211,436,194,421,177,402,166"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="614,72,653,76,653,82,613,77"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="932,77,1027,103"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="850,87,918,87,918,93,850,93"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__core_8c.html#a9dfb5310b67689f7f9b3fd8a8e5e7291" title="Parse a receive audio source." alt="" coords="661,156,855,181"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="602,166,647,166,647,171,602,171"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__core_8c.html#a3f183d84fe49d97606dba6dff09a900e" title="Resolve a symbolic option through a bounded name/value table." alt="" coords="903,205,1056,231"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="816,179,909,200,908,205,815,184"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__core_8c.html#a4de720cbfaa6e9bb3d1f01b1e8b6aceb" title="Parse a CTCSS&#45;detection source, including accepted symbolic aliases." alt="" coords="670,205,846,231"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="602,215,656,215,656,221,602,221"/>
+<area shape="poly" id="edge12_Node000012_Node000010" title=" " alt="" coords="846,215,889,215,889,221,846,221"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__channel__core_8c.html#a21db3a33438c60c2c4bae2aa63d75195" title="Parse a transmitter CTCSS turn&#45;off mode, including symbolic aliases." alt="" coords="663,255,853,280"/>
+<area shape="poly" id="edge14_Node000013_Node000014" title=" " alt="" coords="604,265,649,265,649,270,604,270"/>
+<area shape="poly" id="edge15_Node000014_Node000010" title=" " alt="" coords="815,252,908,231,909,236,816,257"/>
+</map>

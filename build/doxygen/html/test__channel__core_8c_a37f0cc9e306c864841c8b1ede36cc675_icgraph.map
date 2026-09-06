@@ -1,0 +1,12 @@
+<map id="ast_channel_unregister" name="ast_channel_unregister">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_channel_unregister; observable effects are recorded in harness state." alt="" coords="521,31,695,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="359,5,465,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="508,33,465,27,466,22,508,28"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="351,55,473,80"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="508,58,474,62,474,57,507,53"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,23,303,63"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="345,29,303,34,303,29,345,23"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,31,60,56"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,46,60,46,60,41,94,41"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="337,61,302,57,303,52,338,56"/>
+</map>

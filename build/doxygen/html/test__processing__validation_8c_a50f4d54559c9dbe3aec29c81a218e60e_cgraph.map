@@ -1,0 +1,46 @@
+<map id="test_unified_configuration_edge_paths" name="test_unified_configuration_edge_paths">
+<area shape="rect" id="Node000001" title="Verify unified configuration edge paths." alt="" coords="5,173,196,213"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Copy an explicitly configured option into a bounded channel override table." alt="" coords="737,65,843,91"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,171,131,140,161,102,198,66,243,38,310,16,380,5,451,3,520,8,587,18,647,31,742,58,741,63,646,36,586,23,520,13,451,9,380,11,311,22,245,43,202,70,165,106,136,143,115,174"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a7a1d54ea0ac203858e26f3b6e0e63e36" title="Apply shared flat defaults followed by a channel&#39;s resolved overrides." alt="" coords="248,53,415,79"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="127,170,179,134,243,96,276,81,278,86,245,100,182,138,130,175"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#ae4785a72bcb24cb49115464651f0ce67" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="474,103,647,128"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="148,170,193,153,243,139,355,122,460,115,461,120,356,128,245,145,195,159,149,175"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#ab608b17eb36972ea6e363a8017411037" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="245,155,417,180"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="196,180,232,176,232,181,196,185"/>
+<area shape="rect" id="Node000011" href="$test__processing__validation_8c.html#a907b8d3321bf6879fdf3050445dacc77" title="Install a bounded option list in the fake Asterisk configuration." alt="" coords="265,204,397,229"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="196,200,252,206,251,211,196,205"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="264,253,399,279"/>
+<area shape="poly" id="edge15_Node000001_Node000012" title=" " alt="" coords="160,210,245,238,274,247,272,252,243,243,159,215"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__processing_8c.html#ae31866a1d4fa5ce17a7aa6058bd46130" title="Validate an option against the vocabulary for its section kind." alt="" coords="703,304,877,329"/>
+<area shape="poly" id="edge16_Node000001_Node000013" title=" " alt="" coords="125,211,177,252,210,272,245,288,302,304,361,316,481,328,593,330,689,325,689,330,593,335,480,334,360,321,301,309,243,293,207,277,174,256,121,215"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__processing_8c.html#a1719cf5b81c13c78a2980219fba72a12" title="Validate all section option names before parsing their values." alt="" coords="244,355,419,380"/>
+<area shape="poly" id="edge19_Node000001_Node000016" title=" " alt="" coords="119,211,172,271,207,304,245,333,273,347,270,352,243,338,203,308,168,275,115,215"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="965,41,1046,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="843,70,951,57,951,63,844,75"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="968,91,1043,116"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="844,82,955,95,954,100,843,87"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="925,141,1085,167"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="826,88,926,125,954,134,952,139,924,130,824,93"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="415,66,723,74,723,79,415,71"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="392,76,488,97,487,102,390,81"/>
+<area shape="poly" id="edge8_Node000007_Node000002" title=" " alt="" coords="639,100,723,86,724,91,640,105"/>
+<area shape="poly" id="edge12_Node000008_Node000005" title=" " alt="" coords="417,163,912,153,912,159,417,168"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#af34bb2b9f6fc3aeb5d5da9b5d36e28c2" title="Host&#45;API test double for ast_category_get; observable effects are recorded in harness state." alt="" coords="493,204,628,229"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="392,177,488,198,487,204,390,183"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="499,253,622,279"/>
+<area shape="poly" id="edge13_Node000008_Node000010" title=" " alt="" coords="395,178,420,189,435,202,445,215,454,227,468,238,487,248,485,252,465,243,450,230,440,218,432,205,417,194,393,183"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="928,280,1083,305"/>
+<area shape="poly" id="edge17_Node000013_Node000014" title=" " alt="" coords="878,304,914,300,915,305,878,310"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__processing_8c.html#accc0626992a3ee315023800ac4a67a80" title="Compare a configuration name against an allowed&#45;name table." alt="" coords="951,329,1060,355"/>
+<area shape="poly" id="edge18_Node000013_Node000015" title=" " alt="" coords="878,324,938,331,937,337,878,330"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__processing_8c.html#a9a8cbce549b61d9bb8c7b64bc88a70ad" title="Reject unknown sections and options in a candidate configuration." alt="" coords="467,355,655,380"/>
+<area shape="poly" id="edge20_Node000016_Node000017" title=" " alt="" coords="419,365,453,365,453,370,419,370"/>
+<area shape="poly" id="edge24_Node000017_Node000013" title=" " alt="" coords="619,352,718,330,719,335,620,357"/>
+<area shape="rect" id="Node000018" href="$test__channel__core_8c.html#ac7f7657ec4de5a3349efbd3aea0e7148" title="Host&#45;API test double for ast_category_browse; observable effects are recorded in harness state." alt="" coords="710,353,870,379"/>
+<area shape="poly" id="edge21_Node000017_Node000018" title=" " alt="" coords="655,364,696,364,696,369,655,370"/>
+<area shape="rect" id="Node000019" href="$test__channel__core_8c.html#a59049d34098bbc9a35f525239ed4d2d0" title="Host&#45;API test double for ast_variable_browse; observable effects are recorded in harness state." alt="" coords="712,403,868,428"/>
+<area shape="poly" id="edge22_Node000017_Node000019" title=" " alt="" coords="623,378,716,397,715,403,622,383"/>
+<area shape="rect" id="Node000020" href="$usbradioplus__processing_8c.html#a082af7a230525d61150ae3a40eb1348b" title="Recognize a shared flat defaults section." alt="" coords="733,452,847,477"/>
+<area shape="poly" id="edge23_Node000017_Node000020" title=" " alt="" coords="585,378,638,408,704,438,724,445,722,450,702,443,635,412,582,383"/>
+</map>

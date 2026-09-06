@@ -1,0 +1,22 @@
+<map id="tests/test_rnnoise_processor.c" name="tests/test_rnnoise_processor.c">
+<area shape="rect" id="Node000001" title="Executable rnnoise processor regression and failure&#45;path checks." alt="" coords="265,5,403,45"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8h.html" title="RNNoise frame buffering and rate adaptation for local receiver denoising." alt="" coords="79,93,224,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="295,48,205,90,202,85,293,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,181,76,207"/>
+<area shape="poly" id="edge8_Node000001_Node000004" title=" " alt="" coords="265,38,150,61,100,77,68,95,56,111,49,130,43,168,38,167,44,128,52,109,64,91,98,72,149,56,264,33"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="249,101,323,126"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="326,47,302,90,297,87,321,44"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="348,101,416,126"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="347,44,371,87,366,90,342,47"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="441,101,507,126"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="366,43,445,91,442,96,363,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="532,101,603,126"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="388,43,520,91,527,93,525,98,518,96,386,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="101,181,175,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="151,134,145,168,140,167,145,133"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="126,136,70,175,67,171,123,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="199,181,282,207"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="175,132,219,170,215,174,171,136"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="307,181,415,207"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="202,131,318,174,316,179,201,136"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="setformat" name="setformat">
+<area shape="rect" id="Node000001" title="Open or reopen the OSS device with the required native audio format." alt="" coords="5,13,92,38"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a1d83881fa2abc6efce09f051a44d8d06" title="Host&#45;API test double for ast_channel_internal_fd_set; observable effects are recorded in harness stat..." alt="" coords="140,5,297,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,23,126,23,126,28,92,28"/>
+</map>

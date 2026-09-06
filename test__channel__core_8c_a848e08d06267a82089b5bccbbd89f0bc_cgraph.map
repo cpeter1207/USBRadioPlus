@@ -1,0 +1,7 @@
+<map id="__wrap_av_frame_alloc" name="__wrap_av_frame_alloc">
+<area shape="rect" id="Node000001" title="Test wrapper for av_frame_alloc controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,180,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a0320ad361b20504811758cec888d1900" title="Verify av frame alloc." alt="" coords="228,5,383,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="180,15,214,15,214,21,180,21"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a4f565c110d5d9eb8cbf588e3f1b54e39" title="Linker entry point for the real av_frame_alloc operation behind the test wrapper." alt="" coords="431,5,599,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="383,15,417,15,417,21,383,21"/>
+</map>

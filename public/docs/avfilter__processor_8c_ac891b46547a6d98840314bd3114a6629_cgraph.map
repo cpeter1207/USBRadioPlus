@@ -1,0 +1,11 @@
+<map id="drain_cleanup_meter" name="drain_cleanup_meter">
+<area shape="rect" id="Node000001" title="Drain available frames from one spectral measurement sink." alt="" coords="5,55,164,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="212,55,384,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,65,198,65,198,70,164,70"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="432,5,537,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="346,52,422,32,423,37,347,57"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="457,55,512,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="384,65,443,65,443,70,384,70"/>
+<area shape="rect" id="Node000005" href="$test__avfilter__agc_8c.html#ade8e45af4618ed060e0c7aa96a67ca5b" title="Calculate normalized RMS level from a non&#45;silent sample span." alt="" coords="461,104,508,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="347,77,449,105,447,110,346,83"/>
+</map>

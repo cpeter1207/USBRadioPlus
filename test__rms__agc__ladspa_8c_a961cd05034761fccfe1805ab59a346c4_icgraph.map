@@ -1,0 +1,19 @@
+<map id="drive" name="drive">
+<area shape="rect" id="Node000001" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="351,104,405,129"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#ab569ecdaf27d62922ab0dd3af8ee4798" title="Report a conservative processing cost including host buffer preparation." alt="" coords="119,5,291,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="357,95,332,68,301,44,276,33,278,28,304,40,336,64,361,91"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#af6bc8ace7e2e57d73f3696dc71c3e99b" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="108,55,303,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,105,302,94,261,83,262,78,303,89,339,100"/>
+<area shape="rect" id="Node000005" href="$test__rms__agc__ladspa_8c.html#a99387fd032620ac87d547769f2dbc170" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="141,104,269,129"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="337,119,270,119,270,114,337,114"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#ab907061450f372c014c3be48b6f1406f" title="Verify sustained qualification resets during pauses and level reductions." alt="" coords="141,153,270,179"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="338,132,303,143,258,156,256,151,302,138,337,127"/>
+<area shape="rect" id="Node000007" href="$test__rms__agc__ladspa_8c.html#a9b21167cb94842fd0a5649d95711d3a2" title="Ensure malformed controls/audio cannot poison subsequent processing." alt="" coords="112,203,299,243"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="360,142,335,168,304,192,278,206,275,201,301,188,331,164,356,139"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Run all standalone LADSPA gain&#45;rider checks." alt="" coords="5,104,60,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="123,38,109,44,72,74,45,105,41,102,68,70,107,40,120,33"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="137,86,109,94,61,110,59,105,107,89,136,81"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="128,119,60,119,60,114,128,114"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="140,152,107,143,59,128,61,123,109,138,141,147"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="121,200,107,192,69,162,42,132,46,128,73,158,109,188,123,195"/>
+</map>

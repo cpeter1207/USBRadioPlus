@@ -1,0 +1,5 @@
+<map id="urp_pcm_peak_dbfs" name="urp_pcm_peak_dbfs">
+<area shape="rect" id="Node000001" title="Convert an absolute PCM peak to dBFS; zero becomes negative infinity." alt="" coords="5,5,157,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="205,5,260,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,15,192,15,192,21,157,21"/>
+</map>

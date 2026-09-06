@@ -1,0 +1,10 @@
+<map id="usbradioplus_test_set_module_info" name="usbradioplus_test_set_module_info">
+<area shape="rect" id="Node000001" title="Inject module metadata into the isolated channel test harness." alt="" coords="351,35,515,75"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#af6095a1326185eff38bd52cfba6e31ac" title="Verify oss channel creation and request." alt="" coords="108,5,303,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="336,45,303,41,303,35,337,40"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a46d1dc9756e45108bf6ec4d0ee696a48" title="Verify oss channel hangup." alt="" coords="111,70,300,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,69,301,74,300,68,336,64"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,42,60,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,47,60,53,60,48,94,42"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="113,70,60,62,61,56,114,65"/>
+</map>

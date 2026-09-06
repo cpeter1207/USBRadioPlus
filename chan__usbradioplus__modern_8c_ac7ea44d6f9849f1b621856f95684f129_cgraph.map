@@ -1,0 +1,5 @@
+<map id="usbradio_swap_hid_wait" name="usbradio_swap_hid_wait">
+<area shape="rect" id="Node000001" title="Wait for the device&#45;swap handshake before continuing HID operations." alt="" coords="5,5,187,31"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="235,5,300,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,15,221,15,221,21,187,21"/>
+</map>

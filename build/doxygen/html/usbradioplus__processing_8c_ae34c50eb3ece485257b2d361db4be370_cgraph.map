@@ -1,0 +1,9 @@
+<map id="channel_is_eligible" name="channel_is_eligible">
+<area shape="rect" id="Node000001" title="Identify incoming app_rpt IAX audio that needs a link&#45;processing hook." alt="" coords="5,55,152,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a8aa7faee511114270b77e758c4cc88e5" title="Host&#45;API test double for ast_channel_appl; observable effects are recorded in harness state." alt="" coords="205,5,339,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="128,52,207,32,209,37,130,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a0100ae9428bdc85061e46c30e75f74b0" title="Host&#45;API test double for ast_channel_data; observable effects are recorded in harness state." alt="" coords="204,55,340,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="152,65,190,65,190,70,152,70"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ad110fb16952d21b1acbbd08fc1564208" title="Host&#45;API test double for ast_channel_name; observable effects are recorded in harness state." alt="" coords="200,104,344,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="130,77,209,98,207,103,128,83"/>
+</map>

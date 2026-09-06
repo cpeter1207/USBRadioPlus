@@ -1,0 +1,8 @@
+<map id="test_thresholds_startup_and_boundaries" name="test_thresholds_startup_and_boundaries">
+<area shape="rect" id="Node000001" title="The weak&#45;opening comparator and configurable hysteresis retain their units." alt="" coords="5,23,180,63"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#a0e7f9758b677f6c870983d52b7d44ec9" title="Feed a constant noise level for a specified number of samples." alt="" coords="228,5,279,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="180,27,214,21,215,27,181,32"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__squelch_8h.html#a65b1e03895c7ceed3038aba622f93d63" title="Advance the noise detector, three comparators and storage capacitor by one sample." alt="" coords="327,31,523,56"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="180,41,312,41,312,46,180,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="279,19,326,26,325,31,278,24"/>
+</map>

@@ -1,0 +1,21 @@
+<map id="tests/test_channel_shared_core.c" name="tests/test_channel_shared_core.c">
+<area shape="rect" id="Node000001" title="Executable channel shared core regression and failure&#45;path checks." alt="" coords="160,5,301,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,80,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="191,48,81,98,79,93,188,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="105,101,173,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="212,48,163,93,160,89,208,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="197,101,264,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="233,46,233,87,228,87,228,46"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="289,101,359,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="253,44,303,89,299,93,250,48"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8h.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="383,93,523,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="280,43,393,86,391,91,279,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="364,255,439,280"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="418,136,391,156,370,182,367,197,369,213,385,242,380,245,364,214,362,197,366,180,387,152,414,131"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="470,255,541,280"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="492,131,520,152,541,180,545,197,542,214,527,245,522,242,537,213,540,197,536,182,516,156,489,136"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dsp_8h.html" title="Sample&#45;rate conversion, elastic clock recovery, and receive&#45;echo matching." alt="" coords="380,181,527,207"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="456,134,456,167,451,167,451,134"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="447,209,420,245,416,242,443,205"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="464,205,491,242,487,245,460,209"/>
+</map>

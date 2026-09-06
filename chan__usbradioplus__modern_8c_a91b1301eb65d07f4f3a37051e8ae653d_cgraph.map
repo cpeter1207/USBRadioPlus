@@ -1,0 +1,20 @@
+<map id="usbradio_text" name="usbradio_text">
+<area shape="rect" id="Node000001" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="5,107,116,132"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a00c12e682172f97eaf91420a9b5f7374" title="Host&#45;API test double for ast_channel_tech_pvt; observable effects are recorded in harness state." alt="" coords="178,5,341,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="76,104,114,77,163,48,199,33,201,38,165,52,117,81,79,109"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a24c6f696879498b3164fabac68845cfa" title="Host&#45;API test double for ast_radio_ppwrite; observable effects are recorded in harness state." alt="" coords="653,93,791,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="103,104,164,91,294,82,424,81,543,87,639,94,639,100,543,92,424,87,294,87,164,97,104,109"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker so a changed PTT request is applied promptly." alt="" coords="226,107,293,132"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="116,117,212,117,212,122,116,122"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="209,156,310,181"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="113,129,196,150,195,155,112,135"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a7fd7ede6d42b48043eaa2ba896eec217" title="Select a binary channel on the configured parallel&#45;port interface." alt="" coords="164,205,355,231"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="78,130,116,161,165,192,182,199,180,203,163,196,113,166,74,134"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__hardware_8c.html#a79d30d28e38db06cba9169a5fa2b4f65" title="Latch a binary channel number onto the parallel&#45;port radio interface." alt="" coords="403,205,599,231"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="355,215,389,215,389,221,355,221"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a5e29c75973bbf6a2c5fb46a4252920fe" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="420,123,581,163"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="313,203,354,191,432,165,434,170,355,197,315,208"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="647,205,797,231"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="599,215,632,215,632,221,599,221"/>
+<area shape="poly" id="edge9_Node000009_Node000003" title=" " alt="" coords="581,127,638,117,639,123,582,132"/>
+</map>

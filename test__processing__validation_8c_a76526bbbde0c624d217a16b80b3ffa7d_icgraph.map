@@ -1,0 +1,13 @@
+<map id="reset_save_doubles" name="reset_save_doubles">
+<area shape="rect" id="Node000001" title="Reset configuration&#45;save stub state." alt="" coords="360,70,511,95"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#a84822720556f5987b0cfb54a9316ef6b" title="Verify generic option persistence." alt="" coords="135,5,285,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="371,69,285,47,286,42,372,64"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#a370232c70eccbf8e68501803481a7044" title="Verify input gain persistence." alt="" coords="108,70,312,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="346,85,312,85,312,80,346,80"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#a1db0fa5f0c16906780fa9106ecc514da" title="Verify module lifecycle and simple cli." alt="" coords="127,120,293,160"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="372,101,290,123,288,117,371,96"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,70,60,95"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="132,52,109,60,61,76,59,71,107,55,131,47"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="94,85,60,85,60,80,94,80"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="134,118,59,94,61,89,136,113"/>
+</map>

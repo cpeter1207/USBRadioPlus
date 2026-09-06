@@ -1,0 +1,27 @@
+<map id="destroy_unlinked_channel" name="destroy_unlinked_channel">
+<area shape="rect" id="Node000001" title="Release a channel that failed before it was linked into the active list." alt="" coords="963,184,1153,209"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="781,107,882,132"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1006,182,869,135,871,130,1008,177"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="133,122,277,162"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="949,192,277,149,278,144,949,187"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="517,207,700,247"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="949,207,700,224,700,218,949,201"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#afad909763581e2c29635c9e012b3ea37" title="Verify unlinked channel cleanup." alt="" coords="748,262,915,302"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="1011,217,886,264,884,260,1009,212"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="561,81,657,107"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="767,115,657,102,657,97,767,109"/>
+<area shape="poly" id="edge10_Node000002_Node000009" title=" " alt="" coords="793,141,652,210,650,205,790,136"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="357,5,463,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="561,79,443,33,445,28,563,74"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="351,107,469,132"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="547,104,470,114,469,109,547,99"/>
+<area shape="poly" id="edge9_Node000003_Node000008" title=" " alt="" coords="547,91,454,89,402,91,351,97,301,109,255,124,253,119,300,103,350,91,402,85,454,83,547,86"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,27,303,67"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="343,30,303,36,302,31,343,25"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,184,60,209"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="158,77,110,112,73,151,45,186,41,182,68,147,106,108,155,72"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="337,130,278,137,277,131,336,125"/>
+<area shape="poly" id="edge8_Node000008_Node000006" title=" " alt="" coords="129,169,61,191,60,186,128,164"/>
+<area shape="poly" id="edge11_Node000009_Node000006" title=" " alt="" coords="503,224,60,201,60,195,504,219"/>
+<area shape="poly" id="edge15_Node000010_Node000006" title=" " alt="" coords="734,282,609,275,452,264,280,246,107,219,59,207,61,202,109,214,280,240,452,259,609,270,734,276"/>
+</map>

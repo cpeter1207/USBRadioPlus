@@ -1,0 +1,7 @@
+<map id="usbradioplus_processing_save_input_gains" name="usbradioplus_processing_save_input_gains">
+<area shape="rect" id="Node000001" title="Persist the hardware and local&#45;receiver input gains." alt="" coords="360,5,543,45"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#a370232c70eccbf8e68501803481a7044" title="Verify input gain persistence." alt="" coords="108,13,312,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="346,28,312,28,312,23,346,23"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

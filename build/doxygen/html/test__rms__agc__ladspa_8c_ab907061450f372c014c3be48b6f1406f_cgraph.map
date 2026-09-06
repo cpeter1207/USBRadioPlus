@@ -1,0 +1,9 @@
+<map id="test_hold_resets" name="test_hold_resets">
+<area shape="rect" id="Node000001" title="Verify sustained qualification resets during pauses and level reductions." alt="" coords="5,31,135,56"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a961cd05034761fccfe1805ab59a346c4" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="195,5,249,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="135,30,181,22,182,27,136,35"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="183,55,261,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="136,51,170,56,169,62,135,56"/>
+<area shape="rect" id="Node000004" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="309,55,447,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="262,65,296,65,296,70,262,70"/>
+</map>

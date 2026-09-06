@@ -1,0 +1,7 @@
+<map id="oss_read_complete" name="oss_read_complete">
+<area shape="rect" id="Node000001" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="336,13,484,38"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="108,5,288,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="322,28,288,28,288,23,322,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

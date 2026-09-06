@@ -1,0 +1,9 @@
+<map id="urp_radio_trace_log" name="urp_radio_trace_log">
+<area shape="rect" id="Node000001" title="Emit a radio trace when the configured and requested levels permit it." alt="" coords="5,31,156,56"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#af247df7c81a9941c9737856b6de32a88" title="Host&#45;API test double for ast_log_ap; observable effects are recorded in harness state." alt="" coords="249,5,341,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,32,235,22,236,28,156,37"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#ac9c046ce4626724fa406cf1abcc44afe" title="Test whether Asterisk&#39;s current debug level enables a radio trace." alt="" coords="204,55,387,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="156,49,191,53,190,58,156,54"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aeac69003cab2e28ea7868310e9307e28" title="Host&#45;API test double for ast_debug_get_by_module; observable effects are recorded in harness state." alt="" coords="435,55,631,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="387,65,421,65,421,70,387,70"/>
+</map>

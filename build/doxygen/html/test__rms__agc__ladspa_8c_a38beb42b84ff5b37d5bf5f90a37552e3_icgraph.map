@@ -1,0 +1,20 @@
+<map id="control" name="control">
+<area shape="rect" id="Node000001" title="Set a scalar using its public port number." alt="" coords="351,104,417,129"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#af6bc8ace7e2e57d73f3696dc71c3e99b" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="108,5,303,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="361,95,334,68,301,44,275,33,277,28,304,40,338,64,365,91"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#acdba86bdf5c2ecb7ee1bf4e0d8c0bfc6" title="Exact output must not depend on host block boundaries, including odd rates." alt="" coords="112,55,299,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,104,302,94,259,83,261,78,303,89,338,99"/>
+<area shape="rect" id="Node000005" href="$test__rms__agc__ladspa_8c.html#a99387fd032620ac87d547769f2dbc170" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="141,104,269,129"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="337,119,269,119,269,114,337,114"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#a9b21167cb94842fd0a5649d95711d3a2" title="Ensure malformed controls/audio cannot poison subsequent processing." alt="" coords="112,154,299,194"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="338,134,269,156,267,151,336,129"/>
+<area shape="rect" id="Node000007" href="$rms__agc__ladspa_8c.html#ac2d1f6a8cf51241e0e781c3a657c078d" title="Update the gain destination at a sample&#45;derived one&#45;kilohertz cadence." alt="" coords="154,219,257,244"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="369,143,341,177,304,208,281,219,258,226,256,221,279,214,301,204,337,173,365,140"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Run all standalone LADSPA gain&#45;rider checks." alt="" coords="5,80,60,105"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="127,37,109,44,77,62,51,82,48,77,74,58,107,40,125,32"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="105,85,60,91,60,86,105,79"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="127,109,60,99,61,94,128,103"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="125,151,107,143,50,108,52,103,109,138,127,146"/>
+<area shape="rect" id="Node000008" href="$rms__agc__ladspa_8c.html#af3ba5d12d4b74078de5469eb56dde8c4" title="Process samples in place or out of place without buffering the program audio." alt="" coords="11,219,54,244"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="140,234,54,234,54,229,140,229"/>
+</map>

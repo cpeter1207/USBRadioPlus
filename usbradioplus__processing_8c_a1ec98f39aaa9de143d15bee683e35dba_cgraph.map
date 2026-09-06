@@ -1,0 +1,5 @@
+<map id="usbradioplus_processing_get_composite" name="usbradioplus_processing_get_composite">
+<area shape="rect" id="Node000001" title="Copy a channel&#39;s final voice/telemetry chain under the settings mutex. An absent profile produces a z..." alt="" coords="5,5,188,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="236,13,331,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,23,222,23,222,28,188,28"/>
+</map>

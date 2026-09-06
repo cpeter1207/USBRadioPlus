@@ -1,0 +1,21 @@
+<map id="dynamics_config" name="dynamics_config">
+<area shape="rect" id="Node000001" title="Build unity&#45;gain dynamics with independent single&#45; and three&#45;band controls." alt="" coords="573,113,704,139"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#a27ab5cbbe50b89337c4d08b9dacbb1bf" title="Measure attack or release after a large full&#45;band input&#45;level step." alt="" coords="382,9,502,35"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="606,108,524,59,475,37,478,32,527,54,609,104"/>
+<area shape="rect" id="Node000005" href="$test__avfilter__processor_8c.html#a7ef12412373e363409cf2a7876156ec0" title="Verify unity crossover recombination, arbitrary splits, and independent bands." alt="" coords="131,55,287,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="559,119,287,87,288,82,560,114"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__processor_8c.html#a133a513abb16aac27a32c1966dd3582d" title="FFmpeg accepts the complete permitted control ranges, including makeup attenuation." alt="" coords="125,119,294,159"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="560,131,294,139,294,134,559,126"/>
+<area shape="rect" id="Node000007" href="$test__avfilter__processor_8c.html#ada340e5914536052bc02f77711ee4d1f" title="Live mode and sample&#45;rate changes retain configured crossover frequencies." alt="" coords="367,163,517,203"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="582,145,512,166,510,161,580,140"/>
+<area shape="rect" id="Node000008" href="$test__avfilter__processor_8c.html#ae63e9e414731bdd66f5c4498264f668e" title="Both three&#45;band stages retain sample&#45;exact state across arbitrary frame boundaries." alt="" coords="359,227,525,267"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="615,150,575,184,527,218,502,230,500,225,524,213,572,180,612,146"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__processor_8c.html#a60007cf6bc8e49f7a0f0a21c9d83236e" title="Both band modes honor independent attack and release at each sample rate." alt="" coords="108,5,311,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="368,23,311,22,311,17,368,18"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,127,60,152"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="123,38,110,46,87,64,68,87,42,128,38,125,64,84,83,61,106,41,120,34"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="130,102,109,110,61,130,59,125,107,105,128,97"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="111,142,60,142,60,137,111,137"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="353,192,235,191,171,185,107,174,56,155,58,150,109,169,171,180,236,185,353,186"/>
+<area shape="poly" id="edge11_Node000008_Node000004" title=" " alt="" coords="345,247,229,233,167,219,107,198,72,177,45,154,49,150,75,173,109,193,168,213,230,228,346,242"/>
+</map>

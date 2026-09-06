@@ -1,0 +1,5 @@
+<map id="hidthread" name="hidthread">
+<area shape="rect" id="Node000001" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="161,5,245,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="147,21,114,21,114,15,147,15"/>
+</map>

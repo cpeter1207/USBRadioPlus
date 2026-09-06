@@ -1,0 +1,7 @@
+<map id="read_control" name="read_control">
+<area shape="rect" id="Node000001" title="Read one control using the same defaults with or without host connection." alt="" coords="227,5,329,31"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#a9b0867722c1ebeeaf49a9544e4266d28" title="Cache rate&#45;dependent coefficients only when controls change." alt="" coords="96,5,179,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="213,21,179,21,179,15,213,15"/>
+<area shape="rect" id="Node000003" href="$rms__agc__ladspa_8c.html#af3ba5d12d4b74078de5469eb56dde8c4" title="Process samples in place or out of place without buffering the program audio." alt="" coords="5,5,48,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="82,21,49,21,49,15,82,15"/>
+</map>

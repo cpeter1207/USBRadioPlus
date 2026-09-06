@@ -1,0 +1,13 @@
+<map id="usbradio_start_parallel_pulser" name="usbradio_start_parallel_pulser">
+<area shape="rect" id="Node000001" title="Start the pulse worker when a parallel&#45;port output is configured." alt="" coords="5,77,176,117"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a001f37f0a8c7990e37ef0970c9336cf8" title="Drive timed pulses on configured parallel&#45;port outputs." alt="" coords="245,55,349,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,82,231,74,232,79,177,87"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#a285bcd11443a9f6d47e351c5b261a8d8" title="Return nonzero when configured parallel outputs require the pulse worker." alt="" coords="224,105,371,145"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="177,106,211,110,210,116,176,111"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a24c6f696879498b3164fabac68845cfa" title="Host&#45;API test double for ast_radio_ppwrite; observable effects are recorded in harness state." alt="" coords="419,5,557,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="346,52,424,32,425,37,348,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ade26502e209b17ff94a3a01a4b5c62ef" title="Host&#45;API test double for ast_radio_tvnow; observable effects are recorded in harness state." alt="" coords="423,55,553,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="350,65,410,65,410,70,350,70"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="455,104,521,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="348,77,442,102,441,107,346,83"/>
+</map>

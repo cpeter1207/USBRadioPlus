@@ -1,0 +1,9 @@
+<map id="usbradioplus_dsp_init" name="usbradioplus_dsp_init">
+<area shape="rect" id="Node000001" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="5,55,168,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a1c76f7b09d096081aadbbe5265da11ad" title="Initialize an empty FFmpeg processor and its level statistics." alt="" coords="217,5,356,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="138,52,221,31,222,37,139,57"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8c.html#a5969f86a6b2fcdf6effd3cc255d0eaf0" title="Initialize an empty local&#45;receiver denoiser." alt="" coords="216,55,357,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="168,65,202,65,202,70,168,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="228,104,345,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="139,77,222,98,221,103,138,83"/>
+</map>

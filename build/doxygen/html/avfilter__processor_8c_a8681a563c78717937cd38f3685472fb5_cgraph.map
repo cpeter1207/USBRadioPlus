@@ -1,0 +1,9 @@
+<map id="update_astats" name="update_astats">
+<area shape="rect" id="Node000001" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="5,55,120,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="168,5,273,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,52,165,32,167,37,105,57"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="193,55,248,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="120,65,179,65,179,70,120,70"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__agc_8c.html#ade8e45af4618ed060e0c7aa96a67ca5b" title="Calculate normalized RMS level from a non&#45;silent sample span." alt="" coords="197,104,244,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="105,77,185,103,183,108,103,83"/>
+</map>

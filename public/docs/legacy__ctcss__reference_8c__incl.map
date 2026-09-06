@@ -1,0 +1,17 @@
+<map id="tools/legacy_ctcss_reference.c" name="tools/legacy_ctcss_reference.c">
+<area shape="rect" id="Node000001" title="Reference integer CTCSS measurements used to verify native encoder levels." alt="" coords="202,5,343,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,76,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="221,48,90,96,83,98,81,93,88,91,219,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="100,101,168,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="244,48,166,96,163,91,241,43"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="193,101,259,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="265,47,241,90,237,87,260,44"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="284,101,355,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="285,44,309,87,304,90,281,47"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__radio__coefficients_8h.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="379,93,535,133"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="314,43,405,85,403,90,312,48"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__ctcss_8h.html" title="Continuous&#45;phase 48 kHz CTCSS generation and reference&#45;level calibration." alt="" coords="559,93,699,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="344,41,546,89,545,95,343,46"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="591,181,666,207"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="631,134,631,167,626,167,626,134"/>
+</map>

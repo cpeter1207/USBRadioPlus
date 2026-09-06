@@ -1,0 +1,10 @@
+<map id="reset_iterator_doubles" name="reset_iterator_doubles">
+<area shape="rect" id="Node000001" title="Reset fake channel&#45;iteration state." alt="" coords="327,42,495,67"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#aca3f90bd414c90cabc4edbaef550cec1" title="Verify channel scanning and detachment." alt="" coords="108,5,279,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="313,44,278,39,279,34,313,39"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#a293bc3da72cedb67a0c20d902c5cf105" title="Verify reporting cli." alt="" coords="126,70,261,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="313,70,261,77,260,71,313,65"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,42,60,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,46,61,52,60,47,94,41"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="112,71,60,62,61,57,113,66"/>
+</map>

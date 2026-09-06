@@ -1,0 +1,5 @@
+<map id="__real_av_buffersrc_add_frame_flags" name="__real_av_buffersrc_add_frame_flags">
+<area shape="rect" id="Node000001" title="Linker entry point for the real av_buffersrc_add_frame_flags operation behind the test wrapper." alt="" coords="208,5,356,45"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#afae37387a5a26d6a7a3ec25f81b82ee1" title="Test wrapper for av_buffersrc_add_frame_flags controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,160,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="194,28,160,28,160,23,194,23"/>
+</map>

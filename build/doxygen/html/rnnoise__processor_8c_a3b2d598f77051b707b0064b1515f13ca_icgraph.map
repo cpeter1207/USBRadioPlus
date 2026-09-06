@@ -1,0 +1,14 @@
+<map id="pcm_from_double" name="pcm_from_double">
+<area shape="rect" id="Node000001" title="Quantize a floating&#45;point sample without signed PCM overflow." alt="" coords="557,38,696,63"/>
+<area shape="rect" id="Node000002" href="$test__rnnoise__failures_8c.html#a787fff408bc502ef2545bded05083cff" title="Verify processing failures and fifo helpers." alt="" coords="109,5,289,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="543,48,289,33,290,28,544,43"/>
+<area shape="rect" id="Node000004" href="$rnnoise__processor_8c.html#ab590b8c5ed7056dbc0e521acb0598874" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="339,63,509,89"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="544,64,510,68,509,63,543,58"/>
+<area shape="rect" id="Node000003" href="$test__rnnoise__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="96,28,60,28,60,23,96,23"/>
+<area shape="poly" id="edge6_Node000004_Node000002" title=" " alt="" coords="353,63,288,48,289,43,354,58"/>
+<area shape="rect" id="Node000005" href="$test__rnnoise__processor_8c.html#a06fe2301348ae4249a904804e036f0aa" title="Verify integer and invalid inputs." alt="" coords="108,69,291,109"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="325,85,291,87,291,81,324,79"/>
+<area shape="rect" id="Node000006" href="$test__rnnoise__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,77,60,102"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="94,92,60,92,60,87,94,87"/>
+</map>

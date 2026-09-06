@@ -1,0 +1,38 @@
+<map id="test_effective_processing_settings" name="test_effective_processing_settings">
+<area shape="rect" id="Node000001" title="Verify effective processing settings." alt="" coords="5,198,193,238"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a7129f44681013128808c46977a42bb0c" title="Read the resolved CTCSS decoder&#45;input gain." alt="" coords="241,5,435,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,196,160,124,197,83,240,48,267,33,270,38,243,52,201,87,165,128,115,199"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="505,49,643,89"/>
+<area shape="poly" id="edge5_Node000001_Node000003" title=" " alt="" coords="114,196,166,142,201,114,240,92,304,72,370,61,434,57,491,58,491,63,434,62,370,66,305,77,242,96,204,118,169,146,118,200"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a799ecbc2598edccb4b691f14af5520bd" title="Read the resolved hardware carrier&#45;detection source." alt="" coords="267,107,409,132"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="133,195,183,168,240,142,267,133,268,138,242,147,185,173,136,200"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="260,255,416,280"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="194,235,263,249,262,254,193,240"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#aeab7db6e27d61608b8b56f697ff8c31e" title="Read the resolved output&#45;A program/CTCSS routing assignment." alt="" coords="272,156,404,181"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="193,196,262,182,263,187,194,201"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#ab658ea7ea27aea944109872bd1d92ab5" title="Convert resolved output&#45;A hardware gain to the normalized CM119 mixer scale." alt="" coords="262,304,414,329"/>
+<area shape="poly" id="edge14_Node000001_Node000011" title=" " alt="" coords="134,236,184,264,242,290,265,298,263,303,240,295,182,268,132,240"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__common_8c.html#a411be591de10fb57b21a1e352fe39346" title="Read the resolved output&#45;B program/CTCSS routing assignment." alt="" coords="272,205,404,231"/>
+<area shape="poly" id="edge17_Node000001_Node000012" title=" " alt="" coords="194,215,258,215,258,221,194,221"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__channel__common_8c.html#a56a64663cee77a43455db316af6b0dae" title="Convert resolved output&#45;B hardware gain to the normalized CM119 mixer scale." alt="" coords="262,353,414,379"/>
+<area shape="poly" id="edge19_Node000001_Node000013" title=" " alt="" coords="119,236,171,288,205,316,243,340,257,346,255,351,240,344,202,320,168,292,116,240"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="271,403,405,428"/>
+<area shape="poly" id="edge22_Node000001_Node000014" title=" " alt="" coords="113,237,133,270,163,312,199,354,243,389,259,397,256,402,240,394,196,358,158,315,129,273,109,240"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="399,28,492,48,490,54,398,33"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="713,73,896,113"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="644,73,700,79,699,84,643,79"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="944,132,1039,157"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="878,110,933,126,931,131,876,115"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="483,198,665,238"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="397,130,436,142,485,165,529,189,527,193,482,169,434,147,395,135"/>
+<area shape="poly" id="edge8_Node000007_Node000005" title=" " alt="" coords="665,199,930,153,931,158,666,205"/>
+<area shape="poly" id="edge11_Node000008_Node000007" title=" " alt="" coords="399,252,469,237,470,242,400,257"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="491,304,657,329"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="400,277,500,298,498,304,399,283"/>
+<area shape="poly" id="edge13_Node000010_Node000007" title=" " alt="" coords="400,179,470,194,469,199,399,184"/>
+<area shape="poly" id="edge16_Node000011_Node000007" title=" " alt="" coords="399,301,434,290,483,268,528,243,531,247,486,272,436,295,400,306"/>
+<area shape="poly" id="edge15_Node000011_Node000009" title=" " alt="" coords="414,314,478,314,478,319,414,319"/>
+<area shape="poly" id="edge18_Node000012_Node000007" title=" " alt="" coords="404,215,469,215,469,221,404,221"/>
+<area shape="poly" id="edge21_Node000013_Node000007" title=" " alt="" coords="408,351,433,340,448,329,458,318,481,291,535,245,538,249,485,295,462,321,452,333,436,344,410,356"/>
+<area shape="poly" id="edge20_Node000013_Node000009" title=" " alt="" coords="399,351,498,330,500,335,400,356"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="handle_console_key" name="handle_console_key">
+<area shape="rect" id="Node000001" title="Register, complete, or execute the radio key CLI command." alt="" coords="5,55,159,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a67d7fe2730aeeed9790bf5cfadbbed3b" title="Assert the selected radio&#39;s calibration PTT request." alt="" coords="207,29,309,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,54,193,49,193,54,159,59"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#ab63fe5b59f7ecd7ce13701b61aa533f6" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="225,79,291,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="159,75,212,82,211,88,158,80"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="357,5,440,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="309,31,343,25,344,30,310,36"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker so a changed PTT request is applied promptly." alt="" coords="365,55,432,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="310,49,352,56,351,62,309,54"/>
+</map>

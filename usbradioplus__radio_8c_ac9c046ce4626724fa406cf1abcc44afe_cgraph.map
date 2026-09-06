@@ -1,0 +1,5 @@
+<map id="urp_radio_debug_atleast" name="urp_radio_debug_atleast">
+<area shape="rect" id="Node000001" title="Test whether Asterisk&#39;s current debug level enables a radio trace." alt="" coords="5,5,188,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aeac69003cab2e28ea7868310e9307e28" title="Host&#45;API test double for ast_debug_get_by_module; observable effects are recorded in harness state." alt="" coords="236,5,432,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,15,222,15,222,21,188,21"/>
+</map>

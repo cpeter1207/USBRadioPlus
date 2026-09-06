@@ -1,0 +1,13 @@
+<map id="res2cli" name="res2cli">
+<area shape="rect" id="Node000001" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="224,104,289,129"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a710b80d634b236393ee64de5d51bbe75" title="Register, complete, or execute the radio key CLI command." alt="" coords="14,5,167,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="234,95,207,68,175,44,149,33,151,28,177,40,211,64,238,91"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a9a053417636415f194db2d800c15d5f5" title="Register, complete, or execute the radio unkey CLI command." alt="" coords="6,55,175,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="210,105,175,94,137,83,138,77,177,89,212,100"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a21884bae255b9919b2246f8727a7bf03" title="Register, complete, or select the active radio for tuning." alt="" coords="14,104,167,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="210,119,167,119,167,114,210,114"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="19,153,162,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="212,133,177,143,135,156,134,151,175,138,210,128"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#aa317bb2767e0bc7192a0c2712a48680e" title="Register, complete, or change the radio debug level." alt="" coords="5,203,176,228"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="238,142,211,168,177,192,148,205,146,200,175,188,207,164,234,138"/>
+</map>

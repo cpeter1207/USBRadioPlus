@@ -1,0 +1,9 @@
+<map id="effective_txmixaset" name="effective_txmixaset">
+<area shape="rect" id="Node000001" title="Convert resolved output&#45;A hardware gain to the normalized CM119 mixer scale." alt="" coords="5,35,157,60"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="214,5,379,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,34,200,28,201,34,158,40"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="205,55,388,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="158,55,192,59,191,64,157,60"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="436,63,531,88"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="388,73,422,73,422,78,388,78"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="soundcard_writeframe" name="soundcard_writeframe">
+<area shape="rect" id="Node000001" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="5,87,173,113"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a5052d853da0fc58013ced505c9c8f3ed" title="Open or reopen the OSS device with the required native audio format." alt="" coords="257,13,344,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="121,85,220,47,243,39,245,44,222,52,123,90"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#ad7cb19659650b42c6323e2ea9fbe66f5" title="Report a USB/audio fault and latch recovery state." alt="" coords="229,62,372,87"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="173,87,215,82,216,87,174,93"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a95c57506604d3aeedaff8443e3a09597" title="Start PortAudio capture and playback for an acquired radio device." alt="" coords="221,111,380,137"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="174,107,208,111,208,116,173,112"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#aa64680c0b3163e8bba4ac3be010577eb" title="Measure queued OSS output fragments for transmitter pacing." alt="" coords="249,161,352,186"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="125,110,222,145,247,154,245,159,220,151,123,115"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a1d83881fa2abc6efce09f051a44d8d06" title="Host&#45;API test double for ast_channel_internal_fd_set; observable effects are recorded in harness stat..." alt="" coords="435,5,592,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="344,23,421,23,421,28,344,28"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a73b60fe2eea0e40cc821d3d1771d7d44" title="Adapt transmitter routing when the acquired device has one output channel." alt="" coords="428,104,599,144"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="380,121,414,121,414,127,380,127"/>
+</map>

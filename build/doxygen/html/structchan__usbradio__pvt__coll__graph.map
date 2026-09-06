@@ -1,0 +1,35 @@
+<map id="chan_usbradio_pvt" name="chan_usbradio_pvt">
+<area shape="rect" id="Node000001" title=" " alt="" coords="851,218,995,243"/>
+<area shape="poly" id="edge1_Node000001_Node000001" title=" " alt="" coords="890,203,900,195,923,191,942,194,953,200,956,210,950,219,946,216,951,209,949,203,940,199,923,197,902,200,894,207"/>
+<area shape="rect" id="Node000002" href="$structurp__native__fifo.html" title=" " alt="" coords="525,113,644,138"/>
+<area shape="poly" id="edge2_Node000001_Node000002" title=" " alt="" coords="658,124,741,135,785,145,828,159,875,186,910,215,906,220,871,191,826,164,784,150,740,140,658,130"/>
+<area shape="rect" id="Node000003" href="$structurp__program__queue.html" title=" " alt="" coords="509,162,661,187"/>
+<area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="675,177,750,185,827,197,888,215,887,220,826,203,749,190,674,182"/>
+<area shape="rect" id="Node000004" href="$structurp__src.html" title=" " alt="" coords="550,215,619,241"/>
+<area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="633,226,685,227,851,228,851,233,685,232,633,231"/>
+<area shape="rect" id="Node000005" href="$structurp__clock__recovery.html" title=" " alt="" coords="511,265,659,290"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="672,267,826,248,865,241,866,246,827,253,673,272"/>
+<area shape="rect" id="Node000006" href="$structtxagc__avfilter.html" title=" " alt="" coords="529,349,640,374"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="654,363,694,362,739,357,783,347,825,331,854,312,878,287,912,242,916,245,882,291,857,316,828,336,785,353,739,363,695,367,654,368"/>
+<area shape="rect" id="Node000007" href="$structtxagc__config.html" title=" " alt="" coords="283,349,387,374"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="401,359,529,359,529,364,401,364"/>
+<area shape="rect" id="Node000008" href="$structtxagc__rnnoise.html" title=" " alt="" coords="528,398,641,423"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="656,416,697,417,741,413,785,402,825,383,844,369,860,351,887,312,905,273,915,243,920,244,910,275,891,314,864,355,848,373,828,388,787,407,742,418,697,422,656,422"/>
+<area shape="rect" id="Node000009" href="$structurp__parrot__state.html" title=" " alt="" coords="520,14,649,39"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="664,16,704,17,747,22,789,34,828,54,849,71,867,92,894,138,912,183,921,217,916,219,907,185,889,141,863,95,845,75,825,58,787,39,746,27,704,22,664,21"/>
+<area shape="rect" id="Node000010" href="$structurp__ctcss__generator.html" title=" " alt="" coords="508,63,661,89"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="676,71,752,80,792,92,828,108,860,133,885,163,918,216,913,219,881,166,856,137,825,113,790,97,751,86,675,76"/>
+<area shape="rect" id="Node000011" href="$structurp__radio__state.html" title=" " alt="" coords="523,635,646,661"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="594,622,628,557,653,522,684,491,703,478,722,471,757,465,790,459,807,451,825,438,846,415,863,389,891,333,908,281,916,243,922,244,913,282,896,335,868,392,850,418,828,442,810,456,792,464,758,471,723,476,706,483,687,495,657,525,632,560,598,624"/>
+<area shape="rect" id="Node000014" href="$structurp__radio__stage.html" title=" " alt="" coords="859,681,986,706"/>
+<area shape="poly" id="edge15_Node000014_Node000011" title=" " alt="" coords="620,665,651,681,686,692,730,699,776,702,859,699,859,704,776,707,730,704,685,697,649,686,617,670"/>
+<area shape="rect" id="Node000012" href="$structurp__ctcss__decoder.html" title=" " alt="" coords="264,661,407,686"/>
+<area shape="poly" id="edge12_Node000011_Node000012" title=" " alt="" coords="420,662,484,656,523,652,523,657,484,661,420,668"/>
+<area shape="rect" id="Node000013" href="$structurp__ctcss__tone__detector.html" title=" " alt="" coords="5,661,185,686"/>
+<area shape="poly" id="edge13_Node000012_Node000013" title=" " alt="" coords="199,671,264,671,264,676,199,676"/>
+<area shape="poly" id="edge14_Node000011_Node000014" title=" " alt="" coords="846,683,826,680,646,657,647,652,827,675,846,678"/>
+<area shape="rect" id="Node000015" href="$structurp__micor__squelch.html" title=" " alt="" coords="513,726,657,751"/>
+<area shape="poly" id="edge16_Node000014_Node000015" title=" " alt="" coords="670,736,747,732,826,721,888,703,890,709,827,727,747,737,671,741"/>
+<area shape="rect" id="Node000016" href="$structt__sdbg.html" title=" " alt="" coords="303,611,368,637"/>
+<area shape="poly" id="edge17_Node000011_Node000016" title=" " alt="" coords="382,626,523,639,523,645,382,631"/>
+</map>

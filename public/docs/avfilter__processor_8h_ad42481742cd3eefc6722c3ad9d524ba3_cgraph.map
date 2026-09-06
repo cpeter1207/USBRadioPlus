@@ -1,0 +1,5 @@
+<map id="txagc_avfilter_destroy" name="txagc_avfilter_destroy">
+<area shape="rect" id="Node000001" title="Release all resources owned by an FFmpeg processor." alt="" coords="5,5,172,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its output FIFO." alt="" coords="220,5,312,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,15,206,15,206,21,172,21"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="expect_invalid_field" name="expect_invalid_field">
+<area shape="rect" id="Node000001" title="Assert the chain validator rejects a selected field value." alt="" coords="5,31,157,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="205,5,340,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,31,191,26,192,31,158,36"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a5414c92d2485210b205f79d2794be131" title="Check processing parameter ranges, fixed stages, and optional&#45;stage ordering." alt="" coords="214,55,331,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="158,50,201,56,200,61,157,56"/>
+</map>

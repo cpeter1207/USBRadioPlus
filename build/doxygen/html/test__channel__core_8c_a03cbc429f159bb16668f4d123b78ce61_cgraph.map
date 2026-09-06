@@ -1,0 +1,13 @@
+<map id="test_native_fifo_and_squelch_copy" name="test_native_fifo_and_squelch_copy">
+<area shape="rect" id="Node000001" title="Verify native fifo and squelch copy." alt="" coords="5,47,160,87"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a767cb9e32624423c5c49ddf9e855bc32" title="Take one complete native&#45;rate transmitter block from the elastic FIFO." alt="" coords="212,5,371,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,47,223,31,224,36,161,52"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#aaced00a946c9ac8dc5ba03ca51341ffc" title="Append resampled app_rpt audio to the elastic native FIFO." alt="" coords="208,55,375,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="160,65,195,65,195,70,160,70"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a474fdec80d22e938eac20df8e696ea75" title="Prepare the undelayed radio&#45;detector input from the native ADC block." alt="" coords="210,105,373,145"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="157,85,206,98,204,104,155,90"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a60c55fc2f7da5a75339e908d345a87c5" title="Remove one 20 ms native&#45;rate frame." alt="" coords="426,5,577,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="371,15,412,15,412,21,371,21"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8c.html#a0175e45f6b554623ad998f041ce0f2fc" title="Append samples, retaining the newest audio if the FIFO is full." alt="" coords="423,55,580,80"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="375,65,409,65,409,70,375,70"/>
+</map>

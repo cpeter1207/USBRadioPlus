@@ -1,0 +1,5 @@
+<map id="usbradio_fixup" name="usbradio_fixup">
+<area shape="rect" id="Node000001" title="Transfer private radio ownership when Asterisk replaces a channel." alt="" coords="5,5,123,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a00c12e682172f97eaf91420a9b5f7374" title="Host&#45;API test double for ast_channel_tech_pvt; observable effects are recorded in harness state." alt="" coords="171,5,333,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,15,157,15,157,21,123,21"/>
+</map>

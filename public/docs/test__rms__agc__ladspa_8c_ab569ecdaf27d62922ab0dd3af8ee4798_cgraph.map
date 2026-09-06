@@ -1,0 +1,9 @@
+<map id="benchmark_processing" name="benchmark_processing">
+<area shape="rect" id="Node000001" title="Report a conservative processing cost including host buffer preparation." alt="" coords="5,31,177,56"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a961cd05034761fccfe1805ab59a346c4" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="237,5,292,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="177,28,223,21,224,27,178,33"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="225,55,304,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="178,53,212,57,212,63,177,58"/>
+<area shape="rect" id="Node000004" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="352,55,489,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="304,65,338,65,338,70,304,70"/>
+</map>

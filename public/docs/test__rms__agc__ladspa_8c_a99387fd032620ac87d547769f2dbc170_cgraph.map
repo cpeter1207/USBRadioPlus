@@ -1,0 +1,11 @@
+<map id="test_gain_policy" name="test_gain_policy">
+<area shape="rect" id="Node000001" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="5,55,133,80"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a38beb42b84ff5b37d5bf5f90a37552e3" title="Set a scalar using its public port number." alt="" coords="187,5,254,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,52,173,30,175,36,110,57"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a961cd05034761fccfe1805ab59a346c4" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="193,55,248,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="134,65,179,65,179,70,134,70"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="181,104,260,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="110,78,169,97,167,102,108,83"/>
+<area shape="rect" id="Node000005" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="308,104,445,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="260,114,294,114,294,119,260,119"/>
+</map>

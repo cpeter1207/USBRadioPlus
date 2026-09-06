@@ -1,0 +1,5 @@
+<map id="usbradio_setoption" name="usbradio_setoption">
+<area shape="rect" id="Node000001" title="Apply supported Asterisk channel options, including tone verification." alt="" coords="5,5,152,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a00c12e682172f97eaf91420a9b5f7374" title="Host&#45;API test double for ast_channel_tech_pvt; observable effects are recorded in harness state." alt="" coords="200,5,363,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="152,15,186,15,186,21,152,21"/>
+</map>

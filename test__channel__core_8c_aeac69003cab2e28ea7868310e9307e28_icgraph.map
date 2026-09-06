@@ -1,0 +1,11 @@
+<map id="ast_debug_get_by_module" name="ast_debug_get_by_module">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_debug_get_by_module; observable effects are recorded in harness state." alt="" coords="732,5,928,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#ac9c046ce4626724fa406cf1abcc44afe" title="Test whether Asterisk&#39;s current debug level enables a radio trace." alt="" coords="501,5,684,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="718,21,684,21,684,15,718,15"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#af179d75ad5de3bd821df99138ee787d8" title="Emit a radio trace when the configured and requested levels permit it." alt="" coords="303,5,453,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="487,21,454,21,454,15,487,15"/>
+<area shape="rect" id="Node000004" href="$test__radio__core_8c.html#acd2021952fcb96def0362fef323fcf1c" title="Verify debug buffers." alt="" coords="108,5,255,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="289,21,255,21,255,15,289,15"/>
+<area shape="rect" id="Node000005" href="$test__radio__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,5,60,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="94,21,60,21,60,15,94,15"/>
+</map>

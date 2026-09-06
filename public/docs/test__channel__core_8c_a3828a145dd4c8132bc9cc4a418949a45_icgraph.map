@@ -1,0 +1,7 @@
+<map id="run_oss_hid_retry" name="run_oss_hid_retry">
+<area shape="rect" id="Node000001" title="Exercise OSS HID recovery using scripted USB availability." alt="" coords="307,13,444,38"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aecd9d77278c186f6c706970aed2ab3f0" title="Verify oss hid attach failures." alt="" coords="108,5,259,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="293,28,259,28,259,23,293,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

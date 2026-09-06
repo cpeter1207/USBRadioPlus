@@ -1,0 +1,21 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,129,60,155"/>
+<area shape="rect" id="Node000002" href="$legacy__ctcss__reference_8c.html#a004eabcd5147254345595472bacb0df2" title="Measure reference CTCSS extrema after filter settling and Q8 gain scaling." alt="" coords="167,29,270,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="41,127,68,95,86,78,107,64,153,47,155,52,109,68,89,82,71,99,45,131"/>
+<area shape="rect" id="Node000005" href="$legacy__ctcss__reference_8c.html#afd15445e0a3d2fd8d519b176323e7777" title="Reproduce the reference hardware fine&#45;gain multiplier." alt="" coords="151,79,286,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="60,132,157,105,159,110,61,137"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__ctcss_8c.html#aafdb00dc607d2f65c769578506d03e5b" title="Read the reference CTCSS peak for the selected detector&#45;filter calibration." alt="" coords="383,129,555,155"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="60,139,369,139,369,145,60,145"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__ctcss_8c.html#a20af3a7785867986f3c4eebed7be9acf" title="Calculate reference CTCSS amplitude and DC bias after Q8 gain scaling." alt="" coords="377,179,560,219"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="61,143,364,183,363,188,60,148"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__ctcss_8c.html#a34d4240fc79542f6068b6fdd998f1249" title="Calculate CTCSS peak after the reference Q8 tone and output gains." alt="" coords="108,231,329,256"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="47,153,73,182,109,209,143,224,141,229,107,214,70,186,43,157"/>
+<area shape="rect" id="Node000003" href="$legacy__ctcss__reference_8c.html#a16a93f43e23262b86e6a36851c606411" title="Advance the reference integer CTCSS filter by one sample." alt="" coords="433,5,504,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="270,34,419,20,420,25,270,40"/>
+<area shape="rect" id="Node000004" href="$legacy__ctcss__reference_8c.html#af2b257af52e42ecb078559998303fac6" title="Reconstruct one reference Q15 sine&#45;table sample." alt="" coords="419,55,518,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="270,44,406,58,405,64,270,50"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__ctcss_8c.html#a2785a5d958fea05db97fe3018cf4b145" title="Find the nearest entry in the CTCSS reference&#45;frequency table." alt="" coords="608,159,748,184"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="556,151,595,157,594,162,555,157"/>
+<area shape="poly" id="edge8_Node000008_Node000007" title=" " alt="" coords="560,184,594,180,594,185,560,190"/>
+<area shape="poly" id="edge10_Node000009_Node000008" title=" " alt="" coords="291,228,363,215,364,220,292,233"/>
+</map>

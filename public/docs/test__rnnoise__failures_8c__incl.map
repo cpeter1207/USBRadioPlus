@@ -1,0 +1,21 @@
+<map id="tests/test_rnnoise_failures.c" name="tests/test_rnnoise_failures.c">
+<area shape="rect" id="Node000001" title="Executable rnnoise failures regression and failure&#45;path checks." alt="" coords="311,5,449,45"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor__internal_8h.html" title="Private RNNoise stream buffering and sample&#45;conversion test interfaces." alt="" coords="110,93,271,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="340,48,246,90,243,85,337,43"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="296,101,371,126"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="372,47,349,90,344,87,367,44"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="395,101,461,126"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="393,44,417,87,412,90,388,47"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="486,101,557,126"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="412,43,492,91,490,96,410,48"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8h.html" title="RNNoise frame buffering and rate adaptation for local receiver denoising." alt="" coords="115,181,266,207"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="193,134,193,167,188,167,188,134"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,255,80,280"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="168,209,80,251,78,246,166,204"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="105,255,175,280"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="184,209,158,245,154,242,180,205"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="200,255,283,280"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="201,205,227,242,223,245,197,209"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="307,255,415,280"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="219,204,322,247,320,252,217,209"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="usbradio_mixer_limits" name="usbradio_mixer_limits">
+<area shape="rect" id="Node000001" title="Read the acquired device&#39;s capture, playback, and sidetone mixer limits." alt="" coords="239,80,405,105"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="37,5,159,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="277,77,190,45,151,33,153,28,192,39,279,72"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#abef8e22b2dcc2d7590c6b1fbc2313292" title="Report active radio settings, hardware assignment, and detector state." alt="" coords="49,55,147,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="225,84,147,76,148,70,225,79"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a790b10f1d33637669ca3ba674ab1d16c" title="Calibrate the hardware capture mixer from discriminator noise and optionally set squelch." alt="" coords="46,104,150,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="225,106,151,114,150,108,225,100"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a60ee83971704d9cfd689b7718f5c779f" title="Read capture, playback, and sidetone mixer limits for calibration." alt="" coords="5,154,191,194"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="275,113,192,143,155,156,153,151,190,138,273,108"/>
+</map>

@@ -1,0 +1,33 @@
+<map id="usbradio_request" name="usbradio_request">
+<area shape="rect" id="Node000001" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="5,119,140,145"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aa1e63510ef0ddae2c0a0f26763a5de06" title="Host&#45;API test double for ast_format_cap_get_names; observable effects are recorded in harness state." alt="" coords="220,5,371,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,117,132,86,187,55,206,47,208,52,189,60,134,91,92,121"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a9380bb00606040ac3fa583fa4809175e" title="Host&#45;API test double for ast_format_cap_iscompatible; observable effects are recorded in harness stat..." alt="" coords="188,70,403,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="130,117,224,96,225,101,131,122"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="254,119,337,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="140,129,240,129,240,135,140,135"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="245,169,346,194"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="131,142,232,165,231,170,130,147"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a34743b40e5057bb1c0478c33a9ba95eb" title="Create an Asterisk channel and associate it with private radio state." alt="" coords="239,218,351,243"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="92,143,134,173,189,203,227,215,225,220,187,208,131,177,88,147"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#ad110fb16952d21b1acbbd08fc1564208" title="Host&#45;API test double for ast_channel_name; observable effects are recorded in harness state." alt="" coords="492,21,636,46"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="351,226,378,218,401,203,415,186,422,168,424,131,426,93,434,74,449,55,477,39,480,43,452,59,438,76,431,94,429,131,427,169,420,189,404,207,380,223,353,231"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a3952d12d8e0f2e981ab24a4b245a79f2" title="Host&#45;API test double for ast_channel_nativeformats_set; observable effects are recorded in harness st..." alt="" coords="451,70,677,95"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="351,224,377,217,401,203,412,192,418,180,424,155,430,130,437,117,449,105,456,100,459,104,452,109,441,120,435,131,429,156,423,182,416,195,404,207,379,222,352,229"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a380cd6de8df4ddddcc9dabaadfadd6b0" title="Host&#45;API test double for ast_channel_set_readformat; observable effects are recorded in harness state..." alt="" coords="461,119,667,145"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="351,221,377,214,401,203,416,192,424,179,434,166,449,154,463,147,465,152,452,158,438,170,429,182,420,195,404,208,379,219,352,226"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#aed7e733bb413b7946b8043f7b43b93f1" title="Host&#45;API test double for ast_channel_set_writeformat; observable effects are recorded in harness stat..." alt="" coords="459,169,669,194"/>
+<area shape="poly" id="edge9_Node000006_Node000010" title=" " alt="" coords="351,218,480,194,481,199,352,223"/>
+<area shape="rect" id="Node000011" href="$test__channel__core_8c.html#adeb3d3653a71457ffc2c0438a962c866" title="Host&#45;API test double for ast_channel_tech_pvt_set; observable effects are recorded in harness state." alt="" coords="469,218,659,243"/>
+<area shape="poly" id="edge10_Node000006_Node000011" title=" " alt="" coords="352,228,455,228,455,233,352,233"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#ac457e19c9754f1986ecd4ec5dec43b26" title="Host&#45;API test double for ast_channel_tech_set; observable effects are recorded in harness state." alt="" coords="483,267,645,293"/>
+<area shape="poly" id="edge11_Node000006_Node000012" title=" " alt="" coords="352,238,481,262,480,267,351,244"/>
+<area shape="rect" id="Node000013" href="$test__channel__core_8c.html#a31e0a28e9ca58837eadcdb403dabd252" title="Host&#45;API test double for ast_hangup; observable effects are recorded in harness state." alt="" coords="515,317,613,342"/>
+<area shape="poly" id="edge12_Node000006_Node000013" title=" " alt="" coords="321,241,379,271,452,301,503,316,501,321,450,307,377,276,318,246"/>
+<area shape="rect" id="Node000014" href="$test__channel__core_8c.html#acffd448ce81cced6ab7c6bdf1de2a704" title="Host&#45;API test double for ast_jb_configure; observable effects are recorded in harness state." alt="" coords="500,366,628,391"/>
+<area shape="poly" id="edge13_Node000006_Node000014" title=" " alt="" coords="311,242,368,295,408,325,452,351,488,364,486,369,450,356,405,330,365,299,307,246"/>
+<area shape="rect" id="Node000016" href="$test__channel__core_8c.html#a2ac62ad94fe6f8ceb9b29244ff2d5d17" title="Host&#45;API test double for ast_pbx_start; observable effects are recorded in harness state." alt="" coords="509,415,619,441"/>
+<area shape="poly" id="edge15_Node000006_Node000016" title=" " alt="" coords="306,242,328,275,360,318,402,363,452,400,496,417,494,422,449,405,399,367,356,321,323,278,302,245"/>
+<area shape="rect" id="Node000015" href="$test__avfilter__agc_8c.html#a33a3169c02b0e2005a2d2a41cff62690" title="Construct valid standalone AGC settings with all other stages bypassed." alt="" coords="725,366,832,391"/>
+<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="628,376,712,376,712,381,628,381"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="src/usbradioplus_channel_core.c" name="src/usbradioplus_channel_core.c">
+<area shape="rect" id="Node000001" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="283,5,469,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8h.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="13,93,176,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="315,48,170,92,169,87,313,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="201,101,271,126"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="347,48,268,96,265,91,344,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="295,101,363,126"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="368,47,345,90,340,87,363,44"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="387,101,458,126"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="389,44,412,87,407,90,384,47"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="482,101,553,126"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="408,43,488,91,486,96,406,48"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="577,101,655,126"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="431,43,566,91,573,93,571,98,564,96,429,48"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="5,255,80,280"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="59,136,32,156,12,182,8,197,11,213,26,242,21,245,6,214,3,197,7,180,28,152,56,131"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="111,255,182,280"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="134,131,161,152,182,180,186,197,184,214,168,245,163,242,179,213,181,197,178,182,157,156,130,136"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__dsp_8h.html" title="Sample&#45;rate conversion, elastic clock recovery, and receive&#45;echo matching." alt="" coords="21,181,168,207"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="97,134,97,167,92,167,92,134"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="88,209,61,245,57,242,84,205"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="105,205,132,242,128,245,101,209"/>
+</map>

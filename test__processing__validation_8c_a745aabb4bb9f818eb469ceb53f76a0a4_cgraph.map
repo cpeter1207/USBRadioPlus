@@ -1,0 +1,11 @@
+<map id="test_every_numeric_boundary" name="test_every_numeric_boundary">
+<area shape="rect" id="Node000001" title="Verify every numeric boundary." alt="" coords="5,22,156,62"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#ac51e36cbbe88be82c325513e7c9c740d" title="Assert the chain validator rejects a selected field value." alt="" coords="204,29,356,55"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,39,190,39,190,45,156,45"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="404,5,539,31"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="156,21,204,14,301,9,390,10,390,16,301,14,204,19,157,27"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a5414c92d2485210b205f79d2794be131" title="Check processing parameter ranges, fixed stages, and optional&#45;stage ordering." alt="" coords="413,55,530,80"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="157,57,204,65,306,70,399,69,399,74,306,75,204,70,156,63"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="356,30,390,26,391,31,357,35"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="357,49,399,55,399,60,356,55"/>
+</map>

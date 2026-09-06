@@ -1,0 +1,17 @@
+<map id="add_dynamic_stage" name="add_dynamic_stage">
+<area shape="rect" id="Node000001" title="Append one selected equalizer, expander, AGC, de&#45;esser, compressor, or limiter." alt="" coords="5,107,157,132"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a1fbfa190c6e570dbb69c96347c0fc8e3" title="Append a dynamics stage with a separately filtered detector input." alt="" coords="224,5,383,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,104,147,77,204,48,244,32,246,37,206,52,150,81,104,109"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="449,56,564,81"/>
+<area shape="poly" id="edge9_Node000001_Node000003" title=" " alt="" coords="157,108,436,74,436,80,158,113"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a137fd1cc3d50967049b18c3746154400" title="Split, independently compress, and recombine three complementary bands." alt="" coords="205,157,401,183"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="139,130,234,152,233,157,137,135"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="475,133,538,159"/>
+<area shape="poly" id="edge7_Node000001_Node000005" title=" " alt="" coords="158,121,462,141,461,146,158,127"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="455,183,558,208"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="99,130,145,164,174,180,206,193,267,205,330,209,389,207,441,203,442,208,390,213,330,214,267,210,205,198,172,185,142,168,96,134"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="356,28,442,50,441,55,355,33"/>
+<area shape="poly" id="edge6_Node000004_Node000003" title=" " alt="" coords="329,155,467,85,469,90,331,160"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="401,156,461,149,462,154,402,161"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="402,180,442,185,441,190,401,185"/>
+</map>

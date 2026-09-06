@@ -1,0 +1,5 @@
+<map id="__wrap_avfilter_inout_alloc" name="__wrap_avfilter_inout_alloc">
+<area shape="rect" id="Node000001" title="Test wrapper for avfilter_inout_alloc controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,167,45"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#a3e264e07e6b81bbb6179188cc00d3c0c" title="Linker entry point for the real avfilter_inout_alloc operation behind the test wrapper." alt="" coords="215,5,369,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,23,201,23,201,28,167,28"/>
+</map>

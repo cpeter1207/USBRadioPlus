@@ -1,0 +1,14 @@
+<map id="src/usbradioplus_channel_test_api.h" name="src/usbradioplus_channel_test_api.h">
+<area shape="rect" id="Node000001" title="Test entry points for channel adapters without attached radio hardware." alt="" coords="80,5,267,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__private_8h.html" title="Select the adapter state shared with linked channel implementation objects." alt="" coords="5,181,168,221"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,47,105,170,100,168,162,44"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8h.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="167,93,329,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="192,44,224,81,220,85,188,47"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__legacy__private_8h.html" title="Per&#45;channel state for the OSS and libusb radio adapter." alt="" coords="5,269,168,309"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="89,222,89,255,84,255,84,222"/>
+<area shape="poly" id="edge6_Node000004_Node000002" title=" " alt="" coords="214,136,135,177,133,173,211,131"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="192,189,333,214"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="254,133,261,174,256,175,249,134"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="358,189,487,214"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="288,131,388,180,386,185,285,136"/>
+</map>

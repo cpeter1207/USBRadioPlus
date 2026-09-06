@@ -1,0 +1,11 @@
+<map id="hook_destroy" name="hook_destroy">
+<area shape="rect" id="Node000001" title="Detach and destroy graph resources owned by a channel audiohook datastore." alt="" coords="5,55,116,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a9fa661730d6fa6b9b12e410d66a3437b" title="Host&#45;API test double for ast_audiohook_destroy; observable effects are recorded in harness state." alt="" coords="164,5,337,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,52,187,32,188,37,111,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a88b9ad3730e7adbc3b396bef4e85b12a" title="Host&#45;API test double for ast_audiohook_detach; observable effects are recorded in harness state." alt="" coords="167,55,335,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,65,153,65,153,70,116,70"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="167,104,334,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="111,77,188,98,187,103,110,83"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its output FIFO." alt="" coords="385,104,477,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="334,114,371,114,371,119,334,119"/>
+</map>

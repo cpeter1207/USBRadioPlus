@@ -1,0 +1,22 @@
+<map id="res2cli" name="res2cli">
+<area shape="rect" id="Node000001" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="507,132,572,157"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a710b80d634b236393ee64de5d51bbe75" title="Register, complete, or execute the radio key CLI command." alt="" coords="297,5,450,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="521,122,494,86,457,52,420,33,422,28,460,48,498,83,525,119"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="108,132,240,157"/>
+<area shape="poly" id="edge12_Node000001_Node000003" title=" " alt="" coords="511,125,486,109,458,97,411,85,374,83,336,87,289,97,239,113,198,134,195,130,237,109,287,91,335,82,374,77,412,80,460,91,489,104,514,121"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a9a053417636415f194db2d800c15d5f5" title="Register, complete, or execute the radio unkey CLI command." alt="" coords="289,107,458,132"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="493,140,456,135,457,129,494,135"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a21884bae255b9919b2246f8727a7bf03" title="Register, complete, or select the active radio for tuning." alt="" coords="297,156,450,181"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="494,154,450,160,450,155,493,149"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="302,205,445,231"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="510,167,460,195,425,208,423,203,458,190,507,163"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#aa317bb2767e0bc7192a0c2712a48680e" title="Register, complete, or change the radio debug level." alt="" coords="288,255,459,280"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="526,171,499,209,460,244,434,257,432,252,457,240,495,205,522,168"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="319,38,289,52,232,94,190,133,186,129,229,90,287,48,316,33"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,132,60,157"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,147,60,147,60,142,94,142"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="276,134,241,139,240,134,275,129"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="283,160,240,155,240,150,284,155"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="312,204,287,195,202,160,204,155,289,190,314,199"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="304,252,287,244,256,224,227,201,185,160,189,156,231,197,259,220,289,240,306,247"/>
+</map>

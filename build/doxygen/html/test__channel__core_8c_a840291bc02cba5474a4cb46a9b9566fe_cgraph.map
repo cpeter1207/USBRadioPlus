@@ -1,0 +1,101 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,1396,60,1421"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a7a66d13a7295ae2c95173ec573279025" title="Verify channel callbacks." alt="" coords="126,5,299,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="32,1396,38,1135,52,689,75,259,89,111,97,65,106,42,113,35,116,39,110,45,102,67,94,112,80,259,58,689,43,1135,37,1396"/>
+<area shape="rect" id="Node000028" href="$test__channel__core_8c.html#af67f5ca679a397955226882ebdbd3fe5" title="Verify channel selection helpers." alt="" coords="127,55,298,95"/>
+<area shape="poly" id="edge2_Node000001_Node000028" title=" " alt="" coords="31,1396,30,1155,36,743,45,528,58,335,78,188,91,137,106,106,114,97,118,101,110,109,96,139,83,189,64,336,50,528,42,743,36,1155,37,1396"/>
+<area shape="rect" id="Node000036" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="147,120,279,145"/>
+<area shape="poly" id="edge3_Node000001_Node000036" title=" " alt="" coords="31,1396,30,1163,36,767,45,560,58,376,78,234,91,186,106,156,118,145,132,138,135,142,121,150,110,160,96,188,83,235,64,376,50,561,42,767,36,1163,37,1396"/>
+<area shape="rect" id="Node000121" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="119,170,307,210"/>
+<area shape="poly" id="edge4_Node000001_Node000121" title=" " alt="" coords="31,1396,32,1174,39,799,48,604,61,429,80,295,92,249,106,221,108,217,112,221,110,223,97,251,85,296,67,429,54,604,45,799,37,1174,37,1396"/>
+<area shape="rect" id="Node000129" href="$test__channel__core_8c.html#a913749b9c3856782d318f361415e1c53" title="Verify console keying." alt="" coords="135,235,290,260"/>
+<area shape="poly" id="edge5_Node000001_Node000129" title=" " alt="" coords="31,1396,32,1183,40,823,48,636,62,469,80,342,92,298,106,271,121,258,125,262,110,274,97,300,86,343,67,470,54,637,45,824,37,1183,37,1396"/>
+<area shape="rect" id="Node000130" href="$test__channel__core_8c.html#a6dfe0e656a6ff5edfad50d62b6d5598c" title="Verify one output frame per tick through PTT and receive&#45;state transitions." alt="" coords="113,285,312,325"/>
+<area shape="poly" id="edge6_Node000001_Node000130" title=" " alt="" coords="31,1396,33,1194,43,856,52,680,65,523,82,402,93,361,106,335,108,332,112,335,110,338,98,363,88,403,70,523,57,680,48,856,39,1194,37,1396"/>
+<area shape="rect" id="Node000135" href="$test__channel__core_8c.html#ab7719cc961908fc63bd20bd4821a0ecf" title="Verify dsp init failures." alt="" coords="132,349,293,375"/>
+<area shape="poly" id="edge7_Node000001_Node000135" title=" " alt="" coords="31,1396,33,1202,43,880,52,712,65,563,83,449,93,410,106,386,118,375,122,379,110,389,98,412,88,450,70,564,57,712,48,880,39,1202,37,1396"/>
+<area shape="rect" id="Node000145" href="$test__channel__core_8c.html#a4d327031ec460f88ed864d0ef4ed26c5" title="Verify effective processing settings." alt="" coords="119,399,307,439"/>
+<area shape="poly" id="edge8_Node000001_Node000145" title=" " alt="" coords="31,1396,35,1214,46,912,55,756,68,616,85,509,95,473,106,450,108,447,113,450,110,453,99,474,90,510,73,617,60,756,51,912,40,1214,37,1396"/>
+<area shape="rect" id="Node000146" href="$test__channel__core_8c.html#aa46f85ca63cd6a436d0f72ca5b77998c" title="Keep local dynamics and RNNoise continuous unless RX CPU saving permits a pause." alt="" coords="131,463,294,503"/>
+<area shape="poly" id="edge9_Node000001_Node000146" title=" " alt="" coords="32,1396,36,1224,47,943,57,798,70,668,86,569,95,535,106,514,118,502,122,506,110,517,100,537,91,570,75,669,62,798,53,944,41,1224,37,1396"/>
+<area shape="rect" id="Node000203" href="$test__channel__core_8c.html#acd7095801933ad32409206d81ce20ba7" title="Verify menu adjustment helpers." alt="" coords="127,527,299,567"/>
+<area shape="poly" id="edge10_Node000001_Node000203" title=" " alt="" coords="32,1395,37,1235,49,974,59,840,72,720,87,629,96,597,106,578,113,570,117,574,110,581,101,599,92,630,77,721,64,840,55,975,42,1235,37,1396"/>
+<area shape="rect" id="Node000204" href="$test__channel__core_8c.html#ac7f5d63c74c2d33746c4f1da589c2d40" title="Verify menu support dispatch." alt="" coords="108,592,317,617"/>
+<area shape="poly" id="edge11_Node000001_Node000204" title=" " alt="" coords="32,1396,37,1243,50,999,60,873,72,761,87,676,96,646,106,628,110,624,114,627,110,632,101,649,93,677,77,762,65,874,55,999,42,1244,37,1396"/>
+<area shape="rect" id="Node000206" href="$test__channel__core_8c.html#a03cbc429f159bb16668f4d123b78ce61" title="Verify native fifo and squelch copy." alt="" coords="135,642,290,682"/>
+<area shape="poly" id="edge12_Node000001_Node000206" title=" " alt="" coords="32,1395,38,1255,53,1031,75,814,89,736,97,709,106,692,121,679,125,683,110,696,102,711,94,737,80,815,58,1032,44,1255,37,1396"/>
+<area shape="rect" id="Node000209" href="$test__channel__core_8c.html#a5fa933fbe4ef9709e535546fa9d35c97" title="Check one&#45;frame bursts at every boundary of the adaptive latency policy." alt="" coords="131,706,294,746"/>
+<area shape="poly" id="edge13_Node000001_Node000209" title=" " alt="" coords="32,1396,39,1266,54,1063,77,867,90,796,106,757,117,745,121,749,110,759,95,797,82,867,60,1063,45,1267,37,1396"/>
+<area shape="rect" id="Node000214" href="$test__channel__core_8c.html#aeb5eacf2e9998ce289b5d44fed8d33c6" title="Apply sample&#45;rate DSP carrier gating without changing non&#45;DSP receive sources." alt="" coords="119,771,306,796"/>
+<area shape="poly" id="edge14_Node000001_Node000214" title=" " alt="" coords="31,1396,30,1283,37,1106,46,1012,59,926,79,854,91,827,106,806,109,803,113,806,110,809,96,829,84,856,64,927,51,1013,42,1106,36,1283,36,1396"/>
+<area shape="rect" id="Node000215" href="$test__channel__core_8c.html#af890f90fa6d5d09eafee4e672a90a682" title="Verify native tick baseline." alt="" coords="119,820,307,845"/>
+<area shape="poly" id="edge15_Node000001_Node000215" title=" " alt="" coords="31,1396,32,1291,40,1129,49,1043,62,965,81,899,92,874,106,855,109,852,113,855,110,858,97,877,86,901,67,966,54,1044,45,1129,37,1291,36,1396"/>
+<area shape="rect" id="Node000218" href="$test__channel__core_8c.html#a4b71107646e29bb03746944f1e76802c" title="Verify numeric helpers." alt="" coords="131,869,294,895"/>
+<area shape="poly" id="edge16_Node000001_Node000218" title=" " alt="" coords="31,1395,33,1299,43,1152,52,1074,65,1003,83,944,94,922,106,904,117,895,121,899,110,908,98,924,88,946,70,1004,57,1075,48,1152,39,1299,37,1396"/>
+<area shape="rect" id="Node000220" href="$test__channel__core_8c.html#ab117cfa69c3506c535d5cd0c1c971638" title="Verify option decoders." alt="" coords="132,919,293,944"/>
+<area shape="poly" id="edge17_Node000001_Node000220" title=" " alt="" coords="32,1396,35,1308,46,1175,55,1106,68,1042,85,990,106,954,118,944,121,948,110,957,89,992,73,1043,60,1107,51,1176,40,1309,37,1396"/>
+<area shape="rect" id="Node000228" href="$test__channel__core_8c.html#a3edd62e517c7c81cfc4a84f40b99d823" title="Verify oss audio helpers." alt="" coords="125,968,300,993"/>
+<area shape="poly" id="edge18_Node000001_Node000228" title=" " alt="" coords="32,1396,37,1317,49,1199,59,1138,71,1082,87,1036,106,1004,112,999,116,1002,110,1008,92,1038,76,1084,64,1139,54,1200,42,1317,37,1396"/>
+<area shape="rect" id="Node000229" href="$test__channel__core_8c.html#af6095a1326185eff38bd52cfba6e31ac" title="Verify oss channel creation and request." alt="" coords="115,1018,310,1058"/>
+<area shape="poly" id="edge19_Node000001_Node000229" title=" " alt="" coords="32,1395,40,1328,54,1230,76,1133,90,1095,106,1068,110,1064,114,1068,110,1072,94,1097,81,1135,59,1231,45,1328,38,1396"/>
+<area shape="rect" id="Node000245" href="$test__channel__core_8c.html#a46d1dc9756e45108bf6ec4d0ee696a48" title="Verify oss channel hangup." alt="" coords="118,1083,307,1108"/>
+<area shape="poly" id="edge20_Node000001_Node000245" title=" " alt="" coords="33,1396,41,1337,56,1254,78,1173,91,1141,106,1119,112,1113,116,1117,110,1122,96,1143,83,1174,62,1255,46,1338,38,1396"/>
+<area shape="rect" id="Node000248" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="127,1133,298,1173"/>
+<area shape="poly" id="edge21_Node000001_Node000248" title=" " alt="" coords="32,1396,35,1355,46,1298,68,1237,85,1208,106,1183,114,1176,118,1180,110,1187,89,1211,73,1239,51,1300,41,1356,37,1396"/>
+<area shape="rect" id="Node000261" href="$test__channel__core_8c.html#a9b53984771bd0d03afd1ec95fd65bc03" title="Verify oss channel write and call." alt="" coords="125,1197,300,1237"/>
+<area shape="poly" id="edge22_Node000001_Node000261" title=" " alt="" coords="34,1395,41,1365,54,1325,76,1283,106,1247,112,1242,115,1246,110,1251,80,1286,59,1327,46,1366,39,1396"/>
+<area shape="rect" id="Node000283" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="123,1261,303,1301"/>
+<area shape="poly" id="edge23_Node000001_Node000283" title=" " alt="" coords="38,1394,64,1353,84,1330,106,1311,116,1305,119,1309,110,1315,88,1334,69,1356,43,1397"/>
+<area shape="rect" id="Node000285" href="$test__channel__core_8c.html#aecd9d77278c186f6c706970aed2ab3f0" title="Verify oss hid attach failures." alt="" coords="137,1325,288,1365"/>
+<area shape="poly" id="edge24_Node000001_Node000285" title=" " alt="" coords="59,1394,107,1374,129,1367,130,1372,109,1379,61,1399"/>
+<area shape="rect" id="Node000287" href="$test__channel__core_8c.html#a2d5d51d9c3c21c546f8bd39edad4ccdc" title="Verify oss hid worker attach." alt="" coords="135,1389,290,1429"/>
+<area shape="poly" id="edge25_Node000001_Node000287" title=" " alt="" coords="60,1406,121,1406,121,1411,60,1411"/>
+<area shape="rect" id="Node000288" href="$test__channel__core_8c.html#ae781c1a29acf8c1051764d7f4be23be9" title="Verify oss hid worker device retry." alt="" coords="135,1453,290,1493"/>
+<area shape="poly" id="edge26_Node000001_Node000288" title=" " alt="" coords="61,1418,109,1438,130,1446,129,1451,107,1443,59,1423"/>
+<area shape="rect" id="Node000289" href="$test__channel__core_8c.html#a6bb4b32ca69482a5d778d23a9c8bcd8d" title="Verify oss hid worker first radio construction." alt="" coords="122,1517,303,1557"/>
+<area shape="poly" id="edge27_Node000001_Node000289" title=" " alt="" coords="43,1421,69,1461,88,1483,110,1503,119,1508,116,1513,106,1507,84,1487,64,1464,38,1423"/>
+<area shape="rect" id="Node000290" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="115,1581,310,1621"/>
+<area shape="poly" id="edge28_Node000001_Node000290" title=" " alt="" coords="39,1421,46,1451,59,1490,80,1531,110,1567,115,1571,112,1575,106,1571,76,1534,54,1492,41,1452,34,1422"/>
+<area shape="rect" id="Node000359" href="$test__channel__core_8c.html#af38f425256dd1cf5f824585046bbefbe" title="Verify oss parallel pulser." alt="" coords="123,1645,302,1671"/>
+<area shape="poly" id="edge29_Node000001_Node000359" title=" " alt="" coords="37,1421,40,1462,50,1519,72,1579,89,1607,110,1631,117,1636,114,1641,106,1635,85,1610,67,1581,45,1520,35,1463,32,1422"/>
+<area shape="rect" id="Node000360" href="$test__channel__core_8c.html#a3ca31b97d7731b6763b12867982f9210" title="Verify oss tune write paths." alt="" coords="137,1695,289,1735"/>
+<area shape="poly" id="edge30_Node000001_Node000360" title=" " alt="" coords="36,1422,37,1470,46,1539,55,1577,68,1614,86,1649,110,1680,126,1693,123,1697,106,1684,82,1652,63,1616,50,1578,40,1540,32,1470,31,1422"/>
+<area shape="rect" id="Node000361" href="$test__channel__core_8c.html#ad6c4d42213519056026fab2cde9bebe0" title="Verify parrot transitions." alt="" coords="128,1760,297,1785"/>
+<area shape="poly" id="edge31_Node000001_Node000361" title=" " alt="" coords="38,1421,44,1489,58,1587,80,1683,94,1721,110,1746,118,1752,114,1756,106,1749,89,1723,75,1685,53,1588,39,1490,32,1422"/>
+<area shape="rect" id="Node000362" href="$test__channel__core_8c.html#a61b62b22150c284d1b976782827020ce" title="Verify processing config overrides." alt="" coords="127,1810,298,1850"/>
+<area shape="poly" id="edge32_Node000001_Node000362" title=" " alt="" coords="37,1421,43,1497,56,1610,78,1721,93,1765,110,1795,117,1802,114,1806,106,1798,88,1767,73,1723,51,1610,38,1498,32,1422"/>
+<area shape="rect" id="Node000364" href="$test__channel__core_8c.html#ab2916e8f6ee418c90fa330192799853d" title="Verify processing override parse edges." alt="" coords="120,1874,305,1914"/>
+<area shape="poly" id="edge33_Node000001_Node000364" title=" " alt="" coords="37,1422,41,1509,52,1641,62,1710,74,1773,90,1825,110,1860,113,1863,109,1867,106,1864,85,1827,69,1774,56,1711,47,1642,36,1509,32,1422"/>
+<area shape="rect" id="Node000365" href="$test__channel__core_8c.html#a0af5049ab7f5b3f6c75d5742fb3729da" title="Verify program queue and parrot storage." alt="" coords="135,1938,291,1978"/>
+<area shape="poly" id="edge34_Node000001_Node000365" title=" " alt="" coords="37,1422,39,1520,49,1671,58,1750,71,1823,88,1884,98,1907,110,1924,124,1936,120,1940,106,1928,94,1909,83,1885,65,1825,52,1751,43,1671,34,1520,31,1422"/>
+<area shape="rect" id="Node000366" href="$test__channel__core_8c.html#a0d4aeabb854d0c773c56fbdecca0d1de" title="Verify radio tune dispatch." alt="" coords="120,2003,305,2028"/>
+<area shape="poly" id="edge35_Node000001_Node000366" title=" " alt="" coords="36,1422,36,1531,44,1702,52,1792,66,1875,85,1943,97,1969,110,1988,114,1993,111,1996,106,1992,92,1971,80,1945,61,1876,47,1793,38,1702,31,1531,31,1422"/>
+<area shape="rect" id="Node000367" href="$test__channel__core_8c.html#a7a2e6c653c5e9455681a4622f165b753" title="Verify receive calibration helpers." alt="" coords="123,2053,302,2093"/>
+<area shape="poly" id="edge36_Node000001_Node000367" title=" " alt="" coords="36,1422,36,1538,42,1724,51,1822,65,1912,84,1987,96,2016,110,2038,114,2042,110,2046,106,2041,91,2018,79,1989,59,1913,46,1822,37,1724,31,1539,31,1422"/>
+<area shape="rect" id="Node000369" href="$test__channel__core_8c.html#a9986d059e8247ff55081a7a2574e7e79" title="Preserve admitted audio, sinc history, and clock recovery across arbitrary PTT edges." alt="" coords="129,2117,297,2157"/>
+<area shape="poly" id="edge37_Node000001_Node000369" title=" " alt="" coords="37,1421,44,1558,58,1776,81,1987,95,2063,102,2088,110,2103,119,2111,115,2115,106,2106,97,2090,89,2064,75,1988,53,1776,39,1559,32,1422"/>
+<area shape="rect" id="Node000371" href="$test__channel__core_8c.html#a38c7e7c6d81f4cbaa3dbe7d36ec7a7d9" title="Preserve isolated link&#45;rate bursts at the minimum, normal, and maximum FIFO targets." alt="" coords="137,2181,288,2221"/>
+<area shape="poly" id="edge38_Node000001_Node000371" title=" " alt="" coords="37,1421,43,1569,57,1808,67,1930,79,2039,93,2122,102,2150,110,2167,127,2181,123,2185,106,2170,97,2152,88,2124,73,2040,61,1931,51,1808,38,1570,32,1421"/>
+<area shape="rect" id="Node000373" href="$test__channel__core_8c.html#a121e012d8040b4d045620fd845080578" title="Stop padding after either a rejected or partially consumed synthetic tail frame." alt="" coords="137,2245,288,2285"/>
+<area shape="poly" id="edge39_Node000001_Node000373" title=" " alt="" coords="37,1422,42,1581,55,1840,65,1973,77,2092,92,2182,101,2213,110,2231,127,2245,123,2249,106,2234,96,2215,87,2184,72,2093,59,1974,49,1840,37,1582,32,1422"/>
+<area shape="rect" id="Node000374" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="141,2309,285,2349"/>
+<area shape="poly" id="edge40_Node000001_Node000374" title=" " alt="" coords="37,1421,41,1592,53,1871,63,2015,75,2144,91,2242,100,2275,110,2295,130,2311,126,2315,106,2298,95,2277,86,2243,70,2145,57,2016,48,1871,36,1592,32,1422"/>
+<area shape="rect" id="Node000377" href="$test__channel__core_8c.html#ae0bd3cdcb589672622a07f35e212f700" title="Verify shared control helpers." alt="" coords="137,2373,288,2413"/>
+<area shape="poly" id="edge41_Node000001_Node000377" title=" " alt="" coords="37,1422,40,1603,51,1903,61,2058,73,2196,90,2302,100,2338,110,2359,127,2373,123,2378,106,2362,95,2340,85,2303,68,2197,55,2059,46,1903,35,1603,31,1422"/>
+<area shape="rect" id="Node000378" href="$test__channel__core_8c.html#a58151a666d5873976f99148cc8059d48" title="Verify shared eeprom wait." alt="" coords="117,2437,308,2463"/>
+<area shape="poly" id="edge42_Node000001_Node000378" title=" " alt="" coords="37,1421,39,1614,48,1935,57,2101,70,2249,88,2362,98,2400,110,2423,114,2427,110,2431,106,2426,93,2402,83,2364,65,2250,52,2102,43,1935,34,1614,31,1422"/>
+<area shape="rect" id="Node000379" href="$test__channel__core_8c.html#a0f08b25a2d14f9d0cdcd5164a8a11dcc" title="Verify shared hardware layouts." alt="" coords="129,2487,296,2527"/>
+<area shape="poly" id="edge43_Node000001_Node000379" title=" " alt="" coords="37,1421,39,1622,48,1958,57,2133,70,2289,88,2408,98,2448,110,2472,120,2482,116,2486,106,2476,93,2450,83,2409,65,2289,52,2133,43,1958,34,1622,31,1421"/>
+<area shape="rect" id="Node000380" href="$test__channel__core_8c.html#ab8bcd60218b169c8d716b7223a75de5a" title="Verify shared receive signaling helpers." alt="" coords="136,2551,289,2591"/>
+<area shape="poly" id="edge44_Node000001_Node000380" title=" " alt="" coords="37,1421,38,1633,46,1990,55,2176,68,2342,87,2469,98,2512,110,2538,125,2551,122,2555,106,2541,93,2514,81,2470,63,2343,50,2176,41,1990,33,1633,31,1421"/>
+<area shape="rect" id="Node000381" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="121,2615,304,2655"/>
+<area shape="poly" id="edge45_Node000001_Node000381" title=" " alt="" coords="37,1422,37,1645,45,2022,53,2219,67,2395,85,2529,97,2574,110,2602,113,2605,109,2608,106,2605,92,2576,80,2530,61,2395,48,2219,39,2022,32,1645,31,1422"/>
+<area shape="rect" id="Node000382" href="$test__channel__core_8c.html#a7aa17279fab322817ae6b6989c16fcb3" title="Verify text controls." alt="" coords="143,2680,282,2705"/>
+<area shape="poly" id="edge46_Node000001_Node000382" title=" " alt="" coords="37,1422,36,1656,42,2054,50,2262,63,2448,83,2590,96,2637,110,2666,132,2682,129,2686,106,2669,91,2639,78,2591,58,2448,45,2262,36,2054,30,1656,31,1422"/>
+<area shape="rect" id="Node000384" href="$test__channel__core_8c.html#a34fb4edd416cae78a04f7788f76e2868" title="Verify tune flash sequences." alt="" coords="114,2729,311,2755"/>
+<area shape="poly" id="edge47_Node000001_Node000384" title=" " alt="" coords="37,1421,44,1672,59,2099,81,2510,95,2651,103,2694,110,2715,114,2719,110,2722,106,2718,97,2696,90,2652,76,2511,53,2099,38,1672,32,1422"/>
+<area shape="rect" id="Node000385" href="$test__channel__core_8c.html#a4a281b6359176108bbdf300eb66f23b9" title="Verify tuning displays." alt="" coords="135,2779,291,2804"/>
+<area shape="poly" id="edge48_Node000001_Node000385" title=" " alt="" coords="37,1421,43,1681,58,2124,80,2552,95,2698,102,2743,110,2764,124,2776,120,2780,106,2768,97,2744,89,2698,75,2552,53,2124,38,1681,32,1422"/>
+<area shape="rect" id="Node000386" href="$test__channel__core_8c.html#afad909763581e2c29635c9e012b3ea37" title="Verify unlinked channel cleanup." alt="" coords="129,2829,296,2869"/>
+<area shape="poly" id="edge49_Node000001_Node000386" title=" " alt="" coords="37,1421,43,1689,58,2148,81,2592,95,2744,102,2791,110,2814,119,2823,116,2827,106,2817,97,2792,89,2745,75,2592,53,2148,38,1689,32,1422"/>
+</map>

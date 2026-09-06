@@ -1,0 +1,5 @@
+<map id="usbradio_answer" name="usbradio_answer">
+<area shape="rect" id="Node000001" title="Mark the radio channel answered." alt="" coords="5,5,137,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a138214590490253fb6a072a7cd5d6454" title="Host&#45;API test double for ast_setstate; observable effects are recorded in harness state." alt="" coords="185,5,288,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,15,171,15,171,21,137,21"/>
+</map>

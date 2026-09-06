@@ -1,0 +1,15 @@
+<map id="test_debug_buffers" name="test_debug_buffers">
+<area shape="rect" id="Node000001" title="Verify debug buffers." alt="" coords="5,55,152,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#ad8a670cefa4fe69a9d09b7217d2efc27" title="Store one scaled signal sample at a selected trace point." alt="" coords="244,5,307,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="129,52,230,26,231,32,131,57"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#a16b22836a4c264c4f8d2b3680c114507" title="Collect the configured radio trace channels into the debug buffer." alt="" coords="240,55,311,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="152,65,226,65,226,70,152,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__radio_8c.html#af179d75ad5de3bd821df99138ee787d8" title="Emit a radio trace when the configured and requested levels permit it." alt="" coords="200,104,351,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="131,77,212,98,210,103,129,83"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#af247df7c81a9941c9737856b6de32a88" title="Host&#45;API test double for ast_log_ap; observable effects are recorded in harness state." alt="" coords="444,79,536,104"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="350,105,430,96,431,101,351,110"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__radio_8c.html#ac9c046ce4626724fa406cf1abcc44afe" title="Test whether Asterisk&#39;s current debug level enables a radio trace." alt="" coords="399,128,581,153"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="351,122,385,126,385,132,351,128"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#aeac69003cab2e28ea7868310e9307e28" title="Host&#45;API test double for ast_debug_get_by_module; observable effects are recorded in harness state." alt="" coords="629,128,825,153"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="581,138,616,138,616,143,581,143"/>
+</map>

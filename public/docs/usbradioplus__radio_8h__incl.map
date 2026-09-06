@@ -1,0 +1,10 @@
+<map id="src/usbradioplus_radio.h" name="src/usbradioplus_radio.h">
+<area shape="rect" id="Node000001" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="32,5,212,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="124,152,194,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="84,33,52,46,25,62,9,81,9,91,13,103,33,123,57,138,84,149,111,155,109,160,82,154,55,143,29,127,9,105,3,92,5,79,21,58,50,41,82,28"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="23,79,220,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="124,31,124,65,119,65,119,31"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="245,79,420,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="156,28,286,72,285,77,155,33"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="306,106,201,149,199,144,303,102"/>
+</map>

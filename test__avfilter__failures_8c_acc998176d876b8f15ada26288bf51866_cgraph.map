@@ -1,0 +1,5 @@
+<map id="__wrap_av_audio_fifo_write" name="__wrap_av_audio_fifo_write">
+<area shape="rect" id="Node000001" title="Test wrapper for av_audio_fifo_write controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,168,45"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#af93d0f2b562eede7c2ce9b193fb3972a" title="Linker entry point for the real av_audio_fifo_write operation behind the test wrapper." alt="" coords="216,5,371,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,23,202,23,202,28,168,28"/>
+</map>

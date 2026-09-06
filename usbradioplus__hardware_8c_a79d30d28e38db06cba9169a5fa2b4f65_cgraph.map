@@ -1,0 +1,5 @@
+<map id="urp_hardware_set_channel" name="urp_hardware_set_channel">
+<area shape="rect" id="Node000001" title="Latch a binary channel number onto the parallel&#45;port radio interface." alt="" coords="5,5,201,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="249,5,400,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,15,235,15,235,21,202,21"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="read_profile_overrides" name="read_profile_overrides">
+<area shape="rect" id="Node000001" title="Apply shared flat defaults followed by a channel&#39;s resolved overrides." alt="" coords="5,55,172,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Copy an explicitly configured option into a bounded channel override table." alt="" coords="441,55,548,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,65,427,65,427,70,172,70"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ae4785a72bcb24cb49115464651f0ce67" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="220,80,393,105"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="172,74,207,78,206,84,172,80"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="635,5,717,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="541,52,621,30,622,35,543,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="639,55,713,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="548,65,625,65,625,70,548,70"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="596,104,756,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="543,77,616,98,615,103,541,83"/>
+<area shape="poly" id="edge6_Node000006_Node000002" title=" " alt="" coords="393,78,427,74,428,79,394,84"/>
+</map>

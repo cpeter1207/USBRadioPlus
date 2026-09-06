@@ -1,0 +1,24 @@
+<map id="soundcard_writeframe" name="soundcard_writeframe">
+<area shape="rect" id="Node000001" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="792,86,960,111"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6dfe0e656a6ff5edfad50d62b6d5598c" title="Verify one output frame per tick through PTT and receive&#45;state transitions." alt="" coords="108,5,307,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="793,86,744,79,509,52,307,35,307,30,509,47,744,73,794,81"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a3edd62e517c7c81cfc4a84f40b99d823" title="Verify oss audio helpers." alt="" coords="120,73,295,98"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="779,99,295,90,295,84,779,94"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="573,111,744,137"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="779,113,745,117,744,111,778,107"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="601,161,716,186"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="831,119,745,151,705,163,703,158,743,145,829,114"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,103,60,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,53,109,62,77,84,50,105,47,101,74,79,107,58,127,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="121,103,61,114,60,109,120,98"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="386,111,494,137"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="559,127,494,127,494,121,559,121"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="366,161,514,186"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="588,176,514,176,514,171,588,171"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="355,211,525,251"/>
+<area shape="poly" id="edge11_Node000007_Node000010" title=" " alt="" coords="597,192,517,213,516,208,596,187"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="117,127,297,167"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="352,166,297,160,298,154,353,161"/>
+<area shape="poly" id="edge10_Node000009_Node000003" title=" " alt="" coords="103,131,60,123,61,118,104,126"/>
+<area shape="poly" id="edge12_Node000010_Node000003" title=" " alt="" coords="341,232,286,227,226,217,165,203,107,181,70,157,43,131,47,127,74,153,109,176,167,198,227,212,286,221,341,226"/>
+</map>

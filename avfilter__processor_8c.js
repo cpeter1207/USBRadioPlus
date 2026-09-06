@@ -1,0 +1,36 @@
+var avfilter__processor_8c =
+[
+    [ "dynamics_band", "structdynamics__band.html", "structdynamics__band" ],
+    [ "AVFILTER_PRIVATE", "avfilter__processor_8c.html#a1091aec90c00e32a303608d0bcca5532", null ],
+    [ "CTCSS_NOTCH_SECTIONS", "avfilter__processor_8c.html#a48798d727a3279c8944c8c5eb69d92db", null ],
+    [ "GRAPH_SIZE", "avfilter__processor_8c.html#a11ec87cf3a591319de34d05883f37ba4", null ],
+    [ "NAME_SIZE", "avfilter__processor_8c.html#a834e9a379307f869a10f4da078be5786", null ],
+    [ "URP_AGC_PLUGIN_PATH", "avfilter__processor_8c.html#a796b9f40c522e789168a85c56b4ae045", null ],
+    [ "cleanup_meter", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51", [
+      [ "CLEANUP_PRE_FULL", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51adbcf3e67bd2111c3b720789cd91a1620", null ],
+      [ "CLEANUP_PRE_5_8", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51ae49f7864baf3472453119bb0e2c24c7b", null ],
+      [ "CLEANUP_PRE_8_PLUS", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51a8c45b72e877b26936d230658dd75594b", null ],
+      [ "CLEANUP_POST_5_8", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51a71b2c7294fbf6678bd05092b185cdfd0", null ],
+      [ "CLEANUP_POST_8_PLUS", "avfilter__processor_8c.html#a0770bc2ce7e43ecb65cb750658251b51ada4443e19971a6253e6dd0eab9a32760", null ]
+    ] ],
+    [ "add_brickwall_bandpass", "avfilter__processor_8c.html#a6726e04f461e857fd24a853c4be7ae8f", null ],
+    [ "add_dynamic_stage", "avfilter__processor_8c.html#a942db83871c8928c414177847157082d", null ],
+    [ "add_emphasis", "avfilter__processor_8c.html#a53d91b1af5f22881f4f869695fb680e1", null ],
+    [ "add_sidechain_stage", "avfilter__processor_8c.html#a1fbfa190c6e570dbb69c96347c0fc8e3", null ],
+    [ "add_three_band_dynamics", "avfilter__processor_8c.html#a137fd1cc3d50967049b18c3746154400", null ],
+    [ "astats_value", "avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e", null ],
+    [ "build_description", "avfilter__processor_8c.html#a4e4c712f217991d7500cd2c8bc39552e", null ],
+    [ "clamp", "avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897", null ],
+    [ "configure", "avfilter__processor_8c.html#a9e7cb869fcd27b93df8369ab599480af", null ],
+    [ "db_to_linear", "avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4", null ],
+    [ "drain_cleanup_meter", "avfilter__processor_8c.html#ac891b46547a6d98840314bd3114a6629", null ],
+    [ "free_graph", "avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4", null ],
+    [ "graph_append", "avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef", null ],
+    [ "set_double_sample_format", "avfilter__processor_8c.html#ac46253be3b53033157c300906252c3e0", null ],
+    [ "txagc_avfilter_destroy", "avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3", null ],
+    [ "txagc_avfilter_init", "avfilter__processor_8c.html#a1c76f7b09d096081aadbbe5265da11ad", null ],
+    [ "txagc_avfilter_process", "avfilter__processor_8c.html#a3514e05bc03695f0fd1b564986b58cad", null ],
+    [ "txagc_avfilter_reset", "avfilter__processor_8c.html#a174903e6e4f1cf7e01bbccd2547bf470", null ],
+    [ "update_astats", "avfilter__processor_8c.html#a8681a563c78717937cd38f3685472fb5", null ],
+    [ "update_cleanup_astats", "avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582", null ]
+];

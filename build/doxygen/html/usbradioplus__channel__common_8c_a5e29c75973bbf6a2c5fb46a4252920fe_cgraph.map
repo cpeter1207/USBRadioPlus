@@ -1,0 +1,5 @@
+<map id="usbradioplus_parallel_program_write" name="usbradioplus_parallel_program_write">
+<area shape="rect" id="Node000001" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="5,5,167,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a24c6f696879498b3164fabac68845cfa" title="Host&#45;API test double for ast_radio_ppwrite; observable effects are recorded in harness state." alt="" coords="215,13,353,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,23,201,23,201,28,167,28"/>
+</map>

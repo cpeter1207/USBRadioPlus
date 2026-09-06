@@ -1,0 +1,5 @@
+<map id="test_partition_invariance" name="test_partition_invariance">
+<area shape="rect" id="Node000001" title="Verify buffer partitioning never changes the capacitor or output sequence." alt="" coords="108,5,292,31"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute continuous squelch regression tests." alt="" coords="5,5,60,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,21,60,21,60,15,94,15"/>
+</map>

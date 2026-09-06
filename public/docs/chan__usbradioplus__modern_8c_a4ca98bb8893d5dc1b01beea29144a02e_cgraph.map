@@ -1,0 +1,5 @@
+<map id="init_audio_device" name="init_audio_device">
+<area shape="rect" id="Node000001" title="Acquire the configured ASL USB radio and initialize its audio/HID interface." alt="" coords="5,5,141,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#ad7cb19659650b42c6323e2ea9fbe66f5" title="Report a USB/audio fault and latch recovery state." alt="" coords="189,5,332,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,15,176,15,176,21,141,21"/>
+</map>

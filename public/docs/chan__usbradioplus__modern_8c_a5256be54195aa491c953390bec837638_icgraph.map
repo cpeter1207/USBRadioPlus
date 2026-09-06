@@ -1,0 +1,7 @@
+<map id="usbradio_set_rx_mixer" name="usbradio_set_rx_mixer">
+<area shape="rect" id="Node000001" title="Set the acquired device&#39;s hardware microphone capture level." alt="" coords="175,31,344,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="5,5,127,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,33,126,29,127,23,161,28"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a790b10f1d33637669ca3ba674ab1d16c" title="Calibrate the hardware capture mixer from discriminator noise and optionally set squelch." alt="" coords="14,55,118,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="161,58,119,64,118,58,161,53"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="add_single_override" name="add_single_override">
+<area shape="rect" id="Node000001" title="Install a single synthetic section override." alt="" coords="5,104,159,129"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Copy an explicitly configured option into a bounded channel override table." alt="" coords="221,55,327,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="131,101,210,81,211,86,133,107"/>
+<area shape="rect" id="Node000006" href="$test__processing__validation_8c.html#a907b8d3321bf6879fdf3050445dacc77" title="Install a bounded option list in the fake Asterisk configuration." alt="" coords="208,104,340,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="159,114,194,114,194,119,159,119"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="207,153,341,179"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="133,127,211,147,210,152,131,132"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="429,5,510,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="324,52,414,29,416,34,326,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="432,55,507,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="327,65,418,65,418,70,327,70"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="389,104,549,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="326,77,406,98,404,103,324,83"/>
+</map>

@@ -1,0 +1,46 @@
+<map id="ast_config_text_file_save2" name="ast_config_text_file_save2">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_config_text_file_save2; observable effects are recorded in harness state..." alt="" coords="1707,193,1855,233"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa11d8d9df4edb892604b97d2e3df7904" title="Persist tuning values to the selected channel&#39;s configuration sections." alt="" coords="1476,193,1659,233"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1693,216,1659,216,1659,211,1693,211"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a36c954cd8dfb330c23efb58d2d8503bb" title="Write current radio calibration values to the unified configuration." alt="" coords="1263,147,1410,173"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1467,193,1392,175,1393,170,1468,188"/>
+<area shape="rect" id="Node000016" href="$test__processing__validation_8c.html#a84822720556f5987b0cfb54a9316ef6b" title="Verify generic option persistence." alt="" coords="1020,193,1171,233"/>
+<area shape="poly" id="edge21_Node000002_Node000016" title=" " alt="" coords="1462,216,1171,216,1171,211,1462,211"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__processing_8c.html#a65965ebc546f65ec0a23a58eb4d777b3" title="Persist the hardware and local&#45;receiver input gains." alt="" coords="1245,251,1428,291"/>
+<area shape="poly" id="edge23_Node000002_Node000018" title=" " alt="" coords="1474,239,1418,253,1417,248,1472,234"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aba2ef44197e2e1293978c039a00c374d" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="1050,143,1141,169"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1249,161,1141,159,1141,154,1249,156"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="632,130,723,155"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1036,157,723,147,723,141,1036,151"/>
+<area shape="rect" id="Node000013" href="$test__channel__core_8c.html#a3ca31b97d7731b6763b12867982f9210" title="Verify oss tune write paths." alt="" coords="601,203,753,243"/>
+<area shape="poly" id="edge15_Node000004_Node000013" title=" " alt="" coords="1037,168,754,213,753,208,1036,163"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="801,93,945,118"/>
+<area shape="poly" id="edge17_Node000004_Node000014" title=" " alt="" coords="1036,145,929,121,930,115,1037,140"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a6ea7b266a92ffb85447f8ccca16392cb" title="Run a synthetic calibration CLI command against a selected test channel." alt="" coords="388,169,509,194"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="619,155,510,174,509,169,618,150"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="377,83,520,109"/>
+<area shape="poly" id="edge12_Node000005_Node000011" title=" " alt="" coords="618,133,511,111,512,106,619,128"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="108,171,296,211"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="374,187,296,190,296,184,374,181"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a0d4aeabb854d0c773c56fbdecca0d1de" title="Verify radio tune dispatch." alt="" coords="109,235,295,261"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="388,200,251,238,249,233,387,195"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#a7a2e6c653c5e9455681a4622f165b753" title="Verify receive calibration helpers." alt="" coords="113,107,291,147"/>
+<area shape="poly" id="edge10_Node000006_Node000010" title=" " alt="" coords="377,168,291,149,292,144,378,163"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,146,60,171"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="94,173,60,166,61,161,95,168"/>
+<area shape="poly" id="edge9_Node000009_Node000008" title=" " alt="" coords="125,233,107,225,71,199,43,173,47,169,74,195,109,220,127,228"/>
+<area shape="poly" id="edge11_Node000010_Node000008" title=" " alt="" coords="100,149,61,156,60,151,99,144"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="136,57,268,82"/>
+<area shape="poly" id="edge13_Node000011_Node000012" title=" " alt="" coords="363,89,268,79,269,74,364,84"/>
+<area shape="poly" id="edge14_Node000012_Node000008" title=" " alt="" coords="127,89,109,97,74,122,47,148,43,144,71,118,107,92,125,84"/>
+<area shape="poly" id="edge16_Node000013_Node000008" title=" " alt="" coords="619,250,517,285,454,301,385,313,314,319,243,316,173,303,107,276,79,254,59,225,35,173,40,171,63,222,83,250,109,271,174,298,243,311,314,314,385,308,453,296,516,280,617,245"/>
+<area shape="poly" id="edge18_Node000014_Node000005" title=" " alt="" coords="793,123,724,137,723,131,792,118"/>
+<area shape="rect" id="Node000015" href="$test__channel__core_8c.html#ac7f5d63c74c2d33746c4f1da589c2d40" title="Verify menu support dispatch." alt="" coords="344,15,553,41"/>
+<area shape="poly" id="edge19_Node000014_Node000015" title=" " alt="" coords="789,93,519,43,520,38,790,88"/>
+<area shape="poly" id="edge20_Node000015_Node000008" title=" " alt="" coords="374,16,313,9,245,10,174,20,141,31,109,46,83,68,63,96,40,147,35,145,59,93,79,64,107,42,139,26,173,15,244,4,313,4,374,10"/>
+<area shape="rect" id="Node000017" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="846,254,901,279"/>
+<area shape="poly" id="edge22_Node000016_Node000017" title=" " alt="" coords="1007,237,902,263,900,258,1006,232"/>
+<area shape="rect" id="Node000019" href="$test__processing__validation_8c.html#a370232c70eccbf8e68501803481a7044" title="Verify input gain persistence." alt="" coords="993,258,1197,283"/>
+<area shape="poly" id="edge24_Node000018_Node000019" title=" " alt="" coords="1231,273,1197,273,1197,268,1231,268"/>
+<area shape="poly" id="edge25_Node000019_Node000017" title=" " alt="" coords="980,271,901,270,901,264,980,266"/>
+</map>

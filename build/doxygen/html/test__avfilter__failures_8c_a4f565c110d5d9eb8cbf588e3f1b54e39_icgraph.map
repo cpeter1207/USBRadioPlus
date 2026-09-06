@@ -1,0 +1,5 @@
+<map id="__real_av_frame_alloc" name="__real_av_frame_alloc">
+<area shape="rect" id="Node000001" title="Linker entry point for the real av_frame_alloc operation behind the test wrapper." alt="" coords="228,5,396,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#a848e08d06267a82089b5bccbbd89f0bc" title="Test wrapper for av_frame_alloc controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,180,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="214,21,180,21,180,15,214,15"/>
+</map>

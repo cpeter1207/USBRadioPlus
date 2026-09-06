@@ -1,0 +1,13 @@
+<map id="test_channel_eligibility" name="test_channel_eligibility">
+<area shape="rect" id="Node000001" title="Verify channel eligibility." alt="" coords="5,80,179,105"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ae34c50eb3ece485257b2d361db4be370" title="Identify incoming app_rpt IAX audio that needs a link&#45;processing hook." alt="" coords="227,55,373,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="179,79,212,75,213,81,180,85"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="233,104,367,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="180,100,219,105,219,110,179,105"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a8aa7faee511114270b77e758c4cc88e5" title="Host&#45;API test double for ast_channel_appl; observable effects are recorded in harness state." alt="" coords="426,5,561,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="350,52,429,32,430,37,351,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a0100ae9428bdc85061e46c30e75f74b0" title="Host&#45;API test double for ast_channel_data; observable effects are recorded in harness state." alt="" coords="425,55,561,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="373,65,411,65,411,70,373,70"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ad110fb16952d21b1acbbd08fc1564208" title="Host&#45;API test double for ast_channel_name; observable effects are recorded in harness state." alt="" coords="421,104,565,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="351,77,430,98,429,103,350,83"/>
+</map>

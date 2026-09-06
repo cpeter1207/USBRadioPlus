@@ -1,0 +1,5 @@
+<map id="usbradioplus_check_tx_audio" name="usbradioplus_check_tx_audio">
+<area shape="rect" id="Node000001" title="Update transmitter peak, RMS, and clipping measurements." alt="" coords="5,5,156,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a7bd787df5455d29cee69908837abaac2" title="Host&#45;API test double for ast_radio_check_audio; observable effects are recorded in harness state." alt="" coords="204,13,375,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,23,191,23,191,28,156,28"/>
+</map>

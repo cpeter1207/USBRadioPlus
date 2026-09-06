@@ -1,0 +1,18 @@
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Codename: bookworm
+Suite: bookworm
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+SignWith: A0D5A79E0F5C45E9E63679950951502BAC795E55
+
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Codename: trixie
+Suite: trixie
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+SignWith: A0D5A79E0F5C45E9E63679950951502BAC795E55
+

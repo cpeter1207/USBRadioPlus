@@ -1,0 +1,29 @@
+<map id="src/usbradioplus_dsp.h" name="src/usbradioplus_dsp.h">
+<area shape="rect" id="Node000001" title="Sample&#45;rate conversion, elastic clock recovery, and receive&#45;echo matching." alt="" coords="541,5,711,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,174,183,199"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="573,37,424,81,129,176,127,171,423,76,572,32"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,167,373,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="592,39,329,169,327,164,590,34"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="398,167,585,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="610,43,509,168,505,165,606,40"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8h.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="598,79,785,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="646,39,678,77,674,80,642,43"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html" title="Executable channel core regression and failure&#45;path checks." alt="" coords="1571,167,1713,207"/>
+<area shape="poly" id="edge15_Node000001_Node000009" title=" " alt="" coords="685,32,741,51,798,76,814,87,824,98,834,108,850,116,916,133,1000,144,1097,150,1201,152,1403,155,1490,158,1560,164,1571,166,1570,171,1559,169,1490,163,1403,160,1201,158,1097,155,1000,149,915,138,848,121,831,112,820,102,810,91,795,81,739,56,683,37"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__dsp_8c.html" title="Sample&#45;rate conversion, elastic clock recovery, and receive&#45;echo matching." alt="" coords="860,86,1029,111"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="686,31,899,83,898,89,685,36"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="585,115,402,139,194,169,153,177,152,171,194,164,401,134,584,110"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="591,124,374,170,373,165,590,119"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="636,127,536,169,534,164,634,122"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="1161,167,1347,207"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="799,115,804,116,976,140,1149,164,1161,166,1160,171,1148,169,976,145,803,121,798,121"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html" title="Native receive gating, processing, repeat, echo, and transmitter rendering." alt="" coords="1371,167,1547,207"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="799,115,804,116,960,132,1082,139,1204,147,1360,164,1371,166,1371,171,1359,169,1203,152,1081,144,959,137,803,121,798,121"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="609,167,773,207"/>
+<area shape="poly" id="edge10_Node000005_Node000008" title=" " alt="" coords="694,133,694,166,689,166,689,133"/>
+<area shape="poly" id="edge11_Node000005_Node000009" title=" " alt="" coords="798,115,804,116,918,127,1016,133,1182,136,1348,142,1445,150,1560,164,1571,166,1570,171,1559,169,1445,155,1348,147,1182,142,1016,138,918,132,803,121,798,121"/>
+<area shape="rect" id="Node000010" href="$test__channel__shared__core_8c.html" title="Executable channel shared core regression and failure&#45;path checks." alt="" coords="798,167,939,207"/>
+<area shape="poly" id="edge12_Node000005_Node000010" title=" " alt="" coords="744,122,831,164,829,169,741,127"/>
+<area shape="rect" id="Node000011" href="$test__usbradioplus__dsp_8c.html" title="Executable usbradioplus dsp regression and failure&#45;path checks." alt="" coords="963,167,1137,207"/>
+<area shape="poly" id="edge13_Node000005_Node000011" title=" " alt="" coords="784,119,972,164,971,169,783,124"/>
+</map>

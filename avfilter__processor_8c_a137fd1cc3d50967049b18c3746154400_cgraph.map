@@ -1,0 +1,9 @@
+<map id="add_three_band_dynamics" name="add_three_band_dynamics">
+<area shape="rect" id="Node000001" title="Split, independently compress, and recombine three complementary bands." alt="" coords="5,55,201,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="275,5,338,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,52,261,26,263,31,157,57"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="255,55,358,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="201,65,242,65,242,70,201,70"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="249,104,364,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="157,77,241,98,240,103,156,83"/>
+</map>

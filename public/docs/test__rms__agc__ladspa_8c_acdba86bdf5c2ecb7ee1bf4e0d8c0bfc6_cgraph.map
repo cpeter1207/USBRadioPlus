@@ -1,0 +1,9 @@
+<map id="test_block_independence" name="test_block_independence">
+<area shape="rect" id="Node000001" title="Exact output must not depend on host block boundaries, including odd rates." alt="" coords="5,31,192,56"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a38beb42b84ff5b37d5bf5f90a37552e3" title="Set a scalar using its public port number." alt="" coords="246,5,313,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,28,232,22,233,27,190,33"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="240,55,319,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="192,53,226,58,226,63,192,58"/>
+<area shape="rect" id="Node000004" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="367,55,504,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="319,65,353,65,353,70,319,70"/>
+</map>

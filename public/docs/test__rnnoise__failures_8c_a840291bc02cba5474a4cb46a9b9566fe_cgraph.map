@@ -1,0 +1,39 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,185,60,210"/>
+<area shape="rect" id="Node000002" href="$test__rnnoise__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="129,51,267,91"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="49,182,158,97,161,102,52,186"/>
+<area shape="rect" id="Node000011" href="$test__rnnoise__failures_8c.html#a787fff408bc502ef2545bded05083cff" title="Verify processing failures and fifo helpers." alt="" coords="108,277,288,317"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="57,208,153,268,151,272,54,213"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8c.html#a6d2dea9944fec6fb2f446373fe61dbab" title="Create or reconfigure the RNNoise converters for the source sample rate." alt="" coords="773,183,888,209"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="266,48,319,37,380,28,444,27,507,35,595,63,678,101,749,140,801,174,799,178,746,145,675,106,593,68,506,40,444,32,380,34,320,42,267,53"/>
+<area shape="rect" id="Node000004" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="936,183,1105,209"/>
+<area shape="poly" id="edge5_Node000002_Node000004" title=" " alt="" coords="236,48,282,28,335,12,383,5,421,3,507,12,578,24,649,42,785,87,901,135,984,175,982,180,899,140,783,92,648,47,577,30,506,17,421,8,384,10,337,17,284,33,238,53"/>
+<area shape="rect" id="Node000005" href="$test__rnnoise__failures_8c.html#ac43e0e34eb697b5145875af0e2bd2743" title="Clear failure&#45;injection state before the next independent test." alt="" coords="366,83,477,109"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="268,76,353,86,352,91,267,81"/>
+<area shape="rect" id="Node000006" href="$rnnoise__processor_8c.html#a5969f86a6b2fcdf6effd3cc255d0eaf0" title="Initialize an empty local&#45;receiver denoiser." alt="" coords="351,133,492,158"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="254,88,337,118,364,126,362,131,335,123,252,93"/>
+<area shape="rect" id="Node000007" href="$rnnoise__processor_8c.html#a21c7a4e013042b5bdf65c88899891b65" title="Denoise floating&#45;point receiver audio using 480&#45;sample RNNoise frames." alt="" coords="555,284,725,324"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="268,49,323,41,385,38,448,45,479,55,508,68,535,88,558,111,594,166,619,222,634,270,629,272,614,224,589,169,554,115,531,92,505,73,477,60,447,51,385,43,323,46,268,55"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="888,193,922,193,922,199,888,199"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="675,282,794,214,796,218,678,286"/>
+<area shape="rect" id="Node000008" href="$rnnoise__processor_8c.html#af410170b51f2686eb5e50f1fa83bef6e" title="Append a block to a bounded RNNoise FIFO." alt="" coords="795,263,866,289"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="725,289,781,281,782,286,726,294"/>
+<area shape="rect" id="Node000009" href="$rnnoise__processor_8c.html#a37195b7be97f2b6d3d2ca3ff8aa8c32b" title="Remove samples from the front of an RNNoise FIFO." alt="" coords="790,375,871,401"/>
+<area shape="poly" id="edge10_Node000007_Node000009" title=" " alt="" coords="687,322,789,367,787,372,685,327"/>
+<area shape="rect" id="Node000010" href="$rnnoise__processor_8c.html#a70a05b2edeae5dde96d2f59fc0f0e982" title="Discard RNNoise stream history and reset both rate converters." alt="" coords="777,425,885,450"/>
+<area shape="poly" id="edge11_Node000007_Node000010" title=" " alt="" coords="682,322,727,353,742,369,751,383,760,397,775,411,782,416,779,420,772,416,756,401,747,386,738,372,724,357,679,326"/>
+<area shape="poly" id="edge14_Node000011_Node000003" title=" " alt="" coords="262,275,335,256,451,236,567,219,759,199,760,204,568,225,452,241,337,261,263,280"/>
+<area shape="poly" id="edge19_Node000011_Node000004" title=" " alt="" coords="210,317,228,352,256,395,292,437,314,454,337,468,416,505,487,532,554,549,618,556,681,551,746,534,814,504,886,461,916,437,940,407,961,375,977,341,1000,275,1013,222,1018,223,1006,276,982,343,965,378,944,411,919,440,890,465,816,509,748,539,682,556,618,561,553,554,486,537,414,510,335,473,311,459,289,440,252,398,224,355,206,319"/>
+<area shape="poly" id="edge17_Node000011_Node000005" title=" " alt="" coords="207,276,226,241,255,199,291,155,334,118,352,109,354,113,338,122,295,159,259,202,231,244,212,278"/>
+<area shape="poly" id="edge20_Node000011_Node000006" title=" " alt="" coords="216,275,267,226,300,199,335,175,364,161,366,165,337,180,303,203,270,230,220,279"/>
+<area shape="poly" id="edge24_Node000011_Node000007" title=" " alt="" coords="288,296,541,300,541,305,288,301"/>
+<area shape="poly" id="edge13_Node000011_Node000008" title=" " alt="" coords="288,284,336,280,530,268,725,269,782,271,782,277,725,275,531,274,336,285,288,290"/>
+<area shape="poly" id="edge15_Node000011_Node000009" title=" " alt="" coords="221,316,271,358,303,378,337,394,395,410,456,419,518,423,578,423,689,413,776,398,777,403,690,418,579,428,518,428,456,424,394,415,335,399,300,383,268,362,218,320"/>
+<area shape="poly" id="edge18_Node000011_Node000010" title=" " alt="" coords="215,316,235,343,263,375,298,404,337,427,392,445,450,458,508,464,567,466,675,461,763,449,764,454,676,466,567,472,508,469,449,463,391,451,335,432,295,409,260,379,231,347,211,319"/>
+<area shape="rect" id="Node000012" href="$rnnoise__processor_8c.html#a3b2d598f77051b707b0064b1515f13ca" title="Quantize a floating&#45;point sample without signed PCM overflow." alt="" coords="571,367,709,393"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="228,315,277,345,337,370,393,381,451,386,557,386,557,391,451,392,392,386,335,375,275,350,226,320"/>
+<area shape="rect" id="Node000013" href="$rnnoise__processor_8c.html#ab590b8c5ed7056dbc0e521acb0598874" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="336,335,507,361"/>
+<area shape="poly" id="edge21_Node000011_Node000013" title=" " alt="" coords="287,315,352,330,351,335,286,320"/>
+<area shape="poly" id="edge23_Node000013_Node000007" title=" " alt="" coords="485,333,541,321,542,327,486,338"/>
+<area shape="poly" id="edge22_Node000013_Node000012" title=" " alt="" coords="507,358,557,365,557,371,506,363"/>
+</map>

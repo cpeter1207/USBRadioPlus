@@ -1,0 +1,5 @@
+<map id="read_band_count" name="read_band_count">
+<area shape="rect" id="Node000001" title="Read the explicitly supported one&#45;band or three&#45;band dynamics mode." alt="" coords="5,5,139,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="187,5,347,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,15,173,15,173,21,139,21"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="__real_close" name="__real_close">
+<area shape="rect" id="Node000001" title="Linker entry point for the real close operation behind the test wrapper." alt="" coords="163,5,265,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a85db1586bf4a2f05ad4b517250cc2778" title="Test wrapper for close controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,115,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="149,21,115,21,115,15,149,15"/>
+</map>

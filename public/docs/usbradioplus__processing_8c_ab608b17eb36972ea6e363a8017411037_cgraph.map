@@ -1,0 +1,9 @@
+<map id="resolve_profile_section" name="resolve_profile_section">
+<area shape="rect" id="Node000001" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="5,55,177,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#af34bb2b9f6fc3aeb5d5da9b5d36e28c2" title="Host&#45;API test double for ast_category_get; observable effects are recorded in harness state." alt="" coords="238,5,373,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,52,235,31,237,36,148,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="225,55,385,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="177,65,211,65,211,70,177,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="244,104,367,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="148,77,237,98,235,103,146,83"/>
+</map>

@@ -1,0 +1,19 @@
+<map id="mixer_write" name="mixer_write">
+<area shape="rect" id="Node000001" title="Apply hardware capture, playback, and local&#45;repeat mixer settings." alt="" coords="5,55,104,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="152,5,308,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,52,170,32,171,37,101,57"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#ab658ea7ea27aea944109872bd1d92ab5" title="Convert resolved output&#45;A hardware gain to the normalized CM119 mixer scale." alt="" coords="154,55,306,80"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="104,65,140,65,140,70,104,70"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a56a64663cee77a43455db316af6b0dae" title="Convert resolved output&#45;B hardware gain to the normalized CM119 mixer scale." alt="" coords="154,104,306,129"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="101,77,171,98,170,103,100,83"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="365,27,530,52"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="308,23,351,27,351,33,308,28"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="356,77,539,117"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="276,28,309,40,357,61,378,69,376,74,355,66,307,44,274,33"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="587,84,681,109"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="539,94,573,94,573,99,539,99"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="306,55,350,49,351,54,307,60"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="307,75,343,80,342,85,306,80"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="277,101,307,90,331,76,355,62,378,54,380,59,357,67,333,81,309,95,279,106"/>
+<area shape="poly" id="edge10_Node000007_Node000004" title=" " alt="" coords="306,107,342,104,342,109,307,112"/>
+</map>

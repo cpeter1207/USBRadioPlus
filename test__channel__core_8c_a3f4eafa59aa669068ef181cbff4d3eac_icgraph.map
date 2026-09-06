@@ -1,0 +1,7 @@
+<map id="check_resampled_fifo_short_burst" name="check_resampled_fifo_short_burst">
+<area shape="rect" id="Node000001" title="Render one link&#45;rate tone frame through real SRC startup and recovery." alt="" coords="307,5,471,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a38c7e7c6d81f4cbaa3dbe7d36ec7a7d9" title="Preserve isolated link&#45;rate bursts at the minimum, normal, and maximum FIFO targets." alt="" coords="108,5,259,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="293,28,259,28,259,23,293,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

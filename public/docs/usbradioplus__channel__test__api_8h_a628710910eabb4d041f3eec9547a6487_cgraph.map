@@ -1,0 +1,11 @@
+<map id="radio_active" name="radio_active">
+<area shape="rect" id="Node000001" title="Show or select the radio used by interactive calibration commands." alt="" coords="5,80,108,105"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="221,5,285,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="78,78,113,58,155,39,207,24,209,29,157,45,116,63,80,82"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a669c137a67300a2a8ac48ece74d5a3c3" title="Host&#45;API test double for ast_radio_usb_get_usbdev; observable effects are recorded in harness state." alt="" coords="156,55,351,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="108,83,142,79,143,84,109,89"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="212,104,295,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="109,96,199,107,198,113,108,102"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#ac61148cf7b715227e21078f6c639a388" title="Copy the acquired USB identifier, serial number, and ALSA card number." alt="" coords="161,153,346,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="82,103,157,138,184,147,182,152,155,143,80,108"/>
+</map>

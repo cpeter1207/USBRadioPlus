@@ -1,0 +1,5 @@
+<map id="configure_rate" name="configure_rate">
+<area shape="rect" id="Node000001" title="Create or reconfigure the RNNoise converters for the source sample rate." alt="" coords="5,5,120,31"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="168,5,337,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,15,154,15,154,21,120,21"/>
+</map>

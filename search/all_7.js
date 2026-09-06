@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['gain_0',['gain',['../structurp__ctcss__decoder.html#a54c5d41db3a40e9c00de91c26b93c7ab',1,'urp_ctcss_decoder::gain'],['../structt__fir.html#a2e96e5a0d1b5e36f6e212aac1e56053c',1,'t_fir::gain'],['../structrms__agc.html#afb1d9ec0ade5f8c1ec01a50804fc79a8',1,'rms_agc::gain']]],
+  ['gain_5fdb_1',['gain_db',['../structrms__agc.html#a1ea0358ba79a93cb863a673c25b92c84',1,'rms_agc']]],
+  ['gain_5ffir_5fbpf_5fnoise_5f1_2',['gain_fir_bpf_noise_1',['../usbradioplus__radio__coefficients_8h.html#a5531dd8a911dcd4c76f435cf98c0cb64',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5ffir_5fbpf_5fnoise_5f2_3',['gain_fir_bpf_noise_2',['../usbradioplus__radio__coefficients_8h.html#aa60d518483f5c6326529bf3a665a44b9',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5ffir_5flpf_5f215_5f9_5f88_4',['gain_fir_lpf_215_9_88',['../usbradioplus__radio__coefficients_8h.html#a6d4b6e68d0050a6ac0b02c80269e3cc3',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5ffir_5flpf_5f250_5f11_5f64_5',['gain_fir_lpf_250_11_64',['../usbradioplus__radio__coefficients_8h.html#af6502cf4ee49b6cb26211640a840613c',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5ffir_5flpf_5f250_5f9_5f66_6',['gain_fir_lpf_250_9_66',['../usbradioplus__radio__coefficients_8h.html#a52e1025965489e6e24595223041ec985',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5ffir_5flpf_5f3k_5f2_7',['gain_fir_lpf_3K_2',['../usbradioplus__radio__coefficients_8h.html#aa623f57a75e37988641601b4c05910e3',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5fint_5fhpf_5f4000_5f1_5f2_8',['gain_int_hpf_4000_1_2',['../usbradioplus__radio__coefficients_8h.html#a9ec9d1f3efefcaa6ee1fa0c98facf431',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5fint_5flpf_5f300_5f1_5f2_9',['gain_int_lpf_300_1_2',['../usbradioplus__radio__coefficients_8h.html#a4eff5d4333039761de0d4e6632216961',1,'usbradioplus_radio_coefficients.h']]],
+  ['gain_5fstep_10',['gain_step',['../structrms__agc.html#a99078d9f5eed9dca0cddc545406a9a09',1,'rms_agc']]],
+  ['gainsubaudible_11',['gainSubAudible',['../structurp__radio__state.html#ae1f2780c73e2fa7c2df3f4f9ccd682ec',1,'urp_radio_state']]],
+  ['gainvoice_12',['gainVoice',['../structurp__radio__state.html#aecdec96287e64a33abfdd92a30bf5639',1,'urp_radio_state']]],
+  ['gcc_5fversion_13',['GCC_VERSION',['../usbradioplus__radio_8c.html#adbba0f726fc66d7100916c683b7568ae',1,'usbradioplus_radio.c']]],
+  ['general_5fsettings_14',['GENERAL_SETTINGS',['../usbradioplus-tune.html#a06f914e648a4c15f84c2a9121ea3deda',1,'usbradioplus-tune']]],
+  ['get_15',['GET',['../usbradioplus__channel__common_8c.html#a1ff87916867577d2b5f8eb423ef6483c',1,'usbradioplus_channel_common.c']]],
+  ['global_5fjbconf_16',['global_jbconf',['../chan__usbradioplus_8c.html#abaabcb7f4349cc632dde3af5c6a5e1bd',1,'global_jbconf:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#abaabcb7f4349cc632dde3af5c6a5e1bd',1,'global_jbconf:&#160;chan_usbradioplus_modern.c'],['../usbradioplus__channel__private_8h.html#abaabcb7f4349cc632dde3af5c6a5e1bd',1,'global_jbconf:&#160;chan_usbradioplus.c']]],
+  ['globals_5ffor_17',['globals_for',['../test__processing__tuner__runtime_8py.html#afcb54779deab4636cbf78acb6898f513',1,'test_processing_tuner_runtime.globals_for()'],['../test__processing__tuner__menus_8py.html#abd264c4a56d99f6f33e39244fff12658',1,'test_processing_tuner_menus.globals_for()']]],
+  ['gp_5finte_5f00_18',['gp_inte_00',['../usbradioplus__radio_8c.html#a5f0a13b21d31f1737cf57ae373c9a084',1,'gp_inte_00(urp_radio_stage *mySps):&#160;usbradioplus_radio.c'],['../usbradioplus__radio_8h.html#a5f0a13b21d31f1737cf57ae373c9a084',1,'gp_inte_00(urp_radio_stage *mySps):&#160;usbradioplus_radio.c']]],
+  ['gpio_5fset_19',['gpio_set',['../structchan__usbradio__pvt.html#a093585e820c92c4872797d1f4b43fa8b',1,'chan_usbradio_pvt']]],
+  ['gpios_20',['gpios',['../structchan__usbradio__pvt.html#a22aea3b321e59a73a95f8bfd2e2b2ba4',1,'chan_usbradio_pvt']]],
+  ['graph_21',['graph',['../structtxagc__avfilter.html#ac3aaf1252579b462f4db1c3cdec15cff',1,'txagc_avfilter']]],
+  ['graph_5fappend_22',['graph_append',['../avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef',1,'avfilter_processor.c']]],
+  ['graph_5fsize_23',['GRAPH_SIZE',['../avfilter__processor_8c.html#a11ec87cf3a591319de34d05883f37ba4',1,'avfilter_processor.c']]]
+];

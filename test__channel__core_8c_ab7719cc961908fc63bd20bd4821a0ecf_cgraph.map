@@ -1,0 +1,21 @@
+<map id="test_dsp_init_failures" name="test_dsp_init_failures">
+<area shape="rect" id="Node000001" title="Verify dsp init failures." alt="" coords="5,141,167,167"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#af20a166820a4b73e80cd1e1a30470f9e" title="Release native processing, rate&#45;conversion, and echo buffers." alt="" coords="215,92,405,117"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,139,238,118,239,123,145,144"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a2978b9bb69b48c3934b247d5d53f51d4" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="229,165,391,191"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="168,160,216,165,215,171,167,165"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="455,5,621,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="337,90,452,41,477,32,479,37,454,46,339,94"/>
+<area shape="rect" id="Node000005" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="453,55,623,80"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="388,89,446,80,447,85,389,95"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="475,104,601,129"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="406,107,462,110,461,115,405,112"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its output FIFO." alt="" coords="671,5,763,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="622,15,657,15,657,21,622,21"/>
+<area shape="rect" id="Node000008" href="$avfilter__processor_8c.html#a1c76f7b09d096081aadbbe5265da11ad" title="Initialize an empty FFmpeg processor and its level statistics." alt="" coords="469,153,607,179"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="391,171,455,168,455,173,392,176"/>
+<area shape="rect" id="Node000009" href="$rnnoise__processor_8c.html#a5969f86a6b2fcdf6effd3cc255d0eaf0" title="Initialize an empty local&#45;receiver denoiser." alt="" coords="467,203,609,228"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="389,188,455,199,454,204,388,193"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="479,252,597,277"/>
+<area shape="poly" id="edge9_Node000007_Node000010" title=" " alt="" coords="339,188,454,238,476,245,474,250,452,243,337,193"/>
+</map>

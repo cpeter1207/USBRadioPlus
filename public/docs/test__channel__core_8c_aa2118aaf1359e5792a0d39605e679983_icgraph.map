@@ -1,0 +1,5 @@
+<map id="__real_ioctl" name="__real_ioctl">
+<area shape="rect" id="Node000001" title="Linker entry point for the real ioctl operation behind the test wrapper." alt="" coords="156,5,252,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a190405ff7eb1c6e00cddd7c120bc21c2" title="Test wrapper for ioctl controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,108,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="142,21,108,21,108,15,142,15"/>
+</map>

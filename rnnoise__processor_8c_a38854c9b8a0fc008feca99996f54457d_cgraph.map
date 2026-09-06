@@ -1,0 +1,5 @@
+<map id="txagc_rnnoise_bypass" name="txagc_rnnoise_bypass">
+<area shape="rect" id="Node000001" title="Reset denoiser history when the local chain bypasses RNNoise." alt="" coords="5,5,172,31"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#a70a05b2edeae5dde96d2f59fc0f0e982" title="Discard RNNoise stream history and reset both rate converters." alt="" coords="220,5,328,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,15,206,15,206,21,172,21"/>
+</map>

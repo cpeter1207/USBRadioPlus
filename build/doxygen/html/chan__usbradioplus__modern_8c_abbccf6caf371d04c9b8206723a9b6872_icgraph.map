@@ -1,0 +1,5 @@
+<map id="hidhdwconfig" name="hidhdwconfig">
+<area shape="rect" id="Node000001" title="Apply the configured USB&#45;interface wiring map to the channel&#39;s HID state." alt="" coords="155,5,263,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="5,5,107,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,21,107,21,107,15,141,15"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="urp_duplicate_mono" name="urp_duplicate_mono">
+<area shape="rect" id="Node000001" title="Route mono PCM to both stereo outputs with separate linear gains." alt="" coords="305,13,460,38"/>
+<area shape="rect" id="Node000002" href="$test__usbradioplus__dsp_8c.html#a1c608e61420e7f5d2304f12e3b2d37ba" title="Verify defensive and boundary paths." alt="" coords="108,5,257,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="291,28,257,28,257,23,291,23"/>
+<area shape="rect" id="Node000003" href="$test__usbradioplus__dsp_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

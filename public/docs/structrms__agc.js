@@ -1,0 +1,25 @@
+var structrms__agc =
+[
+    [ "acquisition_samples", "structrms__agc.html#a891979d91b40ed5f27e62384f2461ef0", null ],
+    [ "active", "structrms__agc.html#aac2477f8e6b579039579b37b76187518", null ],
+    [ "active_samples", "structrms__agc.html#a16a194e5913a58e6090d100138f3f1ff", null ],
+    [ "closing_power", "structrms__agc.html#a99e57a7bad5a84f4a4285bbfcd0f8ff2", null ],
+    [ "configured", "structrms__agc.html#aca30a5948e447c241876d6f67718e530", null ],
+    [ "controls", "structrms__agc.html#a8807b6ddaba6b2de6881954fef753da9", null ],
+    [ "destination_gain", "structrms__agc.html#aeb4812c3d892b2fc701ba65cbe9137af", null ],
+    [ "elapsed", "structrms__agc.html#a90d1847a199b276009d20c9cf85a3cb0", null ],
+    [ "fast_coefficient", "structrms__agc.html#aeadf70b8cfd06fb7ee958e350400efeb", null ],
+    [ "fast_power", "structrms__agc.html#aacaf5fdb2475369e849841841a30b44c", null ],
+    [ "gain", "structrms__agc.html#afb1d9ec0ade5f8c1ec01a50804fc79a8", null ],
+    [ "gain_db", "structrms__agc.html#a1ea0358ba79a93cb863a673c25b92c84", null ],
+    [ "gain_step", "structrms__agc.html#a99078d9f5eed9dca0cddc545406a9a09", null ],
+    [ "hold_samples", "structrms__agc.html#a68388546e01122a644951b3bad90fe38", null ],
+    [ "level_coefficient", "structrms__agc.html#ad9974fdf252aed9dc67768f1e8eaff2f", null ],
+    [ "level_power", "structrms__agc.html#a808c88c2ae2eca4dd5ef310486f39533", null ],
+    [ "level_weight", "structrms__agc.html#affd623af94a501831d44891e5379c9e8", null ],
+    [ "opening_power", "structrms__agc.html#af0f8f0131b4c12266196d3e2374aa8d9", null ],
+    [ "phase", "structrms__agc.html#a5c30dd953e163824ababd688ec824bc5", null ],
+    [ "ports", "structrms__agc.html#a0670473740c2c03fc3bab3716a9db3e6", null ],
+    [ "ramp_remaining", "structrms__agc.html#a15dfe50e74219ba640522dc8ebae37e6", null ],
+    [ "rate", "structrms__agc.html#af890398ddbc2d7e44408759ada475cad", null ]
+];

@@ -1,0 +1,9 @@
+<map id="test_same_rate_bypass" name="test_same_rate_bypass">
+<area shape="rect" id="Node000001" title="Verify same rate bypass." alt="" coords="5,31,181,56"/>
+<area shape="rect" id="Node000002" href="$test__usbradioplus__dsp_8c.html#a4b93b2b9de4a4aa38e649b421ab17b61" title="Generate deterministic PCM tone samples for rate&#45;conversion tests." alt="" coords="270,5,321,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="181,30,256,20,256,25,182,35"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#aaca9104f82da02824fec2f6ff0e84e75" title="Convert between sample rates, copying directly when the rates match." alt="" coords="229,55,361,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="182,51,216,55,215,61,181,56"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a1606a7bd14a1f011cade73f4c6c6d32d" title="Convert an interleaved PCM block using a caller&#45;supplied rate ratio." alt="" coords="409,55,536,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="362,65,396,65,396,70,362,70"/>
+</map>

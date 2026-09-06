@@ -1,0 +1,10 @@
+<map id="expect_failure" name="expect_failure">
+<area shape="rect" id="Node000001" title="Assert that the requested invalid configuration or injected operation fails." alt="" coords="305,42,420,67"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="113,5,252,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="291,46,252,39,253,34,292,41"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__failures_8c.html#a92de1be931b1fab880476cfa09eba400" title="Verify frame failures." alt="" coords="108,70,257,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="292,68,258,74,258,68,291,63"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,42,60,67"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="101,44,61,52,60,47,99,39"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="101,70,60,62,61,57,102,65"/>
+</map>

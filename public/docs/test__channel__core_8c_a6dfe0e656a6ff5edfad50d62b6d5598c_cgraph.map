@@ -1,0 +1,11 @@
+<map id="test_continuous_soundcard_output" name="test_continuous_soundcard_output">
+<area shape="rect" id="Node000001" title="Verify one output frame per tick through PTT and receive&#45;state transitions." alt="" coords="5,31,204,71"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="252,38,420,63"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,48,238,48,238,53,204,53"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a5052d853da0fc58013ced505c9c8f3ed" title="Open or reopen the OSS device with the required native audio format." alt="" coords="476,13,563,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="420,36,462,30,463,36,421,42"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aa64680c0b3163e8bba4ac3be010577eb" title="Measure queued OSS output fragments for transmitter pacing." alt="" coords="468,62,571,87"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="421,59,454,64,454,69,420,64"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a1d83881fa2abc6efce09f051a44d8d06" title="Host&#45;API test double for ast_channel_internal_fd_set; observable effects are recorded in harness stat..." alt="" coords="619,5,776,45"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="563,23,605,23,605,28,563,28"/>
+</map>

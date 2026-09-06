@@ -1,0 +1,9 @@
+<map id="urp_radio_process" name="urp_radio_process">
+<area shape="rect" id="Node000001" title="Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block." alt="" coords="5,31,145,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#a16b22836a4c264c4f8d2b3680c114507" title="Collect the configured radio trace channels into the debug buffer." alt="" coords="227,5,297,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="145,31,212,22,213,27,146,36"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#af30e814ead483666930ea4ac4e4b9fb0" title="Update the enabled CTCSS tone detectors and decoded&#45;tone state." alt="" coords="193,55,331,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="146,50,180,54,179,59,145,55"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="379,55,433,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="331,65,365,65,365,70,331,70"/>
+</map>

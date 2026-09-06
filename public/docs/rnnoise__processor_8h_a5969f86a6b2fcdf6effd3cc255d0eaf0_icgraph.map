@@ -1,0 +1,77 @@
+<map id="txagc_rnnoise_init" name="txagc_rnnoise_init">
+<area shape="rect" id="Node000001" title="Initialize an empty local&#45;receiver denoiser." alt="" coords="1261,313,1403,338"/>
+<area shape="rect" id="Node000002" href="$test__rnnoise__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="1053,177,1191,217"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1306,305,1264,268,1212,232,1187,220,1190,215,1215,227,1268,264,1310,301"/>
+<area shape="rect" id="Node000004" href="$test__rnnoise__processor_8c.html#a2310ddfa55c7f1e00af1267e05ce520a" title="Verify double processing and reconfiguration." alt="" coords="1035,305,1209,345"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="1248,328,1209,328,1209,323,1248,323"/>
+<area shape="rect" id="Node000006" href="$test__rnnoise__processor_8c.html#a06fe2301348ae4249a904804e036f0aa" title="Verify integer and invalid inputs." alt="" coords="1031,369,1213,409"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="1277,345,1189,372,1188,367,1275,340"/>
+<area shape="rect" id="Node000007" href="$test__rnnoise__failures_8c.html#a787fff408bc502ef2545bded05083cff" title="Verify processing failures and fifo helpers." alt="" coords="1032,241,1212,281"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="1275,311,1188,284,1189,279,1277,306"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a2978b9bb69b48c3934b247d5d53f51d4" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="1041,557,1203,582"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="1313,351,1137,558,1133,554,1309,347"/>
+<area shape="rect" id="Node000003" href="$test__rnnoise__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="865,217,919,242"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1039,211,920,228,919,223,1039,206"/>
+<area shape="rect" id="Node000005" href="$test__rnnoise__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="865,313,919,338"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1021,328,919,328,919,323,1021,323"/>
+<area shape="poly" id="edge6_Node000006_Node000005" title=" " alt="" coords="1035,368,919,335,920,330,1037,363"/>
+<area shape="poly" id="edge8_Node000007_Node000003" title=" " alt="" coords="1018,249,919,236,920,230,1019,244"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a380de4c1ef242cf20ba2a9f668c4624d" title="Preserve a single native&#45;rate program frame through startup and underrun recovery." alt="" coords="804,363,980,403"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="1102,547,1051,487,1018,453,981,423,948,405,951,400,984,419,1021,449,1055,483,1106,544"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#a80ae2c9c1f5c28dba2753015db7811cb" title="Initialize a channel with the production best&#45;quality sinc converters." alt="" coords="588,201,732,241"/>
+<area shape="poly" id="edge13_Node000008_Node000012" title=" " alt="" coords="1096,549,1045,508,981,468,955,457,932,451,889,447,847,440,825,431,800,417,754,376,716,327,687,280,668,243,673,240,692,278,720,324,758,372,803,412,827,427,849,435,890,441,933,446,957,452,984,463,1048,504,1099,545"/>
+<area shape="rect" id="Node000018" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="841,478,943,503"/>
+<area shape="poly" id="edge23_Node000008_Node000018" title=" " alt="" coords="1070,554,929,506,931,501,1071,549"/>
+<area shape="rect" id="Node000025" href="$test__channel__core_8c.html#ab7719cc961908fc63bd20bd4821a0ecf" title="Verify dsp init failures." alt="" coords="125,531,286,557"/>
+<area shape="poly" id="edge34_Node000008_Node000025" title=" " alt="" coords="1027,568,983,567,286,548,287,543,983,561,1027,563"/>
+<area shape="rect" id="Node000026" href="$test__channel__core_8c.html#aeb5eacf2e9998ce289b5d44fed8d33c6" title="Apply sample&#45;rate DSP carrier gating without changing non&#45;DSP receive sources." alt="" coords="567,582,753,607"/>
+<area shape="poly" id="edge36_Node000008_Node000026" title=" " alt="" coords="1027,577,754,592,753,587,1027,572"/>
+<area shape="rect" id="Node000027" href="$test__channel__core_8c.html#af890f90fa6d5d09eafee4e672a90a682" title="Verify native tick baseline." alt="" coords="111,633,299,658"/>
+<area shape="poly" id="edge38_Node000008_Node000027" title=" " alt="" coords="1034,587,983,595,869,610,754,621,508,637,300,645,300,640,508,632,753,616,868,605,982,589,1034,582"/>
+<area shape="rect" id="Node000028" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="570,683,750,723"/>
+<area shape="poly" id="edge40_Node000008_Node000028" title=" " alt="" coords="1098,593,1048,632,1017,651,984,666,925,684,863,696,751,706,750,701,863,691,923,679,982,661,1014,646,1045,627,1095,589"/>
+<area shape="rect" id="Node000029" href="$test__channel__core_8c.html#a2d5d51d9c3c21c546f8bd39edad4ccdc" title="Verify oss hid worker attach." alt="" coords="128,736,283,776"/>
+<area shape="poly" id="edge42_Node000008_Node000029" title=" " alt="" coords="1107,595,1057,654,1023,685,984,709,892,745,796,770,697,785,600,791,506,792,420,787,283,772,283,767,421,782,507,786,599,786,697,779,795,765,891,740,981,704,1020,680,1053,650,1102,592"/>
+<area shape="rect" id="Node000030" href="$test__channel__core_8c.html#a6bb4b32ca69482a5d778d23a9c8bcd8d" title="Verify oss hid worker first radio construction." alt="" coords="801,797,983,837"/>
+<area shape="poly" id="edge44_Node000008_Node000030" title=" " alt="" coords="1112,596,1093,636,1065,685,1028,736,984,781,955,799,952,795,981,777,1024,732,1060,682,1088,633,1107,594"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#a5fa933fbe4ef9709e535546fa9d35c97" title="Check one&#45;frame bursts at every boundary of the adaptive latency policy." alt="" coords="579,77,741,117"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="805,357,799,351,784,331,775,311,770,273,767,234,762,213,751,191,720,151,686,120,690,116,724,147,756,188,767,211,772,233,775,273,780,310,789,328,803,347,809,353"/>
+<area shape="rect" id="Node000011" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,453,60,478"/>
+<area shape="poly" id="edge12_Node000010_Node000011" title=" " alt="" coords="601,74,497,38,434,22,366,12,297,9,229,16,197,24,166,36,137,52,110,72,90,100,74,144,62,198,52,258,41,374,37,453,32,452,36,374,47,257,56,197,69,142,85,98,106,69,134,48,164,32,196,19,229,11,297,3,367,6,435,17,499,33,603,69"/>
+<area shape="rect" id="Node000013" href="$test__channel__core_8c.html#a3f4eafa59aa669068ef181cbff4d3eac" title="Render one link&#45;rate tone frame through real SRC startup and recovery." alt="" coords="353,73,517,113"/>
+<area shape="poly" id="edge14_Node000012_Node000013" title=" " alt="" coords="621,195,573,161,517,128,492,116,494,111,520,123,576,156,624,191"/>
+<area shape="rect" id="Node000015" href="$test__channel__core_8c.html#aa46f85ca63cd6a436d0f72ca5b77998c" title="Keep local dynamics and RNNoise continuous unless RX CPU saving permits a pause." alt="" coords="353,137,516,177"/>
+<area shape="poly" id="edge17_Node000012_Node000015" title=" " alt="" coords="575,200,505,180,506,175,576,195"/>
+<area shape="rect" id="Node000016" href="$test__channel__core_8c.html#a9986d059e8247ff55081a7a2574e7e79" title="Preserve admitted audio, sinc history, and clock recovery across arbitrary PTT edges." alt="" coords="351,201,519,241"/>
+<area shape="poly" id="edge19_Node000012_Node000016" title=" " alt="" coords="574,224,519,224,519,219,574,219"/>
+<area shape="rect" id="Node000017" href="$test__channel__core_8c.html#a121e012d8040b4d045620fd845080578" title="Stop padding after either a rejected or partially consumed synthetic tail frame." alt="" coords="359,265,510,305"/>
+<area shape="poly" id="edge21_Node000012_Node000017" title=" " alt="" coords="576,248,506,268,505,263,575,243"/>
+<area shape="rect" id="Node000014" href="$test__channel__core_8c.html#a38c7e7c6d81f4cbaa3dbe7d36ec7a7d9" title="Preserve isolated link&#45;rate bursts at the minimum, normal, and maximum FIFO targets." alt="" coords="130,83,281,123"/>
+<area shape="poly" id="edge15_Node000013_Node000014" title=" " alt="" coords="338,100,281,102,281,97,338,95"/>
+<area shape="poly" id="edge16_Node000014_Node000011" title=" " alt="" coords="135,131,110,154,86,192,67,234,54,277,45,321,37,400,36,452,31,452,31,399,40,320,49,276,62,232,81,189,106,150,132,127"/>
+<area shape="poly" id="edge18_Node000015_Node000011" title=" " alt="" coords="340,159,282,165,221,179,162,202,134,218,110,238,88,262,72,291,50,352,40,411,37,452,31,452,34,410,45,351,67,288,84,259,106,234,131,214,159,197,219,174,281,160,339,154"/>
+<area shape="poly" id="edge20_Node000016_Node000011" title=" " alt="" coords="337,220,281,225,221,236,162,256,135,271,110,289,92,307,77,328,56,375,43,419,38,453,33,452,38,418,51,373,72,325,88,303,106,285,132,266,160,252,219,231,280,219,337,215"/>
+<area shape="poly" id="edge22_Node000017_Node000011" title=" " alt="" coords="346,280,289,281,227,289,165,306,136,318,110,334,82,361,61,394,48,427,40,453,34,452,43,425,57,392,78,358,106,330,134,313,164,300,226,284,288,276,345,275"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="612,398,708,423"/>
+<area shape="poly" id="edge24_Node000018_Node000019" title=" " alt="" coords="841,476,697,426,699,421,842,471"/>
+<area shape="rect" id="Node000024" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="569,467,751,507"/>
+<area shape="poly" id="edge32_Node000018_Node000024" title=" " alt="" coords="828,492,752,491,752,486,828,487"/>
+<area shape="rect" id="Node000020" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="381,330,488,355"/>
+<area shape="poly" id="edge25_Node000019_Node000020" title=" " alt="" coords="605,396,518,369,480,358,481,353,519,364,607,391"/>
+<area shape="rect" id="Node000022" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="375,379,494,405"/>
+<area shape="poly" id="edge28_Node000019_Node000022" title=" " alt="" coords="598,408,494,399,494,394,599,403"/>
+<area shape="rect" id="Node000023" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="133,416,277,456"/>
+<area shape="poly" id="edge31_Node000019_Node000023" title=" " alt="" coords="598,417,278,435,277,429,598,411"/>
+<area shape="rect" id="Node000021" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,344,303,384"/>
+<area shape="poly" id="edge26_Node000020_Node000021" title=" " alt="" coords="368,351,303,358,303,352,368,346"/>
+<area shape="poly" id="edge27_Node000021_Node000011" title=" " alt="" coords="136,392,109,406,76,430,49,454,45,450,73,426,107,402,134,387"/>
+<area shape="poly" id="edge29_Node000022_Node000023" title=" " alt="" coords="362,408,278,425,277,420,361,403"/>
+<area shape="poly" id="edge30_Node000023_Node000011" title=" " alt="" coords="120,453,61,463,60,458,119,448"/>
+<area shape="poly" id="edge33_Node000024_Node000011" title=" " alt="" coords="555,486,108,471,60,469,60,464,108,465,555,480"/>
+<area shape="poly" id="edge35_Node000025_Node000011" title=" " alt="" coords="144,529,107,514,50,480,53,476,109,510,146,524"/>
+<area shape="poly" id="edge37_Node000026_Node000011" title=" " alt="" coords="553,603,436,606,306,604,189,593,142,584,107,570,81,551,61,526,37,479,41,477,65,523,85,547,109,566,143,579,190,588,307,599,436,600,553,598"/>
+<area shape="poly" id="edge39_Node000027_Node000011" title=" " alt="" coords="128,629,106,615,77,582,56,543,34,479,39,477,61,541,82,579,110,611,131,625"/>
+<area shape="poly" id="edge41_Node000028_Node000011" title=" " alt="" coords="556,712,437,716,305,714,243,709,187,701,140,688,106,671,85,651,68,626,45,571,35,517,32,478,37,478,40,516,50,569,72,623,89,647,110,667,142,683,188,695,243,704,306,708,437,711,556,707"/>
+<area shape="poly" id="edge43_Node000029_Node000011" title=" " alt="" coords="121,731,106,718,84,688,67,655,45,586,34,522,31,478,37,478,40,522,50,584,72,653,89,685,110,714,125,727"/>
+<area shape="poly" id="edge45_Node000030_Node000011" title=" " alt="" coords="817,844,751,861,671,878,580,891,482,897,382,894,283,877,236,862,190,843,147,819,106,790,89,767,74,731,52,639,39,545,32,479,38,478,44,544,57,638,79,729,93,764,110,786,150,815,192,838,238,857,285,872,383,888,482,892,579,886,670,872,750,856,816,838"/>
+</map>

@@ -1,0 +1,49 @@
+<map id="parse_tune_level" name="parse_tune_level">
+<area shape="rect" id="Node000001" title="Parse a normalized hardware tuning level in the range 0 through 999." alt="" coords="1196,107,1329,132"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ae4f8a795df76c34c41a90221e644cd7d" title="Display or adjust the auxiliary voice output level." alt="" coords="1014,229,1146,255"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1242,144,1201,183,1149,220,1125,232,1123,227,1147,216,1198,179,1238,141"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#acd7095801933ad32409206d81ce20ba7" title="Verify menu adjustment helpers." alt="" coords="792,74,964,114"/>
+<area shape="poly" id="edge30_Node000001_Node000003" title=" " alt="" coords="1241,97,1201,56,1176,37,1147,22,1111,11,1081,8,1050,13,1013,22,983,32,955,46,907,76,904,72,952,41,981,27,1011,17,1049,7,1081,3,1112,6,1149,17,1178,32,1205,52,1245,94"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__channel__common_8c.html#ac6a7a3bba62c526e25aa11aabbdafd5b" title="Display or adjust the live DSP squelch threshold." alt="" coords="1012,32,1148,57"/>
+<area shape="poly" id="edge18_Node000001_Node000014" title=" " alt="" coords="1220,103,1147,71,1117,60,1119,55,1149,66,1223,98"/>
+<area shape="rect" id="Node000015" href="$chan__usbradioplus_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="1019,81,1141,107"/>
+<area shape="poly" id="edge21_Node000001_Node000015" title=" " alt="" coords="1182,111,1141,105,1141,100,1183,106"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__channel__common_8c.html#a5bb799f8f3149132fcb19f612e1885bf" title="Display or adjust transmit CTCSS level and optional keyed tone." alt="" coords="1023,131,1137,156"/>
+<area shape="poly" id="edge24_Node000001_Node000016" title=" " alt="" coords="1183,133,1138,139,1137,133,1182,127"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__channel__common_8c.html#a2b060af9d1b3c338e74ec8d119152735" title="Display or adjust the voice output and optional calibration tone." alt="" coords="1019,180,1141,205"/>
+<area shape="poly" id="edge27_Node000001_Node000017" title=" " alt="" coords="1222,140,1149,171,1119,183,1117,178,1147,166,1220,135"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1016,225,1010,220,992,196,985,173,979,150,962,128,945,116,948,112,966,124,984,148,990,171,997,194,1014,216,1019,220"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="806,139,950,164"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="1027,227,1011,221,902,167,904,162,1013,216,1029,222"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,219,60,244"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="778,76,638,57,555,51,466,51,374,57,282,72,193,98,109,135,86,153,66,176,42,220,37,217,62,173,82,150,107,131,191,93,281,67,373,52,466,45,555,46,639,51,779,70"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="594,247,685,272"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="837,172,670,249,668,244,835,168"/>
+<area shape="rect" id="Node000013" href="$test__channel__core_8c.html#ac7f5d63c74c2d33746c4f1da589c2d40" title="Verify menu support dispatch." alt="" coords="535,136,744,161"/>
+<area shape="poly" id="edge16_Node000005_Node000013" title=" " alt="" coords="792,153,744,153,744,147,792,148"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a6ea7b266a92ffb85447f8ccca16392cb" title="Run a synthetic calibration CLI command against a selected test channel." alt="" coords="355,247,476,272"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="580,262,476,262,476,257,580,257"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="344,328,487,353"/>
+<area shape="poly" id="edge13_Node000006_Node000011" title=" " alt="" coords="591,279,452,331,450,326,590,274"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="108,182,296,222"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="354,246,276,225,278,220,355,241"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a0d4aeabb854d0c773c56fbdecca0d1de" title="Verify radio tune dispatch." alt="" coords="109,247,295,272"/>
+<area shape="poly" id="edge9_Node000007_Node000009" title=" " alt="" coords="341,262,295,262,295,257,341,257"/>
+<area shape="rect" id="Node000010" href="$test__channel__core_8c.html#a7a2e6c653c5e9455681a4622f165b753" title="Verify receive calibration helpers." alt="" coords="113,297,291,337"/>
+<area shape="poly" id="edge11_Node000007_Node000010" title=" " alt="" coords="355,278,278,299,276,294,354,273"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="95,223,61,230,60,224,94,218"/>
+<area shape="poly" id="edge10_Node000009_Node000004" title=" " alt="" coords="111,247,60,239,61,233,112,242"/>
+<area shape="poly" id="edge12_Node000010_Node000004" title=" " alt="" coords="121,294,107,287,74,267,47,246,51,242,77,263,109,282,124,289"/>
+<area shape="rect" id="Node000012" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="136,361,268,387"/>
+<area shape="poly" id="edge14_Node000011_Node000012" title=" " alt="" coords="331,357,269,367,268,361,330,351"/>
+<area shape="poly" id="edge15_Node000012_Node000004" title=" " alt="" coords="122,360,106,351,81,326,60,297,36,245,41,243,65,294,85,322,110,347,125,356"/>
+<area shape="poly" id="edge17_Node000013_Node000004" title=" " alt="" coords="540,137,447,130,337,130,279,134,221,142,164,155,109,173,73,195,46,221,43,217,70,191,107,168,162,150,220,137,279,129,337,125,447,125,541,132"/>
+<area shape="poly" id="edge19_Node000014_Node000003" title=" " alt="" coords="1015,63,961,77,960,72,1013,58"/>
+<area shape="poly" id="edge20_Node000014_Node000005" title=" " alt="" coords="1022,66,1014,71,999,85,990,99,981,114,965,128,939,141,937,136,963,124,977,110,986,96,995,82,1010,67,1019,61"/>
+<area shape="poly" id="edge22_Node000015_Node000003" title=" " alt="" coords="1005,97,964,97,964,91,1005,91"/>
+<area shape="poly" id="edge23_Node000015_Node000005" title=" " alt="" coords="1022,113,924,141,923,136,1021,108"/>
+<area shape="poly" id="edge25_Node000016_Node000003" title=" " alt="" coords="1013,130,960,117,961,112,1015,125"/>
+<area shape="poly" id="edge26_Node000016_Node000005" title=" " alt="" coords="1009,149,950,151,950,146,1009,144"/>
+<area shape="poly" id="edge28_Node000017_Node000003" title=" " alt="" coords="1022,177,1010,171,986,150,962,128,940,117,942,112,966,124,990,146,1014,167,1024,172"/>
+<area shape="poly" id="edge29_Node000017_Node000005" title=" " alt="" coords="1005,180,940,167,941,162,1006,175"/>
+</map>

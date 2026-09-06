@@ -1,0 +1,9 @@
+<map id="tune_txoutput" name="tune_txoutput">
+<area shape="rect" id="Node000001" title="Key the calibrated transmitter test tone for up to five seconds." alt="" coords="5,55,117,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="217,5,281,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="110,52,204,27,205,32,111,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aa550b966d6c1addb1f6d22c77c0eada6" title="Host&#45;API test double for ast_radio_wait_or_poll; observable effects are recorded in harness state." alt="" coords="165,55,333,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="118,65,152,65,152,70,118,70"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="217,104,282,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="111,77,204,102,202,107,110,83"/>
+</map>

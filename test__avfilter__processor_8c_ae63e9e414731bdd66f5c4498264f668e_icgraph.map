@@ -1,0 +1,5 @@
+<map id="test_multiband_frame_boundaries" name="test_multiband_frame_boundaries">
+<area shape="rect" id="Node000001" title="Both three&#45;band stages retain sample&#45;exact state across arbitrary frame boundaries." alt="" coords="108,5,275,45"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

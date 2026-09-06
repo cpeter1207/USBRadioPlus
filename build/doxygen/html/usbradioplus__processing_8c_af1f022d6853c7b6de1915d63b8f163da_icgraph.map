@@ -1,0 +1,21 @@
+<map id="detach_all" name="detach_all">
+<area shape="rect" id="Node000001" title="Remove processing hooks from all channels during shutdown." alt="" coords="800,74,889,99"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#abb6e27f0b1bb4881ee0871c74fd18a53" title="Disable a named processing source in the live settings snapshot." alt="" coords="615,74,706,99"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="786,89,706,89,706,84,786,84"/>
+<area shape="rect" id="Node000005" href="$test__processing__validation_8c.html#aca3f90bd414c90cabc4edbaef550cec1" title="Verify channel scanning and detachment." alt="" coords="351,5,521,45"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="786,73,752,65,632,47,522,35,522,30,632,41,752,60,787,68"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ae371743af71cd2fa8b7ad321151cfc1b" title="Stop the scanner, detach audiohooks, and unregister processing commands." alt="" coords="569,124,752,164"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="791,106,726,127,724,121,789,101"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a1db0fa5f0c16906780fa9106ecc514da" title="Verify module lifecycle and simple cli." alt="" coords="353,69,519,109"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="602,90,519,91,519,86,601,85"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="178,45,233,70"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="339,79,233,64,233,58,340,73"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="337,42,233,56,233,51,337,36"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="564,123,518,112,519,107,565,118"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="375,134,497,159"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="555,148,498,149,498,143,555,143"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,127,303,167"/>
+<area shape="poly" id="edge9_Node000007_Node000008" title=" " alt="" coords="360,149,303,149,303,144,360,144"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,134,60,159"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="94,149,60,149,60,144,94,144"/>
+</map>

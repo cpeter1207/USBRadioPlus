@@ -1,0 +1,5 @@
+<map id="urp_tx_pair_has_tone" name="urp_tx_pair_has_tone">
+<area shape="rect" id="Node000001" title="Return nonzero when either output assignment carries transmitter CTCSS." alt="" coords="5,5,167,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a17a5eec9e468068fa4bc667a7cfe0287" title="Return nonzero when an output assignment carries transmitter CTCSS." alt="" coords="215,5,393,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,15,201,15,201,21,167,21"/>
+</map>

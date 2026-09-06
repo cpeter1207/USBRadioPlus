@@ -1,0 +1,7 @@
+<map id="strace" name="strace">
+<area shape="rect" id="Node000001" title="Store one scaled signal sample at a selected trace point." alt="" coords="303,5,365,31"/>
+<area shape="rect" id="Node000002" href="$test__radio__core_8c.html#acd2021952fcb96def0362fef323fcf1c" title="Verify debug buffers." alt="" coords="108,5,255,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="289,21,255,21,255,15,289,15"/>
+<area shape="rect" id="Node000003" href="$test__radio__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,5,60,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,21,60,21,60,15,94,15"/>
+</map>

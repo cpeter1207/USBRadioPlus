@@ -1,0 +1,15 @@
+<map id="src/txagc/rms_agc_ladspa.c" name="src/txagc/rms_agc_ladspa.c">
+<area shape="rect" id="Node000001" title="Causal, activity&#45;gated RMS gain rider hosted only within the FFmpeg graph." alt="" coords="189,5,390,31"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8h.html" title="Ports for the FFmpeg&#45;hosted USBRadioPlus RMS gain rider." alt="" coords="5,79,144,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="256,33,123,77,122,72,254,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="169,79,231,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="277,33,227,72,224,68,273,29"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="255,79,323,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="292,31,292,65,287,65,287,31"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="347,79,418,104"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="306,29,358,68,355,72,303,33"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="442,79,513,104"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="320,28,435,71,433,76,319,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="36,152,113,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="77,104,77,138,72,138,72,104"/>
+</map>

@@ -1,0 +1,28 @@
+<map id="test_agc_configuration" name="test_agc_configuration">
+<area shape="rect" id="Node000001" title="Verify gated&#45;AGC defaults, option mappings, and independent detector filters." alt="" coords="5,104,175,129"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="223,5,377,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,102,159,71,222,40,239,33,241,38,224,44,162,76,112,106"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ac94af5aa3b6325845a677dfa5eda16f0" title="Read the configurable stages belonging to one source chain." alt="" coords="253,55,347,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="144,101,239,79,241,84,145,107"/>
+<area shape="rect" id="Node000010" href="$test__processing__validation_8c.html#a907b8d3321bf6879fdf3050445dacc77" title="Install a bounded option list in the fake Asterisk configuration." alt="" coords="234,104,366,129"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="175,114,220,114,220,119,175,119"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="233,153,367,179"/>
+<area shape="poly" id="edge13_Node000001_Node000011" title=" " alt="" coords="145,127,233,148,231,153,144,132"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__processing_8c.html#a5414c92d2485210b205f79d2794be131" title="Check processing parameter ranges, fixed stages, and optional&#45;stage ordering." alt="" coords="241,203,359,228"/>
+<area shape="poly" id="edge14_Node000001_Node000012" title=" " alt="" coords="112,127,162,157,224,189,241,196,239,201,222,194,159,162,109,132"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="621,55,781,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="343,52,376,40,400,26,425,14,462,6,492,5,561,14,614,28,661,46,659,51,612,33,559,19,492,10,463,12,426,19,402,30,378,44,345,57"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#ad0e15804c47f309d5cdc7a9c77a59378" title="Read the explicitly supported one&#45;band or three&#45;band dynamics mode." alt="" coords="426,29,559,55"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="346,59,412,50,412,55,347,64"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="441,79,544,104"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="347,70,428,81,427,86,347,76"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a52dfb012da45db162cbd83c175999a8c" title="Parse a chain&#39;s optional processing order." alt="" coords="425,128,560,153"/>
+<area shape="poly" id="edge8_Node000003_Node000007" title=" " alt="" coords="347,78,378,89,426,114,442,121,440,126,424,119,376,94,346,83"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="560,47,607,53,607,59,559,53"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="544,83,607,75,607,81,545,88"/>
+<area shape="poly" id="edge9_Node000007_Node000004" title=" " alt="" coords="529,125,650,82,652,87,531,130"/>
+<area shape="rect" id="Node000008" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="608,128,793,153"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="560,138,594,138,594,143,560,143"/>
+<area shape="rect" id="Node000009" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="841,128,933,153"/>
+<area shape="poly" id="edge11_Node000008_Node000009" title=" " alt="" coords="793,138,828,138,828,143,793,143"/>
+</map>

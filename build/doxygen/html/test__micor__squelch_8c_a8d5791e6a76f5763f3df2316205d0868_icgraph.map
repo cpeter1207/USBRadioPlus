@@ -1,0 +1,13 @@
+<map id="close_samples" name="close_samples">
+<area shape="rect" id="Node000001" title="Measure a closing transition without rounding it to a frame." alt="" coords="316,77,435,102"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#acc5eeec915e08c02d36706e3165fd6c2" title="Check closing time at every possible offset in a 20 ms audio frame." alt="" coords="118,5,258,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="324,75,246,48,248,43,325,70"/>
+<area shape="rect" id="Node000004" href="$test__micor__squelch_8c.html#aea91ab8571117a4d4337c37af48ebcc7" title="Gradual fading restores flutter protection; a strong signal defeats it." alt="" coords="108,69,268,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="302,92,268,92,268,87,302,87"/>
+<area shape="rect" id="Node000005" href="$test__micor__squelch_8c.html#aa4067441b6498583d3ea6f7bd5f49f8c" title="A partial carrier&#45;loss frame cannot spuriously charge a full long tail." alt="" coords="109,133,267,173"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="325,109,248,136,246,131,324,104"/>
+<area shape="rect" id="Node000003" href="$test__micor__squelch_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute continuous squelch regression tests." alt="" coords="5,77,60,102"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="125,53,109,60,61,80,59,75,107,55,123,48"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="94,92,60,92,60,87,94,87"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="123,130,107,124,59,103,61,98,109,119,125,126"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="store_rxdemod" name="store_rxdemod">
+<area shape="rect" id="Node000001" title="Parse the configured receiver audio&#45;source assignment." alt="" coords="5,5,125,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a9dfb5310b67689f7f9b3fd8a8e5e7291" title="Parse a receive audio source." alt="" coords="173,5,367,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="126,15,159,15,159,21,126,21"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a3f183d84fe49d97606dba6dff09a900e" title="Resolve a symbolic option through a bounded name/value table." alt="" coords="415,5,568,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="367,15,401,15,401,21,367,21"/>
+</map>

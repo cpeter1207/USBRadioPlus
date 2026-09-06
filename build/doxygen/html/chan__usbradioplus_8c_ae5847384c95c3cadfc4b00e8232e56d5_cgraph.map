@@ -1,0 +1,26 @@
+<map id="handle_show_settings" name="handle_show_settings">
+<area shape="rect" id="Node000001" title="Register, complete, or print active radio settings." alt="" coords="5,105,172,131"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a17706af59319c76f37ffb3caecfdd58e" title="Report active radio tuning and device assignments." alt="" coords="220,80,323,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,104,206,99,207,104,172,109"/>
+<area shape="rect" id="Node000012" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="230,129,313,155"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="172,126,217,132,216,137,172,132"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="436,5,500,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="293,78,328,58,370,39,422,24,423,29,372,45,330,63,295,82"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a669c137a67300a2a8ac48ece74d5a3c3" title="Host&#45;API test double for ast_radio_usb_get_usbdev; observable effects are recorded in harness state." alt="" coords="371,55,565,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="323,83,357,79,357,84,323,89"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a7129f44681013128808c46977a42bb0c" title="Read the resolved CTCSS decoder&#45;input gain." alt="" coords="371,104,565,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="323,96,358,101,358,106,323,102"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="390,157,546,183"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="301,103,324,114,372,138,407,151,406,156,370,143,321,119,299,108"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="627,93,765,133"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="565,112,613,111,613,117,565,118"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="827,105,1009,145"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="766,114,813,116,813,122,765,119"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="1057,155,1152,180"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="1007,142,1045,151,1043,156,1005,147"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="613,157,779,183"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="546,167,600,167,600,173,546,173"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="827,179,1009,219"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="529,180,614,193,716,199,813,199,813,205,716,204,613,198,529,185"/>
+<area shape="poly" id="edge11_Node000011_Node000008" title=" " alt="" coords="1009,181,1043,175,1044,180,1010,186"/>
+</map>

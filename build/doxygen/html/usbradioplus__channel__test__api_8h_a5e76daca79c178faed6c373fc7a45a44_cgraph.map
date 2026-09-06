@@ -1,0 +1,13 @@
+<map id="handle_radio_active" name="handle_radio_active">
+<area shape="rect" id="Node000001" title="Register, complete, or select the active radio for tuning." alt="" coords="5,80,159,105"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a6eed0efdda85d675e4ce499d544b3f13" title="Show or select the radio used by interactive calibration commands." alt="" coords="207,55,309,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,79,193,74,193,79,159,84"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#ab63fe5b59f7ecd7ce13701b61aa533f6" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="225,104,291,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="159,100,212,108,211,113,158,106"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a6527d8d45796d2ee713936c17c8dd5ff" title="Host&#45;API test double for ast_cli; observable effects are recorded in harness state." alt="" coords="423,5,487,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="308,52,357,39,409,26,410,31,358,45,309,57"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a669c137a67300a2a8ac48ece74d5a3c3" title="Host&#45;API test double for ast_radio_usb_get_usbdev; observable effects are recorded in harness state." alt="" coords="357,55,552,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="310,65,344,65,344,70,310,70"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="413,104,496,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="310,77,401,101,400,106,309,83"/>
+</map>

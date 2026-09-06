@@ -1,0 +1,9 @@
+<map id="usbradio_release_device" name="usbradio_release_device">
+<area shape="rect" id="Node000001" title="Release the acquired ASL radio device under its ownership mutex." alt="" coords="332,31,515,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="181,5,265,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="318,33,264,26,265,21,319,27"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="161,55,284,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="319,59,284,63,284,57,318,53"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="167,21,114,21,114,15,167,15"/>
+</map>

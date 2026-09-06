@@ -1,0 +1,5 @@
+<map id="urp_tx_pair_has_voice" name="urp_tx_pair_has_voice">
+<area shape="rect" id="Node000001" title="Return nonzero when either output assignment carries transmitter voice audio." alt="" coords="5,5,172,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#ad5b61444902f912b5f43834e21a63fe4" title="Return nonzero when an output assignment carries transmitter voice audio." alt="" coords="220,5,404,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,15,206,15,206,21,172,21"/>
+</map>

@@ -1,0 +1,24 @@
+<map id="test_chain_configuration_parser" name="test_chain_configuration_parser">
+<area shape="rect" id="Node000001" title="Verify chain configuration parser." alt="" coords="5,94,187,134"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ac94af5aa3b6325845a677dfa5eda16f0" title="Read the configurable stages belonging to one source chain." alt="" coords="255,52,349,77"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="179,91,241,77,242,82,181,97"/>
+<area shape="rect" id="Node000009" href="$test__processing__validation_8c.html#a907b8d3321bf6879fdf3050445dacc77" title="Install a bounded option list in the fake Asterisk configuration." alt="" coords="236,101,368,127"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="187,111,222,111,222,117,187,117"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="235,151,369,176"/>
+<area shape="poly" id="edge12_Node000001_Node000010" title=" " alt="" coords="181,132,236,145,235,150,179,137"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="613,52,773,77"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="323,50,366,29,417,12,485,3,553,12,606,26,653,44,651,49,604,31,551,17,485,8,418,17,368,34,326,54"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#ad0e15804c47f309d5cdc7a9c77a59378" title="Read the explicitly supported one&#45;band or three&#45;band dynamics mode." alt="" coords="418,27,551,52"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="348,56,404,48,405,53,349,61"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="433,76,536,101"/>
+<area shape="poly" id="edge5_Node000002_Node000005" title=" " alt="" coords="349,68,420,78,419,83,348,74"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a52dfb012da45db162cbd83c175999a8c" title="Parse a chain&#39;s optional processing order." alt="" coords="417,125,552,151"/>
+<area shape="poly" id="edge7_Node000002_Node000006" title=" " alt="" coords="342,75,370,86,418,112,434,118,432,123,416,117,368,91,340,80"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="552,45,599,51,599,56,551,50"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="536,80,599,73,599,78,537,86"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="521,123,642,80,644,85,523,128"/>
+<area shape="rect" id="Node000007" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="600,125,785,151"/>
+<area shape="poly" id="edge9_Node000006_Node000007" title=" " alt="" coords="552,135,586,135,586,141,552,141"/>
+<area shape="rect" id="Node000008" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="833,125,925,151"/>
+<area shape="poly" id="edge10_Node000007_Node000008" title=" " alt="" coords="785,135,820,135,820,141,785,141"/>
+</map>

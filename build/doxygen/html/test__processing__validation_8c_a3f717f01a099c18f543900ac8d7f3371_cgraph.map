@@ -1,0 +1,25 @@
+<map id="test_primitive_configuration_parsers" name="test_primitive_configuration_parsers">
+<area shape="rect" id="Node000001" title="Verify primitive configuration parsers." alt="" coords="5,146,211,186"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="259,5,413,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="127,144,183,92,219,64,257,40,271,33,273,38,260,44,222,69,186,96,131,148"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#accc0626992a3ee315023800ac4a67a80" title="Compare a configuration name against an allowed&#45;name table." alt="" coords="281,55,391,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="144,144,197,116,258,89,276,82,278,87,260,94,199,121,147,148"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a4beacd85acfc251b7a0acb0bbd673628" title="Read a hardware routing choice and record whether it was explicitly supplied." alt="" coords="269,104,403,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="200,143,263,130,264,135,202,149"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ad0405a1a2380f995cece09e7c6001f11" title="Read a yes/no option and flag malformed values without committing settings." alt="" coords="293,203,379,228"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="202,183,280,201,279,206,200,189"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="285,153,387,179"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="211,163,270,163,270,169,211,169"/>
+<area shape="rect" id="Node000010" href="$test__processing__validation_8c.html#a907b8d3321bf6879fdf3050445dacc77" title="Install a bounded option list in the fake Asterisk configuration." alt="" coords="270,252,402,277"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="148,184,260,237,281,245,279,250,258,242,146,189"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__processing_8c.html#a5c781da3fe4c5f4a826fd9adb10c2e59" title="Check a comma&#45;separated CTCSS frequency list for valid finite values." alt="" coords="259,301,413,327"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="131,184,186,236,222,263,260,288,273,294,271,299,257,292,219,268,183,240,127,188"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="461,153,621,179"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="390,127,475,147,474,153,389,132"/>
+<area shape="poly" id="edge8_Node000006_Node000005" title=" " alt="" coords="379,202,474,179,475,184,380,208"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="501,203,582,228"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="380,213,487,213,487,218,380,218"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="504,252,579,277"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="380,223,491,250,490,255,379,228"/>
+<area shape="poly" id="edge10_Node000009_Node000005" title=" " alt="" coords="387,163,448,163,448,169,387,169"/>
+</map>

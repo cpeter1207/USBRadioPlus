@@ -1,0 +1,7 @@
+<map id="effective_rx_input_gain_db" name="effective_rx_input_gain_db">
+<area shape="rect" id="Node000001" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="5,5,144,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="192,5,375,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,23,178,23,178,28,144,28"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="423,13,517,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="375,23,409,23,409,28,375,28"/>
+</map>

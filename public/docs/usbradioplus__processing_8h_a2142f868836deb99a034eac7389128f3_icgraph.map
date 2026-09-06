@@ -1,0 +1,129 @@
+<map id="usbradioplus_processing_get_local" name="usbradioplus_processing_get_local">
+<area shape="rect" id="Node000001" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="1721,718,1904,758"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="1531,265,1670,305"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1794,707,1609,306,1614,304,1799,705"/>
+<area shape="rect" id="Node000038" href="$test__processing__validation_8c.html#a51d2aef24737dabc34c326d320729e62" title="Verify public setting accessors." alt="" coords="1528,775,1673,815"/>
+<area shape="poly" id="edge51_Node000001_Node000038" title=" " alt="" coords="1726,764,1674,778,1673,773,1724,759"/>
+<area shape="rect" id="Node000040" href="$usbradioplus__native__tick_8c.html#a98790fb21cd1370ab67e4f546b2ed69f" title="Process a native receiver block and render the corresponding transmitter block." alt="" coords="819,936,1003,961"/>
+<area shape="poly" id="edge53_Node000001_Node000040" title=" " alt="" coords="1708,736,1617,736,1511,740,1398,752,1287,774,1233,790,1179,810,1077,857,991,903,933,938,931,933,989,899,1074,852,1177,805,1231,785,1286,769,1397,747,1510,735,1617,730,1708,731"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a7129f44681013128808c46977a42bb0c" title="Read the resolved CTCSS decoder&#45;input gain." alt="" coords="1287,272,1480,297"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1517,287,1480,287,1480,282,1517,282"/>
+<area shape="rect" id="Node000033" href="$test__channel__core_8c.html#a4d327031ec460f88ed864d0ef4ed26c5" title="Verify effective processing settings." alt="" coords="1051,451,1239,491"/>
+<area shape="poly" id="edge50_Node000002_Node000033" title=" " alt="" coords="1539,313,1196,454,1194,449,1537,308"/>
+<area shape="rect" id="Node000034" href="$chan__usbradioplus_8c.html#abef8e22b2dcc2d7590c6b1fbc2313292" title="Report active radio settings, hardware assignment, and detector state." alt="" coords="1334,5,1433,31"/>
+<area shape="poly" id="edge42_Node000002_Node000034" title=" " alt="" coords="1575,255,1478,129,1394,33,1398,29,1482,126,1579,252"/>
+<area shape="rect" id="Node000035" href="$usbradioplus__channel__common_8c.html#a36c954cd8dfb330c23efb58d2d8503bb" title="Write current radio calibration values to the unified configuration." alt="" coords="1310,140,1457,165"/>
+<area shape="poly" id="edge44_Node000002_Node000035" title=" " alt="" coords="1554,260,1404,168,1407,163,1557,255"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a17706af59319c76f37ffb3caecfdd58e" title="Report active radio tuning and device assignments." alt="" coords="1093,192,1196,217"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="1337,269,1238,233,1196,220,1197,215,1240,227,1339,264"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="839,136,983,161"/>
+<area shape="poly" id="edge41_Node000003_Node000009" title=" " alt="" coords="1358,264,1306,221,1273,199,1238,182,1172,163,1105,152,1040,148,983,147,983,142,1040,142,1105,147,1174,158,1240,177,1276,194,1309,216,1362,260"/>
+<area shape="rect" id="Node000017" href="$chan__usbradioplus_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="1084,243,1205,268"/>
+<area shape="poly" id="edge16_Node000003_Node000017" title=" " alt="" coords="1272,274,1205,265,1206,260,1273,268"/>
+<area shape="rect" id="Node000018" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="641,465,725,491"/>
+<area shape="poly" id="edge19_Node000003_Node000018" title=" " alt="" coords="1338,305,1239,339,1092,382,946,420,725,472,724,466,944,415,1091,377,1238,334,1336,300"/>
+<area shape="rect" id="Node000026" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="1094,300,1195,325"/>
+<area shape="poly" id="edge33_Node000003_Node000026" title=" " alt="" coords="1273,300,1196,309,1195,304,1273,295"/>
+<area shape="poly" id="edge39_Node000003_Node000033" title=" " alt="" coords="1357,308,1289,372,1266,404,1257,419,1240,435,1208,454,1205,449,1237,431,1252,416,1262,401,1285,368,1353,304"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#ae5847384c95c3cadfc4b00e8232e56d5" title="Register, complete, or print active radio settings." alt="" coords="827,185,994,211"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="1080,206,994,203,994,198,1080,200"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#acd7095801933ad32409206d81ce20ba7" title="Verify menu adjustment helpers." alt="" coords="825,235,997,275"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="1080,221,997,239,996,234,1079,216"/>
+<area shape="poly" id="edge9_Node000004_Node000009" title=" " alt="" coords="1079,192,964,164,965,159,1080,187"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a665c049f1784a008b4e1a6522547b8c4" title="Verify cli handlers." alt="" coords="147,149,279,175"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="814,196,279,168,279,163,814,190"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,659,60,684"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="134,172,110,188,88,225,71,281,58,349,49,423,39,566,37,659,31,659,34,566,44,423,53,348,66,280,83,223,106,184,132,167"/>
+<area shape="poly" id="edge8_Node000008_Node000007" title=" " alt="" coords="811,256,623,254,403,257,300,261,212,269,145,279,123,286,110,293,91,320,75,362,63,414,53,471,42,583,37,659,32,658,36,582,48,470,58,413,70,360,86,318,106,289,121,281,144,274,211,263,300,256,403,251,623,249,811,250"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="637,85,728,111"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="839,136,727,111,729,105,840,130"/>
+<area shape="rect" id="Node000016" href="$test__channel__core_8c.html#ac7f5d63c74c2d33746c4f1da589c2d40" title="Verify menu support dispatch." alt="" coords="108,199,317,224"/>
+<area shape="poly" id="edge14_Node000009_Node000016" title=" " alt="" coords="825,159,318,205,317,199,824,154"/>
+<area shape="rect" id="Node000011" href="$test__channel__core_8c.html#a6ea7b266a92ffb85447f8ccca16392cb" title="Run a synthetic calibration CLI command against a selected test channel." alt="" coords="395,48,517,73"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="623,91,516,73,517,68,624,86"/>
+<area shape="rect" id="Node000015" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="385,97,527,123"/>
+<area shape="poly" id="edge12_Node000010_Node000015" title=" " alt="" coords="624,104,528,109,527,104,624,98"/>
+<area shape="poly" id="edge13_Node000015_Node000006" title=" " alt="" coords="383,128,273,152,272,147,382,123"/>
+<area shape="poly" id="edge15_Node000016_Node000007" title=" " alt="" coords="125,233,110,245,91,278,76,327,63,387,54,451,42,576,37,659,32,658,36,575,48,451,58,386,70,326,86,276,106,242,121,229"/>
+<area shape="poly" id="edge17_Node000017_Node000008" title=" " alt="" coords="1070,258,997,258,997,253,1070,253"/>
+<area shape="poly" id="edge18_Node000017_Node000009" title=" " alt="" coords="1070,241,1049,231,1033,217,1024,202,1016,188,1001,175,978,164,980,159,1004,170,1020,185,1029,199,1037,213,1052,226,1072,237"/>
+<area shape="rect" id="Node000019" href="$test__channel__core_8c.html#a3828a145dd4c8132bc9cc4a418949a45" title="Exercise OSS HID recovery using scripted USB availability." alt="" coords="387,516,525,541"/>
+<area shape="poly" id="edge20_Node000018_Node000019" title=" " alt="" coords="628,493,514,519,513,513,627,488"/>
+<area shape="rect" id="Node000020" href="$test__channel__core_8c.html#aecd9d77278c186f6c706970aed2ab3f0" title="Verify oss hid attach failures." alt="" coords="137,507,288,547"/>
+<area shape="poly" id="edge23_Node000018_Node000020" title=" " alt="" coords="627,484,507,492,366,506,288,517,288,512,365,501,506,487,627,478"/>
+<area shape="rect" id="Node000021" href="$test__channel__core_8c.html#a2d5d51d9c3c21c546f8bd39edad4ccdc" title="Verify oss hid worker attach." alt="" coords="135,375,290,415"/>
+<area shape="poly" id="edge24_Node000018_Node000021" title=" " alt="" coords="634,462,593,439,579,425,570,412,561,401,546,391,514,380,481,373,414,368,348,371,291,380,290,374,348,366,414,362,482,368,516,375,548,386,564,397,574,409,583,422,596,435,637,457"/>
+<area shape="rect" id="Node000022" href="$test__channel__core_8c.html#ae781c1a29acf8c1051764d7f4be23be9" title="Verify oss hid worker device retry." alt="" coords="379,401,533,441"/>
+<area shape="poly" id="edge26_Node000018_Node000022" title=" " alt="" coords="626,467,533,443,534,438,628,462"/>
+<area shape="rect" id="Node000023" href="$test__channel__core_8c.html#a6bb4b32ca69482a5d778d23a9c8bcd8d" title="Verify oss hid worker first radio construction." alt="" coords="365,566,547,606"/>
+<area shape="poly" id="edge28_Node000018_Node000023" title=" " alt="" coords="650,500,548,555,516,568,514,563,546,550,647,496"/>
+<area shape="rect" id="Node000024" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="402,631,510,656"/>
+<area shape="poly" id="edge30_Node000018_Node000024" title=" " alt="" coords="667,504,618,562,585,594,548,620,511,636,509,631,545,616,581,589,614,559,662,500"/>
+<area shape="poly" id="edge21_Node000019_Node000020" title=" " alt="" coords="373,531,288,530,288,525,373,526"/>
+<area shape="poly" id="edge22_Node000020_Node000007" title=" " alt="" coords="129,556,110,568,87,590,68,615,42,660,38,657,63,612,83,586,106,564,126,551"/>
+<area shape="poly" id="edge25_Node000021_Node000007" title=" " alt="" coords="143,424,110,451,91,476,76,505,54,565,43,620,38,659,32,658,37,619,49,564,71,503,87,473,106,447,140,420"/>
+<area shape="poly" id="edge27_Node000022_Node000007" title=" " alt="" coords="365,433,218,458,153,476,128,486,110,497,92,515,78,536,56,582,44,626,38,659,33,658,39,625,51,580,73,533,88,512,106,493,125,481,151,471,217,453,365,428"/>
+<area shape="poly" id="edge29_Node000023_Node000007" title=" " alt="" coords="352,580,295,579,233,584,169,594,109,612,73,635,47,660,43,656,70,630,107,608,168,589,232,578,295,574,352,574"/>
+<area shape="rect" id="Node000025" href="$test__channel__core_8c.html#a9b53984771bd0d03afd1ec95fd65bc03" title="Verify oss channel write and call." alt="" coords="125,622,300,662"/>
+<area shape="poly" id="edge31_Node000024_Node000025" title=" " alt="" coords="388,646,300,645,300,640,388,640"/>
+<area shape="poly" id="edge32_Node000025_Node000007" title=" " alt="" coords="112,661,61,670,60,664,112,656"/>
+<area shape="rect" id="Node000027" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="863,351,959,376"/>
+<area shape="poly" id="edge34_Node000026_Node000027" title=" " alt="" coords="1081,329,959,356,958,350,1080,324"/>
+<area shape="rect" id="Node000032" href="$test__channel__core_8c.html#a58f2d0faf4835de8286cdaefe866a141" title="Verify store config failure and option edges." alt="" coords="121,303,304,343"/>
+<area shape="poly" id="edge37_Node000026_Node000032" title=" " alt="" coords="1080,316,304,325,304,320,1080,311"/>
+<area shape="rect" id="Node000028" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="629,400,736,425"/>
+<area shape="poly" id="edge35_Node000027_Node000028" title=" " alt="" coords="850,379,737,404,736,399,849,374"/>
+<area shape="rect" id="Node000030" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="623,351,742,376"/>
+<area shape="poly" id="edge36_Node000027_Node000030" title=" " alt="" coords="849,366,742,366,742,361,849,361"/>
+<area shape="poly" id="edge38_Node000032_Node000007" title=" " alt="" coords="124,353,110,365,96,388,83,422,62,509,38,659,33,658,56,508,78,421,91,386,106,362,120,349"/>
+<area shape="poly" id="edge40_Node000033_Node000007" title=" " alt="" coords="1086,499,986,540,854,588,703,634,547,670,483,678,433,679,317,677,108,677,60,675,60,670,108,671,317,671,433,674,483,673,546,665,701,629,852,583,984,535,1084,494"/>
+<area shape="poly" id="edge43_Node000034_Node000010" title=" " alt="" coords="1321,27,819,83,729,95,728,89,818,78,1320,22"/>
+<area shape="rect" id="Node000036" href="$chan__usbradioplus_8c.html#aba2ef44197e2e1293978c039a00c374d" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="1099,88,1190,113"/>
+<area shape="poly" id="edge45_Node000035_Node000036" title=" " alt="" coords="1310,140,1190,113,1191,108,1311,134"/>
+<area shape="poly" id="edge49_Node000036_Node000009" title=" " alt="" coords="1087,115,974,139,973,133,1086,110"/>
+<area shape="poly" id="edge46_Node000036_Node000010" title=" " alt="" coords="1086,103,728,101,728,96,1086,98"/>
+<area shape="rect" id="Node000037" href="$test__channel__core_8c.html#a3ca31b97d7731b6763b12867982f9210" title="Verify oss tune write paths." alt="" coords="137,38,289,78"/>
+<area shape="poly" id="edge47_Node000036_Node000037" title=" " alt="" coords="1085,92,956,71,778,49,573,35,468,34,366,38,289,47,288,42,365,33,468,28,574,29,779,43,957,66,1086,87"/>
+<area shape="poly" id="edge48_Node000037_Node000007" title=" " alt="" coords="162,87,133,110,110,138,92,184,77,248,55,405,42,559,37,658,32,658,37,559,49,405,71,247,87,182,106,135,130,106,159,83"/>
+<area shape="rect" id="Node000039" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="1356,783,1411,808"/>
+<area shape="poly" id="edge52_Node000038_Node000039" title=" " alt="" coords="1514,798,1411,798,1411,793,1514,793"/>
+<area shape="rect" id="Node000041" href="$test__channel__core_8c.html#a380de4c1ef242cf20ba2a9f668c4624d" title="Preserve a single native&#45;rate program frame through startup and underrun recovery." alt="" coords="595,782,771,822"/>
+<area shape="poly" id="edge54_Node000040_Node000041" title=" " alt="" coords="885,928,834,882,769,836,745,824,747,820,772,832,838,878,889,924"/>
+<area shape="rect" id="Node000043" href="$test__channel__core_8c.html#a3f4eafa59aa669068ef181cbff4d3eac" title="Render one link&#45;rate tone frame through real SRC startup and recovery." alt="" coords="601,846,765,886"/>
+<area shape="poly" id="edge57_Node000040_Node000043" title=" " alt="" coords="861,934,738,889,740,884,863,929"/>
+<area shape="rect" id="Node000045" href="$test__channel__core_8c.html#aa46f85ca63cd6a436d0f72ca5b77998c" title="Keep local dynamics and RNNoise continuous unless RX CPU saving permits a pause." alt="" coords="131,850,294,890"/>
+<area shape="poly" id="edge60_Node000040_Node000045" title=" " alt="" coords="805,944,601,928,365,901,294,889,295,884,366,895,602,922,805,939"/>
+<area shape="rect" id="Node000046" href="$test__channel__core_8c.html#aeb5eacf2e9998ce289b5d44fed8d33c6" title="Apply sample&#45;rate DSP carrier gating without changing non&#45;DSP receive sources." alt="" coords="119,929,306,955"/>
+<area shape="poly" id="edge62_Node000040_Node000046" title=" " alt="" coords="805,950,306,946,306,940,805,945"/>
+<area shape="rect" id="Node000047" href="$test__channel__core_8c.html#af890f90fa6d5d09eafee4e672a90a682" title="Verify native tick baseline." alt="" coords="119,1008,307,1033"/>
+<area shape="poly" id="edge64_Node000040_Node000047" title=" " alt="" coords="805,962,307,1014,307,1008,805,957"/>
+<area shape="rect" id="Node000048" href="$test__channel__core_8c.html#a9986d059e8247ff55081a7a2574e7e79" title="Preserve admitted audio, sinc history, and clock recovery across arbitrary PTT edges." alt="" coords="599,1062,767,1102"/>
+<area shape="poly" id="edge66_Node000040_Node000048" title=" " alt="" coords="883,972,833,1008,772,1046,735,1064,732,1059,769,1041,830,1003,880,967"/>
+<area shape="rect" id="Node000049" href="$test__channel__core_8c.html#a121e012d8040b4d045620fd845080578" title="Stop padding after either a rejected or partially consumed synthetic tail frame." alt="" coords="607,1126,758,1166"/>
+<area shape="poly" id="edge68_Node000040_Node000049" title=" " alt="" coords="897,975,847,1044,812,1082,772,1116,751,1128,748,1124,769,1112,808,1079,843,1041,893,971"/>
+<area shape="rect" id="Node000050" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="597,732,768,757"/>
+<area shape="poly" id="edge70_Node000040_Node000050" title=" " alt="" coords="894,925,874,890,846,849,811,807,769,772,744,760,747,755,772,768,814,804,850,846,879,887,899,922"/>
+<area shape="rect" id="Node000052" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="625,1191,740,1216"/>
+<area shape="poly" id="edge72_Node000040_Node000052" title=" " alt="" coords="903,976,886,1020,858,1075,820,1132,798,1158,772,1180,741,1196,739,1191,769,1176,794,1154,816,1128,853,1073,881,1018,898,974"/>
+<area shape="rect" id="Node000042" href="$test__channel__core_8c.html#a5fa933fbe4ef9709e535546fa9d35c97" title="Check one&#45;frame bursts at every boundary of the adaptive latency policy." alt="" coords="375,782,537,822"/>
+<area shape="poly" id="edge55_Node000041_Node000042" title=" " alt="" coords="580,805,537,805,537,799,580,799"/>
+<area shape="poly" id="edge56_Node000042_Node000007" title=" " alt="" coords="361,790,238,764,171,744,107,720,76,704,49,686,52,682,78,699,109,716,173,739,239,759,362,785"/>
+<area shape="rect" id="Node000044" href="$test__channel__core_8c.html#a38c7e7c6d81f4cbaa3dbe7d36ec7a7d9" title="Preserve isolated link&#45;rate bursts at the minimum, normal, and maximum FIFO targets." alt="" coords="381,846,531,886"/>
+<area shape="poly" id="edge58_Node000043_Node000044" title=" " alt="" coords="587,869,531,869,531,863,587,863"/>
+<area shape="poly" id="edge59_Node000044_Node000007" title=" " alt="" coords="367,849,204,812,107,786,81,762,61,734,36,685,41,683,65,731,85,759,109,781,205,807,368,844"/>
+<area shape="poly" id="edge61_Node000045_Node000007" title=" " alt="" coords="133,846,106,827,78,791,57,751,34,685,39,683,62,749,82,788,110,823,136,841"/>
+<area shape="poly" id="edge63_Node000046_Node000007" title=" " alt="" coords="139,926,121,917,106,904,85,877,69,847,47,784,36,726,32,684,37,684,41,725,52,783,74,845,90,874,110,900,124,912,141,922"/>
+<area shape="poly" id="edge65_Node000047_Node000007" title=" " alt="" coords="155,1005,128,990,106,969,82,933,64,892,51,851,41,809,32,735,31,684,36,684,38,734,47,808,56,849,69,891,87,930,110,966,132,986,157,1000"/>
+<area shape="poly" id="edge67_Node000048_Node000007" title=" " alt="" coords="585,1092,459,1098,318,1096,251,1091,191,1082,141,1068,106,1048,86,1020,71,978,58,926,49,870,37,760,32,684,37,684,42,759,54,869,63,925,76,976,91,1018,110,1044,143,1063,192,1077,251,1086,318,1091,459,1092,585,1087"/>
+<area shape="poly" id="edge69_Node000049_Node000007" title=" " alt="" coords="594,1154,467,1157,323,1153,254,1147,192,1136,142,1121,106,1100,84,1068,68,1019,55,959,45,894,35,768,32,684,37,684,40,768,51,894,60,958,73,1017,89,1065,110,1096,144,1116,193,1131,255,1142,323,1148,467,1152,594,1149"/>
+<area shape="rect" id="Node000051" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="402,732,510,757"/>
+<area shape="poly" id="edge71_Node000050_Node000051" title=" " alt="" coords="584,747,511,747,511,742,584,742"/>
+<area shape="rect" id="Node000053" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="382,1171,530,1196"/>
+<area shape="poly" id="edge73_Node000052_Node000053" title=" " alt="" coords="611,1200,530,1193,531,1187,612,1194"/>
+<area shape="rect" id="Node000055" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="371,1221,541,1261"/>
+<area shape="poly" id="edge76_Node000052_Node000055" title=" " alt="" coords="612,1218,542,1229,541,1224,611,1212"/>
+<area shape="rect" id="Node000054" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="123,1163,303,1203"/>
+<area shape="poly" id="edge74_Node000053_Node000054" title=" " alt="" coords="368,1186,303,1186,303,1181,368,1181"/>
+<area shape="poly" id="edge75_Node000054_Node000007" title=" " alt="" coords="118,1158,106,1146,85,1108,69,1052,56,985,47,913,36,775,32,685,37,684,41,775,52,912,61,984,74,1051,90,1106,110,1143,121,1154"/>
+<area shape="poly" id="edge77_Node000055_Node000007" title=" " alt="" coords="361,1266,298,1272,230,1270,196,1264,163,1253,133,1238,106,1217,92,1199,79,1175,60,1112,46,1034,38,950,31,788,31,684,36,684,36,788,43,950,52,1034,65,1111,84,1173,96,1196,110,1213,136,1234,166,1248,197,1258,230,1264,298,1267,360,1260"/>
+</map>

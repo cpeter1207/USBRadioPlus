@@ -1,0 +1,11 @@
+<map id="test_program_queue_and_parrot_storage" name="test_program_queue_and_parrot_storage">
+<area shape="rect" id="Node000001" title="Verify program queue and parrot storage." alt="" coords="5,37,161,77"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a36044eba6f8e806bfdeddecc88d12f5b" title="Reserve native echo storage for the configured maximum duration." alt="" coords="209,5,365,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="161,43,195,37,196,42,162,48"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a170c1766b71f78c020eeed0a8bb74a3b" title="Queue app_rpt PCM for asynchronous native&#45;rate transmitter rendering." alt="" coords="211,69,363,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="162,67,198,73,197,78,161,72"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__core_8c.html#ad94e7ef3e25a69008277364a47e212c7" title="Return nonzero when at least one app_rpt frame is queued." alt="" coords="413,51,624,77"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="363,78,400,74,400,80,364,84"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8c.html#a29557072c8dd4626955f1f94680300ec" title="Queue one app_rpt frame, optionally prefixing silence for clock&#45;recovery startup." alt="" coords="423,101,614,126"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="364,95,410,99,409,105,363,100"/>
+</map>

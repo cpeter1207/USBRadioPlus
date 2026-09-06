@@ -1,0 +1,22 @@
+<map id="initialize" name="initialize">
+<area shape="rect" id="Node000001" title="Create a fully connected plugin using documented defaults." alt="" coords="351,129,429,155"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#ab569ecdaf27d62922ab0dd3af8ee4798" title="Report a conservative processing cost including host buffer preparation." alt="" coords="119,5,291,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="372,119,342,80,323,61,301,44,277,33,280,28,304,40,326,57,346,77,376,116"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#af6bc8ace7e2e57d73f3696dc71c3e99b" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="108,55,303,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="358,124,302,94,268,83,270,78,304,89,360,119"/>
+<area shape="rect" id="Node000005" href="$test__rms__agc__ladspa_8c.html#acdba86bdf5c2ecb7ee1bf4e0d8c0bfc6" title="Exact output must not depend on host block boundaries, including odd rates." alt="" coords="112,104,299,129"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="337,137,298,132,298,127,338,132"/>
+<area shape="rect" id="Node000006" href="$test__rms__agc__ladspa_8c.html#a99387fd032620ac87d547769f2dbc170" title="Verify hold, gain caps, downward rate and noise freezing at each audio rate." alt="" coords="141,153,269,179"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="338,151,270,160,269,155,337,146"/>
+<area shape="rect" id="Node000007" href="$test__rms__agc__ladspa_8c.html#ab907061450f372c014c3be48b6f1406f" title="Verify sustained qualification resets during pauses and level reductions." alt="" coords="141,203,270,228"/>
+<area shape="poly" id="edge9_Node000001_Node000007" title=" " alt="" coords="359,164,304,192,265,205,263,200,302,188,356,160"/>
+<area shape="rect" id="Node000008" href="$test__rms__agc__ladspa_8c.html#a9b21167cb94842fd0a5649d95711d3a2" title="Ensure malformed controls/audio cannot poison subsequent processing." alt="" coords="112,253,299,293"/>
+<area shape="poly" id="edge11_Node000001_Node000008" title=" " alt="" coords="375,168,345,206,304,242,279,255,277,250,301,237,341,202,371,165"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Run all standalone LADSPA gain&#45;rider checks." alt="" coords="5,129,60,155"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="119,38,110,44,87,64,67,87,42,130,38,128,63,84,83,60,106,40,117,34"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="127,87,109,94,77,112,51,131,48,127,74,107,107,89,125,82"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="105,134,60,141,60,135,105,129"/>
+<area shape="poly" id="edge8_Node000006_Node000003" title=" " alt="" coords="127,158,60,148,61,143,128,153"/>
+<area shape="poly" id="edge10_Node000007_Node000003" title=" " alt="" coords="130,201,107,192,76,175,49,157,52,153,78,171,109,188,132,196"/>
+<area shape="poly" id="edge12_Node000008_Node000003" title=" " alt="" coords="118,249,106,241,84,221,65,198,39,157,43,154,69,195,88,218,110,237,120,244"/>
+</map>

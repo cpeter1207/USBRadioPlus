@@ -1,0 +1,30 @@
+<map id="radio_config" name="radio_config">
+<area shape="rect" id="Node000001" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="5,120,107,145"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#a6ac88139b2fcc40d646f6ed5ea779f1f" title="Resolve receive/transmit signaling lists and CTCSS tone mappings." alt="" coords="161,63,331,88"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,117,154,98,184,89,186,94,155,103,95,123"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a24a9d7f045911ae7397d9e59a88a2fb8" title="Copy a channel&#39;s hardware settings under the settings mutex. An absent profile produces zeroed settin..." alt="" coords="155,113,337,153"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="107,130,141,130,141,135,107,135"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#af92a12ca243f8f04f87f2bd7a96a1495" title="Program configured radio frequency and power through the hardware bus." alt="" coords="163,177,329,217"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="96,143,174,170,172,175,94,148"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#a79c18d60196892d1d1ed065d5f16681d" title="Split a comma&#45;separated signaling&#45;code list into owned strings and a pointer table." alt="" coords="421,5,523,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="296,60,408,31,409,37,298,65"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__radio_8c.html#ac665674abe7bea9e08923f5bbda6eeaa" title="Find the CTCSS table index corresponding to a requested tone." alt="" coords="395,55,549,95"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="332,73,381,73,381,78,332,78"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="425,120,519,145"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="338,130,411,130,411,135,338,135"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__hardware_8c.html#abeee3f38f91b6c8b4697248ee607594e" title="Program RTX frequency and power using the parallel&#45;port bus." alt="" coords="385,173,559,213"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="330,193,371,192,371,197,330,198"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__channel__common_8c.html#a5e29c75973bbf6a2c5fb46a4252920fe" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="391,246,553,286"/>
+<area shape="poly" id="edge13_Node000007_Node000013" title=" " alt="" coords="313,214,394,239,393,245,311,219"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__hardware_8c.html#a0758a1c7b137ded20636903be81c2c74" title="Calculate RTX reference and synthesizer words for receive or transmit." alt="" coords="607,121,789,147"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="549,170,635,148,636,153,550,175"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__hardware_8c.html#a42f41edf93b2ece7d84929cbc0359027" title="Clock a synthesizer programming word over the parallel&#45;port serial interface." alt="" coords="629,171,767,196"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="559,186,615,184,616,189,559,192"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="839,220,990,245"/>
+<area shape="poly" id="edge12_Node000008_Node000012" title=" " alt="" coords="559,200,607,205,826,223,825,229,606,210,559,205"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__hardware_8c.html#a4eb72182a04a926355c4ad6ab8cbaf1d" title="Wait the parallel&#45;port protocol interval required for hardware settling." alt="" coords="837,171,992,196"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="767,181,824,181,824,186,767,186"/>
+<area shape="poly" id="edge11_Node000010_Node000012" title=" " alt="" coords="755,193,846,214,844,220,754,199"/>
+<area shape="rect" id="Node000014" href="$test__channel__core_8c.html#a24c6f696879498b3164fabac68845cfa" title="Host&#45;API test double for ast_radio_ppwrite; observable effects are recorded in harness state." alt="" coords="629,272,767,297"/>
+<area shape="poly" id="edge14_Node000013_Node000014" title=" " alt="" coords="553,270,615,275,615,280,552,275"/>
+</map>

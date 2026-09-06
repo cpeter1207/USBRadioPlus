@@ -1,0 +1,5 @@
+<map id="add_brickwall_bandpass" name="add_brickwall_bandpass">
+<area shape="rect" id="Node000001" title="Append the shared FFT band&#45;pass filter between two graph labels." alt="" coords="5,5,187,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="235,5,349,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,15,221,15,221,21,187,21"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="usbradio_start_audio" name="usbradio_start_audio">
+<area shape="rect" id="Node000001" title="Start PortAudio capture and playback for an acquired radio device." alt="" coords="596,55,755,80"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="205,5,289,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="600,55,548,46,405,31,289,23,289,17,406,26,548,41,601,49"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="380,55,548,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="582,70,548,70,548,65,582,65"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,55,332,80"/>
+<area shape="poly" id="edge6_Node000001_Node000005" title=" " alt="" coords="610,85,548,95,464,101,380,95,301,83,302,77,380,90,464,95,548,90,609,80"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,31,113,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="191,28,114,39,113,33,191,23"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="366,70,332,70,332,65,366,65"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="147,57,113,53,114,48,148,52"/>
+</map>

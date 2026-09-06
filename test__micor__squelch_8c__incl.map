@@ -1,0 +1,15 @@
+<map id="tests/test_micor_squelch.c" name="tests/test_micor_squelch.c">
+<area shape="rect" id="Node000001" title="Sample&#45;clocked MICOR squelch timing, flutter and frame&#45;alignment tests." alt="" coords="205,5,399,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="5,79,145,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="270,33,144,77,142,72,268,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="170,86,245,111"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="290,33,234,79,230,75,286,29"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="269,86,335,111"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="305,31,305,72,299,72,299,31"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="360,86,431,111"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="317,29,373,75,369,79,314,33"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="455,86,519,111"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="330,28,444,76,449,78,447,83,442,81,328,33"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="40,167,111,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="78,119,78,153,73,153,73,119"/>
+</map>

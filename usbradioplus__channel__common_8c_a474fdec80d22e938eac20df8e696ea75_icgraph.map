@@ -1,0 +1,21 @@
+<map id="usbradioplus_prepare_squelch_audio" name="usbradioplus_prepare_squelch_audio">
+<area shape="rect" id="Node000001" title="Prepare the undelayed radio&#45;detector input from the native ADC block." alt="" coords="751,44,913,84"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a03cbc429f159bb16668f4d123b78ce61" title="Verify native fifo and squelch copy." alt="" coords="121,5,275,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="737,46,702,41,586,32,470,27,275,26,276,21,470,21,586,26,703,36,737,41"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="532,51,703,77"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="737,67,703,67,703,61,737,61"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="560,101,675,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="738,88,674,103,673,98,736,83"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,87,60,113"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="142,53,62,90,59,85,140,49"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="356,51,464,77"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="518,67,465,67,465,61,518,61"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="336,101,484,126"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="546,116,484,116,484,111,546,111"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="113,144,283,184"/>
+<area shape="poly" id="edge9_Node000006_Node000009" title=" " alt="" coords="547,131,484,141,284,161,283,156,484,136,546,125"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="108,80,288,120"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="322,110,288,108,289,103,322,105"/>
+<area shape="poly" id="edge8_Node000008_Node000003" title=" " alt="" coords="94,103,60,103,60,97,94,97"/>
+<area shape="poly" id="edge10_Node000009_Node000003" title=" " alt="" coords="125,142,107,134,59,114,61,109,109,130,127,137"/>
+</map>

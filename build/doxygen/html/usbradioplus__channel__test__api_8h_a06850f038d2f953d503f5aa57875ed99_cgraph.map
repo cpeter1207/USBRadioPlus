@@ -1,0 +1,5 @@
+<map id="find_installed_usb_match" name="find_installed_usb_match">
+<area shape="rect" id="Node000001" title="Match installed USB interfaces to configured channel assignments." alt="" coords="5,5,144,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a3d96cca90694265711b7715c84efcfa1" title="Host&#45;API test double for ast_radio_usb_list_check; observable effects are recorded in harness state." alt="" coords="192,5,331,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="145,23,178,23,178,28,145,28"/>
+</map>

@@ -1,0 +1,16 @@
+<map id="reset_failures" name="reset_failures">
+<area shape="rect" id="Node000001" title="Clear failure&#45;injection state before the next independent test." alt="" coords="517,81,628,107"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__failures_8c.html#a93fc7368a30b6142a6c66315e38a1fc5" title="Exercise a configured graph&#39;s runtime sink/FIFO failure path." alt="" coords="296,5,469,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="530,78,468,52,418,33,420,28,470,48,532,73"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__failures_8c.html#a60a04178c1e29732326310315dde1995" title="Verify sink and fifo failures." alt="" coords="108,33,248,73"/>
+<area shape="poly" id="edge8_Node000001_Node000003" title=" " alt="" coords="504,90,248,63,248,57,504,84"/>
+<area shape="rect" id="Node000005" href="$test__avfilter__failures_8c.html#a4519ee359a7fbd156972898f349d76de" title="Verify configuration failures." alt="" coords="109,97,247,137"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="504,101,247,115,247,110,504,95"/>
+<area shape="rect" id="Node000006" href="$test__avfilter__failures_8c.html#a92de1be931b1fab880476cfa09eba400" title="Verify frame failures." alt="" coords="308,159,457,184"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="531,115,470,140,418,161,416,156,468,136,529,110"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="294,36,248,44,248,38,293,30"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,104,60,129"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="121,81,61,107,59,102,118,76"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="95,119,60,119,60,114,95,114"/>
+<area shape="poly" id="edge7_Node000006_Node000004" title=" " alt="" coords="294,174,203,168,107,151,57,132,59,127,109,146,204,162,295,169"/>
+</map>

@@ -1,0 +1,11 @@
+<map id="src/usbradioplus_channel_core.h" name="src/usbradioplus_channel_core.h">
+<area shape="rect" id="Node000001" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="5,5,192,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="9,167,84,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="63,48,36,68,16,94,12,109,15,125,30,154,25,157,10,126,7,109,11,92,32,64,60,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="115,167,186,192"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="138,43,165,64,186,92,190,109,188,126,172,157,167,154,183,125,185,109,182,94,161,68,134,48"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8h.html" title="Sample&#45;rate conversion, elastic clock recovery, and receive&#45;echo matching." alt="" coords="25,93,172,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="101,46,101,79,96,79,96,46"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="92,121,65,157,61,154,88,117"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="109,117,136,154,132,157,105,121"/>
+</map>

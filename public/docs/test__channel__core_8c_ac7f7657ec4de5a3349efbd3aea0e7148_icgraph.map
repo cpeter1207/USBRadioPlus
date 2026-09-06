@@ -1,0 +1,63 @@
+<map id="ast_category_browse" name="ast_category_browse">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_category_browse; observable effects are recorded in harness state." alt="" coords="1576,289,1736,314"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="654,38,750,64"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1596,288,1264,196,810,77,750,64,751,58,811,72,1265,190,1598,283"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#a62ee21b0d844af4ddd7d7941638c6872" title="Parse and validate a candidate configuration before replacing the locked live snapshot." alt="" coords="909,289,1019,314"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="1562,304,1019,304,1019,299,1562,299"/>
+<area shape="rect" id="Node000020" href="$usbradioplus__processing_8c.html#a9a8cbce549b61d9bb8c7b64bc88a70ad" title="Reject unknown sections and options in a candidate configuration." alt="" coords="1340,340,1528,365"/>
+<area shape="poly" id="edge32_Node000001_Node000020" title=" " alt="" coords="1587,320,1491,342,1490,337,1585,315"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="395,38,501,64"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="640,54,501,54,501,48,640,48"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="389,88,507,113"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="641,65,508,91,507,86,640,60"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a4d829c2cfdaa1b30744734602d6058bc" title="Verify shared config loading." alt="" coords="133,80,277,120"/>
+<area shape="poly" id="edge8_Node000002_Node000007" title=" " alt="" coords="650,37,588,22,512,11,430,11,390,17,352,28,337,37,328,47,319,59,304,70,279,83,277,78,301,66,315,55,324,44,334,32,350,23,389,11,430,5,512,5,589,16,651,32"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ac838b496291960df53ef0d653e8a087b" title="Verify oss module lifecycle guards." alt="" coords="108,16,303,56"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="381,50,303,45,303,39,381,44"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,56,60,81"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="95,60,61,66,60,61,94,54"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="375,103,278,103,278,98,375,98"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="119,87,60,76,61,71,120,82"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="659,202,745,228"/>
+<area shape="poly" id="edge10_Node000008_Node000009" title=" " alt="" coords="921,286,810,243,744,226,746,221,811,238,923,281"/>
+<area shape="rect" id="Node000012" href="$test__processing__validation_8c.html#a43cccbc2b87f19678dbfdfd8935f0329" title="Verify all dynamics band controls parse, retain defaults, and reject bad values." alt="" coords="370,330,526,370"/>
+<area shape="poly" id="edge13_Node000008_Node000012" title=" " alt="" coords="896,310,527,345,526,340,895,305"/>
+<area shape="rect" id="Node000013" href="$test__processing__validation_8c.html#af684deaa98a7f0418f23e8ba657ea894" title="Verify settings loader." alt="" coords="371,394,525,420"/>
+<area shape="poly" id="edge15_Node000008_Node000013" title=" " alt="" coords="903,320,811,343,659,373,526,397,525,392,658,368,810,338,902,315"/>
+<area shape="rect" id="Node000014" href="$test__processing__validation_8c.html#a53a5ecee8861f73550d25c2449e90a12" title="Verify settings loader rejections." alt="" coords="625,428,779,468"/>
+<area shape="poly" id="edge17_Node000008_Node000014" title=" " alt="" coords="936,325,880,364,812,405,758,430,756,426,809,401,877,359,933,320"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__processing_8c.html#aae8223404088f39036d2f86bf10a63be" title="Load settings, register commands, and start the link&#45;hook scanner." alt="" coords="593,88,811,113"/>
+<area shape="poly" id="edge19_Node000008_Node000015" title=" " alt="" coords="946,278,924,244,893,203,854,162,809,128,782,115,784,111,812,123,858,158,897,199,928,241,951,275"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__processing_8c.html#abeaeab57088b44ae99f98edcff0ff59d" title="Parse processing settings before radio channel creation." alt="" coords="611,138,793,178"/>
+<area shape="poly" id="edge22_Node000008_Node000016" title=" " alt="" coords="937,282,881,237,809,192,781,180,784,175,812,187,884,232,940,277"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="611,252,793,292"/>
+<area shape="poly" id="edge25_Node000008_Node000017" title=" " alt="" coords="895,297,793,285,794,280,896,291"/>
+<area shape="rect" id="Node000010" href="$test__processing__validation_8c.html#a1db0fa5f0c16906780fa9106ecc514da" title="Verify module lifecycle and simple cli." alt="" coords="365,138,531,178"/>
+<area shape="poly" id="edge11_Node000009_Node000010" title=" " alt="" coords="645,205,530,179,532,174,646,200"/>
+<area shape="rect" id="Node000011" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="178,365,233,390"/>
+<area shape="poly" id="edge12_Node000010_Node000011" title=" " alt="" coords="361,186,352,192,304,235,265,284,235,331,215,366,211,363,230,328,260,281,301,231,349,187,358,182"/>
+<area shape="poly" id="edge14_Node000012_Node000011" title=" " alt="" coords="356,363,233,377,233,372,356,357"/>
+<area shape="poly" id="edge16_Node000013_Node000011" title=" " alt="" coords="356,399,233,383,234,378,357,393"/>
+<area shape="poly" id="edge18_Node000014_Node000011" title=" " alt="" coords="611,455,487,452,418,446,350,435,286,415,232,393,234,388,287,410,351,430,418,440,487,447,611,449"/>
+<area shape="poly" id="edge20_Node000015_Node000003" title=" " alt="" coords="622,87,501,64,502,59,623,82"/>
+<area shape="poly" id="edge21_Node000015_Node000010" title=" " alt="" coords="632,119,531,142,530,136,631,113"/>
+<area shape="poly" id="edge23_Node000016_Node000003" title=" " alt="" coords="606,134,592,126,577,114,567,101,558,89,544,77,501,61,503,56,547,73,562,85,572,98,581,110,595,122,609,130"/>
+<area shape="poly" id="edge24_Node000016_Node000010" title=" " alt="" coords="597,160,531,160,531,155,597,155"/>
+<area shape="poly" id="edge26_Node000017_Node000006" title=" " alt="" coords="599,247,591,241,579,226,572,212,567,182,562,154,555,141,544,128,526,117,507,109,509,104,529,112,547,124,560,138,567,152,572,181,577,210,584,223,595,237,602,243"/>
+<area shape="poly" id="edge31_Node000017_Node000010" title=" " alt="" coords="606,249,592,241,577,229,567,216,558,204,544,192,521,180,524,175,547,187,562,200,571,213,580,225,595,237,609,244"/>
+<area shape="rect" id="Node000018" href="$test__processing__validation_8c.html#a83c3a4ff893717c1469f6b88d0ea9a4b" title="Running reloads reject incompatible active&#45;link crossovers without replacing settings." alt="" coords="351,202,545,242"/>
+<area shape="poly" id="edge27_Node000017_Node000018" title=" " alt="" coords="597,254,545,244,546,238,598,249"/>
+<area shape="rect" id="Node000019" href="$test__processing__validation_8c.html#aa9f8087d14e1c26b55d16aa88926b9c5" title="Reload band modes atomically and deliver every selected and inactive setting live." alt="" coords="374,266,522,306"/>
+<area shape="poly" id="edge29_Node000017_Node000019" title=" " alt="" coords="597,280,522,284,522,279,597,275"/>
+<area shape="poly" id="edge28_Node000018_Node000011" title=" " alt="" coords="364,249,352,256,311,283,274,314,220,367,216,363,270,310,308,279,349,251,362,245"/>
+<area shape="poly" id="edge30_Node000019_Node000011" title=" " alt="" coords="372,313,352,320,234,368,232,363,350,315,370,308"/>
+<area shape="rect" id="Node000021" href="$usbradioplus__processing_8c.html#a1719cf5b81c13c78a2980219fba72a12" title="Validate all section option names before parsing their values." alt="" coords="1117,370,1292,396"/>
+<area shape="poly" id="edge33_Node000020_Node000021" title=" " alt="" coords="1327,369,1292,374,1292,369,1326,364"/>
+<area shape="poly" id="edge34_Node000021_Node000008" title=" " alt="" coords="1153,368,1002,317,1004,312,1154,363"/>
+<area shape="rect" id="Node000022" href="$test__processing__validation_8c.html#ac7f7dd3c2104c45ed8604951ee3c4f0e" title="Verify option name validation." alt="" coords="859,430,1069,456"/>
+<area shape="poly" id="edge35_Node000021_Node000022" title=" " alt="" coords="1140,402,1016,433,1015,428,1139,396"/>
+<area shape="rect" id="Node000023" href="$test__processing__validation_8c.html#a50f4d54559c9dbe3aec29c81a218e60e" title="Verify unified configuration edge paths." alt="" coords="869,495,1059,535"/>
+<area shape="poly" id="edge37_Node000021_Node000023" title=" " alt="" coords="1175,406,1071,471,1015,497,1013,492,1068,466,1173,401"/>
+<area shape="poly" id="edge36_Node000022_Node000011" title=" " alt="" coords="910,462,862,474,811,483,681,498,578,503,528,499,476,492,350,459,313,445,278,427,223,393,226,388,280,422,315,440,351,454,477,486,529,494,578,497,680,493,810,478,861,469,909,457"/>
+<area shape="poly" id="edge38_Node000023_Node000011" title=" " alt="" coords="855,537,747,549,618,552,550,548,482,540,414,526,350,505,305,481,266,450,235,418,214,392,218,389,239,414,270,446,308,477,352,500,416,521,483,535,551,543,618,547,746,543,854,532"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="detach_all" name="detach_all">
+<area shape="rect" id="Node000001" title="Remove processing hooks from all channels during shutdown." alt="" coords="5,159,95,184"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a22d7bbd2eca5d8c17afc5980372e6316" title="Host&#45;API test double for ast_channel_datastore_find; observable effects are recorded in harness state..." alt="" coords="143,5,343,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="54,157,85,101,110,69,141,41,154,34,156,38,144,45,114,72,90,104,59,160"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aaa3be3a0d8825f7de17386799394880d" title="Host&#45;API test double for ast_channel_datastore_remove; observable effects are recorded in harness sta..." alt="" coords="158,55,327,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="65,156,99,131,141,105,157,98,159,103,144,110,102,135,68,161"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#af0d24e4522a44067ca4ffb1a942909e4" title="Host&#45;API test double for ast_channel_iterator_all_new; observable effects are recorded in harness sta..." alt="" coords="165,119,320,159"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="94,161,151,152,152,157,95,167"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ae8337c363763b607a55e777808fd2464" title="Host&#45;API test double for ast_channel_iterator_destroy; observable effects are recorded in harness sta..." alt="" coords="165,183,320,223"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="95,176,152,186,151,191,94,181"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#ac3d9999f796560d0f21520bd09a38906" title="Host&#45;API test double for ast_channel_iterator_next; observable effects are recorded in harness state." alt="" coords="147,248,338,273"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="67,182,101,208,144,233,166,241,164,246,142,238,98,212,64,186"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#aee27286888b30c6448a9bce928040a14" title="Host&#45;API test double for ast_datastore_free; observable effects are recorded in harness state." alt="" coords="171,297,315,323"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="60,183,92,232,116,259,144,282,159,290,157,295,141,287,112,263,88,235,56,186"/>
+</map>

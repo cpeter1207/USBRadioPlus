@@ -1,0 +1,7 @@
+<map id="measure_link_graph" name="measure_link_graph">
+<area shape="rect" id="Node000001" title="Measure a steady input through the same live graph at the IAX audio rate." alt="" coords="332,5,487,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#ad1170435bad14df3718fc7bfd8534dbc" title="Toggle every link stage on an existing 8 kHz graph and verify actual audio changes." alt="" coords="108,5,284,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="318,21,284,21,284,15,318,15"/>
+<area shape="rect" id="Node000003" href="$test__avfilter__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,5,60,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,21,60,21,60,15,94,15"/>
+</map>

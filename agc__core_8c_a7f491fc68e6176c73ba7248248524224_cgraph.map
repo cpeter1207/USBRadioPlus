@@ -1,0 +1,5 @@
+<map id="txagc_parse_stage_order" name="txagc_parse_stage_order">
+<area shape="rect" id="Node000001" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="5,5,191,31"/>
+<area shape="rect" id="Node000002" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="239,5,331,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="191,15,225,15,225,21,191,21"/>
+</map>

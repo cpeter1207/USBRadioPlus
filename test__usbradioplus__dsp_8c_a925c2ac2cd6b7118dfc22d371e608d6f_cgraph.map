@@ -1,0 +1,9 @@
+<map id="test_allocation_and_converter_failures" name="test_allocation_and_converter_failures">
+<area shape="rect" id="Node000001" title="Verify allocation and converter failures." alt="" coords="5,47,155,87"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="207,5,325,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,45,204,32,205,37,156,50"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="203,55,329,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="155,65,189,65,189,70,155,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a1606a7bd14a1f011cade73f4c6c6d32d" title="Convert an interleaved PCM block using a caller&#45;supplied rate ratio." alt="" coords="203,104,329,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="156,85,205,98,204,103,154,90"/>
+</map>

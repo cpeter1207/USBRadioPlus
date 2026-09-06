@@ -1,0 +1,17 @@
+<map id="find_desc" name="find_desc">
+<area shape="rect" id="Node000001" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="436,145,519,170"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#aeb7377682eee04e43d83b6a9050becb6" title="Register, complete, or report native audio and FIFO statistics." alt="" coords="207,5,388,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="458,135,427,96,386,60,365,48,368,43,390,55,431,93,462,131"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#ae5847384c95c3cadfc4b00e8232e56d5" title="Register, complete, or print active radio settings." alt="" coords="214,70,381,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="444,140,387,109,354,98,356,93,389,104,447,135"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="244,119,351,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="422,152,350,142,351,137,423,147"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a6eed0efdda85d675e4ce499d544b3f13" title="Show or select the radio used by interactive calibration commands." alt="" coords="246,169,349,194"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="423,167,349,177,349,172,422,162"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a184fe58a499575e2239ec698ec1629f6" title="Swap USB assignments between two configured radio channels." alt="" coords="229,218,365,243"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="445,179,389,208,352,221,350,215,387,203,443,175"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus__modern_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="230,267,365,293"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="462,183,432,221,389,257,362,270,360,265,387,252,428,217,458,180"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a21884bae255b9919b2246f8727a7bf03" title="Register, complete, or select the active radio for tuning." alt="" coords="5,169,159,194"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="232,184,159,184,159,179,232,179"/>
+</map>

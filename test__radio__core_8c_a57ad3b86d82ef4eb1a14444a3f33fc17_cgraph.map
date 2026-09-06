@@ -1,0 +1,13 @@
+<map id="test_signal_primitives" name="test_signal_primitives">
+<area shape="rect" id="Node000001" title="Verify signal primitives." alt="" coords="5,104,172,129"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#a1d1e1e45b2613d34987d2f60a77171a0" title="Track input center and amplitude for subaudible tone discrimination." alt="" coords="227,5,328,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,101,219,40,231,34,233,39,221,44,112,106"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#ae4fafcab9895e5438e534c2acc5c9597" title="Apply the configured receiver squelch&#45;tail delay." alt="" coords="234,55,321,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="137,101,220,79,222,84,139,107"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__radio_8c.html#a5f0a13b21d31f1737cf57ae373c9a084" title="Integrate the detector input using the stage&#39;s recursive filter coefficients." alt="" coords="231,104,324,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="172,114,217,114,217,119,172,119"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__radio_8c.html#a014b966d6cc60a37d379907c935227a5" title="Measure block extrema and peak&#45;to&#45;peak level for radio calibration." alt="" coords="220,153,335,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="139,127,215,147,214,152,137,132"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__radio_8c.html#a0f2fa98b98144b26ef163508544a289e" title="Run the signaling detector&#39;s fixed&#45;point FIR with its configured rate conversion." alt="" coords="226,203,329,228"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="113,127,221,188,235,194,233,199,219,192,110,132"/>
+</map>

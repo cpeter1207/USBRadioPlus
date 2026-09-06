@@ -1,0 +1,11 @@
+<map id="test_scalar_and_append_helpers" name="test_scalar_and_append_helpers">
+<area shape="rect" id="Node000001" title="Verify scalar and append helpers." alt="" coords="5,73,184,113"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="237,5,342,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,70,242,33,244,38,148,75"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="258,55,321,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="184,78,244,70,245,76,184,84"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="238,104,341,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="184,101,224,106,224,111,184,106"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="232,153,347,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="149,110,243,146,241,151,148,115"/>
+</map>

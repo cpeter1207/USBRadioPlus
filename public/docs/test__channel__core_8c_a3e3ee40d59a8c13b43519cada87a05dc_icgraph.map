@@ -1,0 +1,7 @@
+<map id="set_measurements" name="set_measurements">
+<area shape="rect" id="Node000001" title="Install scripted detector readings for a calibration test." alt="" coords="335,13,481,38"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a7a2e6c653c5e9455681a4622f165b753" title="Verify receive calibration helpers." alt="" coords="108,5,287,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="321,28,287,28,287,23,321,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

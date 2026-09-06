@@ -1,0 +1,20 @@
+<map id="test_option_name_validation" name="test_option_name_validation">
+<area shape="rect" id="Node000001" title="Verify option name validation." alt="" coords="5,41,216,66"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="945,66,1100,92"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="184,38,318,20,496,6,595,3,697,5,799,12,898,27,944,40,986,58,984,62,942,45,897,32,798,18,697,10,595,8,497,11,319,25,185,43"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a1719cf5b81c13c78a2980219fba72a12" title="Validate all section option names before parsing their values." alt="" coords="264,66,439,92"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="216,62,251,66,250,71,216,67"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a9a8cbce549b61d9bb8c7b64bc88a70ad" title="Reject unknown sections and options in a candidate configuration." alt="" coords="487,92,675,117"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="439,86,473,90,473,95,439,91"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#ac7f7657ec4de5a3349efbd3aea0e7148" title="Host&#45;API test double for ast_category_browse; observable effects are recorded in harness state." alt="" coords="730,42,890,68"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="640,89,736,68,737,73,641,94"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a59049d34098bbc9a35f525239ed4d2d0" title="Host&#45;API test double for ast_variable_browse; observable effects are recorded in harness state." alt="" coords="732,92,888,117"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="675,102,718,102,718,107,675,107"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a082af7a230525d61150ae3a40eb1348b" title="Recognize a shared flat defaults section." alt="" coords="753,141,867,166"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="641,114,740,136,739,141,640,120"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#ae31866a1d4fa5ce17a7aa6058bd46130" title="Validate an option against the vocabulary for its section kind." alt="" coords="723,190,897,216"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="604,115,657,145,724,176,744,184,742,189,722,181,655,150,601,119"/>
+<area shape="poly" id="edge8_Node000008_Node000002" title=" " alt="" coords="868,188,896,177,953,139,998,99,1001,103,956,143,899,181,870,193"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#accc0626992a3ee315023800ac4a67a80" title="Compare a configuration name against an allowed&#45;name table." alt="" coords="968,190,1077,216"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="897,200,954,200,954,206,897,206"/>
+</map>

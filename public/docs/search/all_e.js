@@ -1,0 +1,26 @@
+var searchData=
+[
+  ['n_5ffmt_0',['n_fmt',['../chan__usbradioplus_8c.html#a891a5e05d64a7c5afa85a2d4581772ee',1,'N_FMT:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#a891a5e05d64a7c5afa85a2d4581772ee',1,'N_FMT:&#160;chan_usbradioplus_modern.c'],['../usbradioplus__channel__private_8h.html#a891a5e05d64a7c5afa85a2d4581772ee',1,'N_FMT:&#160;usbradioplus_channel_private.h'],['../usbradioplus__radio_8c.html#a891a5e05d64a7c5afa85a2d4581772ee',1,'N_FMT:&#160;usbradioplus_radio.c']]],
+  ['name_1',['name',['../structchan__usbradio__pvt.html#ab8e55f1004b863995c549a378cff0c25',1,'chan_usbradio_pvt::name'],['../structurp__named__value.html#a31b5bbe44818aa17ae4763c43da87cd8',1,'urp_named_value::name'],['../structsection__override.html#ac55c345c265fe062b35488266ffc9887',1,'section_override::name'],['../structtxagc__profile.html#a2ff7b53c25974f00eba40e6da458f027',1,'txagc_profile::name'],['../structurp__radio__state.html#ae4bfbacc164176639b1526de7786adde',1,'urp_radio_state::name'],['../structusbradioplus__config__update.html#a4da92891478911f4c142069fa73d4cde',1,'usbradioplus_config_update::name'],['../structfake__option.html#a6d7f784bb3c8d14558778c409468a005',1,'fake_option::name']]],
+  ['name_5fsize_2',['NAME_SIZE',['../avfilter__processor_8c.html#a834e9a379307f869a10f4da078be5786',1,'avfilter_processor.c']]],
+  ['native_3',['native',['../structurp__echo__frame.html#a5d7ef9035d8129820076c69248c44fb4',1,'urp_echo_frame']]],
+  ['ncoef_4',['ncoef',['../structurp__radio__stage.html#a0fe3a565f4fc183ffd9cc2b45490e354',1,'urp_radio_stage']]],
+  ['newname_5',['newname',['../structchan__usbradio__pvt.html#a14fab468b4fdcb82e759c5eec3d3a1c0',1,'chan_usbradio_pvt']]],
+  ['next_6',['next',['../structurp__radio__stage.html#aa6287035641df2916ff8da3761649199',1,'urp_radio_stage::next'],['../structchan__usbradio__pvt.html#a91770c035bc72297333dd8dc1ca09508',1,'chan_usbradio_pvt::next']]],
+  ['nextsps_7',['nextSps',['../structurp__radio__stage.html#a33eadf1ae88bda6cf6cb6ce8347c3835',1,'urp_radio_stage']]],
+  ['nflash_8',['NFLASH',['../usbradioplus__channel__common_8c.html#a03400589cdb2c94d236fb25c038f9f10',1,'usbradioplus_channel_common.c']]],
+  ['node_9',['NODE',['../usbradioplus-tune.html#a6ece7165ed88388edd4c81895d38ab48',1,'usbradioplus-tune']]],
+  ['noise_5fpower_10',['noise_power',['../structurp__micor__squelch.html#a1a41ce6ba86b6dfab587c3eaabf2d884',1,'urp_micor_squelch']]],
+  ['now_11',['now',['../structurp__radio__stage.html#a2b165bd14e82b18a569ac59026ff6cfe',1,'urp_radio_stage']]],
+  ['nsamples_12',['nSamples',['../structurp__radio__stage.html#a47e51e41b68dba2062910f6865510fee',1,'urp_radio_stage']]],
+  ['nsamplesrx_13',['nSamplesRx',['../structurp__radio__state.html#a8d3c3544b62d57f9d9c3cd81889780b7',1,'urp_radio_state']]],
+  ['nsamplestx_14',['nSamplesTx',['../structurp__radio__state.html#a1fba3fd405cde99f1997e84e9079ffbe',1,'urp_radio_state']]],
+  ['num_5fdebug_5fpts_15',['NUM_DEBUG_PTS',['../usbradioplus__radio_8h.html#ad13a1659c2e80cb9b46f6e499df85739a44a3e36905ef017fc86fa9c5b026a863',1,'usbradioplus_radio.h']]],
+  ['numchanout_16',['numChanOut',['../structurp__radio__stage.html#a74bba14d2734e68a93eca755b6db4594',1,'urp_radio_stage']]],
+  ['numdebugchannels_17',['numDebugChannels',['../structurp__radio__state.html#adbeb256c9c3a2eeca609df41a3ae5dc9',1,'urp_radio_state']]],
+  ['numrxcodes_18',['numrxcodes',['../structurp__radio__state.html#af5bc5f8cc597cf3adbc6d1ef7e093076',1,'urp_radio_state::numrxcodes'],['../structurp__ctcss__decoder.html#ae7a4a35a7db8b8badcdc3df1d8d01d4d',1,'urp_ctcss_decoder::numrxcodes']]],
+  ['numrxctcssfreqs_19',['numrxctcssfreqs',['../structurp__radio__state.html#ae8b75a7ca9d72cfe81e03533898923a9',1,'urp_radio_state::numrxctcssfreqs'],['../structchan__usbradio__pvt.html#a77d39a437f3f2e8d8fadbe2d5545745d',1,'chan_usbradio_pvt::numrxctcssfreqs']]],
+  ['numtxcodes_20',['numtxcodes',['../structurp__radio__state.html#af4febbebfde2386111b420346db25613',1,'urp_radio_state']]],
+  ['numtxctcssfreqs_21',['numtxctcssfreqs',['../structurp__radio__state.html#addf303c88571633b5b6c70e267afa82b',1,'urp_radio_state::numtxctcssfreqs'],['../structchan__usbradio__pvt.html#a11700d0163281bad5dea6e7a7ad9cb9c',1,'chan_usbradio_pvt::numtxctcssfreqs']]],
+  ['nx_22',['nx',['../structurp__radio__stage.html#aa10a354c494effd4ed442e52d290e494',1,'urp_radio_stage']]]
+];

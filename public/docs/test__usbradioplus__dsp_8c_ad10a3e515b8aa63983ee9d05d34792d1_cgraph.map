@@ -1,0 +1,13 @@
+<map id="simulate_src_clock_drift" name="simulate_src_clock_drift">
+<area shape="rect" id="Node000001" title="Exercise actual resampling and FIFO recovery under simulated clock drift." alt="" coords="5,113,152,153"/>
+<area shape="rect" id="Node000002" href="$test__usbradioplus__dsp_8c.html#a4b93b2b9de4a4aa38e649b421ab17b61" title="Generate deterministic PCM tone samples for rate&#45;conversion tests." alt="" coords="249,5,299,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,111,145,76,199,41,234,26,236,31,201,46,148,80,104,115"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#a4be2f71d64d4f8bef579c2684d5ae312" title="Slew the conversion ratio toward the FIFO target without abrupt frame corrections." alt="" coords="200,55,348,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="147,110,191,97,193,102,148,115"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="215,120,333,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="152,130,201,130,201,135,152,135"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="211,169,337,195"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="153,149,210,163,209,168,152,154"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__dsp_8c.html#a1606a7bd14a1f011cade73f4c6c6d32d" title="Convert an interleaved PCM block using a caller&#45;supplied rate ratio." alt="" coords="211,219,337,244"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="111,151,153,177,201,204,219,211,217,216,199,208,150,182,108,155"/>
+</map>

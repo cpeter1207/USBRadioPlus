@@ -1,0 +1,10 @@
+<map id="usbradio_swap_audio_stopped" name="usbradio_swap_audio_stopped">
+<area shape="rect" id="Node000001" title="Publish completion of the audio&#45;worker swap pause." alt="" coords="555,23,717,63"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a0cf084a2cbd54f4237f43d04648a3228" title="Stop the PortAudio stream and clear queued transmitter audio." alt="" coords="380,5,507,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="541,34,506,29,507,24,542,28"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,31,332,56"/>
+<area shape="poly" id="edge4_Node000001_Node000003" title=" " alt="" coords="541,46,332,46,332,41,541,41"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="367,31,333,35,332,30,366,25"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,31,113,56"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="147,46,114,46,114,41,147,41"/>
+</map>

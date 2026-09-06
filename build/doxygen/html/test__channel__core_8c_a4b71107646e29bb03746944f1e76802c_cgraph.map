@@ -1,0 +1,23 @@
+<map id="test_numeric_helpers" name="test_numeric_helpers">
+<area shape="rect" id="Node000001" title="Verify numeric helpers." alt="" coords="5,191,168,216"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a385ca4e08912575fcfd3b7a12acf8576" title="Apply linear gain and saturate to the signed 16&#45;bit PCM range." alt="" coords="238,5,359,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,189,137,118,172,76,214,40,224,34,227,39,218,44,176,80,141,121,97,192"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a0ff843df19489f81b39b01fce1457ff0" title="Return the largest absolute value in a floating&#45;point audio buffer." alt="" coords="232,55,365,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="97,189,145,141,178,113,215,89,228,82,231,87,217,94,181,117,149,144,101,192"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="216,104,381,129"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="111,188,215,140,238,131,240,136,217,144,113,193"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#a8fbb9c10585ceb1a7aa6d9faa66b645b" title="Calculate the CM119 fixed&#45;point fine&#45;gain multiplier." alt="" coords="223,154,374,194"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="168,189,209,184,210,189,169,195"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__core_8c.html#a93a6afc55640158707a1de37361d28ce" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="216,219,381,244"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="169,211,203,216,202,221,168,217"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__core_8c.html#a9de5d78bd66a80fac4eabce81c31a4d3" title="Return the absolute peak of signed 16&#45;bit PCM, including 32768 for INT16_MIN." alt="" coords="240,268,357,293"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="118,214,217,253,242,261,240,266,215,258,116,218"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__core_8c.html#a418a09ed008c78be9021c94d10bf1227" title="Convert an absolute PCM peak to dBFS; zero becomes negative infinity." alt="" coords="223,317,375,343"/>
+<area shape="poly" id="edge9_Node000001_Node000009" title=" " alt="" coords="102,214,151,257,183,281,217,302,235,310,233,315,215,307,180,286,147,261,99,218"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__core_8c.html#a2d27f1638719bce5186847265eaf598a" title="Add two PCM samples without signed overflow." alt="" coords="225,367,372,392"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="98,215,143,280,177,319,218,352,230,359,228,364,214,356,174,323,139,284,93,218"/>
+<area shape="rect" id="Node000004" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="429,268,484,293"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="366,78,383,89,414,128,435,173,448,217,455,254,450,255,443,218,430,175,409,131,380,93,363,82"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="357,278,416,278,416,283,357,283"/>
+<area shape="poly" id="edge10_Node000009_Node000004" title=" " alt="" coords="341,315,381,302,416,291,417,296,382,307,342,320"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="usbradio_write" name="usbradio_write">
+<area shape="rect" id="Node000001" title="Queue an outbound app_rpt voice frame for native transmitter rendering." alt="" coords="331,45,449,70"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a9b53984771bd0d03afd1ec95fd65bc03" title="Verify oss channel write and call." alt="" coords="108,5,283,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="317,48,282,42,283,37,318,43"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a9986d059e8247ff55081a7a2574e7e79" title="Preserve admitted audio, sinc history, and clock recovery across arbitrary PTT edges." alt="" coords="111,69,279,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="318,72,280,78,279,73,317,67"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,45,60,70"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,48,61,55,60,50,94,43"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="97,73,59,65,61,60,98,67"/>
+</map>

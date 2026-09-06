@@ -1,0 +1,17 @@
+<map id="ast_channel_tech_pvt_set" name="ast_channel_tech_pvt_set">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_channel_tech_pvt_set; observable effects are recorded in harness state." alt="" coords="715,32,905,57"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#afd5fb69b5da24d158a913caaaea4cd42" title="Release Asterisk ownership and reset radio call state." alt="" coords="533,7,667,32"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="700,34,666,30,667,25,701,29"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a34743b40e5057bb1c0478c33a9ba95eb" title="Create an Asterisk channel and associate it with private radio state." alt="" coords="544,56,656,81"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="701,60,656,65,656,60,700,55"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a46d1dc9756e45108bf6ec4d0ee696a48" title="Verify oss channel hangup." alt="" coords="111,5,300,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="520,22,300,21,300,16,520,16"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,35,60,60"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="117,36,61,45,60,40,116,30"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#af6095a1326185eff38bd52cfba6e31ac" title="Verify oss channel creation and request." alt="" coords="108,55,303,95"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="530,72,303,76,303,71,530,67"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="351,107,485,132"/>
+<area shape="poly" id="edge7_Node000005_Node000007" title=" " alt="" coords="541,88,465,109,464,104,540,83"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="94,60,60,54,60,49,95,55"/>
+<area shape="poly" id="edge8_Node000007_Node000006" title=" " alt="" coords="342,106,302,98,303,93,343,101"/>
+</map>

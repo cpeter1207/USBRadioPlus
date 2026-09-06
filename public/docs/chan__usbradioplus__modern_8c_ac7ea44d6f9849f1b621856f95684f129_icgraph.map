@@ -1,0 +1,7 @@
+<map id="usbradio_swap_hid_wait" name="usbradio_swap_hid_wait">
+<area shape="rect" id="Node000001" title="Wait for the device&#45;swap handshake before continuing HID operations." alt="" coords="293,5,475,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="161,5,245,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="280,21,246,21,246,15,280,15"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="147,21,114,21,114,15,147,15"/>
+</map>

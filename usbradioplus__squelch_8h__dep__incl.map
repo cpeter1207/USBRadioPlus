@@ -1,0 +1,23 @@
+<map id="src/usbradioplus_squelch.h" name="src/usbradioplus_squelch.h">
+<area shape="rect" id="Node000001" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="803,5,1001,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8h.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="707,79,887,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="875,41,815,81,812,76,872,36"/>
+<area shape="rect" id="Node000011" href="$test__micor__squelch_8c.html" title="Sample&#45;clocked MICOR squelch timing, flutter and frame&#45;alignment tests." alt="" coords="911,79,1106,104"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="932,36,993,76,990,81,929,40"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,159,183,185"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="693,103,464,123,194,155,151,162,150,157,194,149,463,118,693,97"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,152,373,192"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="696,108,386,155,374,157,373,152,386,149,696,103"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="398,152,585,192"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="740,110,565,154,564,149,738,105"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__native__tick_8c.html" title="Native receive gating, processing, repeat, echo, and transmitter rendering." alt="" coords="609,152,785,192"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="773,115,722,154,719,150,769,111"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__radio_8c.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="809,159,987,185"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="824,111,885,157,881,161,821,115"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="1012,152,1176,192"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="854,105,1023,149,1022,154,852,110"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html" title="Executable channel core regression and failure&#45;path checks." alt="" coords="1201,152,1342,192"/>
+<area shape="poly" id="edge8_Node000002_Node000009" title=" " alt="" coords="898,103,1036,123,1189,149,1201,152,1200,157,1188,155,1035,129,897,108"/>
+<area shape="rect" id="Node000010" href="$test__radio__core_8c.html" title="Executable radio core regression and failure&#45;path checks." alt="" coords="1367,159,1536,185"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="901,101,1130,123,1229,133,1354,149,1397,157,1396,162,1354,155,1228,138,1129,128,900,107"/>
+</map>

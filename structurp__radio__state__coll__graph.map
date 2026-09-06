@@ -1,0 +1,14 @@
+<map id="urp_radio_state" name="urp_radio_state">
+<area shape="rect" id="Node000001" title=" " alt="" coords="215,181,337,207"/>
+<area shape="rect" id="Node000004" href="$structurp__radio__stage.html" title=" " alt="" coords="143,416,270,441"/>
+<area shape="poly" id="edge4_Node000004_Node000001" title=" " alt="" coords="223,215,205,232,194,256,188,281,187,334,195,381,205,415,200,417,190,383,182,334,182,280,189,254,201,229,219,211"/>
+<area shape="rect" id="Node000002" href="$structurp__ctcss__decoder.html" title=" " alt="" coords="130,93,273,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="220,128,242,156,265,179,262,183,238,159,216,131"/>
+<area shape="rect" id="Node000003" href="$structurp__ctcss__tone__detector.html" title=" " alt="" coords="111,5,291,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="204,45,204,93,199,93,199,45"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="267,408,286,390,297,367,303,342,302,289,291,242,279,208,284,206,296,240,307,289,308,343,302,369,290,394,271,412"/>
+<area shape="rect" id="Node000005" href="$structurp__micor__squelch.html" title=" " alt="" coords="5,181,149,207"/>
+<area shape="poly" id="edge5_Node000004_Node000005" title=" " alt="" coords="72,221,63,257,57,302,62,349,69,371,81,390,93,403,109,412,144,423,142,428,106,417,90,407,77,394,64,373,57,350,52,302,57,256,66,219"/>
+<area shape="rect" id="Node000006" href="$structt__sdbg.html" title=" " alt="" coords="297,93,362,119"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="317,132,286,182,281,179,313,129"/>
+</map>

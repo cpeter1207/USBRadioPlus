@@ -1,0 +1,5 @@
+<map id="urp_native_fifo_render" name="urp_native_fifo_render">
+<area shape="rect" id="Node000001" title="Render a block, concealing a shortage without an abrupt zero insertion." alt="" coords="5,5,173,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a60c55fc2f7da5a75339e908d345a87c5" title="Remove one 20 ms native&#45;rate frame." alt="" coords="221,5,372,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,15,207,15,207,21,174,21"/>
+</map>

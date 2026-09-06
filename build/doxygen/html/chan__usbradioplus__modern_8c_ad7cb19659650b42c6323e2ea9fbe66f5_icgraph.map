@@ -1,0 +1,16 @@
+<map id="usbradio_log_fault" name="usbradio_log_fault">
+<area shape="rect" id="Node000001" title="Report a USB/audio fault and latch recovery state." alt="" coords="596,51,739,77"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="205,26,289,51"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="631,48,592,30,547,16,477,9,406,11,341,20,289,31,288,25,340,15,406,6,477,3,549,11,593,25,633,43"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4ca98bb8893d5dc1b01beea29144a02e" title="Acquire the configured ASL USB radio and initialize its audio/HID interface." alt="" coords="396,26,532,51"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="582,56,532,50,532,45,583,51"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="380,75,548,101"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="583,77,549,81,548,76,582,72"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,75,332,101"/>
+<area shape="poly" id="edge8_Node000001_Node000006" title=" " alt="" coords="632,86,592,103,549,116,481,123,413,121,350,114,297,103,298,98,350,108,413,116,481,118,547,111,591,98,629,81"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,51,113,77"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="191,49,114,60,113,54,191,44"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="383,41,289,41,289,36,383,36"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="366,91,332,91,332,85,366,85"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="147,78,113,74,114,68,148,73"/>
+</map>

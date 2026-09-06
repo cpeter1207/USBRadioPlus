@@ -1,0 +1,7 @@
+<map id="__real_src_process" name="__real_src_process">
+<area shape="rect" id="Node000001" title="Linker entry point for the real src_process operation behind the test wrapper." alt="" coords="383,5,527,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aaaf7f8b7beba42065584bf5ee5aae252" title="Verify src process." alt="" coords="204,5,335,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="369,21,335,21,335,15,369,15"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aa7cf7eed8b1ec34ba6ac585db6bad878" title="Test wrapper for src_process controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,156,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="190,21,156,21,156,15,190,15"/>
+</map>

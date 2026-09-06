@@ -1,0 +1,5 @@
+<map id="urp_pcm_peak" name="urp_pcm_peak">
+<area shape="rect" id="Node000001" title="Return the absolute peak of signed 16&#45;bit PCM, including 32768 for INT16_MIN." alt="" coords="5,5,123,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__processor_8c.html#a0e44a09a19960b36d1179a8bc65865a3" title="Calculate the maximum absolute sample value for an audio assertion." alt="" coords="171,5,225,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="123,15,157,15,157,21,123,21"/>
+</map>

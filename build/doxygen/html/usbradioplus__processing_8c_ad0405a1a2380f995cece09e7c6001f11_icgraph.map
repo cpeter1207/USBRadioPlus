@@ -1,0 +1,7 @@
+<map id="read_bool" name="read_bool">
+<area shape="rect" id="Node000001" title="Read a yes/no option and flag malformed values without committing settings." alt="" coords="361,13,448,38"/>
+<area shape="rect" id="Node000002" href="$test__processing__validation_8c.html#a3f717f01a099c18f543900ac8d7f3371" title="Verify primitive configuration parsers." alt="" coords="108,5,313,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="347,28,313,28,313,23,347,23"/>
+<area shape="rect" id="Node000003" href="$test__processing__validation_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

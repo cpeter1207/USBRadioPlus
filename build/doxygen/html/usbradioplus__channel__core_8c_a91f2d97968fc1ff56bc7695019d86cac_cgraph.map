@@ -1,0 +1,7 @@
+<map id="urp_tx_tone_route_missing" name="urp_tx_tone_route_missing">
+<area shape="rect" id="Node000001" title="Return nonzero when configured transmitter CTCSS has no assigned output." alt="" coords="5,5,204,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#ad8ac60372bbf04e022d3a50a5db348dc" title="Return nonzero when either output assignment carries transmitter CTCSS." alt="" coords="252,5,413,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="204,15,238,15,238,21,204,21"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a17a5eec9e468068fa4bc667a7cfe0287" title="Return nonzero when an output assignment carries transmitter CTCSS." alt="" coords="461,5,640,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="414,15,448,15,448,21,414,21"/>
+</map>

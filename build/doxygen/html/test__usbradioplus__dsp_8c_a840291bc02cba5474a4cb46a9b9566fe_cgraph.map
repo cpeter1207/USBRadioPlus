@@ -1,0 +1,77 @@
+<map id="main" name="main">
+<area shape="rect" id="Node000001" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,304,60,329"/>
+<area shape="rect" id="Node000002" href="$test__usbradioplus__dsp_8c.html#a925c2ac2cd6b7118dfc22d371e608d6f" title="Verify allocation and converter failures." alt="" coords="329,46,479,86"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="33,303,39,270,52,226,73,179,88,157,106,139,154,107,208,85,264,72,315,65,316,71,265,77,210,90,157,112,110,143,92,161,78,182,57,228,44,271,38,304"/>
+<area shape="rect" id="Node000006" href="$test__usbradioplus__dsp_8c.html#a171c10c2b44c029aad190f61ab49f3e1" title="Verify clock recovery." alt="" coords="328,668,480,693"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="48,328,110,393,263,544,381,656,377,660,259,548,106,397,44,331"/>
+<area shape="rect" id="Node000009" href="$test__usbradioplus__dsp_8c.html#a1c608e61420e7f5d2304f12e3b2d37ba" title="Verify defensive and boundary paths." alt="" coords="329,417,479,457"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="61,323,329,410,327,415,60,328"/>
+<area shape="rect" id="Node000019" href="$test__usbradioplus__dsp_8c.html#ac8879570b236cc912c683354567ce358" title="Verify echo." alt="" coords="361,332,447,357"/>
+<area shape="poly" id="edge25_Node000001_Node000019" title=" " alt="" coords="61,316,348,338,347,343,60,321"/>
+<area shape="rect" id="Node000021" href="$test__usbradioplus__dsp_8c.html#aed7ad84531bdc1b35f7db3317ddd4287" title="Verify same rate bypass." alt="" coords="316,243,492,268"/>
+<area shape="poly" id="edge31_Node000001_Node000021" title=" " alt="" coords="60,310,312,268,313,273,61,315"/>
+<area shape="rect" id="Node000022" href="$test__usbradioplus__dsp_8c.html#aacd2714b453e3a5c20994cfb81165fc2" title="Verify simulated clock drift." alt="" coords="108,653,268,693"/>
+<area shape="poly" id="edge34_Node000001_Node000022" title=" " alt="" coords="40,329,66,416,110,534,139,591,168,639,164,642,135,593,106,536,61,418,35,331"/>
+<area shape="rect" id="Node000024" href="$test__usbradioplus__dsp_8c.html#abc8000c76739a5121356ee5e762ce91a" title="Verify src." alt="" coords="367,128,441,153"/>
+<area shape="poly" id="edge38_Node000001_Node000024" title=" " alt="" coords="34,303,42,276,56,243,77,208,106,180,136,163,168,150,235,135,299,130,354,132,354,138,300,136,236,140,170,155,138,168,110,184,82,211,61,245,47,278,40,304"/>
+<area shape="rect" id="Node000025" href="$test__usbradioplus__dsp_8c.html#a4daca2bd67ad1af33c9d82262375c1c9" title="Verify src clock drift." alt="" coords="115,195,261,220"/>
+<area shape="poly" id="edge43_Node000001_Node000025" title=" " alt="" coords="46,301,106,250,149,224,151,229,110,255,49,306"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="559,88,676,113"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="479,75,545,86,545,92,479,81"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="555,39,680,64"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="479,58,541,54,541,59,479,63"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__dsp_8c.html#a1606a7bd14a1f011cade73f4c6c6d32d" title="Convert an interleaved PCM block using a caller&#45;supplied rate ratio." alt="" coords="743,189,869,215"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="445,43,497,23,562,7,596,3,631,4,664,10,696,24,717,38,735,56,765,96,786,139,800,175,795,177,781,141,761,99,731,59,714,42,693,28,663,16,630,9,596,9,563,12,499,28,447,48"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__dsp_8c.html#aa7e44596b07a6391f8eb870d05421ccc" title="Reset the elastic&#45;buffer clock correction to nominal rate." alt="" coords="543,750,691,790"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="459,691,493,704,518,719,541,736,554,742,551,747,539,740,515,724,491,708,458,696"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__dsp_8c.html#a4be2f71d64d4f8bef579c2684d5ae312" title="Slew the conversion ratio toward the FIFO target without abrupt frame corrections." alt="" coords="543,686,691,726"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="481,687,530,693,529,698,480,692"/>
+<area shape="poly" id="edge21_Node000009_Node000003" title=" " alt="" coords="440,414,467,394,490,368,504,343,511,319,515,274,518,229,525,203,538,175,560,145,586,120,589,124,564,149,542,178,530,205,524,229,520,275,516,320,509,345,494,371,471,398,443,419"/>
+<area shape="poly" id="edge22_Node000009_Node000004" title=" " alt="" coords="442,414,468,394,490,369,507,328,513,290,512,253,506,218,502,183,503,147,513,111,538,74,542,70,546,73,542,77,518,113,508,148,507,182,512,217,517,253,519,290,513,329,494,371,472,398,445,419"/>
+<area shape="poly" id="edge23_Node000009_Node000005" title=" " alt="" coords="445,454,498,476,563,493,597,496,631,494,663,487,693,472,721,448,744,418,762,385,776,350,793,282,801,228,806,229,799,283,781,352,767,387,749,421,725,451,696,476,665,492,632,500,597,501,562,498,496,481,443,459"/>
+<area shape="poly" id="edge10_Node000009_Node000007" title=" " alt="" coords="416,456,481,613,517,693,542,736,546,740,543,744,538,740,512,695,476,615,411,458"/>
+<area shape="poly" id="edge11_Node000009_Node000008" title=" " alt="" coords="414,456,431,500,457,557,494,618,517,647,542,672,547,676,544,681,538,676,513,650,490,621,453,560,426,502,409,458"/>
+<area shape="rect" id="Node000010" href="$test__usbradioplus__dsp_8c.html#a4b93b2b9de4a4aa38e649b421ab17b61" title="Generate deterministic PCM tone samples for rate&#45;conversion tests." alt="" coords="592,189,643,215"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="439,414,466,394,490,368,501,349,507,330,510,295,515,260,523,242,538,224,557,211,578,204,580,209,559,216,542,228,528,245,520,261,515,295,512,331,506,351,494,372,470,398,442,419"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__dsp_8c.html#a45d11a93d4c866f549ee9efa3b9c9554" title="Route mono PCM to both stereo outputs with separate linear gains." alt="" coords="540,537,695,563"/>
+<area shape="poly" id="edge12_Node000009_Node000011" title=" " alt="" coords="437,454,541,516,572,530,569,534,539,520,434,459"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__dsp_8c.html#ae86a1e1c36665ff216661fd529db8b6b" title="Clear the paired app_rpt/native receive history used for echo matching." alt="" coords="563,436,672,461"/>
+<area shape="poly" id="edge14_Node000009_Node000013" title=" " alt="" coords="479,438,549,442,549,447,479,443"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__dsp_8c.html#a4aad6e4e2dbcea39843c1ca4b95100fc" title="Store corresponding app_rpt and native receive frames in the echo history." alt="" coords="558,387,677,412"/>
+<area shape="poly" id="edge15_Node000009_Node000014" title=" " alt="" coords="479,421,544,409,545,415,479,426"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__dsp_8c.html#aa29cbbd973e425bc86a0378bd71a65be" title="Subtract a correlated receive echo and return its matching native&#45;rate frame." alt="" coords="548,337,687,363"/>
+<area shape="poly" id="edge16_Node000009_Node000015" title=" " alt="" coords="446,414,539,373,561,365,563,370,541,378,448,419"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__dsp_8c.html#a74f1a44f31ff2e835f44630011c94dd3" title="Extract one channel from interleaved stereo PCM." alt="" coords="547,587,687,612"/>
+<area shape="poly" id="edge18_Node000009_Node000016" title=" " alt="" coords="422,455,471,513,504,545,541,573,552,579,550,584,539,578,501,549,467,517,418,458"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__dsp_8c.html#aaca9104f82da02824fec2f6ff0e84e75" title="Convert between sample rates, copying directly when the rates match." alt="" coords="551,239,683,264"/>
+<area shape="poly" id="edge19_Node000009_Node000017" title=" " alt="" coords="437,414,464,394,490,368,505,343,511,320,519,298,538,275,547,268,550,273,542,279,524,300,516,322,510,346,494,372,468,398,440,419"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__dsp_8c.html#ac386bf618a23376321bd65e0be3eea46" title="Clear resampler history at a stream discontinuity." alt="" coords="563,636,672,661"/>
+<area shape="poly" id="edge24_Node000009_Node000018" title=" " alt="" coords="417,456,435,492,463,537,498,583,542,623,551,629,549,633,538,627,495,586,458,540,431,494,412,458"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__dsp_8c.html#aae4d8c826353fd7e470c922f44701094" title="Round and clamp a sample to the signed 16&#45;bit PCM range." alt="" coords="768,437,844,463"/>
+<area shape="poly" id="edge13_Node000011_Node000012" title=" " alt="" coords="651,535,693,516,773,468,776,473,696,520,653,540"/>
+<area shape="poly" id="edge17_Node000015_Node000012" title=" " alt="" coords="665,360,696,373,741,399,779,427,776,431,738,404,693,378,663,365"/>
+<area shape="poly" id="edge20_Node000017_Node000005" title=" " alt="" coords="666,236,743,216,744,221,667,241"/>
+<area shape="poly" id="edge27_Node000019_Node000010" title=" " alt="" coords="424,330,490,279,513,250,522,237,539,224,578,207,580,212,541,228,526,241,517,253,494,283,427,334"/>
+<area shape="poly" id="edge28_Node000019_Node000013" title=" " alt="" coords="425,355,476,388,541,422,558,429,556,434,539,427,474,392,422,360"/>
+<area shape="poly" id="edge29_Node000019_Node000014" title=" " alt="" coords="448,353,554,381,553,386,446,358"/>
+<area shape="poly" id="edge30_Node000019_Node000015" title=" " alt="" coords="447,343,534,345,534,351,447,348"/>
+<area shape="rect" id="Node000020" href="$test__usbradioplus__dsp_8c.html#ab5f11daf8b55cd1bf2bdada86de1b27f" title="Calculate sample RMS for an audio&#45;result assertion." alt="" coords="594,288,641,313"/>
+<area shape="poly" id="edge26_Node000019_Node000020" title=" " alt="" coords="446,333,580,305,581,311,447,339"/>
+<area shape="poly" id="edge32_Node000021_Node000010" title=" " alt="" coords="455,240,578,209,580,214,456,245"/>
+<area shape="poly" id="edge33_Node000021_Node000017" title=" " alt="" coords="492,251,538,250,538,255,492,256"/>
+<area shape="rect" id="Node000023" href="$test__usbradioplus__dsp_8c.html#a01306dba9117831e1ae3f52d03280d8b" title="Exercise elastic FIFO occupancy under a simulated independent producer clock." alt="" coords="327,717,481,743"/>
+<area shape="poly" id="edge35_Node000022_Node000023" title=" " alt="" coords="265,690,343,711,341,716,263,695"/>
+<area shape="poly" id="edge36_Node000023_Node000007" title=" " alt="" coords="473,740,531,751,530,756,472,745"/>
+<area shape="poly" id="edge37_Node000023_Node000008" title=" " alt="" coords="480,719,529,713,530,718,481,724"/>
+<area shape="poly" id="edge41_Node000024_Node000003" title=" " alt="" coords="441,131,545,111,546,117,442,136"/>
+<area shape="poly" id="edge42_Node000024_Node000004" title=" " alt="" coords="430,126,539,73,558,66,560,71,541,78,432,130"/>
+<area shape="poly" id="edge39_Node000024_Node000010" title=" " alt="" coords="442,148,579,189,578,194,440,154"/>
+<area shape="poly" id="edge40_Node000024_Node000017" title=" " alt="" coords="442,143,468,151,494,164,510,179,518,194,527,209,542,224,553,231,550,235,538,228,523,213,514,197,505,182,490,168,466,156,440,148"/>
+<area shape="rect" id="Node000026" href="$test__usbradioplus__dsp_8c.html#ad10a3e515b8aa63983ee9d05d34792d1" title="Exercise actual resampling and FIFO recovery under simulated clock drift." alt="" coords="331,178,477,218"/>
+<area shape="poly" id="edge44_Node000025_Node000026" title=" " alt="" coords="261,201,317,199,317,204,262,207"/>
+<area shape="poly" id="edge47_Node000026_Node000003" title=" " alt="" coords="462,175,491,162,515,147,539,130,569,116,571,121,541,135,518,151,493,167,464,180"/>
+<area shape="poly" id="edge48_Node000026_Node000004" title=" " alt="" coords="471,176,490,163,507,141,513,119,520,96,538,73,545,68,548,73,542,77,525,98,518,120,511,143,494,167,474,180"/>
+<area shape="poly" id="edge49_Node000026_Node000005" title=" " alt="" coords="477,182,540,174,617,169,695,174,748,183,747,189,694,179,617,174,540,179,478,187"/>
+<area shape="poly" id="edge46_Node000026_Node000008" title=" " alt="" coords="479,215,494,228,514,258,527,287,534,315,537,343,532,398,520,452,508,505,502,559,505,587,511,615,524,643,542,672,544,675,540,679,538,676,519,646,506,616,499,588,497,559,502,504,515,450,527,397,532,343,529,316,522,288,509,260,490,232,476,219"/>
+<area shape="poly" id="edge45_Node000026_Node000010" title=" " alt="" coords="478,197,578,199,578,204,478,202"/>
+</map>

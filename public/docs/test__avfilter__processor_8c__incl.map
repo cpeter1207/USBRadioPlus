@@ -1,0 +1,19 @@
+<map id="tests/test_avfilter_processor.c" name="tests/test_avfilter_processor.c">
+<area shape="rect" id="Node000001" title="Executable avfilter processor regression and failure&#45;path checks." alt="" coords="177,5,313,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,80,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="202,48,83,98,81,93,200,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="105,101,173,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="223,48,166,94,162,90,220,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="384,255,459,280"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="240,46,231,88,232,111,238,132,266,171,303,203,342,228,379,247,377,252,340,233,300,208,262,175,234,135,227,111,226,87,235,45"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="248,101,315,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="256,45,274,87,269,89,251,47"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="339,101,410,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="276,43,347,91,344,95,273,48"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8h.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="434,93,577,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="303,43,436,86,434,92,302,48"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="487,135,467,157,449,183,436,212,428,242,423,240,431,211,444,180,463,154,483,132"/>
+<area shape="rect" id="Node000008" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="459,181,551,207"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="508,134,508,167,503,167,503,134"/>
+<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="494,209,447,248,444,243,490,205"/>
+</map>

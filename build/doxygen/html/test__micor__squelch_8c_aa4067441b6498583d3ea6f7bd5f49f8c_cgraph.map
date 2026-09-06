@@ -1,0 +1,13 @@
+<map id="test_fast_ramps_and_weak_hold" name="test_fast_ramps_and_weak_hold">
+<area shape="rect" id="Node000001" title="A partial carrier&#45;loss frame cannot spuriously charge a full long tail." alt="" coords="5,49,164,89"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#a4055510546e11dee2e4b111d3f1a4df5" title="Establish idle noise and then a steady carrier." alt="" coords="239,5,303,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,46,225,28,227,33,159,51"/>
+<area shape="rect" id="Node000003" href="$test__micor__squelch_8c.html#a0e7f9758b677f6c870983d52b7d44ec9" title="Feed a constant noise level for a specified number of samples." alt="" coords="379,56,429,81"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="164,66,365,66,365,71,164,71"/>
+<area shape="rect" id="Node000005" href="$test__micor__squelch_8c.html#a8d5791e6a76f5763f3df2316205d0868" title="Measure a closing transition without rounding it to a frame." alt="" coords="212,107,331,132"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="159,86,212,100,210,106,158,91"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="304,28,367,52,365,57,303,32"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__squelch_8h.html#a65b1e03895c7ceed3038aba622f93d63" title="Advance the noise detector, three comparators and storage capacitor by one sample." alt="" coords="477,56,673,81"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="429,66,464,66,464,71,429,71"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="305,104,365,80,367,85,306,109"/>
+</map>

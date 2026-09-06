@@ -1,0 +1,23 @@
+<map id="used_blocks" name="used_blocks">
+<area shape="rect" id="Node000001" title="Measure queued OSS output fragments for transmitter pacing." alt="" coords="1012,153,1115,178"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="796,127,964,153"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="998,159,964,154,965,149,999,154"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#a3edd62e517c7c81cfc4a84f40b99d823" title="Verify oss audio helpers." alt="" coords="573,178,748,203"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="999,172,748,188,748,183,998,167"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a6dfe0e656a6ff5edfad50d62b6d5598c" title="Verify one output frame per tick through PTT and receive&#45;state transitions." alt="" coords="108,120,307,160"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="782,143,307,143,307,137,782,137"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="811,158,717,181,716,175,810,153"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="603,70,718,95"/>
+<area shape="poly" id="edge6_Node000002_Node000006" title=" " alt="" coords="817,126,709,98,711,93,818,121"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,99,60,125"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,124,60,119,61,114,95,119"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="567,208,469,216,352,218,290,214,228,206,166,193,107,174,70,152,43,127,47,123,73,148,109,170,168,188,229,200,291,208,352,212,469,211,566,202"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="366,13,514,38"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="597,69,489,41,490,35,598,64"/>
+<area shape="rect" id="Node000009" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="355,63,525,103"/>
+<area shape="poly" id="edge10_Node000006_Node000009" title=" " alt="" coords="590,85,526,85,526,80,590,80"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="117,5,297,45"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="352,28,298,28,298,23,352,23"/>
+<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="138,53,109,66,53,101,50,97,107,62,136,48"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="341,92,61,113,60,107,341,87"/>
+</map>

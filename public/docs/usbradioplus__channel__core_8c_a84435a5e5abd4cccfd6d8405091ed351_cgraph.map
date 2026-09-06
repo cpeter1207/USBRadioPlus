@@ -1,0 +1,9 @@
+<map id="urp_render_transmit_block" name="urp_render_transmit_block">
+<area shape="rect" id="Node000001" title="Quantize and route one native transmitter block to the CM119 channels." alt="" coords="5,47,160,87"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__agc_8c.html#ad1fd866ac78ff30d567e202822daeb08" title="Build a sine with an explicitly specified RMS level." alt="" coords="285,5,335,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,48,270,24,272,29,161,53"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a2d27f1638719bce5186847265eaf598a" title="Add two PCM samples without signed overflow." alt="" coords="237,55,383,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="160,65,223,65,223,70,160,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__core_8c.html#af883d2508ef0a1df9d539b0acf9aebc8" title="Return nonzero when a transmitter assignment contains program audio." alt="" coords="208,104,412,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="161,81,238,98,237,104,159,87"/>
+</map>

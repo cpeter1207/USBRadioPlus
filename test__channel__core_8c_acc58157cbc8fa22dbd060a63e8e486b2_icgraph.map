@@ -1,0 +1,18 @@
+<map id="ast_channel_state" name="ast_channel_state">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_channel_state; observable effects are recorded in harness state." alt="" coords="751,31,891,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="532,5,703,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="736,36,702,31,703,26,737,30"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="560,55,675,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="737,56,676,63,675,58,737,51"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="356,5,464,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="518,21,465,21,465,15,518,15"/>
+<area shape="rect" id="Node000005" href="$test__channel__core_8c.html#acae4c04bd4528cb53caed8dfd98abbb5" title="Drive one complete OSS receiver block through the channel harness." alt="" coords="336,55,484,80"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="546,70,484,70,484,65,546,65"/>
+<area shape="rect" id="Node000008" href="$test__channel__core_8c.html#a0b0483e05f4b97147fde46142bf0234e" title="Verify oss channel read guards." alt="" coords="113,107,283,147"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="547,84,484,95,284,121,283,116,484,90,546,79"/>
+<area shape="rect" id="Node000006" href="$test__channel__core_8c.html#a15e8ea13daa395c08da5c6576e4be070" title="Verify oss complete read frame." alt="" coords="108,43,288,83"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="322,68,288,68,288,62,322,63"/>
+<area shape="rect" id="Node000007" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,83,60,108"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="95,86,61,93,60,88,94,81"/>
+<area shape="poly" id="edge8_Node000008_Node000007" title=" " alt="" coords="99,111,60,103,61,98,100,106"/>
+</map>

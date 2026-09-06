@@ -1,0 +1,11 @@
+<map id="test_activity_and_detector" name="test_activity_and_detector">
+<area shape="rect" id="Node000001" title="Verify detector independence, hysteresis, deadband and reacquisition protection." alt="" coords="5,55,200,80"/>
+<area shape="rect" id="Node000002" href="$test__rms__agc__ladspa_8c.html#a38beb42b84ff5b37d5bf5f90a37552e3" title="Set a scalar using its public port number." alt="" coords="254,5,321,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,52,240,28,241,33,152,57"/>
+<area shape="rect" id="Node000003" href="$test__rms__agc__ladspa_8c.html#a961cd05034761fccfe1805ab59a346c4" title="Feed an exact number of samples, preserving leveler state across blocks." alt="" coords="260,55,315,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="200,65,247,65,247,70,200,70"/>
+<area shape="rect" id="Node000004" href="$test__rms__agc__ladspa_8c.html#a5db56e4fed11bada747f81d6ac8f8c85" title="Create a fully connected plugin using documented defaults." alt="" coords="248,104,327,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="152,77,235,100,234,105,150,83"/>
+<area shape="rect" id="Node000005" href="$rms__agc__ladspa_8c.html#af8066f62a237dbd38265a01186dc72a5" title="Return the plugin descriptor for index zero." alt="" coords="375,104,512,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="327,114,361,114,361,119,327,119"/>
+</map>

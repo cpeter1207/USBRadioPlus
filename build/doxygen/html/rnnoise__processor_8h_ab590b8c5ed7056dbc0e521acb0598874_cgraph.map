@@ -1,0 +1,17 @@
+<map id="txagc_rnnoise_process" name="txagc_rnnoise_process">
+<area shape="rect" id="Node000001" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="5,52,176,77"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#a3b2d598f77051b707b0064b1515f13ca" title="Quantize a floating&#45;point sample without signed PCM overflow." alt="" coords="240,23,379,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,51,226,44,227,49,176,56"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8c.html#a21c7a4e013042b5bdf65c88899891b65" title="Denoise floating&#45;point receiver audio using 480&#45;sample RNNoise frames." alt="" coords="224,73,395,113"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="176,73,211,77,210,83,176,78"/>
+<area shape="rect" id="Node000004" href="$rnnoise__processor_8c.html#af410170b51f2686eb5e50f1fa83bef6e" title="Append a block to a bounded RNNoise FIFO." alt="" coords="465,5,535,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="360,70,394,57,453,33,455,38,396,62,362,75"/>
+<area shape="rect" id="Node000005" href="$rnnoise__processor_8c.html#a6d2dea9944fec6fb2f446373fe61dbab" title="Create or reconfigure the RNNoise converters for the source sample rate." alt="" coords="443,55,557,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="394,79,429,74,429,79,395,84"/>
+<area shape="rect" id="Node000007" href="$rnnoise__processor_8c.html#a37195b7be97f2b6d3d2ca3ff8aa8c32b" title="Remove samples from the front of an RNNoise FIFO." alt="" coords="459,104,541,129"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="395,101,446,107,446,113,394,106"/>
+<area shape="rect" id="Node000008" href="$rnnoise__processor_8c.html#a70a05b2edeae5dde96d2f59fc0f0e982" title="Discard RNNoise stream history and reset both rate converters." alt="" coords="446,153,554,179"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="363,110,454,146,452,151,361,115"/>
+<area shape="rect" id="Node000006" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="605,55,775,80"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="558,65,591,65,591,70,558,70"/>
+</map>

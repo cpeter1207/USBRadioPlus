@@ -1,0 +1,21 @@
+<map id="carrier" name="carrier">
+<area shape="rect" id="Node000001" title="Establish idle noise and then a steady carrier." alt="" coords="340,144,404,169"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#acdb6baf5098d3e1c160355b30671cd74" title="Report detector CPU cost without a platform&#45;sensitive timing assertion." alt="" coords="122,5,278,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="358,133,331,87,313,64,290,44,269,33,272,28,294,40,316,60,336,84,362,130"/>
+<area shape="rect" id="Node000004" href="$test__channel__shared__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="173,55,227,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="347,137,321,115,291,95,258,82,227,74,228,69,260,77,293,90,324,110,350,133"/>
+<area shape="rect" id="Node000005" href="$test__micor__squelch_8c.html#acc5eeec915e08c02d36706e3165fd6c2" title="Check closing time at every possible offset in a 20 ms audio frame." alt="" coords="130,105,270,145"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="326,151,270,140,271,135,327,146"/>
+<area shape="rect" id="Node000006" href="$test__micor__squelch_8c.html#aea91ab8571117a4d4337c37af48ebcc7" title="Gradual fading restores flutter protection; a strong signal defeats it." alt="" coords="120,169,280,209"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="327,168,281,176,280,171,326,162"/>
+<area shape="rect" id="Node000007" href="$test__micor__squelch_8c.html#aa4067441b6498583d3ea6f7bd5f49f8c" title="A partial carrier&#45;loss frame cannot spuriously charge a full long tail." alt="" coords="121,233,279,273"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="350,181,324,203,293,223,268,235,266,230,291,218,320,198,346,177"/>
+<area shape="rect" id="Node000008" href="$test__micor__squelch_8c.html#a076b4dc9f06afc355605abcfed6646a9" title="Verify buffer partitioning never changes the capacitor or output sequence." alt="" coords="108,297,292,323"/>
+<area shape="poly" id="edge10_Node000001_Node000008" title=" " alt="" coords="364,183,338,236,318,263,294,287,270,300,268,295,290,283,314,260,333,233,359,181"/>
+<area shape="rect" id="Node000003" href="$test__micor__squelch_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute continuous squelch regression tests." alt="" coords="5,176,60,201"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="116,39,110,44,81,76,61,113,47,149,39,177,34,175,42,147,56,111,77,72,106,40,113,35"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="128,152,109,159,61,179,59,174,107,154,126,147"/>
+<area shape="poly" id="edge7_Node000006_Node000003" title=" " alt="" coords="106,191,60,191,60,186,106,186"/>
+<area shape="poly" id="edge9_Node000007_Node000003" title=" " alt="" coords="126,231,107,223,59,203,61,198,109,218,128,226"/>
+<area shape="poly" id="edge11_Node000008_Node000003" title=" " alt="" coords="120,294,106,287,83,267,64,244,38,203,43,200,68,241,87,263,110,282,122,290"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="test_fade_flutter_and_defeat" name="test_fade_flutter_and_defeat">
+<area shape="rect" id="Node000001" title="Gradual fading restores flutter protection; a strong signal defeats it." alt="" coords="5,49,165,89"/>
+<area shape="rect" id="Node000002" href="$test__micor__squelch_8c.html#a4055510546e11dee2e4b111d3f1a4df5" title="Establish idle noise and then a steady carrier." alt="" coords="241,5,305,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,46,226,28,228,33,160,51"/>
+<area shape="rect" id="Node000003" href="$test__micor__squelch_8c.html#a0e7f9758b677f6c870983d52b7d44ec9" title="Feed a constant noise level for a specified number of samples." alt="" coords="380,56,431,81"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="166,66,367,66,367,71,166,71"/>
+<area shape="rect" id="Node000005" href="$test__micor__squelch_8c.html#a8d5791e6a76f5763f3df2316205d0868" title="Measure a closing transition without rounding it to a frame." alt="" coords="213,107,332,132"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="160,86,213,100,211,106,159,91"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="306,28,368,52,366,57,304,32"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__squelch_8h.html#a65b1e03895c7ceed3038aba622f93d63" title="Advance the noise detector, three comparators and storage capacitor by one sample." alt="" coords="479,56,675,81"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="431,66,465,66,465,71,431,71"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="306,104,366,80,368,85,308,109"/>
+</map>

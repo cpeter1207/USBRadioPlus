@@ -1,0 +1,9 @@
+<map id="pulserthread" name="pulserthread">
+<area shape="rect" id="Node000001" title="Drive timed pulses on configured parallel&#45;port outputs." alt="" coords="5,55,109,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a24c6f696879498b3164fabac68845cfa" title="Host&#45;API test double for ast_radio_ppwrite; observable effects are recorded in harness state." alt="" coords="157,5,296,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,52,168,32,169,37,102,57"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#ade26502e209b17ff94a3a01a4b5c62ef" title="Host&#45;API test double for ast_radio_tvnow; observable effects are recorded in harness state." alt="" coords="162,55,291,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,65,148,65,148,70,110,70"/>
+<area shape="rect" id="Node000004" href="$test__processing__validation_8c.html#aa3b53167912dd2b61672b853e97585d4" title="Host&#45;API test double for usleep; observable effects are recorded in harness state." alt="" coords="194,104,259,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="102,77,181,101,180,106,101,83"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="add_emphasis" name="add_emphasis">
+<area shape="rect" id="Node000001" title="Append FFmpeg emphasis normalized at the configured reference frequency." alt="" coords="5,5,121,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="169,5,284,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="122,15,155,15,155,21,122,21"/>
+</map>

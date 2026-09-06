@@ -1,0 +1,12 @@
+<map id="ast_channel_tech_set" name="ast_channel_tech_set">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_channel_tech_set; observable effects are recorded in harness state." alt="" coords="693,13,856,38"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a34743b40e5057bb1c0478c33a9ba95eb" title="Create an Asterisk channel and associate it with private radio state." alt="" coords="533,13,645,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="680,28,646,28,646,23,680,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#af6095a1326185eff38bd52cfba6e31ac" title="Verify oss channel creation and request." alt="" coords="108,5,303,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="519,28,303,28,303,23,519,23"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="351,38,485,63"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="520,38,486,43,485,38,519,33"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="337,44,303,40,303,34,337,38"/>
+</map>

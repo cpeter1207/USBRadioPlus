@@ -1,0 +1,5 @@
+<map id="test_src_process" name="test_src_process">
+<area shape="rect" id="Node000001" title="Verify src process." alt="" coords="204,5,335,31"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#aa7cf7eed8b1ec34ba6ac585db6bad878" title="Test wrapper for src_process controlled by the harness&#39;s failure&#45;injection state." alt="" coords="5,5,156,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,21,156,21,156,15,190,15"/>
+</map>

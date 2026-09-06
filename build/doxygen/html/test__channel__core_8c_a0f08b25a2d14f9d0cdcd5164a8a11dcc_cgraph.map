@@ -1,0 +1,5 @@
+<map id="test_shared_hardware_layouts" name="test_shared_hardware_layouts">
+<area shape="rect" id="Node000001" title="Verify shared hardware layouts." alt="" coords="5,5,172,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#abbccf6caf371d04c9b8206723a9b6872" title="Apply the configured USB&#45;interface wiring map to the channel&#39;s HID state." alt="" coords="220,13,328,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,23,206,23,206,28,172,28"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="characterize" name="characterize">
+<area shape="rect" id="Node000001" title="Measure reference CTCSS extrema after filter settling and Q8 gain scaling." alt="" coords="5,31,108,56"/>
+<area shape="rect" id="Node000002" href="$legacy__ctcss__reference_8c.html#a16a93f43e23262b86e6a36851c606411" title="Advance the reference integer CTCSS filter by one sample." alt="" coords="170,5,241,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,32,156,24,157,29,109,37"/>
+<area shape="rect" id="Node000003" href="$legacy__ctcss__reference_8c.html#af2b257af52e42ecb078559998303fac6" title="Reconstruct one reference Q15 sine&#45;table sample." alt="" coords="156,55,255,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="109,49,143,55,142,60,108,54"/>
+</map>

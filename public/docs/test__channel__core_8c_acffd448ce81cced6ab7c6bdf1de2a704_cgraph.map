@@ -1,0 +1,5 @@
+<map id="ast_jb_configure" name="ast_jb_configure">
+<area shape="rect" id="Node000001" title="Host&#45;API test double for ast_jb_configure; observable effects are recorded in harness state." alt="" coords="5,5,133,31"/>
+<area shape="rect" id="Node000002" href="$test__avfilter__agc_8c.html#a33a3169c02b0e2005a2d2a41cff62690" title="Construct valid standalone AGC settings with all other stages bypassed." alt="" coords="181,5,288,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="134,15,168,15,168,21,134,21"/>
+</map>

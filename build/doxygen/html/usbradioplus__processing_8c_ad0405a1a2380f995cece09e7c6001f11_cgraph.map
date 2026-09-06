@@ -1,0 +1,9 @@
+<map id="read_bool" name="read_bool">
+<area shape="rect" id="Node000001" title="Read a yes/no option and flag malformed values without committing settings." alt="" coords="5,55,92,80"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a41096d6f156184f595d6d387efe1bef2" title="Host&#45;API test double for ast_false; observable effects are recorded in harness state." alt="" coords="179,5,261,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="91,52,165,31,166,36,93,58"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#aa8fa259e12767d9f2e6f24e032f550a1" title="Host&#45;API test double for ast_true; observable effects are recorded in harness state." alt="" coords="183,55,257,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="92,65,169,65,169,70,92,70"/>
+<area shape="rect" id="Node000004" href="$test__channel__core_8c.html#ab5f4c5d0592d39442276bfa3d4b84e8f" title="Host&#45;API test double for ast_variable_retrieve; observable effects are recorded in harness state." alt="" coords="140,104,300,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="93,77,163,98,161,103,91,82"/>
+</map>

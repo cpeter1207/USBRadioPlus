@@ -1,0 +1,16 @@
+<map id="tests/test_avfilter_emphasis.c" name="tests/test_avfilter_emphasis.c">
+<area shape="rect" id="Node000001" title="Executable avfilter emphasis regression and failure&#45;path checks." alt="" coords="110,5,246,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,73,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="149,48,71,96,68,91,146,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="98,101,165,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="170,47,147,90,142,87,165,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="189,101,260,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="191,44,214,87,209,90,186,47"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8h.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="284,93,427,133"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="218,43,305,85,303,90,216,48"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="317,255,391,280"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="351,134,342,168,341,206,348,241,343,242,335,207,337,167,346,133"/>
+<area shape="rect" id="Node000007" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="351,181,443,207"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="368,132,386,168,382,170,363,135"/>
+<area shape="poly" id="edge7_Node000007_Node000006" title=" " alt="" coords="392,208,370,244,366,242,387,206"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="exercise_radio_debug_paths" name="exercise_radio_debug_paths">
+<area shape="rect" id="Node000001" title="Exercise radio trace decisions at injected module/file debug levels." alt="" coords="344,5,507,45"/>
+<area shape="rect" id="Node000002" href="$test__channel__core_8c.html#a38167bfb6a93ab674b4f2b3f7c0f81cc" title="Verify config update and radio programming." alt="" coords="108,5,296,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="330,28,296,28,296,23,330,23"/>
+<area shape="rect" id="Node000003" href="$test__channel__core_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+</map>

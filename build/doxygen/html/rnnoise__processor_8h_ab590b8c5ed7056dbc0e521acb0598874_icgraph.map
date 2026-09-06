@@ -1,0 +1,11 @@
+<map id="txagc_rnnoise_process" name="txagc_rnnoise_process">
+<area shape="rect" id="Node000001" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="339,45,509,70"/>
+<area shape="rect" id="Node000002" href="$test__rnnoise__processor_8c.html#a06fe2301348ae4249a904804e036f0aa" title="Verify integer and invalid inputs." alt="" coords="108,5,291,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="324,46,291,41,291,36,325,41"/>
+<area shape="rect" id="Node000004" href="$test__rnnoise__failures_8c.html#a787fff408bc502ef2545bded05083cff" title="Verify processing failures and fifo helpers." alt="" coords="109,69,289,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="325,74,290,79,289,74,325,69"/>
+<area shape="rect" id="Node000003" href="$test__rnnoise__processor_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,13,60,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="94,28,60,28,60,23,94,23"/>
+<area shape="rect" id="Node000005" href="$test__rnnoise__failures_8c.html#a840291bc02cba5474a4cb46a9b9566fe" title="Execute this harness&#39;s regression assertions and report any failures." alt="" coords="5,77,60,102"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="96,92,60,92,60,87,96,87"/>
+</map>
