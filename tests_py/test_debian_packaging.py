@@ -2,6 +2,8 @@
 ## @brief Debian packaging regression checks.
 from pathlib import Path
 
+import pytest
+
 ## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 ## Reusable workflow reference required by the code repository's callers.
@@ -37,10 +39,17 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert not list((ROOT / "debian").glob("*.prerm"))
 
 
-def test_private_agc_build_dependency_and_license_are_shipped():
-    """Keep the FFmpeg-hosted AGC buildable and licensed without a runtime SDK requirement."""
+@pytest.mark.parametrize("package_name", ["usbradioplus", "usbradioplus-asl3105"])
+def test_private_agc_build_dependency_and_license_are_shipped(package_name):
+    """Keep the FFmpeg-hosted AGC buildable and licensed without a runtime SDK requirement.
+
+    @param package_name Standard or modern-ASL binary package name.
+    """
     control = read("debian/control")
-    binary_control = control.split("Package: usbradioplus\n", maxsplit=1)[1]
+    source_control, binary_control = control.split("\nPackage: ", maxsplit=1)
+    # The modern-ASL build changes only the binary package name.
+    binary_control = package_name + "\n" + binary_control.split("\n", maxsplit=1)[1]
+    assert "ladspa-sdk" in source_control
     assert "ladspa-sdk" not in binary_control
     assert "${shlibs:Depends}" in binary_control
     assert "ladspa-sdk" in read("scripts/install-build-deps.sh")
