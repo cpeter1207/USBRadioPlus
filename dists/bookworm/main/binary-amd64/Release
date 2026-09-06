@@ -1,0 +1,6 @@
+Archive: bookworm
+Component: main
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Architecture: amd64
+Description: USBRadioPlus alpha packages for ASL3

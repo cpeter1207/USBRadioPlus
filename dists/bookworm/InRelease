@@ -1,0 +1,46 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: bookworm
+Codename: bookworm
+Date: Sun, 06 Sep 2026 18:30:56 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ 7abacca942b5d3573b61fc19572ce869 3188 main/binary-amd64/Packages
+ 37e98fbab99f771a893bb69b4d3cf05a 1355 main/binary-amd64/Packages.gz
+ 9e67ebc67971f9470745b9ab2f3c0cb3 145 main/binary-amd64/Release
+ 5aeef07ab3190dbcbeb1d5c4c7ff8273 3188 main/binary-arm64/Packages
+ f191591a5bb31d091f848642731b4b91 1357 main/binary-arm64/Packages.gz
+ 79665d92aee547a136521c140f66ebca 145 main/binary-arm64/Release
+SHA1:
+ 0eb47ea34508d0c5ecba6cf29ca6f14f0d96f9b7 3188 main/binary-amd64/Packages
+ 009631d206f6fc8ed5c63d5596fa32f53f2dced6 1355 main/binary-amd64/Packages.gz
+ 27e1f853fc2cf747ba594d70fa6900553bbad892 145 main/binary-amd64/Release
+ cfabce147b912c6a42176f0b9fc9e7d4a56771c1 3188 main/binary-arm64/Packages
+ da0ed58f5e18fd44fc0fea29c5b2dc081787c6e6 1357 main/binary-arm64/Packages.gz
+ fccdb59b8d190c74de4770b967dbc6169afc17a5 145 main/binary-arm64/Release
+SHA256:
+ 4f060acf48819f54b080197616889342024225b03a2f253274dd2a73ca1a77eb 3188 main/binary-amd64/Packages
+ 4ddcbb42e0b2cb2421148e14fe6cfad6965e5b7992c050f3c9bc617b80805514 1355 main/binary-amd64/Packages.gz
+ 667494dd5bbd19db69ae486d0b5098dc0678a53fa8d300c895edc3bbd0c429b2 145 main/binary-amd64/Release
+ d016e3b8e3188a03baa71106f0761c6011171718fd843a3d42386482d2f96103 3188 main/binary-arm64/Packages
+ 9ac5b153acd44f4cae3fa75030f40de7d6cd9cda07008014e3328e739a7561f4 1357 main/binary-arm64/Packages.gz
+ f872b45ed837f8bdf6e230de9b55659b5bdcfca204ce350bd4cd9f7f04555a87 145 main/binary-arm64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEoNWnng9cRenmNnmVCVFQK6x5XlUFAmqdsWAACgkQCVFQK6x5
+XlX3ggv+I6GdkiHUkDn08DlEZtcta+zKJFdnxEmIMtlU5M2QjyIfo7jA1jxs27nk
+AVZ/brJrj3wZNU4uDwLXx+m+4mnXzmMvZSdxqJ4OwQF89lHDzDgKXtKp+bT/dXVO
+/kDLW+JuxT/KBAAouB3ijaSwm3vpurYOK68D6GVs6qWQ0fvn3eRly2wZOzZQpOGh
+R8oLg5arTn5uyuhtFUM38fOdeqVNSP4wGfvAEFM6XO5fdIJLBTiKSoWjD1RXmBwV
+e/RAcCg+OS17beX0GRVuUfZe6sTe2FbHYeGkUvrVkAIaggFMjFaUGKeS9tLPo2bF
+BkDNQK8StUDv8D9jAS90rE3zRCl5VAGxLtwXjQmS2BbLZc7+CNkA5mI8IPsppWxl
+xagozMl9MC7K2zgv2LvYXCLqRKaZbLd/zS6z1QqcjryKZ6Lh6akFkyAzoTC6G5Kp
+GoxVsu6QEgyi6OiOSpTB9r8LOD63qxuS3F3xTDbllNLcqpgd+tS84L/D5Z0UkIGR
+qt1p9goD
+=XX22
+-----END PGP SIGNATURE-----
