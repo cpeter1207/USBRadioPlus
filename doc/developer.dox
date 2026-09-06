@@ -47,6 +47,13 @@ does not receive this tail padding while its FIFO reserve lasts. Native-rate
 input bypasses these resampling steps. Padding affects PCM audio only: app_rpt
 and tuning retain ownership of PTT, and FIFO draining does not extend it.
 
+The device writer submits one 48 kHz stereo block per completed capture
+interval, including while idle. Transmit activity selects the rendered block
+or an immutable silence block; COS and CTCSS decode do not control device
+write cadence. The OSS writer does not prepend silence when its queue empties.
+Its queue-depth bound and short/failed-write diagnostics still apply during
+idle operation. PortAudio retains the ASL audio API's device recovery.
+
 Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
 it does not change voice gain. Native CTCSS is mixed after transmitter dynamics

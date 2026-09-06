@@ -3239,7 +3239,6 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 			-INFINITY;
 		o->plus_preemphasis_input_ceiling_samples = 0;
 		o->plus_link_queue_underflows = o->plus_link_queue_overflows = 0;
-		o->plus_sound_zero_fill_frames = 0;
 		o->plus_sound_dropped_frames = 0;
 		o->plus_sound_short_writes = 0;
 		o->plus_parrot_playback_frames = 0;
@@ -3272,9 +3271,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		"%" PRIu64 ", final TX peak %.1f dBFS, final TX max %.1f dBFS"
 		", final ceiling interventions %" PRIu64
 		", pre gain %.2f dB, FIFO %u/%u (high %u, underruns %" PRIu64 ", overruns %" PRIu64
-		"), sound queue zero-fills %" PRIu64 ", dropped frames %" PRIu64
-		", short/errors %" PRIu64 ", native echo %s, playback frames %" PRIu64
-		", buffered %.2f seconds.\n",
+		"), sound queue dropped frames %" PRIu64 ", short/errors %" PRIu64
+		", native echo %s, playback frames %" PRIu64 ", buffered %.2f seconds.\n",
 		o->name, o->plus_native_frames, o->plus_src_errors, o->plus_adc_peak_dbfs,
 		o->plus_adc_max_peak_dbfs, o->plus_adc_rail_samples, o->plus_deemphasis_peak_dbfs,
 		o->plus_deemphasis_max_peak_dbfs, o->plus_preemphasis_input_peak_dbfs,
@@ -3285,9 +3283,9 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		urp_mixer_to_gain_db(effective_rxmixerset(o)), o->plus_program_queue.count,
 		URP_PROGRAM_QUEUE_FRAMES, o->plus_program_queue.high_water,
 		o->plus_link_queue_underflows, o->plus_link_queue_overflows,
-		o->plus_sound_zero_fill_frames, o->plus_sound_dropped_frames,
-		o->plus_sound_short_writes, o->plus_parrot_playing ? "playing" : "idle",
-		o->plus_parrot_playback_frames, (double)o->plus_parrot_count / URP_RATE_NATIVE);
+		o->plus_sound_dropped_frames, o->plus_sound_short_writes,
+		o->plus_parrot_playing ? "playing" : "idle", o->plus_parrot_playback_frames,
+		(double)o->plus_parrot_count / URP_RATE_NATIVE);
 	ast_cli(a->fd,
 		"Link clock recovery: app FIFO %u frames, native FIFO %u samples/%.2f ms, "
 		"target %u samples/%.2f ms, ratio correction %+.4f%%.\n",

@@ -115,7 +115,6 @@ struct chan_usbradio_pvt {
 	double plus_local_tx_peak_dbfs;
 	double plus_local_tx_max_peak_dbfs;
 	uint64_t plus_local_tx_rail_samples;
-	uint64_t plus_sound_zero_fill_frames;
 	uint64_t plus_sound_dropped_frames;
 	uint64_t plus_sound_short_writes;
 	uint64_t plus_parrot_playback_frames;

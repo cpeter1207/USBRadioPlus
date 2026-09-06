@@ -123,6 +123,10 @@ Resampling automatically adds one leading 20 ms silence frame for converter
 startup and, when queued input ends and output would starve, one silence
 frame to release retained audio. This padding affects PCM audio only and
 does not extend PTT, which remains controlled by app_rpt and tuning.
+Sound-device output runs continuously at 48 kHz, carrying silence while idle.
+PTT, carrier detection, and CTCSS decode do not stop device writes. Existing
+receive qualification and transmit muting still determine which audio is
+audible. The OSS output writer adds no extra silence block when its queue empties.
 .TP
 .B hardware_device_identifier, hardware_serial
 Select the USB audio interface by device identifier or serial number.

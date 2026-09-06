@@ -50,10 +50,10 @@ int radio_active(int fd, int argc, const char *const *argv);
  * @return Number of queued OSS output blocks.
  */
 int used_blocks(struct chan_usbradio_pvt *o);
-/** @brief Write one interleaved transmitter frame to the audio device.
+/** @brief Write one native stereo frame, substituting silence while transmit is idle.
  * @param o Private state of the selected radio channel.
- * @param data One native-rate interleaved stereo PCM block.
- * @return Zero on success; a nonzero status if the operation cannot complete.
+ * @param data One native-rate interleaved stereo PCM block, left unchanged.
+ * @return Bytes written, zero if no frame was written, or a negative OSS write error.
  */
 int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data);
 /** @brief Register the channel technology and start configured radio workers.

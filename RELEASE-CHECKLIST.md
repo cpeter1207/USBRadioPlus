@@ -59,6 +59,11 @@ still runs.
 - [ ] `duplex3mode=hardware` verified at 0, intermediate, and 999 levels.
 - [ ] `duplex3mode=software` verified through the native 48 kHz local route at 0, intermediate, and 999 levels.
 - [ ] USB disconnect/reconnect and Asterisk restart verified.
+- [ ] Continuous device output verified on a dummy load: silence on both DAC
+  channels while idle; no write-cadence change across PTT, COS, or CTCSS-decode
+  transitions; normal link, telemetry, voice, and CTCSS output while keyed.
+  Check device underruns and write/drop counters during idle, sustained audio,
+  and normal host load. Repeat after reopening the USB device.
 - [ ] Thirty-minute receive and keyed soak completed without growing errors.
 
 The software-only checklist is complete. Hardware measurements remain release

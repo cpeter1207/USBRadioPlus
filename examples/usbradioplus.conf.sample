@@ -52,6 +52,7 @@ channel_enabled = yes
 ;hardware_eeprom_enabled = yes
 ; Audio buffering and idle DSP controls.
 ;hardware_audio_fragment_count = 196
+; Device output continues with silence while idle; this bounds its queued audio.
 ;hardware_audio_queue_size = 20
 ;hardware_rx_cpu_saver_enabled = no
 ;hardware_tx_cpu_saver_enabled = no

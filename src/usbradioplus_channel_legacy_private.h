@@ -174,8 +174,6 @@ struct chan_usbradio_pvt {
 	double plus_local_tx_max_peak_dbfs;
 	/** Cumulative local-repeat samples beyond signed PCM range. */
 	uint64_t plus_local_tx_rail_samples;
-	/** Hardware output frames filled with silence. */
-	uint64_t plus_sound_zero_fill_frames;
 	/** Hardware output frames discarded. */
 	uint64_t plus_sound_dropped_frames;
 	/** Incomplete or failed hardware audio writes. */

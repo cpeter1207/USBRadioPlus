@@ -353,6 +353,14 @@ static ssize_t mock_read_result = -1;
 static int mock_read_errno = EAGAIN;
 /** Harness write result used to script and verify host behavior. */
 static int mock_write_result = -2;
+/** OSS audio descriptor observed separately from PTT kick-pipe writes. */
+static int mock_sound_descriptor = 7;
+/** Number of mocked sound writes, including failed and short attempts. */
+static unsigned int mock_sound_write_calls;
+/** Byte count requested by the most recent mocked sound write. */
+static size_t mock_sound_write_bytes;
+/** Copy of the most recent mocked sound write's native stereo payload. */
+static short mock_sound_write_data[FRAME_SIZE * 2 * 6];
 /** Recorded mock close calls for assertions. */
 static int mock_close_calls;
 /** Recorded pthread create calls for assertions. */
@@ -451,6 +459,18 @@ static long mock_tvnow_step;
 static int mock_audio_clipping;
 /** Harness pipe failure used to script and verify host behavior. */
 static int mock_pipe_failure;
+
+/** @brief Record a mocked sound write without modifying the caller's samples.
+ * @param buffer Samples supplied to the output API.
+ * @param count Number of bytes requested from the output API.
+ */
+static void record_mock_sound_write(const void *buffer, size_t count)
+{
+	mock_sound_write_calls++;
+	mock_sound_write_bytes = count;
+	memcpy(mock_sound_write_data, buffer,
+	       count < sizeof(mock_sound_write_data) ? count : sizeof(mock_sound_write_data));
+}
 
 /** @brief Test wrapper for pipe controlled by the harness's failure-injection state.
  * @param descriptors Test descriptor array.
@@ -786,6 +806,8 @@ ssize_t __wrap_read(int descriptor, void *buffer, size_t count)
 ssize_t __wrap_write(int descriptor, const void *buffer, size_t count)
 {
 	if (mock_oss_io) {
+		if (descriptor == mock_sound_descriptor)
+			record_mock_sound_write(buffer, count);
 		if (mock_write_result != -2)
 			return mock_write_result;
 		return (ssize_t)count;
@@ -2493,7 +2515,7 @@ PaError ast_radio_pa_write(struct ast_radio_pa_stream *stream, const short *data
 			   unsigned long frames)
 {
 	(void)stream;
-	(void)frames;
+	record_mock_sound_write(data, frames * AST_RADIO_PA_OUTPUT_CHANNELS * sizeof(*data));
 	modern_last_write = data;
 	return modern_write_result;
 }
@@ -5676,6 +5698,70 @@ static void test_shared_eeprom_wait(void)
 	clear_eeprom_target = NULL;
 }
 
+/** @brief Verify one output frame per tick through PTT and receive-state transitions. */
+static void test_continuous_soundcard_output(void)
+{
+	struct chan_usbradio_pvt radio = {0};
+	urp_radio_state radio_state = {0};
+	const short silence[FRAME_SIZE * 2 * 6] = {0};
+	short output[FRAME_SIZE * 2 * 6];
+	short original[FRAME_SIZE * 2 * 6];
+	const int ptt_states[][2] = {{0, 0}, {0, 0}, {1, 0}, {1, 1},
+				     {0, 1}, {0, 1}, {0, 0}, {0, 0}};
+	unsigned int expected_writes = 0;
+	size_t index;
+	unsigned int receiver;
+
+	radio.name = "continuous-output";
+	radio.radio = &radio_state;
+#ifdef URP_TEST_MODERN
+	radio.pa.active = 1;
+	modern_write_result = paNoError;
+#else
+	radio.sounddev = 7;
+	radio.total_blocks = 8;
+	radio.queuesize = 4;
+	mock_oss_io = 1;
+	mock_ioctl_failure = ULONG_MAX;
+	mock_oss_fragment_total = 8;
+	mock_write_result = -2;
+#endif
+	for (index = 0; index < ARRAY_LEN(output); ++index)
+		output[index] = (short)((index % 2 ? -1 : 1) * (int)(index + 1));
+	memcpy(original, output, sizeof(original));
+	mock_sound_write_calls = 0;
+	for (receiver = 0; receiver < 8; ++receiver) {
+		radio.rxcarrierdetect = receiver & 1;
+		radio.rxctcssdecode = (receiver >> 1) & 1;
+		radio.rxkeyed = (receiver >> 2) & 1;
+		radio_state.rxCarrierDetect = radio.rxcarrierdetect;
+		for (index = 0; index < ARRAY_LEN(ptt_states); ++index) {
+			unsigned int tick;
+			const short *expected;
+
+			radio_state.txPttIn = ptt_states[index][0];
+			radio_state.txPttOut = ptt_states[index][1];
+			expected = radio_state.txPttIn || radio_state.txPttOut ? original : silence;
+			for (tick = 0; tick < 2; ++tick) {
+#ifndef URP_TEST_MODERN
+				/* An empty queue must not add a second frame before this tick. */
+				mock_oss_fragments = 8 - (int)tick;
+#endif
+				assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+				assert(mock_sound_write_calls == ++expected_writes);
+				assert(mock_sound_write_bytes == sizeof(output));
+				assert(!memcmp(mock_sound_write_data, expected, sizeof(output)));
+				assert(!memcmp(output, original, sizeof(output)));
+				assert(radio.plus_sound_dropped_frames == 0);
+				assert(radio.plus_sound_short_writes == 0);
+			}
+		}
+	}
+#ifndef URP_TEST_MODERN
+	mock_oss_io = 0;
+#endif
+}
+
 #ifndef URP_TEST_MODERN
 /** @brief Verify oss audio helpers. */
 static void test_oss_audio_helpers(void)
@@ -5693,15 +5779,18 @@ static void test_oss_audio_helpers(void)
 	radio.queuesize = 4;
 	mock_oss_fragment_total = 8;
 	mock_oss_fragments = 6;
-	assert(used_blocks(&radio) == 0);
-	assert(radio.total_blocks == 6);
-	mock_oss_fragments = 4;
 	assert(used_blocks(&radio) == 2);
+	assert(radio.total_blocks == 8);
+	mock_oss_fragments = 4;
+	assert(used_blocks(&radio) == 4);
+	mock_oss_fragments = 8;
+	assert(used_blocks(&radio) == 0);
 	radio.total_blocks = 0;
 	radio.queuesize = 8;
 	mock_oss_fragment_total = 2;
 	mock_oss_fragments = 1;
-	assert(used_blocks(&radio) == 0);
+	assert(used_blocks(&radio) == 1);
+	assert(radio.total_blocks == 2);
 	assert(radio.queuesize == QUEUE_SIZE);
 	radio.total_blocks = 0;
 	radio.queuesize = 8;
@@ -5719,6 +5808,7 @@ static void test_oss_audio_helpers(void)
 	radio.sounddev = 7;
 	assert(setformat(&radio, O_CLOSE) == 0);
 	assert(radio.sounddev == -1 && mock_close_calls == 1);
+	assert(radio.total_blocks == 0);
 	mock_open_result = -1;
 	assert(setformat(&radio, O_RDWR) == -1);
 	mock_open_result = 7;
@@ -5767,28 +5857,45 @@ static void test_oss_audio_helpers(void)
 	mock_oss_speed = 48000;
 	radio.radio = &radio_state;
 	radio.sounddev = 7;
+	mock_sound_write_calls = 0;
 	radio_state.txPttIn = radio_state.txPttOut = 0;
-	assert(soundcard_writeframe(&radio, output) == 0);
+	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(mock_sound_write_calls == 1);
 	radio_state.txPttIn = 1;
 	radio.total_blocks = 8;
 	radio.queuesize = 1;
 	mock_oss_fragments = 0;
 	assert(soundcard_writeframe(&radio, output) == 0);
+	assert(mock_sound_write_calls == 1 && radio.plus_sound_dropped_frames == 1);
+	radio_state.txPttIn = 0;
+	assert(soundcard_writeframe(&radio, output) == 0);
+	assert(mock_sound_write_calls == 1 && radio.plus_sound_dropped_frames == 2);
+	radio_state.txPttIn = 1;
 	radio.total_blocks = 8;
 	radio.queuesize = 8;
 	mock_oss_fragments = 8;
 	mock_write_result = -1;
 	assert(soundcard_writeframe(&radio, output) == -1);
+	assert(mock_sound_write_calls == 2 && radio.plus_sound_short_writes == 1);
 	mock_write_result = 1;
 	assert(soundcard_writeframe(&radio, output) == 1);
+	assert(mock_sound_write_calls == 3 && radio.plus_sound_short_writes == 2);
 	mock_write_result = 0;
 	assert(soundcard_writeframe(&radio, output) == 0);
+	assert(mock_sound_write_calls == 4 && radio.plus_sound_short_writes == 3);
+	radio_state.txPttIn = 0;
+	mock_write_result = -1;
+	assert(soundcard_writeframe(&radio, output) == -1);
+	assert(mock_sound_write_calls == 5 && radio.plus_sound_short_writes == 4);
+	radio_state.txPttIn = 1;
 	mock_oss_fragments = 7;
 	mock_write_result = -2;
 	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(mock_sound_write_calls == 6 && radio.plus_sound_short_writes == 4);
 	mock_oss_fragments = 8;
 	mock_write_result = -2;
 	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(mock_sound_write_calls == 7 && radio.plus_sound_short_writes == 4);
 	radio.duplex3 = 500;
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	radio.micplaymax = 100;
@@ -5800,6 +5907,7 @@ static void test_oss_audio_helpers(void)
 	radio.sounddev = -1;
 	mock_open_result = -1;
 	assert(soundcard_writeframe(&radio, output) == 0);
+	assert(mock_sound_write_calls == 7);
 	mock_open_result = 7;
 	mock_oss_io = 0;
 }
@@ -6702,8 +6810,16 @@ static void test_oss_channel_read_guards(void)
 static struct ast_frame *oss_read_complete(struct chan_usbradio_pvt *radio,
 					   struct ast_channel *channel)
 {
+	struct ast_frame *frame;
+	unsigned int writes_before = mock_sound_write_calls;
+
 	mock_read_result = (ssize_t)(sizeof(radio->usbradio_read_buf) - radio->readpos);
-	return usbradio_read(channel);
+	frame = usbradio_read(channel);
+	assert(mock_sound_write_calls == writes_before + 1);
+	assert(mock_sound_write_bytes == sizeof(radio->usbradio_write_buf));
+	assert(radio->plus_sound_dropped_frames == 0);
+	assert(radio->plus_sound_short_writes == 0);
+	return frame;
 }
 
 /** @brief Verify oss complete read frame. */
@@ -6737,6 +6853,9 @@ static void test_oss_complete_read_frame(void)
 	assert(usbradioplus_dsp_init(&radio) == 0);
 	test_channel_private = &radio;
 	mock_oss_io = 1;
+	mock_ioctl_failure = ULONG_MAX;
+	mock_oss_fragment_total = mock_oss_fragments = 8;
+	mock_write_result = -2;
 	mock_read_errno = 0;
 	channel_state = AST_STATE_UP;
 	radio.clipledgpio = 1;
@@ -8050,6 +8169,7 @@ int main(void)
 	RUN_TEST(test_shared_control_helpers);
 	RUN_TEST(test_shared_receive_signaling_helpers);
 	RUN_TEST(test_shared_eeprom_wait);
+	RUN_TEST(test_continuous_soundcard_output);
 	RUN_TEST(test_oss_tune_write_paths);
 #ifndef URP_TEST_MODERN
 	RUN_TEST(test_oss_audio_helpers);

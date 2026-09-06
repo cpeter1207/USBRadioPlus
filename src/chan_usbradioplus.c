@@ -1095,11 +1095,11 @@ URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
 		return 1;
 	}
 
-	/* Set the total blocks */
+	/* Cache capacity, not the free-space snapshot: idle playback remains active. */
 	if (o->total_blocks == 0) {
 		ast_debug(1, "Channel %s: fragment total %d, size %d, available %d, bytes %d\n",
 			  o->name, info.fragstotal, info.fragsize, info.fragments, info.bytes);
-		o->total_blocks = info.fragments;
+		o->total_blocks = info.fragstotal;
 		/* Check the queue size, it cannot exceed the total fragments */
 		if (o->queuesize >= (unsigned int)info.fragstotal) {
 			o->queuesize = info.fragstotal - 1;
@@ -1115,6 +1115,8 @@ URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
 
 URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
 {
+	static const short silence[URP_NATIVE_SAMPLES * 2] = {0};
+	const short *output = data;
 	int res;
 
 	/* If the sound device is not open, setformat will open the device */
@@ -1124,50 +1126,29 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	if (o->sounddev < 0) {
 		return 0; /* not fatal */
 	}
-	/*  This may or may not be a good thing
-	 *  drop the frame if not transmitting, this keeps from gradually
-	 *  filling the buffer when asterisk clock > usb sound clock
-	 */
+	/* Keep the DAC fed at the capture clock's cadence, including while idle.
+	 * PTT selects audio or silence; it never starts or stops device writes. */
 	if (!o->radio->txPttIn && !o->radio->txPttOut) {
-		return 0;
+		output = silence;
 	}
-	/*
-	 * Nothing complex to manage the audio device queue.
-	 * If the buffer is full just drop the extra, otherwise write.
-	 * In some cases it might be useful to write anyways after
-	 * a number of failures, to restart the output chain.
-	 */
+	/* Bound device latency without adding an extra silent block on an empty queue. */
 	res = used_blocks(o);
 	if ((unsigned int)res > o->queuesize) { /* no room to write a block */
 		o->plus_sound_dropped_frames++;
-		/* The idle case returned above, so an overflow here is always on transmit. */
 		ast_log(LOG_WARNING,
 			"Channel %s: Sound device write buffer overflow - used %d blocks\n",
 			o->name, res);
 		return 0;
 	}
-	if (res == 0) { /* We are not keeping the buffer full, add 1 frame */
-		short outbuf[FRAME_SIZE * 2 * 6];
-
-		o->plus_sound_zero_fill_frames++;
-		memset(outbuf, 0, sizeof(outbuf));
-		res = write(o->sounddev, ((void *)outbuf), sizeof(outbuf));
-		if (res < 0) {
-			o->plus_sound_short_writes++;
-			ast_log(LOG_ERROR, "Channel %s: Sound card write error %s\n", o->name,
-				strerror(errno));
-		}
-		ast_debug(7, "A null frame has been added");
-	}
-	res = write(o->sounddev, ((void *)data), FRAME_SIZE * 2 * 2 * 6);
+	res = write(o->sounddev, output, sizeof(silence));
 	if (res < 0) {
 		o->plus_sound_short_writes++;
 		ast_log(LOG_ERROR, "Channel %s: Sound card write error %s\n", o->name,
 			strerror(errno));
-	} else if (res != FRAME_SIZE * 2 * 2 * 6) {
+	} else if (res != (int)sizeof(silence)) {
 		o->plus_sound_short_writes++;
-		ast_log(LOG_ERROR, "Channel %s: Sound card wrote %d bytes of %d\n", o->name, res,
-			(FRAME_SIZE * 2 * 2 * 6));
+		ast_log(LOG_ERROR, "Channel %s: Sound card wrote %d bytes of %zu\n", o->name, res,
+			sizeof(silence));
 	}
 
 	return res;
@@ -1178,6 +1159,8 @@ URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
 	int fmt, desired, res, fd;
 	char device[100];
 
+	/* A reopened device may have a different playback-buffer capacity. */
+	o->total_blocks = 0;
 	/* If the device is open, close it */
 	if (o->sounddev >= 0) {
 		ioctl(o->sounddev, SNDCTL_DSP_RESET, 0);
@@ -2899,7 +2882,6 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 			-INFINITY;
 		o->plus_preemphasis_input_ceiling_samples = 0;
 		o->plus_link_queue_underflows = o->plus_link_queue_overflows = 0;
-		o->plus_sound_zero_fill_frames = 0;
 		o->plus_sound_dropped_frames = 0;
 		o->plus_sound_short_writes = 0;
 		o->plus_parrot_playback_frames = 0;
@@ -2932,9 +2914,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		"%" PRIu64 ", final TX peak %.1f dBFS, final TX max %.1f dBFS"
 		", final ceiling interventions %" PRIu64
 		", pre gain %.2f dB, FIFO %u/%u (high %u, underruns %" PRIu64 ", overruns %" PRIu64
-		"), sound queue zero-fills %" PRIu64 ", dropped frames %" PRIu64
-		", short/errors %" PRIu64 ", native echo %s, playback frames %" PRIu64
-		", buffered %.2f seconds.\n",
+		"), sound queue dropped frames %" PRIu64 ", short/errors %" PRIu64
+		", native echo %s, playback frames %" PRIu64 ", buffered %.2f seconds.\n",
 		o->name, o->plus_native_frames, o->plus_src_errors, o->plus_adc_peak_dbfs,
 		o->plus_adc_max_peak_dbfs, o->plus_adc_rail_samples, o->plus_deemphasis_peak_dbfs,
 		o->plus_deemphasis_max_peak_dbfs, o->plus_preemphasis_input_peak_dbfs,
@@ -2945,9 +2926,9 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		urp_mixer_to_gain_db(effective_rxmixerset(o)), o->plus_program_queue.count,
 		URP_PROGRAM_QUEUE_FRAMES, o->plus_program_queue.high_water,
 		o->plus_link_queue_underflows, o->plus_link_queue_overflows,
-		o->plus_sound_zero_fill_frames, o->plus_sound_dropped_frames,
-		o->plus_sound_short_writes, o->plus_parrot_playing ? "playing" : "idle",
-		o->plus_parrot_playback_frames, (double)o->plus_parrot_count / URP_RATE_NATIVE);
+		o->plus_sound_dropped_frames, o->plus_sound_short_writes,
+		o->plus_parrot_playing ? "playing" : "idle", o->plus_parrot_playback_frames,
+		(double)o->plus_parrot_count / URP_RATE_NATIVE);
 	ast_cli(a->fd,
 		"Link clock recovery: app FIFO %u frames, native FIFO %u samples/%.2f ms, "
 		"target %u samples/%.2f ms, ratio correction %+.4f%%.\n",
