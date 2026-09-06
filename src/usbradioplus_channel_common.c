@@ -307,6 +307,7 @@ int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size
 		ast_moh_stop(c);
 		break;
 	case AST_CONTROL_RADIO_KEY:
+		ast_debug(5, "URP_TXTRACE channel=%s event=request key=1\n", o->name);
 		o->txkeyed = 1;
 		kickptt(o);
 		ast_debug(1, "Channel %s: ACRK code=%s TX ON.\n", o->name, (char *)data);
@@ -320,6 +321,7 @@ int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size
 		}
 		break;
 	case AST_CONTROL_RADIO_UNKEY:
+		ast_debug(5, "URP_TXTRACE channel=%s event=request key=0\n", o->name);
 		o->txkeyed = 0;
 		kickptt(o);
 		ast_debug(1, "Channel %s: ACRUK TX OFF.\n", o->name);

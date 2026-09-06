@@ -152,6 +152,9 @@ extern int __real_poll(struct pollfd *descriptors, nfds_t count, int timeout);
  */
 extern int __real_pipe(int descriptors[2]);
 
+/** Last opt-in timing record emitted by the shared channel code. */
+static char tx_trace_message[512];
+
 void test_ast_debug(int level, const char *format, ...)
 {
 	(void)level;
@@ -2248,7 +2251,12 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)file;
 	(void)line;
 	(void)function;
-	(void)format;
+	if (!strncmp(format, "URP_TXTRACE", 11)) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(tx_trace_message, sizeof(tx_trace_message), format, args);
+		va_end(args);
+	}
 }
 
 /** @brief Host-API test double for ast_log_ap; observable effects are recorded in harness state.
@@ -4004,12 +4012,22 @@ static void test_channel_callbacks(void)
 	assert(usbradio_indicate(channel, AST_CONTROL_PROCEEDING, NULL, 0) == 0);
 	assert(usbradio_indicate(channel, AST_CONTROL_PROGRESS, NULL, 0) == 0);
 	assert(moh_stop_calls == 3);
+	option_debug = 0;
+	tx_trace_message[0] = '\0';
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 0) == 0);
+	assert(!tx_trace_message[0]);
+	option_debug = 5;
+	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 0) == 0);
+	assert(strstr(tx_trace_message, "event=request key=1"));
 	assert(radio.txkeyed && !radio.forcetxcode);
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 1) == 0);
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_UNKEY, NULL, 0) == 0);
+	assert(strstr(tx_trace_message, "event=request key=0"));
+	option_debug = 0;
+	tx_trace_message[0] = '\0';
 	radio.forcetxcode = 1;
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_UNKEY, NULL, 0) == 0);
+	assert(!tx_trace_message[0]);
 	assert(!radio.txkeyed && !radio.forcetxcode);
 	assert(radio_state.pTxCodeDefault == radio.txctcssdefault);
 	assert(usbradio_indicate(channel, -1234, NULL, 0) == -1);
@@ -7406,14 +7424,24 @@ static void test_native_tick_baseline(void)
 		capture[i * 2] = (short)(1000.0 * sin(2.0 * M_PI * i / 48.0));
 		capture[i * 2 + 1] = 0;
 	}
+	option_debug = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=0"));
+	option_debug = 0;
 	assert(channel.plus_native_frames == 1);
 	assert(channel.plus_adc_peak_dbfs > -40.0);
 	assert(channel.plus_app_rpt_samples == 160);
 
+	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
+	module_debug_level = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=1"));
 	assert(channel.plus_native_frames == 2);
+	module_debug_level = 0;
+	file_debug_level = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=2"));
+	file_debug_level = 0;
 	assert(channel.plus_native_frames == 3);
 
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
@@ -7428,6 +7456,8 @@ static void test_native_tick_baseline(void)
 	       ((URP_FIFO_TARGET_NORMAL + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U) *
 		       URP_NATIVE_SAMPLES);
 	assert(channel.plus_native_frames == 4);
+	assert(strstr(tx_trace_message, "event=render frame=2"));
+	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
 	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));

@@ -47,6 +47,14 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	usbradioplus_processing_get_local(o->name, &chain);
 	local_chain_enabled = chain.enabled;
 	ctcss_phase_reverse = o->radio->txCtcssPhaseShift;
+	/* Opt-in per-frame trace distinguishes generated signaling from DAC playback. */
+	ast_debug(5,
+		  "URP_TXTRACE channel=%s event=render frame=%lu in=%d out=%d state=%d "
+		  "tone=%d inhibit=%d reverse=%d frequency10=%d timer_ms=%d\n",
+		  o->name, (unsigned long)o->plus_native_frames, o->radio->txPttIn,
+		  o->radio->txPttOut, o->radio->txState, o->radio->txCtcssEnabled,
+		  o->radio->b.txCtcssOff, ctcss_phase_reverse, o->radio->txCtcssFreq10,
+		  o->radio->txCtcssTurnoffTimer);
 	ctcss_frequency = o->radio->txCtcssFreq10 / 10.0;
 	ctcss_filter_250 = o->radio->txCtcssFilter250;
 	ctcss_tone_gain = o->radio->txCtcssGainQ8;

@@ -262,6 +262,34 @@ Set local receiver-to-transmitter audio level.
 .B duplex_local_repeat_mode = hardware|software
 Select the CM119 mixer or native 48 kHz local repeat path.
 .SH DIAGNOSTIC OPTIONS
+.SS Transmit timing trace
+For a short unkey test, enable Asterisk module debug level 5:
+.PP
+.nf
+core set debug 5 chan_usbradioplus.so
+.fi
+.PP
+Capture a logger destination that includes debug messages. Use millisecond
+timestamps (logger.conf dateformat %F %T.%3q). URP_TXTRACE records identify
+the channel, key/unkey requests, each native frame's CTCSS state and phase
+change, audio writes, and the beginning and end of the HID PTT write.
+OSS also reports queued bytes and estimated delay at 48 kHz, stereo,
+signed 16-bit. PortAudio reports submission results, not playback position.
+.PP
+Transmit a brief carrier with CTCSS, then release. A render record with
+reverse=1 marks the phase-shifted block. Add its queue delay to estimate
+playback time and compare with hid_begin/hid_end ptt=0. This excludes
+unreported device buffering. Write drops or failures invalidate this estimate.
+HID completion does not confirm electrical PTT or RF state.
+.PP
+Disable tracing after the test, or restore the previous debug level:
+.PP
+.nf
+core set debug 0 chan_usbradioplus.so
+.fi
+.PP
+Tracing is off at normal debug levels. It changes no audio or PTT policy and
+records no audio samples. Per-frame logging adds load; use short captures.
 .TP
 .B diagnostics_trace_type, diagnostics_trace_level, diagnostics_fever
 Set native trace selection, verbosity, and low-level tuning diagnostics.

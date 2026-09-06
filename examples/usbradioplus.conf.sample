@@ -143,6 +143,9 @@ channel_enabled = yes
 ;duplex_local_repeat_level = 0
 ;duplex_local_repeat_mode = hardware
 
+; Optional short TX timing captures use Asterisk module debug level 5, not
+; these settings. See usbradioplus.conf(5), Transmit timing trace; turn debug
+; off after the test to avoid continuous per-frame logging.
 [diagnostics]
 ; Diagnostic controls. Scoped diagnostics profiles inherit omitted values from
 ; this flat section.

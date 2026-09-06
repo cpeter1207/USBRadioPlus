@@ -1282,7 +1282,15 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
 				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
 				memcpy(bufsave, buf, sizeof(buf));
+				/* Bracket the USB call, not merely the cached desired PTT state. */
+				ast_debug(5,
+					  "URP_TXTRACE channel=%s event=hid_begin ptt=%d gpio=%u "
+					  "direction=%u\n",
+					  o->name, lasttxtmp, (unsigned char)buf[o->hid_gpio_loc],
+					  (unsigned char)buf[o->hid_gpio_ctl_loc]);
 				ast_radio_hid_set_outputs(usb_handle, buf);
+				ast_debug(5, "URP_TXTRACE channel=%s event=hid_end ptt=%d\n",
+					  o->name, lasttxtmp);
 			}
 			ast_radio_time(&o->lasthidtime);
 			ast_mutex_unlock(&o->usblock);
@@ -1348,6 +1356,10 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	 * paOutputUnderflowed (#593 / #598). Treat that as success here.
 	 */
 	res = ast_radio_pa_write(&o->pa, data, AST_RADIO_PA_FRAMES_PER_BUFFER);
+	/* PortAudio's wrapper does not expose DAC queue position here. Do not
+	 * report a successful enqueue as proof of physical playback. */
+	ast_debug(5, "URP_TXTRACE channel=%s event=write backend=portaudio result=%d muted=%d\n",
+		  o->name, res, data == silence_buf);
 	if (res < 0 && res != paOutputUnderflowed) {
 		usbradio_log_fault(
 			o, 0, "Channel %s: PortAudio write failed (%s); restarting audio stream\n",

@@ -1030,7 +1030,15 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
 				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
 				memcpy(bufsave, buf, sizeof(buf));
+				/* Bracket the USB call, not merely the cached desired PTT state. */
+				ast_debug(5,
+					  "URP_TXTRACE channel=%s event=hid_begin ptt=%d gpio=%u "
+					  "direction=%u\n",
+					  o->name, lasttxtmp, (unsigned char)buf[o->hid_gpio_loc],
+					  (unsigned char)buf[o->hid_gpio_ctl_loc]);
 				ast_radio_hid_set_outputs(usb_handle, buf);
+				ast_debug(5, "URP_TXTRACE channel=%s event=hid_end ptt=%d\n",
+					  o->name, lasttxtmp);
 			}
 			ast_radio_time(&o->lasthidtime);
 			ast_mutex_unlock(&o->usblock);
@@ -1093,6 +1101,12 @@ URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
 		}
 	}
 
+	/* Free bytes include partial fragments; unlike the admission limit, this
+	 * estimate must retain that precision when diagnosing PTT/playback timing. */
+	ast_debug(5, "URP_TXTRACE channel=%s event=queue queued_bytes=%d delay_ms=%.3f\n", o->name,
+		  info.fragstotal * info.fragsize - info.bytes,
+		  (info.fragstotal * info.fragsize - info.bytes) * 1000.0 /
+			  (URP_RATE_NATIVE * 2 * sizeof(short)));
 	return o->total_blocks - info.fragments;
 }
 
@@ -1117,6 +1131,7 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	/* Bound device latency without adding an extra silent block on an empty queue. */
 	res = used_blocks(o);
 	if ((unsigned int)res > o->queuesize) { /* no room to write a block */
+		ast_debug(5, "URP_TXTRACE channel=%s event=write_drop blocks=%d\n", o->name, res);
 		o->plus_sound_dropped_frames++;
 		ast_log(LOG_WARNING,
 			"Channel %s: Sound device write buffer overflow - used %d blocks\n",
@@ -1124,6 +1139,8 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 		return 0;
 	}
 	res = write(o->sounddev, output, sizeof(silence));
+	ast_debug(5, "URP_TXTRACE channel=%s event=write result_bytes=%d muted=%d\n", o->name, res,
+		  output == silence);
 	if (res < 0) {
 		o->plus_sound_short_writes++;
 		ast_log(LOG_ERROR, "Channel %s: Sound card write error %s\n", o->name,

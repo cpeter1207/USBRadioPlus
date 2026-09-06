@@ -7,6 +7,14 @@ configuration and operation.
 
 @section architecture Source layout
 
+Transmit observability uses opt-in Asterisk debug level 5 records prefixed
+URP_TXTRACE. Request, render, queue, write, and HID-call boundaries are distinct:
+generation or enqueue is not DAC playback, and HID return is not RF confirmation.
+OSS queue delay uses occupied bytes, including partial fragments. The PortAudio
+adapter does not claim an unavailable queue timestamp. See the configuration
+manual for bounded capture and disable instructions. No new PTT policy or
+audio buffering is introduced by the trace.
+
 - chan_usbradioplus.c adapts OSS/libusb radio devices to Asterisk.
 - chan_usbradioplus_modern.c adapts the ASL radio-device API and PortAudio.
 - usbradioplus_channel_common.h defines shared channel lifecycle and tuning calls.
