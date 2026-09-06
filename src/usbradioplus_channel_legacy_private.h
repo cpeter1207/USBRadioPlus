@@ -100,6 +100,8 @@ struct chan_usbradio_pvt {
 	unsigned int plus_rx_delay_index;
 	/** App_rpt-to-native streaming resampler. */
 	struct urp_src *plus_up;
+	/** Nonzero until one silence frame releases the pending transmitter SRC tail. */
+	unsigned int plus_link_src_pending;
 	/** Native-to-app_rpt streaming resampler. */
 	struct urp_src *plus_down;
 	/** Smoothed clock correction derived from transmitter FIFO occupancy. */

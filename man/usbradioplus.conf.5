@@ -119,6 +119,10 @@ The app_rpt-to-transmitter elastic FIFO uses a 120 ms startup target, adapting
 between 110 and 170 ms in 10 ms steps. These built-in targets are separate
 from the device queue and IAX jitter-buffer settings. They are not a fixed
 end-to-end delay: FIFO occupancy varies as audio blocks are consumed.
+Resampling automatically adds one leading 20 ms silence frame for converter
+startup and, when queued input ends and output would starve, one silence
+frame to release retained audio. This padding affects PCM audio only and
+does not extend PTT, which remains controlled by app_rpt and tuning.
 .TP
 .B hardware_device_identifier, hardware_serial
 Select the USB audio interface by device identifier or serial number.

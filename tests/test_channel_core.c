@@ -7224,11 +7224,13 @@ static void test_program_queue_and_parrot_storage(void)
 	size_t i;
 
 	radio.plus_app_rpt_samples = 160;
+	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	for (i = 0; i < ARRAY_LEN(samples); ++i)
 		samples[i] = (short)i;
 	usbradioplus_queue_program(&radio, samples, ARRAY_LEN(samples));
 	assert(radio.plus_program_queue.count ==
-	       (PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES);
+	       (PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES +
+		       1U);
 	assert(radio.plus_program_queue.high_water == radio.plus_program_queue.count);
 	assert(radio.plus_program_queue.frames[radio.plus_program_queue.head][0] == 0);
 	assert(radio.plus_program_queue
@@ -7564,7 +7566,9 @@ static void check_native_fifo_short_burst(unsigned int target_samples)
 		for (unsigned int frame = 0; frame < frames; ++frame) {
 			/* Recovery blends its preceding concealment into the first millisecond. */
 			size_t first_sample = burst && !frame ? URP_NATIVE_SAMPLES / 20U : 0;
+			src_process_calls = 0;
 			usbradioplus_native_tick(&channel);
+			assert(!src_process_calls && !channel.plus_link_src_pending);
 			assert(channel.plus_native_fifo.primed);
 			assert(channel.plus_native_fifo.target_samples == target_samples);
 			assert(channel.plus_native_fifo.target_samples >=
@@ -7597,6 +7601,204 @@ static void test_native_fifo_short_bursts(void)
 	check_native_fifo_short_burst(URP_FIFO_TARGET_MIN);
 	check_native_fifo_short_burst(URP_FIFO_TARGET_NORMAL);
 	check_native_fifo_short_burst(URP_FIFO_TARGET_MAX);
+}
+
+/** @brief Initialize a channel with the production best-quality sinc converters.
+ * @param channel Zero-initialized channel to prepare.
+ * @param target_samples Initial adaptive FIFO target in native samples.
+ * @param input_rate Link-side sample rate in samples per second.
+ * @param keyed Nonzero keeps the transmitter keyed while the program drains.
+ */
+static void initialize_src_burst_channel(struct chan_usbradio_pvt *channel,
+					 unsigned int target_samples, unsigned int input_rate,
+					 int keyed)
+{
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "src-burst");
+	strcpy(settings.profiles[0].channel, "RadioPlus/src-burst");
+	settings.profiles[0].enabled = 0;
+	channel->name = "src-burst";
+	channel->plus_app_rpt_rate = input_rate;
+	channel->plus_app_rpt_samples = input_rate / 50U;
+	channel->plus_emphasis_corner_hz = 300.0;
+	channel->plus_native_fifo.target_samples = target_samples;
+	channel->txkeyed = keyed;
+	channel->radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
+	assert(channel->radio);
+	/* The channel initializer selects the production SRC_SINC_BEST_QUALITY converter. */
+	assert(!usbradioplus_dsp_init(channel));
+}
+
+/** @brief Render one link-rate tone frame through real SRC startup and recovery.
+ * @param target_samples Initial adaptive FIFO target in native samples.
+ * @param input_rate Link-side sample rate in samples per second.
+ * @param keyed Nonzero keeps the transmitter keyed while the program drains.
+ */
+static void check_resampled_fifo_short_burst(unsigned int target_samples, unsigned int input_rate,
+					     int keyed)
+{
+	struct chan_usbradio_pvt channel = {0};
+	short program[URP_NATIVE_SAMPLES];
+	size_t program_samples = input_rate / 50U;
+	double input_energy = 0.0;
+
+	initialize_src_burst_channel(&channel, target_samples, input_rate, keyed);
+	for (size_t i = 0; i < program_samples; ++i) {
+		double frequency = i < 3U * program_samples / 4U ? 1000.0 : 2000.0;
+		program[i] = (short)(5000.0 * sin(2.0 * M_PI * frequency * i / input_rate));
+		input_energy += (double)program[i] * program[i];
+	}
+
+	for (unsigned int burst = 0; burst < 2; ++burst) {
+		unsigned int max_ticks =
+			(target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES + 3U;
+		double output_energy = 0.0;
+		double tail_sine = 0.0, tail_cosine = 0.0;
+		unsigned int tick;
+
+		/* No later program frame is available to satisfy the sinc filter's lookahead. */
+		usbradioplus_queue_program(&channel, program, program_samples);
+		assert(channel.plus_program_queue.count <= URP_PROGRAM_QUEUE_FRAMES);
+		for (tick = 0; tick < max_ticks; ++tick) {
+			usbradioplus_native_tick(&channel);
+			if (!tick)
+				assert(channel.plus_native_fifo.primed);
+			assert(channel.txkeyed == keyed);
+			assert(!channel.plus_link_queue_overflows && !channel.plus_src_errors);
+			assert(channel.plus_native_fifo.target_samples >= URP_FIFO_TARGET_MIN);
+			assert(channel.plus_native_fifo.target_samples <= URP_FIFO_TARGET_MAX);
+			for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+				double phase = 2.0 * M_PI * 2000.0 *
+					       (tick * URP_NATIVE_SAMPLES + i) / URP_RATE_NATIVE;
+				output_energy += (double)channel.plus_link_native[i] *
+						 channel.plus_link_native[i];
+				tail_sine += channel.plus_link_native[i] * sin(phase);
+				tail_cosine += channel.plus_link_native[i] * cos(phase);
+			}
+			if (!channel.plus_native_fifo.primed)
+				break;
+		}
+		assert(tick < max_ticks);
+		assert(!channel.plus_program_queue.count && !channel.plus_native_fifo.count);
+		assert(!channel.plus_link_src_pending);
+		/* Preserve most of the tone, allowing sinc ringing and the final concealment fade.
+		 */
+		assert(output_energy >=
+		       0.70 * input_energy * ((double)URP_RATE_NATIVE / input_rate));
+		/* The final 5 ms marker must escape the SRC, not just the initial voice energy. */
+		assert(hypot(tail_sine, tail_cosine) > 0.70 * 5000.0 * URP_NATIVE_SAMPLES / 8.0);
+		assert(channel.plus_link_queue_underflows == (keyed ? burst + 1U : 0));
+		if (keyed && target_samples < URP_FIFO_TARGET_MAX)
+			target_samples += URP_FIFO_TARGET_STEP;
+		assert(channel.plus_native_fifo.target_samples == target_samples);
+	}
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
+}
+
+/** @brief Preserve isolated link-rate bursts at the minimum, normal, and maximum FIFO targets. */
+static void test_resampled_fifo_short_bursts(void)
+{
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MIN, URP_RATE_LINK, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_NORMAL, URP_RATE_LINK, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MAX, URP_RATE_LINK, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_NORMAL, URP_RATE_LINK, 0);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MIN, 16000, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MAX, 16000, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MIN, 24000, 1);
+	check_resampled_fifo_short_burst(URP_FIFO_TARGET_MAX, 24000, 1);
+}
+
+/** @brief Keep arriving link audio continuous and discard stale padding state across rekey. */
+static void test_resampled_fifo_continuity_and_rekey(void)
+{
+	struct chan_usbradio_pvt channel = {0};
+	short program[URP_LINK_SAMPLES];
+	double expected_energy = 0.0;
+
+	initialize_src_burst_channel(&channel, URP_FIFO_TARGET_NORMAL, URP_RATE_LINK, 1);
+	for (size_t i = 0; i < ARRAY_LEN(program); ++i) {
+		program[i] = (short)(5000.0 * sin(2.0 * M_PI * 1000.0 * i / URP_RATE_LINK));
+		expected_energy +=
+			(double)program[i] * program[i] * ((double)URP_RATE_NATIVE / URP_RATE_LINK);
+	}
+	for (unsigned int frame = 0; frame < 24; ++frame) {
+		double energy = 0.0;
+		usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
+		usbradioplus_native_tick(&channel);
+		assert(channel.plus_native_fifo.primed && channel.plus_link_src_pending);
+		assert(!channel.plus_link_queue_underflows && !channel.plus_link_queue_overflows);
+		assert(!channel.plus_src_errors && channel.txkeyed);
+		for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i)
+			energy += (double)channel.plus_link_native[i] * channel.plus_link_native[i];
+		/* Once startup silence passes, padding must not introduce gaps between frames. */
+		if (frame >= 8)
+			assert(energy > 0.90 * expected_energy && energy < 1.10 * expected_energy);
+	}
+
+	/* Rekey while old sinc history and a pending tail still exist, with no new audio. */
+	channel.txkeyed = 0;
+	usbradioplus_native_tick(&channel);
+	assert(!channel.txkeyed && !channel.plus_native_fifo.was_keyed);
+	assert(channel.plus_link_src_pending && !channel.plus_program_queue.count);
+	channel.txkeyed = 1;
+	for (unsigned int tick = 0; tick < 3; ++tick) {
+		src_process_calls = 0;
+		usbradioplus_native_tick(&channel);
+		assert(src_process_calls == 1); /* Receive downsampling only. */
+		assert(!channel.plus_native_fifo.primed && !channel.plus_native_fifo.count);
+		assert(!channel.plus_link_src_pending && channel.txkeyed);
+	}
+	usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
+	usbradioplus_native_tick(&channel);
+	assert(channel.plus_native_fifo.primed);
+	assert(!channel.plus_link_queue_overflows && !channel.plus_src_errors);
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
+}
+
+/** @brief Stop padding after either a rejected or partially consumed synthetic tail frame. */
+static void test_resampled_fifo_tail_failures(void)
+{
+	for (unsigned int failure = 0; failure < 2; ++failure) {
+		struct chan_usbradio_pvt channel = {0};
+		short program[URP_LINK_SAMPLES] = {0};
+
+		initialize_src_burst_channel(&channel, URP_FIFO_TARGET_NORMAL, URP_RATE_LINK, 1);
+		usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
+		usbradioplus_native_tick(&channel);
+		assert(channel.plus_native_fifo.primed);
+		for (unsigned int tick = 0; tick < URP_PROGRAM_QUEUE_FRAMES &&
+					    channel.plus_native_fifo.count >= URP_NATIVE_SAMPLES;
+		     ++tick)
+			usbradioplus_native_tick(&channel);
+		assert(channel.plus_native_fifo.count < URP_NATIVE_SAMPLES);
+		assert(channel.plus_link_src_pending && !channel.plus_program_queue.count);
+		src_process_calls = 0;
+		if (failure)
+			partial_src_process_call = 2;
+		else
+			fail_src_process_call = 2;
+		usbradioplus_native_tick(&channel);
+		assert(src_process_calls == 2); /* Receive downsampling, then the synthetic tail. */
+		assert(channel.plus_src_errors == 1 && channel.plus_link_queue_underflows == 1);
+		assert(!channel.plus_link_src_pending && !channel.plus_native_fifo.primed);
+		assert(!channel.plus_native_fifo.count && !channel.plus_link_queue_overflows);
+		assert(channel.plus_native_fifo.target_samples ==
+		       URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP);
+		fail_src_process_call = 0;
+		partial_src_process_call = 0;
+		src_process_calls = 0;
+		usbradioplus_native_tick(&channel);
+		assert(src_process_calls == 1);
+		assert(channel.plus_src_errors == 1 && channel.plus_link_queue_underflows == 1);
+		assert(!channel.plus_link_src_pending && channel.txkeyed);
+		usbradioplus_dsp_destroy(&channel);
+		assert(!urp_radio_destroy(channel.radio));
+	}
 }
 
 /** @brief Apply sample-rate DSP carrier gating without changing non-DSP receive sources. */
@@ -7879,6 +8081,9 @@ int main(void)
 	RUN_TEST(test_dsp_init_failures);
 	RUN_TEST(test_native_tick_baseline);
 	RUN_TEST(test_native_fifo_short_bursts);
+	RUN_TEST(test_resampled_fifo_short_bursts);
+	RUN_TEST(test_resampled_fifo_continuity_and_rekey);
+	RUN_TEST(test_resampled_fifo_tail_failures);
 	RUN_TEST(test_native_sample_gate);
 	RUN_TEST(test_unlinked_channel_cleanup);
 	RUN_TEST(test_store_config_failure_and_option_edges);

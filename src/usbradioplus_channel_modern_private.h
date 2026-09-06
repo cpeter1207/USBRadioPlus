@@ -83,6 +83,8 @@ struct chan_usbradio_pvt {
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	unsigned int plus_rx_delay_index;
 	struct urp_src *plus_up;
+	/** Nonzero until one silence frame releases the pending transmitter SRC tail. */
+	unsigned int plus_link_src_pending;
 	struct urp_src *plus_down;
 	struct urp_clock_recovery plus_link_clock;
 	unsigned int plus_local_preemphasis_active;

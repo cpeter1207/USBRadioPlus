@@ -252,13 +252,15 @@ void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *sample
 {
 	unsigned int seed_frames, target_samples;
 	ast_mutex_lock(&o->plus_link_lock);
-	/* Lead a new or recovered burst with the target safety margin. PTT remains
-	 * asserted while it drains, so even a one-frame telemetry burst is kept. */
+	/* Lead each burst with the target reserve. A resampled stream needs one
+	 * additional frame for sinc history before it can reach that reserve.
+	 * This padding affects audio only; app_rpt retains ownership of PTT. */
 	target_samples = o->plus_native_fifo.target_samples ? o->plus_native_fifo.target_samples
 							    : URP_FIFO_TARGET_NORMAL;
 	seed_frames = !o->plus_native_fifo.primed && !o->plus_native_fifo.count &&
 				      !urp_program_queue_pending(&o->plus_program_queue)
-			      ? (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U
+			      ? (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES -
+					1U + (o->plus_app_rpt_rate != URP_RATE_NATIVE)
 			      : 0;
 	if (urp_program_queue_push(&o->plus_program_queue, samples, count, o->plus_app_rpt_samples,
 				   seed_frames)) {
@@ -1641,6 +1643,7 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
+	o->plus_link_src_pending = 0;
 	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	if (!o->plus_up || !o->plus_down) {

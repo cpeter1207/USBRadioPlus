@@ -160,6 +160,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
 	if (o->txkeyed && !o->plus_native_fifo.was_keyed) {
 		urp_native_fifo_key_start(&o->plus_native_fifo);
+		o->plus_link_src_pending = 0;
 		urp_clock_recovery_reset(&o->plus_link_clock);
 	} else if (!o->txkeyed) {
 		o->plus_native_fifo.was_keyed = 0;
@@ -183,8 +184,15 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		ast_mutex_lock(&o->plus_link_lock);
 		have_frame = urp_program_queue_pop(&o->plus_program_queue, o->plus_link_8k);
 		ast_mutex_unlock(&o->plus_link_lock);
-		if (!have_frame)
-			break;
+		if (!have_frame) {
+			if (!o->plus_link_src_pending ||
+			    o->plus_native_fifo.count >= URP_NATIVE_SAMPLES)
+				break;
+			/* Release retained sinc samples only when output would starve.
+			 * Padding earlier would insert silence between arriving frames;
+			 * repeating it would hide a genuine underrun indefinitely. */
+			o->plus_link_src_pending = 0;
+		}
 		if (o->plus_app_rpt_rate == URP_RATE_NATIVE) {
 			plus_link_native_push(o, o->plus_link_8k, o->plus_app_rpt_samples);
 			continue;
@@ -201,6 +209,8 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			break;
 		}
 		plus_link_native_push(o, o->plus_link_resampled, made);
+		if (have_frame)
+			o->plus_link_src_pending = 1;
 	}
 	if (!o->plus_native_fifo.primed &&
 	    o->plus_native_fifo.count >= o->plus_native_fifo.target_samples) {
@@ -215,6 +225,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			urp_native_fifo_note_underrun(&o->plus_native_fifo);
 		}
 		urp_src_reset(o->plus_up);
+		o->plus_link_src_pending = 0;
 		urp_clock_recovery_reset(&o->plus_link_clock);
 		urp_native_fifo_reset(&o->plus_native_fifo);
 	} else if (o->plus_native_fifo.primed && o->txkeyed) {

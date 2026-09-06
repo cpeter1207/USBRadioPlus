@@ -38,6 +38,15 @@ padding and a complete resampled frame fit at the maximum target. These are
 occupancy targets, not an end-to-end latency guarantee: each device interval
 consumes 20 ms, and network jitter buffering adds its own delay.
 
+Resampled bursts receive one additional 20 ms leading silence frame so the
+sinc converter can fill its history and reach the FIFO target. If the program
+queue empties and fewer than 20 ms of native audio remain, one silence frame
+releases the converter's retained audio before underrun recovery. Further
+padding requires another queued input frame; a continuously arriving stream
+does not receive this tail padding while its FIFO reserve lasts. Native-rate
+input bypasses these resampling steps. Padding affects PCM audio only: app_rpt
+and tuning retain ownership of PTT, and FIFO draining does not extend it.
+
 Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
 it does not change voice gain. Native CTCSS is mixed after transmitter dynamics
