@@ -2428,6 +2428,8 @@ int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *c
 	struct txagc_profile *profile;
 	if (!chain)
 		return -1;
+	/* A removed or unmatched profile must not leave callers with stale DSP state. */
+	memset(chain, 0, sizeof(*chain));
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile) {
@@ -2444,6 +2446,8 @@ int usbradioplus_processing_get_hardware(const char *channel,
 	const struct txagc_profile *profile;
 	if (!hardware)
 		return -1;
+	/* Empty assignments and tone strings are safe even when a caller has no profile. */
+	memset(hardware, 0, sizeof(*hardware));
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile)
@@ -2566,6 +2570,7 @@ int usbradioplus_processing_get_composite(const char *channel, struct txagc_chai
 	struct txagc_profile *profile;
 	if (!chain)
 		return -1;
+	memset(chain, 0, sizeof(*chain));
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile) {

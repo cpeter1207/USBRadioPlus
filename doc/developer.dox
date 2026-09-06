@@ -75,6 +75,10 @@ lookahead-limiter controls independently of pre-emphasis.
 
 @section concurrency Thread and resource ownership
 
+Profile snapshot getters clear their output when a radio profile is absent.
+Workers must never consume uninitialized gain, routing, or CTCSS data while a
+profile is unavailable; the missing-profile status remains available to callers.
+
 Each channel owns its native graphs, resamplers, detector, queues, and echo
 recording. The app_rpt queue mutex protects frames passed from Asterisk to the
 device worker. The processing settings mutex protects profile snapshots.

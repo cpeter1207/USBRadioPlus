@@ -90,18 +90,21 @@ struct usbradioplus_config_update {
 };
 
 /** @brief Copy a channel's local-receiver chain under the settings mutex.
+ * An absent profile produces a zeroed, disabled chain.
  * @param channel Configured radio channel name.
  * @param chain Processing-chain settings copied or updated by this operation.
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
  */
 int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain);
 /** @brief Copy a channel's final voice/telemetry chain under the settings mutex.
+ * An absent profile produces a zeroed, disabled chain.
  * @param channel Configured radio channel name.
  * @param chain Processing-chain settings copied or updated by this operation.
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
  */
 int usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain);
 /** @brief Copy a channel's hardware settings under the settings mutex.
+ * An absent profile produces zeroed settings with empty assignments and tone strings.
  * @param channel Configured radio channel name.
  * @param hardware Receives the resolved hardware settings.
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
