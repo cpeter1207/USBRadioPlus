@@ -1,10 +1,11 @@
 ## @file
 ## @brief Processing tuner runtime regression checks.
+import gzip
 import math
 import runpy
 
 import pytest
-from test_processing_tuner import MODULE
+from test_processing_tuner import MODULE, ROOT
 
 
 def globals_for(name):
@@ -56,26 +57,34 @@ def test_configuration_creation_existing_and_missing_defaults(tmp_path, monkeypa
     assert config.read_text(encoding="utf-8") == "existing\n"
     config.unlink()
     monkeypatch.setitem(globals_for("ensure_config"), "DEFAULT_CONFIG_CANDIDATES", ())
-    with pytest.raises(FileNotFoundError, match="shipped default"):
+    with pytest.raises(RuntimeError, match="shipped processing defaults"):
         MODULE["ensure_config"]()
+    assert not config.exists()
 
 
-def test_configuration_creation_skips_missing_candidate(tmp_path, monkeypatch):
+@pytest.mark.parametrize("compressed", (False, True))
+def test_configuration_creation_skips_missing_candidate(tmp_path, monkeypatch, compressed):
     """Verify configuration creation skips missing candidate.
 
     @param tmp_path Isolated filesystem directory supplied by pytest.
     @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param compressed Whether Debian has compressed the installed sample.
     """
     config = tmp_path / "etc" / "processing.conf"
     shipped = tmp_path / "shipped.conf"
-    shipped.write_text("defaults\n", encoding="utf-8")
+    content = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    if compressed:
+        shipped.with_suffix(".conf.gz").write_bytes(gzip.compress(content.encode("utf-8"), mtime=0))
+    else:
+        shipped.write_text(content, encoding="utf-8")
     namespace = globals_for("ensure_config")
     monkeypatch.setitem(namespace, "CONFIG", str(config))
     monkeypatch.setitem(
         namespace, "DEFAULT_CONFIG_CANDIDATES", (str(tmp_path / "missing"), str(shipped))
     )
     MODULE["ensure_config"]()
-    assert config.read_text(encoding="utf-8") == "defaults\n"
+    assert config.read_text(encoding="utf-8") == content
+    assert config.stat().st_mode & 0o777 == 0o640
 
 
 def test_active_node_selection(monkeypatch):
@@ -124,6 +133,101 @@ def test_shipped_defaults_skip_an_incomplete_candidate(tmp_path, monkeypatch):
     )
     first_key = next(iter(MODULE["MODERN_SECTION_SETTINGS"]["general"]))
     assert MODULE["shipped_modern_defaults"]()[first_key] == "value"
+
+
+def test_packaged_gzip_sample_supersedes_incomplete_plain_sample(tmp_path, monkeypatch):
+    """Use Debian's complete gzip sample when a stale plain file remains beside it.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    sample = tmp_path / "usr/share/doc/usbradioplus/usbradioplus.conf.sample"
+    sample.parent.mkdir(parents=True)
+    sample.write_text("[general]\nradio_enabled = yes\n", encoding="utf-8")
+    content = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    sample.with_suffix(".sample.gz").write_bytes(gzip.compress(content.encode("utf-8"), mtime=0))
+    namespace = globals_for("shipped_configuration")
+    monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (sample,))
+    assert MODULE["shipped_configuration"]()[0] == content
+    defaults = MODULE["shipped_modern_defaults"]()
+    assert defaults["asterisk_jitter_buffer_implementation"] == "fixed"
+    assert defaults["channel_enabled"] == "yes"
+    config = tmp_path / "etc/asterisk/usbradioplus.conf"
+    monkeypatch.setitem(namespace, "CONFIG", str(config))
+    MODULE["ensure_config"]()
+    assert config.read_text(encoding="utf-8") == content
+
+
+@pytest.mark.parametrize(
+    "contents",
+    (
+        b"not a gzip file",
+        gzip.compress(b"truncated gzip", mtime=0)[:-5],
+        gzip.compress(b"\xff", mtime=0),
+    ),
+    ids=("invalid-header", "truncated-stream", "invalid-utf8"),
+)
+def test_corrupt_gzip_sample_is_reported_or_skipped(tmp_path, monkeypatch, contents):
+    """Report unreadable package metadata while permitting another complete sample.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param contents Corrupt compressed sample bytes.
+    """
+    sample = tmp_path / "bad.conf.sample"
+    compressed = sample.with_suffix(".sample.gz")
+    compressed.write_bytes(contents)
+    namespace = globals_for("shipped_configuration")
+    monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (sample,))
+    with pytest.raises(RuntimeError, match="unavailable or incomplete") as failure:
+        MODULE["shipped_modern_defaults"]()
+    assert str(compressed) in str(failure.value)
+    monkeypatch.setitem(
+        namespace,
+        "DEFAULT_CONFIG_CANDIDATES",
+        (sample, ROOT / "examples/usbradioplus.conf.sample"),
+    )
+    assert MODULE["shipped_modern_defaults"]()["hardware_input_gain_db"] == "0.0"
+
+
+def test_incomplete_sample_reports_missing_options_without_creating_config(tmp_path, monkeypatch):
+    """Reject incomplete installation metadata before creating a new configuration.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    sample = tmp_path / "sample.conf"
+    sample.write_text("[general]\nchannel_enabled = yes\n", encoding="utf-8")
+    config = tmp_path / "absent.conf"
+    namespace = globals_for("shipped_configuration")
+    monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (sample,))
+    monkeypatch.setitem(namespace, "CONFIG", str(config))
+    with pytest.raises(RuntimeError, match="missing asterisk_jitter_buffer_enabled"):
+        MODULE["ensure_config"]()
+    assert not config.exists()
+
+
+@pytest.mark.parametrize("checking", (False, True))
+def test_main_reports_missing_defaults_without_traceback(tmp_path, monkeypatch, checking):
+    """Validate package metadata before claiming the tuner can open its settings menus.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param checking Whether an existing configuration is checked instead of created.
+    """
+    config = tmp_path / "usbradioplus.conf"
+    options = ["tuner", "--config", str(config)]
+    if checking:
+        config.write_text("[local]\n[link]\n[voice_telemetry]\n", encoding="utf-8")
+        options.extend(("--check", "--offline"))
+    namespace = globals_for("main")
+    monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (tmp_path / "missing",))
+    monkeypatch.setattr(namespace["sys"], "argv", options)
+    with pytest.raises(SystemExit, match="usbradioplus-tune: The shipped") as failure:
+        MODULE["main"]()
+    assert "plain and .gz samples" in str(failure.value)
+    assert "Traceback" not in str(failure.value)
+    assert config.exists() == checking
 
 
 def test_replace_value_handles_new_sections_and_rejects_missing_chains():

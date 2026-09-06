@@ -1,6 +1,8 @@
 ## @file
 ## @brief Installer regression checks.
+import gzip
 import os
+import runpy
 import shutil
 import subprocess
 import tarfile
@@ -60,6 +62,39 @@ def test_staged_install_manifest(tmp_path):
     ]
     assert not list(stage.rglob("modules.conf"))
     assert not list(stage.rglob("rpt.conf"))
+
+    # Reproduce dh_compress without allowing checkout or host samples to hide it.
+    sample = stage / "usr/share/doc/usbradioplus/usbradioplus.conf.sample"
+    content = sample.read_text(encoding="utf-8")
+    sample.with_suffix(".sample.gz").write_bytes(gzip.compress(content.encode("utf-8"), mtime=0))
+    sample.unlink()
+    installed = runpy.run_path(str(stage / "usr/sbin/usbradioplus-tune"), run_name="test_tuner")
+    namespace = installed["shipped_configuration"].__globals__
+    namespace["DEFAULT_CONFIG_CANDIDATES"] = (str(sample),)
+    config = stage / "etc/asterisk/usbradioplus.conf"
+    config.unlink()
+    namespace["CONFIG"] = str(config)
+    installed["ensure_config"]()
+    assert config.read_text(encoding="utf-8") == content
+    assert config.stat().st_mode & 0o777 == 0o640
+    dialogs = []
+
+    def close_menu(args):
+        """Capture the installed menu's concrete values before closing it.
+
+        @param args Dialog command arguments emitted by the installed tuner.
+        """
+        dialogs.append(args)
+        return 1, ""
+
+    namespace["dialog"] = close_menu
+    installed["section_options_menu"](
+        "asterisk", installed["ASTERISK_SETTINGS"], "Asterisk channel settings"
+    )
+    assert len(dialogs) == 1 and "--menu" in dialogs[0]
+    assert "Jitter buffer: Off" in dialogs[0]
+    assert "Maximum jitter-buffer size: 200" in dialogs[0]
+    assert "Jitter-buffer implementation: fixed" in dialogs[0]
 
 
 def test_install_preserves_existing_processing_configuration(tmp_path):

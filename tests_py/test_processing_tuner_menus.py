@@ -1,5 +1,7 @@
 ## @file
 ## @brief Processing tuner menus regression checks.
+from itertools import permutations
+
 import pytest
 from test_processing_tuner import MODULE
 
@@ -91,10 +93,12 @@ def test_text_setting_validation_cancel_success_and_apply_error(monkeypatch):
         monkeypatch.setitem(namespace, "prompt_text", lambda *_args, value=invalid: (0, value))
         MODULE["edit_text_setting"]("local", "stage_order")
         assert "unknown, empty, or duplicate" in " ".join(messages[-1])
-    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, " AGC, Compressor "))
+    monkeypatch.setitem(
+        namespace, "prompt_text", lambda *_args: (0, " Equalizer, AGC, Compressor ")
+    )
     monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append((old, new)))
     MODULE["edit_text_setting"]("local", "stage_order")
-    assert "stage_order = agc,compressor" in applied[-1][1]
+    assert "stage_order = equalizer,agc,compressor" in applied[-1][1]
     monkeypatch.setitem(
         namespace,
         "apply_config",
@@ -102,6 +106,75 @@ def test_text_setting_validation_cancel_success_and_apply_error(monkeypatch):
     )
     MODULE["edit_text_setting"]("local", "stage_order")
     assert "invalid graph" in " ".join(messages[-1])
+
+
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+def test_stage_order_menu_displays_edits_and_retains_selection(monkeypatch, source):
+    """Keep the current order visible and preserve keyboard focus after editing.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Processing chain under test.
+    """
+    namespace = globals_for("stages_menu")
+    order = "agc,equalizer,expander,deesser,compressor,limiter"
+    screens = []
+    edits = []
+    replies = iter(((0, "O"), (1, "")))
+
+    def show(args):
+        """Record each screen and select the order editor once.
+
+        @param args Dialog arguments.
+        """
+        screens.append(args)
+        return next(replies)
+
+    monkeypatch.setitem(namespace, "read_config", lambda: f"[{source}]\nstage_order={order}\n")
+    monkeypatch.setitem(namespace, "dialog", show)
+    monkeypatch.setitem(namespace, "edit_setting", lambda *args: edits.append(args))
+    MODULE["stages_menu"](source)
+    assert edits == [(source, "stage_order")]
+    assert any(order in item for item in screens[0])
+    assert screens[1][screens[1].index("--default-item") + 1] == "O"
+
+
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+def test_order_editor_accepts_every_optional_stage_permutation(monkeypatch, source):
+    """Exercise all six-stage permutations in each independently configured chain.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Processing chain under test.
+    """
+    namespace = globals_for("edit_text_setting")
+    stages = ("equalizer", "expander", "agc", "deesser", "compressor", "limiter")
+    text = f"[{source}]\n" + "".join(f"{stage}_enabled=yes\n" for stage in stages)
+    applied = []
+    monkeypatch.setitem(namespace, "read_config", lambda: text)
+    monkeypatch.setitem(namespace, "apply_config", lambda _old, new: applied.append(new))
+    for order in permutations(stages):
+        entered = ",".join(order)
+        monkeypatch.setitem(namespace, "prompt_text", lambda *_args, value=entered: (0, value))
+        MODULE["edit_text_setting"](source, "stage_order")
+        assert f"stage_order = {entered}" in applied[-1]
+    assert len(applied) == 720
+
+
+def test_order_editor_rejects_missing_enabled_and_fixed_stages(monkeypatch):
+    """Reject incomplete orders and stages whose placement is fixed by the driver.
+
+    @param monkeypatch Scoped patch fixture.
+    """
+    namespace = globals_for("edit_text_setting")
+    messages = []
+    monkeypatch.setitem(namespace, "read_config", lambda: "[local]\nagc_enabled=yes\n")
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
+    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, "compressor,limiter"))
+    MODULE["edit_text_setting"]("local", "stage_order")
+    assert "Include every enabled stage: agc, equalizer" in messages[-1]
+    for fixed in ("rnnoise", "ctcss", "receive_bandpass", "lookahead_limiter", "post_limiter"):
+        monkeypatch.setitem(namespace, "prompt_text", lambda *_args, value=fixed: (0, value))
+        MODULE["edit_text_setting"]("local", "stage_order")
+        assert "Stage order contains an unknown, empty, or duplicate stage." in messages[-1]
 
 
 def test_stage_and_settings_menus_select_then_return(monkeypatch, capsys):
@@ -191,6 +264,70 @@ def test_source_menu_snapshot_and_configuration(monkeypatch):
     MODULE["source_menu"]("local")
     assert any("stats" in args for args in dialogs)
     assert any("configuration" in args for args in dialogs)
+
+
+@pytest.mark.parametrize("enabled", (True, False))
+def test_local_receiver_menu_controls_echo_and_keeps_focus(monkeypatch, enabled):
+    """Expose the existing live echo switch directly in the local receiver menu.
+
+    @param monkeypatch Scoped patch fixture.
+    @param enabled Initial live echo state.
+    """
+    namespace = globals_for("source_menu")
+    screens = []
+    calls = []
+    replies = iter(((0, "E"), (1, "")))
+
+    def show(args):
+        """Select echo and then return from the menu.
+
+        @param args Dialog arguments.
+        """
+        screens.append(args)
+        return next(replies)
+
+    monkeypatch.setitem(namespace, "dialog", show)
+    monkeypatch.setitem(namespace, "radio_state", lambda: {"echo": enabled})
+    monkeypatch.setitem(namespace, "prompt_boolean", lambda *_args: (0, "no" if enabled else "yes"))
+    monkeypatch.setitem(namespace, "show_radio_result", lambda *args: calls.append(args))
+    MODULE["source_menu"]("local")
+    assert calls == [("Echo mode", "k0" if enabled else "k1")]
+    assert "Echo mode: enable or disable" in screens[0]
+    assert screens[1][screens[1].index("--default-item") + 1] == "E"
+
+
+@pytest.mark.parametrize("source", ("link", "voice_telemetry"))
+def test_echo_control_is_exclusive_to_local_receiver(monkeypatch, source):
+    """Do not offer receiver recording controls on unrelated processing chains.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Non-receiver chain.
+    """
+    screens = []
+    namespace = globals_for("source_menu")
+    monkeypatch.setitem(namespace, "dialog", lambda args: screens.append(args) or (1, ""))
+    MODULE["source_menu"](source)
+    assert "E" not in screens[0]
+
+
+def test_section_options_reports_missing_defaults_without_crashing(monkeypatch):
+    """Return to the parent menu when no usable installed defaults remain.
+
+    @param monkeypatch Scoped patch fixture.
+    """
+    namespace = globals_for("section_options_menu")
+    messages = []
+    monkeypatch.setitem(namespace, "read_config", lambda: "[asterisk]\n")
+    monkeypatch.setitem(
+        namespace,
+        "shipped_modern_defaults",
+        lambda: (_ for _ in ()).throw(
+            RuntimeError("Defaults unavailable; reinstall USBRadioPlus.")
+        ),
+    )
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args))
+    MODULE["section_options_menu"]("asterisk", {}, "Asterisk Channel")
+    assert messages == [["--msgbox", "Defaults unavailable; reinstall USBRadioPlus.", "12", "78"]]
 
 
 @pytest.mark.parametrize(

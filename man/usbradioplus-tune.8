@@ -60,6 +60,7 @@ deviation. This action requires flat discriminator audio and a steady
 calibrated signal.
 .TP
 .B Echo mode
+Select Echo mode in the Local receiver menu to enable or disable it.
 Record a received transmission and return it to the transmitter for alignment.
 With software duplex-3 local repeat active, echo uses the native 48 kHz receive
 and transmit path. Otherwise it uses the 8 kHz Asterisk-path playback. Keying,
@@ -80,8 +81,13 @@ duplex-3 repeat level from 0 through 999, and whether duplex-3 repeat audio uses
 the CM119 hardware mixer or the native software path.
 .TP
 .B Configure audio processing
-The source-chain menus enable or disable the equalizer and de-esser and edit their
-positions in the processing order. The Equalizer menu edits the low shelf,
+Each source has a Stages menu for enabling or disabling its processing stages.
+Select Processing order there to view or edit the comma-separated order of
+equalizer, expander, agc, deesser, compressor, and limiter. Each enabled stage
+must appear exactly once; disabled stages may remain in the order. RNNoise,
+receiver filters, and final transmitter filters and limiter have fixed positions
+and cannot be placed in this list. Apply saves the order; Cancel leaves it unchanged.
+The Equalizer menu edits the low shelf,
 mid-band bell, and high shelf. The De-esser menu edits its center frequency,
 bandwidth, threshold, ratio, maximum reduction, attack, and release.
 See
@@ -108,8 +114,9 @@ If the configuration file is absent, the utility installs a copy of the shipped
 default before opening. Hardware menus provide device selection and swapping,
 automatic RX calibration, live RX level adjustment, CTCSS calibration,
 service-monitor transmit adjustment, auxiliary-output adjustment, test-tone
-keying, transmitter flash, echo control, and one continuous combined RX, TX,
+keying, transmitter flash, and one continuous combined RX, TX,
 COS, CTCSS, and PTT display.
+Echo control is in the Local receiver menu.
 Only controls applicable to the selected source are shown. Stage toggles use
 single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
 pages validate both the documented range and dependent relationships such as a
@@ -134,7 +141,8 @@ Select the active RadioPlus channel before opening either tuning interface.
 .TP
 .B --check
 Validate prerequisites and confirm that the configured local, link, and
-voice/telemetry sections can be read.
+voice/telemetry sections can be read and complete shipped defaults are available.
+Both plain and gzip-compressed installed sample files are supported.
 .TP
 .B --offline
 With --check, do not require Asterisk or the terminal menu package. This is

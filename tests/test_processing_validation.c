@@ -84,6 +84,12 @@ static unsigned int fake_sample_rate = 8000;
 static int fake_processor_result;
 /** Harness processor saturate used to script and verify host behavior. */
 static int fake_processor_saturate;
+/** Last graph configuration received from the incoming-link callback. */
+static struct txagc_config fake_processor_config;
+/** Number of incoming audio blocks submitted to the graph. */
+static unsigned int fake_processor_calls;
+/** Sample rate submitted to the graph by the audiohook. */
+static unsigned int fake_processor_sample_rate;
 /** Recorded fake audiohook detach calls for assertions. */
 static int fake_audiohook_detach_calls;
 /** Recorded fake audiohook destroy calls for assertions. */
@@ -118,6 +124,8 @@ static size_t fake_find_sequence_index;
 static struct ast_datastore *fake_last_allocated_datastore;
 /** Harness primary channel available used to script and verify host behavior. */
 static int fake_primary_channel_available;
+/** Exact primary channel requested by the link scanner. */
+static char fake_primary_channel_name[AST_CHANNEL_NAME];
 /** Harness iterator available used to script and verify host behavior. */
 static int fake_iterator_available;
 /** Harness iterator channels remaining used to script and verify host behavior. */
@@ -422,7 +430,7 @@ struct ast_channel_iterator *ast_channel_iterator_destroy(struct ast_channel_ite
  */
 struct ast_channel *ast_channel_get_by_name(const char *name)
 {
-	(void)name;
+	ast_copy_string(fake_primary_channel_name, name, sizeof(fake_primary_channel_name));
 	/* Channel lookup takes Asterisk container locks.  The processing settings
 	 * lock must never be held here or app_rpt can form the reciprocal order. */
 	assert(fake_mutex_depth == 0);
@@ -711,10 +719,11 @@ int txagc_avfilter_process(struct txagc_avfilter *processor, const struct txagc_
 			   double *samples, size_t sample_count, unsigned int sample_rate)
 {
 	(void)processor;
-	(void)config;
 	(void)samples;
 	(void)sample_count;
-	(void)sample_rate;
+	fake_processor_config = *config;
+	fake_processor_sample_rate = sample_rate;
+	++fake_processor_calls;
 	if (fake_processor_saturate && sample_count >= 3) {
 		samples[0] = 40000.0;
 		samples[1] = -40000.0;
@@ -2031,6 +2040,57 @@ static void test_audiohook_callback_and_destroy(void)
 	assert(fake_processor_destroy_calls == TXAGC_SOURCE_COUNT);
 }
 
+/** @brief An established link uses current stage flags on its next incoming audio frame. */
+static void test_link_live_stage_flags(void)
+{
+	static const size_t flag_offsets[] = {
+		offsetof(struct txagc_config, equalizer_enabled),
+		offsetof(struct txagc_config, expander_enabled),
+		offsetof(struct txagc_config, agc_enabled),
+		offsetof(struct txagc_config, deesser_enabled),
+		offsetof(struct txagc_config, compressor_enabled),
+		offsetof(struct txagc_config, limiter_enabled),
+	};
+	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
+	struct ast_audiohook audiohook = {.status = AST_AUDIOHOOK_STATUS_RUNNING};
+	struct txagc_hook hook = {0};
+	struct ast_datastore datastore = {.data = &hook};
+	int16_t pcm[160] = {100};
+	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
+				  .samples = ARRAY_LEN(pcm),
+				  .data.ptr = pcm,
+				  .subclass.format = (struct ast_format *)(uintptr_t)1};
+
+	settings_defaults(&settings);
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
+	fake_channel_name = "IAX2/test";
+	fake_channel_application = "Rpt";
+	fake_channel_data = "Remote Rx";
+	fake_channel_datastore = &datastore;
+	fake_sample_rate = 8000;
+	fake_processor_calls = 0;
+	for (size_t index = 0; index < ARRAY_LEN(flag_offsets); ++index) {
+		int *flag = (int *)((char *)&settings.profiles[0].chains[TXAGC_LINK].agc +
+				    flag_offsets[index]);
+		for (int enabled = 0; enabled <= 1; ++enabled) {
+			*flag = enabled;
+			assert(!txagc_callback(&audiohook, channel, &frame,
+					       AST_AUDIOHOOK_DIRECTION_READ));
+			assert(*(int *)((char *)&fake_processor_config + flag_offsets[index]) ==
+			       enabled);
+			assert(fake_processor_sample_rate == 8000);
+		}
+	}
+	assert(fake_processor_calls == 2 * ARRAY_LEN(flag_offsets));
+	/* Outgoing network audio and a disabled link chain must remain untouched. */
+	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_WRITE));
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 0;
+	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(fake_processor_calls == 2 * ARRAY_LEN(flag_offsets));
+	fake_channel_datastore = NULL;
+}
+
 /** @brief Reset audiohook attachment and allocation stub state. */
 static void reset_attach_doubles(void)
 {
@@ -2143,6 +2203,13 @@ static void test_channel_scanning_and_detachment(void)
 	fake_iterator_channels_remaining = 1;
 	fake_channel_application = "Rpt";
 	fake_channel_data = "Remote Rx";
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 0;
+	scan_channels();
+	assert(!fake_datastore_add_calls);
+	assert(!strcmp(fake_primary_channel_name, "RadioPlus/usb"));
+	/* Enabling the chain discovers the same already-connected incoming link. */
+	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
+	fake_iterator_channels_remaining = 1;
 	scan_channels();
 	assert(fake_datastore_add_calls == 1);
 	hook_destroy(fake_last_allocated_datastore->data);
@@ -2275,6 +2342,7 @@ int main(void)
 	test_module_lifecycle_and_simple_cli();
 	test_channel_eligibility();
 	test_audiohook_callback_and_destroy();
+	test_link_live_stage_flags();
 	test_audiohook_attachment();
 	test_channel_scanning_and_detachment();
 	test_reporting_cli();

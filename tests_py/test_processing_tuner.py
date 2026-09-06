@@ -267,7 +267,10 @@ def test_missing_configuration_is_created_from_shipped_defaults(tmp_path):
     """
     config = tmp_path / "usbradioplus.conf"
     sample = tmp_path / "sample.conf"
-    sample.write_text("[local]\nenabled = yes\n", encoding="utf-8")
+    sample.write_text(
+        (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     old_config = MODULE["CONFIG"]
     old_candidates = MODULE["DEFAULT_CONFIG_CANDIDATES"]
     MODULE["ensure_config"].__globals__["CONFIG"] = str(config)
