@@ -693,18 +693,6 @@ int radio_tune(int fd, int argc, const char *const *argv)
 
 		ast_cli(fd, "Requesting loading of tuning settings from EEPROM for channel %s\n",
 			o->name);
-	} else if (!strcasecmp(argv[2], "hardware_tx_soft_limiter_setpoint")) {
-		if (argc == 3) {
-			ast_cli(fd, "Current tx limiter setpoint: %i\n", (int)o->txslimsp);
-		} else {
-			int new_slsetpoint = atoi(argv[3]);
-			if (validate_tx_soft_limiter_setpoint(o, new_slsetpoint)) {
-				ast_cli(fd, "Limiter set point out of range, needs to be between "
-					    "5000 and 13000\n");
-				return RESULT_SHOWUSAGE;
-			}
-			o->txslimsp = new_slsetpoint;
-		}
 	} else {
 		o->radio->b.tuning = 0;
 		return RESULT_SHOWUSAGE;
@@ -729,12 +717,6 @@ int set_txctcss_level(struct chan_usbradio_pvt *o)
 		}
 	}
 	return 0;
-}
-
-int validate_tx_soft_limiter_setpoint(struct chan_usbradio_pvt *o, int setpoint)
-{
-	(void)o;
-	return setpoint < 5000 || setpoint > 13000 ? -1 : 0;
 }
 
 int radio_set_dsp_debug(int fd, int argc, const char *const *argv)
@@ -1511,9 +1493,7 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	BOOLEAN("hardware", "hardware_dcs_tx_polarity_inverted", dcstxpolarity);
 	BOOLEAN("hardware", "hardware_lsd_rx_polarity_inverted", lsdrxpolarity);
 	BOOLEAN("hardware", "hardware_lsd_tx_polarity_inverted", lsdtxpolarity);
-	BOOLEAN("hardware", "hardware_tx_preemphasis_limiter_enabled", txprelim);
-	BOOLEAN("hardware", "hardware_tx_limiter_only_enabled", txlimonly);
-	INTEGER("hardware", "hardware_tx_soft_limiter_setpoint", txslimsp);
+	BOOLEAN("hardware", "hardware_tx_preemphasis_enabled", txpreemphasis);
 	INTEGER("hardware", "hardware_tx_settle_ms", txsettletime);
 	INTEGER("hardware", "hardware_tx_rx_blanking_ms", txrxblankingtime);
 	INTEGER("hardware", "hardware_tx_off_delay_frames", txoffdelay);
@@ -1625,12 +1605,10 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 	ADD_TEXT("hardware", "hardware_rx_ctcss_source", sd_signal_type[o->rxsdtype]);
 	ADD_NUMBER("hardware", "hardware_rx_on_delay_frames", "%d", o->rxondelay);
 	ADD_NUMBER("hardware", "hardware_tx_off_delay_frames", "%d", o->txoffdelay);
-	ADD_TEXT("hardware", "hardware_tx_preemphasis_limiter_enabled", o->txprelim ? "yes" : "no");
-	ADD_TEXT("hardware", "hardware_tx_limiter_only_enabled", o->txlimonly ? "yes" : "no");
+	ADD_TEXT("hardware", "hardware_tx_preemphasis_enabled", o->txpreemphasis ? "yes" : "no");
 	ADD_TEXT("hardware", "hardware_rx_audio_source", demodulation[o->rxdemod]);
 	ADD_TEXT("hardware", "hardware_output_a_assignment", assignments[o->txmixa]);
 	ADD_TEXT("hardware", "hardware_output_b_assignment", assignments[o->txmixb]);
-	ADD_NUMBER("hardware", "hardware_tx_soft_limiter_setpoint", "%d", o->txslimsp);
 	ADD_NUMBER("diagnostics", "diagnostics_fever", "%d", o->fever);
 	ADD_NUMBER("duplex", "duplex_local_repeat_level", "%d", o->duplex3);
 	ADD_TEXT("duplex", "duplex_local_repeat_mode",

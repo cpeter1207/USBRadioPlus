@@ -99,8 +99,6 @@
 
 #define DEFAULT_ECHO_SECONDS (DEFAULT_ECHO_MAX / 50)
 
-#define DEFAULT_TX_SOFT_LIMITER_SETPOINT 12000
-
 #define PP_MASK 0xbffc
 
 #define PP_PORT "/dev/parport0"
@@ -891,13 +889,6 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 			tChan.voxHangTime = o->voxhangtime;
 			tChan.rxSqVoxAdj = o->rxsqvoxadj;
 
-			if (o->txlimonly) {
-				tChan.txMod = 1;
-			}
-			if (o->txprelim) {
-				tChan.txMod = 2;
-			}
-
 			tChan.txMixA = effective_txmixa(o);
 			tChan.txMixB = effective_txmixb(o);
 
@@ -984,14 +975,6 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 		mixer_write(o);
 		mult_set(o);
 		set_txctcss_level(o);
-		/* Sync the native limiter fallback with the tuning configuration. */
-		if (validate_tx_soft_limiter_setpoint(o, o->txslimsp)) {
-			/* Invalid setting in config file. Set default */
-			ast_log(LOG_WARNING, "Invalid value for txslimsp in radio settings section "
-					     "of usbradio.c, using default");
-			o->txslimsp = DEFAULT_TX_SOFT_LIMITER_SETPOINT;
-			validate_tx_soft_limiter_setpoint(o, o->txslimsp);
-		}
 
 		ast_mutex_lock(&o->eepromlock);
 		if (o->wanteeprom) {
@@ -2772,8 +2755,7 @@ void radio_dump(struct chan_usbradio_pvt *o, int fd)
 	pd(o->rxpolarity);
 	pd(o->txpolarity);
 
-	pd(o->txlimonly);
-	pd(o->txprelim);
+	pd(o->txpreemphasis);
 	pd(o->txmixa);
 	pd(o->txmixb);
 
@@ -2977,13 +2959,6 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 		tChan.rxSqVoxAdj = o->rxsqvoxadj;
 		tChan.rxSquelchDelay = o->rxsquelchdelay;
 
-		if (o->txlimonly) {
-			tChan.txMod = 1;
-		}
-		if (o->txprelim) {
-			tChan.txMod = 2;
-		}
-
 		tChan.txMixA = effective_txmixa(o);
 		tChan.txMixB = effective_txmixb(o);
 
@@ -3116,7 +3091,7 @@ URP_CHANNEL_LOCAL char *handle_radio_tune(struct ast_cli_entry *e, int cmd, stru
 		e->command = "radioplus tune "
 			     "{auxvoice|dump|swap|rxnoise|rxvoice|rxtone|txvoice|txtone|txall|"
 			     "flash|rxsquelch|nocap|rxtracecap|"
-			     "txtracecap|rxcap|txcap|save|load|menu-support|txslimsp}";
+			     "txtracecap|rxcap|txcap|save|load|menu-support}";
 		e->usage = "Usage: radio tune <function>\n"
 			   "       rxnoise\n"
 			   "       rxvoice\n"
@@ -3124,12 +3099,10 @@ URP_CHANNEL_LOCAL char *handle_radio_tune(struct ast_cli_entry *e, int cmd, stru
 			   "       rxsquelch [newsetting]\n"
 			   "       txvoice [newsetting]\n"
 			   "       txtone [newsetting]\n"
-			   "       txslimsp [setpoint]\n"
 			   "       auxvoice [newsetting]\n"
 			   "       save (settings to tuning file)\n"
 			   "       load (tuning settings from EEPROM)\n\n"
-			   "       All [newsetting]'s are values 0-999\n"
-			   "       [setpoint] is 5000 to 13000\n\n";
+			   "       All [newsetting]'s are values 0-999\n\n";
 
 		return NULL;
 	case CLI_GENERATE:
@@ -3553,9 +3526,6 @@ AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "USB Radio Plus Channel D
  */
 /** @def DEFAULT_ECHO_SECONDS
  * @brief Default maximum echo recording duration in seconds.
- */
-/** @def DEFAULT_TX_SOFT_LIMITER_SETPOINT
- * @brief Default normalized final-limiter calibration setpoint.
  */
 /** @def PP_MASK
  * @brief Parallel-port bits reserved by radio control.

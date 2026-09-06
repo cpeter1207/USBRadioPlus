@@ -783,8 +783,6 @@ typedef struct urp_radio_state {
 
 	/** Receiver audio-source assignment. */
 	enum radio_rx_audio rxDemod;
-	/** Transmitter modulation-mode metadata. */
-	i16 txMod;
 
 	/** Whether noise-squelch detection is enabled. */
 	i16 rxNoiseSquelchEnable;
@@ -1073,9 +1071,6 @@ typedef struct urp_radio_state {
 	/** Pointer to transmit CTCSS deviation calibration. */
 	i32 *ptxCtcssAdjust; /* from calling application */
 
-	/** Pointer to transmitter limiter calibration metadata. */
-	i32 *ptxLimiterAdjust; /* from calling application */
-
 	struct {
 		/** Noise-squelch selection metadata. */
 		unsigned pmrNoiseSquelch : 1;
@@ -1240,8 +1235,6 @@ typedef struct urp_radio_state {
 
 	/** Low-level calibration/diagnostic setting. */
 	i16 fever;
-	/** Transmitter soft-limiter calibration setpoint. */
-	i16 tx_limiter_setpoint;
 
 	/** Carrier, CTCSS, calibration, and transmitter-signaling state for one radio. */
 } urp_radio_state;

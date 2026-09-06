@@ -30,8 +30,6 @@ struct txagc_chain {
 	int ctcss_filter_configured;
 	/** Nonzero when the transmitter band-pass is explicitly configured. */
 	int splatter_filter_configured;
-	/** Nonzero when final-limiter settings are explicitly configured. */
-	int lookahead_limiter_configured;
 	/** Settings for all optional stages and the fixed FFmpeg filtering stages. */
 	struct txagc_config agc;
 };

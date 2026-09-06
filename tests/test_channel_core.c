@@ -3058,9 +3058,7 @@ static void test_modern_hid_worker_baseline(void)
 	constructed.plus_emphasis_corner_hz = 300.0;
 	constructed.txmixa = TX_OUT_OFF;
 	constructed.txmixb = TX_OUT_OFF;
-	constructed.txlimonly = 1;
-	constructed.txprelim = 1;
-	constructed.txslimsp = -1;
+	constructed.txpreemphasis = 1;
 	constructed.wanteeprom = 1;
 	constructed.radioactive = 1;
 	constructed.invertptt = 1;
@@ -3085,7 +3083,6 @@ static void test_modern_hid_worker_baseline(void)
 	assert(hidthread(&constructed) == NULL);
 	assert(constructed.radio && constructed.devtype == C108_PRODUCT_ID);
 	assert(!inactive.radioactive && constructed.radioactive);
-	assert(constructed.txslimsp == DEFAULT_TX_SOFT_LIMITER_SETPOINT);
 	modern_stop_hid_target = NULL;
 	modern_eeprom_result = 1;
 	modern_eeprom_valid_magic = 0;
@@ -3615,7 +3612,7 @@ static void test_modern_hid_worker_retries(void)
 	fail_radio_state_allocation = 0;
 
 	{
-		struct ast_variable invalid_limiter = {.name = "txslimsp", .value = "4999"};
+		struct ast_variable ignored_option = {.name = "unsupported", .value = "4999"};
 		constructed.name = "modern-tone-route";
 		constructed.stophid = 0;
 		constructed.txmixa = TX_OUT_VOICE;
@@ -3623,7 +3620,7 @@ static void test_modern_hid_worker_retries(void)
 		strcpy(constructed.txctcssfreq, "100.0");
 		strcpy(constructed.txctcssdefault, "100.0");
 		test_config_category = constructed.name;
-		test_config_variables = &invalid_limiter;
+		test_config_variables = &ignored_option;
 		test_config_load_result = (struct ast_config *)(uintptr_t)1;
 		modern_stop_hid_target = &constructed;
 		assert(hidthread(&constructed) == NULL);
@@ -4452,14 +4449,6 @@ static void test_radio_tune_dispatch(void)
 	assert(call_radio_tune(&radio, 3, "load", NULL) == RESULT_SUCCESS);
 	clear_eeprom_on_usleep = 0;
 	assert(call_radio_tune(&radio, 3, "save", NULL) == RESULT_SUCCESS);
-	radio.txslimsp = 9000;
-	assert(call_radio_tune(&radio, 3, "hardware_tx_soft_limiter_setpoint", NULL) ==
-	       RESULT_SUCCESS);
-	assert(call_radio_tune(&radio, 4, "hardware_tx_soft_limiter_setpoint", "4000") ==
-	       RESULT_SHOWUSAGE);
-	assert(call_radio_tune(&radio, 4, "hardware_tx_soft_limiter_setpoint", "6000") ==
-	       RESULT_SUCCESS);
-	assert(radio.txslimsp == 6000);
 	assert(call_radio_tune(&radio, 3, "unknown", NULL) == RESULT_SHOWUSAGE);
 	assert(!radio_state.b.tuning);
 	const char *debug_arguments[] = {"radio", "set", "debug", "50"};
@@ -4652,7 +4641,6 @@ static void test_menu_support_dispatch(void)
 
 	tune_menusupport(1, &radio, "0");
 	tune_menusupport(1, &radio, "0+9");
-	tune_menusupport(1, &radio, "0+10");
 	tune_menusupport(1, &radio, "1");
 	tune_menusupport(1, &radio, "2");
 	tune_menusupport(1, &radio, "3");
@@ -4689,15 +4677,13 @@ static void test_menu_support_dispatch(void)
 	tune_menusupport(1, &radio, "k");
 
 	static const char *const settings[] = {
-		"L",	  "L4000", "L9000", "D",      "Dbad", "D-1", "D1000", "D500", "M",
-		"M2",	  "M0",	   "M1",    "o",      "o0",   "p",   "p0",    "q",    "q1",
-		"q99999", "r",	   "r1",    "r99999", "s",    "s0",  "s1",    "t",    "t0",
-		"t1",	  "u",	   "u1",    "w",      "w1",   "x",   "x1"};
+		"D",  "Dbad", "D-1", "D1000", "D500", "M",	"M2", "M0", "M1",     "o",
+		"o0", "p",    "p0",  "q",     "q1",   "q99999", "r",  "r1", "r99999", "s",
+		"s0", "s1",   "u",   "u1",    "w",    "w1",	"x",  "x1"};
 	for (size_t index = 0; index < ARRAY_LEN(settings); ++index)
 		tune_menusupport(1, &radio, settings[index]);
 	tune_menusupport(1, &radio, "M");
 	tune_menusupport(1, &radio, "s");
-	tune_menusupport(1, &radio, "t");
 	radio.txmixa = TX_OUT_LSD;
 	tune_menusupport(1, &radio, "0");
 	radio.txmixa = TX_OUT_OFF;
@@ -5203,7 +5189,7 @@ static void test_processing_config_overrides(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 	size_t index;
-	static const int boolean_hardware[] = {3, 6, 7, 16, 19, 24, 25, 26, 27, 28, 29, 34, 35};
+	static const int boolean_hardware[] = {3, 6, 7, 16, 19, 24, 25, 26, 27, 28, 32, 33};
 
 	settings_defaults(&settings);
 	for (index = 0; index < ARRAY_LEN(hardware_override_options); ++index) {
@@ -5221,15 +5207,15 @@ static void test_processing_config_overrides(void)
 			value = "100.0";
 		else if (index == 23)
 			value = "phase";
-		else if (index == 40)
+		else if (index == 38)
 			value = "user-key";
-		else if (index >= 45 && index <= 52)
+		else if (index >= 43 && index <= 50)
 			value = "in";
-		else if (index == 53)
+		else if (index == 51)
 			value = "/dev/parport0";
-		else if (index >= 55 && index <= 66)
+		else if (index >= 53 && index <= 64)
 			value = "out";
-		else if (index == 67)
+		else if (index == 65)
 			value = "300.0";
 		for (boolean_index = 0; boolean_index < ARRAY_LEN(boolean_hardware);
 		     ++boolean_index)
@@ -5259,6 +5245,7 @@ static void test_processing_config_overrides(void)
 	assert(radio.duplex3mode == DUPLEX3_MODE_SOFTWARE);
 	assert(radio.duplex3 == 999);
 	assert(radio.radioactive);
+	assert(radio.txpreemphasis);
 	assert(fabs(radio.plus_emphasis_corner_hz - 300.0) < 0.001);
 	assert(radio.gpios[0] && !strcmp(radio.gpios[0], "in"));
 	assert(radio.pps[15] && !strcmp(radio.pps[15], "out"));
@@ -5272,8 +5259,8 @@ static void test_processing_config_overrides(void)
 	}
 
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[15], "999999");
-	add_processing_override("hardware", hardware_override_options[33], "999999");
+	add_processing_override("hardware", "hardware_rx_on_delay_frames", "999999");
+	add_processing_override("hardware", "hardware_tx_off_delay_frames", "999999");
 	add_processing_override("duplex", duplex_override_options[2], "hardware");
 	assert(apply_processing_config_overrides(&radio, "usb") == 0);
 	assert(radio.rxondelay == MS_TO_FRAMES(RX_ON_DELAY_MAX));
@@ -5287,21 +5274,22 @@ static void test_processing_config_overrides(void)
 	add_processing_override("general", "channel_enabled", "no");
 	assert(apply_processing_config_overrides(&radio, "usb") == 0);
 	assert(!radio.rxcpusaver && !radio.txcpusaver && !radio.radioactive);
+	assert(!radio.txpreemphasis);
 
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[2], "bad");
+	add_processing_override("hardware", "hardware_interface_type", "bad");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[3], "bad");
+	add_processing_override("hardware", "hardware_eeprom_enabled", "bad");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[18], "nan");
+	add_processing_override("hardware", "hardware_rx_ctcss_level", "nan");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("duplex", duplex_override_options[2], "invalid");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[67], "invalid");
+	add_processing_override("hardware", "hardware_emphasis_corner_hz", "invalid");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("asterisk", asterisk_override_options[0], "yes");
@@ -5309,12 +5297,12 @@ static void test_processing_config_overrides(void)
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	jitter_config_result = 0;
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[45], "in");
+	add_processing_override("hardware", "hardware_gpio_1_mode", "in");
 	ast_strdup_calls = 0;
 	fail_ast_strdup_call = 1;
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[55], "out");
+	add_processing_override("hardware", "hardware_parallel_pin_2_assignment", "out");
 	ast_strdup_calls = 0;
 	fail_ast_strdup_call = 1;
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
@@ -5327,8 +5315,8 @@ static void test_processing_override_parse_edges(void)
 	struct chan_usbradio_pvt radio = {0};
 	size_t index;
 	static const int integer_hardware[] = {2,  4,  5,  10, 11, 12, 13, 14, 15, 17, 20, 22,
-					       30, 31, 32, 33, 36, 37, 38, 39, 41, 42, 43, 44};
-	static const int boolean_hardware[] = {3, 6, 7, 16, 19, 24, 25, 26, 27, 28, 29, 34, 35};
+					       29, 30, 31, 34, 35, 36, 37, 39, 40, 41, 42};
+	static const int boolean_hardware[] = {3, 6, 7, 16, 19, 24, 25, 26, 27, 28, 32, 33};
 	static const char *const malformed_numbers[] = {"bad", "1x"};
 
 	for (index = 0; index < ARRAY_LEN(integer_hardware); ++index) {
@@ -5408,8 +5396,8 @@ static void test_shared_config_loading(void)
 	test_config_category = NULL;
 
 	settings_defaults(&settings);
-	add_processing_override("hardware", hardware_override_options[53], "/dev/parport-modern");
-	add_processing_override("hardware", hardware_override_options[54], "0x278");
+	add_processing_override("hardware", "hardware_parallel_port_device", "/dev/parport-modern");
+	add_processing_override("hardware", "hardware_parallel_port_base_address", "0x278");
 	assert(load_config(1) == 0);
 	assert(!strcmp(pport, "/dev/parport-modern"));
 	assert(pbase == 0x278);
@@ -5568,11 +5556,6 @@ static void test_shared_hardware_layouts(void)
 	radio.gpios[1] = "out";
 	assert(hidhdwconfig(&radio) == 0);
 	assert(radio.hid_gpio_ctl & 1);
-
-	assert(validate_tx_soft_limiter_setpoint(&radio, 4999) == -1);
-	assert(validate_tx_soft_limiter_setpoint(&radio, 5000) == 0);
-	assert(validate_tx_soft_limiter_setpoint(&radio, 13000) == 0);
-	assert(validate_tx_soft_limiter_setpoint(&radio, 13001) == -1);
 }
 
 /** @brief Verify shared control helpers. */
@@ -6460,7 +6443,7 @@ static void test_oss_hid_worker_attach(void)
 static void test_oss_hid_worker_first_radio_construction(void)
 {
 	struct chan_usbradio_pvt radio = {0};
-	struct ast_variable tune_soft_limiter = {.name = "txslimsp", .value = "1"};
+	struct ast_variable ignored_option = {.name = "unsupported", .value = "1"};
 	pthread_t thread;
 
 	settings_defaults(&settings);
@@ -6473,12 +6456,10 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.plus_emphasis_corner_hz = 250.0;
 	radio.radioactive = 1;
-	radio.txprelim = 1;
-	radio.txlimonly = 1;
+	radio.txpreemphasis = 1;
 	radio.txmixa = TX_OUT_OFF;
 	radio.txmixb = TX_OUT_LSD;
 	radio.txctcssadj = 250;
-	radio.txslimsp = 1;
 	assert(usbradioplus_dsp_init(&radio) == 0);
 	usbradio_default.next = &radio;
 	radio.next = NULL;
@@ -6494,7 +6475,7 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	mock_poll_enabled = 1;
 	mock_poll_result = 0;
 	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_config_variables = &tune_soft_limiter;
+	test_config_variables = &ignored_option;
 	mock_hid_input_calls = 0;
 	stop_hid_after_inputs = 1;
 	stop_hid_on_input = &radio;
@@ -6521,8 +6502,7 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	radio.pttkick[0] = radio.pttkick[1] = -1;
 	radio.stophid = radio.hasusb = radio.usbass = 0;
 	radio.radioactive = 0;
-	radio.txprelim = 0;
-	radio.txlimonly = 0;
+	radio.txpreemphasis = 0;
 	radio.txmixa = TX_OUT_VOICE;
 	radio.txmixb = TX_OUT_OFF;
 	strcpy(radio.txctcssfreq, "100.0");
@@ -6600,8 +6580,7 @@ static void test_oss_tune_write_paths(void)
 	variable_update_result = -1;
 	variable_new_failure = 1;
 	strcpy(radio.devstr, "usb-changed");
-	radio.txprelim = 1;
-	radio.txlimonly = 1;
+	radio.txpreemphasis = 1;
 	radio.wanteeprom = 1;
 	radio.eepromctl = 1;
 	usbradio_default.next = &radio;
@@ -6613,8 +6592,7 @@ static void test_oss_tune_write_paths(void)
 	variable_new_failure = 0;
 	variable_update_result = 0;
 	strcpy(radio.devstr, "usb-test");
-	radio.txprelim = 0;
-	radio.txlimonly = 0;
+	radio.txpreemphasis = 0;
 	config_save_result = 0;
 	separate_processing_config_result = 0;
 	radio.wanteeprom = 0;
@@ -7471,9 +7449,7 @@ static void test_native_tick_baseline(void)
 	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
 	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_notch_width_hz = 5.0;
 	ast_copy_string(channel.rxctcssfreq, "100.0", sizeof(channel.rxctcssfreq));
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
-	channel.txprelim = 1;
-	channel.txslimsp = 9000;
+	channel.txpreemphasis = 1;
 	channel.txkeyed = 0;
 	channel.rxkeyed = 1;
 	channel.duplex3 = 999;
@@ -7485,6 +7461,21 @@ static void test_native_tick_baseline(void)
 		usbradioplus_native_tick(&channel);
 	assert(isfinite(channel.plus_local_tx_max_peak_dbfs));
 	assert(isfinite(channel.plus_preemphasis_input_max_peak_dbfs));
+	/* Pre-emphasis never enables, disables, or changes the explicit final limiter. */
+	for (int emphasis = 0; emphasis < 2; ++emphasis) {
+		for (int limiter = 0; limiter < 2; ++limiter) {
+			channel.txpreemphasis = emphasis;
+			settings.profiles[0]
+				.chains[TXAGC_VOICE_TELEMETRY]
+				.agc.lookahead_limiter_enabled = limiter;
+			usbradioplus_native_tick(&channel);
+			assert(channel.plus_final_avfilter.config.preemphasis_enabled == emphasis);
+			assert(channel.plus_final_avfilter.config.lookahead_limiter_enabled ==
+			       limiter);
+		}
+	}
+	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.lookahead_limiter_enabled = 0;
+	channel.txpreemphasis = 1;
 
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
@@ -7603,9 +7594,7 @@ static void test_native_tick_baseline(void)
 	assert(channel.plus_link_queue_underflows == errors);
 
 	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 1;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 1;
-	channel.txprelim = 0;
-	channel.txlimonly = 0;
+	channel.txpreemphasis = 0;
 	usbradioplus_native_tick(&channel);
 
 	settings.profiles[0].chains[TXAGC_LOCAL].input_gain_configured = 1;
@@ -7630,9 +7619,7 @@ static void test_native_tick_baseline(void)
 	usbradioplus_native_tick(&channel);
 
 	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].splatter_filter_configured = 0;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].lookahead_limiter_configured = 0;
 	channel.txhpf = 1;
-	channel.txlimonly = 1;
 	usbradioplus_native_tick(&channel);
 	channel.txlpf = 1;
 	usbradioplus_native_tick(&channel);
@@ -8180,13 +8167,11 @@ static void test_store_config_failure_and_option_edges(void)
 	add_processing_override("hardware", "hardware_parallel_pin_4_assignment", "ptt");
 	add_processing_override("hardware", "hardware_parallel_pin_5_assignment", "out0");
 	usbradio_default.rxsquelchdelay = RXSQDELAYBUFSIZE;
-	usbradio_default.txlimonly = 1;
-	usbradio_default.txprelim = 1;
+	usbradio_default.txpreemphasis = 1;
 	usbradio_default.radioactive = 1;
 	usbradio_default.next = &existing;
 	created = store_config("usb");
 	assert(created);
-	assert(created->radio->txMod == 2);
 	assert(created->rxsquelchdelay == RXSQDELAYBUFSIZE / 8 - 1);
 	assert(created->radioactive && !existing.radioactive && hasout);
 	usbradio_default.next = created->next;
@@ -8196,8 +8181,7 @@ static void test_store_config_failure_and_option_edges(void)
 	settings.profiles[0].hardware.output_a_assignment = TX_OUT_VOICE;
 	settings.profiles[0].hardware.output_b_assignment = TX_OUT_COMPOSITE;
 	usbradio_default.rxsquelchdelay = 0;
-	usbradio_default.txlimonly = 0;
-	usbradio_default.txprelim = 0;
+	usbradio_default.txpreemphasis = 0;
 	usbradio_default.rxsqhyst = 1;
 	usbradio_default.radioactive = 0;
 	created = store_config("usb");

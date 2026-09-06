@@ -288,7 +288,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		}
 		/* Pre-emphasis belongs to the native composite graph regardless of which
 		 * source supplied the audio. */
-		final_cfg.preemphasis_enabled = o->txprelim;
+		final_cfg.preemphasis_enabled = o->txpreemphasis;
 		final_cfg.emphasis_corner_hz = o->plus_emphasis_corner_hz;
 		final_cfg.emphasis_reference_hz = 1000.0;
 		if (final_cfg.output_highpass_hz > 0.0 && final_cfg.output_lowpass_hz > 0.0 &&

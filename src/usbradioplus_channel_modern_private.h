@@ -181,7 +181,6 @@ struct chan_usbradio_pvt {
 	int rxsqvoxadj;
 	int rxnoisefiltype;
 	int rxsquelchdelay;
-	int txslimsp;
 	enum usbradio_carrier_type txtoctype;
 
 	float txctcssgain;
@@ -285,8 +284,7 @@ struct chan_usbradio_pvt {
 	unsigned int invertptt : 1;	  /* indicator if we need to invert ptt */
 	unsigned int rxcpusaver : 1;	  /* indicator if receive cpu save is enabled */
 	unsigned int txcpusaver : 1;	  /* indicator if transmit cpu save is enabled */
-	unsigned int txprelim : 1;	  /* indicator if tx pre lim is enabled */
-	unsigned int txlimonly : 1;	  /* indicator if tx lim only is enabled */
+	unsigned int txpreemphasis : 1;	  /* transmit pre-emphasis enabled */
 	unsigned int rxctcssoverride : 1; /* indicator if receive ctcss override is enabled */
 	unsigned int
 		rx_cos_active : 1; /* indicator if cos is active - active state after processing */

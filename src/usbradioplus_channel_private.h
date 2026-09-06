@@ -21,8 +21,6 @@
 
 #define MS_TO_FRAMES(ms) ((ms) / MS_PER_FRAME)
 
-#define DEFAULT_TX_SOFT_LIMITER_SETPOINT 12000
-
 #define READERR_THRESHOLD 50
 
 #define QUEUE_SIZE 20 /* 400 milliseconds of sound-card output buffering. */
@@ -204,12 +202,6 @@ void _menu_print(int fd, struct chan_usbradio_pvt *o);
  * @param interactive Nonzero permits interactive cancellation.
  */
 void tune_flash(int fd, struct chan_usbradio_pvt *channel, int interactive);
-/** @brief Check the calibrated transmitter soft-limiter setpoint before applying it.
- * @param channel Private state of the selected radio channel.
- * @param setpoint Normalized calibration setpoint.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int validate_tx_soft_limiter_setpoint(struct chan_usbradio_pvt *channel, int setpoint);
 /** @brief Read the resolved CTCSS decoder-input gain.
  * @param channel Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
@@ -308,9 +300,6 @@ struct chan_usbradio_pvt *find_desc(const char *device);
  */
 /** @def MS_TO_FRAMES
  * @brief Convert a millisecond interval to app_rpt frame count.
- */
-/** @def DEFAULT_TX_SOFT_LIMITER_SETPOINT
- * @brief Default normalized final-limiter calibration setpoint.
  */
 /** @def READERR_THRESHOLD
  * @brief Consecutive audio-read failures that trigger device recovery.

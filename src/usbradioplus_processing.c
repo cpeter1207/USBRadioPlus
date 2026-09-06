@@ -141,7 +141,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->input_gain_configured = 1;
 	base->ctcss_filter_configured = 1;
 	base->splatter_filter_configured = 1;
-	base->lookahead_limiter_configured = 1;
 	base->agc.stage_count = 6;
 	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
 	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
@@ -288,7 +287,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.splatter_filter_enabled = 1;
 	base->splatter_filter_configured = 1;
 	base->agc.lookahead_limiter_enabled = 0;
-	base->lookahead_limiter_configured = 1;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.output_gain_db = 0.0;
 	value->hardware.input_gain_db = 0.0;
@@ -857,9 +855,7 @@ PROCESSING_PRIVATE const char *const hardware_override_options[] = {
 	"hardware_dcs_tx_polarity_inverted",
 	"hardware_lsd_rx_polarity_inverted",
 	"hardware_lsd_tx_polarity_inverted",
-	"hardware_tx_preemphasis_limiter_enabled",
-	"hardware_tx_limiter_only_enabled",
-	"hardware_tx_soft_limiter_setpoint",
+	"hardware_tx_preemphasis_enabled",
 	"hardware_tx_settle_ms",
 	"hardware_tx_rx_blanking_ms",
 	"hardware_tx_off_delay_frames",
@@ -1119,9 +1115,6 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 		if ((!strcasecmp(name, "hardware_interface_type") ||
 		     !strcasecmp(name, "duplex_radio_mode")) &&
 		    number > 1.0)
-			goto invalid;
-		if (!strcasecmp(name, "hardware_tx_soft_limiter_setpoint") &&
-		    (number < 5000.0 || number > 13000.0))
 			goto invalid;
 	}
 	if (updated->override_count >= MAX_SECTION_OVERRIDES)
@@ -1537,8 +1530,6 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "limiter_high_knee_db", &chain->agc.high_limiter_knee_db);
 	read_double(cfg, section, "limiter_high_attack_ms", &chain->agc.high_limiter_attack_ms);
 	read_double(cfg, section, "limiter_high_release_ms", &chain->agc.high_limiter_release_ms);
-	chain->lookahead_limiter_configured =
-		ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL;
 	READ_BOOL("lookahead_limiter_enabled", chain->agc.lookahead_limiter_enabled);
 	read_double(cfg, section, "lookahead_limiter_ceiling_dbfs",
 		    &chain->agc.lookahead_limit_dbfs);

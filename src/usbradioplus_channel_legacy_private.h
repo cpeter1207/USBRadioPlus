@@ -290,8 +290,6 @@ struct chan_usbradio_pvt {
 	int rxnoisefiltype;
 	/** Receiver squelch-tail audio delay. */
 	int rxsquelchdelay;
-	/** Transmitter soft-limiter calibration setpoint. */
-	int txslimsp;
 	/** Transmit CTCSS turn-off behavior. */
 	enum usbradio_carrier_type txtoctype;
 
@@ -480,10 +478,8 @@ struct chan_usbradio_pvt {
 	unsigned int rxcpusaver : 1; /* indicator if receive cpu save is enabled */
 	/** Transmitter idle-processing reduction flag. */
 	unsigned int txcpusaver : 1; /* indicator if transmit cpu save is enabled */
-	/** Transmit preemphasis and final-limiter selection. */
-	unsigned int txprelim : 1; /* indicator if tx pre lim is enabled */
-	/** Final-limiter-only selection. */
-	unsigned int txlimonly : 1; /* indicator if tx lim only is enabled */
+	/** Transmit pre-emphasis selection. */
+	unsigned int txpreemphasis : 1; /* transmit pre-emphasis enabled */
 	/** Nonzero permits carrier squelch without decoded CTCSS. */
 	unsigned int rxctcssoverride : 1; /* indicator if receive ctcss override is enabled */
 	unsigned int

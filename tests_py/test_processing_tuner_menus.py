@@ -23,6 +23,20 @@ def sequence(*responses):
     return lambda _args: next(values)
 
 
+def test_hardware_transmit_preemphasis_only():
+    """Keep pre-emphasis independent of the processing limiter controls."""
+    key = "hardware_tx_preemphasis_enabled"
+    assert MODULE["HARDWARE_SETTINGS"][key] == ("Pre-emphasis", "bool")
+    assert key in MODULE["HARDWARE_GROUP_KEYS"]["transmit"]
+    for removed in (
+        "hardware_tx_preemphasis_limiter_enabled",
+        "hardware_tx_limiter_only_enabled",
+        "hardware_tx_soft_limiter_setpoint",
+    ):
+        assert removed not in MODULE["HARDWARE_SETTINGS"]
+        assert removed not in MODULE["HARDWARE_GROUP_KEYS"]["transmit"]
+
+
 @pytest.mark.parametrize(
     ("key", "editor", "new_value"),
     (
@@ -516,7 +530,6 @@ def test_section_options_reports_missing_defaults_without_crashing(monkeypatch):
         ("integer", "prompt_number", "2"),
         ("level", "prompt_number", "500"),
         ("binary", "prompt_number", "1"),
-        ("softlimit", "prompt_number", "9000"),
         ("gpio", "prompt_number", "2"),
         ("address", "prompt_number", "0x378"),
         ("float", "prompt_number", "1.5"),

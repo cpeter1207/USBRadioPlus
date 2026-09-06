@@ -85,7 +85,7 @@ extern struct txagc_settings settings;
 extern pthread_t scan_thread;
 extern int stopping;
 extern int settings_parse_error;
-extern const char *const hardware_override_options[68];
+extern const char *const hardware_override_options[66];
 extern const char *const asterisk_override_options[8];
 extern const char *const duplex_override_options[3];
 extern const char *const diagnostics_override_options[3];

@@ -1361,8 +1361,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->rxSquelchDelay = tChan->rxSquelchDelay;
 		pChan->rxNoiseFilType = tChan->rxNoiseFilType;
 
-		pChan->txMod = tChan->txMod;
-
 		pChan->pTxCodeDefault = tChan->pTxCodeDefault;
 		pChan->pRxCodeSrc = tChan->pRxCodeSrc;
 		pChan->pTxCodeSrc = tChan->pTxCodeSrc;

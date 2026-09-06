@@ -206,11 +206,10 @@ Invert receive or transmit DCS polarity.
 .B hardware_lsd_rx_polarity_inverted, hardware_lsd_tx_polarity_inverted = yes|no
 Invert receive or transmit low-speed-data polarity.
 .TP
-.B hardware_tx_preemphasis_limiter_enabled, hardware_tx_limiter_only_enabled = yes|no
-Select compatibility transmit pre-emphasis and limiting.
-.TP
-.B hardware_tx_soft_limiter_setpoint
-Set compatibility soft-limiter onset.
+.B hardware_tx_preemphasis_enabled = yes|no
+Enable transmitter pre-emphasis for a direct modulator connection. Disable it
+when the radio supplies its own pre-emphasis. This setting affects pre-emphasis
+only; configure limiting separately in the voice/telemetry processing chain.
 .TP
 .B hardware_tx_settle_ms, hardware_tx_rx_blanking_ms
 Set transmitter settling and signaling blanking intervals.

@@ -81,9 +81,7 @@ HARDWARE_SETTINGS = {
     "hardware_dcs_tx_polarity_inverted": ("Transmit DCS polarity inverted", "bool"),
     "hardware_lsd_rx_polarity_inverted": ("Receive low-speed-data polarity inverted", "bool"),
     "hardware_lsd_tx_polarity_inverted": ("Transmit low-speed-data polarity inverted", "bool"),
-    "hardware_tx_preemphasis_limiter_enabled": ("Transmit pre-emphasis and limiter", "bool"),
-    "hardware_tx_limiter_only_enabled": ("Transmit limiter only", "bool"),
-    "hardware_tx_soft_limiter_setpoint": ("Compatibility soft-limiter setpoint", "softlimit"),
+    "hardware_tx_preemphasis_enabled": ("Pre-emphasis", "bool"),
     "hardware_tx_settle_ms": ("Transmit settle time", "integer"),
     "hardware_tx_rx_blanking_ms": ("Transmit/receive blanking time", "integer"),
     "hardware_tx_off_delay_frames": ("Transmit-off receive delay", "integer"),
@@ -155,9 +153,7 @@ HARDWARE_GROUP_KEYS = {
         "hardware_output_b_gain_db",
         "hardware_output_a_assignment",
         "hardware_output_b_assignment",
-        "hardware_tx_preemphasis_limiter_enabled",
-        "hardware_tx_limiter_only_enabled",
-        "hardware_tx_soft_limiter_setpoint",
+        "hardware_tx_preemphasis_enabled",
         "hardware_tx_settle_ms",
         "hardware_tx_rx_blanking_ms",
         "hardware_tx_off_delay_frames",
@@ -1736,11 +1732,10 @@ def section_options_menu(section, settings, title, actions=()):
             if not frequencies or any(value <= 0 for value in frequencies):
                 dialog(["--msgbox", "Enter positive, comma-separated frequencies.", "7", "58"])
                 continue
-        elif kind in {"integer", "level", "binary", "softlimit", "gpio", "address"}:
+        elif kind in {"integer", "level", "binary", "gpio", "address"}:
             limits = {
                 "level": (0, 999),
                 "binary": (0, 1),
-                "softlimit": (5000, 13000),
                 "gpio": (0, 8),
                 "address": (0, 0xFFFFFFFF),
             }

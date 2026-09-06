@@ -270,11 +270,11 @@ def test_native_transmit_only_clamps_at_pcm_boundary():
 def test_native_transmit_gain_and_limiter_precedence():
     """Verify native transmit gain and limiter precedence."""
     processing = text("src/usbradioplus_processing.c")
-    header = text("src/usbradioplus_processing.h")
     module = text("src/chan_usbradioplus.c")
     assert "base->agc.input_gain_db = 6.0" in processing
-    assert "lookahead_limiter_configured" in header
-    assert 'ast_variable_retrieve(cfg, section, "lookahead_limiter_enabled") != NULL' in processing
+    assert (
+        'READ_BOOL("lookahead_limiter_enabled", chain->agc.lookahead_limiter_enabled)' in processing
+    )
     assert "final_cfg = composite_chain.agc" in module
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
@@ -381,8 +381,7 @@ def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
         "hardware_tx_ctcss_default_hz hardware_tx_ctcss_level hardware_ctcss_turnoff_mode "
         "hardware_dcs_rx_polarity_inverted hardware_dcs_tx_polarity_inverted "
         "hardware_lsd_rx_polarity_inverted hardware_lsd_tx_polarity_inverted "
-        "hardware_tx_preemphasis_limiter_enabled hardware_tx_limiter_only_enabled "
-        "hardware_tx_soft_limiter_setpoint hardware_tx_settle_ms hardware_tx_rx_blanking_ms "
+        "hardware_tx_preemphasis_enabled hardware_tx_settle_ms hardware_tx_rx_blanking_ms "
         "hardware_tx_off_delay_frames hardware_tx_polarity_inverted hardware_ptt_inverted "
         "hardware_rx_frequency_hz hardware_tx_frequency_hz hardware_repeater_number "
         "hardware_area hardware_user_key hardware_idle_interval hardware_turnoff_count "
@@ -689,7 +688,9 @@ def test_tuning_commands_and_persistence_cover_all_levels():
     utility = text("scripts/usbradioplus-tune")
     handler = function_definition(module, "tune_menusupport")
     cases = set(re.findall(r"case '([0-9a-z])'", handler))
-    assert set("0123abcdefghijklopqrstuvwxyz") <= cases
+    assert set("0123abcdefghijklopqrsuvwxyz") <= cases
+    assert "case 't':" not in handler
+    assert "case 'L':" not in handler
     assert 'f"radioplus tune menu-support {option}"' in utility
     saver = function_definition(module, "save_tuning_config")
     assert "usbradioplus_processing_save_options" in saver

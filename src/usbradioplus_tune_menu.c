@@ -46,29 +46,19 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		   values to be returned (and in a specific order).  So, we only add to the end
 		   of the returned list.  Also, once an update has been released we can't change
 		   the format/content of any previously returned string */
-		if (!strcmp(cmd, "0+10")) { /* With o->txslimsp tx soft limiter set point */
-			ast_cli(fd,
-				"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,"
-				"%d,%d\n",
-				flatrx, txhasctcss, o->echomode, 0, 0, o->rxcdtype, o->rxsdtype,
-				o->rxondelay, o->txoffdelay, o->txprelim, o->txlimonly, o->rxdemod,
-				o->txmixa, o->txmixb, effective_rxmixerset(o),
-				effective_rx_decoder_gain(o), o->rxsquelchadj, o->txmixaset,
-				o->txmixbset, o->txctcssadj, micplaymax, spkrmax, micmax,
-				o->txslimsp);
-		} else if (!strcmp(cmd, "0+9")) {
+		if (!strcmp(cmd, "0+9")) {
 			ast_cli(fd,
 				"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%f,%d,%d,%d,%d,%d,%d,"
 				"%d\n",
 				flatrx, txhasctcss, o->echomode, 0, 0, o->rxcdtype, o->rxsdtype,
-				o->rxondelay, o->txoffdelay, o->txprelim, o->txlimonly, o->rxdemod,
+				o->rxondelay, o->txoffdelay, o->txpreemphasis, 0, o->rxdemod,
 				o->txmixa, o->txmixb, effective_rxmixerset(o),
 				effective_rx_decoder_gain(o), o->rxsquelchadj, o->txmixaset,
 				o->txmixbset, o->txctcssadj, micplaymax, spkrmax, micmax);
 		} else {
 			ast_cli(fd, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", flatrx,
 				txhasctcss, o->echomode, 0, 0, o->rxcdtype, o->rxsdtype,
-				o->rxondelay, o->txoffdelay, o->txprelim, o->txlimonly, o->rxdemod,
+				o->rxondelay, o->txoffdelay, o->txpreemphasis, 0, o->rxdemod,
 				o->txmixa, o->txmixb);
 		}
 		break;
@@ -194,23 +184,6 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		tune_flash(fd, o, 1);
 		break;
 
-	case 'L': /* Set TX soft limiter when operating with preemphasized and limited tx audio */
-		if (cmd[1]) {
-			int setpoint = atoi(cmd + 1);
-			if (validate_tx_soft_limiter_setpoint(o, setpoint)) {
-				ast_cli(fd, "TX soft limiting setpoint must be between 5000 and "
-					    "13000\n");
-				break;
-			} else {
-				o->txslimsp = setpoint;
-			}
-
-			ast_cli(fd, "TX soft limiting setpoint changed to %i\n", setpoint);
-		} else {
-			ast_cli(fd, "TX soft limiting setpoint currently set to: %i\n",
-				o->txslimsp);
-		}
-		break;
 	case 'D': /* Set local repeat level for duplex=3 operation. */
 		if (cmd[1]) {
 			char *end = NULL;
@@ -282,32 +255,18 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 			ast_cli(fd, "TX Off Delay is currently %d\n", o->txoffdelay);
 		}
 		break;
-	case 's': /* change txprelim */
+	case 's': /* change txpreemphasis */
 		if (cmd[1]) {
 			if (cmd[1] > '0') {
-				o->txprelim = 1;
+				o->txpreemphasis = 1;
 			} else {
-				o->txprelim = 0;
+				o->txpreemphasis = 0;
 			}
-			ast_cli(fd, "TxPrelim changed to %s\n",
-				(o->txprelim) ? "Enabled" : "Disabled");
+			ast_cli(fd, "Pre-emphasis changed to %s\n",
+				(o->txpreemphasis) ? "Enabled" : "Disabled");
 		} else {
-			ast_cli(fd, "TxPrelim is currently %s\n",
-				(o->txprelim) ? "Enabled" : "Disabled");
-		}
-		break;
-	case 't': /* change txlimonly */
-		if (cmd[1]) {
-			if (cmd[1] > '0') {
-				o->txlimonly = 1;
-			} else {
-				o->txlimonly = 0;
-			}
-			ast_cli(fd, "TxLimonly changed to %s\n",
-				(o->txlimonly) ? "Enabled" : "Disabled");
-		} else {
-			ast_cli(fd, "TxLimonly is currently %s\n",
-				(o->txlimonly) ? "Enabled" : "Disabled");
+			ast_cli(fd, "Pre-emphasis is currently %s\n",
+				(o->txpreemphasis) ? "Enabled" : "Disabled");
 		}
 		break;
 	case 'u': /* change rxdemod */

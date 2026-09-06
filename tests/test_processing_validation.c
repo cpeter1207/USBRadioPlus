@@ -1571,6 +1571,7 @@ static void test_section_override_parser(void)
 		{"asterisk", "asterisk_jitter_buffer_enabled", "yes", "maybe"},
 		{"asterisk", "asterisk_jitter_buffer_force_enabled", "no", "maybe"},
 		{"hardware", "hardware_rx_polarity_inverted", "yes", "maybe"},
+		{"hardware", "hardware_tx_preemphasis_enabled", "yes", "maybe"},
 		{"asterisk", "asterisk_jitter_buffer_implementation", "adaptive", "other"},
 		{"hardware", "hardware_emphasis_corner_hz", "120", "300"},
 		{"hardware", "hardware_gpio_1_mode", "in", "bad"},
@@ -1592,7 +1593,6 @@ static void test_section_override_parser(void)
 		{"hardware", "hardware_clip_led_gpio", "8", "9"},
 		{"hardware", "hardware_interface_type", "1", "2"},
 		{"duplex", "duplex_radio_mode", "0", "2"},
-		{"hardware", "hardware_tx_soft_limiter_setpoint", "5000", "4999"},
 	};
 
 	fake_option_count = 0;
@@ -1634,7 +1634,6 @@ static void test_section_override_parser(void)
 	assert(add_single_override("hardware", "hardware_parallel_port_base_address",
 				   "0x100000000") < 0);
 	assert(add_single_override("hardware", "hardware_audio_fragment_count", "nan") < 0);
-	assert(add_single_override("hardware", "hardware_tx_soft_limiter_setpoint", "13001") < 0);
 
 	settings_defaults(&value);
 	value.profiles[0].override_count = MAX_SECTION_OVERRIDES;
@@ -1694,6 +1693,10 @@ static void test_option_name_validation(void)
 		{"test", "channel", 0},
 		{"asterisk test", asterisk_override_options[0], 1},
 		{"hardware test", "hardware_input_gain_db", 1},
+		{"hardware test", "hardware_tx_preemphasis_enabled", 1},
+		{"hardware test", "hardware_tx_preemphasis_limiter_enabled", 0},
+		{"hardware test", "hardware_tx_limiter_only_enabled", 0},
+		{"hardware test", "hardware_tx_soft_limiter_setpoint", 0},
 		{"hardware test", hardware_override_options[0], 1},
 		{"duplex test", duplex_override_options[0], 1},
 		{"diagnostics test", diagnostics_override_options[0], 1},

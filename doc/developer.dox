@@ -69,6 +69,9 @@ Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
 it does not change voice gain. Native CTCSS is mixed after transmitter dynamics
 and limiting. Saturating PCM conversion prevents signed wraparound.
+The hardware_tx_preemphasis_enabled option controls only the composite graph's
+pre-emphasis stage. Final limiting uses the voice/telemetry profile's explicit
+lookahead-limiter controls independently of pre-emphasis.
 
 @section concurrency Thread and resource ownership
 

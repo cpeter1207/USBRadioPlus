@@ -86,10 +86,9 @@ channel_enabled = yes
 ;hardware_dcs_tx_polarity_inverted = no
 ;hardware_lsd_rx_polarity_inverted = no
 ;hardware_lsd_tx_polarity_inverted = no
-; Transmit modulation selection, limiter compatibility, and keying delays.
-;hardware_tx_preemphasis_limiter_enabled = yes
-;hardware_tx_limiter_only_enabled = no
-;hardware_tx_soft_limiter_setpoint = 12000
+; Transmit pre-emphasis and keying delays. Limiting is set in [voice_telemetry].
+; Enable pre-emphasis for a direct modulator input; disable if supplied by the radio.
+;hardware_tx_preemphasis_enabled = yes
 ;hardware_tx_settle_ms = 500
 ;hardware_tx_rx_blanking_ms = 0
 ;hardware_tx_off_delay_frames = 0
