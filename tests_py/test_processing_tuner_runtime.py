@@ -164,8 +164,9 @@ def test_packaged_gzip_sample_supersedes_incomplete_plain_sample(tmp_path, monke
         b"not a gzip file",
         gzip.compress(b"truncated gzip", mtime=0)[:-5],
         gzip.compress(b"\xff", mtime=0),
+        gzip.compress(b"invalid deflate", mtime=0)[:10] + b"\x07",
     ),
-    ids=("invalid-header", "truncated-stream", "invalid-utf8"),
+    ids=("invalid-header", "truncated-stream", "invalid-utf8", "invalid-deflate"),
 )
 def test_corrupt_gzip_sample_is_reported_or_skipped(tmp_path, monkeypatch, contents):
     """Report unreadable package metadata while permitting another complete sample.

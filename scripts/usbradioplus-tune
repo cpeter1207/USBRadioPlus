@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zlib
 from datetime import datetime
 
 ## Selected unified configuration path.
@@ -878,7 +879,7 @@ def shipped_configuration():
             try:
                 with reader(path, "rt", encoding="utf-8") as stream:
                     text = stream.read()
-            except (OSError, EOFError, UnicodeError) as error:
+            except (OSError, EOFError, UnicodeError, zlib.error) as error:
                 problems.append(f"{path}: {error}")
                 continue
             values, section = {}, None
