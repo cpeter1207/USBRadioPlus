@@ -1628,9 +1628,9 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 	}
 #endif
 
-	/* app_rpt writes silence continuously. Admit only keyed program frames so
-	 * an unkeyed stream cannot prevent the accepted audio tail from draining. */
-	if (o->echoing || !o->txkeyed || f->frametype != AST_FRAME_VOICE || !f->data.ptr) {
+	/* Preserve app_rpt's continuous stream, including idle silence, so PTT
+	 * transitions do not interrupt clock recovery. Echo owns the input while playing. */
+	if (o->echoing || f->frametype != AST_FRAME_VOICE || !f->data.ptr) {
 		return 0;
 	}
 	usbradioplus_queue_program(o, f->data.ptr, f->datalen / sizeof(short));

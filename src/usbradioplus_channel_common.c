@@ -252,9 +252,9 @@ void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *sample
 {
 	unsigned int seed_frames, target_samples;
 	ast_mutex_lock(&o->plus_link_lock);
-	/* Lead each burst with the target reserve. A resampled stream needs one
-	 * additional frame for sinc history before it can reach that reserve.
-	 * This padding affects audio only; app_rpt retains ownership of PTT. */
+	/* Seed stream startup or underrun recovery with the target reserve.
+	 * A resampled stream needs one extra frame for sinc history.
+	 * PTT transitions do not reseed the stream. */
 	target_samples = o->plus_native_fifo.target_samples ? o->plus_native_fifo.target_samples
 							    : URP_FIFO_TARGET_NORMAL;
 	seed_frames = !o->plus_native_fifo.primed && !o->plus_native_fifo.count &&

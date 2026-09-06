@@ -64,6 +64,13 @@ still runs.
   transitions; normal link, telemetry, voice, and CTCSS output while keyed.
   Check device underruns and write/drop counters during idle, sustained audio,
   and normal host load. Repeat after reopening the USB device.
+- [ ] Continuous app_rpt input verified through repeated key/unkey transitions:
+  idle silence keeps the FIFO, resampler, and clock recovery running; PTT
+  transitions do not discard buffered audio. Check echo playback and final
+  transmit muting with the same routing and timing settings.
+- [ ] Enabled local RNNoise and dynamics verified while idle with RX CPU saver
+  disabled, and with idle bypass when RX CPU saver is enabled.
+  Confirm receiver muting and software/hardware repeat routing are preserved.
 - [ ] Thirty-minute receive and keyed soak completed without growing errors.
 
 The software-only checklist is complete. Hardware measurements remain release

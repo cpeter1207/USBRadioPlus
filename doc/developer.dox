@@ -33,15 +33,20 @@ audio representation. dBFS measurements use the full signed PCM range.
 
 The app_rpt-to-CM119 elastic FIFO starts with a 120 ms occupancy target. Keyed
 underruns raise it by 10 ms, up to 170 ms; three minutes of stable keyed blocks
-lower it by 10 ms, but never below 110 ms. Both queues hold 200 ms so startup
-padding and a complete resampled frame fit at the maximum target. These are
-occupancy targets, not an end-to-end latency guarantee: each device interval
-consumes 20 ms, and network jitter buffering adds its own delay.
+accumulated across transmissions lower it by 10 ms, but never below 110 ms.
+Both queues hold 200 ms so startup padding and a complete resampled frame fit
+at the maximum target. These are occupancy targets, not an end-to-end latency
+guarantee: each device interval consumes 20 ms, and network jitter buffering
+adds its own delay.
 
-Resampled bursts receive one additional 20 ms leading silence frame so the
-sinc converter can fill its history and reach the FIFO target. If the program
-queue empties and fewer than 20 ms of native audio remain, one silence frame
-releases the converter's retained audio before underrun recovery. Further
+Both adapters admit app_rpt program frames continuously, including idle
+silence, except while echo playback owns the input. PTT transitions preserve
+the FIFO, resampler state, clock recovery, and concealment history. Only
+stream startup or recovery seeds the FIFO reserve. Resampled streams receive
+one additional 20 ms leading silence frame so the sinc converter can fill
+its history and reach the FIFO target. If the program queue empties and
+fewer than 20 ms of native audio remain, one silence frame releases the
+converter's retained audio before underrun recovery. Further
 padding requires another queued input frame; a continuously arriving stream
 does not receive this tail padding while its FIFO reserve lasts. Native-rate
 input bypasses these resampling steps. Padding affects PCM audio only: app_rpt
@@ -53,6 +58,12 @@ or an immutable silence block; COS and CTCSS decode do not control device
 write cadence. The OSS writer does not prepend silence when its queue empties.
 Its queue-depth bound and short/failed-write diagnostics still apply during
 idle operation. PortAudio retains the ASL audio API's device recovery.
+
+When the local chain is enabled, its enabled RNNoise and FFmpeg dynamics
+stages advance every native interval with hardware_rx_cpu_saver_enabled=no.
+RX CPU saver bypasses those stages while the receiver is unqualified. Existing
+receive qualification, repeat routing, and final transmit muting still
+control audibility; processing continuity does not key the transmitter.
 
 Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;

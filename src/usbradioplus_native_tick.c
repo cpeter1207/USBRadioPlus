@@ -117,7 +117,9 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 			ast_log(LOG_WARNING, "RadioPlus/%s: fixed receive filter failed\n",
 				o->name);
 	}
-	if (local_chain_enabled && o->rxkeyed) {
+	/* Keep optional processing state advancing unless RX CPU saver is enabled
+	 * and the receiver is unqualified. Receive routing still controls audibility. */
+	if (local_chain_enabled && (!o->rxcpusaver || o->rxkeyed)) {
 		struct txagc_config dynamics_cfg = chain.agc;
 		dynamics_cfg.input_gain_db = 0.0;
 
@@ -158,15 +160,9 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	memset(o->plus_link_native, 0, sizeof(o->plus_link_native));
 	if (!o->plus_native_fifo.target_samples)
 		o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
-	if (o->txkeyed && !o->plus_native_fifo.was_keyed) {
-		urp_native_fifo_key_start(&o->plus_native_fifo);
-		o->plus_link_src_pending = 0;
-		urp_clock_recovery_reset(&o->plus_link_clock);
-	} else if (!o->txkeyed) {
-		o->plus_native_fifo.was_keyed = 0;
-	}
 	/* app_rpt and the CM119 use independent clocks. Convert queued frames into
-	 * an elastic native-rate FIFO and trim the ratio gently around its target. */
+	 * an elastic native-rate FIFO and trim the ratio gently around its target.
+	 * Idle silence follows the same path; PTT edges never reset stream state. */
 	{
 		unsigned int queued_frames;
 		ast_mutex_lock(&o->plus_link_lock);

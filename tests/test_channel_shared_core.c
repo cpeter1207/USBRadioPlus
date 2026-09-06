@@ -78,15 +78,9 @@ int main(void)
 		fifo.primed = 1;
 		urp_native_fifo_reset(&fifo);
 		assert(!fifo.head && !fifo.count && !fifo.primed);
-		urp_native_fifo_key_start(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL && fifo.was_keyed);
-		fifo.target_samples = 0;
 		urp_native_fifo_note_underrun(&fifo);
 		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP);
 
-		urp_native_fifo_key_start(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP &&
-		       fifo.was_keyed);
 		urp_native_fifo_note_underrun(&fifo);
 		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + 2 * URP_FIFO_TARGET_STEP);
 		for (i = 0; i < 10; ++i)
@@ -101,7 +95,6 @@ int main(void)
 			assert(fifo.target_samples >= 110U * (URP_RATE_NATIVE / 1000U));
 		}
 		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
-		urp_native_fifo_key_start(&fifo);
 		assert(fifo.target_samples == URP_FIFO_TARGET_MIN && !fifo.stable_blocks);
 		fifo.target_samples = 0;
 		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;

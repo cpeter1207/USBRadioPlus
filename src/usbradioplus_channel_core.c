@@ -126,17 +126,6 @@ void urp_native_fifo_reset(struct urp_native_fifo *fifo)
 	fifo->primed = 0;
 }
 
-void urp_native_fifo_key_start(struct urp_native_fifo *fifo)
-{
-	urp_native_fifo_reset(fifo);
-	if (!fifo->target_samples)
-		fifo->target_samples = URP_FIFO_TARGET_NORMAL;
-	fifo->stable_blocks = 0;
-	fifo->was_keyed = 1;
-	fifo->have_history = 0;
-	fifo->concealing = 0;
-}
-
 void urp_native_fifo_note_underrun(struct urp_native_fifo *fifo)
 {
 	unsigned int target = fifo->target_samples ? fifo->target_samples : URP_FIFO_TARGET_NORMAL;

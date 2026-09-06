@@ -51,9 +51,13 @@ channel_enabled = yes
 ;hardware_interface_type = 0
 ;hardware_eeprom_enabled = yes
 ; Audio buffering and idle DSP controls.
+; App_rpt audio and idle silence keep the FIFO and resampler running across PTT
+; transitions, except while echo playback owns the input.
 ;hardware_audio_fragment_count = 196
 ; Device output continues with silence while idle; this bounds its queued audio.
 ;hardware_audio_queue_size = 20
+; With RX CPU saver off, enabled local RNNoise/dynamics also run while idle.
+; With it on, those stages are bypassed until the receiver is qualified.
 ;hardware_rx_cpu_saver_enabled = no
 ;hardware_tx_cpu_saver_enabled = no
 ; Receiver audio and CTCSS indication sources.

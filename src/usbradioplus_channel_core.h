@@ -99,8 +99,6 @@ struct urp_native_fifo {
 	unsigned int count;
 	/** Nonzero after startup buffering permits output. */
 	unsigned int primed : 1;
-	/** Nonzero while the preceding hardware interval was keyed. */
-	unsigned int was_keyed : 1;
 	/** Nonzero after at least one complete output block has been retained. */
 	unsigned int have_history : 1;
 	/** Nonzero when the preceding block used shortage concealment. */
@@ -215,11 +213,6 @@ int urp_native_fifo_pop(struct urp_native_fifo *fifo, short *samples);
  * @param fifo Bounded audio FIFO.
  */
 void urp_native_fifo_reset(struct urp_native_fifo *fifo);
-
-/** @brief Reset clock/FIFO policy at a keyed transmission boundary.
- * @param fifo Bounded audio FIFO.
- */
-void urp_native_fifo_key_start(struct urp_native_fifo *fifo);
 
 /** @brief Raise the adaptive reserve after a genuine keyed underrun.
  * @param fifo Bounded audio FIFO.

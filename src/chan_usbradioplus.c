@@ -1468,11 +1468,9 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 	}
 #endif
 
-	/* The signaling engine does not render audio. Preserve app_rpt's program frame for the
-	 * native-rate transmitter graph in the next CM119 hardware tick. */
-	/* app_rpt writes silence continuously. Admit only keyed program frames so
-	 * an unkeyed stream cannot prevent the accepted audio tail from draining. */
-	if (!o->echoing && o->txkeyed) {
+	/* Preserve app_rpt's continuous stream, including idle silence, so PTT
+	 * transitions do not interrupt clock recovery. Echo owns the input while playing. */
+	if (!o->echoing) {
 		usbradioplus_queue_program(o, f->data.ptr, f->datalen / sizeof(short));
 	}
 
