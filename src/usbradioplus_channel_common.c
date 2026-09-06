@@ -250,13 +250,15 @@ int usbradio_answer(struct ast_channel *c)
 
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
-	unsigned int seed_frames;
+	unsigned int seed_frames, target_samples;
 	ast_mutex_lock(&o->plus_link_lock);
 	/* Lead a new or recovered burst with the target safety margin. PTT remains
 	 * asserted while it drains, so even a one-frame telemetry burst is kept. */
+	target_samples = o->plus_native_fifo.target_samples ? o->plus_native_fifo.target_samples
+							    : URP_FIFO_TARGET_NORMAL;
 	seed_frames = !o->plus_native_fifo.primed && !o->plus_native_fifo.count &&
 				      !urp_program_queue_pending(&o->plus_program_queue)
-			      ? PLUS_LINK_NATIVE_TARGET_SAMPLES / URP_NATIVE_SAMPLES - 1
+			      ? (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U
 			      : 0;
 	if (urp_program_queue_push(&o->plus_program_queue, samples, count, o->plus_app_rpt_samples,
 				   seed_frames)) {

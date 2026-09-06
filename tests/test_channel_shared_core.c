@@ -72,6 +72,50 @@ int main(void)
 		fifo.primed = 1;
 		urp_native_fifo_reset(&fifo);
 		assert(!fifo.head && !fifo.count && !fifo.primed);
+		urp_native_fifo_key_start(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL && fifo.was_keyed);
+		fifo.target_samples = 0;
+		urp_native_fifo_note_underrun(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP);
+
+		urp_native_fifo_key_start(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP &&
+		       fifo.was_keyed);
+		urp_native_fifo_note_underrun(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + 2 * URP_FIFO_TARGET_STEP);
+		for (i = 0; i < 10; ++i)
+			urp_native_fifo_note_underrun(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_MAX);
+		for (i = 0; i < URP_FIFO_TARGET_DECAY_BLOCKS; ++i)
+			urp_native_fifo_note_stable(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP);
+		fifo.target_samples = 0;
+		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
+		urp_native_fifo_note_stable(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL - URP_FIFO_TARGET_STEP);
+		fifo.target_samples = URP_FIFO_TARGET_MIN;
+		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
+		urp_native_fifo_note_stable(&fifo);
+		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
+
+		memset(output, 1, sizeof(output));
+		assert(!urp_native_fifo_render(&fifo, output));
+		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
+			assert(output[i] == 0);
+		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
+			native_input[i] = 1000;
+		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
+		fifo.concealing = 1;
+		fifo.have_history = 0;
+		assert(urp_native_fifo_render(&fifo, output));
+		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] == 1000);
+		assert(!urp_native_fifo_push(&fifo, native_input, 100));
+		assert(!urp_native_fifo_render(&fifo, output));
+		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] <= 1);
+		assert(fifo.concealing);
+		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
+		assert(urp_native_fifo_render(&fifo, output));
+		assert(!fifo.concealing && output[URP_NATIVE_SAMPLES - 1] == 1000);
 	}
 
 	for (i = 0; i < sizeof(rx_names) / sizeof(rx_names[0]); ++i) {

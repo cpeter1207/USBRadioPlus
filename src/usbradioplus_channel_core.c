@@ -126,6 +126,83 @@ void urp_native_fifo_reset(struct urp_native_fifo *fifo)
 	fifo->primed = 0;
 }
 
+void urp_native_fifo_key_start(struct urp_native_fifo *fifo)
+{
+	urp_native_fifo_reset(fifo);
+	if (!fifo->target_samples)
+		fifo->target_samples = URP_FIFO_TARGET_NORMAL;
+	fifo->stable_blocks = 0;
+	fifo->was_keyed = 1;
+	fifo->have_history = 0;
+	fifo->concealing = 0;
+}
+
+void urp_native_fifo_note_underrun(struct urp_native_fifo *fifo)
+{
+	unsigned int target = fifo->target_samples ? fifo->target_samples : URP_FIFO_TARGET_NORMAL;
+	fifo->target_samples = target < URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP
+				       ? target + URP_FIFO_TARGET_STEP
+				       : URP_FIFO_TARGET_MAX;
+	fifo->stable_blocks = 0;
+}
+
+void urp_native_fifo_note_stable(struct urp_native_fifo *fifo)
+{
+	if (!fifo->target_samples)
+		fifo->target_samples = URP_FIFO_TARGET_NORMAL;
+	if (++fifo->stable_blocks < URP_FIFO_TARGET_DECAY_BLOCKS)
+		return;
+	fifo->stable_blocks = 0;
+	if (fifo->target_samples > URP_FIFO_TARGET_MIN + URP_FIFO_TARGET_STEP)
+		fifo->target_samples -= URP_FIFO_TARGET_STEP;
+	else
+		fifo->target_samples = URP_FIFO_TARGET_MIN;
+}
+
+int urp_native_fifo_render(struct urp_native_fifo *fifo, short *samples)
+{
+	size_t i, available = fifo->count;
+
+	if (available >= URP_NATIVE_SAMPLES) {
+		short previous[URP_NATIVE_SAMPLES];
+		int recovering = fifo->concealing && fifo->have_history;
+		memcpy(previous, fifo->history, sizeof(previous));
+		(void)urp_native_fifo_pop(fifo, samples);
+		if (recovering) {
+			const size_t crossfade = URP_NATIVE_SAMPLES / 20U;
+			for (i = 0; i < crossfade; ++i) {
+				double mix = (double)(i + 1U) / (double)crossfade;
+				samples[i] = (short)lrint(
+					previous[URP_NATIVE_SAMPLES - crossfade + i] * (1.0 - mix) +
+					samples[i] * mix);
+			}
+		}
+		memcpy(fifo->history, samples, sizeof(fifo->history));
+		fifo->have_history = 1;
+		fifo->concealing = 0;
+		return 1;
+	}
+
+	for (i = 0; i < available; ++i) {
+		samples[i] = fifo->samples[fifo->head];
+		fifo->head = (fifo->head + 1U) % URP_NATIVE_FIFO_SAMPLES;
+	}
+	fifo->count = 0;
+	for (; i < URP_NATIVE_SAMPLES; ++i) {
+		double fade = 1.0 - (double)(i - available + 1U) /
+					    (double)(URP_NATIVE_SAMPLES - available + 1U);
+		short source =
+			fifo->have_history
+				? fifo->history[(URP_NATIVE_SAMPLES / 2U + i) % URP_NATIVE_SAMPLES]
+				: 0;
+		samples[i] = (short)lrint(source * fade);
+	}
+	memcpy(fifo->history, samples, sizeof(fifo->history));
+	fifo->have_history = 1;
+	fifo->concealing = 1;
+	return 0;
+}
+
 int urp_gain_db_to_mixer(double gain_db)
 {
 	double setting = 500.0 * pow(10.0, gain_db / 20.0);

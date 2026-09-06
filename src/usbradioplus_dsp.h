@@ -26,6 +26,10 @@
 struct urp_clock_recovery {
 	/** Smoothed fractional rate correction around nominal conversion. */
 	double correction;
+	/** Low-pass-filtered occupancy error, excluding frame-to-frame jitter. */
+	double filtered_error;
+	/** Slow accumulated error that removes steady oscillator offset. */
+	double integral_error;
 };
 
 /** @brief Reset the elastic-buffer clock correction to nominal rate.

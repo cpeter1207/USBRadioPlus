@@ -35,7 +35,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	size_t used = 0, made = 0, i;
 	int local_chain_enabled;
 	int ctcss_phase_reverse;
-	double ctcss_frequency, ctcss_peak_a, ctcss_peak_b;
+	double ctcss_frequency, ctcss_peak_a, ctcss_peak_b, correction;
 	double ctcss_bias_a, ctcss_bias_b;
 	int ctcss_filter_250, ctcss_tone_gain;
 	enum radio_tx_mix txmixa = effective_txmixa(o);
@@ -147,23 +147,35 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	}
 
 	memset(o->plus_link_native, 0, sizeof(o->plus_link_native));
+	if (!o->plus_native_fifo.target_samples)
+		o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
+	if (o->txkeyed && !o->plus_native_fifo.was_keyed) {
+		urp_native_fifo_key_start(&o->plus_native_fifo);
+		urp_clock_recovery_reset(&o->plus_link_clock);
+	} else if (!o->txkeyed) {
+		o->plus_native_fifo.was_keyed = 0;
+	}
 	/* app_rpt and the CM119 use independent clocks. Convert queued frames into
 	 * an elastic native-rate FIFO and trim the ratio gently around its target. */
-	while (o->plus_native_fifo.count < PLUS_LINK_NATIVE_TARGET_SAMPLES) {
+	{
 		unsigned int queued_frames;
-		double correction, ratio;
+		ast_mutex_lock(&o->plus_link_lock);
+		queued_frames = o->plus_program_queue.count;
+		ast_mutex_unlock(&o->plus_link_lock);
+		correction = urp_clock_recovery_update(
+			&o->plus_link_clock,
+			o->plus_native_fifo.count + queued_frames * URP_NATIVE_SAMPLES,
+			o->plus_native_fifo.target_samples + URP_FIFO_TARGET_STEP);
+	}
+	while (o->plus_native_fifo.count < o->plus_native_fifo.target_samples) {
+		double ratio;
 		int have_frame = 0;
 		memset(o->plus_link_8k, 0, sizeof(o->plus_link_8k));
 		ast_mutex_lock(&o->plus_link_lock);
-		queued_frames = o->plus_program_queue.count;
 		have_frame = urp_program_queue_pop(&o->plus_program_queue, o->plus_link_8k);
 		ast_mutex_unlock(&o->plus_link_lock);
 		if (!have_frame)
 			break;
-		correction = urp_clock_recovery_update(&o->plus_link_clock,
-						       o->plus_native_fifo.count +
-							       queued_frames * URP_NATIVE_SAMPLES,
-						       PLUS_LINK_NATIVE_TARGET_SAMPLES);
 		if (o->plus_app_rpt_rate == URP_RATE_NATIVE) {
 			plus_link_native_push(o, o->plus_link_8k, o->plus_app_rpt_samples);
 			continue;
@@ -182,17 +194,22 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		plus_link_native_push(o, o->plus_link_resampled, made);
 	}
 	if (!o->plus_native_fifo.primed &&
-	    o->plus_native_fifo.count >= PLUS_LINK_NATIVE_TARGET_SAMPLES) {
+	    o->plus_native_fifo.count >= o->plus_native_fifo.target_samples) {
 		o->plus_native_fifo.primed = 1;
 	}
-	if (o->plus_native_fifo.primed && !plus_link_native_pop(o, o->plus_link_native)) {
+	if (o->plus_native_fifo.primed &&
+	    !urp_native_fifo_render(&o->plus_native_fifo, o->plus_link_native)) {
 		o->plus_native_fifo.primed = 0;
 		/* A short SRC remainder is expected while an unkeyed burst drains. */
-		if (o->txkeyed)
+		if (o->txkeyed) {
 			o->plus_link_queue_underflows++;
+			urp_native_fifo_note_underrun(&o->plus_native_fifo);
+		}
 		urp_src_reset(o->plus_up);
 		urp_clock_recovery_reset(&o->plus_link_clock);
 		urp_native_fifo_reset(&o->plus_native_fifo);
+	} else if (o->plus_native_fifo.primed && o->txkeyed) {
+		urp_native_fifo_note_stable(&o->plus_native_fifo);
 	}
 	for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
 		program[i] = o->plus_link_native[i];

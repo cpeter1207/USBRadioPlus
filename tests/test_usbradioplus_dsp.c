@@ -2,7 +2,7 @@
  * @brief Executable usbradioplus dsp regression and failure-path checks.
  */
 
-#include "../src/usbradioplus_dsp.h"
+#include "../src/usbradioplus_channel_core.h"
 
 #include <assert.h>
 #include <math.h>
@@ -123,7 +123,8 @@ static void test_clock_recovery(void)
 	assert(high < 0.0 && high >= -URP_CLOCK_MAX_CORRECTION);
 	assert(fabs(high - low) < 2.0 * URP_CLOCK_MAX_CORRECTION);
 	urp_clock_recovery_reset(&clock);
-	assert(clock.correction == 0.0);
+	assert(clock.correction == 0.0 && clock.filtered_error == 0.0 &&
+	       clock.integral_error == 0.0);
 }
 
 /** @brief Exercise elastic FIFO occupancy under a simulated independent producer clock.
@@ -132,29 +133,37 @@ static void test_clock_recovery(void)
 static void simulate_clock_drift(double producer_ppm)
 {
 	struct urp_clock_recovery clock = {0};
-	double app_phase = 3.0, native_fifo = 0.0;
+	double app_phase = 2.0, native_fifo = 0.0;
+	size_t target = URP_FIFO_TARGET_NORMAL;
 	unsigned int app_frames = 0, underflows = 0;
 	int tick;
 	for (tick = 0; tick < 60000; ++tick) { /* Twenty minutes at 20 ms. */
+		double correction;
 		app_phase += 1.0 + producer_ppm / 1000000.0;
 		while (app_phase >= 1.0) {
 			app_frames++;
 			app_phase -= 1.0;
 		}
-		while (native_fifo < 2880.0 && app_frames) {
-			double correction = urp_clock_recovery_update(
-				&clock, (size_t)native_fifo + app_frames * 960, 2880);
+		correction = urp_clock_recovery_update(
+			&clock, (size_t)native_fifo + app_frames * URP_NATIVE_SAMPLES,
+			target + URP_FIFO_TARGET_STEP);
+		while (native_fifo < target && app_frames) {
 			native_fifo += 960.0 * (1.0 + correction);
 			app_frames--;
 		}
 		if (native_fifo >= 960.0)
 			native_fifo -= 960.0;
-		else
+		else {
 			underflows++;
+			target = target < URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP
+					 ? target + URP_FIFO_TARGET_STEP
+					 : URP_FIFO_TARGET_MAX;
+			urp_clock_recovery_reset(&clock);
+		}
 	}
 	printf("clock drift %+.0f ppm: underruns %u, app frames %u, native %.1f, correction %.6f\n",
 	       producer_ppm, underflows, app_frames, native_fifo, clock.correction);
-	assert(underflows == 0);
+	assert(underflows <= 1);
 	assert(app_frames < 8);
 	assert(native_fifo < 8.0 * 960.0);
 }

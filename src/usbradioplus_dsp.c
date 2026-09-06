@@ -57,7 +57,7 @@ struct urp_src {
 void urp_clock_recovery_reset(struct urp_clock_recovery *clock)
 {
 	if (clock)
-		clock->correction = 0.0;
+		memset(clock, 0, sizeof(*clock));
 }
 
 double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued_samples,
@@ -68,13 +68,21 @@ double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued
 	if (!clock || !target_samples)
 		return 0.0;
 	error = ((double)target_samples - (double)queued_samples) / (double)target_samples;
-	/* One frame of occupancy error requests about 0.13% correction. This
-	 * covers normal independent-oscillator drift while remaining inaudible. */
-	desired = error * 0.004;
+	/* Filter scheduler jitter, then use a small integral term to follow a
+	 * persistent oscillator mismatch without requiring extra FIFO latency. */
+	clock->filtered_error += (error - clock->filtered_error) * 0.10;
+	clock->integral_error += clock->filtered_error * 0.00002;
+	if (clock->integral_error > URP_CLOCK_MAX_CORRECTION)
+		clock->integral_error = URP_CLOCK_MAX_CORRECTION;
+	if (clock->integral_error < -URP_CLOCK_MAX_CORRECTION)
+		clock->integral_error = -URP_CLOCK_MAX_CORRECTION;
+	desired = clock->filtered_error * 0.006 + clock->integral_error;
+	if (desired > URP_CLOCK_MAX_CORRECTION)
+		desired = URP_CLOCK_MAX_CORRECTION;
 	if (desired < -URP_CLOCK_MAX_CORRECTION)
 		desired = -URP_CLOCK_MAX_CORRECTION;
 	/* Smooth ratio changes so clock correction cannot modulate speech abruptly. */
-	clock->correction += (desired - clock->correction) * 0.02;
+	clock->correction += (desired - clock->correction) * 0.10;
 	return clock->correction;
 }
 

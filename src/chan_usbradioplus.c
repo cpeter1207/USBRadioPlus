@@ -73,7 +73,7 @@
 
 #define DEBUG_FILETEST 0
 
-#define PLUS_LINK_NATIVE_TARGET_SAMPLES (URP_NATIVE_SAMPLES * 3)
+#define PLUS_LINK_NATIVE_TARGET_SAMPLES URP_FIFO_TARGET_NORMAL
 
 #define PLUS_DYNAMICS_SAMPLES 48 /* 1 ms control blocks at 48 kHz */
 
@@ -2950,9 +2950,11 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		o->plus_parrot_playback_frames, (double)o->plus_parrot_count / URP_RATE_NATIVE);
 	ast_cli(a->fd,
 		"Link clock recovery: app FIFO %u frames, native FIFO %u samples/%.2f ms, "
-		"ratio correction %+.4f%%.\n",
+		"target %u samples/%.2f ms, ratio correction %+.4f%%.\n",
 		o->plus_program_queue.count, o->plus_native_fifo.count,
 		1000.0 * o->plus_native_fifo.count / URP_RATE_NATIVE,
+		o->plus_native_fifo.target_samples,
+		1000.0 * o->plus_native_fifo.target_samples / URP_RATE_NATIVE,
 		100.0 * o->plus_link_clock.correction);
 	ast_cli(a->fd,
 		"FFmpeg local: input peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "

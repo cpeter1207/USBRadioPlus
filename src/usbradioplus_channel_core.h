@@ -13,6 +13,16 @@
 #define URP_PROGRAM_QUEUE_FRAMES 8U
 
 #define URP_NATIVE_FIFO_SAMPLES (URP_NATIVE_SAMPLES * 8U)
+/** Lowest adaptive FIFO target: one 20 ms native block. */
+#define URP_FIFO_TARGET_MIN (URP_NATIVE_SAMPLES)
+/** Normal adaptive FIFO target: 30 ms. */
+#define URP_FIFO_TARGET_NORMAL (URP_NATIVE_SAMPLES + URP_NATIVE_SAMPLES / 2U)
+/** Adaptive target adjustment: 10 ms. */
+#define URP_FIFO_TARGET_STEP (URP_NATIVE_SAMPLES / 2U)
+/** Highest adaptive FIFO target: 80 ms. */
+#define URP_FIFO_TARGET_MAX (URP_NATIVE_SAMPLES * 4U)
+/** Stable 20 ms blocks required before reducing the target. */
+#define URP_FIFO_TARGET_DECAY_BLOCKS 9000U
 
 /** Transport-independent receive audio source values. */
 /** Receiver audio-source assignments. */
@@ -87,6 +97,18 @@ struct urp_native_fifo {
 	unsigned int count;
 	/** Nonzero after startup buffering permits output. */
 	unsigned int primed : 1;
+	/** Nonzero while the preceding hardware interval was keyed. */
+	unsigned int was_keyed : 1;
+	/** Nonzero after at least one complete output block has been retained. */
+	unsigned int have_history : 1;
+	/** Nonzero when the preceding block used shortage concealment. */
+	unsigned int concealing : 1;
+	/** Current adaptive startup/recovery target in native samples. */
+	unsigned int target_samples;
+	/** Stable keyed blocks accumulated toward a target reduction. */
+	unsigned int stable_blocks;
+	/** Most recently rendered block, retained for discontinuity concealment. */
+	short history[URP_NATIVE_SAMPLES];
 };
 
 /** Buffer and playback cursor for native-rate echo audio. */
@@ -191,6 +213,28 @@ int urp_native_fifo_pop(struct urp_native_fifo *fifo, short *samples);
  * @param fifo Bounded audio FIFO.
  */
 void urp_native_fifo_reset(struct urp_native_fifo *fifo);
+
+/** @brief Reset clock/FIFO policy at a keyed transmission boundary.
+ * @param fifo Bounded audio FIFO.
+ */
+void urp_native_fifo_key_start(struct urp_native_fifo *fifo);
+
+/** @brief Raise the adaptive reserve after a genuine keyed underrun.
+ * @param fifo Bounded audio FIFO.
+ */
+void urp_native_fifo_note_underrun(struct urp_native_fifo *fifo);
+
+/** @brief Decay the adaptive reserve after several stable minutes.
+ * @param fifo Bounded audio FIFO.
+ */
+void urp_native_fifo_note_stable(struct urp_native_fifo *fifo);
+
+/** @brief Render a block, concealing a shortage without an abrupt zero insertion.
+ * @param fifo Bounded audio FIFO.
+ * @param samples Destination for one native-rate audio block.
+ * @return Nonzero when a complete FIFO block was available, otherwise zero.
+ */
+int urp_native_fifo_render(struct urp_native_fifo *fifo, short *samples);
 
 /** @brief Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale.
  * @param gain_db Gain in dB.

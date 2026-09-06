@@ -7228,7 +7228,7 @@ static void test_program_queue_and_parrot_storage(void)
 		samples[i] = (short)i;
 	usbradioplus_queue_program(&radio, samples, ARRAY_LEN(samples));
 	assert(radio.plus_program_queue.count ==
-	       PLUS_LINK_NATIVE_TARGET_SAMPLES / URP_NATIVE_SAMPLES);
+	       (PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES);
 	assert(radio.plus_program_queue.high_water == radio.plus_program_queue.count);
 	assert(radio.plus_program_queue.frames[radio.plus_program_queue.head][0] == 0);
 	assert(radio.plus_program_queue
@@ -7323,16 +7323,23 @@ static void test_native_tick_baseline(void)
 		usbradioplus_queue_program(&channel, native_program, ARRAY_LEN(native_program));
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_native_fifo.primed);
-	assert(channel.plus_native_fifo.count == 2 * URP_NATIVE_SAMPLES);
+	assert(channel.plus_native_fifo.count == URP_NATIVE_SAMPLES);
 	assert(channel.plus_native_frames == 4);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
 	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
 	channel.plus_native_fifo.primed = 1;
+	channel.plus_native_fifo.was_keyed = 1;
 	channel.txkeyed = 1;
 	usbradioplus_native_tick(&channel);
 	assert(!channel.plus_native_fifo.primed);
 	assert(channel.plus_link_queue_underflows == 1);
+	assert(!urp_native_fifo_push(&channel.plus_native_fifo, native_program,
+				     ARRAY_LEN(native_program)));
+	channel.plus_native_fifo.primed = 1;
+	channel.plus_native_fifo.was_keyed = 1;
+	usbradioplus_native_tick(&channel);
+	assert(channel.plus_native_fifo.stable_blocks == 1);
 
 	settings.profiles[0].enabled = 1;
 	settings.profiles[0].chains[TXAGC_LOCAL].enabled = 1;
