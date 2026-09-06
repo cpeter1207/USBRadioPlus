@@ -849,27 +849,52 @@ static const struct range_case ranges[] = {
 	{RANGE(expander_sidechain_highpass_hz, 50.0, 2000.0)},
 	{RANGE(expander_sidechain_lowpass_hz, 50.0, 3500.0)},
 	{RANGE(compressor_threshold_dbfs, -60.0, 0.0)},
+	{RANGE(compressor_low_crossover_hz, 100.0, 2000.0)},
+	{RANGE(compressor_high_crossover_hz, 100.0, 5000.0)},
+	{RANGE(compressor_low_threshold_dbfs, -60.0, 0.0)},
+	{RANGE(compressor_low_ratio, 1.0, 20.0)},
+	{RANGE(compressor_low_makeup_gain_db, -30.0, 30.0)},
+	{RANGE(compressor_low_knee_db, 0.0, 18.0)},
+	{RANGE(compressor_low_attack_ms, 1.0, 1000.0)},
+	{RANGE(compressor_low_release_ms, 1.0, 9000.0)},
+	{RANGE(compressor_mid_threshold_dbfs, -60.0, 0.0)},
+	{RANGE(compressor_mid_ratio, 1.0, 20.0)},
+	{RANGE(compressor_mid_makeup_gain_db, -30.0, 30.0)},
+	{RANGE(compressor_mid_knee_db, 0.0, 18.0)},
+	{RANGE(compressor_mid_attack_ms, 1.0, 1000.0)},
+	{RANGE(compressor_mid_release_ms, 1.0, 9000.0)},
+	{RANGE(compressor_high_threshold_dbfs, -60.0, 0.0)},
+	{RANGE(compressor_high_ratio, 1.0, 20.0)},
+	{RANGE(compressor_high_makeup_gain_db, -30.0, 30.0)},
+	{RANGE(compressor_high_knee_db, 0.0, 18.0)},
+	{RANGE(compressor_high_attack_ms, 1.0, 1000.0)},
+	{RANGE(compressor_high_release_ms, 1.0, 9000.0)},
+	{RANGE(limiter_threshold_dbfs, -40.0, -1.0)},
+	{RANGE(limiter_ratio, 1.0, 20.0)},
+	{RANGE(limiter_knee_db, 0.0, 18.0)},
+	{RANGE(limiter_attack_ms, 0.1, 1000.0)},
+	{RANGE(limiter_release_ms, 1.0, 9000.0)},
 	{RANGE(compressor_ratio, 1.0, 20.0)},
 	{RANGE(compressor_makeup_gain_db, -30.0, 30.0)},
 	{RANGE(compressor_attack_ms, 1.0, 1000.0)},
-	{RANGE(compressor_release_ms, 1.0, 10000.0)},
+	{RANGE(compressor_release_ms, 1.0, 9000.0)},
 	{RANGE(compressor_sidechain_highpass_hz, 50.0, 2000.0)},
 	{RANGE(compressor_sidechain_lowpass_hz, 50.0, 3500.0)},
 	{RANGE(limiter_low_crossover_hz, 100.0, 2000.0)},
 	{RANGE(limiter_high_crossover_hz, 100.0, 5000.0)},
 	{RANGE(low_limiter_threshold_dbfs, -40.0, -1.0)},
 	{RANGE(low_limiter_ratio, 1.0, 20.0)},
-	{RANGE(low_limiter_knee_db, 0.0, 24.0)},
+	{RANGE(low_limiter_knee_db, 0.0, 18.0)},
 	{RANGE(low_limiter_attack_ms, 0.1, 1000.0)},
-	{RANGE(low_limiter_release_ms, 1.0, 10000.0)},
+	{RANGE(low_limiter_release_ms, 1.0, 9000.0)},
 	{RANGE(mid_limiter_threshold_dbfs, -40.0, -1.0)},
 	{RANGE(mid_limiter_ratio, 1.0, 20.0)},
-	{RANGE(mid_limiter_knee_db, 0.0, 24.0)},
+	{RANGE(mid_limiter_knee_db, 0.0, 18.0)},
 	{RANGE(mid_limiter_attack_ms, 0.1, 1000.0)},
-	{RANGE(mid_limiter_release_ms, 1.0, 10000.0)},
+	{RANGE(mid_limiter_release_ms, 1.0, 9000.0)},
 	{RANGE(high_limiter_threshold_dbfs, -30.0, -1.0)},
 	{RANGE(high_limiter_ratio, 1.0, 20.0)},
-	{RANGE(high_limiter_knee_db, 0.0, 24.0)},
+	{RANGE(high_limiter_knee_db, 0.0, 18.0)},
 	{RANGE(high_limiter_attack_ms, 0.1, 100.0)},
 	{RANGE(high_limiter_release_ms, 1.0, 1000.0)},
 	{RANGE(lookahead_limit_dbfs, -30.0, -0.1)},
@@ -952,6 +977,7 @@ static void test_stage_and_relationship_validation(void)
 	INVALID_RELATION(sidechain_lowpass_hz, sidechain_highpass_hz);
 	INVALID_RELATION(expander_sidechain_lowpass_hz, expander_sidechain_highpass_hz);
 	INVALID_RELATION(compressor_sidechain_lowpass_hz, compressor_sidechain_highpass_hz);
+	INVALID_RELATION(compressor_high_crossover_hz, compressor_low_crossover_hz);
 	INVALID_RELATION(limiter_high_crossover_hz, limiter_low_crossover_hz);
 	INVALID_RELATION(output_lowpass_hz, output_highpass_hz);
 #undef INVALID_RELATION
@@ -1059,6 +1085,187 @@ static void test_agc_configuration(void)
 	chain->agc.sidechain_highpass_hz = 0.0;
 	chain->agc.sidechain_lowpass_hz = 1.0;
 	assert(!validate_chain(chain));
+	fake_option_count = 0;
+	settings_parse_error = 0;
+}
+
+/** @brief Verify all dynamics band controls parse, retain defaults, and reject bad values. */
+static void test_dynamics_band_configuration(void)
+{
+	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
+	struct txagc_settings value;
+	static const struct {
+		const char *name;
+		size_t offset;
+		double default_value;
+		double minimum;
+		double maximum;
+	} controls[] = {
+		{"compressor_low_crossover_hz",
+		 offsetof(struct txagc_config, compressor_low_crossover_hz), 500.0, 100.0, 2000.0},
+		{"compressor_high_crossover_hz",
+		 offsetof(struct txagc_config, compressor_high_crossover_hz), 2000.0, 100.0,
+		 5000.0},
+		{"compressor_low_threshold_dbfs",
+		 offsetof(struct txagc_config, compressor_low_threshold_dbfs), -6.0, -60.0, 0.0},
+		{"compressor_low_ratio", offsetof(struct txagc_config, compressor_low_ratio), 2.0,
+		 1.0, 20.0},
+		{"compressor_low_makeup_gain_db",
+		 offsetof(struct txagc_config, compressor_low_makeup_gain_db), 0.0, -30.0, 30.0},
+		{"compressor_low_knee_db", offsetof(struct txagc_config, compressor_low_knee_db),
+		 9.0, 0.0, 18.0},
+		{"compressor_low_attack_ms",
+		 offsetof(struct txagc_config, compressor_low_attack_ms), 75.0, 1.0, 1000.0},
+		{"compressor_low_release_ms",
+		 offsetof(struct txagc_config, compressor_low_release_ms), 300.0, 1.0, 9000.0},
+		{"compressor_mid_threshold_dbfs",
+		 offsetof(struct txagc_config, compressor_mid_threshold_dbfs), -6.0, -60.0, 0.0},
+		{"compressor_mid_ratio", offsetof(struct txagc_config, compressor_mid_ratio), 2.0,
+		 1.0, 20.0},
+		{"compressor_mid_makeup_gain_db",
+		 offsetof(struct txagc_config, compressor_mid_makeup_gain_db), 0.0, -30.0, 30.0},
+		{"compressor_mid_knee_db", offsetof(struct txagc_config, compressor_mid_knee_db),
+		 9.0, 0.0, 18.0},
+		{"compressor_mid_attack_ms",
+		 offsetof(struct txagc_config, compressor_mid_attack_ms), 75.0, 1.0, 1000.0},
+		{"compressor_mid_release_ms",
+		 offsetof(struct txagc_config, compressor_mid_release_ms), 300.0, 1.0, 9000.0},
+		{"compressor_high_threshold_dbfs",
+		 offsetof(struct txagc_config, compressor_high_threshold_dbfs), -6.0, -60.0, 0.0},
+		{"compressor_high_ratio", offsetof(struct txagc_config, compressor_high_ratio), 2.0,
+		 1.0, 20.0},
+		{"compressor_high_makeup_gain_db",
+		 offsetof(struct txagc_config, compressor_high_makeup_gain_db), 0.0, -30.0, 30.0},
+		{"compressor_high_knee_db", offsetof(struct txagc_config, compressor_high_knee_db),
+		 9.0, 0.0, 18.0},
+		{"compressor_high_attack_ms",
+		 offsetof(struct txagc_config, compressor_high_attack_ms), 75.0, 1.0, 1000.0},
+		{"compressor_high_release_ms",
+		 offsetof(struct txagc_config, compressor_high_release_ms), 300.0, 1.0, 9000.0},
+		{"limiter_threshold_dbfs", offsetof(struct txagc_config, limiter_threshold_dbfs),
+		 -1.5, -40.0, -1.0},
+		{"limiter_ratio", offsetof(struct txagc_config, limiter_ratio), 20.0, 1.0, 20.0},
+		{"limiter_knee_db", offsetof(struct txagc_config, limiter_knee_db), 0.0, 0.0, 18.0},
+		{"limiter_attack_ms", offsetof(struct txagc_config, limiter_attack_ms), 1.0, 0.1,
+		 1000.0},
+		{"limiter_release_ms", offsetof(struct txagc_config, limiter_release_ms), 50.0, 1.0,
+		 9000.0},
+	};
+	static const char *const sections[] = {"local", "link", "voice_telemetry"};
+	static const char *const bad_numbers[] = {"", " ", "nan", "inf", "-inf", "12x"};
+	for (size_t index = 0; index < ARRAY_LEN(controls); ++index) {
+		assert(known_chain_option(controls[index].name));
+		for (size_t source = 0; source < ARRAY_LEN(sections); ++source) {
+			struct txagc_chain *chain;
+			double *field;
+			char replacement[32];
+			double replacement_value =
+				controls[index].default_value +
+				(controls[index].default_value == controls[index].maximum ? -0.125
+											  : 0.125);
+			snprintf(replacement, sizeof(replacement), "%.17g", replacement_value);
+			const struct fake_option option = {sections[source], controls[index].name,
+							   replacement};
+			settings_defaults(&value);
+			chain = &value.profiles[0].chains[source];
+			field = (double *)((char *)&chain->agc + controls[index].offset);
+			assert(*field == controls[index].default_value);
+			assert(!chain->agc.compressor_enabled && !chain->agc.limiter_enabled);
+			set_fake_options(&option, 1);
+			settings_parse_error = 0;
+			assert(!read_chain(config, sections[source], chain));
+			assert(!settings_parse_error);
+			assert(*field == replacement_value);
+			assert(!validate_chain(chain));
+			char scoped_section[64];
+			snprintf(scoped_section, sizeof(scoped_section), "%s usb",
+				 sections[source]);
+			const struct fake_option scoped_option = {
+				scoped_section, controls[index].name, replacement};
+			fake_config_load_result = config;
+			fake_category_count = 2;
+			fake_categories[0] = "usb";
+			fake_categories[1] = scoped_section;
+			fake_variables[0] = fake_variables[1] = NULL;
+			set_fake_options(&scoped_option, 1);
+			assert(!load_settings());
+			assert(*(double *)((char *)&settings.profiles[0].chains[source].agc +
+					   controls[index].offset) == replacement_value);
+			fake_category_count = 0;
+			/* Clear the companion edge before testing either crossover endpoint. */
+			chain->agc.compressor_low_crossover_hz = 100.0;
+			chain->agc.compressor_high_crossover_hz = 5000.0;
+			*field = controls[index].minimum;
+			if (!strcmp(controls[index].name, "compressor_high_crossover_hz"))
+				*field += 0.125;
+			assert(!validate_chain(chain));
+			*field = controls[index].maximum;
+			assert(!validate_chain(chain));
+			for (size_t invalid = 0; invalid < ARRAY_LEN(bad_numbers); ++invalid) {
+				const struct fake_option bad = {sections[source],
+								controls[index].name,
+								bad_numbers[invalid]};
+				set_fake_options(&bad, 1);
+				settings_parse_error = 0;
+				assert(!read_chain(config, sections[source], chain));
+				assert(settings_parse_error);
+			}
+		}
+	}
+	static const struct {
+		const char *name;
+		size_t offset;
+	} modes[] = {
+		{"compressor_bands", offsetof(struct txagc_config, compressor_bands)},
+		{"limiter_bands", offsetof(struct txagc_config, limiter_bands)},
+	};
+	static const char *const bad_modes[] = {
+		"", "0", "2", "4", "-1", "1.5", "3x", "nan", "999999999999999999999999"};
+	for (size_t mode = 0; mode < ARRAY_LEN(modes); ++mode) {
+		assert(known_chain_option(modes[mode].name));
+		for (size_t source = 0; source < ARRAY_LEN(sections); ++source) {
+			settings_defaults(&value);
+			struct txagc_chain *chain = &value.profiles[0].chains[source];
+			int *field = (int *)((char *)&chain->agc + modes[mode].offset);
+			assert(*field == 3);
+			for (int count = 1; count <= 3; count += 2) {
+				const struct fake_option option = {
+					sections[source], modes[mode].name, count == 1 ? "1" : "3"};
+				set_fake_options(&option, 1);
+				settings_parse_error = 0;
+				assert(!read_chain(config, sections[source], chain));
+				assert(!settings_parse_error && *field == count);
+				assert(!validate_chain(chain));
+				char scoped_section[64];
+				snprintf(scoped_section, sizeof(scoped_section), "%s usb",
+					 sections[source]);
+				const struct fake_option scoped_option = {
+					scoped_section, modes[mode].name, count == 1 ? "1" : "3"};
+				fake_config_load_result = config;
+				fake_category_count = 2;
+				fake_categories[0] = "usb";
+				fake_categories[1] = scoped_section;
+				fake_variables[0] = fake_variables[1] = NULL;
+				set_fake_options(&scoped_option, 1);
+				assert(!load_settings());
+				assert(*(int *)((char *)&settings.profiles[0].chains[source].agc +
+						modes[mode].offset) == count);
+				fake_category_count = 0;
+			}
+			for (size_t invalid = 0; invalid < ARRAY_LEN(bad_modes); ++invalid) {
+				const struct fake_option option = {
+					sections[source], modes[mode].name, bad_modes[invalid]};
+				set_fake_options(&option, 1);
+				settings_parse_error = 0;
+				assert(!read_chain(config, sections[source], chain));
+				assert(settings_parse_error && *field == 3);
+			}
+			for (int count = -1; count <= 4; ++count) {
+				*field = count;
+				assert((validate_chain(chain) == 0) == (count == 1 || count == 3));
+			}
+		}
+	}
 	fake_option_count = 0;
 	settings_parse_error = 0;
 }
@@ -1816,6 +2023,7 @@ static void test_public_setting_accessors(void)
 	settings_defaults(&settings);
 	settings.profiles[0].enabled = 0;
 	assert(usbradioplus_processing_get_local("usb", NULL) < 0);
+	assert(usbradioplus_processing_get_local(NULL, &chain) == 1);
 	assert(!usbradioplus_processing_get_local("usb", &chain));
 	assert(!usbradioplus_processing_get_local("RadioPlus/usb", &chain));
 	assert(usbradioplus_processing_get_local("missing", &chain) == 1);
@@ -2209,6 +2417,162 @@ static void test_link_live_stage_flags(void)
 	fake_channel_datastore = NULL;
 }
 
+/** @brief Reload band modes atomically and deliver every selected and inactive setting live. */
+static void test_link_live_band_modes(void)
+{
+	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
+	struct ast_audiohook audiohook = {.status = AST_AUDIOHOOK_STATUS_RUNNING};
+	struct txagc_hook hook = {0};
+	struct ast_datastore datastore = {.data = &hook};
+	int16_t pcm[160] = {100};
+	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
+				  .samples = ARRAY_LEN(pcm),
+				  .data.ptr = pcm,
+				  .subclass.format = (struct ast_format *)(uintptr_t)1};
+	struct fake_option configured[] = {
+		{"link usb", "enabled", "yes"},
+		{"link usb", "compressor_enabled", "yes"},
+		{"link usb", "limiter_enabled", "yes"},
+		{"link usb", "compressor_bands", "3"},
+		{"link usb", "limiter_bands", "3"},
+		{"link usb", "compressor_low_threshold_dbfs", "-17"},
+		{"link usb", "compressor_threshold_dbfs", "-9"},
+		{"link usb", "limiter_low_threshold_dbfs", "-7"},
+		{"link usb", "limiter_threshold_dbfs", "-3.5"},
+		{"link usb", "compressor_low_crossover_hz", "650"},
+		{"link usb", "compressor_high_crossover_hz", "2300"},
+		{"link usb", "limiter_low_crossover_hz", "700"},
+		{"link usb", "limiter_high_crossover_hz", "2500"},
+	};
+	static const int band_modes[] = {3, 1, 3};
+	fake_config_load_result = (struct ast_config *)(uintptr_t)1;
+	fake_category_count = 2;
+	fake_categories[0] = "usb";
+	fake_categories[1] = "link usb";
+	fake_variables[0] = fake_variables[1] = NULL;
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
+	fake_channel_name = "IAX2/test";
+	fake_channel_application = "Rpt";
+	fake_channel_data = "Remote Rx";
+	fake_channel_datastore = &datastore;
+	fake_sample_rate = 8000;
+	fake_processor_calls = 0;
+	fake_iterator_available = 0;
+	for (size_t index = 0; index < ARRAY_LEN(band_modes); ++index) {
+		configured[3].value = configured[4].value = band_modes[index] == 1 ? "1" : "3";
+		set_fake_options(configured, ARRAY_LEN(configured));
+		assert(!usbradioplus_processing_reload());
+		assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+		assert(fake_processor_config.compressor_bands == band_modes[index]);
+		assert(fake_processor_config.limiter_bands == band_modes[index]);
+		assert(fake_processor_config.compressor_low_threshold_dbfs == -17.0);
+		assert(fake_processor_config.compressor_threshold_dbfs == -9.0);
+		assert(fake_processor_config.low_limiter_threshold_dbfs == -7.0);
+		assert(fake_processor_config.limiter_threshold_dbfs == -3.5);
+		assert(!memcmp(&fake_processor_config, &settings.profiles[0].chains[TXAGC_LINK].agc,
+			       sizeof(fake_processor_config)));
+	}
+	struct txagc_config previous = fake_processor_config;
+	configured[3].value = "2";
+	set_fake_options(configured, ARRAY_LEN(configured));
+	assert(usbradioplus_processing_reload() < 0);
+	assert(!txagc_callback(&audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(!memcmp(&previous, &fake_processor_config, sizeof(previous)));
+	assert(fake_processor_calls == ARRAY_LEN(band_modes) + 1);
+	fake_channel_datastore = NULL;
+	fake_category_count = 0;
+	fake_option_count = 0;
+}
+
+/** @brief Running reloads reject incompatible active-link crossovers without replacing settings. */
+static void test_active_link_crossover_reload(void)
+{
+	struct txagc_hook hook = {0};
+	struct ast_datastore datastore = {.data = &hook};
+	struct fake_option configured[] = {
+		{"usb", "channel_enabled", "yes"},
+		{"link usb", "enabled", "yes"},
+		{"link usb", "compressor_enabled", "yes"},
+		{"link usb", "limiter_enabled", "yes"},
+		{"link usb", "compressor_bands", "3"},
+		{"link usb", "limiter_bands", "3"},
+		{"link usb", "compressor_high_crossover_hz", "2000"},
+		{"link usb", "limiter_high_crossover_hz", "2000"},
+	};
+	fake_config_load_result = (struct ast_config *)(uintptr_t)1;
+	fake_category_count = 2;
+	fake_categories[0] = "usb";
+	fake_categories[1] = "link usb";
+	fake_variables[0] = fake_variables[1] = NULL;
+	fake_primary_channel_available = 0;
+	fake_iterator_available = 1;
+	fake_channel_datastore = &datastore;
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
+	hook.avfilter[TXAGC_LINK].sample_rate = 8000;
+	scan_thread = (pthread_t)1;
+	set_fake_options(configured, ARRAY_LEN(configured));
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	struct txagc_config previous = settings.profiles[0].chains[TXAGC_LINK].agc;
+	for (size_t stage = 6; stage <= 7; ++stage) {
+		configured[stage].value = "4500";
+		set_fake_options(configured, ARRAY_LEN(configured));
+		fake_iterator_channels_remaining = 1;
+		assert(usbradioplus_processing_reload() < 0);
+		assert(!memcmp(&previous, &settings.profiles[0].chains[TXAGC_LINK].agc,
+			       sizeof(previous)));
+		configured[stage].value = "2000";
+	}
+	configured[6].value = configured[7].value = "4500";
+	set_fake_options(configured, ARRAY_LEN(configured));
+	hook.avfilter[TXAGC_LINK].sample_rate = 16000;
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	assert(settings.profiles[0].chains[TXAGC_LINK].agc.compressor_high_crossover_hz == 4500);
+	assert(settings.profiles[0].chains[TXAGC_LINK].agc.limiter_high_crossover_hz == 4500);
+	/* Unknown rates, absent hooks, disabled stages, and one-band modes do not
+	 * invent an 8 kHz limit. The first processed frame checks its actual rate. */
+	hook.avfilter[TXAGC_LINK].sample_rate = 0;
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	hook.avfilter[TXAGC_LINK].sample_rate = 8000;
+	fake_channel_datastore = NULL;
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	fake_channel_datastore = &datastore;
+	datastore.data = NULL;
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	datastore.data = &hook;
+	ast_copy_string(hook.profile, "missing", sizeof(hook.profile));
+	fake_iterator_channels_remaining = 1;
+	assert(!usbradioplus_processing_reload());
+	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
+	for (size_t option = 0; option <= 5; ++option) {
+		/* Both stages must be inactive when testing their individual selectors. */
+		configured[2].value = configured[3].value = "no";
+		if (option < 2)
+			configured[2].value = configured[3].value = "yes";
+		configured[option].value = option < 4 ? "no" : "1";
+		if (option >= 4)
+			configured[option - 2].value = "yes";
+		set_fake_options(configured, ARRAY_LEN(configured));
+		fake_iterator_channels_remaining = 1;
+		assert(!usbradioplus_processing_reload());
+		configured[option].value = option < 4 ? "yes" : "3";
+	}
+	fake_iterator_channels_remaining = 0;
+	assert(!usbradioplus_processing_reload());
+	previous = settings.profiles[0].chains[TXAGC_LINK].agc;
+	fake_iterator_available = 0;
+	assert(usbradioplus_processing_reload() < 0);
+	assert(!memcmp(&previous, &settings.profiles[0].chains[TXAGC_LINK].agc, sizeof(previous)));
+	scan_thread = AST_PTHREADT_NULL;
+	fake_category_count = 0;
+	fake_option_count = 0;
+	fake_channel_datastore = NULL;
+}
+
 /** @brief Reset audiohook attachment and allocation stub state. */
 static void reset_attach_doubles(void)
 {
@@ -2446,6 +2810,7 @@ int main(void)
 	test_every_numeric_boundary();
 	test_stage_and_relationship_validation();
 	test_agc_configuration();
+	test_dynamics_band_configuration();
 	test_settings_scope_and_hardware_validation();
 	test_primitive_configuration_parsers();
 	test_hardware_configuration_parser();
@@ -2462,6 +2827,8 @@ int main(void)
 	test_channel_eligibility();
 	test_audiohook_callback_and_destroy();
 	test_link_live_stage_flags();
+	test_link_live_band_modes();
+	test_active_link_crossover_reload();
 	test_audiohook_attachment();
 	test_channel_scanning_and_detachment();
 	test_reporting_cli();

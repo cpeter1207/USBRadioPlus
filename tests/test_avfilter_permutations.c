@@ -71,6 +71,22 @@ static void configure(struct txagc_config *cfg)
 	cfg->compressor_ratio = 2.0;
 	cfg->compressor_attack_ms = 40.0;
 	cfg->compressor_release_ms = 300.0;
+	cfg->compressor_low_crossover_hz = 500.0;
+	cfg->compressor_high_crossover_hz = 2000.0;
+	cfg->compressor_low_threshold_dbfs = cfg->compressor_mid_threshold_dbfs =
+		cfg->compressor_high_threshold_dbfs = -8.0;
+	cfg->compressor_low_ratio = cfg->compressor_mid_ratio = cfg->compressor_high_ratio = 2.0;
+	cfg->compressor_low_knee_db = cfg->compressor_mid_knee_db = cfg->compressor_high_knee_db =
+		9.0;
+	cfg->compressor_low_attack_ms = cfg->compressor_mid_attack_ms =
+		cfg->compressor_high_attack_ms = 40.0;
+	cfg->compressor_low_release_ms = cfg->compressor_mid_release_ms =
+		cfg->compressor_high_release_ms = 300.0;
+	cfg->limiter_threshold_dbfs = -2.0;
+	cfg->limiter_ratio = 20.0;
+	cfg->limiter_knee_db = 6.0;
+	cfg->limiter_attack_ms = 0.5;
+	cfg->limiter_release_ms = 25.0;
 	cfg->limiter_low_crossover_hz = 500.0;
 	cfg->limiter_high_crossover_hz = 2000.0;
 	cfg->low_limiter_threshold_dbfs = -2.0;
@@ -98,28 +114,35 @@ static void configure(struct txagc_config *cfg)
  * @param order Stage-order text or permutation array.
  * @param number Receives or supplies the permutation sequence number.
  * @param block_count Audio blocks processed for this permutation.
+ * @param sample_rate Audio sample rate in Hz.
  * @param total_seconds Accumulates measured processing time in seconds.
  * @return Result used by the test's assertions.
  */
 static int run_permutation(const enum txagc_stage *order, unsigned int number,
-			   unsigned int block_count, double *total_seconds)
+			   unsigned int block_count, unsigned int sample_rate,
+			   double *total_seconds)
 {
 	struct txagc_avfilter state;
 	struct txagc_config cfg;
 	double samples[BLOCK];
 	struct timespec begin, end;
 	unsigned int block, index;
+	unsigned int count = sample_rate / 50;
 
 	configure(&cfg);
+	/* Rotate all four single-/three-band combinations across the complete stage
+	 * order set; both sample rates then exercise exactly the same combinations. */
+	cfg.compressor_bands = 1 + 2 * (int)(number % 2);
+	cfg.limiter_bands = 1 + 2 * (int)((number / 2) % 2);
 	memcpy(cfg.stage_order, order, sizeof(cfg.stage_order));
 	txagc_avfilter_init(&state);
 	clock_gettime(CLOCK_MONOTONIC, &begin);
 	for (block = 0; block < block_count; ++block) {
-		for (index = 0; index < BLOCK; ++index) {
-			double time = (double)(block * BLOCK + index) / RATE;
+		for (index = 0; index < count; ++index) {
+			double time = (double)(block * count + index) / sample_rate;
 			samples[index] = 6000.0 * sin(2.0 * M_PI * 900.0 * time);
 		}
-		if (txagc_avfilter_process(&state, &cfg, samples, BLOCK, RATE) < 0) {
+		if (txagc_avfilter_process(&state, &cfg, samples, count, sample_rate) < 0) {
 			fprintf(stderr, "permutation %u failed at block %u\n", number, block);
 			txagc_avfilter_destroy(&state);
 			return -1;
@@ -142,7 +165,10 @@ static int permute(enum txagc_stage *order, unsigned int at, unsigned int *numbe
 {
 	unsigned int index;
 	if (at == TXAGC_MAX_DYNAMICS_STAGES) {
-		return run_permutation(order, (*number)++, BLOCKS_PER_PERMUTATION, seconds);
+		unsigned int current = (*number)++;
+		if (run_permutation(order, current, BLOCKS_PER_PERMUTATION, 8000, seconds))
+			return -1;
+		return run_permutation(order, current, BLOCKS_PER_PERMUTATION, RATE, seconds);
 	}
 	for (index = at; index < TXAGC_MAX_DYNAMICS_STAGES; ++index) {
 		enum txagc_stage swap = order[at];
@@ -187,10 +213,10 @@ int main(void)
 	if (number != PERMUTATIONS)
 		return 1;
 	seconds = 0.0;
-	if (run_permutation(order, number, PERFORMANCE_BLOCKS, &seconds))
+	if (run_permutation(order, number + 3, PERFORMANCE_BLOCKS, RATE, &seconds))
 		return 1;
 	milliseconds = seconds * 1000.0 / PERFORMANCE_BLOCKS;
-	printf("%u permutations, representative average %.3f ms per 20 ms block\n", number,
+	printf("%u permutations at 8/48 kHz, three-band average %.3f ms per 20 ms block\n", number,
 	       milliseconds);
 	if (milliseconds >= performance_limit) {
 		fprintf(stderr, "processing did not maintain real-time average\n");

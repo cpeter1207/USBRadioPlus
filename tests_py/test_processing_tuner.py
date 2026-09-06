@@ -23,6 +23,51 @@ def test_tuner_covers_every_chain_option():
     assert set(MODULE["DEFAULTS"]) == names
 
 
+def test_dynamics_modes_defaults_and_documented_shipped_controls():
+    """Keep configurable band layouts and each new control in all shipped chains."""
+    sample = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
+    new_defaults = {
+        "compressor_bands": "3",
+        "compressor_low_crossover_hz": "500.0",
+        "compressor_high_crossover_hz": "2000.0",
+        "limiter_bands": "3",
+        "limiter_threshold_dbfs": "-1.5",
+        "limiter_ratio": "20.0",
+        "limiter_knee_db": "0.0",
+        "limiter_attack_ms": "1.0",
+        "limiter_release_ms": "50.0",
+        **{
+            f"compressor_{band}_{field}": value
+            for band in ("low", "mid", "high")
+            for field, value in (
+                ("threshold_dbfs", "-6.0"),
+                ("ratio", "2.0"),
+                ("makeup_gain_db", "0.0"),
+                ("knee_db", "9.0"),
+                ("attack_ms", "75.0"),
+                ("release_ms", "300.0"),
+            )
+        },
+    }
+    for chain in ("local", "link", "voice_telemetry"):
+        values = MODULE["section_values"](sample, chain)
+        for key, default in new_defaults.items():
+            assert MODULE["default_value"](chain, key) == default
+            assert key in values
+            assert f".B {key} = " in manual
+            assert MODULE["SETTINGS"][key][5] in {"Compressor", "Limiter"}
+        for stage in ("compressor", "limiter"):
+            assert values[f"{stage}_bands"] == "3"
+            assert float(values[f"{stage}_low_crossover_hz"]) == 500
+            assert float(values[f"{stage}_high_crossover_hz"]) == 2000
+    assert "single-band detector filters do not apply in three-band mode" in manual
+    assert "below 4000 Hz for an 8 kHz link" in manual
+    for key, setting in MODULE["SETTINGS"].items():
+        if setting[-1] in {"Compressor", "Limiter"} and key.endswith(("_knee_db", "_release_ms")):
+            assert f".B {key} = {setting[2]:g}..{setting[3]:g}" in manual
+
+
 @pytest.mark.parametrize(
     ("key", "default", "low", "high", "units"),
     (

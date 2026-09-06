@@ -83,6 +83,25 @@ def test_non_agc_detector_filters_still_require_ordered_edges(key):
     assert "must be" in MODULE["relationship_error"]("local", key, number, {})
 
 
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+@pytest.mark.parametrize("stage", ("compressor", "limiter"))
+@pytest.mark.parametrize("edge", ("low", "high"))
+def test_dynamics_crossovers_require_strict_order_in_both_directions(source, stage, edge):
+    """Reject touching or reversed bands before writing or reloading the file.
+
+    @param source Processing chain under test.
+    @param stage Compressor or limiter stage.
+    @param edge Low/mid or mid/high crossover being changed.
+    """
+    key = f"{stage}_{edge}_crossover_hz"
+    peer = f"{stage}_{'high' if edge == 'low' else 'low'}_crossover_hz"
+    values = {peer: "1000"}
+    for invalid in (1000, 1500 if edge == "low" else 500):
+        assert "must be" in MODULE["relationship_error"](source, key, invalid, values)
+    valid = 500 if edge == "low" else 2000
+    assert MODULE["relationship_error"](source, key, valid, values) is None
+
+
 def test_configuration_creation_existing_and_missing_defaults(tmp_path, monkeypatch):
     """Verify configuration creation existing and missing defaults.
 

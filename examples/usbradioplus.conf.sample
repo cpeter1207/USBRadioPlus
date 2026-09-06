@@ -242,6 +242,53 @@ expander_sidechain_lowpass_hz = 1500.0
 
 ; Enable compression of strong speech.
 compressor_enabled = yes
+; One full-band compressor (1) or three independent RMS band compressors (3).
+; Three bands are below 500 Hz, 500-2000 Hz, and above 2000 Hz by default.
+; Only the selected mode's controls are applied; inactive values are retained.
+compressor_bands = 3
+; Low/mid division, 100-2000 Hz.
+compressor_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
+compressor_high_crossover_hz = 2000.0
+; Low-band compression onset, -60 through 0 dBFS.
+compressor_low_threshold_dbfs = -6.0
+; Low-band ratio, 1 through 20; module default 2:1.
+compressor_low_ratio = 2.5
+; Low-band gain after compression, -30 through +30 dB.
+compressor_low_makeup_gain_db = 0.0
+; Low-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_low_knee_db = 9.0
+; Low-band attack, 1-1000 ms; module default 75 ms.
+compressor_low_attack_ms = 100.0
+; Low-band release, 1-9000 ms; module default 300 ms.
+compressor_low_release_ms = 800.0
+; Mid-band compression onset, -60 through 0 dBFS.
+compressor_mid_threshold_dbfs = -6.0
+; Mid-band ratio, 1 through 20; module default 2:1.
+compressor_mid_ratio = 2.5
+; Mid-band gain after compression, -30 through +30 dB.
+compressor_mid_makeup_gain_db = 0.0
+; Mid-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_mid_knee_db = 9.0
+; Mid-band attack, 1-1000 ms; module default 75 ms.
+compressor_mid_attack_ms = 100.0
+; Mid-band release, 1-9000 ms; module default 300 ms.
+compressor_mid_release_ms = 800.0
+; High-band compression onset, -60 through 0 dBFS.
+compressor_high_threshold_dbfs = -6.0
+; High-band ratio, 1 through 20; module default 2:1.
+compressor_high_ratio = 2.5
+; High-band gain after compression, -30 through +30 dB.
+compressor_high_makeup_gain_db = 0.0
+; High-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_high_knee_db = 9.0
+; High-band attack, 1-1000 ms; module default 75 ms.
+compressor_high_attack_ms = 100.0
+; High-band release, 1-9000 ms; module default 300 ms.
+compressor_high_release_ms = 800.0
+; Three-band detectors measure their own bands without the single-band filters.
+; The following unbanded controls apply only with compressor_bands = 1.
 ; Level above which compression begins, -60 through 0 dBFS.
 compressor_threshold_dbfs = -6.0
 ; Compression ratio, 1 through 20.
@@ -255,10 +302,26 @@ compressor_release_ms = 800.0
 compressor_sidechain_highpass_hz = 800.0
 compressor_sidechain_lowpass_hz = 1500.0
 
-; Enable the shared FFmpeg multiband limiter.
+; Enable the shared FFmpeg limiter.
 limiter_enabled = yes
-; Frequencies dividing the low, mid, and high bands.
+; One full-band limiter (1) or three independently limited bands (3).
+; The fixed final transmitter limiter is separate and is not changed by this mode.
+limiter_bands = 3
+; Full-band threshold, -40 through -1 dBFS; active only with limiter_bands = 1.
+limiter_threshold_dbfs = -1.5
+; Full-band limiting ratio, 1 through 20; default 20:1.
+limiter_ratio = 20.0
+; Full-band knee, 0 through 18 dB; default 0 is a hard knee.
+limiter_knee_db = 0.0
+; Full-band attack, 0.1 through 1000 ms; default 1 ms.
+limiter_attack_ms = 1.0
+; Full-band release, 1 through 9000 ms; default 50 ms.
+limiter_release_ms = 50.0
+; Band-specific controls and crossovers apply only with limiter_bands = 3.
+; Low/mid division, 100-2000 Hz.
 limiter_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
 limiter_high_crossover_hz = 2000.0
 ; Low-band threshold, ratio, knee, attack, and release.
 limiter_low_threshold_dbfs = -1.0
@@ -345,11 +408,76 @@ agc_sidechain_highpass_hz = 800.0
 ; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
 ; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
 agc_sidechain_lowpass_hz = 1500.0
-; Compressor threshold and timing.
+; One full-band compressor (1) or three independent RMS band compressors (3).
+; Three bands are below 500 Hz, 500-2000 Hz, and above 2000 Hz by default.
+; Only the selected mode's controls are applied; inactive values are retained.
+compressor_bands = 3
+; Low/mid division, 100-2000 Hz.
+compressor_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
+compressor_high_crossover_hz = 2000.0
+; Low-band compression onset, -60 through 0 dBFS.
+compressor_low_threshold_dbfs = -6.0
+; Low-band ratio, 1 through 20; module default 2:1.
+compressor_low_ratio = 2.0
+; Low-band gain after compression, -30 through +30 dB.
+compressor_low_makeup_gain_db = 0.0
+; Low-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_low_knee_db = 9.0
+; Low-band attack, 1-1000 ms; module default 75 ms.
+compressor_low_attack_ms = 100.0
+; Low-band release, 1-9000 ms; module default 300 ms.
+compressor_low_release_ms = 800.0
+; Mid-band compression onset, -60 through 0 dBFS.
+compressor_mid_threshold_dbfs = -6.0
+; Mid-band ratio, 1 through 20; module default 2:1.
+compressor_mid_ratio = 2.0
+; Mid-band gain after compression, -30 through +30 dB.
+compressor_mid_makeup_gain_db = 0.0
+; Mid-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_mid_knee_db = 9.0
+; Mid-band attack, 1-1000 ms; module default 75 ms.
+compressor_mid_attack_ms = 100.0
+; Mid-band release, 1-9000 ms; module default 300 ms.
+compressor_mid_release_ms = 800.0
+; High-band compression onset, -60 through 0 dBFS.
+compressor_high_threshold_dbfs = -6.0
+; High-band ratio, 1 through 20; module default 2:1.
+compressor_high_ratio = 2.0
+; High-band gain after compression, -30 through +30 dB.
+compressor_high_makeup_gain_db = 0.0
+; High-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_high_knee_db = 9.0
+; High-band attack, 1-1000 ms; module default 75 ms.
+compressor_high_attack_ms = 100.0
+; High-band release, 1-9000 ms; module default 300 ms.
+compressor_high_release_ms = 800.0
+; Three-band detectors measure their own bands without the single-band filters.
+; The following unbanded controls apply only with compressor_bands = 1.
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0
 compressor_release_ms = 800.0
-; Multiband limiter thresholds and timing.
+; One full-band limiter (1) or three independently limited bands (3).
+; The fixed final transmitter limiter is separate and is not changed by this mode.
+limiter_bands = 3
+; Full-band threshold, -40 through -1 dBFS; active only with limiter_bands = 1.
+limiter_threshold_dbfs = -1.5
+; Full-band limiting ratio, 1 through 20; default 20:1.
+limiter_ratio = 20.0
+; Full-band knee, 0 through 18 dB; default 0 is a hard knee.
+limiter_knee_db = 0.0
+; Full-band attack, 0.1 through 1000 ms; default 1 ms.
+limiter_attack_ms = 1.0
+; Full-band release, 1 through 9000 ms; default 50 ms.
+limiter_release_ms = 50.0
+; Band-specific controls and crossovers apply only with limiter_bands = 3.
+; Low/mid division, 100-2000 Hz.
+limiter_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
+limiter_high_crossover_hz = 2000.0
+; Three-band limiter thresholds and timing.
 limiter_low_threshold_dbfs = -1.0
 limiter_low_attack_ms = 50.0
 limiter_low_release_ms = 300.0
@@ -446,11 +574,76 @@ agc_sidechain_highpass_hz = 800.0
 ; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
 ; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
 agc_sidechain_lowpass_hz = 1500.0
-; Compressor threshold and timing.
+; One full-band compressor (1) or three independent RMS band compressors (3).
+; Three bands are below 500 Hz, 500-2000 Hz, and above 2000 Hz by default.
+; Only the selected mode's controls are applied; inactive values are retained.
+compressor_bands = 3
+; Low/mid division, 100-2000 Hz.
+compressor_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
+compressor_high_crossover_hz = 2000.0
+; Low-band compression onset, -60 through 0 dBFS.
+compressor_low_threshold_dbfs = -6.0
+; Low-band ratio, 1 through 20; module default 2:1.
+compressor_low_ratio = 2.0
+; Low-band gain after compression, -30 through +30 dB.
+compressor_low_makeup_gain_db = 0.0
+; Low-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_low_knee_db = 9.0
+; Low-band attack, 1-1000 ms; module default 75 ms.
+compressor_low_attack_ms = 100.0
+; Low-band release, 1-9000 ms; module default 300 ms.
+compressor_low_release_ms = 800.0
+; Mid-band compression onset, -60 through 0 dBFS.
+compressor_mid_threshold_dbfs = -6.0
+; Mid-band ratio, 1 through 20; module default 2:1.
+compressor_mid_ratio = 2.0
+; Mid-band gain after compression, -30 through +30 dB.
+compressor_mid_makeup_gain_db = 0.0
+; Mid-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_mid_knee_db = 9.0
+; Mid-band attack, 1-1000 ms; module default 75 ms.
+compressor_mid_attack_ms = 100.0
+; Mid-band release, 1-9000 ms; module default 300 ms.
+compressor_mid_release_ms = 800.0
+; High-band compression onset, -60 through 0 dBFS.
+compressor_high_threshold_dbfs = -6.0
+; High-band ratio, 1 through 20; module default 2:1.
+compressor_high_ratio = 2.0
+; High-band gain after compression, -30 through +30 dB.
+compressor_high_makeup_gain_db = 0.0
+; High-band soft-knee width, 0 through 18 dB; default 9 dB.
+compressor_high_knee_db = 9.0
+; High-band attack, 1-1000 ms; module default 75 ms.
+compressor_high_attack_ms = 100.0
+; High-band release, 1-9000 ms; module default 300 ms.
+compressor_high_release_ms = 800.0
+; Three-band detectors measure their own bands without the single-band filters.
+; The following unbanded controls apply only with compressor_bands = 1.
 compressor_threshold_dbfs = -6.0
 compressor_attack_ms = 100.0
 compressor_release_ms = 800.0
-; Multiband limiter thresholds and timing.
+; One full-band limiter (1) or three independently limited bands (3).
+; The fixed final transmitter limiter is separate and is not changed by this mode.
+limiter_bands = 3
+; Full-band threshold, -40 through -1 dBFS; active only with limiter_bands = 1.
+limiter_threshold_dbfs = -1.5
+; Full-band limiting ratio, 1 through 20; default 20:1.
+limiter_ratio = 20.0
+; Full-band knee, 0 through 18 dB; default 0 is a hard knee.
+limiter_knee_db = 0.0
+; Full-band attack, 0.1 through 1000 ms; default 1 ms.
+limiter_attack_ms = 1.0
+; Full-band release, 1 through 9000 ms; default 50 ms.
+limiter_release_ms = 50.0
+; Band-specific controls and crossovers apply only with limiter_bands = 3.
+; Low/mid division, 100-2000 Hz.
+limiter_low_crossover_hz = 500.0
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half
+; the source sample rate (less than 4000 Hz on an 8 kHz link).
+limiter_high_crossover_hz = 2000.0
+; Three-band limiter thresholds and timing.
 limiter_low_threshold_dbfs = -1.0
 limiter_low_attack_ms = 50.0
 limiter_low_release_ms = 300.0

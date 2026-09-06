@@ -283,6 +283,7 @@ CHOICES = {
         ("highpass", "High-pass"),
         ("notch", "Automatic decoded-tone notch"),
     ),
+    "bands": (("1", "Single band"), ("3", "Three bands")),
     "rx_audio_source": (
         ("no", "No receiver audio"),
         ("speaker", "De-emphasized speaker audio"),
@@ -328,7 +329,7 @@ SETTINGS = {
     "agc_enabled": ("AGC", "bool", None, None, "", "Stages"),
     "expander_enabled": ("Downward expander", "bool", None, None, "", "Stages"),
     "compressor_enabled": ("Compressor", "bool", None, None, "", "Stages"),
-    "limiter_enabled": ("Multiband limiter", "bool", None, None, "", "Stages"),
+    "limiter_enabled": ("Limiter", "bool", None, None, "", "Stages"),
     "equalizer_enabled": ("Three-band equalizer", "bool", None, None, "", "Stages"),
     "deesser_enabled": ("Split-band de-esser", "bool", None, None, "", "Stages"),
     "stage_order": ("Processing stage order", "text", None, None, "", "Stages"),
@@ -446,11 +447,33 @@ SETTINGS = {
         "Hz",
         "Expander",
     ),
+    "compressor_bands": ("Compressor bands", "choice", None, None, "", "Compressor"),
+    "compressor_low_crossover_hz": ("Low/mid crossover", "float", 100, 2000, "Hz", "Compressor"),
+    "compressor_high_crossover_hz": ("Mid/high crossover", "float", 100, 5000, "Hz", "Compressor"),
+    **{
+        f"compressor_{band}_{field}": (
+            f"{label}-band {description}",
+            "float",
+            low,
+            high,
+            units,
+            "Compressor",
+        )
+        for band, label in (("low", "Low"), ("mid", "Mid"), ("high", "High"))
+        for field, description, low, high, units in (
+            ("threshold_dbfs", "threshold", -60, 0, "dBFS"),
+            ("ratio", "ratio", 1, 20, ":1"),
+            ("makeup_gain_db", "make-up gain", -30, 30, "dB"),
+            ("knee_db", "knee", 0, 18, "dB"),
+            ("attack_ms", "attack", 1, 1000, "ms"),
+            ("release_ms", "release", 1, 9000, "ms"),
+        )
+    },
     "compressor_threshold_dbfs": ("Compressor threshold", "float", -60, 0, "dBFS", "Compressor"),
     "compressor_ratio": ("Compressor ratio", "float", 1, 20, ":1", "Compressor"),
     "compressor_makeup_gain_db": ("Compressor make-up gain", "float", -30, 30, "dB", "Compressor"),
     "compressor_attack_ms": ("Compressor attack", "float", 1, 1000, "ms", "Compressor"),
-    "compressor_release_ms": ("Compressor release", "float", 1, 10000, "ms", "Compressor"),
+    "compressor_release_ms": ("Compressor release", "float", 1, 9000, "ms", "Compressor"),
     "compressor_sidechain_highpass_hz": (
         "Compressor sidechain band-pass low edge",
         "float",
@@ -467,13 +490,19 @@ SETTINGS = {
         "Hz",
         "Compressor",
     ),
+    "limiter_bands": ("Limiter bands", "choice", None, None, "", "Limiter"),
+    "limiter_threshold_dbfs": ("Limiter threshold", "float", -40, -1, "dBFS", "Limiter"),
+    "limiter_ratio": ("Limiter ratio", "float", 1, 20, ":1", "Limiter"),
+    "limiter_knee_db": ("Limiter knee", "float", 0, 18, "dB", "Limiter"),
+    "limiter_attack_ms": ("Limiter attack", "float", 0.1, 1000, "ms", "Limiter"),
+    "limiter_release_ms": ("Limiter release", "float", 1, 9000, "ms", "Limiter"),
     "limiter_low_crossover_hz": (
         "Low/mid crossover",
         "float",
         100,
         2000,
         "Hz",
-        "Multiband limiter",
+        "Limiter",
     ),
     "limiter_high_crossover_hz": (
         "Mid/high crossover",
@@ -481,7 +510,7 @@ SETTINGS = {
         100,
         5000,
         "Hz",
-        "Multiband limiter",
+        "Limiter",
     ),
     "limiter_low_threshold_dbfs": (
         "Low-band threshold",
@@ -489,36 +518,36 @@ SETTINGS = {
         -40,
         -1,
         "dBFS",
-        "Multiband limiter",
+        "Limiter",
     ),
-    "limiter_low_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
-    "limiter_low_knee_db": ("Low-band knee", "float", 0, 24, "dB", "Multiband limiter"),
-    "limiter_low_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Multiband limiter"),
-    "limiter_low_release_ms": ("Low-band release", "float", 1, 10000, "ms", "Multiband limiter"),
+    "limiter_low_ratio": ("Low-band ratio", "float", 1, 20, ":1", "Limiter"),
+    "limiter_low_knee_db": ("Low-band knee", "float", 0, 18, "dB", "Limiter"),
+    "limiter_low_attack_ms": ("Low-band attack", "float", 0.1, 1000, "ms", "Limiter"),
+    "limiter_low_release_ms": ("Low-band release", "float", 1, 9000, "ms", "Limiter"),
     "limiter_mid_threshold_dbfs": (
         "Mid-band threshold",
         "float",
         -40,
         -1,
         "dBFS",
-        "Multiband limiter",
+        "Limiter",
     ),
-    "limiter_mid_ratio": ("Mid-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
-    "limiter_mid_knee_db": ("Mid-band knee", "float", 0, 24, "dB", "Multiband limiter"),
-    "limiter_mid_attack_ms": ("Mid-band attack", "float", 0.1, 1000, "ms", "Multiband limiter"),
-    "limiter_mid_release_ms": ("Mid-band release", "float", 1, 10000, "ms", "Multiband limiter"),
+    "limiter_mid_ratio": ("Mid-band ratio", "float", 1, 20, ":1", "Limiter"),
+    "limiter_mid_knee_db": ("Mid-band knee", "float", 0, 18, "dB", "Limiter"),
+    "limiter_mid_attack_ms": ("Mid-band attack", "float", 0.1, 1000, "ms", "Limiter"),
+    "limiter_mid_release_ms": ("Mid-band release", "float", 1, 9000, "ms", "Limiter"),
     "limiter_high_threshold_dbfs": (
         "High-band threshold",
         "float",
         -30,
         -1,
         "dBFS",
-        "Multiband limiter",
+        "Limiter",
     ),
-    "limiter_high_ratio": ("High-band ratio", "float", 1, 20, ":1", "Multiband limiter"),
-    "limiter_high_knee_db": ("High-band knee", "float", 0, 24, "dB", "Multiband limiter"),
-    "limiter_high_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Multiband limiter"),
-    "limiter_high_release_ms": ("High-band release", "float", 1, 1000, "ms", "Multiband limiter"),
+    "limiter_high_ratio": ("High-band ratio", "float", 1, 20, ":1", "Limiter"),
+    "limiter_high_knee_db": ("High-band knee", "float", 0, 18, "dB", "Limiter"),
+    "limiter_high_attack_ms": ("High-band attack", "float", 0.1, 100, "ms", "Limiter"),
+    "limiter_high_release_ms": ("High-band release", "float", 1, 1000, "ms", "Limiter"),
     "lookahead_limiter_ceiling_dbfs": (
         "Final-limiter ceiling",
         "float",
@@ -635,6 +664,21 @@ DEFAULTS = {
     "expander_sidechain_highpass_hz": "800.0",
     "expander_sidechain_lowpass_hz": "1500.0",
     "compressor_threshold_dbfs": "-6.0",
+    "compressor_bands": "3",
+    "compressor_low_crossover_hz": "500.0",
+    "compressor_high_crossover_hz": "2000.0",
+    **{
+        f"compressor_{band}_{field}": value
+        for band in ("low", "mid", "high")
+        for field, value in (
+            ("threshold_dbfs", "-6.0"),
+            ("ratio", "2.0"),
+            ("makeup_gain_db", "0.0"),
+            ("knee_db", "9.0"),
+            ("attack_ms", "75.0"),
+            ("release_ms", "300.0"),
+        )
+    },
     "compressor_ratio": "2.0",
     "compressor_makeup_gain_db": "0.0",
     "compressor_attack_ms": "75.0",
@@ -642,6 +686,12 @@ DEFAULTS = {
     "compressor_sidechain_highpass_hz": "800.0",
     "compressor_sidechain_lowpass_hz": "1500.0",
     "limiter_low_crossover_hz": "500.0",
+    "limiter_bands": "3",
+    "limiter_threshold_dbfs": "-1.5",
+    "limiter_ratio": "20.0",
+    "limiter_knee_db": "0.0",
+    "limiter_attack_ms": "1.0",
+    "limiter_release_ms": "50.0",
     "limiter_high_crossover_hz": "2000.0",
     "limiter_low_threshold_dbfs": "-1.5",
     "limiter_low_ratio": "10.0",
@@ -714,6 +764,8 @@ def relationship_error(source, key, number, values):
         "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
         "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
         "compressor_sidechain_lowpass_hz": "compressor_sidechain_highpass_hz",
+        "compressor_high_crossover_hz": "compressor_low_crossover_hz",
+        "limiter_high_crossover_hz": "limiter_low_crossover_hz",
         "receive_bandpass_lowpass_hz": "receive_bandpass_highpass_hz",
         "splatter_filter_lowpass_hz": "splatter_filter_highpass_hz",
     }
@@ -1217,7 +1269,8 @@ def edit_setting(source, key):
     if kind == "bool":
         code, new = prompt_boolean(label, current)
     elif kind == "choice":
-        code, new = prompt_choice(label, current, CHOICES["ctcss_filter"])
+        choices = "bands" if key.endswith("_bands") else "ctcss_filter"
+        code, new = prompt_choice(label, current, CHOICES[choices])
     elif kind == "text":
         return edit_text_setting(source, key)
     else:
@@ -1304,7 +1357,7 @@ def stages_menu(source):
         ("E", "expander_enabled", "Downward expander"),
         ("D", "deesser_enabled", "Split-band de-esser"),
         ("C", "compressor_enabled", "Compressor"),
-        ("L", "limiter_enabled", "Multiband limiter"),
+        ("L", "limiter_enabled", "Limiter"),
         ("H", "lookahead_limiter_enabled", "Final limiter"),
     ]
     entries = [
@@ -1359,24 +1412,33 @@ def settings_menu(source, group):
     @param source Processing source name: local, link, or voice_telemetry.
     @param group Related processing settings to present.
     """
-    values = section_values(read_config(), source)
-    keys = [
-        key
-        for key, data in SETTINGS.items()
-        if data[5] == group
-        and not (key.startswith("ctcss_") and source != "local")
-        and not (key.startswith("receive_bandpass_") and source != "local")
-        and not (group == "Final limiter" and source != "voice_telemetry")
-        and not (
-            key.startswith(("splatter_filter_", "post_limiter_")) and source != "voice_telemetry"
-        )
-    ]
-    if not keys:
-        print(f"No editable numeric settings are available for {source}: {group}.")
-        return
     selected = "1"
     while True:
         values = section_values(read_config(), source)
+        keys = [
+            key
+            for key, data in SETTINGS.items()
+            if data[5] == group
+            and not (key.startswith("ctcss_") and source != "local")
+            and not (key.startswith("receive_bandpass_") and source != "local")
+            and not (group == "Final limiter" and source != "voice_telemetry")
+            and not (
+                key.startswith(("splatter_filter_", "post_limiter_"))
+                and source != "voice_telemetry"
+            )
+        ]
+        if group in {"Compressor", "Limiter"}:
+            stage = group.lower()
+            mode = f"{stage}_bands"
+            multiband = values.get(mode, default_value(source, mode)) == "3"
+            band_prefixes = tuple(f"{stage}_{band}_" for band in ("low", "mid", "high"))
+            # Rebuild after mode changes without discarding the inactive mode's settings.
+            keys = [
+                key for key in keys if key == mode or key.startswith(band_prefixes) == multiband
+            ]
+        if not keys:
+            print(f"No editable numeric settings are available for {source}: {group}.")
+            return
         items = []
         for index, key in enumerate(keys):
             label, _kind, _low, _high, units, _group = SETTINGS[key]
@@ -1419,7 +1481,7 @@ def source_menu(source):
         "Expander",
         "De-esser",
         "Compressor",
-        "Multiband limiter",
+        "Limiter",
         "Final limiter",
         "Input/output",
     ]

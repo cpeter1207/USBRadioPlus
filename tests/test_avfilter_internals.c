@@ -22,6 +22,10 @@ static struct txagc_config base_config(void)
 	cfg.deesser_width_octaves = 1.0;
 	cfg.expander_ratio = 2.0;
 	cfg.compressor_ratio = 2.0;
+	cfg.compressor_bands = 1;
+	cfg.limiter_bands = 3;
+	cfg.compressor_low_crossover_hz = cfg.limiter_low_crossover_hz = 500.0;
+	cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz = 2000.0;
 	return cfg;
 }
 
@@ -133,6 +137,82 @@ static void test_graph_stage_helpers(void)
 	cfg.deesser_ratio = 1.01;
 	graph[0] = '\0';
 	assert(!add_dynamic_stage(graph, sizeof(graph), &cfg, TXAGC_STAGE_DEESSER, "a", "b", 1));
+}
+
+/** @brief Exercise both band modes, exact controls, and every graph truncation boundary. */
+static void test_dynamic_band_descriptions(void)
+{
+	struct txagc_config cfg = base_config();
+	char graph[GRAPH_SIZE];
+	const enum txagc_stage stages[] = {TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER};
+
+	cfg.compressor_enabled = cfg.limiter_enabled = 1;
+	cfg.compressor_low_threshold_dbfs = -20.0;
+	cfg.compressor_low_ratio = 2.0;
+	cfg.compressor_low_makeup_gain_db = 20.0;
+	cfg.compressor_low_knee_db = 0.0;
+	cfg.compressor_low_attack_ms = 11.0;
+	cfg.compressor_low_release_ms = 111.0;
+	cfg.compressor_mid_ratio = 3.0;
+	cfg.compressor_high_ratio = 4.0;
+	cfg.limiter_threshold_dbfs = -20.0;
+	cfg.limiter_ratio = 20.0;
+	cfg.limiter_knee_db = 0.0;
+	cfg.limiter_attack_ms = 0.1;
+	cfg.limiter_release_ms = 50.0;
+	for (unsigned int count = 1; count <= 3; count += 2) {
+		cfg.compressor_bands = cfg.limiter_bands = (int)count;
+		for (unsigned int stage = 0; stage < 2; ++stage) {
+			size_t length;
+			graph[0] = '\0';
+			assert(!add_dynamic_stage(graph, sizeof(graph), &cfg, stages[stage], "a",
+						  "b", 1));
+			assert((strstr(graph, "acrossover=split=500 2000") != NULL) ==
+			       (count == 3));
+			assert((strstr(graph, "sidechaincompress") != NULL) ==
+			       (count == 1 && stage == 0));
+			if (count == 3 && stage == 0)
+				assert(strstr(graph,
+					      "threshold=0.1:ratio=2:knee=1:"
+					      "attack=11:release=111:detection=rms,volume=10"));
+			if (count == 1 && stage == 1)
+				assert(strstr(graph, "threshold=0.1:ratio=20:knee=1:attack=0.1:"
+						     "release=50:detection=peak"));
+			length = strlen(graph);
+			for (size_t capacity = 1; capacity <= length; ++capacity) {
+				graph[0] = '\0';
+				assert(add_dynamic_stage(graph, capacity, &cfg, stages[stage], "a",
+							 "b", 1) < 0);
+			}
+		}
+	}
+}
+
+/** @brief Crossovers at or above Nyquist fail only for an enabled three-band stage. */
+static void test_dynamic_band_nyquist(void)
+{
+	struct txagc_config cfg = base_config();
+	char graph[GRAPH_SIZE];
+
+	cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz = 4000.0;
+	assert(!build_description(graph, sizeof(graph), &cfg, 8000));
+	cfg.compressor_enabled = 1;
+	assert(!build_description(graph, sizeof(graph), &cfg, 8000));
+	cfg.compressor_bands = 3;
+	assert(build_description(graph, sizeof(graph), &cfg, 8000) < 0);
+	assert(!build_description(graph, sizeof(graph), &cfg, 48000));
+	cfg.compressor_high_crossover_hz = 4500.0;
+	assert(build_description(graph, sizeof(graph), &cfg, 8000) < 0);
+	assert(!build_description(graph, sizeof(graph), &cfg, 16000));
+	cfg.compressor_enabled = 0;
+	cfg.limiter_enabled = 1;
+	assert(build_description(graph, sizeof(graph), &cfg, 8000) < 0);
+	assert(!build_description(graph, sizeof(graph), &cfg, 48000));
+	cfg.limiter_high_crossover_hz = 4500.0;
+	assert(build_description(graph, sizeof(graph), &cfg, 8000) < 0);
+	assert(!build_description(graph, sizeof(graph), &cfg, 16000));
+	cfg.limiter_bands = 1;
+	assert(!build_description(graph, sizeof(graph), &cfg, 8000));
 }
 
 /** @brief Assert bounded graph construction fails after exhausting description capacity.
@@ -294,6 +374,8 @@ int main(void)
 	test_scalar_and_append_helpers();
 	test_meter_updates();
 	test_graph_stage_helpers();
+	test_dynamic_band_descriptions();
+	test_dynamic_band_nyquist();
 	test_description_variants();
 	test_graph_lifecycle_and_invalid_configuration();
 	puts("FFmpeg graph internal tests passed");

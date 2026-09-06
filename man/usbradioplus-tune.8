@@ -128,6 +128,14 @@ filtering and sets the applicable cutoff or notch width. For voice and telemetry
 it enables or disables the transmit brick-wall band-pass and post-limiter
 low-pass and sets their cutoff frequencies. Dynamics pages contain the
 high-pass and low-pass detector filters for AGC, expansion, and compression.
+The Compressor and Limiter pages each select Single band or Three bands.
+Single-band mode shows full-band controls; three-band mode shows the low/mid
+and mid/high crossovers and independent low-, mid-, and high-band controls.
+The default divisions are below 500 Hz, 500 to 2000 Hz, and above 2000 Hz.
+The upper crossover must be below half the source sample rate: below 4000 Hz
+on an 8 kHz link. Compression detector filters apply only in single-band mode;
+three-band compression measures each band's own RMS level. Changing modes
+updates the page immediately and keeps inactive settings for later use.
 The AGC page also sets detector-band RMS target and averaging, maximum boost
 and attenuation, gain-increase and gain-decrease rates, activity threshold
 and hysteresis, gain-increase hold, and target deadband. Set either AGC

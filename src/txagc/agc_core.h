@@ -141,6 +141,48 @@ struct txagc_config {
 	double expander_sidechain_lowpass_hz;
 	/** Nonzero enables compressor. */
 	int compressor_enabled;
+	/** One selects full-band compression; three selects independent frequency bands. */
+	int compressor_bands;
+	/** Low-to-middle compressor crossover in Hz. */
+	double compressor_low_crossover_hz;
+	/** Middle-to-high compressor crossover in Hz. */
+	double compressor_high_crossover_hz;
+	/** Low-band threshold in dbfs. */
+	double compressor_low_threshold_dbfs;
+	/** Low-band compression ratio. */
+	double compressor_low_ratio;
+	/** Low-band makeup gain in db. */
+	double compressor_low_makeup_gain_db;
+	/** Low-band knee width in db. */
+	double compressor_low_knee_db;
+	/** Low-band attack time in milliseconds. */
+	double compressor_low_attack_ms;
+	/** Low-band release time in milliseconds. */
+	double compressor_low_release_ms;
+	/** Mid-band threshold in dbfs. */
+	double compressor_mid_threshold_dbfs;
+	/** Mid-band compression ratio. */
+	double compressor_mid_ratio;
+	/** Mid-band makeup gain in db. */
+	double compressor_mid_makeup_gain_db;
+	/** Mid-band knee width in db. */
+	double compressor_mid_knee_db;
+	/** Mid-band attack time in milliseconds. */
+	double compressor_mid_attack_ms;
+	/** Mid-band release time in milliseconds. */
+	double compressor_mid_release_ms;
+	/** High-band threshold in dbfs. */
+	double compressor_high_threshold_dbfs;
+	/** High-band compression ratio. */
+	double compressor_high_ratio;
+	/** High-band makeup gain in db. */
+	double compressor_high_makeup_gain_db;
+	/** High-band knee width in db. */
+	double compressor_high_knee_db;
+	/** High-band attack time in milliseconds. */
+	double compressor_high_attack_ms;
+	/** High-band release time in milliseconds. */
+	double compressor_high_release_ms;
 	/** Compressor threshold in DBFS. */
 	double compressor_threshold_dbfs;
 	/** Compression ratio above the compressor threshold. */
@@ -157,6 +199,18 @@ struct txagc_config {
 	double compressor_sidechain_lowpass_hz;
 	/** Nonzero enables the shared FFmpeg multiband limiter. */
 	int limiter_enabled;
+	/** One selects full-band limiting; three selects independent frequency bands. */
+	int limiter_bands;
+	/** Single-band limiter threshold in dBFS. */
+	double limiter_threshold_dbfs;
+	/** Single-band limiting ratio. */
+	double limiter_ratio;
+	/** Single-band limiter knee width in dB. */
+	double limiter_knee_db;
+	/** Single-band limiter attack in milliseconds. */
+	double limiter_attack_ms;
+	/** Single-band limiter release in milliseconds. */
+	double limiter_release_ms;
 	/** Nonzero enables the fixed transmitter FFT band-pass. */
 	int splatter_filter_enabled;
 	/** Limiter low crossover in Hz. */

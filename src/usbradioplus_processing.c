@@ -82,6 +82,7 @@ PROCESSING_PRIVATE int stopping;
 /** Set when a candidate configuration contains a malformed value. */
 PROCESSING_PRIVATE int settings_parse_error;
 static int is_flat_section(const char *category);
+static int validate_active_crossovers(struct txagc_settings *candidate);
 
 /** @brief Find a named channel profile in the supplied settings snapshot.
  * @param current Settings snapshot whose profile table is searched.
@@ -195,6 +196,27 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.expander_sidechain_highpass_hz = 800.0;
 	base->agc.expander_sidechain_lowpass_hz = 1500.0;
 	base->agc.compressor_enabled = 0;
+	base->agc.compressor_bands = 3;
+	base->agc.compressor_low_crossover_hz = 500.0;
+	base->agc.compressor_high_crossover_hz = 2000.0;
+	base->agc.compressor_low_threshold_dbfs = -6.0;
+	base->agc.compressor_low_ratio = 2.0;
+	base->agc.compressor_low_makeup_gain_db = 0.0;
+	base->agc.compressor_low_knee_db = 9.0;
+	base->agc.compressor_low_attack_ms = 75.0;
+	base->agc.compressor_low_release_ms = 300.0;
+	base->agc.compressor_mid_threshold_dbfs = -6.0;
+	base->agc.compressor_mid_ratio = 2.0;
+	base->agc.compressor_mid_makeup_gain_db = 0.0;
+	base->agc.compressor_mid_knee_db = 9.0;
+	base->agc.compressor_mid_attack_ms = 75.0;
+	base->agc.compressor_mid_release_ms = 300.0;
+	base->agc.compressor_high_threshold_dbfs = -6.0;
+	base->agc.compressor_high_ratio = 2.0;
+	base->agc.compressor_high_makeup_gain_db = 0.0;
+	base->agc.compressor_high_knee_db = 9.0;
+	base->agc.compressor_high_attack_ms = 75.0;
+	base->agc.compressor_high_release_ms = 300.0;
 	base->agc.compressor_threshold_dbfs = -6.0;
 	base->agc.compressor_ratio = 2.0;
 	base->agc.compressor_makeup_gain_db = 0.0;
@@ -203,6 +225,12 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.compressor_sidechain_highpass_hz = 800.0;
 	base->agc.compressor_sidechain_lowpass_hz = 1500.0;
 	base->agc.limiter_enabled = 0;
+	base->agc.limiter_bands = 3;
+	base->agc.limiter_threshold_dbfs = -1.5;
+	base->agc.limiter_ratio = 20.0;
+	base->agc.limiter_knee_db = 0.0;
+	base->agc.limiter_attack_ms = 1.0;
+	base->agc.limiter_release_ms = 50.0;
 	base->agc.splatter_filter_enabled = 0;
 	base->agc.limiter_low_crossover_hz = 500.0;
 	base->agc.limiter_high_crossover_hz = 2000.0;
@@ -339,6 +367,31 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(expander_sidechain_highpass_hz);
 	REQUIRE_FINITE(expander_sidechain_lowpass_hz);
 	REQUIRE_FINITE(compressor_threshold_dbfs);
+	REQUIRE_FINITE(compressor_low_crossover_hz);
+	REQUIRE_FINITE(compressor_high_crossover_hz);
+	REQUIRE_FINITE(compressor_low_threshold_dbfs);
+	REQUIRE_FINITE(compressor_low_ratio);
+	REQUIRE_FINITE(compressor_low_makeup_gain_db);
+	REQUIRE_FINITE(compressor_low_knee_db);
+	REQUIRE_FINITE(compressor_low_attack_ms);
+	REQUIRE_FINITE(compressor_low_release_ms);
+	REQUIRE_FINITE(compressor_mid_threshold_dbfs);
+	REQUIRE_FINITE(compressor_mid_ratio);
+	REQUIRE_FINITE(compressor_mid_makeup_gain_db);
+	REQUIRE_FINITE(compressor_mid_knee_db);
+	REQUIRE_FINITE(compressor_mid_attack_ms);
+	REQUIRE_FINITE(compressor_mid_release_ms);
+	REQUIRE_FINITE(compressor_high_threshold_dbfs);
+	REQUIRE_FINITE(compressor_high_ratio);
+	REQUIRE_FINITE(compressor_high_makeup_gain_db);
+	REQUIRE_FINITE(compressor_high_knee_db);
+	REQUIRE_FINITE(compressor_high_attack_ms);
+	REQUIRE_FINITE(compressor_high_release_ms);
+	REQUIRE_FINITE(limiter_threshold_dbfs);
+	REQUIRE_FINITE(limiter_ratio);
+	REQUIRE_FINITE(limiter_knee_db);
+	REQUIRE_FINITE(limiter_attack_ms);
+	REQUIRE_FINITE(limiter_release_ms);
 	REQUIRE_FINITE(compressor_ratio);
 	REQUIRE_FINITE(compressor_makeup_gain_db);
 	REQUIRE_FINITE(compressor_attack_ms);
@@ -371,6 +424,59 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(output_lowpass_hz);
 	REQUIRE_FINITE(output_gain_db);
 #undef REQUIRE_FINITE
+	if ((value->agc.compressor_bands != 1 && value->agc.compressor_bands != 3) ||
+	    (value->agc.limiter_bands != 1 && value->agc.limiter_bands != 3)) {
+		ast_log(LOG_ERROR,
+			"RadioPlus: compressor_bands (%d) and limiter_bands (%d) must be 1 or 3\n",
+			value->agc.compressor_bands, value->agc.limiter_bands);
+		return -1;
+	}
+#define REQUIRE_BAND_RANGE(field, minimum, maximum)                                                \
+	do {                                                                                       \
+		if (value->agc.field < (minimum) || value->agc.field > (maximum)) {                \
+			ast_log(LOG_ERROR, "RadioPlus: " #field " must be between %g and %g\n",    \
+				(double)(minimum), (double)(maximum));                             \
+			return -1;                                                                 \
+		}                                                                                  \
+	} while (0)
+	REQUIRE_BAND_RANGE(compressor_low_crossover_hz, 100.0, 2000.0);
+	REQUIRE_BAND_RANGE(compressor_high_crossover_hz, 100.0, 5000.0);
+	REQUIRE_BAND_RANGE(limiter_low_crossover_hz, 100.0, 2000.0);
+	REQUIRE_BAND_RANGE(limiter_high_crossover_hz, 100.0, 5000.0);
+	REQUIRE_BAND_RANGE(compressor_low_threshold_dbfs, -60.0, 0.0);
+	REQUIRE_BAND_RANGE(compressor_low_ratio, 1.0, 20.0);
+	REQUIRE_BAND_RANGE(compressor_low_makeup_gain_db, -30.0, 30.0);
+	REQUIRE_BAND_RANGE(compressor_low_knee_db, 0.0, 18.0);
+	REQUIRE_BAND_RANGE(compressor_low_attack_ms, 1.0, 1000.0);
+	REQUIRE_BAND_RANGE(compressor_low_release_ms, 1.0, 9000.0);
+	REQUIRE_BAND_RANGE(compressor_mid_threshold_dbfs, -60.0, 0.0);
+	REQUIRE_BAND_RANGE(compressor_mid_ratio, 1.0, 20.0);
+	REQUIRE_BAND_RANGE(compressor_mid_makeup_gain_db, -30.0, 30.0);
+	REQUIRE_BAND_RANGE(compressor_mid_knee_db, 0.0, 18.0);
+	REQUIRE_BAND_RANGE(compressor_mid_attack_ms, 1.0, 1000.0);
+	REQUIRE_BAND_RANGE(compressor_mid_release_ms, 1.0, 9000.0);
+	REQUIRE_BAND_RANGE(compressor_high_threshold_dbfs, -60.0, 0.0);
+	REQUIRE_BAND_RANGE(compressor_high_ratio, 1.0, 20.0);
+	REQUIRE_BAND_RANGE(compressor_high_makeup_gain_db, -30.0, 30.0);
+	REQUIRE_BAND_RANGE(compressor_high_knee_db, 0.0, 18.0);
+	REQUIRE_BAND_RANGE(compressor_high_attack_ms, 1.0, 1000.0);
+	REQUIRE_BAND_RANGE(compressor_high_release_ms, 1.0, 9000.0);
+	REQUIRE_BAND_RANGE(limiter_threshold_dbfs, -40.0, -1.0);
+	REQUIRE_BAND_RANGE(limiter_ratio, 1.0, 20.0);
+	REQUIRE_BAND_RANGE(limiter_knee_db, 0.0, 18.0);
+	REQUIRE_BAND_RANGE(limiter_attack_ms, 0.1, 1000.0);
+	REQUIRE_BAND_RANGE(limiter_release_ms, 1.0, 9000.0);
+#undef REQUIRE_BAND_RANGE
+	if (value->agc.compressor_high_crossover_hz <= value->agc.compressor_low_crossover_hz) {
+		ast_log(LOG_ERROR, "RadioPlus: compressor_high_crossover_hz must exceed "
+				   "compressor_low_crossover_hz\n");
+		return -1;
+	}
+	if (value->agc.limiter_high_crossover_hz <= value->agc.limiter_low_crossover_hz) {
+		ast_log(LOG_ERROR, "RadioPlus: limiter_high_crossover_hz must exceed "
+				   "limiter_low_crossover_hz\n");
+		return -1;
+	}
 	if (value->agc.stage_count > TXAGC_MAX_DYNAMICS_STAGES)
 		return -1;
 	for (index = 0; index < value->agc.stage_count; ++index) {
@@ -446,32 +552,28 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	    value->agc.compressor_ratio > 20.0 || value->agc.compressor_makeup_gain_db < -30.0 ||
 	    value->agc.compressor_makeup_gain_db > 30.0 || value->agc.compressor_attack_ms < 1.0 ||
 	    value->agc.compressor_attack_ms > 1000.0 || value->agc.compressor_release_ms < 1.0 ||
-	    value->agc.compressor_release_ms > 10000.0 ||
+	    value->agc.compressor_release_ms > 9000.0 ||
 	    value->agc.compressor_sidechain_highpass_hz < 50.0 ||
 	    value->agc.compressor_sidechain_highpass_hz > 2000.0 ||
 	    value->agc.compressor_sidechain_lowpass_hz <=
 		    value->agc.compressor_sidechain_highpass_hz ||
 	    value->agc.compressor_sidechain_lowpass_hz > 3500.0 ||
-	    value->agc.limiter_low_crossover_hz < 100.0 ||
-	    value->agc.limiter_low_crossover_hz > 2000.0 ||
-	    value->agc.limiter_high_crossover_hz <= value->agc.limiter_low_crossover_hz ||
-	    value->agc.limiter_high_crossover_hz > 5000.0 ||
 	    value->agc.low_limiter_threshold_dbfs < -40.0 ||
 	    value->agc.low_limiter_threshold_dbfs > -1.0 || value->agc.low_limiter_ratio < 1.0 ||
 	    value->agc.low_limiter_ratio > 20.0 || value->agc.low_limiter_knee_db < 0.0 ||
-	    value->agc.low_limiter_knee_db > 24.0 || value->agc.low_limiter_attack_ms < 0.1 ||
+	    value->agc.low_limiter_knee_db > 18.0 || value->agc.low_limiter_attack_ms < 0.1 ||
 	    value->agc.low_limiter_attack_ms > 1000.0 || value->agc.low_limiter_release_ms < 1.0 ||
-	    value->agc.low_limiter_release_ms > 10000.0 ||
+	    value->agc.low_limiter_release_ms > 9000.0 ||
 	    value->agc.mid_limiter_threshold_dbfs < -40.0 ||
 	    value->agc.mid_limiter_threshold_dbfs > -1.0 || value->agc.mid_limiter_ratio < 1.0 ||
 	    value->agc.mid_limiter_ratio > 20.0 || value->agc.mid_limiter_knee_db < 0.0 ||
-	    value->agc.mid_limiter_knee_db > 24.0 || value->agc.mid_limiter_attack_ms < 0.1 ||
+	    value->agc.mid_limiter_knee_db > 18.0 || value->agc.mid_limiter_attack_ms < 0.1 ||
 	    value->agc.mid_limiter_attack_ms > 1000.0 || value->agc.mid_limiter_release_ms < 1.0 ||
-	    value->agc.mid_limiter_release_ms > 10000.0 ||
+	    value->agc.mid_limiter_release_ms > 9000.0 ||
 	    value->agc.high_limiter_threshold_dbfs < -30.0 ||
 	    value->agc.high_limiter_threshold_dbfs > -1.0 || value->agc.high_limiter_ratio < 1.0 ||
 	    value->agc.high_limiter_ratio > 20.0 || value->agc.high_limiter_knee_db < 0.0 ||
-	    value->agc.high_limiter_knee_db > 24.0 || value->agc.high_limiter_attack_ms < 0.1 ||
+	    value->agc.high_limiter_knee_db > 18.0 || value->agc.high_limiter_attack_ms < 0.1 ||
 	    value->agc.high_limiter_attack_ms > 100.0 || value->agc.high_limiter_release_ms < 1.0 ||
 	    value->agc.high_limiter_release_ms > 1000.0 ||
 	    value->agc.lookahead_limit_dbfs < -30.0 || value->agc.lookahead_limit_dbfs > -0.1 ||
@@ -565,7 +667,7 @@ PROCESSING_PRIVATE void read_double(struct ast_config *cfg, const char *section,
 		return;
 	}
 	parsed = strtod(text, &end);
-	if (*end == '\0' && isfinite(parsed)) {
+	if (end != text && *end == '\0' && isfinite(parsed)) {
 		*value = parsed;
 	} else {
 		ast_log(LOG_ERROR, "RadioPlus [%s]: %s requires a finite number, got '%s'\n",
@@ -654,6 +756,27 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"expander_sidechain_highpass_hz",
 		"expander_sidechain_lowpass_hz",
 		"compressor_enabled",
+		"compressor_bands",
+		"compressor_low_crossover_hz",
+		"compressor_high_crossover_hz",
+		"compressor_low_threshold_dbfs",
+		"compressor_low_ratio",
+		"compressor_low_makeup_gain_db",
+		"compressor_low_knee_db",
+		"compressor_low_attack_ms",
+		"compressor_low_release_ms",
+		"compressor_mid_threshold_dbfs",
+		"compressor_mid_ratio",
+		"compressor_mid_makeup_gain_db",
+		"compressor_mid_knee_db",
+		"compressor_mid_attack_ms",
+		"compressor_mid_release_ms",
+		"compressor_high_threshold_dbfs",
+		"compressor_high_ratio",
+		"compressor_high_makeup_gain_db",
+		"compressor_high_knee_db",
+		"compressor_high_attack_ms",
+		"compressor_high_release_ms",
 		"compressor_threshold_dbfs",
 		"compressor_ratio",
 		"compressor_makeup_gain_db",
@@ -662,6 +785,12 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"compressor_sidechain_highpass_hz",
 		"compressor_sidechain_lowpass_hz",
 		"limiter_enabled",
+		"limiter_bands",
+		"limiter_threshold_dbfs",
+		"limiter_ratio",
+		"limiter_knee_db",
+		"limiter_attack_ms",
+		"limiter_release_ms",
 		"splatter_filter_enabled",
 		"limiter_low_crossover_hz",
 		"limiter_high_crossover_hz",
@@ -1215,11 +1344,34 @@ PROCESSING_PRIVATE int read_stage_order(struct ast_config *cfg, const char *sect
 	return 0;
 }
 
-/** @brief Apply one processing section to a chain's current defaults.
+/** @brief Read the explicitly supported one-band or three-band dynamics mode.
  * @param cfg Asterisk configuration tree owned by the caller.
  * @param section Configuration section name.
- * @param chain Processing-chain settings copied or updated by this operation.
- * @return Zero on success; a nonzero status if the operation cannot complete.
+ * @param name Band-count option name.
+ * @param value Receives the count; unchanged for absent or malformed options.
+ */
+static void read_band_count(struct ast_config *cfg, const char *section, const char *name,
+			    int *value)
+{
+	const char *text = ast_variable_retrieve(cfg, section, name);
+	if (!text)
+		return;
+	if (!strcmp(text, "1"))
+		*value = 1;
+	else if (!strcmp(text, "3"))
+		*value = 3;
+	else {
+		ast_log(LOG_ERROR, "RadioPlus [%s]: %s must be 1 or 3, not '%s'\n", section, name,
+			text);
+		settings_parse_error = 1;
+	}
+}
+
+/** @brief Read the configurable stages belonging to one source chain.
+ * @param cfg Asterisk configuration tree owned by the caller.
+ * @param section Configuration section name.
+ * @param chain Receives parsed settings for this source.
+ * @return Zero on success; nonzero for an invalid stage order.
  */
 PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 				  struct txagc_chain *chain)
@@ -1308,6 +1460,39 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "expander_sidechain_lowpass_hz",
 		    &chain->agc.expander_sidechain_lowpass_hz);
 	READ_BOOL("compressor_enabled", chain->agc.compressor_enabled);
+	read_band_count(cfg, section, "compressor_bands", &chain->agc.compressor_bands);
+	read_double(cfg, section, "compressor_low_crossover_hz",
+		    &chain->agc.compressor_low_crossover_hz);
+	read_double(cfg, section, "compressor_high_crossover_hz",
+		    &chain->agc.compressor_high_crossover_hz);
+	read_double(cfg, section, "compressor_low_threshold_dbfs",
+		    &chain->agc.compressor_low_threshold_dbfs);
+	read_double(cfg, section, "compressor_low_ratio", &chain->agc.compressor_low_ratio);
+	read_double(cfg, section, "compressor_low_makeup_gain_db",
+		    &chain->agc.compressor_low_makeup_gain_db);
+	read_double(cfg, section, "compressor_low_knee_db", &chain->agc.compressor_low_knee_db);
+	read_double(cfg, section, "compressor_low_attack_ms", &chain->agc.compressor_low_attack_ms);
+	read_double(cfg, section, "compressor_low_release_ms",
+		    &chain->agc.compressor_low_release_ms);
+	read_double(cfg, section, "compressor_mid_threshold_dbfs",
+		    &chain->agc.compressor_mid_threshold_dbfs);
+	read_double(cfg, section, "compressor_mid_ratio", &chain->agc.compressor_mid_ratio);
+	read_double(cfg, section, "compressor_mid_makeup_gain_db",
+		    &chain->agc.compressor_mid_makeup_gain_db);
+	read_double(cfg, section, "compressor_mid_knee_db", &chain->agc.compressor_mid_knee_db);
+	read_double(cfg, section, "compressor_mid_attack_ms", &chain->agc.compressor_mid_attack_ms);
+	read_double(cfg, section, "compressor_mid_release_ms",
+		    &chain->agc.compressor_mid_release_ms);
+	read_double(cfg, section, "compressor_high_threshold_dbfs",
+		    &chain->agc.compressor_high_threshold_dbfs);
+	read_double(cfg, section, "compressor_high_ratio", &chain->agc.compressor_high_ratio);
+	read_double(cfg, section, "compressor_high_makeup_gain_db",
+		    &chain->agc.compressor_high_makeup_gain_db);
+	read_double(cfg, section, "compressor_high_knee_db", &chain->agc.compressor_high_knee_db);
+	read_double(cfg, section, "compressor_high_attack_ms",
+		    &chain->agc.compressor_high_attack_ms);
+	read_double(cfg, section, "compressor_high_release_ms",
+		    &chain->agc.compressor_high_release_ms);
 	read_double(cfg, section, "compressor_threshold_dbfs",
 		    &chain->agc.compressor_threshold_dbfs);
 	read_double(cfg, section, "compressor_ratio", &chain->agc.compressor_ratio);
@@ -1320,6 +1505,12 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "compressor_sidechain_lowpass_hz",
 		    &chain->agc.compressor_sidechain_lowpass_hz);
 	READ_BOOL("limiter_enabled", chain->agc.limiter_enabled);
+	read_band_count(cfg, section, "limiter_bands", &chain->agc.limiter_bands);
+	read_double(cfg, section, "limiter_threshold_dbfs", &chain->agc.limiter_threshold_dbfs);
+	read_double(cfg, section, "limiter_ratio", &chain->agc.limiter_ratio);
+	read_double(cfg, section, "limiter_knee_db", &chain->agc.limiter_knee_db);
+	read_double(cfg, section, "limiter_attack_ms", &chain->agc.limiter_attack_ms);
+	read_double(cfg, section, "limiter_release_ms", &chain->agc.limiter_release_ms);
 	if (ast_variable_retrieve(cfg, section, "splatter_filter_enabled") ||
 	    ast_variable_retrieve(cfg, section, "splatter_filter_highpass_hz") ||
 	    ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz"))
@@ -1552,6 +1743,11 @@ PROCESSING_PRIVATE int load_settings(void)
 		ast_log(LOG_ERROR, "RadioPlus: %s contains no named radio sections\n", CONFIG_FILE);
 		goto invalid;
 	}
+	/* Before the scanner starts there are no owned link hooks with known rates.
+	 * A running reload must preserve the old graph if an active link cannot use
+	 * the candidate crossovers. First frames still validate newly opened links. */
+	if (scan_thread != AST_PTHREADT_NULL && validate_active_crossovers(updated))
+		goto invalid;
 	ast_config_destroy(cfg);
 	ast_mutex_lock(&settings_lock);
 	settings = *updated;
@@ -1595,6 +1791,61 @@ static const struct ast_datastore_info txagc_datastore = {
 	.type = "txagc",
 	.destroy = hook_destroy,
 };
+
+/** @brief Reject crossover changes that cannot run at a known active link's sample rate.
+ * @param candidate Validated candidate profiles, not yet published to audio callbacks.
+ * @return Zero on success; -1 for an incompatible active link or unavailable iterator.
+ */
+static int validate_active_crossovers(struct txagc_settings *candidate)
+{
+	struct ast_channel_iterator *iterator = ast_channel_iterator_all_new();
+	struct ast_channel *channel;
+	int invalid = 0;
+	if (!iterator) {
+		ast_log(LOG_ERROR,
+			"RadioPlus: cannot inspect active link rates; keeping settings\n");
+		return -1;
+	}
+	while ((channel = ast_channel_iterator_next(iterator))) {
+		const struct ast_datastore *datastore;
+		ast_channel_lock(channel);
+		datastore = ast_channel_datastore_find(channel, &txagc_datastore, NULL);
+		if (datastore && datastore->data) {
+			struct txagc_hook *hook = datastore->data;
+			struct txagc_profile *profile = find_profile(candidate, hook->profile);
+			ast_audiohook_lock(&hook->audiohook);
+			unsigned int rate = hook->avfilter[TXAGC_LINK].sample_rate;
+			if (profile && profile->enabled && profile->chains[TXAGC_LINK].enabled &&
+			    rate) {
+				const struct txagc_config *cfg = &profile->chains[TXAGC_LINK].agc;
+				const char *const names[] = {"compressor", "limiter"};
+				const int enabled[] = {cfg->compressor_enabled,
+						       cfg->limiter_enabled};
+				const int bands[] = {cfg->compressor_bands, cfg->limiter_bands};
+				const double edges[] = {cfg->compressor_high_crossover_hz,
+							cfg->limiter_high_crossover_hz};
+				for (size_t stage = 0; stage < ARRAY_LEN(names); ++stage) {
+					if (enabled[stage] && bands[stage] == 3 &&
+					    edges[stage] >= rate * 0.5) {
+						ast_log(LOG_ERROR,
+							"RadioPlus [link %s]: %s_high_crossover_hz "
+							"%.9g "
+							"must be below %.9g Hz at active link rate "
+							"%u Hz\n",
+							profile->name, names[stage], edges[stage],
+							rate * 0.5, rate);
+						invalid = 1;
+					}
+				}
+			}
+			ast_audiohook_unlock(&hook->audiohook);
+		}
+		ast_channel_unlock(channel);
+		ast_channel_unref(channel);
+	}
+	ast_channel_iterator_destroy(iterator);
+	return invalid ? -1 : 0;
+}
 
 /* The Asterisk callback ABI requires a mutable audiohook pointer. */
 // cppcheck-suppress constParameterCallback
@@ -1872,13 +2123,15 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		struct txagc_chain *chain = &current.chains[source];
 		ast_cli(args->fd,
 			"Chain %s: %s, RNNoise %s, AGC %s, expander %s, "
-			"compressor %s, multiband limiter %s, ",
+			"compressor %s (%d band), limiter %s (%d band), ",
 			source_names[source], chain->enabled ? "enabled" : "disabled",
 			chain->rnnoise_enabled ? "enabled" : "disabled",
 			chain->agc.agc_enabled ? "enabled" : "disabled",
 			chain->agc.expander_enabled ? "enabled" : "disabled",
 			chain->agc.compressor_enabled ? "enabled" : "disabled",
-			chain->agc.limiter_enabled ? "enabled" : "disabled");
+			chain->agc.compressor_bands,
+			chain->agc.limiter_enabled ? "enabled" : "disabled",
+			chain->agc.limiter_bands);
 		if (source == TXAGC_LOCAL)
 			ast_cli(args->fd, "receive brick-wall band-pass %s, ",
 				chain->agc.receive_bandpass_enabled ? "enabled" : "disabled");
@@ -1892,6 +2145,36 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		ast_cli(args->fd, "final limiter %s, input gain %.1f dB, output gain %.1f dB\n",
 			chain->agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 			chain->agc.input_gain_db, chain->agc.output_gain_db);
+		ast_cli(args->fd,
+			"  Three-band crossovers: compressor %.1f/%.1f Hz, limiter %.1f/%.1f Hz\n",
+			chain->agc.compressor_low_crossover_hz,
+			chain->agc.compressor_high_crossover_hz,
+			chain->agc.limiter_low_crossover_hz, chain->agc.limiter_high_crossover_hz);
+		ast_cli(args->fd,
+			"  Compressor low: threshold %.1f dBFS, ratio %.1f:1, makeup %.1f dB, "
+			"knee %.1f dB, attack %.1f ms, release %.1f ms\n",
+			chain->agc.compressor_low_threshold_dbfs, chain->agc.compressor_low_ratio,
+			chain->agc.compressor_low_makeup_gain_db, chain->agc.compressor_low_knee_db,
+			chain->agc.compressor_low_attack_ms, chain->agc.compressor_low_release_ms);
+		ast_cli(args->fd,
+			"  Compressor mid: threshold %.1f dBFS, ratio %.1f:1, makeup %.1f dB, "
+			"knee %.1f dB, attack %.1f ms, release %.1f ms\n",
+			chain->agc.compressor_mid_threshold_dbfs, chain->agc.compressor_mid_ratio,
+			chain->agc.compressor_mid_makeup_gain_db, chain->agc.compressor_mid_knee_db,
+			chain->agc.compressor_mid_attack_ms, chain->agc.compressor_mid_release_ms);
+		ast_cli(args->fd,
+			"  Compressor high: threshold %.1f dBFS, ratio %.1f:1, makeup %.1f dB, "
+			"knee %.1f dB, attack %.1f ms, release %.1f ms\n",
+			chain->agc.compressor_high_threshold_dbfs, chain->agc.compressor_high_ratio,
+			chain->agc.compressor_high_makeup_gain_db,
+			chain->agc.compressor_high_knee_db, chain->agc.compressor_high_attack_ms,
+			chain->agc.compressor_high_release_ms);
+		ast_cli(args->fd,
+			"  Single-band limiter: threshold %.1f dBFS, ratio %.1f:1, knee %.1f dB, "
+			"attack %.1f ms, release %.1f ms\n",
+			chain->agc.limiter_threshold_dbfs, chain->agc.limiter_ratio,
+			chain->agc.limiter_knee_db, chain->agc.limiter_attack_ms,
+			chain->agc.limiter_release_ms);
 	}
 	ast_cli(args->fd, "\nDetailed local-chain settings:\n");
 	ast_cli(args->fd,
@@ -1907,10 +2190,11 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"Downward expander: %s\nExpander threshold: %.1f dBFS\nExpander ratio: %.1f:1\n"
 		"Expander maximum attenuation: %.1f dB\nExpander attack: %.0f ms\n"
 		"Expander release: %.0f ms\nExpander sidechain band-pass: %.0f-%.0f Hz\n"
-		"Compressor: %s\nCompressor threshold: %.1f dBFS\nCompressor ratio: %.1f:1\n"
+		"Compressor: %s\nSingle-band compressor threshold: %.1f dBFS\nCompressor ratio: "
+		"%.1f:1\n"
 		"Compressor make-up gain: %.1f dB\nCompressor attack: %.0f ms\n"
 		"Compressor release: %.0f ms\nCompressor sidechain band-pass: %.0f-%.0f Hz\n"
-		"Multiband limiter: %s\nBrick-wall band-pass: %s\nCrossovers: %.0f/%.0f "
+		"Limiter: %s\nBrick-wall band-pass: %s\nThree-band limiter crossovers: %.0f/%.0f "
 		"Hz\nLow-band threshold: %.1f dBFS\n"
 		"Low-band ratio: %.1f:1\nLow-band knee: %.1f dB\n"
 		"Low-band attack: %.1f ms\nLow-band release: %.0f ms\n"
@@ -2357,6 +2641,9 @@ int usbradioplus_processing_reload(void)
  */
 /** @def REQUIRE_FINITE
  * @brief Reject non-finite or out-of-range graph parameters.
+ */
+/** @def REQUIRE_BAND_RANGE
+ * @brief Reject invalid dynamics controls with the offending option and accepted bounds.
  */
 /** @def READ_BOOL
  * @brief Read a boolean processing option into the candidate chain.

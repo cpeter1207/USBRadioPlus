@@ -2,6 +2,7 @@
  * @brief Executable avfilter processor regression and failure-path checks.
  */
 
+#include <assert.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -128,6 +129,326 @@ static int test_link_stage_toggles(const struct txagc_config *defaults)
 	return 0;
 }
 
+/** @brief Build unity-gain dynamics with independent single- and three-band controls.
+ * @param stage Compressor or limiter selected for the test.
+ * @param bands One full band or three crossover bands.
+ * @return Initialized graph configuration without other processing.
+ */
+static struct txagc_config dynamics_config(enum txagc_stage stage, int bands)
+{
+	struct txagc_config cfg = {0};
+	cfg.stage_count = 1;
+	cfg.stage_order[0] = stage;
+	cfg.compressor_enabled = stage == TXAGC_STAGE_COMPRESSOR;
+	cfg.limiter_enabled = stage == TXAGC_STAGE_LIMITER;
+	cfg.compressor_bands = cfg.limiter_bands = bands;
+	cfg.compressor_low_crossover_hz = cfg.limiter_low_crossover_hz = 500.0;
+	cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz = 2000.0;
+	cfg.compressor_threshold_dbfs = cfg.limiter_threshold_dbfs = -12.0;
+	cfg.compressor_ratio = cfg.limiter_ratio = 1.0;
+	cfg.compressor_attack_ms = cfg.limiter_attack_ms = 1.0;
+	cfg.compressor_release_ms = cfg.limiter_release_ms = 10.0;
+	cfg.compressor_low_ratio = cfg.compressor_mid_ratio = cfg.compressor_high_ratio = 1.0;
+	cfg.low_limiter_ratio = cfg.mid_limiter_ratio = cfg.high_limiter_ratio = 1.0;
+	cfg.compressor_low_attack_ms = cfg.compressor_mid_attack_ms =
+		cfg.compressor_high_attack_ms = 1.0;
+	cfg.low_limiter_attack_ms = cfg.mid_limiter_attack_ms = cfg.high_limiter_attack_ms = 1.0;
+	cfg.compressor_low_release_ms = cfg.compressor_mid_release_ms =
+		cfg.compressor_high_release_ms = 10.0;
+	cfg.low_limiter_release_ms = cfg.mid_limiter_release_ms = cfg.high_limiter_release_ms =
+		10.0;
+	return cfg;
+}
+
+/** @brief Measure steady sine-wave amplitude through one unbuffered dynamics graph.
+ * @param cfg Graph configuration to exercise.
+ * @param rate Sample rate in Hz.
+ * @param frequency Input sine-wave frequency in Hz.
+ * @return Output/input RMS gain after crossover and detector settling.
+ */
+static double dynamics_response(const struct txagc_config *cfg, unsigned int rate, double frequency)
+{
+	struct txagc_avfilter state;
+	double samples[960];
+	double sum = 0.0;
+	unsigned int count = rate / 50;
+
+	txagc_avfilter_init(&state);
+	for (unsigned int block = 0; block < 50; ++block) {
+		for (unsigned int index = 0; index < count; ++index) {
+			double time = (double)(block * count + index) / rate;
+			samples[index] = 3276.8 * sin(2.0 * M_PI * frequency * time);
+		}
+		assert(!txagc_avfilter_process(&state, cfg, samples, count, rate));
+		if (block >= 25)
+			for (unsigned int index = 0; index < count; ++index)
+				sum += samples[index] * samples[index];
+	}
+	assert(state.underrun_samples == 0);
+	txagc_avfilter_destroy(&state);
+	return sqrt(sum / (25 * count)) / (3276.8 / sqrt(2.0));
+}
+
+/** @brief Verify unity crossover recombination, arbitrary splits, and independent bands. */
+static void test_band_dynamics_audio(void)
+{
+	static const unsigned int rates[] = {8000, 16000, 48000};
+	static const double frequencies[] = {100.0, 500.0, 1000.0, 2000.0, 3500.0};
+	static const double band_centers[] = {100.0, 1000.0, 3500.0};
+	const enum txagc_stage stages[] = {TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER};
+
+	for (unsigned int rate = 0; rate < 3; ++rate) {
+		for (unsigned int stage = 0; stage < 2; ++stage) {
+			for (int bands = 1; bands <= 3; bands += 2) {
+				struct txagc_config cfg = dynamics_config(stages[stage], bands);
+				for (unsigned int tone = 0; tone < 5; ++tone)
+					assert(fabs(dynamics_response(&cfg, rates[rate],
+								      frequencies[tone]) -
+						    1.0) < 0.003);
+				/* Crossovers are inactive in single-band mode. In three-band
+				 * mode their phase changes must not change the summed level. */
+				cfg.compressor_low_crossover_hz = cfg.limiter_low_crossover_hz =
+					750.5;
+				cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz =
+					2500.25;
+				assert(fabs(dynamics_response(&cfg, rates[rate], 1000.0) - 1.0) <
+				       0.003);
+			}
+			for (unsigned int band = 0; band < 3; ++band) {
+				struct txagc_config cfg = dynamics_config(stages[stage], 3);
+				double *thresholds[] = {
+					&cfg.compressor_low_threshold_dbfs,
+					&cfg.compressor_mid_threshold_dbfs,
+					&cfg.compressor_high_threshold_dbfs,
+					&cfg.low_limiter_threshold_dbfs,
+					&cfg.mid_limiter_threshold_dbfs,
+					&cfg.high_limiter_threshold_dbfs,
+				};
+				cfg.compressor_low_ratio = cfg.compressor_mid_ratio =
+					cfg.compressor_high_ratio = 20.0;
+				cfg.low_limiter_ratio = cfg.mid_limiter_ratio =
+					cfg.high_limiter_ratio = 20.0;
+				*thresholds[stage * 3 + band] = -40.0;
+				for (unsigned int tone = 0; tone < 3; ++tone) {
+					double gain = dynamics_response(&cfg, rates[rate],
+									band_centers[tone]);
+					if (tone == band)
+						assert(gain < 0.5);
+					else
+						assert(gain > 0.78);
+				}
+			}
+		}
+		for (unsigned int band = 0; band < 3; ++band) {
+			struct txagc_config cfg = dynamics_config(TXAGC_STAGE_COMPRESSOR, 3);
+			double *makeup[] = {&cfg.compressor_low_makeup_gain_db,
+					    &cfg.compressor_mid_makeup_gain_db,
+					    &cfg.compressor_high_makeup_gain_db};
+			*makeup[band] = 6.0;
+			assert(dynamics_response(&cfg, rates[rate], band_centers[band]) > 1.7);
+			*makeup[band] = -30.0;
+			assert(dynamics_response(&cfg, rates[rate], band_centers[band]) < 0.16);
+		}
+		{
+			struct txagc_config cfg = dynamics_config(TXAGC_STAGE_COMPRESSOR, 1);
+			cfg.compressor_makeup_gain_db = -30.0;
+			assert(fabs(dynamics_response(&cfg, rates[rate], 1000.0) -
+				    pow(10.0, -30.0 / 20.0)) < 0.0001);
+		}
+	}
+}
+
+/** @brief Measure attack or release after a large full-band input-level step.
+ * @param stage Compressor or limiter to exercise.
+ * @param rate Audio sample rate in Hz.
+ * @param bands One full band or three crossover bands.
+ * @param slow Nonzero selects a deliberately slow detector response.
+ * @param release Nonzero measures recovery after the input becomes quiet.
+ * @return RMS from the first 20 ms of attack or the 80–100 ms release interval.
+ */
+static double dynamics_step(enum txagc_stage stage, unsigned int rate, int bands, int slow,
+			    int release)
+{
+	struct txagc_config cfg = dynamics_config(stage, bands);
+	struct txagc_avfilter state;
+	double samples[960];
+	double sum = 0.0;
+	unsigned int count = rate / 50;
+	unsigned int blocks = release ? 105 : 1;
+
+	cfg.compressor_threshold_dbfs = cfg.limiter_threshold_dbfs = -24.0;
+	cfg.compressor_ratio = cfg.limiter_ratio = 20.0;
+	cfg.compressor_attack_ms = cfg.limiter_attack_ms = slow && !release ? 1000.0 : 0.1;
+	cfg.compressor_release_ms = cfg.limiter_release_ms = slow ? 1000.0 : 10.0;
+	cfg.compressor_low_threshold_dbfs = cfg.compressor_mid_threshold_dbfs =
+		cfg.compressor_high_threshold_dbfs = -24.0;
+	cfg.low_limiter_threshold_dbfs = cfg.mid_limiter_threshold_dbfs =
+		cfg.high_limiter_threshold_dbfs = -24.0;
+	cfg.compressor_low_ratio = cfg.compressor_mid_ratio = cfg.compressor_high_ratio = 20.0;
+	cfg.low_limiter_ratio = cfg.mid_limiter_ratio = cfg.high_limiter_ratio = 20.0;
+	cfg.compressor_low_attack_ms = cfg.compressor_mid_attack_ms =
+		cfg.compressor_high_attack_ms = cfg.compressor_attack_ms;
+	cfg.low_limiter_attack_ms = cfg.mid_limiter_attack_ms = cfg.high_limiter_attack_ms =
+		cfg.limiter_attack_ms;
+	cfg.compressor_low_release_ms = cfg.compressor_mid_release_ms =
+		cfg.compressor_high_release_ms = cfg.compressor_release_ms;
+	cfg.low_limiter_release_ms = cfg.mid_limiter_release_ms = cfg.high_limiter_release_ms =
+		cfg.limiter_release_ms;
+	txagc_avfilter_init(&state);
+	for (unsigned int block = 0; block < blocks; ++block) {
+		double amplitude = block >= 100 ? 1000.0 : 16000.0;
+		for (unsigned int index = 0; index < count; ++index) {
+			double time = (double)(block * count + index) / rate;
+			samples[index] = amplitude * sin(2.0 * M_PI * 1000.0 * time);
+		}
+		assert(!txagc_avfilter_process(&state, &cfg, samples, count, rate));
+	}
+	for (unsigned int index = 0; index < count; ++index)
+		sum += samples[index] * samples[index];
+	txagc_avfilter_destroy(&state);
+	return sqrt(sum / count);
+}
+
+/** @brief Both band modes honor independent attack and release at each sample rate. */
+static void test_single_band_dynamics(void)
+{
+	const enum txagc_stage stages[] = {TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER};
+	const unsigned int rates[] = {8000, 16000, 48000};
+	for (unsigned int stage = 0; stage < 2; ++stage)
+		for (unsigned int rate = 0; rate < 3; ++rate)
+			for (int bands = 1; bands <= 3; bands += 2) {
+				assert(dynamics_step(stages[stage], rates[rate], bands, 1, 0) >
+				       dynamics_step(stages[stage], rates[rate], bands, 0, 0) *
+					       1.5);
+				assert(dynamics_step(stages[stage], rates[rate], bands, 0, 1) >
+				       dynamics_step(stages[stage], rates[rate], bands, 1, 1) *
+					       1.5);
+			}
+}
+
+/** @brief Both three-band stages retain sample-exact state across arbitrary frame boundaries. */
+static void test_multiband_frame_boundaries(void)
+{
+	const unsigned int rates[] = {8000, 16000, 48000};
+	for (unsigned int rate = 0; rate < 3; ++rate) {
+		struct txagc_config cfg = dynamics_config(TXAGC_STAGE_COMPRESSOR, 3);
+		struct txagc_avfilter reference;
+		struct txagc_avfilter fragmented;
+		double expected[960];
+		double actual[960];
+		unsigned int count = rates[rate] / 50;
+		cfg.stage_count = 2;
+		cfg.stage_order[1] = TXAGC_STAGE_LIMITER;
+		cfg.limiter_enabled = 1;
+		cfg.compressor_low_threshold_dbfs = cfg.compressor_mid_threshold_dbfs =
+			cfg.compressor_high_threshold_dbfs = -30.0;
+		cfg.compressor_low_ratio = cfg.compressor_mid_ratio = cfg.compressor_high_ratio =
+			2.0;
+		cfg.low_limiter_threshold_dbfs = cfg.mid_limiter_threshold_dbfs =
+			cfg.high_limiter_threshold_dbfs = -18.0;
+		cfg.low_limiter_ratio = cfg.mid_limiter_ratio = cfg.high_limiter_ratio = 10.0;
+		txagc_avfilter_init(&reference);
+		txagc_avfilter_init(&fragmented);
+		for (unsigned int block = 0; block < 32; ++block) {
+			for (unsigned int index = 0; index < count; ++index) {
+				double time = (double)(block * count + index) / rates[rate];
+				expected[index] = 10000.0 * sin(2.0 * M_PI * 100.0 * time) +
+						  6000.0 * sin(2.0 * M_PI * 1000.0 * time) +
+						  3000.0 * sin(2.0 * M_PI * 3500.0 * time);
+				actual[index] = expected[index];
+			}
+			assert(!txagc_avfilter_process(&reference, &cfg, expected, count,
+						       rates[rate]));
+			for (unsigned int offset = 0; offset < count;) {
+				unsigned int chunk = 1 + (offset * 17 + block) % 53;
+				if (chunk > count - offset)
+					chunk = count - offset;
+				assert(!txagc_avfilter_process(&fragmented, &cfg, actual + offset,
+							       chunk, rates[rate]));
+				offset += chunk;
+			}
+			for (unsigned int index = 0; index < count; ++index)
+				assert(fabs(expected[index] - actual[index]) < 1e-6);
+		}
+		assert(reference.underrun_samples == 0 && fragmented.underrun_samples == 0);
+		txagc_avfilter_destroy(&reference);
+		txagc_avfilter_destroy(&fragmented);
+	}
+}
+
+/** @brief Live mode and sample-rate changes retain configured crossover frequencies. */
+static void test_dynamics_rate_changes(void)
+{
+	const enum txagc_stage stages[] = {TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER};
+	for (unsigned int stage = 0; stage < 2; ++stage) {
+		struct txagc_config cfg = dynamics_config(stages[stage], 1);
+		struct txagc_avfilter state;
+		double samples[960] = {0};
+		cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz = 4500.0;
+		txagc_avfilter_init(&state);
+		assert(!txagc_avfilter_process(&state, &cfg, samples, 160, 8000));
+		cfg.compressor_bands = cfg.limiter_bands = 3;
+		assert(txagc_avfilter_process(&state, &cfg, samples, 160, 8000) < 0);
+		assert(!txagc_avfilter_process(&state, &cfg, samples, 320, 16000));
+		assert(!txagc_avfilter_process(&state, &cfg, samples, 960, 48000));
+		assert(cfg.compressor_high_crossover_hz == 4500.0 &&
+		       cfg.limiter_high_crossover_hz == 4500.0);
+		txagc_avfilter_destroy(&state);
+	}
+}
+
+/** @brief FFmpeg accepts the complete permitted control ranges, including makeup attenuation. */
+static void test_dynamics_control_boundaries(void)
+{
+	const enum txagc_stage stages[] = {TXAGC_STAGE_COMPRESSOR, TXAGC_STAGE_LIMITER};
+	for (unsigned int stage = 0; stage < 2; ++stage)
+		for (int bands = 1; bands <= 3; bands += 2)
+			for (int upper = 0; upper <= 1; ++upper) {
+				struct txagc_config cfg = dynamics_config(stages[stage], bands);
+				cfg.compressor_threshold_dbfs = cfg.compressor_low_threshold_dbfs =
+					cfg.compressor_mid_threshold_dbfs =
+						cfg.compressor_high_threshold_dbfs =
+							upper ? 0.0 : -60.0;
+				cfg.limiter_threshold_dbfs = cfg.low_limiter_threshold_dbfs =
+					cfg.mid_limiter_threshold_dbfs =
+						cfg.high_limiter_threshold_dbfs =
+							upper ? -1.0 : -40.0;
+				cfg.compressor_ratio = cfg.compressor_low_ratio =
+					cfg.compressor_mid_ratio = cfg.compressor_high_ratio =
+						cfg.limiter_ratio = cfg.low_limiter_ratio =
+							cfg.mid_limiter_ratio =
+								cfg.high_limiter_ratio =
+									upper ? 20.0 : 1.0;
+				cfg.compressor_makeup_gain_db = cfg.compressor_low_makeup_gain_db =
+					cfg.compressor_mid_makeup_gain_db =
+						cfg.compressor_high_makeup_gain_db =
+							upper ? 30.0 : -30.0;
+				cfg.compressor_low_knee_db = cfg.compressor_mid_knee_db =
+					cfg.compressor_high_knee_db = cfg.limiter_knee_db =
+						cfg.low_limiter_knee_db = cfg.mid_limiter_knee_db =
+							cfg.high_limiter_knee_db =
+								upper ? 18.0 : 0.0;
+				cfg.compressor_attack_ms = cfg.compressor_low_attack_ms =
+					cfg.compressor_mid_attack_ms = cfg.compressor_high_attack_ms =
+						cfg.limiter_attack_ms = cfg.low_limiter_attack_ms =
+							cfg.mid_limiter_attack_ms =
+								cfg.high_limiter_attack_ms =
+									upper ? 1000.0 : 0.1;
+				cfg.compressor_release_ms = cfg.compressor_low_release_ms =
+					cfg.compressor_mid_release_ms = cfg.compressor_high_release_ms =
+						cfg.limiter_release_ms = cfg.low_limiter_release_ms =
+							cfg.mid_limiter_release_ms =
+								cfg.high_limiter_release_ms =
+									upper ? 9000.0 : 1.0;
+				cfg.compressor_low_crossover_hz = cfg.limiter_low_crossover_hz =
+					upper ? 2000.0 : 100.0;
+				cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz =
+					upper ? 5000.0 : 101.0;
+				assert(isfinite(dynamics_response(&cfg, 16000, 1000.0)));
+				assert(isfinite(dynamics_response(&cfg, 48000, 1000.0)));
+			}
+}
+
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
@@ -166,6 +487,7 @@ int main(void)
 	config.expander_sidechain_highpass_hz = 800.0;
 	config.expander_sidechain_lowpass_hz = 1500.0;
 	config.compressor_enabled = 1;
+	config.compressor_bands = 1;
 	config.compressor_threshold_dbfs = -8.0;
 	config.compressor_ratio = 2.0;
 	config.compressor_attack_ms = 40.0;
@@ -173,6 +495,7 @@ int main(void)
 	config.compressor_sidechain_highpass_hz = 800.0;
 	config.compressor_sidechain_lowpass_hz = 1500.0;
 	config.limiter_enabled = 1;
+	config.limiter_bands = 3;
 	config.limiter_low_crossover_hz = 500.0;
 	config.limiter_high_crossover_hz = 2000.0;
 	config.low_limiter_threshold_dbfs = -1.5;
@@ -230,6 +553,11 @@ int main(void)
 	txagc_avfilter_destroy(&state);
 	if (test_link_stage_toggles(&config))
 		return 4;
+	test_band_dynamics_audio();
+	test_single_band_dynamics();
+	test_multiband_frame_boundaries();
+	test_dynamics_rate_changes();
+	test_dynamics_control_boundaries();
 	return 0;
 }
 

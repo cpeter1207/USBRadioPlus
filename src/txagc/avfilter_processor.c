@@ -301,7 +301,65 @@ AVFILTER_PRIVATE int add_emphasis(char *graph, size_t size, const char *input, c
 			    input, inverse_at_reference * (1.0 - pole), -pole, output);
 }
 
-/** @brief Append one selected equalizer, expander, AGC, de-esser, compressor, or multiband limiter.
+/** Settings for one independently detected dynamics band. */
+struct dynamics_band {
+	double threshold_dbfs; /**< Detector threshold in dBFS. */
+	double ratio;	       /**< Downward compression ratio. */
+	double makeup_gain_db; /**< Gain applied after compression in dB. */
+	double knee_db;	       /**< Soft-knee width in dB; zero selects a hard knee. */
+	double attack_ms;      /**< Detector attack in milliseconds. */
+	double release_ms;     /**< Detector release in milliseconds. */
+};
+
+/** @brief Split, independently compress, and recombine three complementary bands.
+ * @param graph Destination FFmpeg graph description.
+ * @param size Destination capacity including its terminator.
+ * @param input Input graph label.
+ * @param output Output graph label.
+ * @param prefix Unique label prefix for this stage instance.
+ * @param low_crossover Lower crossover frequency in Hz.
+ * @param high_crossover Upper crossover frequency in Hz.
+ * @param bands Low-, middle-, and high-band controls.
+ * @param detection FFmpeg detector type: rms for compression, peak for limiting.
+ * @return Zero on success, or a negative FFmpeg error on insufficient capacity.
+ */
+static int add_three_band_dynamics(char *graph, size_t size, const char *input, const char *output,
+				   const char *prefix, double low_crossover, double high_crossover,
+				   const struct dynamics_band bands[3], const char *detection)
+{
+	static const char *const names[] = {"lo", "mid", "hi"};
+	int result;
+
+	/* Complementary crossover outputs retain unity summed response. Each band's
+	 * detector follows its own program audio; no speech sidechain trims a band. */
+	result = graph_append(graph, size,
+			      "[%s]acrossover=split=%.9g %.9g:order=4th[%slo][%smid][%shi];", input,
+			      low_crossover, high_crossover, prefix, prefix, prefix);
+	if (result < 0)
+		return result;
+	for (unsigned int index = 0; index < 3; ++index) {
+		const struct dynamics_band *band = &bands[index];
+		char makeup[80] = "";
+		/* FFmpeg's compressor makeup cannot attenuate. A post-compression
+		 * gain supports the configured negative gains without changing detection. */
+		if (band->makeup_gain_db != 0.0)
+			snprintf(makeup, sizeof(makeup), ",volume=%.12g:precision=double",
+				 db_to_linear(band->makeup_gain_db));
+		result = graph_append(graph, size,
+				      "[%s%s]acompressor=mode=downward:threshold=%.12g:ratio=%.9g:"
+				      "knee=%.12g:attack=%.9g:release=%.9g:detection=%s%s[%s%sc];",
+				      prefix, names[index], db_to_linear(band->threshold_dbfs),
+				      clamp(band->ratio, 1.0, 20.0), db_to_linear(band->knee_db),
+				      band->attack_ms, band->release_ms, detection, makeup, prefix,
+				      names[index]);
+		if (result < 0)
+			return result;
+	}
+	return graph_append(graph, size, "[%sloc][%smidc][%shic]amix=inputs=3:normalize=0[%s];",
+			    prefix, prefix, prefix, output);
+}
+
+/** @brief Append one selected equalizer, expander, AGC, de-esser, compressor, or limiter.
  * @param graph NUL-terminated FFmpeg graph description being constructed.
  * @param size Destination capacity in bytes, including the terminator for text.
  * @param cfg Filter and dynamics settings for the shared FFmpeg graph.
@@ -407,43 +465,61 @@ AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct tx
 		return add_sidechain_stage(graph, size, current, next, prefix, "sidechaingate",
 					   cfg->expander_sidechain_highpass_hz,
 					   cfg->expander_sidechain_lowpass_hz, options);
-	case TXAGC_STAGE_COMPRESSOR:
+	case TXAGC_STAGE_COMPRESSOR: {
+		const struct dynamics_band bands[] = {
+			{cfg->compressor_low_threshold_dbfs, cfg->compressor_low_ratio,
+			 cfg->compressor_low_makeup_gain_db, cfg->compressor_low_knee_db,
+			 cfg->compressor_low_attack_ms, cfg->compressor_low_release_ms},
+			{cfg->compressor_mid_threshold_dbfs, cfg->compressor_mid_ratio,
+			 cfg->compressor_mid_makeup_gain_db, cfg->compressor_mid_knee_db,
+			 cfg->compressor_mid_attack_ms, cfg->compressor_mid_release_ms},
+			{cfg->compressor_high_threshold_dbfs, cfg->compressor_high_ratio,
+			 cfg->compressor_high_makeup_gain_db, cfg->compressor_high_knee_db,
+			 cfg->compressor_high_attack_ms, cfg->compressor_high_release_ms},
+		};
 		if (!cfg->compressor_enabled)
 			return 0;
+		if (cfg->compressor_bands == 3)
+			return add_three_band_dynamics(graph, size, current, next, prefix,
+						       cfg->compressor_low_crossover_hz,
+						       cfg->compressor_high_crossover_hz, bands,
+						       "rms");
 		snprintf(options, sizeof(options),
 			 "mode=downward:threshold=%.12g:ratio=%.9g:attack=%.9g:"
-			 "release=%.9g:makeup=%.12g:knee=2.828427:detection=rms",
+			 "release=%.9g:knee=2.828427:detection=rms,volume=%.12g:precision=double",
 			 db_to_linear(cfg->compressor_threshold_dbfs),
 			 clamp(cfg->compressor_ratio, 1.0, 20.0), cfg->compressor_attack_ms,
 			 cfg->compressor_release_ms, db_to_linear(cfg->compressor_makeup_gain_db));
 		return add_sidechain_stage(graph, size, current, next, prefix, "sidechaincompress",
 					   cfg->compressor_sidechain_highpass_hz,
 					   cfg->compressor_sidechain_lowpass_hz, options);
-	case TXAGC_STAGE_LIMITER:
+	}
+	case TXAGC_STAGE_LIMITER: {
+		const struct dynamics_band bands[] = {
+			{cfg->low_limiter_threshold_dbfs, cfg->low_limiter_ratio, 0.0,
+			 cfg->low_limiter_knee_db, cfg->low_limiter_attack_ms,
+			 cfg->low_limiter_release_ms},
+			{cfg->mid_limiter_threshold_dbfs, cfg->mid_limiter_ratio, 0.0,
+			 cfg->mid_limiter_knee_db, cfg->mid_limiter_attack_ms,
+			 cfg->mid_limiter_release_ms},
+			{cfg->high_limiter_threshold_dbfs, cfg->high_limiter_ratio, 0.0,
+			 cfg->high_limiter_knee_db, cfg->high_limiter_attack_ms,
+			 cfg->high_limiter_release_ms},
+		};
 		if (!cfg->limiter_enabled)
 			return 0;
-		return graph_append(
-			graph, size,
-			"[%s]acrossover=split=%.9g %.9g:order=4th[%slo][%smid][%shi];"
-			"[%slo]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
-			"release=%.9g:knee=%.12g:detection=peak[%sloc];"
-			"[%smid]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
-			"release=%.9g:knee=%.12g:detection=peak[%smidc];"
-			"[%shi]acompressor=threshold=%.12g:ratio=%.9g:attack=%.9g:"
-			"release=%.9g:knee=%.12g:detection=peak[%shic];"
-			"[%sloc][%smidc][%shic]amix=inputs=3:normalize=0[%s];",
-			current, cfg->limiter_low_crossover_hz, cfg->limiter_high_crossover_hz,
-			prefix, prefix, prefix, prefix,
-			db_to_linear(cfg->low_limiter_threshold_dbfs),
-			clamp(cfg->low_limiter_ratio, 1.0, 20.0), cfg->low_limiter_attack_ms,
-			cfg->low_limiter_release_ms, db_to_linear(cfg->low_limiter_knee_db), prefix,
-			prefix, db_to_linear(cfg->mid_limiter_threshold_dbfs),
-			clamp(cfg->mid_limiter_ratio, 1.0, 20.0), cfg->mid_limiter_attack_ms,
-			cfg->mid_limiter_release_ms, db_to_linear(cfg->mid_limiter_knee_db), prefix,
-			prefix, db_to_linear(cfg->high_limiter_threshold_dbfs),
-			clamp(cfg->high_limiter_ratio, 1.0, 20.0), cfg->high_limiter_attack_ms,
-			cfg->high_limiter_release_ms, db_to_linear(cfg->high_limiter_knee_db),
-			prefix, prefix, prefix, prefix, next);
+		if (cfg->limiter_bands == 3)
+			return add_three_band_dynamics(
+				graph, size, current, next, prefix, cfg->limiter_low_crossover_hz,
+				cfg->limiter_high_crossover_hz, bands, "peak");
+		return graph_append(graph, size,
+				    "[%s]acompressor=mode=downward:threshold=%.12g:ratio=%.9g:"
+				    "knee=%.12g:attack=%.9g:release=%.9g:detection=peak[%s];",
+				    current, db_to_linear(cfg->limiter_threshold_dbfs),
+				    clamp(cfg->limiter_ratio, 1.0, 20.0),
+				    db_to_linear(cfg->limiter_knee_db), cfg->limiter_attack_ms,
+				    cfg->limiter_release_ms, next);
+	}
 	}
 	return AVERROR(EINVAL);
 }
@@ -465,6 +541,26 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 	unsigned int order_index;
 
 	graph[0] = '\0';
+	/* A link can run at a lower sample rate than the native radio chain. Reject
+	 * impossible band definitions instead of silently moving their crossovers. */
+	if (cfg->compressor_enabled && cfg->compressor_bands == 3 &&
+	    cfg->compressor_high_crossover_hz >= sample_rate * 0.5) {
+		av_log(NULL, AV_LOG_ERROR,
+		       "USBRadioPlus: compressor crossovers %.9g/%.9g Hz must be below "
+		       "Nyquist %.9g Hz at %u Hz sample rate\n",
+		       cfg->compressor_low_crossover_hz, cfg->compressor_high_crossover_hz,
+		       sample_rate * 0.5, sample_rate);
+		return AVERROR(EINVAL);
+	}
+	if (cfg->limiter_enabled && cfg->limiter_bands == 3 &&
+	    cfg->limiter_high_crossover_hz >= sample_rate * 0.5) {
+		av_log(NULL, AV_LOG_ERROR,
+		       "USBRadioPlus: limiter crossovers %.9g/%.9g Hz must be below "
+		       "Nyquist %.9g Hz at %u Hz sample rate\n",
+		       cfg->limiter_low_crossover_hz, cfg->limiter_high_crossover_hz,
+		       sample_rate * 0.5, sample_rate);
+		return AVERROR(EINVAL);
+	}
 	if (cfg->deemphasis_enabled) {
 		if (add_emphasis(graph, size, "in", "deemphasized", 0, cfg->emphasis_corner_hz,
 				 cfg->emphasis_reference_hz, sample_rate) < 0) {

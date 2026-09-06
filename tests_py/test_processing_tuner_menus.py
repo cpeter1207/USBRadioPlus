@@ -76,6 +76,156 @@ def test_every_agc_control_uses_the_shared_numeric_editor(monkeypatch, source, k
     assert applied == [f"[{source}]\n{key} = {value}\n"]
 
 
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+@pytest.mark.parametrize("stage", ("compressor", "limiter"))
+@pytest.mark.parametrize("bands", ("1", "3"))
+def test_dynamics_band_choice_uses_shared_editor_and_preserves_values(
+    monkeypatch, source, stage, bands
+):
+    """Select one or three bands without replacing either mode's saved controls.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Processing chain under test.
+    @param stage Compressor or limiter stage.
+    @param bands Selected number of processing bands.
+    """
+    namespace = globals_for("edit_setting")
+    original = (
+        f"[{source}]\n{stage}_threshold_dbfs=-8\n"
+        f"{stage}_low_threshold_dbfs=-12\n{stage}_mid_threshold_dbfs=-9\n"
+        f"{stage}_high_threshold_dbfs=-6\n"
+    )
+    choices = []
+    applied = []
+    monkeypatch.setitem(namespace, "read_config", lambda: original)
+    monkeypatch.setitem(
+        namespace, "prompt_choice", lambda *args: (choices.append(args) or 0, bands)
+    )
+    monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append((old, new)))
+    MODULE["edit_setting"](source, f"{stage}_bands")
+    assert choices == [
+        (f"{stage.capitalize()} bands", "3", (("1", "Single band"), ("3", "Three bands")))
+    ]
+    assert applied == [(original, original + f"{stage}_bands = {bands}\n")]
+
+
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+@pytest.mark.parametrize("group", ("Compressor", "Limiter"))
+def test_dynamics_menu_refreshes_active_mode_and_retains_keyboard_focus(monkeypatch, source, group):
+    """Show only active controls and keep mode selected across repeated mode switches.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Processing chain under test.
+    @param group Dynamics settings page under test.
+    """
+    namespace = globals_for("settings_menu")
+    stage = group.lower()
+    text = [f"[{source}]\n{stage}_threshold_dbfs=-8\n{stage}_low_threshold_dbfs=-12\n"]
+    screens = []
+    replies = iter(((0, "1"), (0, "1"), (1, "")))
+
+    def show(args):
+        """Record each mode-specific menu before selecting the mode control.
+
+        @param args Accessible dialog arguments.
+        """
+        screens.append(args)
+        return next(replies)
+
+    def change_mode(selected_source, key):
+        """Simulate the shared editor while preserving numeric settings.
+
+        @param selected_source Source chain passed by the menu.
+        @param key Selected configuration control.
+        """
+        assert (selected_source, key) == (source, f"{stage}_bands")
+        mode = "1" if len(screens) == 1 else "3"
+        text[0] = MODULE["replace_value"](text[0], source, key, mode)
+
+    monkeypatch.setitem(namespace, "read_config", lambda: text[0])
+    monkeypatch.setitem(namespace, "dialog", show)
+    monkeypatch.setitem(namespace, "edit_setting", change_mode)
+    MODULE["settings_menu"](source, group)
+    for index in (0, 2):
+        assert "Low-band threshold: -12 dBFS" in screens[index]
+        assert any(item.startswith("Low/mid crossover:") for item in screens[index])
+        assert f"{group} threshold: -8 dBFS" not in screens[index]
+    assert f"{group} threshold: -8 dBFS" in screens[1]
+    assert "Low-band threshold: -12 dBFS" not in screens[1]
+    assert not any(item.startswith("Low/mid crossover:") for item in screens[1])
+    if stage == "compressor":
+        assert any("sidechain band-pass low edge:" in item for item in screens[1])
+        assert not any("sidechain band-pass" in item for item in screens[0])
+    for screen in screens:
+        assert screen[screen.index("--default-item") + 1] == "1"
+        assert screen[screen.index("--ok-button") + 1] == "Select"
+        assert screen[screen.index("--cancel-button") + 1] == "Back"
+    assert f"{stage}_threshold_dbfs=-8" in text[0]
+    assert f"{stage}_low_threshold_dbfs=-12" in text[0]
+
+
+@pytest.mark.parametrize("source", ("local", "link", "voice_telemetry"))
+@pytest.mark.parametrize(
+    "key",
+    tuple(
+        key
+        for key, setting in MODULE["SETTINGS"].items()
+        if setting[-1] in {"Compressor", "Limiter"} and setting[1] == "float"
+    ),
+)
+def test_every_dynamics_value_uses_the_shared_numeric_editor(monkeypatch, source, key):
+    """Expose every band's gain and timing with consistent units and bounds.
+
+    @param monkeypatch Scoped patch fixture.
+    @param source Processing chain under test.
+    @param key Numeric compressor or limiter option.
+    """
+    namespace = globals_for("edit_setting")
+    editors = []
+    applied = []
+    value = MODULE["default_value"](source, key)
+    monkeypatch.setitem(namespace, "read_config", lambda: f"[{source}]\n")
+    monkeypatch.setitem(
+        namespace, "prompt_number", lambda *args: (editors.append(args) or 0, value)
+    )
+    monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append(new))
+    MODULE["edit_setting"](source, key)
+    label, _kind, low, high, units, _group = MODULE["SETTINGS"][key]
+    kind = "gain" if key.endswith("_gain_db") else "float"
+    assert editors == [(label, value, kind, low, high, units)]
+    assert applied == [f"[{source}]\n{key} = {value}\n"]
+
+
+@pytest.mark.parametrize(
+    "key",
+    tuple(
+        key
+        for key, setting in MODULE["SETTINGS"].items()
+        if setting[-1] in {"Compressor", "Limiter"} and key.endswith(("_knee_db", "_release_ms"))
+    ),
+)
+def test_dynamics_editors_enforce_backend_knee_and_release_limits(monkeypatch, key):
+    """Reject values above the FFmpeg limits while accepting each supported maximum.
+
+    @param monkeypatch Scoped patch fixture.
+    @param key Compressor or limiter knee or release setting.
+    """
+    label, _kind, low, high, units, _group = MODULE["SETTINGS"][key]
+    expected = 18 if key.endswith("_knee_db") else 9000
+    if key == "limiter_high_release_ms":
+        expected = 1000
+    assert high == expected
+    namespace = globals_for("prompt_number")
+    messages = []
+    monkeypatch.setitem(
+        namespace, "dialog", lambda args: (messages.append(args) or 0, str(high + 0.1))
+    )
+    assert MODULE["prompt_number"](label, "1", "float", low, high, units) == (1, "")
+    assert f"Value must be between {low:g} and {high:g} {units}." in messages[-1]
+    monkeypatch.setitem(namespace, "dialog", lambda _args: (0, str(high)))
+    assert MODULE["prompt_number"](label, "1", "float", low, high, units) == (0, str(high))
+
+
 def test_edit_setting_cancel_relation_error_apply_error_and_text_dispatch(monkeypatch):
     """Verify edit setting cancel relation error apply error and text dispatch.
 

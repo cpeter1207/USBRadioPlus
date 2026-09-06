@@ -350,7 +350,7 @@ completed=$((completed + 1))
 fi
 
 if [ -z "${C_TEST_GROUP:-}" ]; then
-	expected=$((26 + sys_io_tests))
+	expected=$((25 + sys_io_tests))
 	if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		expected=$((expected + 1))
 	fi
