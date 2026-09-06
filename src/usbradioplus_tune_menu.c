@@ -1,3 +1,7 @@
+/** @file
+ * @brief Radio calibration commands, continuous meters, and tuning persistence.
+ */
+
 #include "asterisk.h"
 
 #include <stdlib.h>

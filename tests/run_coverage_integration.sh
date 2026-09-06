@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Load the instrumented real module and collect integration coverage.
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)

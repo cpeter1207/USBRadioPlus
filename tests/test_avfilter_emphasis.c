@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter emphasis regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +9,14 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000
+
 #define BLOCK 960
 
+/** @brief Calculate sample RMS for an audio-result assertion.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @param count Number of elements available in the supplied block.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double rms(const double *samples, size_t count)
 {
 	double sum = 0.0;
@@ -16,6 +26,11 @@ static double rms(const double *samples, size_t count)
 	return sqrt(sum / count);
 }
 
+/** @brief Measure normalized emphasis response for the selected frequency.
+ * @param production Nonzero selects preemphasis; zero selects deemphasis.
+ * @param frequency CTCSS frequency in Hz.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double response(int production, double frequency)
 {
 	struct txagc_avfilter state;
@@ -44,6 +59,9 @@ static double response(int production, double frequency)
 	return 20.0 * log10(output_rms / (1000.0 / sqrt(2.0)));
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	const double frequencies[] = {300.0, 600.0, 1000.0, 1200.0, 2400.0, 3000.0};
@@ -72,3 +90,10 @@ int main(void)
 	}
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */

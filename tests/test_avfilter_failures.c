@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter failures regression and failure-path checks.
+ */
+
 #include "../src/txagc/avfilter_processor.h"
 
 #include <assert.h>
@@ -11,33 +15,77 @@
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
 
+/** Controls injected graph alloc failure for this test. */
 static int fail_graph_alloc;
+/** Controls injected create filter failure for this test. */
 static int fail_create_filter;
+/** Recorded create filter calls for assertions. */
 static int create_filter_calls;
+/** Controls injected inout alloc failure for this test. */
 static int fail_inout_alloc;
+/** Recorded inout alloc calls for assertions. */
 static int inout_alloc_calls;
+/** Controls injected parse failure for this test. */
 static int fail_parse;
+/** Controls injected graph config failure for this test. */
 static int fail_graph_config;
+/** Controls injected fifo alloc failure for this test. */
 static int fail_fifo_alloc;
+/** Controls injected frame alloc failure for this test. */
 static int fail_frame_alloc;
+/** Recorded frame alloc calls for assertions. */
 static int frame_alloc_calls;
+/** Controls injected frame buffer failure for this test. */
 static int fail_frame_buffer;
+/** Controls injected buffer source failure for this test. */
 static int fail_buffer_source;
+/** Controls injected buffer sink failure for this test. */
 static AVFilterContext *fail_buffer_sink;
+/** Harness eagain buffer sink used to script and verify host behavior. */
 static AVFilterContext *eagain_buffer_sink;
+/** Harness eof buffer sink used to script and verify host behavior. */
 static AVFilterContext *eof_buffer_sink;
+/** Controls injected fifo realloc failure for this test. */
 static int fail_fifo_realloc;
+/** Controls injected fifo write failure for this test. */
 static int fail_fifo_write;
 
+/** @brief Linker entry point for the real avfilter_graph_alloc operation behind the test wrapper.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFilterGraph *__real_avfilter_graph_alloc(void);
+/** @brief Test wrapper for avfilter_graph_alloc controlled by the harness's failure-injection
+ * state.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFilterGraph *__wrap_avfilter_graph_alloc(void)
 {
 	return fail_graph_alloc ? NULL : __real_avfilter_graph_alloc();
 }
 
+/** @brief Linker entry point for the real avfilter_graph_create_filter operation behind the test
+ * wrapper.
+ * @param filter_context Receives the created FFmpeg filter context.
+ * @param filter FFmpeg dynamics filter name.
+ * @param name Option, metadata field, or channel name.
+ * @param arguments Formatted-message values or filter options.
+ * @param opaque Caller-owned hardware callback context.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_avfilter_graph_create_filter(AVFilterContext **filter_context, const AVFilter *filter,
 					const char *name, const char *arguments, void *opaque,
 					AVFilterGraph *graph);
+/** @brief Test wrapper for avfilter_graph_create_filter controlled by the harness's
+ * failure-injection state.
+ * @param filter_context Receives the created FFmpeg filter context.
+ * @param filter FFmpeg dynamics filter name.
+ * @param name Option, metadata field, or channel name.
+ * @param arguments Formatted-message values or filter options.
+ * @param opaque Caller-owned hardware callback context.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_avfilter_graph_create_filter(AVFilterContext **filter_context, const AVFilter *filter,
 					const char *name, const char *arguments, void *opaque,
 					AVFilterGraph *graph)
@@ -49,16 +97,41 @@ int __wrap_avfilter_graph_create_filter(AVFilterContext **filter_context, const 
 						   graph);
 }
 
+/** @brief Linker entry point for the real avfilter_inout_alloc operation behind the test wrapper.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFilterInOut *__real_avfilter_inout_alloc(void);
+/** @brief Test wrapper for avfilter_inout_alloc controlled by the harness's failure-injection
+ * state.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFilterInOut *__wrap_avfilter_inout_alloc(void)
 {
 	inout_alloc_calls++;
 	return inout_alloc_calls == fail_inout_alloc ? NULL : __real_avfilter_inout_alloc();
 }
 
+/** @brief Linker entry point for the real avfilter_graph_parse_ptr operation behind the test
+ * wrapper.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param filters FFmpeg graph text.
+ * @param inputs USB HID input report.
+ * @param outputs USB HID output report.
+ * @param log_context FFmpeg diagnostic context.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_avfilter_graph_parse_ptr(AVFilterGraph *graph, const char *filters,
 				    AVFilterInOut **inputs, AVFilterInOut **outputs,
 				    void *log_context);
+/** @brief Test wrapper for avfilter_graph_parse_ptr controlled by the harness's failure-injection
+ * state.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param filters FFmpeg graph text.
+ * @param inputs USB HID input report.
+ * @param outputs USB HID output report.
+ * @param log_context FFmpeg diagnostic context.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_avfilter_graph_parse_ptr(AVFilterGraph *graph, const char *filters,
 				    AVFilterInOut **inputs, AVFilterInOut **outputs,
 				    void *log_context)
@@ -68,40 +141,105 @@ int __wrap_avfilter_graph_parse_ptr(AVFilterGraph *graph, const char *filters,
 	return __real_avfilter_graph_parse_ptr(graph, filters, inputs, outputs, log_context);
 }
 
+/** @brief Linker entry point for the real avfilter_graph_config operation behind the test wrapper.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param log_context FFmpeg diagnostic context.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_avfilter_graph_config(AVFilterGraph *graph, void *log_context);
+/** @brief Test wrapper for avfilter_graph_config controlled by the harness's failure-injection
+ * state.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param log_context FFmpeg diagnostic context.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_avfilter_graph_config(AVFilterGraph *graph, void *log_context)
 {
 	return fail_graph_config ? AVERROR(EINVAL)
 				 : __real_avfilter_graph_config(graph, log_context);
 }
 
+/** @brief Linker entry point for the real av_audio_fifo_alloc operation behind the test wrapper.
+ * @param format printf-style message format.
+ * @param channels Number of interleaved audio channels.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVAudioFifo *__real_av_audio_fifo_alloc(enum AVSampleFormat format, int channels, int samples);
+/** @brief Test wrapper for av_audio_fifo_alloc controlled by the harness's failure-injection state.
+ * @param format printf-style message format.
+ * @param channels Number of interleaved audio channels.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVAudioFifo *__wrap_av_audio_fifo_alloc(enum AVSampleFormat format, int channels, int samples)
 {
 	return fail_fifo_alloc ? NULL : __real_av_audio_fifo_alloc(format, channels, samples);
 }
 
+/** @brief Linker entry point for the real av_frame_alloc operation behind the test wrapper.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFrame *__real_av_frame_alloc(void);
+/** @brief Test wrapper for av_frame_alloc controlled by the harness's failure-injection state.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 AVFrame *__wrap_av_frame_alloc(void)
 {
 	frame_alloc_calls++;
 	return frame_alloc_calls == fail_frame_alloc ? NULL : __real_av_frame_alloc();
 }
 
+/** @brief Linker entry point for the real av_frame_get_buffer operation behind the test wrapper.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @param align Requested frame-buffer alignment.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_av_frame_get_buffer(AVFrame *frame, int align);
+/** @brief Test wrapper for av_frame_get_buffer controlled by the harness's failure-injection state.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @param align Requested frame-buffer alignment.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_av_frame_get_buffer(AVFrame *frame, int align)
 {
 	return fail_frame_buffer ? AVERROR(ENOMEM) : __real_av_frame_get_buffer(frame, align);
 }
 
+/** @brief Linker entry point for the real av_buffersrc_add_frame_flags operation behind the test
+ * wrapper.
+ * @param context Asterisk dialplan context or FFmpeg filter context.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @param flags Host API option bit mask.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_av_buffersrc_add_frame_flags(AVFilterContext *context, AVFrame *frame, int flags);
+/** @brief Test wrapper for av_buffersrc_add_frame_flags controlled by the harness's
+ * failure-injection state.
+ * @param context Asterisk dialplan context or FFmpeg filter context.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @param flags Host API option bit mask.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_av_buffersrc_add_frame_flags(AVFilterContext *context, AVFrame *frame, int flags)
 {
 	return fail_buffer_source ? AVERROR(EIO)
 				  : __real_av_buffersrc_add_frame_flags(context, frame, flags);
 }
 
+/** @brief Linker entry point for the real av_buffersink_get_frame operation behind the test
+ * wrapper.
+ * @param context Asterisk dialplan context or FFmpeg filter context.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_av_buffersink_get_frame(AVFilterContext *context, AVFrame *frame);
+/** @brief Test wrapper for av_buffersink_get_frame controlled by the harness's failure-injection
+ * state.
+ * @param context Asterisk dialplan context or FFmpeg filter context.
+ * @param frame Asterisk or FFmpeg audio frame, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_av_buffersink_get_frame(AVFilterContext *context, AVFrame *frame)
 {
 	if (context == fail_buffer_sink)
@@ -113,18 +251,42 @@ int __wrap_av_buffersink_get_frame(AVFilterContext *context, AVFrame *frame)
 	return __real_av_buffersink_get_frame(context, frame);
 }
 
+/** @brief Linker entry point for the real av_audio_fifo_realloc operation behind the test wrapper.
+ * @param fifo Bounded audio FIFO.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_av_audio_fifo_realloc(AVAudioFifo *fifo, int samples);
+/** @brief Test wrapper for av_audio_fifo_realloc controlled by the harness's failure-injection
+ * state.
+ * @param fifo Bounded audio FIFO.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_av_audio_fifo_realloc(AVAudioFifo *fifo, int samples)
 {
 	return fail_fifo_realloc ? AVERROR(ENOMEM) : __real_av_audio_fifo_realloc(fifo, samples);
 }
 
+/** @brief Linker entry point for the real av_audio_fifo_write operation behind the test wrapper.
+ * @param fifo Bounded audio FIFO.
+ * @param data Input payload or owned state being released, as declared.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __real_av_audio_fifo_write(AVAudioFifo *fifo, void *const *data, int samples);
+/** @brief Test wrapper for av_audio_fifo_write controlled by the harness's failure-injection state.
+ * @param fifo Bounded audio FIFO.
+ * @param data Input payload or owned state being released, as declared.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_av_audio_fifo_write(AVAudioFifo *fifo, void *const *data, int samples)
 {
 	return fail_fifo_write ? samples - 1 : __real_av_audio_fifo_write(fifo, data, samples);
 }
 
+/** @brief Clear failure-injection state before the next independent test. */
 static void reset_failures(void)
 {
 	fail_graph_alloc = 0;
@@ -146,6 +308,10 @@ static void reset_failures(void)
 	fail_fifo_write = 0;
 }
 
+/** @brief Create a valid graph configuration for the requested failure-path test.
+ * @param cleanup Whether the test configuration enables fixed spectral filtering.
+ * @return Configuration initialized for this test scenario.
+ */
 static struct txagc_config configuration(int cleanup)
 {
 	struct txagc_config config;
@@ -157,6 +323,9 @@ static struct txagc_config configuration(int cleanup)
 	return config;
 }
 
+/** @brief Assert that the requested invalid configuration or injected operation fails.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ */
 static void expect_failure(const struct txagc_config *config)
 {
 	struct txagc_avfilter state;
@@ -166,6 +335,7 @@ static void expect_failure(const struct txagc_config *config)
 	txagc_avfilter_destroy(&state);
 }
 
+/** @brief Verify configuration failures. */
 static void test_configuration_failures(void)
 {
 	struct txagc_config base = configuration(0);
@@ -206,6 +376,7 @@ static void test_configuration_failures(void)
 	expect_failure(&base);
 }
 
+/** @brief Verify frame failures. */
 static void test_frame_failures(void)
 {
 	struct txagc_config base = configuration(0);
@@ -223,6 +394,10 @@ static void test_frame_failures(void)
 	expect_failure(&base);
 }
 
+/** @brief Exercise a configured graph's runtime sink/FIFO failure path.
+ * @param sink FFmpeg filter sink.
+ * @param fifo_failure Nonzero selects FIFO failure injection.
+ */
 static void expect_runtime_failure(AVFilterContext **sink, int fifo_failure)
 {
 	struct txagc_config config = configuration(sink != NULL);
@@ -247,6 +422,7 @@ static void expect_runtime_failure(AVFilterContext **sink, int fifo_failure)
 	txagc_avfilter_destroy(&state);
 }
 
+/** @brief Verify sink and fifo failures. */
 static void test_sink_and_fifo_failures(void)
 {
 	struct txagc_config cleanup = configuration(1);
@@ -295,6 +471,9 @@ static void test_sink_and_fifo_failures(void)
 	txagc_avfilter_destroy(&state);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_configuration_failures();

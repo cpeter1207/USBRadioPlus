@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable processing validation regression and failure-path checks.
+ */
+
 struct ast_config;
 struct ast_category;
 #include "../src/usbradioplus_processing_internal.h"
@@ -7,6 +11,14 @@ struct ast_category;
 #include <stdarg.h>
 #include <stdio.h>
 
+/** @brief Host-API test double for ast_log; effects are recorded in this harness.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void ast_log(int level, const char *file, int line, const char *function, const char *format, ...)
 {
 	(void)level;
@@ -16,58 +28,110 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)format;
 }
 
+/** One synthetic Asterisk configuration option. */
 struct fake_option {
+	/** Configuration section name. */
 	const char *section;
+	/** Symbolic name used to identify this entry. */
 	const char *name;
+	/** Configured value or current output word, as declared. */
 	const char *value;
 };
 
+/** Harness options used to script and verify host behavior. */
 static struct fake_option fake_options[128];
+/** Recorded fake option count for assertions. */
 static size_t fake_option_count;
+/** Harness categories used to script and verify host behavior. */
 static char *fake_categories[40];
+/** Recorded fake category count for assertions. */
 static size_t fake_category_count;
+/** Harness variables used to script and verify host behavior. */
 static struct ast_variable *fake_variables[40];
+/** Harness config load result used to script and verify host behavior. */
 static struct ast_config *fake_config_load_result;
+/** Recorded fake config destroy count for assertions. */
 static int fake_config_destroy_count;
+/** Controls injected category new failure failure for this test. */
 static int fake_category_new_failure;
+/** Recorded fake category append count for assertions. */
 static int fake_category_append_count;
+/** Harness save result used to script and verify host behavior. */
 static int fake_save_result;
+/** Controls injected tune update failure call failure for this test. */
 static int fake_tune_update_failure_call;
+/** Recorded fake tune update calls for assertions. */
 static int fake_tune_update_calls;
+/** Harness cli register result used to script and verify host behavior. */
 static int fake_cli_register_result;
+/** Recorded fake cli unregister calls for assertions. */
 static int fake_cli_unregister_calls;
+/** Harness thread create result used to script and verify host behavior. */
 static int fake_thread_create_result;
+/** Recorded fake cli print calls for assertions. */
 static int fake_cli_print_calls;
+/** Harness channel name used to script and verify host behavior. */
 static const char *fake_channel_name = "IAX2/test";
+/** Harness channel application used to script and verify host behavior. */
 static const char *fake_channel_application = "Rpt";
+/** Harness channel data used to script and verify host behavior. */
 static const char *fake_channel_data = "Remote Rx";
+/** Harness channel datastore used to script and verify host behavior. */
 static struct ast_datastore *fake_channel_datastore;
+/** Harness sample rate used to script and verify host behavior. */
 static unsigned int fake_sample_rate = 8000;
+/** Harness processor result used to script and verify host behavior. */
 static int fake_processor_result;
+/** Harness processor saturate used to script and verify host behavior. */
 static int fake_processor_saturate;
+/** Recorded fake audiohook detach calls for assertions. */
 static int fake_audiohook_detach_calls;
+/** Recorded fake audiohook destroy calls for assertions. */
 static int fake_audiohook_destroy_calls;
+/** Recorded fake processor destroy calls for assertions. */
 static int fake_processor_destroy_calls;
+/** Controls injected datastore alloc failure failure for this test. */
 static int fake_datastore_alloc_failure;
+/** Controls injected calloc failure failure for this test. */
 static int fake_calloc_failure;
+/** Harness calloc call used to script and verify host behavior. */
 static int fake_calloc_call;
+/** Controls injected calloc fail call failure for this test. */
 static int fake_calloc_fail_call;
+/** Recorded fake datastore free calls for assertions. */
 static int fake_datastore_free_calls;
+/** Harness audiohook init result used to script and verify host behavior. */
 static int fake_audiohook_init_result;
+/** Harness audiohook attach result used to script and verify host behavior. */
 static int fake_audiohook_attach_result;
+/** Recorded fake datastore add calls for assertions. */
 static int fake_datastore_add_calls;
+/** Recorded fake datastore remove calls for assertions. */
 static int fake_datastore_remove_calls;
+/** Harness find sequence used to script and verify host behavior. */
 static struct ast_datastore *fake_find_sequence[4];
+/** Recorded fake find sequence count for assertions. */
 static size_t fake_find_sequence_count;
+/** Harness find sequence index used to script and verify host behavior. */
 static size_t fake_find_sequence_index;
+/** Harness last allocated datastore used to script and verify host behavior. */
 static struct ast_datastore *fake_last_allocated_datastore;
+/** Harness primary channel available used to script and verify host behavior. */
 static int fake_primary_channel_available;
+/** Harness iterator available used to script and verify host behavior. */
 static int fake_iterator_available;
+/** Harness iterator channels remaining used to script and verify host behavior. */
 static int fake_iterator_channels_remaining;
+/** Recorded fake iterator destroy calls for assertions. */
 static int fake_iterator_destroy_calls;
+/** Recorded fake pthread join calls for assertions. */
 static int fake_pthread_join_calls;
+/** Harness mutex depth used to script and verify host behavior. */
 static int fake_mutex_depth;
 
+/** @brief Verify module self.
+ * @return Result used by the test's assertions.
+ */
 struct ast_module *test_module_self(void)
 {
 	return NULL;
@@ -76,6 +140,12 @@ struct ast_module *test_module_self(void)
 #undef calloc
 #undef free
 
+/** @brief Host-API test double for ast_variable_retrieve; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category Asterisk category or category name, as declared.
+ * @param variable Configuration variable to inspect or update.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_variable_retrieve(struct ast_config *config, const char *category,
 				  const char *variable)
 {
@@ -88,6 +158,11 @@ const char *ast_variable_retrieve(struct ast_config *config, const char *categor
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_category_browse; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param previous Previously returned category name, or NULL to start.
+ * @return Scripted host result for the current test scenario.
+ */
 char *ast_category_browse(struct ast_config *config, const char *previous)
 {
 	(void)config;
@@ -101,6 +176,11 @@ char *ast_category_browse(struct ast_config *config, const char *previous)
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_variable_browse; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category Asterisk category or category name, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_variable *ast_variable_browse(const struct ast_config *config, const char *category)
 {
 	(void)config;
@@ -110,6 +190,12 @@ struct ast_variable *ast_variable_browse(const struct ast_config *config, const 
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_config_load2; effects are recorded in this harness.
+ * @param filename Configuration or diagnostic source filename.
+ * @param who_asked Module requesting configuration.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 				    struct ast_flags flags)
 {
@@ -119,12 +205,21 @@ struct ast_config *ast_config_load2(const char *filename, const char *who_asked,
 	return fake_config_load_result;
 }
 
+/** @brief Host-API test double for ast_config_destroy; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ */
 void ast_config_destroy(struct ast_config *config)
 {
 	(void)config;
 	++fake_config_destroy_count;
 }
 
+/** @brief Host-API test double for ast_category_get; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param name Option, metadata field, or channel name.
+ * @param filter FFmpeg dynamics filter name.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_category *ast_category_get(const struct ast_config *config, const char *name,
 				      const char *filter)
 {
@@ -136,6 +231,12 @@ struct ast_category *ast_category_get(const struct ast_config *config, const cha
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_category_new; effects are recorded in this harness.
+ * @param name Option, metadata field, or channel name.
+ * @param filename Configuration or diagnostic source filename.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_category *ast_category_new(const char *name, const char *filename, int line)
 {
 	(void)name;
@@ -146,6 +247,10 @@ struct ast_category *ast_category_new(const char *name, const char *filename, in
 	return (struct ast_category *)(uintptr_t)3;
 }
 
+/** @brief Host-API test double for ast_category_append; effects are recorded in this harness.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param category Asterisk category or category name, as declared.
+ */
 void ast_category_append(struct ast_config *config, struct ast_category *category)
 {
 	(void)config;
@@ -153,6 +258,14 @@ void ast_category_append(struct ast_config *config, struct ast_category *categor
 	++fake_category_append_count;
 }
 
+/** @brief Host-API test double for ast_config_text_file_save2; effects are recorded in this
+ * harness.
+ * @param filename Configuration or diagnostic source filename.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param generator Name of the component saving configuration.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_config_text_file_save2(const char *filename, const struct ast_config *config,
 			       const char *generator, uint32_t flags)
 {
@@ -163,6 +276,14 @@ int ast_config_text_file_save2(const char *filename, const struct ast_config *co
 	return fake_save_result;
 }
 
+/** @brief Host-API test double for __ast_pthread_mutex_lock; effects are recorded in this harness.
+ * @param filename Configuration or diagnostic source filename.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param mutex_name Diagnostic mutex name.
+ * @param mutex Mutex tracked by the harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_pthread_mutex_lock(const char *filename, int line, const char *function,
 			     const char *mutex_name, ast_mutex_t *mutex)
 {
@@ -175,6 +296,15 @@ int __ast_pthread_mutex_lock(const char *filename, int line, const char *functio
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_pthread_mutex_unlock; effects are recorded in this
+ * harness.
+ * @param filename Configuration or diagnostic source filename.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param mutex_name Diagnostic mutex name.
+ * @param mutex Mutex tracked by the harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_pthread_mutex_unlock(const char *filename, int line, const char *function,
 			       const char *mutex_name, ast_mutex_t *mutex)
 {
@@ -188,6 +318,13 @@ int __ast_pthread_mutex_unlock(const char *filename, int line, const char *funct
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_cli_register_multiple; effects are recorded in this
+ * harness.
+ * @param entries entries supplied by the test scenario.
+ * @param count Number of elements available in the supplied block.
+ * @param module Asterisk module reference.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ast_cli_register_multiple(struct ast_cli_entry *entries, int count, struct ast_module *module)
 {
 	(void)entries;
@@ -196,6 +333,12 @@ int __ast_cli_register_multiple(struct ast_cli_entry *entries, int count, struct
 	return fake_cli_register_result;
 }
 
+/** @brief Host-API test double for ast_cli_unregister_multiple; effects are recorded in this
+ * harness.
+ * @param entries entries supplied by the test scenario.
+ * @param count Number of elements available in the supplied block.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_cli_unregister_multiple(struct ast_cli_entry *entries, int count)
 {
 	(void)entries;
@@ -204,11 +347,26 @@ int ast_cli_unregister_multiple(struct ast_cli_entry *entries, int count)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_background_stacksize; effects are recorded in this harness.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_background_stacksize(void)
 {
 	return 0;
 }
 
+/** @brief Host-API test double for ast_pthread_create_stack; effects are recorded in this harness.
+ * @param thread Worker thread identifier supplied by the harness.
+ * @param attributes POSIX thread creation attributes.
+ * @param start_routine Worker entry point supplied by the module.
+ * @param data Input payload or owned state being released, as declared.
+ * @param stack_size Requested worker stack size in bytes.
+ * @param filename Configuration or diagnostic source filename.
+ * @param caller Calling function name.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param start_name Worker entry-point name for diagnostics.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 			     void *(*start_routine)(void *), void *data, size_t stack_size,
 			     const char *filename, const char *caller, int line,
@@ -226,11 +384,19 @@ int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 	return fake_thread_create_result;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_all_new; effects are recorded in this
+ * harness.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel_iterator *ast_channel_iterator_all_new(void)
 {
 	return fake_iterator_available ? (struct ast_channel_iterator *)(uintptr_t)1 : NULL;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_next; effects are recorded in this harness.
+ * @param iterator Harness channel iterator.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel *ast_channel_iterator_next(struct ast_channel_iterator *iterator)
 {
 	(void)iterator;
@@ -239,12 +405,21 @@ struct ast_channel *ast_channel_iterator_next(struct ast_channel_iterator *itera
 	return NULL;
 }
 
+/** @brief Host-API test double for ast_channel_iterator_destroy; effects are recorded in this
+ * harness.
+ * @param iterator Harness channel iterator.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel_iterator *ast_channel_iterator_destroy(struct ast_channel_iterator *iterator)
 {
 	++fake_iterator_destroy_calls;
 	return iterator;
 }
 
+/** @brief Host-API test double for ast_channel_get_by_name; effects are recorded in this harness.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_channel *ast_channel_get_by_name(const char *name)
 {
 	(void)name;
@@ -254,24 +429,45 @@ struct ast_channel *ast_channel_get_by_name(const char *name)
 	return fake_primary_channel_available ? (struct ast_channel *)(uintptr_t)1 : NULL;
 }
 
+/** @brief Host-API test double for ast_channel_name; effects are recorded in this harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_name(const struct ast_channel *channel)
 {
 	(void)channel;
 	return fake_channel_name;
 }
 
+/** @brief Host-API test double for ast_channel_appl; effects are recorded in this harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_appl(const struct ast_channel *channel)
 {
 	(void)channel;
 	return fake_channel_application;
 }
 
+/** @brief Host-API test double for ast_channel_data; effects are recorded in this harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 const char *ast_channel_data(const struct ast_channel *channel)
 {
 	(void)channel;
 	return fake_channel_data;
 }
 
+/** @brief Host-API test double for __ao2_lock; effects are recorded in this harness.
+ * @param object Host reference-counted object.
+ * @param request Host I/O or locking operation.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_lock(void *object, enum ao2_lock_req request, const char *file, const char *function,
 	       int line, const char *name)
 {
@@ -284,6 +480,14 @@ int __ao2_lock(void *object, enum ao2_lock_req request, const char *file, const 
 	return 0;
 }
 
+/** @brief Host-API test double for __ao2_unlock; effects are recorded in this harness.
+ * @param object Host reference-counted object.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param name Option, metadata field, or channel name.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_unlock(void *object, const char *file, const char *function, int line, const char *name)
 {
 	(void)object;
@@ -294,6 +498,15 @@ int __ao2_unlock(void *object, const char *file, const char *function, int line,
 	return 0;
 }
 
+/** @brief Host-API test double for __ao2_ref; effects are recorded in this harness.
+ * @param object Host reference-counted object.
+ * @param delta Requested reference-count change.
+ * @param tag Host reference-tracking tag.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 int __ao2_ref(void *object, int delta, const char *tag, const char *file, int line,
 	      const char *function)
 {
@@ -306,6 +519,13 @@ int __ao2_ref(void *object, int delta, const char *tag, const char *file, int li
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_find; effects are recorded in this
+ * harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @param info Test module metadata.
+ * @param uid Datastore identifier.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_datastore *ast_channel_datastore_find(struct ast_channel *channel,
 						 const struct ast_datastore_info *info,
 						 const char *uid)
@@ -318,6 +538,11 @@ struct ast_datastore *ast_channel_datastore_find(struct ast_channel *channel,
 	return fake_channel_datastore;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_add; effects are recorded in this harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_channel_datastore_add(struct ast_channel *channel, struct ast_datastore *datastore)
 {
 	(void)channel;
@@ -326,6 +551,12 @@ int ast_channel_datastore_add(struct ast_channel *channel, struct ast_datastore 
 	return 0;
 }
 
+/** @brief Host-API test double for ast_channel_datastore_remove; effects are recorded in this
+ * harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_channel_datastore_remove(struct ast_channel *channel, struct ast_datastore *datastore)
 {
 	(void)channel;
@@ -334,6 +565,15 @@ int ast_channel_datastore_remove(struct ast_channel *channel, struct ast_datasto
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_datastore_alloc; effects are recorded in this harness.
+ * @param info Test module metadata.
+ * @param uid Datastore identifier.
+ * @param module Asterisk module reference.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 struct ast_datastore *__ast_datastore_alloc(const struct ast_datastore_info *info, const char *uid,
 					    struct ast_module *module, const char *file, int line,
 					    const char *function)
@@ -350,6 +590,10 @@ struct ast_datastore *__ast_datastore_alloc(const struct ast_datastore_info *inf
 	return fake_last_allocated_datastore;
 }
 
+/** @brief Host-API test double for ast_datastore_free; effects are recorded in this harness.
+ * @param datastore Channel-owned datastore.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_datastore_free(struct ast_datastore *datastore)
 {
 	++fake_datastore_free_calls;
@@ -357,6 +601,14 @@ int ast_datastore_free(struct ast_datastore *datastore)
 	return 0;
 }
 
+/** @brief Host-API test double for __ast_calloc; effects are recorded in this harness.
+ * @param count Number of elements available in the supplied block.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 void *__ast_calloc(size_t count, size_t size, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -368,6 +620,12 @@ void *__ast_calloc(size_t count, size_t size, const char *file, int line, const 
 	return calloc(count, size);
 }
 
+/** @brief Host-API test double for __ast_free; effects are recorded in this harness.
+ * @param pointer Allocated buffer passed through the failure-injection shim.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ */
 void __ast_free(void *pointer, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -376,6 +634,13 @@ void __ast_free(void *pointer, const char *file, int line, const char *function)
 	free(pointer);
 }
 
+/** @brief Host-API test double for ast_audiohook_init; effects are recorded in this harness.
+ * @param audiohook Attached link-processing hook.
+ * @param type Requested Asterisk channel technology.
+ * @param source Processing source or source text, as declared.
+ * @param flags Host API option bit mask.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_init(struct ast_audiohook *audiohook, enum ast_audiohook_type type,
 		       const char *source, enum ast_audiohook_init_flags flags)
 {
@@ -386,6 +651,10 @@ int ast_audiohook_init(struct ast_audiohook *audiohook, enum ast_audiohook_type 
 	return fake_audiohook_init_result;
 }
 
+/** @brief Host-API test double for ast_audiohook_destroy; effects are recorded in this harness.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_destroy(struct ast_audiohook *audiohook)
 {
 	(void)audiohook;
@@ -393,6 +662,11 @@ int ast_audiohook_destroy(struct ast_audiohook *audiohook)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_audiohook_attach; effects are recorded in this harness.
+ * @param channel Radio channel or channel index, as declared.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_attach(struct ast_channel *channel, struct ast_audiohook *audiohook)
 {
 	(void)channel;
@@ -400,6 +674,10 @@ int ast_audiohook_attach(struct ast_channel *channel, struct ast_audiohook *audi
 	return fake_audiohook_attach_result;
 }
 
+/** @brief Host-API test double for ast_audiohook_detach; effects are recorded in this harness.
+ * @param audiohook Attached link-processing hook.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_audiohook_detach(struct ast_audiohook *audiohook)
 {
 	(void)audiohook;
@@ -407,6 +685,11 @@ int ast_audiohook_detach(struct ast_audiohook *audiohook)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_format_get_sample_rate; effects are recorded in this
+ * harness.
+ * @param format printf-style message format.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned int ast_format_get_sample_rate(const struct ast_format *format)
 {
 	(void)format;
@@ -440,6 +723,11 @@ int txagc_avfilter_process(struct txagc_avfilter *processor, const struct txagc_
 	return fake_processor_result;
 }
 
+/** @brief Host-API test double for ast_cli; effects are recorded in this harness.
+ * @param fd Asterisk CLI output descriptor.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void ast_cli(int fd, const char *format, ...)
 {
 	(void)fd;
@@ -447,6 +735,10 @@ void ast_cli(int fd, const char *format, ...)
 	++fake_cli_print_calls;
 }
 
+/** @brief Host-API test double for usleep; observable effects are recorded in harness state.
+ * @param microseconds Requested sleep interval in microseconds.
+ * @return Scripted host result for the current test scenario.
+ */
 int usleep(useconds_t microseconds)
 {
 	(void)microseconds;
@@ -462,11 +754,19 @@ int pthread_join(pthread_t thread, void **result)
 	return 0;
 }
 
+/** @brief Host-API test double for ast_true; effects are recorded in this harness.
+ * @param value Input value or writable result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_true(const char *value)
 {
 	return !strcasecmp(value, "yes") || !strcmp(value, "1");
 }
 
+/** @brief Host-API test double for ast_false; effects are recorded in this harness.
+ * @param value Input value or writable result, as declared.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_false(const char *value)
 {
 	return !strcasecmp(value, "no") || !strcmp(value, "0");
@@ -485,14 +785,19 @@ int usbradioplus_config_variable_update(struct ast_config *config, const char *f
 	return fake_tune_update_calls == fake_tune_update_failure_call;
 }
 
+/** Configuration field offset and allowed numeric bounds. */
 struct range_case {
+	/** DC offset applied to each diagnostic trace channel. */
 	size_t offset;
+	/** Harness minimum used to script and verify host behavior. */
 	double minimum;
+	/** Harness maximum used to script and verify host behavior. */
 	double maximum;
 };
 
 #define RANGE(field, low, high) offsetof(struct txagc_config, field), (low), (high)
 
+/** Harness ranges used to script and verify host behavior. */
 static const struct range_case ranges[] = {
 	{RANGE(ctcss_notch_width_hz, 0.2, 10.0)},
 	{RANGE(ctcss_highpass_hz, 50.0, 500.0)},
@@ -565,6 +870,10 @@ static const struct range_case ranges[] = {
 	{RANGE(output_gain_db, -30.0, 30.0)},
 };
 
+/** @brief Assert the chain validator rejects a selected field value.
+ * @param offset Byte offset of the configuration field under test.
+ * @param value Input value or writable result, as declared.
+ */
 static void expect_invalid_field(size_t offset, double value)
 {
 	struct txagc_settings settings_value;
@@ -575,6 +884,7 @@ static void expect_invalid_field(size_t offset, double value)
 	assert(validate_chain(chain) < 0);
 }
 
+/** @brief Verify every numeric boundary. */
 static void test_every_numeric_boundary(void)
 {
 	for (size_t index = 0; index < sizeof(ranges) / sizeof(ranges[0]); ++index) {
@@ -591,6 +901,7 @@ static void test_every_numeric_boundary(void)
 	assert(validate_chain(&value.profiles[0].chains[TXAGC_LOCAL]) < 0);
 }
 
+/** @brief Verify stage and relationship validation. */
 static void test_stage_and_relationship_validation(void)
 {
 	struct txagc_settings settings_value;
@@ -632,6 +943,7 @@ static void test_stage_and_relationship_validation(void)
 #undef INVALID_RELATION
 }
 
+/** @brief Verify settings scope and hardware validation. */
 static void test_settings_scope_and_hardware_validation(void)
 {
 	struct txagc_settings value;
@@ -694,12 +1006,17 @@ static void test_settings_scope_and_hardware_validation(void)
 	assert(validate_profile(&value.profiles[0]) < 0);
 }
 
+/** @brief Install a bounded option list in the fake Asterisk configuration.
+ * @param options Filter option string or allowed-name table, as declared.
+ * @param count Number of elements available in the supplied block.
+ */
 static void set_fake_options(const struct fake_option *options, size_t count)
 {
 	memcpy(fake_options, options, count * sizeof(*options));
 	fake_option_count = count;
 }
 
+/** @brief Verify primitive configuration parsers. */
 static void test_primitive_configuration_parsers(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -777,6 +1094,7 @@ static void test_primitive_configuration_parsers(void)
 	}
 }
 
+/** @brief Verify hardware configuration parser. */
 static void test_hardware_configuration_parser(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -836,6 +1154,7 @@ static void test_hardware_configuration_parser(void)
 	assert(settings_parse_error && hardware.input_gain_configured);
 }
 
+/** @brief Verify chain configuration parser. */
 static void test_chain_configuration_parser(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -905,6 +1224,12 @@ static void test_chain_configuration_parser(void)
 	}
 }
 
+/** @brief Install a single synthetic section override.
+ * @param section Flat or resolved configuration section name.
+ * @param name Option, metadata field, or channel name.
+ * @param text Complete configuration text.
+ * @return Result used by the test's assertions.
+ */
 static int add_single_override(const char *section, const char *name, const char *text)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -915,6 +1240,7 @@ static int add_single_override(const char *section, const char *name, const char
 	return add_override(&value.profiles[0], config, section, name);
 }
 
+/** @brief Verify section override parser. */
 static void test_section_override_parser(void)
 {
 	struct txagc_settings value;
@@ -1013,6 +1339,7 @@ static void test_section_override_parser(void)
 	assert(value.profiles[0].override_count == ARRAY_LEN(all_sections) - 1);
 }
 
+/** @brief Verify option name validation. */
 static void test_option_name_validation(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -1075,6 +1402,7 @@ static void test_option_name_validation(void)
 	fake_category_count = 0;
 }
 
+/** @brief Verify unified configuration edge paths. */
 static void test_unified_configuration_edge_paths(void)
 {
 	struct ast_config *config = (struct ast_config *)(uintptr_t)1;
@@ -1146,6 +1474,7 @@ static void test_unified_configuration_edge_paths(void)
 	fake_option_count = 0;
 }
 
+/** @brief Verify settings loader. */
 static void test_settings_loader(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
@@ -1224,6 +1553,7 @@ static void test_settings_loader(void)
 	fake_category_count = 0;
 }
 
+/** @brief Verify settings loader rejections. */
 static void test_settings_loader_rejections(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
@@ -1332,6 +1662,12 @@ static void test_settings_loader_rejections(void)
 	fake_category_count = 0;
 }
 
+/** @brief Replace one fake section override at the requested index.
+ * @param index Sample position within the trace block.
+ * @param section Flat or resolved configuration section name.
+ * @param name Option, metadata field, or channel name.
+ * @param value Input value or writable result, as declared.
+ */
 static void set_override_value(size_t index, const char *section, const char *name,
 			       const char *value)
 {
@@ -1343,6 +1679,7 @@ static void set_override_value(size_t index, const char *section, const char *na
 			sizeof(settings.profiles[0].overrides[index].value));
 }
 
+/** @brief Verify public setting accessors. */
 static void test_public_setting_accessors(void)
 {
 	struct txagc_chain chain;
@@ -1421,6 +1758,7 @@ static void test_public_setting_accessors(void)
 						  sizeof(text)) == 1);
 }
 
+/** @brief Reset configuration-save stub state. */
 static void reset_save_doubles(void)
 {
 	static char *const categories[] = {"usb", "hardware usb", "local usb"};
@@ -1437,6 +1775,7 @@ static void reset_save_doubles(void)
 	fake_tune_update_calls = 0;
 }
 
+/** @brief Verify input gain persistence. */
 static void test_input_gain_persistence(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
@@ -1475,6 +1814,7 @@ static void test_input_gain_persistence(void)
 	assert(usbradioplus_processing_save_input_gains("usb", 0.0, 0.0) < 0);
 }
 
+/** @brief Verify generic option persistence. */
 static void test_generic_option_persistence(void)
 {
 	struct ast_config *valid = (struct ast_config *)(uintptr_t)1;
@@ -1522,6 +1862,7 @@ static void test_generic_option_persistence(void)
 	assert(fake_category_append_count == 1);
 }
 
+/** @brief Verify module lifecycle and simple cli. */
 static void test_module_lifecycle_and_simple_cli(void)
 {
 	struct ast_cli_entry entry = {0};
@@ -1583,6 +1924,7 @@ static void test_module_lifecycle_and_simple_cli(void)
 	assert(stopping);
 }
 
+/** @brief Verify channel eligibility. */
 static void test_channel_eligibility(void)
 {
 	struct txagc_settings value;
@@ -1611,6 +1953,7 @@ static void test_channel_eligibility(void)
 	fake_channel_data = "Remote Rx";
 }
 
+/** @brief Verify audiohook callback and destroy. */
 static void test_audiohook_callback_and_destroy(void)
 {
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
@@ -1688,6 +2031,7 @@ static void test_audiohook_callback_and_destroy(void)
 	assert(fake_processor_destroy_calls == TXAGC_SOURCE_COUNT);
 }
 
+/** @brief Reset audiohook attachment and allocation stub state. */
 static void reset_attach_doubles(void)
 {
 	fake_channel_datastore = NULL;
@@ -1704,6 +2048,7 @@ static void reset_attach_doubles(void)
 	fake_channel_name = "IAX2/test";
 }
 
+/** @brief Verify audiohook attachment. */
 static void test_audiohook_attachment(void)
 {
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
@@ -1751,6 +2096,7 @@ static void test_audiohook_attachment(void)
 	ast_datastore_free(fake_last_allocated_datastore);
 }
 
+/** @brief Reset fake channel-iteration state. */
 static void reset_iterator_doubles(void)
 {
 	fake_primary_channel_available = 0;
@@ -1762,6 +2108,7 @@ static void reset_iterator_doubles(void)
 	fake_find_sequence_index = 0;
 }
 
+/** @brief Verify channel scanning and detachment. */
 static void test_channel_scanning_and_detachment(void)
 {
 	reset_iterator_doubles();
@@ -1820,6 +2167,7 @@ static void test_channel_scanning_and_detachment(void)
 	fake_channel_datastore = NULL;
 }
 
+/** @brief Verify reporting cli. */
 static void test_reporting_cli(void)
 {
 	struct ast_cli_entry entry = {0};
@@ -1899,6 +2247,9 @@ static void test_reporting_cli(void)
 	fake_channel_datastore = NULL;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct txagc_settings value;
@@ -1930,3 +2281,13 @@ int main(void)
 	puts("processing validation tests passed");
 	return 0;
 }
+
+/** @def RANGE
+ * @brief RANGE selection for this isolated test harness.
+ */
+/** @def INVALID_RELATION
+ * @brief INVALID RELATION selection for this isolated test harness.
+ */
+/** @def INVALID_HARDWARE
+ * @brief INVALID HARDWARE selection for this isolated test harness.
+ */

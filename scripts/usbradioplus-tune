@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+## @file
+## @brief Interactive radio and processing configuration with accessible keyboard controls.
 """Interactive tuning menu for USBRadioPlus processing."""
 
 import argparse
@@ -13,9 +15,13 @@ import sys
 import tempfile
 from datetime import datetime
 
+## Selected unified configuration path.
 CONFIG = "/etc/asterisk/usbradioplus.conf"
+## Exclusive tuner-session lock path.
 LOCK = "/run/lock/usbradioplus-tune.lock"
+## Explicitly selected radio channel, or None for active-channel selection.
 NODE = None
+## Installed and source-tree sample paths searched when creating configuration.
 DEFAULT_CONFIG_CANDIDATES = (
     "/usr/share/doc/usbradioplus/usbradioplus.conf.sample",
     "/usr/local/share/doc/usbradioplus/usbradioplus.conf.sample",
@@ -26,13 +32,16 @@ DEFAULT_CONFIG_CANDIDATES = (
     ),
 )
 
+## Processing-source names and operator-facing labels.
 SOURCES = [
     ("local", "Local receiver"),
     ("link", "Linked audio"),
     ("voice_telemetry", "Voice + telemetry"),
 ]
+## Names of supported processing-source sections.
 SOURCE_KEYS = {source for source, _label in SOURCES}
 
+## Hardware option labels and shared editor kinds.
 HARDWARE_SETTINGS = {
     "hardware_input_gain_db": ("Hardware input gain", "gain"),
     "hardware_output_a_gain_db": ("Hardware output A gain", "gain"),
@@ -112,6 +121,7 @@ HARDWARE_SETTINGS = {
     "hardware_emphasis_corner_hz": ("Emphasis corner frequency", "emphasis"),
 }
 
+## Hardware group keys used by the shared tuning menus.
 HARDWARE_GROUP_KEYS = {
     "usb": (
         "hardware_device_identifier",
@@ -203,6 +213,7 @@ HARDWARE_GROUP_KEYS = {
     ),
 }
 
+## Asterisk jitter-buffer option labels and editor kinds.
 ASTERISK_SETTINGS = {
     "asterisk_jitter_buffer_enabled": ("Jitter buffer", "bool"),
     "asterisk_jitter_buffer_max_size_ms": ("Maximum jitter-buffer size", "integer"),
@@ -214,20 +225,24 @@ ASTERISK_SETTINGS = {
     "asterisk_jitter_buffer_video_sync_enabled": ("Synchronize video to buffered audio", "bool"),
 }
 
+## Duplex and local-repeat option labels and editor kinds.
 DUPLEX_SETTINGS = {
     "duplex_radio_mode": ("Radio duplex mode", "binary"),
     "duplex_local_repeat_level": ("Local repeat level", "level"),
     "duplex_local_repeat_mode": ("Local repeat mode", "duplex_mode"),
 }
 
+## General channel option labels and editor kinds.
 GENERAL_SETTINGS = {"channel_enabled": ("Radio channel enabled", "bool")}
 
+## Radio diagnostic option labels and editor kinds.
 DIAGNOSTICS_SETTINGS = {
     "diagnostics_trace_type": ("Trace type", "integer"),
     "diagnostics_trace_level": ("Trace level", "integer"),
     "diagnostics_fever": ("Low-level diagnostic setting", "integer"),
 }
 
+## Modern section settings used by the shared tuning menus.
 MODERN_SECTION_SETTINGS = {
     "asterisk": ASTERISK_SETTINGS,
     "hardware": HARDWARE_SETTINGS,
@@ -236,12 +251,14 @@ MODERN_SECTION_SETTINGS = {
     "diagnostics": DIAGNOSTICS_SETTINGS,
 }
 
+## Restart only hardware keys used by the shared tuning menus.
 RESTART_ONLY_HARDWARE_KEYS = {
     key
     for key in HARDWARE_SETTINGS
     if key.startswith("hardware_gpio_") or key.startswith("hardware_parallel_pin_")
 }
 
+## Choices used by the shared tuning menus.
 CHOICES = {
     "assignment": (
         ("off", "No signal"),
@@ -302,6 +319,7 @@ CHOICES = {
 }
 
 # key: label, kind, minimum, maximum, units, group
+## Settings used by the shared tuning menus.
 SETTINGS = {
     "enabled": ("Entire chain", "bool", None, None, "", "Stages"),
     "rnnoise_enabled": ("RNNoise", "bool", None, None, "", "Stages"),
@@ -556,6 +574,7 @@ SETTINGS = {
     "output_gain_db": ("Output gain", "float", -30, 30, "dB", "Input/output"),
 }
 
+## Defaults used by the shared tuning menus.
 DEFAULTS = {
     "enabled": "yes",
     "rnnoise_enabled": "no",
@@ -642,6 +661,7 @@ DEFAULTS = {
     "output_gain_db": "0.0",
 }
 
+## Source defaults used by the shared tuning menus.
 SOURCE_DEFAULTS = {
     # High-pass is the built-in PL-removal mode unless a profile selects notch.
     "local": {
@@ -664,12 +684,22 @@ SOURCE_DEFAULTS = {
 
 
 def default_value(source, key):
-    """Return the concrete shipped value for this source and setting."""
+    """Return the shipped value for a source-chain option.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    @param key Configuration option name.
+    """
     return SOURCE_DEFAULTS.get(source, {}).get(key, DEFAULTS[key])
 
 
 def relationship_error(source, key, number, values):
-    """Validate constraints involving another value before writing the file."""
+    """Validate coupled filter, threshold, and stage parameters before applying a value.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    @param key Configuration option name.
+    @param number Proposed numeric value.
+    @param values Current resolved values used for cross-field validation.
+    """
     pairs = {
         "agc_sidechain_lowpass_hz": "agc_sidechain_highpass_hz",
         "expander_sidechain_lowpass_hz": "expander_sidechain_highpass_hz",
@@ -700,26 +730,38 @@ def relationship_error(source, key, number, values):
 
 
 def run(args, check=False):
+    """Run a command and capture its text output for the tuning interface.
+
+    @param args Command or dialog argument vector.
+    @param check Whether a nonzero child exit status raises an exception.
+    """
     return subprocess.run(
         args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check
     ).stdout
 
 
 def launch_radio_meter(mode):
-    """Show the module's combined live signaling and audio meter."""
+    """Launch the live radio-status and audio-meter display.
+
+    @param mode Meter selection; only the combined all display is supported.
+    """
     if mode != "all":
         raise ValueError(f"unsupported meter mode: {mode}")
     show_radio_result("COS, CTCSS, PTT, and audio levels", "A")
 
 
 def complete_configuration():
+    """Query the module's complete active processing configuration."""
     radio = run(["asterisk", "-rx", "radioplus tune menu-support 2"])
     processing = run(["asterisk", "-rx", "radioplus processing show"])
     return radio.rstrip() + "\n\n" + processing.rstrip()
 
 
 def dialog(args):
-    """Run whiptail, whose numbered/tagged menus match the ASL3 utilities."""
+    """Run the shared accessible dialog widget and return the operator's choice.
+
+    @param args Command or dialog argument vector.
+    """
     if "--msgbox" in args and "--ok-button" not in args:
         args = ["--ok-button", "Close"] + args
     # Match asl-menu's `3>&1 1>&2 2>&3`: newt draws the interface on stdout,
@@ -734,12 +776,13 @@ def dialog(args):
 
 
 def read_config():
+    """Read the selected unified configuration as UTF-8 text."""
     with open(CONFIG, encoding="utf-8") as stream:
         return stream.read()
 
 
 def ensure_config():
-    """Install the shipped defaults when no configuration file exists."""
+    """Create a missing configuration from the installed shipped sample."""
     if os.path.exists(CONFIG):
         return
     for candidate in DEFAULT_CONFIG_CANDIDATES:
@@ -754,7 +797,11 @@ def ensure_config():
 
 
 def raw_section_values(text, section):
-    """Return literal values from one Asterisk configuration section."""
+    """Parse explicitly written values from one configuration section.
+
+    @param text Complete configuration text.
+    @param section Flat or resolved configuration section name.
+    """
     values, active = {}, False
     for line in text.splitlines():
         match = re.match(r"\s*\[([^]]+)\]", line)
@@ -768,7 +815,10 @@ def raw_section_values(text, section):
 
 
 def configured_radios(text):
-    """Return bare section names, which are the configured radio channels."""
+    """List named radio sections independently of flat defaults and scoped profiles.
+
+    @param text Complete configuration text.
+    """
     radios = []
     shared = {"general", "asterisk", "hardware", "duplex", "diagnostics", *SOURCE_KEYS}
     for line in text.splitlines():
@@ -779,7 +829,11 @@ def configured_radios(text):
 
 
 def resolved_section(text, section):
-    """Resolve a logical settings group to the selected radio's profile."""
+    """Resolve the selected radio's explicit profile reference or scoped section.
+
+    @param text Complete configuration text.
+    @param section Flat or resolved configuration section name.
+    """
     if section not in {"general", "asterisk", "hardware", "duplex", "diagnostics", *SOURCE_KEYS}:
         return section
     radios = configured_radios(text)
@@ -795,6 +849,11 @@ def resolved_section(text, section):
 
 
 def section_values(text, section):
+    """Merge shared defaults with the selected radio's resolved section values.
+
+    @param text Complete configuration text.
+    @param section Flat or resolved configuration section name.
+    """
     resolved = resolved_section(text, section)
     values = raw_section_values(text, section) if resolved != section else {}
     values.update(raw_section_values(text, resolved))
@@ -802,6 +861,7 @@ def section_values(text, section):
 
 
 def active_node():
+    """Return the explicitly selected or currently active radio channel."""
     if NODE:
         return NODE
     match = re.search(r"\[([^]]+)\]", run(["asterisk", "-rx", "radioplus active"]))
@@ -809,7 +869,7 @@ def active_node():
 
 
 def shipped_modern_defaults():
-    """Read the documented built-in values shipped with this exact utility."""
+    """Read the installed sample's concrete configuration defaults."""
     expected = {key for settings in MODERN_SECTION_SETTINGS.values() for key in settings}
     for path in DEFAULT_CONFIG_CANDIDATES:
         if not os.path.isfile(path):
@@ -841,6 +901,13 @@ def shipped_modern_defaults():
 
 
 def replace_value(text, section, key, value):
+    """Replace one setting while preserving unrelated sections, comments, and assignments.
+
+    @param text Complete configuration text.
+    @param section Flat or resolved configuration section name.
+    @param key Configuration option name.
+    @param value Textual configuration value.
+    """
     section = resolved_section(text, section)
     lines, active, found = text.splitlines(keepends=True), False, False
     for index, line in enumerate(lines):
@@ -873,6 +940,10 @@ def replace_value(text, section, key, value):
 
 
 def atomic_write(text):
+    """Atomically replace the selected configuration using a same-directory temporary file.
+
+    @param text Complete configuration text.
+    """
     directory = os.path.dirname(CONFIG)
     original = os.stat(CONFIG)
     fd, path = tempfile.mkstemp(prefix=".usbradioplus.", dir=directory, text=True)
@@ -891,7 +962,10 @@ def atomic_write(text):
 
 
 def set_config_permissions(path):
-    """Let Asterisk persist live tuning while keeping the file non-public."""
+    """Set configuration ownership and permissions for Asterisk tuning saves.
+
+    @param path Configuration file whose ownership and permissions are updated.
+    """
     try:
         account = pwd.getpwnam("asterisk")
     except KeyError:
@@ -902,6 +976,10 @@ def set_config_permissions(path):
 
 
 def reload_config(old_text):
+    """Reload processing settings and restore the prior file if validation fails.
+
+    @param old_text Configuration text before the proposed edit.
+    """
     output = run(["asterisk", "-rx", "radioplus processing reload"])
     if "reloaded in place" not in output.lower():
         atomic_write(old_text)
@@ -910,14 +988,22 @@ def reload_config(old_text):
 
 
 def restart_required(old_text, updated_text):
-    """GPIO direction and parallel-pin routing are initialized at channel start."""
+    """Detect hardware assignment changes that need an Asterisk restart.
+
+    @param old_text Configuration text before the proposed edit.
+    @param updated_text Proposed configuration text.
+    """
     old = section_values(old_text, "hardware")
     updated = section_values(updated_text, "hardware")
     return any(old.get(key) != updated.get(key) for key in RESTART_ONLY_HARDWARE_KEYS)
 
 
 def apply_config(old_text, updated_text):
-    """Apply a valid edit live, or restart for hardware pin reassignment."""
+    """Apply edited configuration with validation, restart handling, and failure restoration.
+
+    @param old_text Configuration text before the proposed edit.
+    @param updated_text Proposed configuration text.
+    """
     atomic_write(updated_text)
     if not restart_required(old_text, updated_text):
         reload_config(old_text)
@@ -941,7 +1027,11 @@ def apply_config(old_text, updated_text):
 
 
 def prompt_boolean(label, current):
-    """Edit every on/off value with the same explicit two-choice dialog."""
+    """Edit an on/off setting with the shared screen-reader-friendly choice widget.
+
+    @param label Operator-facing setting label.
+    @param current Current value used to initialize the editor.
+    """
     current = "yes" if current.lower() in ("yes", "true", "1", "on") else "no"
     return dialog(
         [
@@ -967,7 +1057,12 @@ def prompt_boolean(label, current):
 
 
 def prompt_choice(label, current, choices):
-    """Edit every enumerated value with the same single-choice dialog."""
+    """Edit an enumeration while preserving focus on the current value.
+
+    @param label Operator-facing setting label.
+    @param current Current value used to initialize the editor.
+    @param choices Allowed values and their displayed labels.
+    """
     height = min(22, max(11, len(choices) + 8))
     args = [
         "--ok-button",
@@ -988,7 +1083,15 @@ def prompt_choice(label, current, choices):
 
 
 def prompt_number(label, current, number_kind, low=None, high=None, units=""):
-    """Edit gains, decimal values, and integers through one numeric UI."""
+    """Edit a bounded numeric value with local range and format validation.
+
+    @param label Operator-facing setting label.
+    @param current Current value used to initialize the editor.
+    @param number_kind Numeric editor kind: integer, float, or gain.
+    @param low Optional inclusive lower bound.
+    @param high Optional inclusive upper bound.
+    @param units Units displayed beside the value.
+    """
     type_name = {"gain": "Gain", "float": "Decimal value", "integer": "Integer"}[number_kind]
     limits = ""
     if low is not None and high is not None:
@@ -1037,7 +1140,12 @@ def prompt_number(label, current, number_kind, low=None, high=None, units=""):
 
 
 def prompt_text(label, current, instruction="Enter a value"):
-    """Edit free-form and list values with the common Apply/Cancel dialog."""
+    """Edit a text value using the shared setting-entry widget.
+
+    @param label Operator-facing setting label.
+    @param current Current value used to initialize the editor.
+    @param instruction Operator-facing entry instructions.
+    """
     return dialog(
         [
             "--ok-button",
@@ -1054,7 +1162,11 @@ def prompt_text(label, current, instruction="Enter a value"):
 
 
 def display_value(kind, value):
-    """Present stored values consistently in every settings menu."""
+    """Format the concrete stored value for its setting type.
+
+    @param kind Value-format or setting kind.
+    @param value Textual configuration value.
+    """
     if kind == "bool":
         return "On" if value.lower() in ("yes", "true", "1", "on") else "Off"
     if kind == "gain":
@@ -1063,6 +1175,11 @@ def display_value(kind, value):
 
 
 def edit_setting(source, key):
+    """Validate and apply a numeric or enumerated processing-chain setting.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    @param key Configuration option name.
+    """
     text = read_config()
     writable = text
     values = section_values(text, source)
@@ -1092,7 +1209,11 @@ def edit_setting(source, key):
 
 
 def edit_text_setting(source, key):
-    """Edit the processing-stage order through the common text dialog."""
+    """Validate and apply graph order, frequency-list, or other text settings.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    @param key Configuration option name.
+    """
     text = read_config()
     writable = text
     values = section_values(text, source)
@@ -1133,7 +1254,10 @@ def edit_text_setting(source, key):
 
 
 def stages_menu(source):
-    """Edit stage controls while retaining the selected row after redraw."""
+    """Enable, disable, or reorder optional stages for one processing source.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    """
     entries = [
         ("1", "enabled", "Entire chain"),
         ("R", "rnnoise_enabled", "RNNoise"),
@@ -1187,6 +1311,11 @@ def stages_menu(source):
 
 
 def settings_menu(source, group):
+    """Edit one related group of processing parameters.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    @param group Related processing settings to present.
+    """
     values = section_values(read_config(), source)
     keys = [
         key
@@ -1235,6 +1364,10 @@ def settings_menu(source, group):
 
 
 def source_menu(source):
+    """Present filtering, stage, gain, and measurement controls for one source chain.
+
+    @param source Processing source name: local, link, or voice_telemetry.
+    """
     groups = [
         "Stages",
         "Filters",
@@ -1320,12 +1453,15 @@ def source_menu(source):
 
 
 def radio_command(option):
-    """Run one radio-tuning operation and return its user-facing result."""
+    """Execute a calibration command for the selected radio.
+
+    @param option Module calibration command string.
+    """
     return run(["asterisk", "-rx", f"radioplus tune menu-support {option}"]).strip()
 
 
 def radio_state():
-    """Read the live values used by the calibration menu."""
+    """Parse complete active radio and calibration settings from the module."""
     output = radio_command("0+9")
     match = re.search(r"(?m)^(\d+(?:,[^,\r\n]+){22})$", output)
     if not match:
@@ -1349,6 +1485,11 @@ def radio_state():
 
 
 def show_radio_result(title, option):
+    """Display the result of a live calibration command.
+
+    @param title Operator-facing result title.
+    @param option Module calibration command string.
+    """
     output = radio_command(option)
     dialog(
         [
@@ -1365,7 +1506,7 @@ def show_radio_result(title, option):
 
 
 def swap_radio_device():
-    """Swap this channel's USB assignment with another configured channel."""
+    """Exchange USB assignments between operator-selected radio channels."""
     names = [name.strip() for name in radio_command("3").split(",") if name.strip()]
     if not names:
         dialog(["--msgbox", "No eligible USB radio channels were found.", "8", "58"])
@@ -1382,7 +1523,7 @@ def swap_radio_device():
 
 
 def select_radio_channel():
-    """Select the named radio whose profiles and live controls are edited."""
+    """Choose the configured radio whose settings and calibration are edited."""
     global NODE
     names = configured_radios(read_config())
     if not names:
@@ -1404,6 +1545,7 @@ def select_radio_channel():
 
 
 def toggle_echo_mode():
+    """Toggle echo using the module's sample-rate-dependent playback path."""
     try:
         enabled = bool(radio_state()["echo"])
     except RuntimeError as error:
@@ -1415,7 +1557,13 @@ def toggle_echo_mode():
 
 
 def section_options_menu(section, settings, title, actions=()):
-    """Edit one settings profile using concrete shipped defaults."""
+    """Edit a non-audio settings section and dispatch its calibration actions.
+
+    @param section Flat or resolved configuration section name.
+    @param settings Setting names, labels, and editor kinds.
+    @param title Operator-facing result title.
+    @param actions Additional live calibration actions for this section.
+    """
     keys = list(settings)
     selected = "1"
     while True:
@@ -1512,7 +1660,7 @@ def section_options_menu(section, settings, title, actions=()):
 
 
 def hardware_menu():
-    """Group hardware settings and related calibration actions by purpose."""
+    """Present receive, transmit, USB, GPIO, and parallel-port submenus."""
     groups = (
         ("1", "USB interface", "usb", (("S", "Swap USB-device assignments", swap_radio_device),)),
         (
@@ -1594,6 +1742,7 @@ def hardware_menu():
 
 
 def interactive():
+    """Run the tuning session with selection persistence, save, and restoration."""
     if os.geteuid() != 0:
         sys.exit("Run this menu with sudo: sudo usbradioplus-tune")
     if not shutil.which("whiptail"):
@@ -1773,6 +1922,7 @@ def interactive():
 
 
 def main():
+    """Parse tuner command-line options and execute validation or interactive tuning."""
     global CONFIG, LOCK, NODE
     parser = argparse.ArgumentParser(description="Interactive USBRadioPlus processing tuner")
     parser.add_argument(

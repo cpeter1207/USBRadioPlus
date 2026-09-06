@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Configure the signed Debian package repository and install USBRadioPlus.
 # Install the USBRadioPlus binary built for this node's exact ASL3 host ABI.
 # Unknown combinations are rejected so APT cannot replace ASL to satisfy a module.
 set -eu
@@ -10,6 +12,7 @@ source_list=/etc/apt/sources.list.d/usbradioplus.list
 assume_yes=no
 dry_run=no
 
+## @brief Print command syntax and supported installation options.
 usage() {
 	cat <<'EOF'
 Usage: sudo sh install-usbradioplus.sh [--yes] [--dry-run]
@@ -27,6 +30,7 @@ Asterisk.
 EOF
 }
 
+## @brief Print a diagnostic and terminate with a failing exit status.
 die() {
 	printf 'USBRadioPlus installer: %s\n' "$*" >&2
 	exit 1

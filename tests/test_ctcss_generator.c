@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable ctcss generator regression and failure-path checks.
+ */
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -7,6 +11,9 @@
 
 #define TEST_PI 3.14159265358979323846
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct urp_ctcss_generator normal = {0}, reversed = {0};
@@ -54,3 +61,7 @@ int main(void)
 	puts("native CTCSS frequency, level, mute, and phase-reversal tests passed");
 	return 0;
 }
+
+/** @def TEST_PI
+ * @brief TEST PI selection for this isolated test harness.
+ */

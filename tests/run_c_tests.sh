@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Compile linked-object C harnesses and execute their test groups.
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -48,6 +50,7 @@ if [ -z "${C_TEST_GROUP:-}" ] && [ "${C_TEST_PARALLEL:-4}" != 1 ]; then
 	exit 0
 fi
 
+## @brief Execute one selected group of linked C test binaries.
 run_group()
 {
 	[ -z "${C_TEST_GROUP:-}" ] || [ "$C_TEST_GROUP" = "$1" ]
@@ -109,6 +112,7 @@ completed=$((completed + 2))
 fi
 
 if run_group channels; then
+	## @brief Compile shared channel sources as separate test-instrumented objects.
 	compile_channel_shared()
 	{
 		variant=$1
@@ -135,6 +139,7 @@ if run_group channels; then
 		test "$compile_status" -eq 0
 	}
 
+	## @brief Print the object paths required by a channel adapter harness.
 	channel_shared_object_list()
 	{
 		object_variant=$1

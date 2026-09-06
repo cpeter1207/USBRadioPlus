@@ -1,3 +1,7 @@
+/** @file
+ * @brief Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters.
+ */
+
 #include "avfilter_processor.h"
 
 #include <errno.h>
@@ -26,18 +30,31 @@
 #ifdef URP_AVFILTER_TESTING
 #define AVFILTER_PRIVATE
 #else
+
 #define AVFILTER_PRIVATE static
 #endif
 
 #define GRAPH_SIZE 16384
+
 #define NAME_SIZE 32
+
 #define CTCSS_NOTCH_SECTIONS 8
 
+/** @brief Convert a decibel amplitude gain to a linear multiplier.
+ * @param db Amplitude gain in decibels.
+ * @return Linear amplitude multiplier.
+ */
 AVFILTER_PRIVATE double db_to_linear(double db)
 {
 	return pow(10.0, db / 20.0);
 }
 
+/** @brief Bound a floating-point value to the inclusive interval.
+ * @param value Floating-point value to bound.
+ * @param low Inclusive lower bound.
+ * @param high Inclusive upper bound.
+ * @return The value bounded to [low, high].
+ */
 AVFILTER_PRIVATE double clamp(double value, double low, double high)
 {
 	if (value < low) {
@@ -49,6 +66,13 @@ AVFILTER_PRIVATE double clamp(double value, double low, double high)
 	return value;
 }
 
+/** @brief Append formatted filter syntax without writing beyond the graph buffer.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param format printf-style message format.
+ * @param ... Values for the preceding format string.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int graph_append(char *graph, size_t size, const char *format, ...)
 {
 	va_list ap;
@@ -67,6 +91,12 @@ AVFILTER_PRIVATE int graph_append(char *graph, size_t size, const char *format, 
 	return 0;
 }
 
+/** @brief Read one numeric FFmpeg astats metadata value.
+ * @param frame FFmpeg frame containing astats metadata.
+ * @param name astats metadata key.
+ * @param value Receives the parsed numeric metadata value.
+ * @return Zero on success; a nonzero status if the operation cannot complete.
+ */
 AVFILTER_PRIVATE int astats_value(const AVFrame *frame, const char *name, double *value)
 {
 	const AVDictionaryEntry *entry = av_dict_get(frame->metadata, name, NULL, 0);
@@ -78,6 +108,11 @@ AVFILTER_PRIVATE int astats_value(const AVFrame *frame, const char *name, double
 	return end != entry->value ? 0 : -1;
 }
 
+/** @brief Accumulate input or output peak and RMS readings from an FFmpeg frame.
+ * @param state Processor or stream state owned by the caller.
+ * @param frame FFmpeg frame containing astats metadata.
+ * @param input Nonzero updates input meters; zero updates output meters.
+ */
 AVFILTER_PRIVATE void update_astats(struct txagc_avfilter *state, const AVFrame *frame, int input)
 {
 	double peak;
@@ -108,15 +143,21 @@ AVFILTER_PRIVATE void update_astats(struct txagc_avfilter *state, const AVFrame 
 }
 
 #ifndef URP_AVFILTER_TESTING
+/** Spectral measurement taps around the fixed band-pass. */
 enum cleanup_meter {
-	CLEANUP_PRE_FULL,
-	CLEANUP_PRE_5_8,
-	CLEANUP_PRE_8_PLUS,
-	CLEANUP_POST_5_8,
-	CLEANUP_POST_8_PLUS,
+	CLEANUP_PRE_FULL /**< Full-band input before the fixed band-pass. */,
+	CLEANUP_PRE_5_8 /**< 5–8 kHz input energy before filtering. */,
+	CLEANUP_PRE_8_PLUS /**< Input energy above 8 kHz. */,
+	CLEANUP_POST_5_8 /**< 5–8 kHz output energy after filtering. */,
+	CLEANUP_POST_8_PLUS /**< Output energy above 8 kHz after filtering. */
 };
 #endif
 
+/** @brief Update a pre- or post-filter spectral meter from astats metadata.
+ * @param state Processor or stream state owned by the caller.
+ * @param frame FFmpeg frame containing spectral astats metadata.
+ * @param meter Spectral meter selected for this update.
+ */
 AVFILTER_PRIVATE void update_cleanup_astats(struct txagc_avfilter *state, const AVFrame *frame,
 					    enum cleanup_meter meter)
 {
@@ -166,6 +207,18 @@ AVFILTER_PRIVATE void update_cleanup_astats(struct txagc_avfilter *state, const 
 	}
 }
 
+/** @brief Append a dynamics stage with a separately filtered detector input.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param input Input FFmpeg graph label.
+ * @param output Output FFmpeg graph label.
+ * @param prefix Unique label prefix for the appended graph fragment.
+ * @param filter FFmpeg dynamics filter name.
+ * @param highpass Lower passband edge in Hz; zero disables the lower edge.
+ * @param lowpass Upper passband edge in Hz; zero disables the upper edge.
+ * @param options FFmpeg dynamics-filter option string.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int add_sidechain_stage(char *graph, size_t size, const char *input,
 					 const char *output, const char *prefix, const char *filter,
 					 double highpass, double lowpass, const char *options)
@@ -178,6 +231,16 @@ AVFILTER_PRIVATE int add_sidechain_stage(char *graph, size_t size, const char *i
 			    prefix, filter, options, output);
 }
 
+/** @brief Append the shared FFT band-pass filter between two graph labels.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param input Input FFmpeg graph label.
+ * @param output Output FFmpeg graph label.
+ * @param prefix Unique label prefix for the appended graph fragment.
+ * @param highpass Lower passband edge in Hz; zero disables the lower edge.
+ * @param lowpass Upper passband edge in Hz; zero disables the upper edge.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int add_brickwall_bandpass(char *graph, size_t size, const char *input,
 					    const char *output, const char *prefix, double highpass,
 					    double lowpass)
@@ -191,6 +254,17 @@ AVFILTER_PRIVATE int add_brickwall_bandpass(char *graph, size_t size, const char
 			    prefix, prefix);
 }
 
+/** @brief Append FFmpeg emphasis normalized at the configured reference frequency.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param input Input FFmpeg graph label.
+ * @param output Output FFmpeg graph label.
+ * @param production Nonzero selects preemphasis; zero selects deemphasis.
+ * @param corner_hz Emphasis transition frequency in Hz.
+ * @param reference_hz Frequency in Hz at which the emphasis response is normalized.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int add_emphasis(char *graph, size_t size, const char *input, const char *output,
 				  int production, double corner_hz, double reference_hz,
 				  unsigned int sample_rate)
@@ -213,6 +287,16 @@ AVFILTER_PRIVATE int add_emphasis(char *graph, size_t size, const char *input, c
 			    input, inverse_at_reference * (1.0 - pole), -pole, output);
 }
 
+/** @brief Append one selected equalizer, expander, AGC, de-esser, compressor, or multiband limiter.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param cfg Filter and dynamics settings for the shared FFmpeg graph.
+ * @param kind Stage or configuration-section kind.
+ * @param current Input FFmpeg graph label.
+ * @param next Output FFmpeg graph label.
+ * @param serial Sequence number used to keep filter labels unique.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct txagc_config *cfg,
 				       enum txagc_stage kind, const char *current, const char *next,
 				       unsigned int serial)
@@ -343,6 +427,13 @@ AVFILTER_PRIVATE int add_dynamic_stage(char *graph, size_t size, const struct tx
 	return AVERROR(EINVAL);
 }
 
+/** @brief Build the ordered optional graph between the fixed receive and transmitter stages.
+ * @param graph NUL-terminated FFmpeg graph description being constructed.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param cfg Filter and dynamics settings for the shared FFmpeg graph.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct txagc_config *cfg,
 				       unsigned int sample_rate)
 {
@@ -542,6 +633,9 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 			    current);
 }
 
+/** @brief Release the FFmpeg graph and its output FIFO.
+ * @param state Processor or stream state owned by the caller.
+ */
 AVFILTER_PRIVATE void free_graph(struct txagc_avfilter *state)
 {
 	avfilter_graph_free(&state->graph);
@@ -560,6 +654,9 @@ AVFILTER_PRIVATE void free_graph(struct txagc_avfilter *state)
 	state->configured = 0;
 }
 
+/** @brief Constrain the graph sink to double-precision mono audio.
+ * @param sink FFmpeg filter sink.
+ */
 AVFILTER_PRIVATE void set_double_sample_format(AVFilterContext *sink)
 {
 	const int formats[] = {AV_SAMPLE_FMT_DBL, AV_SAMPLE_FMT_NONE};
@@ -567,6 +664,12 @@ AVFILTER_PRIVATE void set_double_sample_format(AVFilterContext *sink)
 		       AV_OPT_SEARCH_CHILDREN);
 }
 
+/** @brief Rebuild the FFmpeg graph when its configuration or sample rate changes.
+ * @param state Processor or stream state owned by the caller.
+ * @param config Filter and dynamics settings for the shared FFmpeg graph.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_config *config,
 			       unsigned int sample_rate)
 {
@@ -729,6 +832,13 @@ void txagc_avfilter_reset(struct txagc_avfilter *state)
 	free_graph(state);
 }
 
+/** @brief Drain available frames from one spectral measurement sink.
+ * @param state Processor or stream state owned by the caller.
+ * @param sink FFmpeg filter sink.
+ * @param frame FFmpeg audio frame.
+ * @param meter Spectral meter selected for this update.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
 AVFILTER_PRIVATE int drain_cleanup_meter(struct txagc_avfilter *state, struct AVFilterContext *sink,
 					 AVFrame *frame, enum cleanup_meter meter)
 {
@@ -874,3 +984,19 @@ done:
 	av_frame_free(&output);
 	return result;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def AVFILTER_PRIVATE
+ * @brief Expose FFmpeg internals only to the linked test harness.
+ */
+/** @def GRAPH_SIZE
+ * @brief Maximum generated FFmpeg graph text in bytes.
+ */
+/** @def NAME_SIZE
+ * @brief Capacity of an internal graph label.
+ */
+/** @def CTCSS_NOTCH_SECTIONS
+ * @brief Cascaded FFmpeg notch sections used to reach the rejection target.
+ */
+/** @} */

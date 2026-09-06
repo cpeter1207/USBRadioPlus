@@ -1,15 +1,28 @@
+/** @file
+ * @brief Executable rnnoise failures regression and failure-path checks.
+ */
+
 #include "../src/txagc/rnnoise_processor_internal.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
+/** Harness create call used to script and verify host behavior. */
 static int create_call;
+/** Controls injected create call failure for this test. */
 static int fail_create_call;
+/** Harness process call used to script and verify host behavior. */
 static int process_call;
+/** Controls injected process call failure for this test. */
 static int fail_process_call;
+/** Harness short input used to script and verify host behavior. */
 static int short_input;
 
+/** @brief Test wrapper for rnnoise_create controlled by the harness's failure-injection state.
+ * @param model Model supplied by the test scenario.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 DenoiseState *__wrap_rnnoise_create(RNNModel *model)
 {
 	(void)model;
@@ -17,11 +30,21 @@ DenoiseState *__wrap_rnnoise_create(RNNModel *model)
 	return create_call == fail_create_call ? NULL : (DenoiseState *)(uintptr_t)1;
 }
 
+/** @brief Test wrapper for rnnoise_destroy controlled by the harness's failure-injection state.
+ * @param state Processor or stream state owned by the caller.
+ */
 void __wrap_rnnoise_destroy(DenoiseState *state)
 {
 	(void)state;
 }
 
+/** @brief Test wrapper for rnnoise_process_frame controlled by the harness's failure-injection
+ * state.
+ * @param state Processor or stream state owned by the caller.
+ * @param output Destination sample buffer owned by the caller.
+ * @param input Input samples; the caller retains ownership.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 float __wrap_rnnoise_process_frame(DenoiseState *state, float *output, const float *input)
 {
 	(void)state;
@@ -29,6 +52,12 @@ float __wrap_rnnoise_process_frame(DenoiseState *state, float *output, const flo
 	return 0.5F;
 }
 
+/** @brief Test wrapper for src_new controlled by the harness's failure-injection state.
+ * @param converter_type libsamplerate converter type.
+ * @param channels Number of interleaved audio channels.
+ * @param error Receives a diagnostic for invalid input.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 SRC_STATE *__wrap_src_new(int converter_type, int channels, int *error)
 {
 	(void)converter_type;
@@ -38,17 +67,30 @@ SRC_STATE *__wrap_src_new(int converter_type, int channels, int *error)
 	return create_call == fail_create_call ? NULL : (SRC_STATE *)(uintptr_t)1;
 }
 
+/** @brief Test wrapper for src_delete controlled by the harness's failure-injection state.
+ * @param state Processor or stream state owned by the caller.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 SRC_STATE *__wrap_src_delete(SRC_STATE *state)
 {
 	return state;
 }
 
+/** @brief Test wrapper for src_reset controlled by the harness's failure-injection state.
+ * @param state Processor or stream state owned by the caller.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_src_reset(SRC_STATE *state)
 {
 	(void)state;
 	return 0;
 }
 
+/** @brief Test wrapper for src_process controlled by the harness's failure-injection state.
+ * @param state Processor or stream state owned by the caller.
+ * @param data Input payload or owned state being released, as declared.
+ * @return Wrapped API result, including the failure selected by the harness.
+ */
 int __wrap_src_process(SRC_STATE *state, SRC_DATA *data)
 {
 	long generated;
@@ -65,6 +107,7 @@ int __wrap_src_process(SRC_STATE *state, SRC_DATA *data)
 	return 0;
 }
 
+/** @brief Clear failure-injection state before the next independent test. */
 static void reset_failures(void)
 {
 	create_call = 0;
@@ -74,6 +117,7 @@ static void reset_failures(void)
 	short_input = 0;
 }
 
+/** @brief Verify configuration failures. */
 static void test_configuration_failures(void)
 {
 	struct txagc_rnnoise state;
@@ -112,6 +156,7 @@ static void test_configuration_failures(void)
 	assert(configure_rate(&state, 48000) < 0);
 }
 
+/** @brief Verify processing failures and fifo helpers. */
 static void test_processing_failures_and_fifo_helpers(void)
 {
 	struct txagc_rnnoise state;
@@ -178,6 +223,9 @@ static void test_processing_failures_and_fifo_helpers(void)
 	txagc_rnnoise_destroy(&state);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_configuration_failures();

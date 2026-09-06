@@ -1,14 +1,23 @@
+## @file
+## @brief Quality infrastructure regression checks.
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
+## Reusable workflow reference required by the code repository's callers.
 WORKFLOW_REF = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/{}@main"
 
 
 def read(path):
+    """Read a repository artifact as UTF-8 text.
+
+    @param path Filesystem path to inspect or update.
+    """
     return (ROOT / path).read_text(encoding="utf-8")
 
 
 def test_quality_matrix_covers_every_supported_platform():
+    """Verify quality matrix covers every supported platform."""
     workflow = read(".github/workflows/quality.yml")
     assert "pull_request:" in workflow
     assert "workflow_dispatch:" in workflow
@@ -21,6 +30,7 @@ def test_quality_matrix_covers_every_supported_platform():
 
 
 def test_container_workflow_builds_and_publishes_native_multiarch_images():
+    """Verify container workflow builds and publishes native multiarch images."""
     workflow = read(".github/workflows/containers.yml")
     assert "pull_request:" in workflow
     assert "workflow_dispatch:" in workflow
@@ -34,6 +44,7 @@ def test_container_workflow_builds_and_publishes_native_multiarch_images():
 
 
 def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
+    """Verify installed image derives from clean image and runs smoke test."""
     dockerfile = read("containers/Dockerfile")
     quality = dockerfile.split("FROM quality AS staged", maxsplit=1)[0]
     assert "COPY . ." not in quality
@@ -51,6 +62,7 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
 
 
 def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
+    """Verify coverage gate requires python and c line and branch coverage."""
     makefile = read("Makefile")
     assert "pytest -q -n auto" in makefile
     assert "--cov-branch --cov-fail-under=100" in makefile
@@ -58,6 +70,7 @@ def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
 
 
 def test_local_container_runner_cleans_only_labeled_test_containers():
+    """Verify local container runner cleans only labeled test containers."""
     runner = read("tests/run-in-quality-container.sh")
     assert "org.usbradioplus.test.scope=" in runner
     assert "cleanup_stale" in runner

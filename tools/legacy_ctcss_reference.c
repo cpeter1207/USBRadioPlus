@@ -1,27 +1,50 @@
+/** @file
+ * @brief Reference integer CTCSS measurements used to verify native encoder levels.
+ */
+
 /* Characterize the legacy driver's integer CTCSS encoder for native-path equivalence tests. */
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
+/** Reference int16_t type used by this test. */
 typedef int16_t i16;
+/** Reference int32_t type used by this test. */
 typedef int32_t i32;
+/** Reference uint32_t type used by this test. */
 typedef uint32_t u32;
 
 #include "../src/usbradioplus_radio_coefficients.h"
 #include "../src/usbradioplus_ctcss.h"
 
+
 #define SAMPLES_PER_SINE 256
+
 #define CHARACTERIZE_SAMPLES 32000
+
 #define CHARACTERIZE_SETTLING_SAMPLES (CHARACTERIZE_SAMPLES / 2)
 
 /* Reconstruct the legacy driver's Q15 table exactly without retaining generator data in
  * the production implementation. */
+/** @brief Reconstruct one reference Q15 sine-table sample.
+ * @param index Sample position within the trace block.
+ * @return Result used by the test's assertions.
+ */
 static i16 legacy_sine(unsigned index)
 {
 	return (i16)lrint(32767.0 * sin(2.0 * M_PI * index / SAMPLES_PER_SINE));
 }
 
+/** @brief Advance the reference integer CTCSS filter by one sample.
+ * @param state Processor or stream state owned by the caller.
+ * @param coef Coef supplied by the test scenario.
+ * @param taps Number of FIR coefficients.
+ * @param gain Linear amplitude multiplier.
+ * @param sample One sample in signed PCM amplitude units.
+ * @param output_gain Reference Q8 output gain.
+ * @return Result used by the test's assertions.
+ */
 static int32_t fir_step(i16 *state, const i16 *coef, int taps, int32_t gain, int32_t sample,
 			int32_t output_gain)
 {
@@ -35,11 +58,22 @@ static int32_t fir_step(i16 *state, const i16 *coef, int taps, int32_t gain, int
 	return (int32_t)(((sum / gain) * output_gain) / 256);
 }
 
+/** Positive and negative extrema of a characterized CTCSS waveform. */
 struct level_result {
+	/** Largest observed absolute sample magnitude. */
 	int32_t peak;
+	/** Harness trough used to script and verify host behavior. */
 	int32_t trough;
 };
 
+/** @brief Measure reference CTCSS extrema after filter settling and Q8 gain scaling.
+ * @param frequency CTCSS frequency in Hz.
+ * @param wide Nonzero selects the 250 Hz reference table; zero selects 215 Hz.
+ * @param lsd_output_gain Reference Q8 CTCSS filter output gain.
+ * @param output_gain Reference Q8 output gain.
+ * @param verbose Nonzero prints characterized reference levels.
+ * @return Result used by the test's assertions.
+ */
 static struct level_result characterize(float frequency, int wide, int lsd_output_gain,
 					int output_gain, int verbose)
 {
@@ -74,12 +108,19 @@ static struct level_result characterize(float frequency, int wide, int lsd_outpu
 	return (struct level_result){peak, trough};
 }
 
+/** @brief Reproduce the reference hardware fine-gain multiplier.
+ * @param value Normalized hardware mixer level from 0 through 999.
+ * @return Reference fine-gain multiplier with eight fractional bits.
+ */
 static int legacy_mult_calc(int value)
 {
 	int pot = (value / 4) * 4 + 2;
 	return 256 - (256 * (3 - value % 4)) / (pot + 2);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	size_t i;
@@ -159,3 +200,13 @@ int main(void)
 		fprintf(stderr, "%d CTCSS reference levels differ\n", failures);
 	return failures ? 1 : 0;
 }
+
+/** @def SAMPLES_PER_SINE
+ * @brief Reference sine-table length.
+ */
+/** @def CHARACTERIZE_SAMPLES
+ * @brief Samples rendered for each reference measurement.
+ */
+/** @def CHARACTERIZE_SETTLING_SAMPLES
+ * @brief Initial samples excluded while reference filters settle.
+ */

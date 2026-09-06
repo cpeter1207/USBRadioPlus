@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter ctcss regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +9,16 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000
+
 #define BLOCK 960
 
+/** @brief Measure response after a specified settling interval.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param frequency CTCSS frequency in Hz.
+ * @param warmup_blocks Blocks discarded to let filter history settle.
+ * @param measurement_blocks Blocks included in the response measurement.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double measure_window(struct txagc_config *config, double frequency, int warmup_blocks,
 			     int measurement_blocks)
 {
@@ -33,11 +45,19 @@ static double measure_window(struct txagc_config *config, double frequency, int 
 	return sqrt(sum / count);
 }
 
+/** @brief Measure the filter response at the requested test frequency.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param frequency CTCSS frequency in Hz.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double measure(struct txagc_config *config, double frequency)
 {
 	return measure_window(config, frequency, 50, 50);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct txagc_config config;
@@ -77,3 +97,10 @@ int main(void)
 		return 8;
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */

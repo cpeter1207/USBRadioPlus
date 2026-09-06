@@ -1,3 +1,7 @@
+/** @file
+ * @brief Update Asterisk configuration variables while preserving their category context.
+ */
+
 #include "asterisk.h"
 
 #include <string.h>

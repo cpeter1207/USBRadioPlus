@@ -1,3 +1,7 @@
+/** @file
+ * @brief Noise-squelch hysteresis and Micor-style fast/slow carrier qualification.
+ */
+
 #ifndef USBRADIOPLUS_SQUELCH_H
 #define USBRADIOPLUS_SQUELCH_H
 
@@ -5,14 +9,27 @@
 
 #define URP_MICOR_WEAK_CLOSE_MS 150U
 
+/** Tracked idle noise and strong/weak-signal carrier-close qualification. */
 struct urp_micor_squelch {
+	/** Tracked discriminator noise with no useful carrier. */
 	uint32_t idle_noise;
+	/** Accumulated carrier-close qualification time in milliseconds. */
 	unsigned int close_ms;
+	/** Nonzero after low noise qualifies a strong received signal. */
 	int strong_signal;
 };
 
 /* Model the MICOR bi-level squelch: open immediately, close a clean signal
  * immediately, and hold a noisy or fluttering signal for about 150 ms. */
+/** @brief Qualify carrier changes with noise hysteresis and strong/weak-signal closing delays.
+ * @param state Processor or stream state owned by the caller.
+ * @param squelched Current carrier-squelch closed state.
+ * @param noise Measured high-frequency discriminator noise.
+ * @param open_level Noise level below which carrier may open.
+ * @param hysteresis Additional noise margin required before closing.
+ * @param elapsed_ms Time covered by the current block in milliseconds.
+ * @return Updated squelched state: nonzero closed, zero open.
+ */
 static inline int urp_micor_squelch_update(struct urp_micor_squelch *state, int squelched,
 					   uint32_t noise, uint32_t open_level, uint32_t hysteresis,
 					   unsigned int elapsed_ms)
@@ -65,3 +82,10 @@ static inline int urp_micor_squelch_update(struct urp_micor_squelch *state, int 
 }
 
 #endif
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def URP_MICOR_WEAK_CLOSE_MS
+ * @brief Maximum weak-signal squelch closing qualification in milliseconds.
+ */
+/** @} */

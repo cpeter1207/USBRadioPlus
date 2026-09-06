@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable rnnoise processor regression and failure-path checks.
+ */
+
 #include "../src/txagc/rnnoise_processor.h"
 
 #include <assert.h>
@@ -6,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+/** @brief Verify double processing and reconfiguration. */
 static void test_double_processing_and_reconfiguration(void)
 {
 	struct txagc_rnnoise state;
@@ -29,6 +34,7 @@ static void test_double_processing_and_reconfiguration(void)
 	assert(!state.denoise && !state.upsampler && !state.downsampler);
 }
 
+/** @brief Verify integer and invalid inputs. */
 static void test_integer_and_invalid_inputs(void)
 {
 	struct txagc_rnnoise state;
@@ -45,6 +51,9 @@ static void test_integer_and_invalid_inputs(void)
 	txagc_rnnoise_destroy(&state);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_double_processing_and_reconfiguration();

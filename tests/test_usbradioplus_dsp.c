@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable usbradioplus dsp regression and failure-path checks.
+ */
+
 #include "../src/usbradioplus_dsp.h"
 
 #include <assert.h>
@@ -7,24 +11,42 @@
 #include <string.h>
 
 #ifndef M_PI
+
 #define M_PI 3.14159265358979323846
 #endif
 
+/** Controls injected allocation to fail failure for this test. */
 static int allocation_to_fail;
+/** Recorded allocation count for assertions. */
 static int allocation_count;
 
+/** @brief Allocate DSP test memory or return the scheduled allocation failure.
+ * @param count Number of elements available in the supplied block.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @return Result used by the test's assertions.
+ */
 void *urp_test_calloc(size_t count, size_t size)
 {
 	allocation_count++;
 	return allocation_count == allocation_to_fail ? NULL : calloc(count, size);
 }
 
+/** @brief Resize DSP test memory or return the scheduled allocation failure.
+ * @param pointer Allocated buffer passed through the failure-injection shim.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @return Result used by the test's assertions.
+ */
 void *urp_test_realloc(void *pointer, size_t size)
 {
 	allocation_count++;
 	return allocation_count == allocation_to_fail ? NULL : realloc(pointer, size);
 }
 
+/** @brief Calculate sample RMS for an audio-result assertion.
+ * @param x Sample buffer used by the test.
+ * @param n Number of samples.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double rms(const int16_t *x, size_t n)
 {
 	double sum = 0.0;
@@ -34,6 +56,13 @@ static double rms(const int16_t *x, size_t n)
 	return sqrt(sum / n);
 }
 
+/** @brief Generate deterministic PCM tone samples for rate-conversion tests.
+ * @param x Sample buffer used by the test.
+ * @param n Number of samples.
+ * @param rate Sample rate in Hz.
+ * @param hz Generated test tone frequency in Hz.
+ * @param level Requested level or normalized tuning level, as declared.
+ */
 static void tone(int16_t *x, size_t n, unsigned int rate, double hz, double level)
 {
 	size_t i;
@@ -41,6 +70,7 @@ static void tone(int16_t *x, size_t n, unsigned int rate, double hz, double leve
 		x[i] = (int16_t)lrint(level * sin(2.0 * M_PI * hz * i / rate));
 }
 
+/** @brief Verify src. */
 static void test_src(void)
 {
 	struct urp_src *up = urp_src_create(0, 1);
@@ -67,6 +97,7 @@ static void test_src(void)
 	urp_src_destroy(down);
 }
 
+/** @brief Verify same rate bypass. */
 static void test_same_rate_bypass(void)
 {
 	int16_t input[URP_NATIVE_SAMPLES], output[URP_NATIVE_SAMPLES];
@@ -78,6 +109,7 @@ static void test_same_rate_bypass(void)
 	assert(!memcmp(input, output, sizeof(input)));
 }
 
+/** @brief Verify clock recovery. */
 static void test_clock_recovery(void)
 {
 	struct urp_clock_recovery clock = {0};
@@ -94,6 +126,9 @@ static void test_clock_recovery(void)
 	assert(clock.correction == 0.0);
 }
 
+/** @brief Exercise elastic FIFO occupancy under a simulated independent producer clock.
+ * @param producer_ppm Simulated producer clock offset in parts per million.
+ */
 static void simulate_clock_drift(double producer_ppm)
 {
 	struct urp_clock_recovery clock = {0};
@@ -124,12 +159,16 @@ static void simulate_clock_drift(double producer_ppm)
 	assert(native_fifo < 8.0 * 960.0);
 }
 
+/** @brief Verify simulated clock drift. */
 static void test_simulated_clock_drift(void)
 {
 	simulate_clock_drift(-1000.0);
 	simulate_clock_drift(1000.0);
 }
 
+/** @brief Exercise actual resampling and FIFO recovery under simulated clock drift.
+ * @param producer_ppm Simulated producer clock offset in parts per million.
+ */
 static void simulate_src_clock_drift(double producer_ppm)
 {
 	struct urp_clock_recovery clock = {0};
@@ -175,12 +214,14 @@ static void simulate_src_clock_drift(double producer_ppm)
 	urp_src_destroy(src);
 }
 
+/** @brief Verify src clock drift. */
 static void test_src_clock_drift(void)
 {
 	simulate_src_clock_drift(-1000.0);
 	simulate_src_clock_drift(1000.0);
 }
 
+/** @brief Verify elastic fifo short burst and recovery. */
 static void test_elastic_fifo_short_burst_and_recovery(void)
 {
 	size_t native_count = 0;
@@ -218,6 +259,7 @@ static void test_elastic_fifo_short_burst_and_recovery(void)
 	assert(emitted == 6 && program_frames == 2);
 }
 
+/** @brief Verify echo. */
 static void test_echo(void)
 {
 	struct urp_echo_replacer e;
@@ -236,6 +278,7 @@ static void test_echo(void)
 	assert(rms(recovered, URP_NATIVE_SAMPLES) > 5000.0);
 }
 
+/** @brief Verify defensive and boundary paths. */
 static void test_defensive_and_boundary_paths(void)
 {
 	struct urp_clock_recovery clock = {.correction = 0.25};
@@ -313,6 +356,7 @@ static void test_defensive_and_boundary_paths(void)
 	assert(urp_echo_remove(&echo, silent_link, silent_native, 0.5));
 }
 
+/** @brief Verify allocation and converter failures. */
 static void test_allocation_and_converter_failures(void)
 {
 	struct urp_src *src;
@@ -336,6 +380,9 @@ static void test_allocation_and_converter_failures(void)
 	urp_src_destroy(src);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_src();
@@ -350,3 +397,7 @@ int main(void)
 	puts("usbradioplus DSP tests passed");
 	return 0;
 }
+
+/** @def M_PI
+ * @brief Pi for platforms whose math headers omit it.
+ */

@@ -1,13 +1,20 @@
+## @file
+## @brief Installer regression checks.
 import os
 import shutil
 import subprocess
 import tarfile
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_staged_install_manifest(tmp_path):
+    """Verify staged install manifest.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     stage = tmp_path / "stage"
     build = tmp_path / "build"
     fixture = ROOT / "tests/fixtures/asterisk-dev"
@@ -56,6 +63,10 @@ def test_staged_install_manifest(tmp_path):
 
 
 def test_install_preserves_existing_processing_configuration(tmp_path):
+    """Verify install preserves existing processing configuration.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     stage = tmp_path / "stage"
     build = tmp_path / "build"
     config = stage / "etc/asterisk/usbradioplus.conf"
@@ -83,6 +94,10 @@ def test_install_preserves_existing_processing_configuration(tmp_path):
 
 
 def test_install_preserves_existing_channel_configuration(tmp_path):
+    """Verify install preserves existing channel configuration.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     stage = tmp_path / "stage"
     build = tmp_path / "build"
     config = stage / "etc/asterisk/usbradioplus.conf"
@@ -110,6 +125,7 @@ def test_install_preserves_existing_channel_configuration(tmp_path):
 
 
 def test_makefile_is_packaging_ready():
+    """Verify makefile is packaging ready."""
     source = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "asterisk-source" not in source
     assert "/usr/src" not in source
@@ -125,6 +141,7 @@ def test_makefile_is_packaging_ready():
 
 
 def test_node_installer_bootstraps_then_uses_make():
+    """Verify node installer bootstraps then uses make."""
     source = (ROOT / "install.sh").read_text(encoding="utf-8")
     assert '"$root/scripts/install-build-deps.sh"' in source
     assert 'make -C "$root" clean check' in source
@@ -136,6 +153,7 @@ def test_node_installer_bootstraps_then_uses_make():
 
 
 def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
+    """Verify rnnoise bootstrap avoids noexec temporary filesystems."""
     bootstrap = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
     helper = (ROOT / "scripts/install-rnnoise.sh").read_text(encoding="utf-8")
     source = bootstrap + helper
@@ -152,11 +170,16 @@ def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
 
 
 def test_installer_includes_asterisk_transitive_header_dependencies():
+    """Verify installer includes asterisk transitive header dependencies."""
     source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
     assert "portaudio19-dev" in source
 
 
 def test_dist_archive_has_one_versioned_root(tmp_path):
+    """Verify dist archive has one versioned root.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
     environment = dict(os.environ, SOURCE_DATE_EPOCH="0")
     build = tmp_path / "build"
     dist = tmp_path / "dist"

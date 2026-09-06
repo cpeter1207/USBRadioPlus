@@ -1,17 +1,27 @@
+## @file
+## @brief Validate release regression checks.
 import importlib.util
 import runpy
 import shutil
 from pathlib import Path
 
+## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
+## Spec fixture used by these tests.
 SPEC = importlib.util.spec_from_file_location(
     "validate_release", ROOT / "tools/validate_release.py"
 )
+## Validator fixture used by these tests.
 VALIDATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VALIDATOR)
 
 
 def test_validator_accepts_repository(capsys, monkeypatch):
+    """Verify validator accepts repository.
+
+    @param capsys Pytest fixture capturing terminal output.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     assert VALIDATOR.validate(ROOT) == []
     monkeypatch.setattr(VALIDATOR, "ROOT", ROOT)
     assert VALIDATOR.main() == 0
@@ -19,6 +29,10 @@ def test_validator_accepts_repository(capsys, monkeypatch):
 
 
 def test_validator_executable_entry_point(capsys):
+    """Verify validator executable entry point.
+
+    @param capsys Pytest fixture capturing terminal output.
+    """
     try:
         runpy.run_path(ROOT / "tools/validate_release.py", run_name="__main__")
     except SystemExit as error:
@@ -29,6 +43,12 @@ def test_validator_executable_entry_point(capsys):
 
 
 def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
+    """Verify validator reports every failure class.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    @param capsys Pytest fixture capturing terminal output.
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
     shutil.copytree(
         ROOT,
         tmp_path,

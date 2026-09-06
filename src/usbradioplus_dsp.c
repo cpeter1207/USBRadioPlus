@@ -1,3 +1,7 @@
+/** @file
+ * @brief Sample-rate conversion, elastic clock recovery, and receive-echo matching.
+ */
+
 #ifdef AST_MODULE
 #include "asterisk.h"
 #endif
@@ -21,21 +25,32 @@ void *urp_test_realloc(void *pointer, size_t size);
 #define URP_REALLOC(p, s) urp_test_realloc((p), (s))
 #define URP_FREE(p) free((p))
 #else
+
 #define URP_CALLOC(n, s) calloc((n), (s))
+
 #define URP_REALLOC(p, s) realloc((p), (s))
+
 #define URP_FREE(p) free((p))
 #endif
 
 #ifndef M_PI
+
 #define M_PI 3.14159265358979323846
 #endif
 
+/** Owned libsamplerate state and reusable floating-point conversion buffers. */
 struct urp_src {
+	/** Owned libsamplerate converter handle. */
 	SRC_STATE *state;
+	/** Number of interleaved channels. */
 	unsigned int channels;
+	/** Owned floating-point input-conversion workspace. */
 	float *input;
+	/** Output workspace for the current conversion. */
 	float *output;
+	/** Allocated input workspace in samples. */
 	size_t input_capacity;
+	/** Allocated output workspace in samples. */
 	size_t output_capacity;
 };
 
@@ -63,6 +78,10 @@ double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued
 	return clock->correction;
 }
 
+/** @brief Round and clamp a sample to the signed 16-bit PCM range.
+ * @param value Sample amplitude in signed PCM codes.
+ * @return Nearest bounded signed 16-bit PCM sample.
+ */
 static int16_t saturate(double value)
 {
 	if (value > 32767.0)
@@ -265,3 +284,19 @@ int urp_echo_remove(struct urp_echo_replacer *s, int16_t *mixed, int16_t *matche
 	s->matches++;
 	return 1;
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def URP_CALLOC
+ * @brief Allocation entry point replaceable by the failure-injection harness.
+ */
+/** @def URP_REALLOC
+ * @brief Reallocation entry point replaceable by the failure-injection harness.
+ */
+/** @def URP_FREE
+ * @brief Deallocation entry point replaceable by the failure-injection harness.
+ */
+/** @def M_PI
+ * @brief Pi for platforms whose math headers omit it.
+ */
+/** @} */

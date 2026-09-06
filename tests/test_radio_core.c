@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable radio core regression and failure-path checks.
+ */
+
 #include "../src/usbradioplus_radio.h"
 #include <sys/types.h>
 #include "asterisk/options.h"
@@ -8,25 +12,50 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** Controls injected allocations until failure failure for this test. */
 static int allocations_until_failure = -1;
+/** Minimal Asterisk flag state required by the radio harness. */
 struct ast_flags64 {
+	/** Harness flags used to script and verify host behavior. */
 	uint64_t flags;
 };
+/** Harness ast options used to script and verify host behavior. */
 struct ast_flags64 ast_options;
+/** Harness option debug used to script and verify host behavior. */
 int option_debug = 100;
+/** Harness module debug level used to script and verify host behavior. */
 static unsigned int module_debug_level = 100;
+/** Harness file debug level used to script and verify host behavior. */
 static unsigned int file_debug_level = 100;
 
+/** @brief Host-API test double for ast_test_flag64; observable effects are recorded in harness
+ * state.
+ * @param flags Host API option bit mask.
+ * @param flag Bit mask tested in the fake flags structure.
+ * @return Scripted host result for the current test scenario.
+ */
 int ast_test_flag64(const struct ast_flags64 *flags, uint64_t flag)
 {
 	return (flags->flags & flag) != 0;
 }
 
+/** @brief Host-API test double for ast_debug_get_by_module; effects are recorded in this harness.
+ * @param module Asterisk module reference.
+ * @return Scripted host result for the current test scenario.
+ */
 unsigned int ast_debug_get_by_module(const char *module)
 {
 	return !strcmp(module, AST_MODULE) ? module_debug_level : file_debug_level;
 }
 
+/** @brief Host-API test double for ast_log; effects are recorded in this harness.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param format printf-style message format.
+ * @param ... Values required by the wrapped variadic API.
+ */
 void ast_log(int level, const char *file, int line, const char *function, const char *format, ...)
 {
 	(void)level;
@@ -36,6 +65,14 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)format;
 }
 
+/** @brief Host-API test double for ast_log_ap; effects are recorded in this harness.
+ * @param level Requested level or normalized tuning level, as declared.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @param format printf-style message format.
+ * @param arguments Formatted-message values or filter options.
+ */
 void ast_log_ap(int level, const char *file, int line, const char *function, const char *format,
 		va_list arguments)
 {
@@ -47,6 +84,14 @@ void ast_log_ap(int level, const char *file, int line, const char *function, con
 	(void)arguments;
 }
 
+/** @brief Host-API test double for __ast_calloc; effects are recorded in this harness.
+ * @param count Number of elements available in the supplied block.
+ * @param size Destination capacity in bytes, including the terminator for text.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ * @return Scripted host result for the current test scenario.
+ */
 void *__ast_calloc(size_t count, size_t size, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -61,6 +106,12 @@ void *__ast_calloc(size_t count, size_t size, const char *file, int line, const 
 	return calloc(count, size);
 }
 
+/** @brief Host-API test double for __ast_free; effects are recorded in this harness.
+ * @param pointer Allocated buffer passed through the failure-injection shim.
+ * @param file Source filename supplied by the host API's diagnostic wrapper.
+ * @param line Source line supplied by the host API's diagnostic wrapper.
+ * @param function Calling function name supplied by the host API.
+ */
 void __ast_free(void *pointer, const char *file, int line, const char *function)
 {
 	(void)file;
@@ -69,6 +120,7 @@ void __ast_free(void *pointer, const char *file, int line, const char *function)
 	free(pointer);
 }
 
+/** @brief Verify frequency lookup. */
 static void test_frequency_lookup(void)
 {
 	assert(urp_ctcss_frequency_index(67.0F) == 0);
@@ -76,6 +128,7 @@ static void test_frequency_lookup(void)
 	assert(urp_ctcss_frequency_index(123.4F) == CTCSS_NULL);
 }
 
+/** @brief Verify string parser. */
 static void test_string_parser(void)
 {
 	char *storage = NULL;
@@ -96,6 +149,7 @@ static void test_string_parser(void)
 	free(storage);
 }
 
+/** @brief Verify debug buffers. */
 static void test_debug_buffers(void)
 {
 	t_sdbg debug = {0};
@@ -138,6 +192,7 @@ static void test_debug_buffers(void)
 	assert(debug.buffer[7 * URP_RADIO_DEBUG_CHANNELS + 4] == 7);
 }
 
+/** @brief Verify signal primitives. */
 static void test_signal_primitives(void)
 {
 	int16_t input[8] = {-32767, 32767, -2000, 2000, -10, 10, 0, 0};
@@ -290,6 +345,7 @@ static void test_signal_primitives(void)
 	assert(DelayLine(&stage) == 0);
 }
 
+/** @brief Verify create process destroy. */
 static void test_create_process_destroy(void)
 {
 	urp_radio_state template = {0};
@@ -315,6 +371,7 @@ static void test_create_process_destroy(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Verify create variants. */
 static void test_create_variants(void)
 {
 	static const char *const receive_codes[] = {"0",     "67.0", "250.3",	  "67.0,100.0",
@@ -356,6 +413,10 @@ static void test_create_variants(void)
 	assert(!urp_radio_destroy(defaults));
 }
 
+/** @brief Advance one radio-signaling block and verify its return status.
+ * @param state Processor or stream state owned by the caller.
+ * @return Result used by the test's assertions.
+ */
 static int process_once(urp_radio_state *state)
 {
 	int16_t input[SAMPLES_PER_BLOCK * 6 * 2] = {0};
@@ -364,6 +425,7 @@ static int process_once(urp_radio_state *state)
 	return urp_radio_process(state, input, output, transmit);
 }
 
+/** @brief Verify runtime state machine. */
 static void test_runtime_state_machine(void)
 {
 	urp_radio_state template = {0};
@@ -573,6 +635,10 @@ static void test_runtime_state_machine(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Configure exactly one correlator for a deterministic CTCSS test.
+ * @param state Processor or stream state owned by the caller.
+ * @param index Sample position within the trace block.
+ */
 static void prepare_single_ctcss_detector(urp_radio_state *state, int index)
 {
 	for (int i = 0; i < CTCSS_NUM_CODES; ++i) {
@@ -597,6 +663,7 @@ static void prepare_single_ctcss_detector(urp_radio_state *state, int index)
 	detector->z[0] = detector->z[1] = detector->z[2] = detector->z[3] = 0;
 }
 
+/** @brief Verify ctcss decoder states. */
 static void test_ctcss_decoder_states(void)
 {
 	urp_radio_state template = {0};
@@ -705,6 +772,7 @@ static void test_ctcss_decoder_states(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Verify frontend edges. */
 static void test_frontend_edges(void)
 {
 	urp_radio_state template = {0};
@@ -734,6 +802,7 @@ static void test_frontend_edges(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Verify cpu saver predicates. */
 static void test_cpu_saver_predicates(void)
 {
 	urp_radio_state template = {0};
@@ -792,6 +861,7 @@ static void test_cpu_saver_predicates(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Verify lifecycle edges. */
 static void test_lifecycle_edges(void)
 {
 	allocations_until_failure = 0;
@@ -805,6 +875,7 @@ static void test_lifecycle_edges(void)
 	assert(urp_radio_destroy(empty) == 0);
 }
 
+/** @brief Verify allocation failures. */
 static void test_allocation_failures(void)
 {
 	urp_radio_state template = {0};
@@ -828,6 +899,9 @@ static void test_allocation_failures(void)
 	allocations_until_failure = -1;
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 #ifdef URP_TEST_TRACE_PROGRESS
@@ -837,6 +911,7 @@ int main(void)
 		test();                                                                            \
 	} while (0)
 #else
+
 #define RUN_TEST(test) test()
 #endif
 	RUN_TEST(test_frequency_lookup);
@@ -855,3 +930,7 @@ int main(void)
 	puts("native radio core tests passed");
 	return 0;
 }
+
+/** @def RUN_TEST
+ * @brief RUN TEST selection for this isolated test harness.
+ */

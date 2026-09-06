@@ -1,17 +1,28 @@
 #!/usr/bin/env python3
+## @file
+## @brief Hardware-independent release artifact validation.
 """Static release checks that do not require Asterisk or radio hardware."""
 
 import re
 from pathlib import Path
 
+## Repository root used by artifact validation.
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def validate(root=ROOT):
-    """Return release-artifact validation errors found below *root*."""
+    """Return release-artifact errors without requiring Asterisk or radio hardware.
+
+    @param root Repository root whose release artifacts are checked.
+    """
     errors = []
 
     def require(path, text):
+        """Record an error when an existing artifact lacks a required marker.
+
+        @param path Repository-relative artifact path to read.
+        @param text Complete configuration text.
+        """
         artifact = root / path
         if not artifact.exists():
             return
@@ -56,7 +67,7 @@ def validate(root=ROOT):
 
 
 def main():
-    """Print validation results and return a process exit status."""
+    """Print release validation results and return the process exit status."""
     errors = validate(ROOT)
     if not errors:
         print("Release artifact validation passed.")

@@ -1,9 +1,16 @@
+/** @file
+ * @brief Executable stage order regression and failure-path checks.
+ */
+
 #include "txagc/agc_core.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
+/** @brief Create a valid chain with optional processing disabled.
+ * @return Configuration initialized for this test scenario.
+ */
 static struct txagc_config empty_config(void)
 {
 	struct txagc_config config;
@@ -12,6 +19,11 @@ static struct txagc_config empty_config(void)
 	return config;
 }
 
+/** @brief Assert that the requested invalid configuration or injected operation fails.
+ * @param order Stage-order text or permutation array.
+ * @param config Configuration or initialized Asterisk configuration tree, as declared.
+ * @param message Expected validation diagnostic.
+ */
 static void expect_failure(const char *order, struct txagc_config *config, const char *message)
 {
 	char error[128] = "unchanged";
@@ -20,6 +32,9 @@ static void expect_failure(const char *order, struct txagc_config *config, const
 	assert(strstr(error, message) != NULL);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct txagc_config config = empty_config();
@@ -82,3 +97,7 @@ int main(void)
 	puts("stage-order parser tests passed");
 	return 0;
 }
+
+/** @def EXPECT_MISSING
+ * @brief EXPECT MISSING selection for this isolated test harness.
+ */

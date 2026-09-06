@@ -1,8 +1,15 @@
+/** @file
+ * @brief Executable native repeat regression and failure-path checks.
+ */
+
 #include <assert.h>
 #include <stdio.h>
 
 #include "../src/usbradioplus_repeat.h"
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	const double input[] = {1200.0, -600.0, 300.0, -150.0};

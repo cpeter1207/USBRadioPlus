@@ -1,3 +1,7 @@
+/** @file
+ * @brief Private channel profiles, parser state, and audiohook test interfaces.
+ */
+
 #ifndef USBRADIOPLUS_PROCESSING_INTERNAL_H
 #define USBRADIOPLUS_PROCESSING_INTERNAL_H
 
@@ -18,32 +22,54 @@
 #include "usbradioplus_processing.h"
 
 #define MAX_SECTION_OVERRIDES 96
+
 #define MAX_RADIO_PROFILES 32
+
 #define MAX_PROFILE_NAME 64
+
 #define MAX_CONFIG_SECTION 96
 
+/** One resolved non-audio option copied into a channel profile. */
 struct section_override {
+	/** Configuration section name. */
 	char section[MAX_CONFIG_SECTION];
+	/** Symbolic name used to identify this entry. */
 	char name[64];
+	/** Resolved textual configuration value. */
 	char value[512];
 };
 
+/** Resolved hardware and processing settings for one named RadioPlus channel. */
 struct txagc_profile {
+	/** Nonzero enables this channel, stage, or detector. */
 	int enabled;
+	/** Symbolic name used to identify this entry. */
 	char name[MAX_PROFILE_NAME];
+	/** Associated Asterisk channel name. */
 	char channel[AST_CHANNEL_NAME];
+	/** Resolved CM119 gain and assignment settings. */
 	struct usbradioplus_hardware_settings hardware;
+	/** Bounded list of resolved non-audio configuration options. */
 	struct section_override overrides[MAX_SECTION_OVERRIDES];
+	/** Number of resolved entries in overrides. */
 	size_t override_count;
+	/** Local, link, and voice/telemetry processing chains. */
 	struct txagc_chain chains[TXAGC_SOURCE_COUNT];
+	/** Nonzero enables local. */
 	int local_enabled;
+	/** Nonzero enables link. */
 	int link_enabled;
+	/** Nonzero enables rnnoise. */
 	int rnnoise_enabled;
+	/** Settings for all optional stages and the fixed FFmpeg filtering stages. */
 	struct txagc_config agc;
 };
 
+/** Validated named-channel profiles committed together under settings_lock. */
 struct txagc_settings {
+	/** Validated per-channel settings snapshots. */
 	struct txagc_profile profiles[MAX_RADIO_PROFILES];
+	/** Number of configured radio profiles. */
 	size_t profile_count;
 };
 
@@ -108,3 +134,19 @@ char *cli_reload(struct ast_cli_entry *entry, int command, struct ast_cli_args *
 #endif
 
 #endif
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def MAX_SECTION_OVERRIDES
+ * @brief Maximum resolved non-audio options per channel.
+ */
+/** @def MAX_RADIO_PROFILES
+ * @brief Maximum configured named radio channels.
+ */
+/** @def MAX_PROFILE_NAME
+ * @brief Capacity of a channel/profile name in bytes.
+ */
+/** @def MAX_CONFIG_SECTION
+ * @brief Capacity of a scoped section name in bytes.
+ */
+/** @} */

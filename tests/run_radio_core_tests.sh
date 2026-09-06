@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Compile and run native carrier, CTCSS, hardware, and repeat tests.
 set -eu
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)

@@ -1,4 +1,6 @@
 #!/bin/sh
+## @file
+## @brief Download, patch, and install the official RNNoise release with checksum verification.
 set -eu
 
 version=0.2

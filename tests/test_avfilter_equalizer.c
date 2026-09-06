@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter equalizer regression and failure-path checks.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,8 +9,14 @@
 #include "../src/txagc/avfilter_processor.h"
 
 #define RATE 48000
+
 #define BLOCK 960
 
+/** @brief Measure the filter response at the requested test frequency.
+ * @param frequency CTCSS frequency in Hz.
+ * @param enabled Nonzero enables the operation.
+ * @return Measured level or response used by the caller's numerical assertions.
+ */
 static double measure(double frequency, int enabled)
 {
 	struct txagc_avfilter state;
@@ -46,6 +56,9 @@ static double measure(double frequency, int enabled)
 	return sqrt(sum / count);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	double bypass = measure(1000.0, 0);
@@ -63,3 +76,10 @@ int main(void)
 		return 2;
 	return 0;
 }
+
+/** @def RATE
+ * @brief Sample rate in Hz used by this audio test.
+ */
+/** @def BLOCK
+ * @brief Samples processed per audio block.
+ */

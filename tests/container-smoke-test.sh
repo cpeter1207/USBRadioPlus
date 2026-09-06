@@ -1,10 +1,13 @@
 #!/bin/sh
+## @file
+## @brief Verify the installed module and CLI inside an ASL test container.
 set -eu
 
 log=${TMPDIR:-/tmp}/usbradioplus-asterisk.log
 asterisk -f -n -q >"$log" 2>&1 &
 asterisk_pid=$!
 
+## @brief Stop the isolated test Asterisk instance and remove temporary test files.
 cleanup()
 {
 	asterisk -rx 'core stop now' >/dev/null 2>&1 || true
@@ -28,6 +31,7 @@ if [ "$ready" != true ]; then
 	exit 1
 fi
 
+## @brief Wait for the named Asterisk module to reach Running state.
 wait_for_module()
 {
 	module=$1

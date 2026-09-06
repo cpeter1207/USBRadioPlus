@@ -1,6 +1,9 @@
 #!/bin/sh
+## @file
+## @brief Bootstrap dependencies, build the source tarball, and install without activating the module.
 set -eu
 
+## @brief Print command syntax and supported installation options.
 usage() {
 	cat <<'EOF'
 Usage: sudo ./install.sh [--skip-deps] [--destdir DIR]

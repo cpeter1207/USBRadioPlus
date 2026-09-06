@@ -77,9 +77,15 @@
 #include "asterisk/utils.h"
 #include "asterisk/logger.h"
 
+/** Next signaling-engine instance index. */
 static i16 radioIndex = 0; /* Count live detector instances. */
+/** Empty signaling-code string used for disabled code lists. */
 static char disabled_code[] = "0";
 
+/** @brief Test whether Asterisk's current debug level enables a radio trace.
+ * @param level Message trace verbosity.
+ * @return Nonzero if the requested debug level is enabled.
+ */
 static int urp_radio_debug_atleast(int level)
 {
 	if (option_debug >= level)
@@ -486,6 +492,7 @@ i16 urp_ctcss_frequency_index(float freq)
 */
 i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 {
+
 #define DCgainBpfNoise 65536
 
 	i16 samples, nx, iOutput, *output, *noutput;
@@ -1281,6 +1288,11 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 	samples are all 16 bits
 	samples are filtered and decimated by 1/6th
 */
+/** @brief Allocate and append a detector stage to a channel's stage list.
+ * @param channel Radio-signaling engine state.
+ * @param tail Current tail of the detector-stage list.
+ * @return Newly appended stage, or NULL if allocation fails.
+ */
 static urp_radio_stage *urp_radio_stage_append(urp_radio_state *channel, urp_radio_stage *tail)
 {
 	urp_radio_stage *next = urp_radio_stage_create(channel);
@@ -1293,6 +1305,7 @@ static urp_radio_stage *urp_radio_stage_append(urp_radio_state *channel, urp_rad
 
 urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 {
+
 #define ALLOCATE_OR_FAIL(target, count, size)                                                      \
 	do {                                                                                       \
 		(target) = ast_calloc((count), (size));                                            \
@@ -2262,3 +2275,19 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 #endif
 
 /* end of file */
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def GCC_VERSION
+ * @brief Compiler version encoded for feature selection.
+ */
+/** @def N_FMT
+ * @brief Generate a numeric-setting format fragment.
+ */
+/** @def DCgainBpfNoise
+ * @brief Noise-detector filter DC-gain normalization.
+ */
+/** @def ALLOCATE_OR_FAIL
+ * @brief Allocate stage storage and jump to cleanup if allocation fails.
+ */
+/** @} */

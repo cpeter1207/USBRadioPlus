@@ -10,6 +10,16 @@ member must have a concise Doxygen comment. Tests must exercise every reachable
 line and branch. Delete unreachable or unused code instead of excluding it from
 coverage or suppressing diagnostics.
 
+Run `make docs` with Doxygen 1.9.8 or newer after changing code comments. It checks
+the module, tuner, developer tools, shell entry points, and test harnesses. Keep parameter units,
+buffer ownership, return values, and locking requirements explicit where they
+matter. Python uses docstrings with Doxygen commands; shell helpers use `##`
+comments. The generated developer reference starts at
+`build/doxygen/html/index.html`. Documentation warnings fail the required
+quality gate before platform tests and release publication.
+The negative documentation tests in `tests_docs` run with this platform-independent
+check; the platform matrix runs runtime tests and coverage.
+
 Do not duplicate processing supplied by the shared FFmpeg graph. Update tests,
 manual pages, examples, and install artifacts whenever an interface changes.
 

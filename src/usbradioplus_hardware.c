@@ -1,15 +1,29 @@
+/** @file
+ * @brief Parallel-port channel selection and RTX synthesizer programming.
+ */
+
 /* Parallel-port protocol for legacy binary and RTX-programmable radios. */
 #include "usbradioplus_hardware.h"
 
 #define URP_PP_REGISTER_BITS 20
+
 #define URP_PP_BIT_TIME 100000
-#define URP_DTX_CLK 0x01U	/* connector pin 2 */
-#define URP_DTX_DATA 0x02U	/* connector pin 3 */
-#define URP_DTX_ENABLE 0x04U	/* connector pin 4 */
-#define URP_DTX_TX 0x08U	/* connector pin 5 */
-#define URP_DTX_TXPWR 0x10U	/* connector pin 6; retained low */
+
+#define URP_DTX_CLK 0x01U /* connector pin 2 */
+
+#define URP_DTX_DATA 0x02U /* connector pin 3 */
+
+#define URP_DTX_ENABLE 0x04U /* connector pin 4 */
+
+#define URP_DTX_TX 0x08U /* connector pin 5 */
+
+#define URP_DTX_TXPWR 0x10U /* connector pin 6; retained low */
+
 #define URP_BIN_PROG_MASK 0xf0U /* connector pins 6 through 9 */
 
+/** @brief Wait the parallel-port protocol interval required for hardware settling.
+ * @param multiplier Number of base hardware-settling intervals.
+ */
 static void urp_hardware_delay(unsigned multiplier)
 {
 	volatile unsigned i;
@@ -17,11 +31,18 @@ static void urp_hardware_delay(unsigned multiplier)
 		;
 }
 
+/** @brief Write the cached parallel-port byte through the caller's bus callback.
+ * @param bus Parallel-port value and caller-supplied write callback.
+ */
 static void urp_hardware_write(struct urp_parallel_bus *bus)
 {
 	bus->write(bus->opaque, bus->value);
 }
 
+/** @brief Clock a synthesizer programming word over the parallel-port serial interface.
+ * @param bus Parallel-port value and caller-supplied write callback.
+ * @param data 20-bit synthesizer word, shifted most-significant bit first.
+ */
 static void urp_hardware_spi(struct urp_parallel_bus *bus, uint32_t data)
 {
 	static int initialized;
@@ -103,3 +124,31 @@ void urp_hardware_program_radio(struct urp_parallel_bus *bus, uint32_t rx_freq, 
 	}
 	urp_hardware_write(bus);
 }
+
+/** @name File-local and build-time constants
+ * @{ */
+/** @def URP_PP_REGISTER_BITS
+ * @brief Bits shifted into an RTX programming register.
+ */
+/** @def URP_PP_BIT_TIME
+ * @brief Base parallel serial-bit settling interval.
+ */
+/** @def URP_DTX_CLK
+ * @brief connector pin 2
+ */
+/** @def URP_DTX_DATA
+ * @brief connector pin 3
+ */
+/** @def URP_DTX_ENABLE
+ * @brief connector pin 4
+ */
+/** @def URP_DTX_TX
+ * @brief connector pin 5
+ */
+/** @def URP_DTX_TXPWR
+ * @brief connector pin 6; retained low
+ */
+/** @def URP_BIN_PROG_MASK
+ * @brief connector pins 6 through 9
+ */
+/** @} */

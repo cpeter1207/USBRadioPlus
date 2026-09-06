@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable avfilter internals regression and failure-path checks.
+ */
+
 #include "../src/txagc/avfilter_processor_internal.h"
 
 #include <assert.h>
@@ -5,6 +9,9 @@
 #include <stdio.h>
 #include <wchar.h>
 
+/** @brief Create a valid baseline graph configuration for internal graph tests.
+ * @return Configuration initialized for this test scenario.
+ */
 static struct txagc_config base_config(void)
 {
 	struct txagc_config cfg;
@@ -18,6 +25,7 @@ static struct txagc_config base_config(void)
 	return cfg;
 }
 
+/** @brief Verify scalar and append helpers. */
 static void test_scalar_and_append_helpers(void)
 {
 	char graph[8] = "";
@@ -46,6 +54,7 @@ static void test_scalar_and_append_helpers(void)
 	av_frame_free(&frame);
 }
 
+/** @brief Verify meter updates. */
 static void test_meter_updates(void)
 {
 	struct txagc_avfilter state;
@@ -85,6 +94,7 @@ static void test_meter_updates(void)
 	av_frame_free(&frame);
 }
 
+/** @brief Verify graph stage helpers. */
 static void test_graph_stage_helpers(void)
 {
 	struct txagc_config cfg = base_config();
@@ -125,6 +135,9 @@ static void test_graph_stage_helpers(void)
 	assert(!add_dynamic_stage(graph, sizeof(graph), &cfg, TXAGC_STAGE_DEESSER, "a", "b", 1));
 }
 
+/** @brief Assert bounded graph construction fails after exhausting description capacity.
+ * @param cfg Candidate configuration; the caller retains ownership.
+ */
 static void expect_post_input_stage_overflow(struct txagc_config *cfg)
 {
 	struct txagc_config base = base_config();
@@ -138,6 +151,7 @@ static void expect_post_input_stage_overflow(struct txagc_config *cfg)
 	assert(build_description(graph, prefix_size, cfg, 48000) < 0);
 }
 
+/** @brief Verify description variants. */
 static void test_description_variants(void)
 {
 	struct txagc_config cfg = base_config();
@@ -222,6 +236,7 @@ static void test_description_variants(void)
 	assert(!build_description(graph, sizeof(graph), &cfg, 48000));
 }
 
+/** @brief Verify graph lifecycle and invalid configuration. */
 static void test_graph_lifecycle_and_invalid_configuration(void)
 {
 	struct txagc_avfilter state;
@@ -271,6 +286,9 @@ static void test_graph_lifecycle_and_invalid_configuration(void)
 	txagc_avfilter_destroy(&state);
 }
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	test_scalar_and_append_helpers();

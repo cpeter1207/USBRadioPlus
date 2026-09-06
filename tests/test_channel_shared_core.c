@@ -1,3 +1,7 @@
+/** @file
+ * @brief Executable channel shared core regression and failure-path checks.
+ */
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -5,6 +9,9 @@
 
 #include "../src/usbradioplus_channel_core.h"
 
+/** @brief Execute this harness's regression assertions and report any failures.
+ * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
+ */
 int main(void)
 {
 	struct urp_program_queue queue = {0};

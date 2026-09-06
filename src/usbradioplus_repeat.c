@@ -1,3 +1,7 @@
+/** @file
+ * @brief Prepare native repeat audio with repeat level and DTMF muting.
+ */
+
 #include "usbradioplus_repeat.h"
 
 #include <string.h>
