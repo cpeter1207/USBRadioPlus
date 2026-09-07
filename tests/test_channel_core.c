@@ -3239,6 +3239,20 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	assert(radio.rxkeyed && radio.lastrx);
 
+	/* Advanced transport delivers hardware-rate frames through this worker too. */
+	usbradioplus_interface_mode(&radio, 1);
+	run_modern_audio_iteration(&radio);
+	assert(radio.read_f.subclass.format == ast_format_cache_get_slin_by_rate(48000));
+	assert(radio.read_f.samples == URP_NATIVE_SAMPLES);
+	mixer_write(&radio);
+	radio.rxhidsq = 0;
+	run_modern_audio_iteration(&radio);
+	assert(!radio.rxkeyed && !radio.lastrx);
+	radio.rxhidsq = 1;
+	run_modern_audio_iteration(&radio);
+	assert(radio.rxkeyed && radio.lastrx);
+	usbradioplus_interface_mode(&radio, 0);
+
 	radio.rxhidsq = 0;
 	run_modern_audio_iteration(&radio);
 	assert(!radio.rxkeyed && !radio.lastrx);
@@ -3668,8 +3682,10 @@ static void test_modern_hid_worker_retries(void)
 	run_modern_hid_retry(&constructed, 1);
 	fail_radio_state_allocation = 0;
 
-	{
+	for (int mode = 0; mode < 3; ++mode) {
 		struct ast_variable ignored_option = {.name = "unsupported", .value = "4999"};
+		constructed.plus_advanced = mode == 1;
+		constructed.radioduplex = mode == 2;
 		constructed.name = "modern-tone-route";
 		constructed.stophid = 0;
 		constructed.txmixa = TX_OUT_VOICE;
@@ -3686,6 +3702,7 @@ static void test_modern_hid_worker_retries(void)
 		test_config_variables = NULL;
 		test_config_load_result = NULL;
 		assert(constructed.radio);
+		assert(constructed.radio->radioDuplex == (mode != 0));
 		urp_radio_destroy(constructed.radio);
 		constructed.radio = NULL;
 		if (constructed.pttkick[0] >= 0)
@@ -3931,6 +3948,9 @@ static void test_modern_module_lifecycle_baseline(void)
 	cli_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	cli_register_result = 0;
+	advanced_register_result = -1;
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
+	advanced_register_result = 0;
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	{
 		struct chan_usbradio_pvt *radio = usbradio_default.next;
