@@ -27,6 +27,7 @@ channel_invariant_sources="$root/src/usbradioplus_config.c $root/src/usbradioplu
 $root/src/usbradioplus_dsp.c $root/src/usbradioplus_ctcss.c \
 $root/src/usbradioplus_hardware.c $root/src/usbradioplus_repeat.c \
 $root/src/usbradioplus_channel_core.c $root/src/usbradioplus_processing.c \
+$root/src/usbradioplus_rpt_advanced.c \
 $root/src/txagc/agc_core.c $root/src/txagc/avfilter_processor.c \
 $root/src/txagc/rnnoise_processor.c"
 channel_variant_sources="$root/src/usbradioplus_channel_common.c \

@@ -76,6 +76,8 @@ struct chan_usbradio_pvt {
 	unsigned int plus_app_rpt_rate;
 	/** Samples in one app_rpt frame at the configured rate. */
 	unsigned int plus_app_rpt_samples;
+	/** Native hardware-clocked controller owns repeat and transmitter audio. */
+	int plus_advanced;
 	/** One native-rate app_rpt transmitter block. */
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	/** Workspace for elastic app_rpt-to-native resampling. */

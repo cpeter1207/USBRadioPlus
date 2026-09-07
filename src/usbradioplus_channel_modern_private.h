@@ -71,6 +71,8 @@ struct chan_usbradio_pvt {
 	double plus_local_native[URP_NATIVE_SAMPLES];
 	unsigned int plus_app_rpt_rate;
 	unsigned int plus_app_rpt_samples;
+	/** Native hardware-clocked controller owns repeat and transmitter audio. */
+	int plus_advanced;
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	short plus_link_resampled[URP_NATIVE_SAMPLES * 2];
 	struct urp_native_fifo plus_native_fifo;

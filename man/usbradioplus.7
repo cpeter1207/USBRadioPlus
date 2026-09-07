@@ -13,6 +13,16 @@ Each configured interface appears to Asterisk as
 .BR RadioPlus/ name .
 Channel, hardware, and audio-processing settings are read from
 .BR usbradioplus.conf (5).
+.PP
+The
+.BR RadioPlusAdvanced/ name
+interface supplies native-rate PCM to rpt_advanced.  It uses the same configured
+USB device, receiver processing, transmitter processing, and radio signaling.
+The controller owns local repeat and identification; driver echo, local sidetone,
+and DTMF detection do not run on this interface.  A device can be owned by only
+one interface at a time.  app_rpt continues to use
+.BR RadioPlus/ name
+at 8 kHz.
 .SH INSTALLATION
 Install the matching ASL3 Asterisk development package and the DSP development
 libraries, then build, test, and install with:

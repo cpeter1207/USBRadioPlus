@@ -1,4 +1,5 @@
 PROJECT_NAME           = USBRadioPlus
+DOT_GRAPH_MAX_NODES    = 128
 PROJECT_NUMBER         =
 PROJECT_BRIEF          = "Enhanced AllStarLink USB radio channel driver"
 OUTPUT_DIRECTORY       = build/doxygen

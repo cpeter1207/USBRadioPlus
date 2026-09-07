@@ -240,11 +240,12 @@ def test_implementation_sources_are_never_textually_included():
 def test_echo_uses_native_buffer_only_for_software_duplex3():
     """Verify echo uses native buffer only for software duplex3."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(path)
+        source = " ".join(text(path).split())
         assert "urp_native_echo_enabled" in source
         assert "o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE" in source
         assert "o->echomode && usbradioplus_native_echo(o)" in source
         assert "o->echomode && !usbradioplus_native_echo(o)" in source
+        assert "!o->plus_advanced && o->echomode && usbradioplus_native_echo(o)" in source
         assert "DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES" in source
         assert "nativeparrot" not in source
         assert "parrotmaxseconds" not in source
