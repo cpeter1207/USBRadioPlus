@@ -38,13 +38,18 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	double ctcss_frequency, ctcss_peak_a, ctcss_peak_b, correction;
 	double ctcss_bias_a, ctcss_bias_b;
 	int ctcss_filter_250, ctcss_tone_gain;
-	enum radio_tx_mix txmixa = effective_txmixa(o);
-	enum radio_tx_mix txmixb = effective_txmixb(o);
+	struct urp_sample_queue *program_queue = &o->plus_program_queue.ring;
+	enum radio_tx_mix txmixa;
+	enum radio_tx_mix txmixb;
 
 	refresh_processing_hardware(o);
+	/* refresh_processing_hardware publishes one lock-free hardware snapshot;
+	 * render from its applied routes rather than rereading configuration. */
+	txmixa = (enum radio_tx_mix)o->plus_applied_txmixa;
+	txmixb = (enum radio_tx_mix)o->plus_applied_txmixb;
 	/* A non-null destination is infallible; only the configured state controls
 	 * whether the optional local chain runs. */
-	usbradioplus_processing_get_local(o->name, &chain);
+	usbradioplus_processing_get_local_rt(o->name, &chain);
 	local_chain_enabled = chain.enabled;
 	ctcss_phase_reverse = o->radio->txCtcssPhaseShift;
 	/* Opt-in per-frame trace distinguishes generated signaling from DAC playback. */
@@ -166,14 +171,21 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	}
 
 	memset(o->plus_link_native, 0, sizeof(o->plus_link_native));
+	/* Legacy echo is produced and consumed by the hardware worker.  Keeping it
+	 * separate from the Asterisk-writer ring preserves the latter's SPSC owner. */
+	if (!o->plus_advanced && atomic_load_explicit(&o->echoing, memory_order_acquire))
+		program_queue = &o->echo_queue;
 	if (o->plus_advanced) {
 		/* Each incoming native frame was produced in response to our hardware
-		 * clock. Consume one scheduling-queue frame without clock correction. */
-		ast_mutex_lock(&o->plus_link_lock);
-		if (!urp_program_queue_pop(&o->plus_program_queue, o->plus_link_native) &&
-		    o->txkeyed)
-			o->plus_link_queue_underflows++;
-		ast_mutex_unlock(&o->plus_link_lock);
+		 * clock. Consume native samples without clock correction. */
+		if (urp_sample_queue_samples(program_queue) < URP_NATIVE_SAMPLES) {
+			if (o->txkeyed)
+				o->plus_link_queue_underflows++;
+		} else {
+			for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
+				(void)urp_sample_queue_pop_sample(program_queue,
+								  &o->plus_link_native[i]);
+		}
 	} else {
 		if (!o->plus_native_fifo.target_samples)
 			o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
@@ -181,22 +193,25 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		 * an elastic native-rate FIFO and trim the ratio gently around its target.
 		 * Idle silence follows the same path; PTT edges never reset stream state. */
 		{
-			unsigned int queued_frames;
-			ast_mutex_lock(&o->plus_link_lock);
-			queued_frames = o->plus_program_queue.count;
-			ast_mutex_unlock(&o->plus_link_lock);
+			unsigned int queued_samples = urp_sample_queue_samples(program_queue);
+			unsigned int queued_native_samples =
+				(unsigned int)(((uint64_t)queued_samples * URP_RATE_NATIVE) /
+					       o->plus_app_rpt_rate);
 			correction = urp_clock_recovery_update(
 				&o->plus_link_clock,
-				o->plus_native_fifo.count + queued_frames * URP_NATIVE_SAMPLES,
+				o->plus_native_fifo.count + queued_native_samples,
 				o->plus_native_fifo.target_samples + URP_FIFO_TARGET_STEP);
 		}
 		while (o->plus_native_fifo.count < o->plus_native_fifo.target_samples) {
 			double ratio;
 			int have_frame = 0;
 			memset(o->plus_link_8k, 0, sizeof(o->plus_link_8k));
-			ast_mutex_lock(&o->plus_link_lock);
-			have_frame = urp_program_queue_pop(&o->plus_program_queue, o->plus_link_8k);
-			ast_mutex_unlock(&o->plus_link_lock);
+			if (urp_sample_queue_samples(program_queue) >= o->plus_app_rpt_samples) {
+				for (i = 0; i < o->plus_app_rpt_samples; ++i)
+					(void)urp_sample_queue_pop_sample(program_queue,
+									  &o->plus_link_8k[i]);
+				have_frame = 1;
+			}
 			if (!have_frame) {
 				if (!o->plus_link_src_pending ||
 				    o->plus_native_fifo.count >= URP_NATIVE_SAMPLES)
@@ -237,6 +252,13 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 				o->plus_link_queue_underflows++;
 				urp_native_fifo_note_underrun(&o->plus_native_fifo);
 			}
+			if (program_queue == &o->plus_program_queue.ring) {
+				urp_program_queue_request_seed(
+					&o->plus_program_queue,
+					urp_program_queue_seed_samples(
+						o->plus_native_fifo.target_samples,
+						o->plus_app_rpt_rate, o->plus_app_rpt_samples));
+			}
 			urp_src_reset(o->plus_up);
 			o->plus_link_src_pending = 0;
 			urp_clock_recovery_reset(&o->plus_link_clock);
@@ -254,7 +276,7 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 		urp_parrot_play(&o->plus_parrot_state, local_program, URP_NATIVE_SAMPLES);
 		o->plus_parrot_playback_frames++;
 		if (!o->plus_parrot_playing) {
-			o->echoing = 0;
+			atomic_store_explicit(&o->echoing, 0, memory_order_release);
 		}
 	} else if (!o->plus_advanced && o->rxkeyed && o->duplex3 > 0 &&
 		   o->duplex3mode == DUPLEX3_MODE_SOFTWARE) {

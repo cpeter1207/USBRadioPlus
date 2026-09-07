@@ -15,7 +15,8 @@ RECURSIVE               = YES
 MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = YES
 PREDEFINED             = "__attribute__(x)=" "_Alignas(x)=" \
-                         "AST_MUTEX_DEFINE_STATIC(name)=static ast_mutex_t name" \
+			 "_Atomic(x)=x" \
+			 "AST_MUTEX_DEFINE_STATIC(name)=static ast_mutex_t name" \
                          "AST_MODULE_INFO(...)= "
 EXTRACT_ALL             = NO
 EXTRACT_STATIC          = YES

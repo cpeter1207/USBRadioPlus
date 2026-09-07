@@ -80,7 +80,6 @@ struct chan_usbradio_pvt {
 	struct urp_program_queue plus_program_queue;
 	uint64_t plus_link_queue_underflows;
 	uint64_t plus_link_queue_overflows;
-	ast_mutex_t plus_link_lock;
 	short plus_squelch_native[URP_NATIVE_SAMPLES * 2];
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	unsigned int plus_rx_delay_index;
@@ -239,9 +238,9 @@ struct chan_usbradio_pvt {
 
 	/*! \brief Settings for echoing received audio */
 	int echomode;
-	int echoing;
-	ast_mutex_t echolock;
-	struct qelem echoq;
+	atomic_int echoing;
+	struct urp_sample_queue echo_queue;
+	short echo_samples[URP_ECHO_QUEUE_SAMPLES];
 	int echomax;
 
 	/*! \brief Settings for HID interface */

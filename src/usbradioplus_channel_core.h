@@ -7,11 +7,19 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 #include "usbradioplus_dsp.h"
 
+/* A non-lock-free atomic implementation would violate the audio-thread contract. */
+_Static_assert(ATOMIC_INT_LOCK_FREE == 2, "USBRadioPlus requires lock-free atomic cursors");
+
 /** Capacity includes startup padding and the first program frame at the maximum target. */
 #define URP_PROGRAM_QUEUE_FRAMES 10U
+/** Number of PCM samples held by the app_rpt-to-native SPSC program ring. */
+#define URP_PROGRAM_QUEUE_SAMPLES (URP_PROGRAM_QUEUE_FRAMES * URP_NATIVE_SAMPLES)
+/** Maximum duration retained by the legacy 8 kHz echo path: 20 seconds. */
+#define URP_ECHO_QUEUE_SAMPLES (URP_APP_RPT_RATE_DEFAULT * 20U)
 
 /** 200 ms capacity leaves room for a resampled block above the 170 ms target. */
 #define URP_NATIVE_FIFO_SAMPLES (URP_NATIVE_SAMPLES * 10U)
@@ -75,18 +83,37 @@ enum urp_tone_off_mode {
 	URP_TONE_OFF_REMOVE /**< Remove CTCSS before PTT release. */
 };
 
-/** Transport-neutral app_rpt frame queue shared by both channel adapters. */
+/**
+ * Lock-free single-producer/single-consumer PCM ring shared by both adapters.
+ *
+ * Its producer and consumer are fixed for each use. The app_rpt program ring
+ * is written by the Asterisk channel and read by the hardware worker; the
+ * legacy echo ring is owned by the hardware worker. The cursors
+ * deliberately are not reduced modulo the ring capacity; modulo arithmetic is
+ * used only for indexing.  That lets each side determine occupancy without a
+ * mutex and publish samples with acquire/release ordering.
+ */
+struct urp_sample_queue {
+	/** Caller-owned PCM storage. */
+	short *samples;
+	/** Number of samples available in the caller-owned storage. */
+	unsigned int capacity;
+	/** Next sample cursor owned by the consumer. */
+	atomic_uint read;
+	/** Next sample cursor owned by the producer. */
+	atomic_uint write;
+	/** Largest observed occupancy, in samples. */
+	atomic_uint high_water;
+};
+
+/** Fixed-storage wrapper for the app_rpt-to-native program queue. */
 struct urp_program_queue {
-	/** Queued app_rpt frames in signed PCM codes. */
-	short frames[URP_PROGRAM_QUEUE_FRAMES][URP_NATIVE_SAMPLES];
-	/** Ring position of the next element to consume. */
-	unsigned int head;
-	/** Ring position for the next element appended. */
-	unsigned int tail;
-	/** Number of occupied elements. */
-	unsigned int count;
-	/** Largest observed queue occupancy in frames. */
-	unsigned int high_water;
+	/** Lock-free ring metadata. */
+	struct urp_sample_queue ring;
+	/** Queued app_rpt PCM codes. */
+	short samples[URP_PROGRAM_QUEUE_SAMPLES];
+	/** Silence reserve requested by the consumer for the next producer write. */
+	atomic_uint seed_samples;
 };
 
 /** Native-rate elastic FIFO shared by the OSS and PortAudio adapters. */
@@ -170,29 +197,116 @@ unsigned long urp_render_transmit_block(const double *program, const double *ctc
 					double ctcss_bias_a, double ctcss_peak_b,
 					double ctcss_bias_b, short *stereo, short *meter_stereo);
 
-/** @brief Queue one app_rpt frame, optionally prefixing silence for clock-recovery startup.
+/** @brief Initialize an SPSC sample ring before either endpoint uses it.
+ * @param queue Ring to initialize.
+ * @param samples Caller-owned PCM storage.
+ * @param capacity Number of PCM samples in the supplied storage.
+ */
+void urp_sample_queue_init(struct urp_sample_queue *queue, short *samples, unsigned int capacity);
+
+/** @brief Empty an inactive sample queue without changing its storage.
+ * @param queue Queue to empty.
+ */
+void urp_sample_queue_reset(struct urp_sample_queue *queue);
+
+/** @brief Add one PCM sample to an SPSC queue.
+ * @param queue Queue whose producer owns this operation.
+ * @param sample PCM value to append.
+ * @return Nonzero on success; zero when the queue is full.
+ */
+int urp_sample_queue_push_sample(struct urp_sample_queue *queue, short sample);
+
+/** @brief Remove one PCM sample from an SPSC queue.
+ * @param queue Queue whose consumer owns this operation.
+ * @param sample Receives the removed PCM value on success.
+ * @return Nonzero on success; zero when the queue is empty.
+ */
+int urp_sample_queue_pop_sample(struct urp_sample_queue *queue, short *sample);
+
+/** @brief Return the number of queued PCM samples.
+ * @param queue Queue to inspect.
+ * @return Current sample occupancy.
+ */
+unsigned int urp_sample_queue_samples(const struct urp_sample_queue *queue);
+
+/** @brief Return the largest observed sample occupancy.
+ * @param queue Queue to inspect.
+ * @return Peak occupancy since initialization or last reset.
+ */
+unsigned int urp_sample_queue_high_water(const struct urp_sample_queue *queue);
+
+/** @brief Reset the sample occupancy high-water mark.
+ * @param queue Queue whose peak measurement is reset.
+ */
+void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue);
+
+/** @brief Initialize the fixed app_rpt program ring.
+ * @param queue Program queue to initialize.
+ */
+void urp_program_queue_init(struct urp_program_queue *queue);
+
+/** @brief Calculate the app_rpt-rate reserve needed for native FIFO startup.
+ * @param native_target_samples Desired native FIFO occupancy.
+ * @param app_rpt_rate Asterisk-side sample rate.
+ * @param app_rpt_samples Samples supplied by Asterisk per callback.
+ * @return Number of silence samples to prepend to the next program write.
+ */
+unsigned int urp_program_queue_seed_samples(unsigned int native_target_samples,
+					    unsigned int app_rpt_rate,
+					    unsigned int app_rpt_samples);
+
+/** @brief Request startup silence before the next program write.
+ * @param queue Program ring whose producer will satisfy the request.
+ * @param samples Number of silence samples requested.
+ */
+void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned int samples);
+
+/** @brief Take the pending startup-silence request exactly once.
+ * @param queue Program ring whose producer owns the request.
+ * @return Number of silence samples to prepend.
+ */
+unsigned int urp_program_queue_take_seed(struct urp_program_queue *queue);
+
+/** @brief Queue PCM samples, optionally prefixing silence for clock-recovery startup.
  * @param queue App_rpt frame queue.
- * @param samples Audio samples; mutable buffers are updated in place.
+ * @param samples Audio samples.
  * @param count Number of elements available in the supplied block.
- * @param frame_samples Samples in one app_rpt frame.
- * @param seed_frames Initial silence frames to queue before first program audio.
- * @return Nonzero if queuing required dropping an older frame; zero otherwise.
+ * @param seed_samples Initial silence samples to queue before first program audio.
+ * @return Nonzero if the ring was full and one or more incoming samples were rejected.
  */
 int urp_program_queue_push(struct urp_program_queue *queue, const short *samples, size_t count,
-			   size_t frame_samples, unsigned int seed_frames);
+			   unsigned int seed_samples);
 
-/** @brief Remove one queued frame.
- * @param queue App_rpt frame queue.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @return One when a frame was removed; zero when the queue was empty.
+/** @brief Queue one PCM sample.
+ * @param queue Program ring.
+ * @param sample Sample to append.
+ * @return One on success; zero when the ring is full.
  */
-int urp_program_queue_pop(struct urp_program_queue *queue, short *samples);
+int urp_program_queue_push_sample(struct urp_program_queue *queue, short sample);
 
-/** @brief Return nonzero when at least one app_rpt frame is queued.
+/** @brief Remove one queued PCM sample.
  * @param queue App_rpt frame queue.
- * @return Nonzero when a frame is pending.
+ * @param sample Receives the next sample.
+ * @return One when a sample was removed; zero when the ring was empty.
  */
-int urp_program_queue_pending(const struct urp_program_queue *queue);
+int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample);
+
+/** @brief Return the current number of queued samples.
+ * @param queue App_rpt frame queue.
+ * @return Number of samples available to the consumer.
+ */
+unsigned int urp_program_queue_samples(const struct urp_program_queue *queue);
+
+/** @brief Return the peak observed sample occupancy.
+ * @param queue Program ring.
+ * @return Largest occupancy observed since initialization or reset.
+ */
+unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue);
+
+/** @brief Reset the peak occupancy without disturbing queued audio.
+ * @param queue Program ring.
+ */
+void urp_program_queue_reset_high_water(struct urp_program_queue *queue);
 
 /** @brief Append samples, retaining the newest audio if the FIFO is full.
  * @param fifo Bounded audio FIFO.

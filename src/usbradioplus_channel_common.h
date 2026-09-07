@@ -70,6 +70,24 @@ int usbradio_answer(struct ast_channel *c);
  */
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count);
 
+/** @brief Discard legacy echo audio while no echo playback is active.
+ * @param o Private state of the selected radio channel.
+ */
+void usbradioplus_echo_clear(struct chan_usbradio_pvt *o);
+
+/** @brief Begin legacy echo playback if captured samples are available.
+ * @param o Private state of the selected radio channel.
+ * @return Nonzero when playback is active; zero when no echo was captured.
+ */
+int usbradioplus_echo_start(struct chan_usbradio_pvt *o);
+
+/** @brief Record one app_rpt-rate receive block without allocating or locking.
+ * @param o Private state of the selected radio channel.
+ * @param samples PCM samples to capture.
+ * @param count Number of supplied samples.
+ */
+void usbradioplus_echo_record(struct chan_usbradio_pvt *o, const short *samples, size_t count);
+
 /** @brief Transfer private radio ownership when Asterisk replaces a channel.
  * @param oldchan Asterisk channel associated with the radio or link.
  * @param newchan Asterisk channel associated with the radio or link.

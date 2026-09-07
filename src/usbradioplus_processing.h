@@ -96,6 +96,13 @@ struct usbradioplus_config_update {
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
  */
 int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain);
+/** @brief Copy a local chain from the immutable audio-thread snapshot.
+ * This operation neither allocates nor locks and is safe from an audio callback.
+ * @param channel Configured radio channel name.
+ * @param chain Receives the resolved local chain.
+ * @return Zero on success, one if the channel is absent, or -1 for invalid arguments.
+ */
+int usbradioplus_processing_get_local_rt(const char *channel, struct txagc_chain *chain);
 /** @brief Copy a channel's final voice/telemetry chain under the settings mutex.
  * An absent profile produces a zeroed, disabled chain.
  * @param channel Configured radio channel name.
@@ -111,6 +118,14 @@ int usbradioplus_processing_get_composite(const char *channel, struct txagc_chai
  */
 int usbradioplus_processing_get_hardware(const char *channel,
 					 struct usbradioplus_hardware_settings *hardware);
+/** @brief Copy hardware settings from the immutable audio-thread snapshot.
+ * This operation neither allocates nor locks and is safe from an audio callback.
+ * @param channel Configured radio channel name.
+ * @param hardware Receives resolved hardware settings.
+ * @return Zero on success, one if the channel is absent, or -1 for invalid arguments.
+ */
+int usbradioplus_processing_get_hardware_rt(const char *channel,
+					    struct usbradioplus_hardware_settings *hardware);
 /** @brief Copy a resolved non-audio option from a channel profile.
  * @param channel Configured radio channel name.
  * @param section Configuration section name.

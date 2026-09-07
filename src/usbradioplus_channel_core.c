@@ -41,50 +41,155 @@ static int parse_named_value(const char *text, const struct urp_named_value *val
 	return -1;
 }
 
-int urp_program_queue_push(struct urp_program_queue *queue, const short *samples, size_t count,
-			   size_t frame_samples, unsigned int seed_frames)
+void urp_sample_queue_init(struct urp_sample_queue *queue, short *samples, unsigned int capacity)
 {
-	unsigned int frame;
-	int overflowed = 0;
-
-	if (count > frame_samples)
-		count = frame_samples;
-	if (frame_samples > URP_NATIVE_SAMPLES)
-		frame_samples = URP_NATIVE_SAMPLES;
-	if (count > frame_samples)
-		count = frame_samples;
-	for (frame = 0; frame < seed_frames && queue->count < URP_PROGRAM_QUEUE_FRAMES; ++frame) {
-		memset(queue->frames[queue->tail], 0, sizeof(queue->frames[0]));
-		queue->tail = (queue->tail + 1U) % URP_PROGRAM_QUEUE_FRAMES;
-		queue->count++;
-	}
-	if (queue->count == URP_PROGRAM_QUEUE_FRAMES) {
-		queue->head = (queue->head + 1U) % URP_PROGRAM_QUEUE_FRAMES;
-		queue->count--;
-		overflowed = 1;
-	}
-	memset(queue->frames[queue->tail], 0, sizeof(queue->frames[0]));
-	memcpy(queue->frames[queue->tail], samples, count * sizeof(*samples));
-	queue->tail = (queue->tail + 1U) % URP_PROGRAM_QUEUE_FRAMES;
-	queue->count++;
-	if (queue->count > queue->high_water)
-		queue->high_water = queue->count;
-	return overflowed;
+	queue->samples = samples;
+	queue->capacity = capacity;
+	atomic_init(&queue->read, 0U);
+	atomic_init(&queue->write, 0U);
+	atomic_init(&queue->high_water, 0U);
 }
 
-int urp_program_queue_pop(struct urp_program_queue *queue, short *samples)
+void urp_sample_queue_reset(struct urp_sample_queue *queue)
 {
-	if (!queue->count)
+	atomic_store_explicit(&queue->read, 0U, memory_order_relaxed);
+	atomic_store_explicit(&queue->write, 0U, memory_order_relaxed);
+	atomic_store_explicit(&queue->high_water, 0U, memory_order_relaxed);
+}
+
+unsigned int urp_sample_queue_samples(const struct urp_sample_queue *queue)
+{
+	unsigned int write = atomic_load_explicit(&queue->write, memory_order_acquire);
+	unsigned int read = atomic_load_explicit(&queue->read, memory_order_acquire);
+
+	return write - read;
+}
+
+/** @brief Record a producer-owned sample-ring occupancy peak.
+ * @param queue Queue whose high-water mark is updated.
+ * @param occupancy Newly observed queue occupancy.
+ */
+static void urp_sample_queue_note_high_water(struct urp_sample_queue *queue, unsigned int occupancy)
+{
+	unsigned int high_water = atomic_load_explicit(&queue->high_water, memory_order_relaxed);
+
+	/* The single producer is the only writer, so no compare/exchange retry is needed. */
+	if (occupancy > high_water)
+		atomic_store_explicit(&queue->high_water, occupancy, memory_order_relaxed);
+}
+
+int urp_sample_queue_push_sample(struct urp_sample_queue *queue, short sample)
+{
+	unsigned int write = atomic_load_explicit(&queue->write, memory_order_relaxed);
+	unsigned int read = atomic_load_explicit(&queue->read, memory_order_acquire);
+
+	if (!queue->samples || !queue->capacity)
 		return 0;
-	memcpy(samples, queue->frames[queue->head], sizeof(queue->frames[0]));
-	queue->head = (queue->head + 1U) % URP_PROGRAM_QUEUE_FRAMES;
-	queue->count--;
+	if (write - read >= queue->capacity)
+		return 0;
+	queue->samples[write % queue->capacity] = sample;
+	atomic_store_explicit(&queue->write, write + 1U, memory_order_release);
+	urp_sample_queue_note_high_water(queue, write + 1U - read);
 	return 1;
 }
 
-int urp_program_queue_pending(const struct urp_program_queue *queue)
+int urp_sample_queue_pop_sample(struct urp_sample_queue *queue, short *sample)
 {
-	return queue->count != 0;
+	unsigned int read = atomic_load_explicit(&queue->read, memory_order_relaxed);
+	unsigned int write = atomic_load_explicit(&queue->write, memory_order_acquire);
+
+	if (!queue->samples || !queue->capacity)
+		return 0;
+	if (read == write)
+		return 0;
+	*sample = queue->samples[read % queue->capacity];
+	atomic_store_explicit(&queue->read, read + 1U, memory_order_release);
+	return 1;
+}
+
+unsigned int urp_sample_queue_high_water(const struct urp_sample_queue *queue)
+{
+	return atomic_load_explicit(&queue->high_water, memory_order_relaxed);
+}
+
+void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue)
+{
+	atomic_store_explicit(&queue->high_water, urp_sample_queue_samples(queue),
+			      memory_order_relaxed);
+}
+
+void urp_program_queue_init(struct urp_program_queue *queue)
+{
+	memset(queue->samples, 0, sizeof(queue->samples));
+	urp_sample_queue_init(&queue->ring, queue->samples, URP_PROGRAM_QUEUE_SAMPLES);
+	atomic_init(&queue->seed_samples, 0U);
+}
+
+unsigned int urp_program_queue_seed_samples(unsigned int native_target_samples,
+					    unsigned int app_rpt_rate, unsigned int app_rpt_samples)
+{
+	unsigned int frames;
+
+	if (!app_rpt_rate || !app_rpt_samples)
+		return 0;
+	frames = (native_target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES;
+	if (frames)
+		--frames;
+	if (app_rpt_rate != URP_RATE_NATIVE)
+		++frames;
+	return frames * app_rpt_samples;
+}
+
+void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned int samples)
+{
+	atomic_store_explicit(&queue->seed_samples, samples, memory_order_release);
+}
+
+unsigned int urp_program_queue_take_seed(struct urp_program_queue *queue)
+{
+	return atomic_exchange_explicit(&queue->seed_samples, 0U, memory_order_acq_rel);
+}
+
+int urp_program_queue_push_sample(struct urp_program_queue *queue, short sample)
+{
+	return urp_sample_queue_push_sample(&queue->ring, sample);
+}
+
+int urp_program_queue_push(struct urp_program_queue *queue, const short *samples, size_t count,
+			   unsigned int seed_samples)
+{
+	int overflowed = 0;
+
+	while (seed_samples--) {
+		if (!urp_program_queue_push_sample(queue, 0))
+			overflowed = 1;
+	}
+	while (count--) {
+		if (!urp_program_queue_push_sample(queue, *samples))
+			overflowed = 1;
+		++samples;
+	}
+	return overflowed;
+}
+
+int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample)
+{
+	return urp_sample_queue_pop_sample(&queue->ring, sample);
+}
+
+unsigned int urp_program_queue_samples(const struct urp_program_queue *queue)
+{
+	return urp_sample_queue_samples(&queue->ring);
+}
+
+unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue)
+{
+	return urp_sample_queue_high_water(&queue->ring);
+}
+
+void urp_program_queue_reset_high_water(struct urp_program_queue *queue)
+{
+	urp_sample_queue_reset_high_water(&queue->ring);
 }
 
 size_t urp_native_fifo_push(struct urp_native_fifo *fifo, const short *samples, size_t count)

@@ -7,6 +7,7 @@
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <stdatomic.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -75,6 +76,17 @@ struct txagc_hook {
 AST_MUTEX_DEFINE_STATIC(settings_lock);
 /** Live configuration snapshot protected by settings_lock. */
 PROCESSING_PRIVATE struct txagc_settings settings;
+/** Immutable settings retained until module unload for lock-free audio readers. */
+struct txagc_audio_snapshot {
+	/** Complete validated settings copied before publication. */
+	struct txagc_settings settings;
+	/** Older immutable snapshot retained while audio may still reference it. */
+	struct txagc_audio_snapshot *next;
+};
+/** Currently published audio-thread settings snapshot. */
+static _Atomic(struct txagc_audio_snapshot *) audio_settings;
+/** Writer-owned list of snapshots reclaimed only after audio processing stops. */
+static struct txagc_audio_snapshot *audio_settings_history;
 /** Background thread that attaches eligible link audiohooks. */
 PROCESSING_PRIVATE pthread_t scan_thread = AST_PTHREADT_NULL;
 /** Scanner stop request observed during module shutdown. */
@@ -83,6 +95,60 @@ PROCESSING_PRIVATE int stopping;
 PROCESSING_PRIVATE int settings_parse_error;
 static int is_flat_section(const char *category);
 static int validate_active_crossovers(struct txagc_settings *candidate);
+
+/** @brief Find a profile without modifying an immutable settings snapshot.
+ * @param current Immutable settings snapshot to search.
+ * @param channel Configured profile name or Asterisk channel name.
+ * @return Matching profile, or NULL when no profile matches.
+ */
+static const struct txagc_profile *find_profile_const(const struct txagc_settings *current,
+						      const char *channel)
+{
+	size_t i;
+
+	if (!channel)
+		return NULL;
+	for (i = 0; i < current->profile_count; ++i)
+		if (!strcasecmp(current->profiles[i].name, channel) ||
+		    !strcasecmp(current->profiles[i].channel, channel))
+			return &current->profiles[i];
+	return NULL;
+}
+
+/** @brief Allocate a settings snapshot before entering the writer critical section.
+ * @return A snapshot ready for publication, or NULL if allocation fails.
+ */
+static struct txagc_audio_snapshot *allocate_audio_snapshot(void)
+{
+	struct txagc_audio_snapshot *snapshot = ast_calloc(1, sizeof(*snapshot));
+
+	if (!snapshot)
+		ast_log(LOG_ERROR, "RadioPlus: unable to publish lock-free audio settings\n");
+	return snapshot;
+}
+
+/** @brief Publish a complete immutable settings copy while settings_lock is held.
+ * @param snapshot Storage allocated before taking settings_lock.
+ */
+static void publish_audio_settings_locked(struct txagc_audio_snapshot *snapshot)
+{
+	snapshot->settings = settings;
+	snapshot->next = audio_settings_history;
+	audio_settings_history = snapshot;
+	atomic_store_explicit(&audio_settings, snapshot, memory_order_release);
+}
+
+/** @brief Release settings snapshots after all audio hooks and workers are stopped. */
+static void clear_audio_settings(void)
+{
+	struct txagc_audio_snapshot *snapshot;
+
+	atomic_store_explicit(&audio_settings, NULL, memory_order_release);
+	while ((snapshot = audio_settings_history) != NULL) {
+		audio_settings_history = snapshot->next;
+		ast_free(snapshot);
+	}
+}
 
 /** @brief Find a named channel profile in the supplied settings snapshot.
  * @param current Settings snapshot whose profile table is searched.
@@ -308,6 +374,11 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 			sizeof(value->hardware.rx_ctcss_frequencies));
 	ast_copy_string(value->hardware.tx_ctcss_frequencies, "100.0",
 			sizeof(value->hardware.tx_ctcss_frequencies));
+#ifdef URP_PROCESSING_TESTING
+	/* Test cases deliberately edit the global settings tree between callbacks. */
+	if (all == &settings)
+		atomic_store_explicit(&audio_settings, NULL, memory_order_release);
+#endif
 }
 
 /** @brief Check processing parameter ranges, fixed stages, and optional-stage ordering.
@@ -1632,6 +1703,7 @@ PROCESSING_PRIVATE int load_settings(void)
 	struct ast_config *cfg;
 	struct txagc_settings *defaults;
 	struct txagc_settings *updated;
+	struct txagc_audio_snapshot *snapshot;
 	const char *category = NULL;
 
 	defaults = ast_calloc(1, sizeof(*defaults));
@@ -1739,9 +1811,13 @@ PROCESSING_PRIVATE int load_settings(void)
 	 * the candidate crossovers. First frames still validate newly opened links. */
 	if (scan_thread != AST_PTHREADT_NULL && validate_active_crossovers(updated))
 		goto invalid;
+	snapshot = allocate_audio_snapshot();
+	if (!snapshot)
+		goto invalid;
 	ast_config_destroy(cfg);
 	ast_mutex_lock(&settings_lock);
 	settings = *updated;
+	publish_audio_settings_locked(snapshot);
 	ast_mutex_unlock(&settings_lock);
 	ast_log(LOG_NOTICE, "RadioPlus loaded %zu named radio configuration(s)\n",
 		updated->profile_count);
@@ -1875,11 +1951,16 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	if (!hook) {
 		return 0;
 	}
-	ast_mutex_lock(&settings_lock);
-	profile = find_profile(&settings, hook->profile);
-	if (profile)
-		current = *profile;
-	ast_mutex_unlock(&settings_lock);
+	{
+		const struct txagc_audio_snapshot *snapshot =
+			atomic_load_explicit(&audio_settings, memory_order_acquire);
+		const struct txagc_settings *current_settings =
+			snapshot ? &snapshot->settings : &settings;
+
+		profile = find_profile_const(current_settings, hook->profile);
+		if (profile)
+			current = *profile;
+	}
 	if (!profile)
 		return 0;
 	if (!strcmp(ast_channel_name(chan), current.channel)) {
@@ -2334,10 +2415,19 @@ PROCESSING_PRIVATE char *cli_enable(struct ast_cli_entry *entry, int command,
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
 	}
-	ast_mutex_lock(&settings_lock);
-	for (size_t i = 0; i < settings.profile_count; ++i)
-		settings.profiles[i].enabled = 1;
-	ast_mutex_unlock(&settings_lock);
+	{
+		struct txagc_audio_snapshot *snapshot = allocate_audio_snapshot();
+
+		if (!snapshot) {
+			ast_cli(args->fd, "Unable to publish RadioPlus processing settings.\n");
+			return CLI_FAILURE;
+		}
+		ast_mutex_lock(&settings_lock);
+		for (size_t i = 0; i < settings.profile_count; ++i)
+			settings.profiles[i].enabled = 1;
+		publish_audio_settings_locked(snapshot);
+		ast_mutex_unlock(&settings_lock);
+	}
 	scan_channels();
 	ast_cli(args->fd, "RadioPlus processing enabled.\n");
 	return CLI_SUCCESS;
@@ -2366,10 +2456,19 @@ PROCESSING_PRIVATE char *cli_disable(struct ast_cli_entry *entry, int command,
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
 	}
-	ast_mutex_lock(&settings_lock);
-	for (size_t i = 0; i < settings.profile_count; ++i)
-		settings.profiles[i].enabled = 0;
-	ast_mutex_unlock(&settings_lock);
+	{
+		struct txagc_audio_snapshot *snapshot = allocate_audio_snapshot();
+
+		if (!snapshot) {
+			ast_cli(args->fd, "Unable to publish RadioPlus processing settings.\n");
+			return CLI_FAILURE;
+		}
+		ast_mutex_lock(&settings_lock);
+		for (size_t i = 0; i < settings.profile_count; ++i)
+			settings.profiles[i].enabled = 0;
+		publish_audio_settings_locked(snapshot);
+		ast_mutex_unlock(&settings_lock);
+	}
 	detach_all();
 	ast_cli(args->fd, "RadioPlus processing disabled and detached.\n");
 	return CLI_SUCCESS;
@@ -2440,6 +2539,28 @@ int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *c
 	return profile ? 0 : 1;
 }
 
+int usbradioplus_processing_get_local_rt(const char *channel, struct txagc_chain *chain)
+{
+	const struct txagc_profile *profile;
+
+	if (!chain)
+		return -1;
+	memset(chain, 0, sizeof(*chain));
+	{
+		const struct txagc_audio_snapshot *snapshot =
+			atomic_load_explicit(&audio_settings, memory_order_acquire);
+		const struct txagc_settings *current_settings =
+			snapshot ? &snapshot->settings : &settings;
+
+		profile = find_profile_const(current_settings, channel);
+	}
+	if (!profile)
+		return 1;
+	*chain = profile->chains[TXAGC_LOCAL];
+	chain->enabled = chain->enabled && profile->enabled;
+	return 0;
+}
+
 int usbradioplus_processing_get_hardware(const char *channel,
 					 struct usbradioplus_hardware_settings *hardware)
 {
@@ -2454,6 +2575,28 @@ int usbradioplus_processing_get_hardware(const char *channel,
 		*hardware = profile->hardware;
 	ast_mutex_unlock(&settings_lock);
 	return profile ? 0 : 1;
+}
+
+int usbradioplus_processing_get_hardware_rt(const char *channel,
+					    struct usbradioplus_hardware_settings *hardware)
+{
+	const struct txagc_profile *profile;
+
+	if (!hardware)
+		return -1;
+	memset(hardware, 0, sizeof(*hardware));
+	{
+		const struct txagc_audio_snapshot *snapshot =
+			atomic_load_explicit(&audio_settings, memory_order_acquire);
+		const struct txagc_settings *current_settings =
+			snapshot ? &snapshot->settings : &settings;
+
+		profile = find_profile_const(current_settings, channel);
+	}
+	if (!profile)
+		return 1;
+	*hardware = profile->hardware;
+	return 0;
 }
 
 int usbradioplus_processing_get_option(const char *channel, const char *section, const char *name,
@@ -2480,7 +2623,11 @@ int usbradioplus_processing_get_option(const char *channel, const char *section,
 int usbradioplus_processing_set_local_input_gain(const char *channel, double gain_db)
 {
 	struct txagc_profile *profile;
+	struct txagc_audio_snapshot *snapshot;
 	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0)
+		return -1;
+	snapshot = allocate_audio_snapshot();
+	if (!snapshot)
 		return -1;
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
@@ -2488,6 +2635,9 @@ int usbradioplus_processing_set_local_input_gain(const char *channel, double gai
 		profile->chains[TXAGC_LOCAL].agc.input_gain_db = gain_db;
 		profile->chains[TXAGC_LOCAL].input_gain_configured = 1;
 		profile->agc.input_gain_db = gain_db;
+		publish_audio_settings_locked(snapshot);
+	} else {
+		ast_free(snapshot);
 	}
 	ast_mutex_unlock(&settings_lock);
 	return profile ? 0 : 1;
@@ -2496,13 +2646,20 @@ int usbradioplus_processing_set_local_input_gain(const char *channel, double gai
 int usbradioplus_processing_set_hardware_input_gain(const char *channel, double gain_db)
 {
 	struct txagc_profile *profile;
+	struct txagc_audio_snapshot *snapshot;
 	if (!isfinite(gain_db) || gain_db < -30.0 || gain_db > 30.0)
+		return -1;
+	snapshot = allocate_audio_snapshot();
+	if (!snapshot)
 		return -1;
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile) {
 		profile->hardware.input_gain_db = gain_db;
 		profile->hardware.input_gain_configured = 1;
+		publish_audio_settings_locked(snapshot);
+	} else {
+		ast_free(snapshot);
 	}
 	ast_mutex_unlock(&settings_lock);
 	return profile ? 0 : 1;
@@ -2589,22 +2746,29 @@ int usbradioplus_processing_unload(void)
 		scan_thread = AST_PTHREADT_NULL;
 	}
 	detach_all();
+	clear_audio_settings();
 	ast_cli_unregister_multiple(cli_entries, ARRAY_LEN(cli_entries));
 	return 0;
 }
 
 int usbradioplus_processing_load(void)
 {
+	/* prime() validates before channel registration; no callback can retain its
+	 * provisional snapshot when the actual processing engine starts. */
+	clear_audio_settings();
 	settings_defaults(&settings);
 	if (load_settings()) {
+		clear_audio_settings();
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	if (ast_cli_register_multiple(cli_entries, ARRAY_LEN(cli_entries))) {
+		clear_audio_settings();
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	stopping = 0;
 	if (ast_pthread_create_background(&scan_thread, NULL, scanner, NULL)) {
 		ast_cli_unregister_multiple(cli_entries, ARRAY_LEN(cli_entries));
+		clear_audio_settings();
 		return AST_MODULE_LOAD_FAILURE;
 	}
 	return AST_MODULE_LOAD_SUCCESS;
@@ -2612,6 +2776,7 @@ int usbradioplus_processing_load(void)
 
 int usbradioplus_processing_prime(void)
 {
+	clear_audio_settings();
 	settings_defaults(&settings);
 	return load_settings();
 }

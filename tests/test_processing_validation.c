@@ -1869,6 +1869,17 @@ static void test_settings_loader(void)
 	assert(settings.profiles[0].chains[TXAGC_LINK].enabled);
 	assert(settings.profiles[0].chains[TXAGC_LOCAL].agc.agc_enabled);
 	assert(settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.compressor_enabled);
+	{
+		struct txagc_chain chain;
+		struct usbradioplus_hardware_settings hardware;
+
+		assert(!usbradioplus_processing_get_local_rt("test", &chain));
+		assert(!usbradioplus_processing_get_hardware_rt("test", &hardware));
+	}
+	fake_calloc_call = 0;
+	fake_calloc_fail_call = 3;
+	assert(load_settings() < 0);
+	fake_calloc_fail_call = 0;
 	const struct fake_option disabled = {"usb", "channel_enabled", "no"};
 	fake_category_count = 1;
 	fake_categories[0] = "usb";
@@ -2026,9 +2037,11 @@ static void test_public_setting_accessors(void)
 	settings_defaults(&settings);
 	settings.profiles[0].enabled = 0;
 	assert(usbradioplus_processing_get_local("usb", NULL) < 0);
+	assert(usbradioplus_processing_get_local_rt("usb", NULL) < 0);
 	assert(usbradioplus_processing_get_local(NULL, &chain) == 1);
 	assert(!usbradioplus_processing_get_local("usb", &chain));
 	assert(!usbradioplus_processing_get_local("RadioPlus/usb", &chain));
+	assert(!usbradioplus_processing_get_local_rt("RadioPlus/usb", &chain));
 	memset(&chain, 0xa5, sizeof(chain));
 	assert(usbradioplus_processing_get_local("missing", &chain) == 1);
 	assert(!chain.enabled);
@@ -2038,6 +2051,7 @@ static void test_public_setting_accessors(void)
 	settings.profiles[0].chains[TXAGC_LOCAL].enabled = 0;
 	assert(!usbradioplus_processing_get_local("usb", &chain) && !chain.enabled);
 	assert(usbradioplus_processing_get_hardware("usb", NULL) < 0);
+	assert(usbradioplus_processing_get_hardware_rt("usb", NULL) < 0);
 	assert(!usbradioplus_processing_get_hardware("usb", &hardware));
 	assert(hardware.input_gain_configured);
 	memset(&hardware, 0xa5, sizeof(hardware));
@@ -2061,6 +2075,9 @@ static void test_public_setting_accessors(void)
 	assert(usbradioplus_processing_set_local_input_gain("usb", NAN) < 0);
 	assert(usbradioplus_processing_set_local_input_gain("usb", -31.0) < 0);
 	assert(usbradioplus_processing_set_local_input_gain("usb", 31.0) < 0);
+	fake_calloc_failure = 1;
+	assert(usbradioplus_processing_set_local_input_gain("usb", 2.0) < 0);
+	fake_calloc_failure = 0;
 	assert(!usbradioplus_processing_set_local_input_gain("usb", 2.0));
 	assert(usbradioplus_processing_set_local_input_gain("missing", 2.0) == 1);
 	assert(settings.profiles[0].chains[TXAGC_LOCAL].agc.input_gain_db == 2.0);
@@ -2069,6 +2086,9 @@ static void test_public_setting_accessors(void)
 	assert(usbradioplus_processing_set_hardware_input_gain("usb", NAN) < 0);
 	assert(usbradioplus_processing_set_hardware_input_gain("usb", -31.0) < 0);
 	assert(usbradioplus_processing_set_hardware_input_gain("usb", 31.0) < 0);
+	fake_calloc_failure = 1;
+	assert(usbradioplus_processing_set_hardware_input_gain("usb", -2.0) < 0);
+	fake_calloc_failure = 0;
 	assert(!usbradioplus_processing_set_hardware_input_gain("usb", -2.0));
 	assert(usbradioplus_processing_set_hardware_input_gain("missing", -2.0) == 1);
 	assert(settings.profiles[0].hardware.input_gain_db == -2.0);
@@ -2247,12 +2267,18 @@ static void test_module_lifecycle_and_simple_cli(void)
 	assert(cli_enable(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_enable(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_enable(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
+	fake_calloc_failure = 1;
+	assert(cli_enable(&entry, 99, &arguments) == CLI_FAILURE);
+	fake_calloc_failure = 0;
 	assert(cli_enable(&entry, 99, &arguments) == CLI_SUCCESS);
 	assert(settings.profiles[0].enabled);
 
 	assert(cli_disable(&entry, CLI_INIT, &arguments) == NULL);
 	assert(cli_disable(&entry, CLI_GENERATE, &arguments) == NULL);
 	assert(cli_disable(&entry, 99, &bad_arguments) == CLI_SHOWUSAGE);
+	fake_calloc_failure = 1;
+	assert(cli_disable(&entry, 99, &arguments) == CLI_FAILURE);
+	fake_calloc_failure = 0;
 	assert(cli_disable(&entry, 99, &arguments) == CLI_SUCCESS);
 	assert(!settings.profiles[0].enabled);
 

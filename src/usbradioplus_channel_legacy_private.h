@@ -92,8 +92,6 @@ struct chan_usbradio_pvt {
 	uint64_t plus_link_queue_underflows;
 	/** Count of app_rpt queue overflow corrections. */
 	uint64_t plus_link_queue_overflows;
-	/** Mutex protecting app_rpt queue access. */
-	ast_mutex_t plus_link_lock;
 	/** Undelayed detector-input copy of native receive audio. */
 	short plus_squelch_native[URP_NATIVE_SAMPLES * 2];
 	/** Native receiver squelch-tail delay ring. */
@@ -386,11 +384,11 @@ struct chan_usbradio_pvt {
 	/*! \brief Settings for echoing received audio */
 	int echomode;
 	/** Echo-mode recording/playback enable state. */
-	int echoing;
-	/** Mutex protecting app_rpt-rate echo frames. */
-	ast_mutex_t echolock;
-	/** Queued app_rpt-rate echo recording. */
-	struct qelem echoq;
+	atomic_int echoing;
+	/** Lock-free app_rpt-rate echo recording. */
+	struct urp_sample_queue echo_queue;
+	/** Fixed echo storage avoids allocation from the audio worker. */
+	short echo_samples[URP_ECHO_QUEUE_SAMPLES];
 	/** Maximum app_rpt-rate echo frames. */
 	int echomax;
 
