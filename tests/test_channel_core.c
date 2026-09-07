@@ -2935,6 +2935,7 @@ static void test_modern_channel_callbacks(void)
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 	int cause = 0;
 
+	urp_program_queue_init(&radio.plus_program_queue);
 	test_channel_private = &radio;
 	radio.radio = &radio_state;
 	assert(usbradio_read(channel) == &ast_null_frame);
@@ -2965,7 +2966,7 @@ static void test_modern_channel_callbacks(void)
 	fclose(ftxcapraw);
 	ftxcapraw = NULL;
 	radio.txcapraw = 0;
-	assert(radio.plus_program_queue.count > 0);
+	assert(urp_program_queue_samples(&radio.plus_program_queue) > 0);
 
 	radio.hidthread = radio.audiothread = AST_PTHREADT_NULL;
 	pthread_create_calls = 0;
@@ -3193,7 +3194,7 @@ static void test_modern_audio_worker_baseline(void)
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.plus_emphasis_corner_hz = 300.0;
-	radio.echoq.q_forw = radio.echoq.q_back = &radio.echoq;
+	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	assert(usbradioplus_dsp_init(&radio) == 0);
 	modern_read_result = paNoError;
 	modern_read_sample = 0;
@@ -4351,6 +4352,9 @@ static void test_cli_handlers(void)
 	assert(handle_set_dsp_debug(&entry, 0, args) == CLI_SUCCESS);
 	EXERCISE_HANDLER(handle_radioplus_native_stats);
 	assert(handle_radioplus_native_stats(&entry, 0, &args2) == CLI_SHOWUSAGE);
+	radio.plus_app_rpt_samples = 0;
+	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
+	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
 	radio.plus_parrot_playing = 1;
 	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
@@ -5157,6 +5161,11 @@ static void test_config_update_and_radio_programming(void)
 	assert(radio.plus_hardware_applied);
 	assert(radio.plus_applied_rxmixer == 500);
 	refresh_processing_hardware(&radio);
+	settings.profiles[0].hardware.output_a_assignment = TX_OUT_VOICE;
+	settings.profiles[0].hardware.output_b_assignment = TX_OUT_VOICE;
+	radio.plus_hardware_applied = 0;
+	refresh_processing_hardware(&radio);
+	assert(radio.radio->txOutputGainA == radio.radio->txOutputGainB);
 	settings.profiles[0].hardware.input_gain_configured = 1;
 	settings.profiles[0].hardware.input_gain_db = 0.0;
 	settings.profiles[0].hardware.output_a_gain_configured = 1;
@@ -5167,11 +5176,15 @@ static void test_config_update_and_radio_programming(void)
 	settings.profiles[0].hardware.output_a_assignment = TX_OUT_COMPOSITE;
 	settings.profiles[0].hardware.output_b_assignment_configured = 1;
 	settings.profiles[0].hardware.output_b_assignment = TX_OUT_AUX;
+	settings.profiles[0].hardware.output_b_gain_db = 6.0;
 	settings.profiles[0].hardware.rx_ctcss_frequencies_configured = 1;
 	settings.profiles[0].hardware.tx_ctcss_frequencies_configured = 1;
 	strcpy(settings.profiles[0].hardware.rx_ctcss_frequencies, "67.0");
 	strcpy(settings.profiles[0].hardware.tx_ctcss_frequencies, "71.9");
+	radio.plus_hardware_applied = 0;
 	refresh_processing_hardware(&radio);
+	assert(radio.plus_applied_txmixa != radio.plus_applied_txmixb);
+	assert(radio.radio->txOutputGainA != radio.radio->txOutputGainB);
 	assert(!strcmp(radio.plus_applied_rxctcssfreqs, "67.0"));
 	assert(!strcmp(radio.plus_applied_txctcssfreqs, "71.9"));
 	radio.remoted = 1;
@@ -5995,6 +6008,7 @@ static void test_oss_channel_write_and_call(void)
 	radio.radio = &radio_state;
 	radio.sounddev = 7;
 	radio.plus_app_rpt_samples = ARRAY_LEN(samples);
+	urp_program_queue_init(&radio.plus_program_queue);
 	test_channel_private = &radio;
 	assert(usbradio_write(channel, &frame) == 0);
 	radio.hasusb = 1;
@@ -6015,7 +6029,7 @@ static void test_oss_channel_write_and_call(void)
 	assert(usbradio_write(channel, &frame) == 0);
 	radio.txkeyed = 1;
 	assert(usbradio_write(channel, &frame) == 0);
-	assert(radio.plus_program_queue.count > 0);
+	assert(urp_program_queue_samples(&radio.plus_program_queue) > 0);
 	mock_oss_io = 1;
 	mock_open_result = -1;
 	radio.sounddev = -1;
@@ -6825,7 +6839,7 @@ static void test_oss_channel_read_guards(void)
 
 	radio.name = "test";
 	radio.sounddev = 7;
-	radio.echoq.q_forw = radio.echoq.q_back = &radio.echoq;
+	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	test_channel_private = &radio;
 	radio.lasthidtime = 1230;
 	assert(!usbradio_read(channel));
@@ -6922,7 +6936,7 @@ static void test_oss_complete_read_frame(void)
 	radio.plus_hardware_applied = 1;
 	radio.plus_emphasis_corner_hz = 300.0;
 	radio.readpos = AST_FRIENDLY_OFFSET;
-	radio.echoq.q_forw = radio.echoq.q_back = &radio.echoq;
+	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	radio_configuration.pRxCodeSrc = "100.0";
 	radio_configuration.pTxCodeSrc = "0";
 	radio_configuration.pTxCodeDefault = "0";
@@ -7081,15 +7095,15 @@ static void test_oss_complete_read_frame(void)
 
 	/* Legacy 8 kHz echo mode clears, records, and plays its queue. */
 	{
-		struct usbecho *echo = calloc(1, sizeof(*echo));
-		assert(echo);
-		insque((struct qelem *)echo, radio.echoq.q_back);
+		short echo[FRAME_SIZE] = {0};
+
+		for (size_t echo_sample = 0; echo_sample < FRAME_SIZE; ++echo_sample)
+			assert(urp_sample_queue_push_sample(&radio.echo_queue, echo[echo_sample]));
 		radio.echomode = 0;
 		assert(oss_read_complete(&radio, channel) == &radio.read_f);
-		assert(radio.echoq.q_forw == &radio.echoq);
-		echo = calloc(1, sizeof(*echo));
-		assert(echo);
-		insque((struct qelem *)echo, radio.echoq.q_back);
+		assert(!urp_sample_queue_samples(&radio.echo_queue));
+		for (size_t echo_sample = 0; echo_sample < FRAME_SIZE; ++echo_sample)
+			assert(urp_sample_queue_push_sample(&radio.echo_queue, echo[echo_sample]));
 		radio.echomode = 1;
 		radio.echoing = 0;
 		assert(oss_read_complete(&radio, channel) == &radio.read_f);
@@ -7100,18 +7114,36 @@ static void test_oss_complete_read_frame(void)
 	assert(!radio.echoing);
 	radio.rxkeyed = 1;
 	radio.echomax = 2;
-	ast_calloc_calls = 0;
-	fail_ast_calloc_call = 1;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	fail_ast_calloc_call = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(radio.echoq.q_forw != &radio.echoq);
+	assert(urp_sample_queue_samples(&radio.echo_queue) == FRAME_SIZE);
+	/* Echo capture caps its duration and safely stops if its SPSC ring is full. */
+	urp_sample_queue_reset(&radio.echo_queue);
+	radio.echomax = URP_ECHO_QUEUE_SAMPLES / FRAME_SIZE + 1U;
+	radio.echo_queue.capacity = 1U;
+	usbradioplus_echo_record(&radio, (const short[2]){0, 0}, 2U);
+	assert(urp_sample_queue_samples(&radio.echo_queue) == 1U);
+	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
+	/* Exercise every short-circuit and capacity boundary in sample-ring capture. */
+	radio.echomax = 0;
+	radio.plus_app_rpt_samples = 0;
+	atomic_store_explicit(&radio.echoing, 0, memory_order_release);
+	usbradioplus_echo_record(&radio, (const short[1]){0}, 1U);
+	radio.echomax = 1;
+	atomic_store_explicit(&radio.echoing, 1, memory_order_release);
+	usbradioplus_echo_record(&radio, (const short[1]){0}, 1U);
+	atomic_store_explicit(&radio.echoing, 0, memory_order_release);
+	radio.plus_app_rpt_samples = 1;
+	usbradioplus_echo_record(&radio, (const short[1]){0}, 1U);
+	usbradioplus_echo_record(&radio, (const short[1]){0}, 1U);
+	usbradioplus_echo_record(&radio, (const short[1]){0}, 0U);
+	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
+	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.echoing = 0;
 	radio.rxhidsq = 1;
 	radio.radioduplex = 1;
 	radio.echomax = 1;
 	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(radio.echoq.q_forw != &radio.echoq);
+	assert(urp_sample_queue_samples(&radio.echo_queue) == FRAME_SIZE);
 	radio.echoing = 1;
 	radio.rxcdtype = CD_IGNORE;
 	radio.rxsdtype = SD_IGNORE;
@@ -7268,7 +7300,7 @@ static void test_oss_complete_read_frame(void)
 	assert(frame->frametype == AST_FRAME_VOICE && frame->samples == 960);
 	assert(frame->datalen == 1920 &&
 	       ast_format_get_sample_rate(frame->subclass.format) == 48000);
-	assert(!radio.echoing && radio.echoq.q_forw == &radio.echoq);
+	assert(!radio.echoing && !urp_sample_queue_samples(&radio.echo_queue));
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	radio.duplex3 = 999;
 	radio.radioduplex = 0;
@@ -7456,37 +7488,44 @@ static void test_program_queue_and_parrot_storage(void)
 
 	radio.plus_app_rpt_samples = 160;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
+	urp_program_queue_init(&radio.plus_program_queue);
+	urp_program_queue_request_seed(&radio.plus_program_queue,
+				       urp_program_queue_seed_samples(URP_FIFO_TARGET_NORMAL,
+								      radio.plus_app_rpt_rate,
+								      radio.plus_app_rpt_samples));
 	for (i = 0; i < ARRAY_LEN(samples); ++i)
 		samples[i] = (short)i;
 	usbradioplus_queue_program(&radio, samples, ARRAY_LEN(samples));
-	assert(radio.plus_program_queue.count ==
-	       (PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES +
-		       1U);
-	assert(radio.plus_program_queue.high_water == radio.plus_program_queue.count);
-	assert(radio.plus_program_queue.frames[radio.plus_program_queue.head][0] == 0);
+	assert(urp_program_queue_samples(&radio.plus_program_queue) ==
+	       ((PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES) *
+			       160U +
+		       ARRAY_LEN(samples));
+	assert(urp_program_queue_high_water(&radio.plus_program_queue) ==
+	       urp_program_queue_samples(&radio.plus_program_queue));
+	assert(radio.plus_program_queue.samples[0] == 0);
 	assert(radio.plus_program_queue
-		       .frames[(radio.plus_program_queue.tail + URP_PROGRAM_QUEUE_FRAMES - 1) %
-			       URP_PROGRAM_QUEUE_FRAMES][159] == 159);
+		       .samples[((PLUS_LINK_NATIVE_TARGET_SAMPLES + URP_NATIVE_SAMPLES - 1U) /
+				 URP_NATIVE_SAMPLES) *
+					160U +
+				159U] == 159);
 	seeded.plus_app_rpt_samples = 160;
+	urp_program_queue_init(&seeded.plus_program_queue);
 	seeded.plus_native_fifo.count = 1;
 	usbradioplus_queue_program(&seeded, samples, 1);
 	seeded.plus_native_fifo.count = 0;
-	seeded.plus_program_queue.count = 1;
-	seeded.plus_program_queue.head = 0;
-	seeded.plus_program_queue.tail = 1;
+	urp_program_queue_init(&seeded.plus_program_queue);
+	assert(urp_program_queue_push_sample(&seeded.plus_program_queue, 0));
 	usbradioplus_queue_program(&seeded, samples, 1);
 	radio.plus_native_fifo.count = 1;
-	radio.plus_program_queue.count = 0;
+	urp_program_queue_init(&radio.plus_program_queue);
 
 	radio.plus_native_fifo.count = 0;
 	radio.plus_native_fifo.primed = 1;
-	radio.plus_program_queue.count = URP_PROGRAM_QUEUE_FRAMES;
-	radio.plus_program_queue.head = 0;
-	radio.plus_program_queue.tail = 0;
+	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES; ++i)
+		assert(urp_program_queue_push_sample(&radio.plus_program_queue, 0));
 	usbradioplus_queue_program(&radio, samples, 1);
 	assert(radio.plus_link_queue_overflows == 1);
-	assert(radio.plus_program_queue.count == URP_PROGRAM_QUEUE_FRAMES);
-	assert(radio.plus_program_queue.head == 1);
+	assert(urp_program_queue_samples(&radio.plus_program_queue) == URP_PROGRAM_QUEUE_SAMPLES);
 
 	assert(!usbradioplus_native_echo(&radio));
 	radio.duplex3 = 999;
@@ -7526,6 +7565,7 @@ static void test_native_tick_baseline(void)
 	channel.name = "test";
 	channel.plus_app_rpt_rate = 8000;
 	channel.plus_app_rpt_samples = 160;
+	urp_program_queue_init(&channel.plus_program_queue);
 	channel.plus_hardware_applied = 1;
 	channel.plus_emphasis_corner_hz = 300.0;
 	radio_config.pRxCodeSrc = "0";
@@ -7562,6 +7602,10 @@ static void test_native_tick_baseline(void)
 
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
+	urp_program_queue_request_seed(
+		&channel.plus_program_queue,
+		urp_program_queue_seed_samples(URP_FIFO_TARGET_NORMAL, channel.plus_app_rpt_rate,
+					       channel.plus_app_rpt_samples));
 	for (i = 0; i < ARRAY_LEN(native_program); ++i)
 		native_program[i] = (short)i;
 	for (i = 0; i < 3; ++i)
@@ -7576,7 +7620,7 @@ static void test_native_tick_baseline(void)
 	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
-	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
+	urp_program_queue_init(&channel.plus_program_queue);
 	channel.plus_native_fifo.primed = 1;
 	channel.txkeyed = 1;
 	usbradioplus_native_tick(&channel);
@@ -7626,7 +7670,11 @@ static void test_native_tick_baseline(void)
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	urp_native_fifo_reset(&channel.plus_native_fifo);
-	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
+	urp_program_queue_init(&channel.plus_program_queue);
+	urp_program_queue_request_seed(
+		&channel.plus_program_queue,
+		urp_program_queue_seed_samples(URP_FIFO_TARGET_NORMAL, channel.plus_app_rpt_rate,
+					       channel.plus_app_rpt_samples));
 	for (i = 0; i < 4; ++i)
 		usbradioplus_queue_program(&channel, native_program, URP_LINK_SAMPLES);
 	usbradioplus_native_tick(&channel);
@@ -7682,7 +7730,7 @@ static void test_native_tick_baseline(void)
 	assert(channel.plus_src_errors == errors + 1);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
-	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
+	urp_program_queue_init(&channel.plus_program_queue);
 	for (i = 0; i < 4; ++i)
 		usbradioplus_queue_program(&channel, native_program, URP_LINK_SAMPLES);
 	src_process_calls = 0;
@@ -7693,7 +7741,7 @@ static void test_native_tick_baseline(void)
 	fail_src_process_call = 0;
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
-	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
+	urp_program_queue_init(&channel.plus_program_queue);
 	for (i = 0; i < 4; ++i)
 		usbradioplus_queue_program(&channel, native_program, URP_LINK_SAMPLES);
 	src_process_calls = 0;
@@ -7734,7 +7782,7 @@ static void test_native_tick_baseline(void)
 	channel.plus_native_fifo.primed = 1;
 	channel.plus_native_fifo.count = 1;
 	channel.txkeyed = 0;
-	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
+	urp_program_queue_init(&channel.plus_program_queue);
 	errors = channel.plus_link_queue_underflows;
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_link_queue_underflows == errors);
@@ -7778,6 +7826,16 @@ static void test_native_tick_baseline(void)
 	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_highpass_hz = 5000.0;
 	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.output_lowpass_hz = 1000.0;
 	usbradioplus_native_tick(&channel);
+	/* Legacy echo uses its own ring; recovery must not request an app_rpt seed. */
+	urp_sample_queue_init(&channel.echo_queue, channel.echo_samples, URP_ECHO_QUEUE_SAMPLES);
+	atomic_store_explicit(&channel.echoing, 1, memory_order_release);
+	channel.plus_advanced = 0;
+	channel.plus_native_fifo.primed = 1;
+	channel.plus_native_fifo.count = 0;
+	channel.plus_link_src_pending = 0;
+	channel.txkeyed = 0;
+	usbradioplus_native_tick(&channel);
+	atomic_store_explicit(&channel.echoing, 0, memory_order_release);
 	usbradioplus_dsp_destroy(&channel);
 	urp_radio_destroy(channel.radio);
 }
@@ -7798,9 +7856,14 @@ static void check_native_fifo_short_burst(unsigned int target_samples)
 	channel.name = "fifo-burst";
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
+	urp_program_queue_init(&channel.plus_program_queue);
 	channel.plus_emphasis_corner_hz = 300.0;
 	channel.plus_native_fifo.target_samples = target_samples;
 	channel.txkeyed = 1;
+	urp_program_queue_request_seed(
+		&channel.plus_program_queue,
+		urp_program_queue_seed_samples(target_samples, channel.plus_app_rpt_rate,
+					       channel.plus_app_rpt_samples));
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	assert(!usbradioplus_dsp_init(&channel));
@@ -7811,7 +7874,8 @@ static void check_native_fifo_short_burst(unsigned int target_samples)
 		unsigned int frames =
 			(target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES;
 		usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
-		assert(channel.plus_program_queue.count == frames);
+		assert(urp_program_queue_samples(&channel.plus_program_queue) ==
+		       frames * URP_NATIVE_SAMPLES);
 		assert(!channel.plus_link_queue_overflows);
 		for (unsigned int frame = 0; frame < frames; ++frame) {
 			/* Recovery blends its preceding concealment into the first millisecond. */
@@ -7829,7 +7893,7 @@ static void check_native_fifo_short_burst(unsigned int target_samples)
 				assert(channel.plus_link_native[i] ==
 				       (frame + 1U == frames ? program[i] : 0));
 		}
-		assert(!channel.plus_program_queue.count);
+		assert(!urp_program_queue_samples(&channel.plus_program_queue));
 		assert(channel.plus_link_queue_underflows == burst);
 		/* A keyed empty tick raises the target and resets startup buffering. */
 		usbradioplus_native_tick(&channel);
@@ -7873,6 +7937,11 @@ static void initialize_src_burst_channel(struct chan_usbradio_pvt *channel,
 	channel->name = "src-burst";
 	channel->plus_app_rpt_rate = input_rate;
 	channel->plus_app_rpt_samples = input_rate / 50U;
+	urp_program_queue_init(&channel->plus_program_queue);
+	urp_program_queue_request_seed(
+		&channel->plus_program_queue,
+		urp_program_queue_seed_samples(target_samples, channel->plus_app_rpt_rate,
+					       channel->plus_app_rpt_samples));
 	channel->plus_emphasis_corner_hz = 300.0;
 	channel->plus_native_fifo.target_samples = target_samples;
 	channel->txkeyed = keyed;
@@ -7983,7 +8052,8 @@ static void check_resampled_fifo_short_burst(unsigned int target_samples, unsign
 
 		/* No later program frame is available to satisfy the sinc filter's lookahead. */
 		usbradioplus_queue_program(&channel, program, program_samples);
-		assert(channel.plus_program_queue.count <= URP_PROGRAM_QUEUE_FRAMES);
+		assert(urp_program_queue_samples(&channel.plus_program_queue) <=
+		       URP_PROGRAM_QUEUE_SAMPLES);
 		for (tick = 0; tick < max_ticks; ++tick) {
 			usbradioplus_native_tick(&channel);
 			if (!tick)
@@ -8004,7 +8074,8 @@ static void check_resampled_fifo_short_burst(unsigned int target_samples, unsign
 				break;
 		}
 		assert(tick < max_ticks);
-		assert(!channel.plus_program_queue.count && !channel.plus_native_fifo.count);
+		assert(!urp_program_queue_samples(&channel.plus_program_queue) &&
+		       !channel.plus_native_fifo.count);
 		assert(!channel.plus_link_src_pending);
 		/* Preserve most of the tone, allowing sinc ringing and the final concealment fade.
 		 */
@@ -8094,17 +8165,17 @@ static void test_resampled_fifo_continuity_and_rekey(void)
 	}
 	for (unsigned int frame = 0; frame < 24; ++frame) {
 		double energy = 0.0;
-		unsigned int queued = channel.plus_program_queue.count;
+		unsigned int queued = urp_program_queue_samples(&channel.plus_program_queue);
 
 		channel.txkeyed = keyed[frame % ARRAY_LEN(keyed)];
 		/* Idle silence and unkeyed voice both belong to the same input stream. */
 		voice.data.ptr = frame >= 16 && frame < 20 ? silence : program;
 		channel.echoing = 1;
 		assert(!usbradio_write(owner, &voice));
-		assert(channel.plus_program_queue.count == queued);
+		assert(urp_program_queue_samples(&channel.plus_program_queue) == queued);
 		channel.echoing = 0;
 		assert(!usbradio_write(owner, &voice));
-		assert(channel.plus_program_queue.count > queued);
+		assert(urp_program_queue_samples(&channel.plus_program_queue) > queued);
 		usbradioplus_queue_program(&reference, voice.data.ptr, ARRAY_LEN(program));
 		usbradioplus_native_tick(&channel);
 		usbradioplus_native_tick(&reference);
@@ -8152,7 +8223,8 @@ static void test_resampled_fifo_tail_failures(void)
 		     ++tick)
 			usbradioplus_native_tick(&channel);
 		assert(channel.plus_native_fifo.count < URP_NATIVE_SAMPLES);
-		assert(channel.plus_link_src_pending && !channel.plus_program_queue.count);
+		assert(channel.plus_link_src_pending &&
+		       !urp_program_queue_samples(&channel.plus_program_queue));
 		src_process_calls = 0;
 		if (failure)
 			partial_src_process_call = 2;
@@ -8503,10 +8575,11 @@ static void test_advanced_native_clock(void)
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.plus_parrot_playing = 1;
 	usbradioplus_queue_program(&channel, program, URP_NATIVE_SAMPLES);
-	assert(channel.plus_program_queue.count == 1);
+	assert(urp_program_queue_samples(&channel.plus_program_queue) == URP_NATIVE_SAMPLES);
 	src_process_calls = 0;
 	usbradioplus_native_tick(&channel);
-	assert(!channel.plus_program_queue.count && !channel.plus_native_fifo.count);
+	assert(!urp_program_queue_samples(&channel.plus_program_queue) &&
+	       !channel.plus_native_fifo.count);
 	assert(channel.plus_link_native[0] == 123 && channel.plus_link_native[959] == 123);
 	assert(src_process_calls == 0 && channel.plus_parrot_playing && !channel.plus_parrot_play);
 	assert(channel.plus_link_queue_underflows == 0);
@@ -8519,7 +8592,7 @@ static void test_advanced_native_clock(void)
 	assert(!channel.plus_advanced && channel.plus_app_rpt_rate == 8000 &&
 	       channel.plus_app_rpt_samples == 160);
 	usbradioplus_queue_program(&channel, program, 160);
-	assert(channel.plus_program_queue.count > 1);
+	assert(urp_program_queue_samples(&channel.plus_program_queue) > URP_NATIVE_SAMPLES);
 	channel.plus_parrot_playing = 0;
 	usbradioplus_dsp_destroy(&channel);
 	urp_radio_destroy(channel.radio);

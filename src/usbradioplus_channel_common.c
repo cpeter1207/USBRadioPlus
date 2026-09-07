@@ -253,7 +253,14 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_advanced = advanced;
 	channel->plus_app_rpt_rate = advanced ? URP_RATE_NATIVE : URP_APP_RPT_RATE_DEFAULT;
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
-	memset(&channel->plus_program_queue, 0, sizeof(channel->plus_program_queue));
+	urp_program_queue_init(&channel->plus_program_queue);
+	if (!advanced) {
+		urp_program_queue_request_seed(
+			&channel->plus_program_queue,
+			urp_program_queue_seed_samples(URP_FIFO_TARGET_NORMAL,
+						       channel->plus_app_rpt_rate,
+						       channel->plus_app_rpt_samples));
+	}
 	urp_native_fifo_reset(&channel->plus_native_fifo);
 	urp_clock_recovery_reset(&channel->plus_link_clock);
 	urp_src_reset(channel->plus_up);
@@ -274,24 +281,47 @@ void usbradioplus_configure_advanced(struct ast_channel *channel)
 
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
-	unsigned int seed_frames, target_samples;
-	ast_mutex_lock(&o->plus_link_lock);
-	/* Seed stream startup or underrun recovery with the target reserve.
-	 * A resampled stream needs one extra frame for sinc history.
-	 * PTT transitions do not reseed the stream. */
-	target_samples = o->plus_native_fifo.target_samples ? o->plus_native_fifo.target_samples
-							    : URP_FIFO_TARGET_NORMAL;
-	seed_frames = !o->plus_advanced && !o->plus_native_fifo.primed &&
-				      !o->plus_native_fifo.count &&
-				      !urp_program_queue_pending(&o->plus_program_queue)
-			      ? (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES -
-					1U + (o->plus_app_rpt_rate != URP_RATE_NATIVE)
-			      : 0;
-	if (urp_program_queue_push(&o->plus_program_queue, samples, count, o->plus_app_rpt_samples,
-				   seed_frames)) {
+	/* The hardware worker requests startup/recovery silence through an atomic
+	 * handoff. The writer never reads the consumer-owned elastic FIFO. */
+	unsigned int seed_samples = urp_program_queue_take_seed(&o->plus_program_queue);
+
+	if (urp_program_queue_push(&o->plus_program_queue, samples, count, seed_samples)) {
 		o->plus_link_queue_overflows++;
 	}
-	ast_mutex_unlock(&o->plus_link_lock);
+}
+
+void usbradioplus_echo_clear(struct chan_usbradio_pvt *o)
+{
+	/* The audio worker owns this queue while legacy echo is inactive. */
+	urp_sample_queue_reset(&o->echo_queue);
+	atomic_store_explicit(&o->echoing, 0, memory_order_release);
+}
+
+int usbradioplus_echo_start(struct chan_usbradio_pvt *o)
+{
+	int active = urp_sample_queue_samples(&o->echo_queue) != 0U;
+
+	atomic_store_explicit(&o->echoing, active, memory_order_release);
+	return active;
+}
+
+void usbradioplus_echo_record(struct chan_usbradio_pvt *o, const short *samples, size_t count)
+{
+	unsigned int app_samples =
+		o->plus_app_rpt_samples ? o->plus_app_rpt_samples : URP_APP_RPT_RATE_DEFAULT / 50U;
+	unsigned int capacity;
+
+	if (o->echomax <= 0 || atomic_load_explicit(&o->echoing, memory_order_acquire))
+		return;
+	if ((unsigned int)o->echomax > URP_ECHO_QUEUE_SAMPLES / app_samples)
+		capacity = URP_ECHO_QUEUE_SAMPLES;
+	else
+		capacity = (unsigned int)o->echomax * app_samples;
+	while (count-- && urp_sample_queue_samples(&o->echo_queue) < capacity) {
+		if (!urp_sample_queue_push_sample(&o->echo_queue, *samples))
+			break;
+		++samples;
+	}
 }
 
 int usbradio_fixup(struct ast_channel *oldchan, struct ast_channel *newchan)
@@ -784,7 +814,7 @@ void store_rxsdtype(struct chan_usbradio_pvt *o, const char *s)
 double effective_rx_input_gain_db(const struct chan_usbradio_pvt *o)
 {
 	struct txagc_chain chain;
-	usbradioplus_processing_get_local(o->name, &chain);
+	usbradioplus_processing_get_local_rt(o->name, &chain);
 	return chain.agc.input_gain_db;
 }
 
@@ -796,44 +826,48 @@ float effective_rx_decoder_gain(const struct chan_usbradio_pvt *o)
 int effective_rxmixerset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	return urp_gain_db_to_mixer(hardware.input_gain_db);
 }
 
 int effective_txmixaset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	return urp_gain_db_to_mixer(hardware.output_a_gain_db);
 }
 
 int effective_txmixbset(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	return urp_gain_db_to_mixer(hardware.output_b_gain_db);
 }
 
 enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	return (enum radio_tx_mix)hardware.output_a_assignment;
 }
 
 enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	return (enum radio_tx_mix)hardware.output_b_assignment;
 }
 
-enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
+/** @brief Translate the configured COS assignment to the radio signaling source.
+ * @param hardware Resolved hardware processing settings.
+ * @return Radio carrier-detector source selected by the assignment.
+ */
+static enum radio_carrier_detect
+carrier_detect_from_hardware(const struct usbradioplus_hardware_settings *hardware)
 {
-	struct usbradioplus_hardware_settings hardware;
 	const char *value;
-	usbradioplus_processing_get_hardware(o->name, &hardware);
-	value = hardware.cos_assignment;
+
+	value = hardware->cos_assignment;
 	if (!strcasecmp(value, "usb"))
 		return CD_HID;
 	if (!strcasecmp(value, "usbinvert"))
@@ -849,17 +883,32 @@ enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
 	return CD_IGNORE;
 }
 
+enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
+{
+	struct usbradioplus_hardware_settings hardware;
+
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
+	return carrier_detect_from_hardware(&hardware);
+}
+
 void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
 	const char *rx_frequencies;
 	const char *tx_frequencies;
-	int rx = effective_rxmixerset(o), a = effective_txmixaset(o), b = effective_txmixbset(o);
-	int route_a = effective_txmixa(o), route_b = effective_txmixb(o);
-	usbradioplus_processing_get_hardware(o->name, &hardware);
+	int rx, a, b, route_a, route_b;
+
+	/* Take one immutable settings copy so a reload cannot mix old and new
+	 * hardware fields within a single render interval. */
+	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
+	rx = urp_gain_db_to_mixer(hardware.input_gain_db);
+	a = urp_gain_db_to_mixer(hardware.output_a_gain_db);
+	b = urp_gain_db_to_mixer(hardware.output_b_gain_db);
+	route_a = hardware.output_a_assignment;
+	route_b = hardware.output_b_assignment;
 	rx_frequencies = hardware.rx_ctcss_frequencies;
 	tx_frequencies = hardware.tx_ctcss_frequencies;
-	o->radio->rxCdType = effective_rxcdtype(o);
+	o->radio->rxCdType = carrier_detect_from_hardware(&hardware);
 	if (!o->remoted && (strcmp(rx_frequencies, o->plus_applied_rxctcssfreqs) ||
 			    strcmp(tx_frequencies, o->plus_applied_txctcssfreqs))) {
 		ast_copy_string(o->plus_applied_rxctcssfreqs, rx_frequencies,
@@ -881,7 +930,10 @@ void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 	o->plus_applied_txmixb = route_b;
 	o->plus_hardware_applied = 1;
 	mixer_write(o);
-	mult_set(o);
+	o->radio->txOutputGainA = urp_hardware_level_multiplier((a * 152) / AUDIO_ADJUSTMENT);
+	o->radio->txOutputGainB =
+		route_a == route_b ? o->radio->txOutputGainA
+				   : urp_hardware_level_multiplier((b * 152) / AUDIO_ADJUSTMENT);
 }
 
 void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
@@ -1767,7 +1819,7 @@ int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed)
 {
 	if (urp_parrot_rx_transition(&o->plus_parrot_state, was_keyed, o->rxkeyed)) {
-		o->echoing = 1;
+		atomic_store_explicit(&o->echoing, 1, memory_order_release);
 		ast_log(LOG_NOTICE, "RadioPlus/%s: replaying %.2f seconds of native echo audio%s\n",
 			o->name, (double)o->plus_parrot_count / URP_RATE_NATIVE,
 			o->plus_parrot_truncated ? " (truncated)" : "");

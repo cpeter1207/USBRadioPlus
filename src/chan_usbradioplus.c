@@ -1470,7 +1470,7 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 
 	/* Preserve app_rpt's continuous stream, including idle silence, so PTT
 	 * transitions do not interrupt clock recovery. Echo owns the input while playing. */
-	if (o->plus_advanced || !o->echoing) {
+	if (o->plus_advanced || !atomic_load_explicit(&o->echoing, memory_order_acquire)) {
 		usbradioplus_queue_program(o, f->data.ptr, f->datalen / sizeof(short));
 	}
 
@@ -1524,14 +1524,7 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 
 	/* If we have stopped echoing, clear the echo queue */
 	if (o->plus_advanced || !o->echomode) {
-		ast_mutex_lock(&o->echolock);
-		o->echoing = 0;
-		while (o->echoq.q_forw != &o->echoq) {
-			struct qelem *q = o->echoq.q_forw;
-			remque(q);
-			ast_free(q);
-		}
-		ast_mutex_unlock(&o->echolock);
+		usbradioplus_echo_clear(o);
 	}
 
 	/* If we are in echomode and we have stopped receiving audio
@@ -1539,18 +1532,7 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 	 * for playback.
 	 */
 	if (!o->plus_advanced && o->echomode && !usbradioplus_native_echo(o) && (!o->rxkeyed)) {
-		ast_mutex_lock(&o->echolock);
-		/* if there is something in the queue */
-		if (o->echoq.q_forw != &o->echoq) {
-			struct usbecho *u = (struct usbecho *)o->echoq.q_forw;
-			remque((struct qelem *)u);
-			usbradioplus_queue_program(o, u->data, FRAME_SIZE);
-			ast_free(u);
-			o->echoing = 1;
-		} else {
-			o->echoing = 0;
-		}
-		ast_mutex_unlock(&o->echolock);
+		(void)usbradioplus_echo_start(o);
 	}
 
 	/* Read audio data from the USB sound device.
@@ -1743,25 +1725,10 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 	 * it in the echo queue for later playback.
 	 */
 	if (!o->plus_advanced && o->echomode && !usbradioplus_native_echo(o) && o->rxkeyed &&
-	    (!o->echoing)) {
-		register int x;
-		struct usbecho *u;
-
-		ast_mutex_lock(&o->echolock);
-		x = 0;
-		/* get count of frames */
-		for (u = (struct usbecho *)o->echoq.q_forw; u != (struct usbecho *)&o->echoq;
-		     u = (struct usbecho *)u->q_forw)
-			x++;
-		if (x < o->echomax) {
-			u = ast_calloc(1, sizeof(struct usbecho));
-			if (u) {
-				memcpy(u->data, (o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-				       FRAME_SIZE * 2);
-				insque((struct qelem *)u, o->echoq.q_back);
-			}
-		}
-		ast_mutex_unlock(&o->echolock);
+	    (!atomic_load_explicit(&o->echoing, memory_order_acquire))) {
+		usbradioplus_echo_record(
+			o, (const short *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
+			FRAME_SIZE);
 	}
 
 	/* Send a message to indicate rx signal detect conditions */
@@ -2509,11 +2476,9 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 			}
 		}
 	}
-	o->echoq.q_forw = o->echoq.q_back = &o->echoq;
-	ast_mutex_init(&o->echolock);
+	urp_sample_queue_init(&o->echo_queue, o->echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	ast_mutex_init(&o->eepromlock);
 	ast_mutex_init(&o->usblock);
-	ast_mutex_init(&o->plus_link_lock);
 	o->echomax = DEFAULT_ECHO_MAX;
 	if (o == &usbradio_default) {
 		return NULL;
@@ -2894,7 +2859,7 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		o->plus_final_avfilter.cleanup_post_5_8_max_rms_dbfs = -INFINITY;
 		o->plus_final_avfilter.cleanup_post_8_plus_max_rms_dbfs = -INFINITY;
 		o->plus_final_avfilter.runtime_underrun_samples = 0;
-		o->plus_program_queue.high_water = o->plus_program_queue.count;
+		urp_program_queue_reset_high_water(&o->plus_program_queue);
 		ast_cli(a->fd, "Native peak and FIFO event counters reset.\n");
 		return CLI_SUCCESS;
 	}
@@ -2916,17 +2881,19 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		o->plus_local_tx_peak_dbfs, o->plus_local_tx_max_peak_dbfs,
 		o->plus_local_tx_rail_samples, o->plus_tx_program_peak_dbfs,
 		o->plus_tx_program_max_peak_dbfs, o->plus_tx_program_rail_samples,
-		urp_mixer_to_gain_db(effective_rxmixerset(o)), o->plus_program_queue.count,
-		URP_PROGRAM_QUEUE_FRAMES, o->plus_program_queue.high_water,
-		o->plus_link_queue_underflows, o->plus_link_queue_overflows,
-		o->plus_sound_dropped_frames, o->plus_sound_short_writes,
-		o->plus_parrot_playing ? "playing" : "idle", o->plus_parrot_playback_frames,
-		(double)o->plus_parrot_count / URP_RATE_NATIVE);
+		urp_mixer_to_gain_db(effective_rxmixerset(o)),
+		urp_program_queue_samples(&o->plus_program_queue), URP_PROGRAM_QUEUE_SAMPLES,
+		urp_program_queue_high_water(&o->plus_program_queue), o->plus_link_queue_underflows,
+		o->plus_link_queue_overflows, o->plus_sound_dropped_frames,
+		o->plus_sound_short_writes, o->plus_parrot_playing ? "playing" : "idle",
+		o->plus_parrot_playback_frames, (double)o->plus_parrot_count / URP_RATE_NATIVE);
 	ast_cli(a->fd,
 		"Link clock recovery: app FIFO %u frames, native FIFO %u samples/%.2f ms, "
 		"target %u samples/%.2f ms, ratio correction %+.4f%%.\n",
-		o->plus_program_queue.count, o->plus_native_fifo.count,
-		1000.0 * o->plus_native_fifo.count / URP_RATE_NATIVE,
+		o->plus_app_rpt_samples ? urp_program_queue_samples(&o->plus_program_queue) /
+						  o->plus_app_rpt_samples
+					: 0U,
+		o->plus_native_fifo.count, 1000.0 * o->plus_native_fifo.count / URP_RATE_NATIVE,
 		o->plus_native_fifo.target_samples,
 		1000.0 * o->plus_native_fifo.target_samples / URP_RATE_NATIVE,
 		100.0 * o->plus_link_clock.correction);

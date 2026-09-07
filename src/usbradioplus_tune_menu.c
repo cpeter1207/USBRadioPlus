@@ -166,7 +166,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 			} else {
 				o->echomode = 0;
 				o->plus_parrot_playing = 0;
-				o->echoing = 0;
+				atomic_store_explicit(&o->echoing, 0, memory_order_release);
 				o->plus_parrot_count = o->plus_parrot_play = 0;
 			}
 			ast_cli(fd, "Echo Mode changed to %s\n",
