@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha15 - 2026-09-07
+
+- Replace audio queues with lock-free sample rings.\n- Add exhaustive queue boundary and recovery coverage.\n- Document lock-free queue APIs for generated reference material.
+
 ## 0.1.0~alpha14 - 2026-09-07
 
 - Replace audio queues with lock-free sample rings.\n- Add exhaustive queue boundary and recovery coverage.\n- Document lock-free queue APIs for generated reference material.
