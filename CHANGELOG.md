@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha14 - 2026-09-07
+
+- Replace audio queues with lock-free sample rings.\n- Add exhaustive queue boundary and recovery coverage.\n- Document lock-free queue APIs for generated reference material.
+
 ## 0.1.0~alpha13 - 2026-09-06
 
 Fix uninitialized hardware and audio snapshots for missing profiles, preventing intermittent CTCSS parsing crashes. Correct AGC dependency tests for the modern-ASL package variant. Includes alpha12 audio and tuner improvements. Debian builds now install the required LADSPA headers.
