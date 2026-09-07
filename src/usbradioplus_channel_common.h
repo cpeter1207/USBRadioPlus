@@ -9,6 +9,18 @@
 #include "asterisk/config.h"
 
 #include "usbradioplus_channel_private.h"
+#include "usbradioplus_rpt_advanced.h"
+
+/** @brief Select transport mode before starting an exclusively owned channel.
+ * @param channel Private hardware state with no active audio reader.
+ * @param advanced Nonzero selects hardware-clocked native PCM; zero selects app_rpt.
+ */
+void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced);
+
+/** @brief Configure a newly reserved Asterisk channel for rpt_advanced.
+ * @param channel Exclusively owned channel which has not been called yet.
+ */
+void usbradioplus_configure_advanced(struct ast_channel *channel);
 
 /** Parallel outputs with active timed pulses. */
 extern int8_t pp_pulsemask;

@@ -72,7 +72,7 @@ SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
 	src/usbradioplus_dsp.c src/usbradioplus_ctcss.c src/usbradioplus_hardware.c \
 	src/usbradioplus_repeat.c src/usbradioplus_channel_core.c \
 	src/usbradioplus_channel_common.c src/usbradioplus_native_tick.c \
-	src/usbradioplus_tune_menu.c \
+	src/usbradioplus_tune_menu.c src/usbradioplus_rpt_advanced.c \
 	src/usbradioplus_processing.c src/txagc/agc_core.c \
 	src/txagc/avfilter_processor.c src/txagc/rnnoise_processor.c
 CHANNEL_OBJECT := $(BUILD_DIR)/$(patsubst src/%.c,%.o,$(CHANNEL_SOURCE))
@@ -150,7 +150,7 @@ static-analysis:
 		--suppress=syntaxError:src/chan_usbradioplus.c \
 		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
 		-Isrc src & cppcheck_pid=$$!; \
-	clang-tidy $(CHANNEL_SOURCE) \
+	clang-tidy $(CHANNEL_SOURCE) src/usbradioplus_rpt_advanced.c \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \

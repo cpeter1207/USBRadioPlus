@@ -47,6 +47,14 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	usbradioplus_processing_get_local(o->name, &chain);
 	local_chain_enabled = chain.enabled;
 	ctcss_phase_reverse = o->radio->txCtcssPhaseShift;
+	/* Opt-in per-frame trace distinguishes generated signaling from DAC playback. */
+	ast_debug(5,
+		  "URP_TXTRACE channel=%s event=render frame=%lu in=%d out=%d state=%d "
+		  "tone=%d inhibit=%d reverse=%d frequency10=%d timer_ms=%d\n",
+		  o->name, (unsigned long)o->plus_native_frames, o->radio->txPttIn,
+		  o->radio->txPttOut, o->radio->txState, o->radio->txCtcssEnabled,
+		  o->radio->b.txCtcssOff, ctcss_phase_reverse, o->radio->txCtcssFreq10,
+		  o->radio->txCtcssTurnoffTimer);
 	ctcss_frequency = o->radio->txCtcssFreq10 / 10.0;
 	ctcss_filter_250 = o->radio->txCtcssFilter250;
 	ctcss_tone_gain = o->radio->txCtcssGainQ8;
@@ -158,87 +166,98 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *o)
 	}
 
 	memset(o->plus_link_native, 0, sizeof(o->plus_link_native));
-	if (!o->plus_native_fifo.target_samples)
-		o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
-	/* app_rpt and the CM119 use independent clocks. Convert queued frames into
-	 * an elastic native-rate FIFO and trim the ratio gently around its target.
-	 * Idle silence follows the same path; PTT edges never reset stream state. */
-	{
-		unsigned int queued_frames;
+	if (o->plus_advanced) {
+		/* Each incoming native frame was produced in response to our hardware
+		 * clock. Consume one scheduling-queue frame without clock correction. */
 		ast_mutex_lock(&o->plus_link_lock);
-		queued_frames = o->plus_program_queue.count;
-		ast_mutex_unlock(&o->plus_link_lock);
-		correction = urp_clock_recovery_update(
-			&o->plus_link_clock,
-			o->plus_native_fifo.count + queued_frames * URP_NATIVE_SAMPLES,
-			o->plus_native_fifo.target_samples + URP_FIFO_TARGET_STEP);
-	}
-	while (o->plus_native_fifo.count < o->plus_native_fifo.target_samples) {
-		double ratio;
-		int have_frame = 0;
-		memset(o->plus_link_8k, 0, sizeof(o->plus_link_8k));
-		ast_mutex_lock(&o->plus_link_lock);
-		have_frame = urp_program_queue_pop(&o->plus_program_queue, o->plus_link_8k);
-		ast_mutex_unlock(&o->plus_link_lock);
-		if (!have_frame) {
-			if (!o->plus_link_src_pending ||
-			    o->plus_native_fifo.count >= URP_NATIVE_SAMPLES)
-				break;
-			/* Release retained sinc samples only when output would starve.
-			 * Padding earlier would insert silence between arriving frames;
-			 * repeating it would hide a genuine underrun indefinitely. */
-			o->plus_link_src_pending = 0;
-		}
-		if (o->plus_app_rpt_rate == URP_RATE_NATIVE) {
-			plus_link_native_push(o, o->plus_link_8k, o->plus_app_rpt_samples);
-			continue;
-		}
-		ratio = (double)URP_RATE_NATIVE / o->plus_app_rpt_rate * (1.0 + correction);
-		used = made = 0;
-		if (urp_src_process(o->plus_up, o->plus_link_8k, o->plus_app_rpt_samples,
-				    o->plus_link_resampled,
-				    sizeof(o->plus_link_resampled) /
-					    sizeof(o->plus_link_resampled[0]),
-				    ratio, &used, &made) ||
-		    used != o->plus_app_rpt_samples) {
-			o->plus_src_errors++;
-			break;
-		}
-		plus_link_native_push(o, o->plus_link_resampled, made);
-		if (have_frame)
-			o->plus_link_src_pending = 1;
-	}
-	if (!o->plus_native_fifo.primed &&
-	    o->plus_native_fifo.count >= o->plus_native_fifo.target_samples) {
-		o->plus_native_fifo.primed = 1;
-	}
-	if (o->plus_native_fifo.primed &&
-	    !urp_native_fifo_render(&o->plus_native_fifo, o->plus_link_native)) {
-		o->plus_native_fifo.primed = 0;
-		/* A short SRC remainder is expected while an unkeyed burst drains. */
-		if (o->txkeyed) {
+		if (!urp_program_queue_pop(&o->plus_program_queue, o->plus_link_native) &&
+		    o->txkeyed)
 			o->plus_link_queue_underflows++;
-			urp_native_fifo_note_underrun(&o->plus_native_fifo);
+		ast_mutex_unlock(&o->plus_link_lock);
+	} else {
+		if (!o->plus_native_fifo.target_samples)
+			o->plus_native_fifo.target_samples = URP_FIFO_TARGET_NORMAL;
+		/* app_rpt and the CM119 use independent clocks. Convert queued frames into
+		 * an elastic native-rate FIFO and trim the ratio gently around its target.
+		 * Idle silence follows the same path; PTT edges never reset stream state. */
+		{
+			unsigned int queued_frames;
+			ast_mutex_lock(&o->plus_link_lock);
+			queued_frames = o->plus_program_queue.count;
+			ast_mutex_unlock(&o->plus_link_lock);
+			correction = urp_clock_recovery_update(
+				&o->plus_link_clock,
+				o->plus_native_fifo.count + queued_frames * URP_NATIVE_SAMPLES,
+				o->plus_native_fifo.target_samples + URP_FIFO_TARGET_STEP);
 		}
-		urp_src_reset(o->plus_up);
-		o->plus_link_src_pending = 0;
-		urp_clock_recovery_reset(&o->plus_link_clock);
-		urp_native_fifo_reset(&o->plus_native_fifo);
-	} else if (o->plus_native_fifo.primed && o->txkeyed) {
-		urp_native_fifo_note_stable(&o->plus_native_fifo);
+		while (o->plus_native_fifo.count < o->plus_native_fifo.target_samples) {
+			double ratio;
+			int have_frame = 0;
+			memset(o->plus_link_8k, 0, sizeof(o->plus_link_8k));
+			ast_mutex_lock(&o->plus_link_lock);
+			have_frame = urp_program_queue_pop(&o->plus_program_queue, o->plus_link_8k);
+			ast_mutex_unlock(&o->plus_link_lock);
+			if (!have_frame) {
+				if (!o->plus_link_src_pending ||
+				    o->plus_native_fifo.count >= URP_NATIVE_SAMPLES)
+					break;
+				/* Release retained sinc samples only when output would starve.
+				 * Padding earlier would insert silence between arriving frames;
+				 * repeating it would hide a genuine underrun indefinitely. */
+				o->plus_link_src_pending = 0;
+			}
+			if (o->plus_app_rpt_rate == URP_RATE_NATIVE) {
+				plus_link_native_push(o, o->plus_link_8k, o->plus_app_rpt_samples);
+				continue;
+			}
+			ratio = (double)URP_RATE_NATIVE / o->plus_app_rpt_rate * (1.0 + correction);
+			used = made = 0;
+			if (urp_src_process(o->plus_up, o->plus_link_8k, o->plus_app_rpt_samples,
+					    o->plus_link_resampled,
+					    sizeof(o->plus_link_resampled) /
+						    sizeof(o->plus_link_resampled[0]),
+					    ratio, &used, &made) ||
+			    used != o->plus_app_rpt_samples) {
+				o->plus_src_errors++;
+				break;
+			}
+			plus_link_native_push(o, o->plus_link_resampled, made);
+			if (have_frame)
+				o->plus_link_src_pending = 1;
+		}
+		if (!o->plus_native_fifo.primed &&
+		    o->plus_native_fifo.count >= o->plus_native_fifo.target_samples) {
+			o->plus_native_fifo.primed = 1;
+		}
+		if (o->plus_native_fifo.primed &&
+		    !urp_native_fifo_render(&o->plus_native_fifo, o->plus_link_native)) {
+			o->plus_native_fifo.primed = 0;
+			/* A short SRC remainder is expected while an unkeyed burst drains. */
+			if (o->txkeyed) {
+				o->plus_link_queue_underflows++;
+				urp_native_fifo_note_underrun(&o->plus_native_fifo);
+			}
+			urp_src_reset(o->plus_up);
+			o->plus_link_src_pending = 0;
+			urp_clock_recovery_reset(&o->plus_link_clock);
+			urp_native_fifo_reset(&o->plus_native_fifo);
+		} else if (o->plus_native_fifo.primed && o->txkeyed) {
+			urp_native_fifo_note_stable(&o->plus_native_fifo);
+		}
 	}
 	for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
 		program[i] = o->plus_link_native[i];
 	}
 	memset(local_program, 0, sizeof(local_program));
 
-	if (o->plus_parrot_playing) {
+	if (!o->plus_advanced && o->plus_parrot_playing) {
 		urp_parrot_play(&o->plus_parrot_state, local_program, URP_NATIVE_SAMPLES);
 		o->plus_parrot_playback_frames++;
 		if (!o->plus_parrot_playing) {
 			o->echoing = 0;
 		}
-	} else if (o->rxkeyed && o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE) {
+	} else if (!o->plus_advanced && o->rxkeyed && o->duplex3 > 0 &&
+		   o->duplex3mode == DUPLEX3_MODE_SOFTWARE) {
 		double duplex3_gain = (double)o->duplex3 / DUPLEX3_LEVEL_MAX;
 		urp_native_repeat_prepare(local_program, o->plus_local_native, URP_NATIVE_SAMPLES,
 					  1.0, o->usedtmf && o->dsp && o->toneflag);

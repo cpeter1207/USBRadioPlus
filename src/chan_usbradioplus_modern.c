@@ -924,7 +924,7 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 				continue;
 			}
 
-			o->radio->radioDuplex = o->radioduplex;
+			o->radio->radioDuplex = o->plus_advanced || o->radioduplex;
 			o->radio->b.loopback = 0;
 			o->radio->txsettletime = o->txsettletime;
 			o->radio->txrxblankingtime = o->txrxblankingtime;
@@ -1282,7 +1282,15 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
 				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
 				memcpy(bufsave, buf, sizeof(buf));
+				/* Bracket the USB call, not merely the cached desired PTT state. */
+				ast_debug(5,
+					  "URP_TXTRACE channel=%s event=hid_begin ptt=%d gpio=%u "
+					  "direction=%u\n",
+					  o->name, lasttxtmp, (unsigned char)buf[o->hid_gpio_loc],
+					  (unsigned char)buf[o->hid_gpio_ctl_loc]);
 				ast_radio_hid_set_outputs(usb_handle, buf);
+				ast_debug(5, "URP_TXTRACE channel=%s event=hid_end ptt=%d\n",
+					  o->name, lasttxtmp);
 			}
 			ast_radio_time(&o->lasthidtime);
 			ast_mutex_unlock(&o->usblock);
@@ -1348,6 +1356,10 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	 * paOutputUnderflowed (#593 / #598). Treat that as success here.
 	 */
 	res = ast_radio_pa_write(&o->pa, data, AST_RADIO_PA_FRAMES_PER_BUFFER);
+	/* PortAudio's wrapper does not expose DAC queue position here. Do not
+	 * report a successful enqueue as proof of physical playback. */
+	ast_debug(5, "URP_TXTRACE channel=%s event=write backend=portaudio result=%d muted=%d\n",
+		  o->name, res, data == silence_buf);
 	if (res < 0 && res != paOutputUnderflowed) {
 		usbradio_log_fault(
 			o, 0, "Channel %s: PortAudio write failed (%s); restarting audio stream\n",
@@ -1613,7 +1625,7 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 
 	/* Preserve app_rpt's continuous stream, including idle silence, so PTT
 	 * transitions do not interrupt clock recovery. Echo owns the input while playing. */
-	if (o->echoing || f->frametype != AST_FRAME_VOICE || !f->data.ptr) {
+	if ((!o->plus_advanced && o->echoing) || f->frametype != AST_FRAME_VOICE || !f->data.ptr) {
 		return 0;
 	}
 	usbradioplus_queue_program(o, f->data.ptr, f->datalen / sizeof(short));
@@ -1737,7 +1749,7 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			}
 
 			/* If we have stopped echoing, clear the echo queue */
-			if (!o->echomode) {
+			if (o->plus_advanced || !o->echomode) {
 				ast_mutex_lock(&o->echolock);
 				o->echoing = 0;
 				while (o->echoq.q_forw != &o->echoq) {
@@ -1761,8 +1773,8 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			tx_write_ready = frames_available >= AST_RADIO_PA_FRAMES_PER_BUFFER;
 
 			/* Echo playback feeds the same native-rate program queue as app_rpt. */
-			if (tx_write_ready && o->echomode && !usbradioplus_native_echo(o) &&
-			    (!o->rxkeyed)) {
+			if (!o->plus_advanced && tx_write_ready && o->echomode &&
+			    !usbradioplus_native_echo(o) && (!o->rxkeyed)) {
 				ast_mutex_lock(&o->echolock);
 				if (o->echoq.q_forw != &o->echoq) {
 					struct usbecho *u = (struct usbecho *)o->echoq.q_forw;
@@ -1868,7 +1880,8 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				}
 
 				if (usbradioplus_carrier_detected(o, rxcdtype)) {
-					if (!o->radio->txPttOut || o->radioduplex) {
+					if (!o->radio->txPttOut || o->plus_advanced ||
+					    o->radioduplex) {
 						cd = 1;
 					}
 				} else {
@@ -1971,12 +1984,12 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				o->rxkeyed = 0;
 				o->rxoncnt = 0;
 			}
-			if (o->echomode && usbradioplus_native_echo(o)) {
+			if (!o->plus_advanced && o->echomode && usbradioplus_native_echo(o)) {
 				usbradioplus_parrot_rx_transition(o, was_rxkeyed);
 			}
 
-			if (o->echomode && !usbradioplus_native_echo(o) && o->rxkeyed &&
-			    (!o->echoing)) {
+			if (!o->plus_advanced && o->echomode && !usbradioplus_native_echo(o) &&
+			    o->rxkeyed && (!o->echoing)) {
 				register int x;
 				struct usbecho *u;
 
@@ -2011,7 +2024,8 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				if (o->owner) {
 					ast_queue_frame(o->owner, &wf);
 				}
-				if (o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
+				if (!o->plus_advanced && o->duplex3 &&
+				    o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
 					usbradio_set_sidetone_switch(o, 0);
 				}
 			} else if ((!o->lastrx) && (o->rxkeyed)) {
@@ -2032,7 +2046,8 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 					ast_queue_frame(o->owner, &wf);
 				}
 				o->count_rssi_update = 1;
-				if (o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
+				if (!o->plus_advanced && o->duplex3 &&
+				    o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
 					usbradio_set_sidetone_switch(o, 1);
 				}
 			}
@@ -2043,7 +2058,10 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			}
 
 			f->frametype = AST_FRAME_VOICE;
-			f->subclass.format = ast_format_slin;
+			f->subclass.format =
+				o->plus_advanced
+					? ast_format_cache_get_slin_by_rate(o->plus_app_rpt_rate)
+					: ast_format_slin;
 			f->offset = AST_FRIENDLY_OFFSET;
 			f->samples = o->plus_app_rpt_samples;
 			f->datalen = f->samples * sizeof(short);
@@ -2053,7 +2071,7 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				memset(f->data.ptr, 0, f->datalen);
 			}
 
-			if (o->usedtmf && o->dsp) {
+			if (!o->plus_advanced && o->usedtmf && o->dsp) {
 				f1 = ast_dsp_process(o->owner, o->dsp, f);
 				if ((f1->frametype == AST_FRAME_DTMF_END) ||
 				    (f1->frametype == AST_FRAME_DTMF_BEGIN)) {
@@ -2201,6 +2219,7 @@ URP_CHANNEL_LOCAL struct ast_channel *usbradio_request(const char *type, struct 
 		*cause = AST_CAUSE_BUSY;
 		return NULL;
 	}
+	usbradioplus_interface_mode(o, 0);
 	c = usbradio_new(o, NULL, NULL, AST_STATE_DOWN, assignedids, requestor);
 	if (!c) {
 		ast_log(LOG_ERROR, "Channel %s: Unable to create new usb channel\n", o->name);
@@ -2630,7 +2649,7 @@ void mixer_write(struct chan_usbradio_pvt *o)
 	ast_radio_device_set_mixer_paths(
 		device, device->mixer_sidetone_paths, device->mixer_sidetone_path_count,
 		AST_RADIO_MIXER_PLAYBACK_VOLUME,
-		o->duplex3mode == DUPLEX3_MODE_HARDWARE
+		!o->plus_advanced && o->duplex3mode == DUPLEX3_MODE_HARDWARE
 			? (o->duplex3 * sidetone_max + DUPLEX3_LEVEL_MAX / 2) / DUPLEX3_LEVEL_MAX
 			: 0);
 	ast_radio_device_set_mixer_paths(device, device->mixer_sidetone_paths,
@@ -3375,6 +3394,13 @@ URP_CHANNEL_LOCAL int load_module(void)
 		ast_channel_unregister(&usbradio_tech);
 		return AST_MODULE_LOAD_FAILURE;
 	}
+	if (usbradioplus_advanced_register(&usbradio_tech, URP_RATE_NATIVE,
+					   usbradioplus_configure_advanced)) {
+		usbradioplus_processing_unload();
+		ast_cli_unregister_multiple(cli_usbradio, ARRAY_LEN(cli_usbradio));
+		ast_channel_unregister(&usbradio_tech);
+		return AST_MODULE_LOAD_FAILURE;
+	}
 	usbradio_start_parallel_pulser();
 
 	return AST_MODULE_LOAD_SUCCESS;
@@ -3386,6 +3412,7 @@ URP_CHANNEL_LOCAL int unload_module(void)
 	size_t i;
 
 	stoppulser = 1;
+	usbradioplus_advanced_unregister();
 	usbradioplus_processing_unload();
 
 	ast_channel_unregister(&usbradio_tech);

@@ -152,6 +152,9 @@ extern int __real_poll(struct pollfd *descriptors, nfds_t count, int timeout);
  */
 extern int __real_pipe(int descriptors[2]);
 
+/** Last opt-in timing record emitted by the shared channel code. */
+static char tx_trace_message[512];
+
 void test_ast_debug(int level, const char *format, ...)
 {
 	(void)level;
@@ -399,6 +402,16 @@ static struct chan_usbradio_pvt *eeprom_write_after_read;
 static int fail_format_cap_alloc;
 /** Harness channel register result used to script and verify host behavior. */
 static int channel_register_result;
+/** Inject failure only for the additional native channel registration. */
+static int advanced_register_result;
+/** Last registered advanced channel technology. */
+static const struct ast_channel_tech *advanced_technology;
+/** Inject format capability append failure. */
+static int format_append_result;
+/** Inject native receive-format selection failure. */
+static int set_read_result;
+/** Inject native transmit-format selection failure. */
+static int set_write_result;
 /** Recorded channel unregister calls for assertions. */
 static int channel_unregister_calls;
 /** Recorded cli register calls for assertions. */
@@ -615,7 +628,7 @@ int __ast_format_cap_append(struct ast_format_cap *capabilities, struct ast_form
 	(void)file;
 	(void)line;
 	(void)function;
-	return 0;
+	return format_append_result;
 }
 
 /** @brief Host-API test double for ast_channel_register; observable effects are recorded in harness
@@ -625,7 +638,11 @@ int __ast_format_cap_append(struct ast_format_cap *capabilities, struct ast_form
  */
 int ast_channel_register(const struct ast_channel_tech *technology)
 {
-	(void)technology;
+	if (!strcmp(technology->type, "RadioPlusAdvanced")) {
+		advanced_technology = technology;
+		if (advanced_register_result)
+			return advanced_register_result;
+	}
 	return channel_register_result;
 }
 
@@ -1611,15 +1628,25 @@ int ast_audiohook_destroy(struct ast_audiohook *audiohook)
 	return 0;
 }
 
-/** @brief Host-API test double for ast_format_get_sample_rate; observable effects are recorded in
- * harness state.
- * @param format printf-style message format.
- * @return Scripted host result for the current test scenario.
+/** Native-rate format identity for the advanced interface fixture. */
+static unsigned int native_format_rate = URP_RATE_NATIVE;
+
+/** @brief Return the requested native format from the fixture cache.
+ * @param rate Requested linear sample rate.
+ * @return Native format identity, or the app_rpt format.
+ */
+struct ast_format *ast_format_cache_get_slin_by_rate(unsigned int rate)
+{
+	return rate == URP_RATE_NATIVE ? (struct ast_format *)&native_format_rate : ast_format_slin;
+}
+
+/** @brief Read the fixture format's sample rate.
+ * @param format Native or app_rpt format identity.
+ * @return PCM samples per second.
  */
 unsigned int ast_format_get_sample_rate(const struct ast_format *format)
 {
-	(void)format;
-	return 8000;
+	return format == (struct ast_format *)&native_format_rate ? native_format_rate : 8000;
 }
 
 /** @brief Host-API test double for ast_radio_time; observable effects are recorded in harness
@@ -1939,6 +1966,28 @@ void ast_channel_set_writeformat(struct ast_channel *channel, struct ast_format 
 	(void)format;
 }
 
+/** @brief Accept the advanced interface's native receive format.
+ * @param channel Fixture channel.
+ * @param format Requested PCM format.
+ * @return Zero on success.
+ */
+int ast_set_read_format(struct ast_channel *channel, struct ast_format *format)
+{
+	ast_channel_set_readformat(channel, format);
+	return set_read_result;
+}
+
+/** @brief Accept the advanced interface's native transmit format.
+ * @param channel Fixture channel.
+ * @param format Requested PCM format.
+ * @return Zero on success.
+ */
+int ast_set_write_format(struct ast_channel *channel, struct ast_format *format)
+{
+	ast_channel_set_writeformat(channel, format);
+	return set_write_result;
+}
+
 /** @brief Host-API test double for ast_jb_configure; observable effects are recorded in harness
  * state.
  * @param channel Radio channel or channel index, as declared.
@@ -2248,7 +2297,12 @@ void ast_log(int level, const char *file, int line, const char *function, const 
 	(void)file;
 	(void)line;
 	(void)function;
-	(void)format;
+	if (!strncmp(format, "URP_TXTRACE", 11)) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(tx_trace_message, sizeof(tx_trace_message), format, args);
+		va_end(args);
+	}
 }
 
 /** @brief Host-API test double for ast_log_ap; observable effects are recorded in harness state.
@@ -2890,6 +2944,9 @@ static void test_modern_channel_callbacks(void)
 	radio.audio_thread_ready = 1;
 	radio.echoing = 1;
 	assert(usbradio_write(channel, &frame) == 0);
+	radio.plus_advanced = 1;
+	assert(usbradio_write(channel, &frame) == 0);
+	radio.plus_advanced = 0;
 	radio.echoing = 0;
 	assert(usbradio_write(channel, &frame) == 0);
 	radio.txkeyed = 1;
@@ -3181,6 +3238,20 @@ static void test_modern_audio_worker_baseline(void)
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	run_modern_audio_iteration(&radio);
 	assert(radio.rxkeyed && radio.lastrx);
+
+	/* Advanced transport delivers hardware-rate frames through this worker too. */
+	usbradioplus_interface_mode(&radio, 1);
+	run_modern_audio_iteration(&radio);
+	assert(radio.read_f.subclass.format == ast_format_cache_get_slin_by_rate(48000));
+	assert(radio.read_f.samples == URP_NATIVE_SAMPLES);
+	mixer_write(&radio);
+	radio.rxhidsq = 0;
+	run_modern_audio_iteration(&radio);
+	assert(!radio.rxkeyed && !radio.lastrx);
+	radio.rxhidsq = 1;
+	run_modern_audio_iteration(&radio);
+	assert(radio.rxkeyed && radio.lastrx);
+	usbradioplus_interface_mode(&radio, 0);
 
 	radio.rxhidsq = 0;
 	run_modern_audio_iteration(&radio);
@@ -3611,8 +3682,10 @@ static void test_modern_hid_worker_retries(void)
 	run_modern_hid_retry(&constructed, 1);
 	fail_radio_state_allocation = 0;
 
-	{
+	for (int mode = 0; mode < 3; ++mode) {
 		struct ast_variable ignored_option = {.name = "unsupported", .value = "4999"};
+		constructed.plus_advanced = mode == 1;
+		constructed.radioduplex = mode == 2;
 		constructed.name = "modern-tone-route";
 		constructed.stophid = 0;
 		constructed.txmixa = TX_OUT_VOICE;
@@ -3629,6 +3702,7 @@ static void test_modern_hid_worker_retries(void)
 		test_config_variables = NULL;
 		test_config_load_result = NULL;
 		assert(constructed.radio);
+		assert(constructed.radio->radioDuplex == (mode != 0));
 		urp_radio_destroy(constructed.radio);
 		constructed.radio = NULL;
 		if (constructed.pttkick[0] >= 0)
@@ -3874,6 +3948,9 @@ static void test_modern_module_lifecycle_baseline(void)
 	cli_register_result = 1;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	cli_register_result = 0;
+	advanced_register_result = -1;
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
+	advanced_register_result = 0;
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	{
 		struct chan_usbradio_pvt *radio = usbradio_default.next;
@@ -4004,12 +4081,22 @@ static void test_channel_callbacks(void)
 	assert(usbradio_indicate(channel, AST_CONTROL_PROCEEDING, NULL, 0) == 0);
 	assert(usbradio_indicate(channel, AST_CONTROL_PROGRESS, NULL, 0) == 0);
 	assert(moh_stop_calls == 3);
+	option_debug = 0;
+	tx_trace_message[0] = '\0';
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 0) == 0);
+	assert(!tx_trace_message[0]);
+	option_debug = 5;
+	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 0) == 0);
+	assert(strstr(tx_trace_message, "event=request key=1"));
 	assert(radio.txkeyed && !radio.forcetxcode);
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_KEY, "0", 1) == 0);
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_UNKEY, NULL, 0) == 0);
+	assert(strstr(tx_trace_message, "event=request key=0"));
+	option_debug = 0;
+	tx_trace_message[0] = '\0';
 	radio.forcetxcode = 1;
 	assert(usbradio_indicate(channel, AST_CONTROL_RADIO_UNKEY, NULL, 0) == 0);
+	assert(!tx_trace_message[0]);
 	assert(!radio.txkeyed && !radio.forcetxcode);
 	assert(radio_state.pTxCodeDefault == radio.txctcssdefault);
 	assert(usbradio_indicate(channel, -1234, NULL, 0) == -1);
@@ -5921,6 +6008,9 @@ static void test_oss_channel_write_and_call(void)
 	ftxcapraw = NULL;
 	radio.echoing = 1;
 	assert(usbradio_write(channel, &frame) == 0);
+	radio.plus_advanced = 1;
+	assert(usbradio_write(channel, &frame) == 0);
+	radio.plus_advanced = 0;
 	radio.echoing = 0;
 	assert(usbradio_write(channel, &frame) == 0);
 	radio.txkeyed = 1;
@@ -6216,7 +6306,10 @@ static void test_oss_hid_attach_failures(void)
 	usbradio_default.next = NULL;
 }
 
-/** @brief Verify oss hid worker attach. */
+/** Select the advanced-interface variant of hardware attachment. */
+static int advanced_hid_mode;
+
+/** @brief Verify hardware attachment for the selected controller interface. */
 static void test_oss_hid_worker_attach(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -6230,6 +6323,7 @@ static void test_oss_hid_worker_attach(void)
 	strcpy(settings.profiles[0].channel, "RadioPlus/test");
 	radio.name = "test";
 	strcpy(radio.devstr, "usb-test");
+	radio.plus_advanced = advanced_hid_mode;
 	radio.owner = (struct ast_channel *)(uintptr_t)1;
 	radio.sounddev = -1;
 	radio.pttkick[0] = radio.pttkick[1] = -1;
@@ -6449,6 +6543,8 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	settings_defaults(&settings);
 	settings.profiles[0].enabled = 0;
 	radio.name = "first-radio";
+	radio.plus_advanced = advanced_hid_mode == 1;
+	radio.radioduplex = advanced_hid_mode == 2;
 	strcpy(radio.devstr, "usb-test");
 	radio.sounddev = -1;
 	radio.pttkick[0] = radio.pttkick[1] = -1;
@@ -6751,6 +6847,10 @@ static void test_oss_channel_read_guards(void)
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	assert(usbradio_read(channel) == &ast_null_frame);
 	assert(!radio.rxkeyed && !radio.lastrx);
+	radio.rxkeyed = radio.plus_advanced = 1;
+	assert(usbradio_read(channel) == &ast_null_frame);
+	assert(!radio.rxkeyed);
+	radio.plus_advanced = 0;
 
 	radio.hasusb = 1;
 	mock_oss_io = 1;
@@ -7157,6 +7257,35 @@ static void test_oss_complete_read_frame(void)
 	radio.usedtmf = 0;
 	radio.dsp = NULL;
 
+	/* An advanced carrier tick remains PCM even when the app_rpt detector
+	 * fixture would otherwise replace it with a DTMF control event. */
+	usbradioplus_interface_mode(&radio, 1);
+	radio.usedtmf = 1;
+	radio.dsp = (struct ast_dsp *)&radio;
+	radio.echomode = radio.echoing = 1;
+	dsp_result_type = AST_FRAME_DTMF_BEGIN;
+	frame = oss_read_complete(&radio, channel);
+	assert(frame->frametype == AST_FRAME_VOICE && frame->samples == 960);
+	assert(frame->datalen == 1920 &&
+	       ast_format_get_sample_rate(frame->subclass.format) == 48000);
+	assert(!radio.echoing && radio.echoq.q_forw == &radio.echoq);
+	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
+	radio.duplex3 = 999;
+	radio.radioduplex = 0;
+	radio.radio->txPttOut = 1;
+	radio.rxcdtype = CD_HID;
+	radio.rxsdtype = SD_IGNORE;
+	strcpy(settings.profiles[0].hardware.cos_assignment, "usb");
+	radio.rxkeyed = radio.lastrx = 0;
+	radio.rxhidsq = 1;
+	assert(oss_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
+	radio.rxhidsq = 0;
+	assert(oss_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
+	dsp_result_type = -1;
+	radio.usedtmf = radio.echomode = 0;
+	radio.dsp = NULL;
+	usbradioplus_interface_mode(&radio, 0);
+
 	mock_read_result = -1;
 	option_debug = 0;
 	module_debug_level = file_debug_level = 0;
@@ -7208,6 +7337,11 @@ static void test_oss_module_lifecycle_guards(void)
 	test_config_variables = &active;
 	haspp = 0;
 	memset(usbradio_default.pps, 0, sizeof(usbradio_default.pps));
+	advanced_register_result = -1;
+	assert(load_module() == AST_MODULE_LOAD_FAILURE);
+	assert(unload_module() == 0);
+	usbradio_default.next = NULL;
+	advanced_register_result = 0;
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	assert(unload_module() == 0);
 	usbradio_default.next = NULL;
@@ -7406,14 +7540,24 @@ static void test_native_tick_baseline(void)
 		capture[i * 2] = (short)(1000.0 * sin(2.0 * M_PI * i / 48.0));
 		capture[i * 2 + 1] = 0;
 	}
+	option_debug = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=0"));
+	option_debug = 0;
 	assert(channel.plus_native_frames == 1);
 	assert(channel.plus_adc_peak_dbfs > -40.0);
 	assert(channel.plus_app_rpt_samples == 160);
 
+	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
+	module_debug_level = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=1"));
 	assert(channel.plus_native_frames == 2);
+	module_debug_level = 0;
+	file_debug_level = 5;
 	usbradioplus_native_tick(&channel);
+	assert(strstr(tx_trace_message, "event=render frame=2"));
+	file_debug_level = 0;
 	assert(channel.plus_native_frames == 3);
 
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
@@ -7428,6 +7572,8 @@ static void test_native_tick_baseline(void)
 	       ((URP_FIFO_TARGET_NORMAL + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U) *
 		       URP_NATIVE_SAMPLES);
 	assert(channel.plus_native_frames == 4);
+	assert(strstr(tx_trace_message, "event=render frame=2"));
+	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 
 	urp_native_fifo_reset(&channel.plus_native_fifo);
 	memset(&channel.plus_program_queue, 0, sizeof(channel.plus_program_queue));
@@ -8236,6 +8382,206 @@ static void test_dsp_init_failures(void)
 	fail_ast_calloc_call = 0;
 }
 
+/** Inject a backend device-reservation failure. */
+static int advanced_request_failure;
+/** Number of native interface selections. */
+static unsigned int advanced_configured;
+
+/** @brief Reserve a fixture device through the app_rpt-facing backend.
+ * @param type Backend technology name.
+ * @param cap Backend capabilities.
+ * @param assignedids Optional channel identities.
+ * @param requestor Optional requesting channel.
+ * @param data Device name.
+ * @param cause Receives a fixture failure cause.
+ * @return Fixture channel or null.
+ */
+static struct ast_channel *advanced_backend_request(const char *type, struct ast_format_cap *cap,
+						    const struct ast_assigned_ids *assignedids,
+						    const struct ast_channel *requestor,
+						    const char *data, int *cause)
+{
+	assert(!strcmp(type, "test-backend") && !cap && !assignedids && !requestor);
+	assert(!strcmp(data, "test"));
+	*cause = 42;
+	return advanced_request_failure ? NULL : (struct ast_channel *)(uintptr_t)1;
+}
+
+/** @brief Record native-mode selection before startup.
+ * @param channel Reserved fixture channel.
+ */
+static void advanced_configure(struct ast_channel *channel)
+{
+	assert(channel == (struct ast_channel *)(uintptr_t)1);
+	advanced_configured++;
+}
+
+/** @brief Check call forwarding.
+ * @param channel Reserved fixture channel.
+ * @param destination Device name.
+ * @param timeout Call timeout.
+ * @return Distinct forwarded status.
+ */
+static int advanced_backend_call(struct ast_channel *channel, const char *destination, int timeout)
+{
+	assert(channel && !strcmp(destination, "test") && timeout == 7);
+	return 23;
+}
+
+/** @brief Check hangup forwarding.
+ * @param channel Reserved fixture channel.
+ * @return Distinct forwarded status.
+ */
+static int advanced_backend_hangup(struct ast_channel *channel)
+{
+	assert(channel);
+	return 24;
+}
+
+/** @brief Check read forwarding.
+ * @param channel Reserved fixture channel.
+ * @return Fixture frame.
+ */
+static struct ast_frame *advanced_backend_read(struct ast_channel *channel)
+{
+	assert(channel);
+	return &ast_null_frame;
+}
+
+/** @brief Check write forwarding.
+ * @param channel Reserved fixture channel.
+ * @param frame Fixture frame.
+ * @return Distinct forwarded status.
+ */
+static int advanced_backend_write(struct ast_channel *channel, struct ast_frame *frame)
+{
+	assert(channel && frame == &ast_null_frame);
+	return 25;
+}
+
+/** @brief Check indication forwarding.
+ * @param channel Reserved fixture channel.
+ * @param condition PTT indication.
+ * @param data Optional payload.
+ * @param length Payload bytes.
+ * @return Distinct forwarded status.
+ */
+static int advanced_backend_indicate(struct ast_channel *channel, int condition, const void *data,
+				     size_t length)
+{
+	assert(channel && condition == AST_CONTROL_RADIO_KEY && !data && !length);
+	return 26;
+}
+
+/** @brief Verify native queue pacing without SRC, sidetone duplication, or clock correction. */
+static void test_advanced_native_clock(void)
+{
+	struct chan_usbradio_pvt channel = {
+		.name = "test", .plus_hardware_applied = 1, .plus_emphasis_corner_hz = 300.0};
+	urp_radio_state configuration = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	settings_defaults(&settings);
+	ast_copy_string(settings.profiles[0].name, "test", sizeof(settings.profiles[0].name));
+	ast_copy_string(settings.profiles[0].channel, "RadioPlus/test",
+			sizeof(settings.profiles[0].channel));
+	settings.profiles[0].enabled = 0;
+	test_channel_private = &channel;
+	usbradioplus_configure_advanced(NULL);
+	channel.radio = urp_radio_create(&configuration, 160);
+	assert(channel.radio && usbradioplus_dsp_init(&channel) == 0);
+	usbradioplus_configure_advanced(NULL);
+	assert(channel.radio->radioDuplex);
+	channel.hasusb = 1;
+	usbradioplus_configure_advanced(NULL);
+	channel.hasusb = 0;
+	assert(channel.plus_app_rpt_rate == 48000 && channel.plus_app_rpt_samples == 960);
+	short program[URP_NATIVE_SAMPLES];
+	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i)
+		program[i] = 123;
+	channel.rxkeyed = channel.txkeyed = 1;
+	channel.duplex3 = 999;
+	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
+	channel.plus_parrot_playing = 1;
+	usbradioplus_queue_program(&channel, program, URP_NATIVE_SAMPLES);
+	assert(channel.plus_program_queue.count == 1);
+	src_process_calls = 0;
+	usbradioplus_native_tick(&channel);
+	assert(!channel.plus_program_queue.count && !channel.plus_native_fifo.count);
+	assert(channel.plus_link_native[0] == 123 && channel.plus_link_native[959] == 123);
+	assert(src_process_calls == 0 && channel.plus_parrot_playing && !channel.plus_parrot_play);
+	assert(channel.plus_link_queue_underflows == 0);
+	usbradioplus_native_tick(&channel);
+	assert(channel.plus_link_queue_underflows == 1);
+	channel.txkeyed = 0;
+	usbradioplus_native_tick(&channel);
+	assert(channel.plus_link_queue_underflows == 1);
+	usbradioplus_interface_mode(&channel, 0);
+	assert(!channel.plus_advanced && channel.plus_app_rpt_rate == 8000 &&
+	       channel.plus_app_rpt_samples == 160);
+	usbradioplus_queue_program(&channel, program, 160);
+	assert(channel.plus_program_queue.count > 1);
+	channel.plus_parrot_playing = 0;
+	usbradioplus_dsp_destroy(&channel);
+	urp_radio_destroy(channel.radio);
+	test_channel_private = NULL;
+}
+
+/** @brief Verify adapter reservation, forwarding, and registration failure cleanup. */
+static void test_advanced_adapter(void)
+{
+	const struct ast_channel_tech backend = {
+		.type = "test-backend",
+		.requester = advanced_backend_request,
+		.call = advanced_backend_call,
+		.hangup = advanced_backend_hangup,
+		.read = advanced_backend_read,
+		.write = advanced_backend_write,
+		.indicate = advanced_backend_indicate,
+	};
+	usbradioplus_advanced_unregister();
+	assert(usbradioplus_advanced_register(&backend, 44100, advanced_configure) == -1);
+	fail_format_cap_alloc = 1;
+	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	fail_format_cap_alloc = 0;
+	format_append_result = -1;
+	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	format_append_result = 0;
+	channel_register_result = -1;
+	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	channel_register_result = 0;
+	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == 0);
+	int cause = 0;
+	format_compatible = 0;
+	assert(!advanced_technology->requester("RadioPlusAdvanced", NULL, NULL, NULL, "test",
+					       &cause));
+	format_compatible = 1;
+	advanced_request_failure = 1;
+	assert(!advanced_technology->requester("RadioPlusAdvanced", NULL, NULL, NULL, "test",
+					       &cause));
+	assert(cause == 42 && !advanced_configured);
+	advanced_request_failure = 0;
+	set_read_result = -1;
+	int before = hangup_calls;
+	assert(!advanced_technology->requester("RadioPlusAdvanced", NULL, NULL, NULL, "test",
+					       &cause));
+	set_read_result = 0;
+	set_write_result = -1;
+	assert(!advanced_technology->requester("RadioPlusAdvanced", NULL, NULL, NULL, "test",
+					       &cause));
+	set_write_result = 0;
+	assert(hangup_calls == before + 2);
+	struct ast_channel *channel = advanced_technology->requester("RadioPlusAdvanced", NULL,
+								     NULL, NULL, "test", &cause);
+	assert(channel && advanced_configured == 3);
+	assert(advanced_technology->call(channel, "test", 7) == 23);
+	assert(advanced_technology->read(channel) == &ast_null_frame);
+	assert(advanced_technology->write(channel, &ast_null_frame) == 25);
+	assert(advanced_technology->indicate(channel, AST_CONTROL_RADIO_KEY, NULL, 0) == 26);
+	assert(advanced_technology->hangup(channel) == 24);
+	usbradioplus_advanced_unregister();
+	usbradioplus_advanced_unregister();
+}
+
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
@@ -8287,12 +8633,20 @@ int main(void)
 	RUN_TEST(test_oss_hid_worker_device_retry);
 	RUN_TEST(test_oss_hid_attach_failures);
 	RUN_TEST(test_oss_hid_worker_attach);
+	advanced_hid_mode = 1;
+	RUN_TEST(test_oss_hid_worker_attach);
+	advanced_hid_mode = 0;
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 10;
 	RUN_TEST(test_oss_hid_worker_attach);
 	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 0;
 	RUN_TEST(test_oss_hid_worker_first_radio_construction);
+	advanced_hid_mode = 1;
+	RUN_TEST(test_oss_hid_worker_first_radio_construction);
+	advanced_hid_mode = 2;
+	RUN_TEST(test_oss_hid_worker_first_radio_construction);
+	advanced_hid_mode = 0;
 	RUN_TEST(test_oss_channel_creation_and_request);
 	RUN_TEST(test_oss_channel_read_guards);
 	RUN_TEST(test_oss_complete_read_frame);
@@ -8316,6 +8670,8 @@ int main(void)
 	RUN_TEST(test_native_sample_gate);
 	RUN_TEST(test_unlinked_channel_cleanup);
 	RUN_TEST(test_store_config_failure_and_option_edges);
+	RUN_TEST(test_advanced_adapter);
+	RUN_TEST(test_advanced_native_clock);
 #undef RUN_TEST
 	puts("channel core tests passed");
 	return 0;
