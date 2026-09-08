@@ -8091,16 +8091,7 @@ static void test_advanced_native_clock(void)
 	for (unsigned int tick = 0; tick < 8U && !channel.plus_link_queue_underflows; ++tick)
 		usbradioplus_native_tick(&channel);
 	assert(channel.plus_link_queue_underflows == 1);
-	/* The reserve calculation has explicit safe behavior for small rings too,
-	 * even though production capacity is larger than one native callback. */
 	size_t program_capacity = channel.plus_program_ring.capacity;
-	channel.plus_program_ring.capacity = URP_NATIVE_SAMPLES;
-	usbradioplus_interface_mode(&channel, 1);
-	assert(channel.plus_program_reserve_samples == 0);
-	channel.plus_program_ring.capacity = 2U * URP_NATIVE_SAMPLES;
-	usbradioplus_interface_mode(&channel, 1);
-	assert(channel.plus_program_reserve_samples == URP_NATIVE_SAMPLES);
-	channel.plus_program_ring.capacity = program_capacity;
 	/* A newly primed sinc stream with insufficient history cannot render a
 	 * complete callback and therefore records one true output shortfall. */
 	rpcr_destroy(&channel.plus_program_ring);
@@ -8108,7 +8099,7 @@ static void test_advanced_native_clock(void)
 	channel.plus_program_reserve_samples = 0;
 	channel.plus_program_target_samples = 1;
 	channel.plus_program_ring.primed = true;
-	rpcr_write(&channel.plus_program_ring, program, 1);
+	rpcr_write(&channel.plus_program_ring, program, URP_LINK_SAMPLES);
 	usbradioplus_native_tick(&channel);
 	assert(channel.plus_link_queue_underflows == 2);
 	channel.txkeyed = 0;

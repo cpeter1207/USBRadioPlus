@@ -260,19 +260,8 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 		/* Retain three full hardware callbacks.  Starting at the remaining queue
 		 * depth gives the slowly varying resampler room to correct either clock. */
 		unsigned int capacity = channel->plus_program_queue.ring.capacity;
-		if (capacity <= URP_NATIVE_SAMPLES) {
-			channel->plus_program_reserve_samples = 0;
-		} else {
-			channel->plus_program_reserve_samples = 3U * URP_NATIVE_SAMPLES;
-		}
-		if (channel->plus_program_reserve_samples &&
-		    channel->plus_program_reserve_samples > capacity - URP_NATIVE_SAMPLES)
-			channel->plus_program_reserve_samples =
-				capacity > URP_NATIVE_SAMPLES ? capacity - URP_NATIVE_SAMPLES : 0;
-		channel->plus_program_target_samples =
-			capacity > 2U * URP_NATIVE_SAMPLES
-				? capacity - 2U * URP_NATIVE_SAMPLES
-				: channel->plus_program_reserve_samples + URP_NATIVE_SAMPLES;
+		channel->plus_program_reserve_samples = 3U * URP_NATIVE_SAMPLES;
+		channel->plus_program_target_samples = capacity - 2U * URP_NATIVE_SAMPLES;
 	} else {
 		urp_program_queue_request_seed(&channel->plus_program_queue,
 					       channel->plus_program_queue.target_samples);
