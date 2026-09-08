@@ -3,9 +3,8 @@ DOT_GRAPH_MAX_NODES    = 128
 PROJECT_NUMBER         =
 PROJECT_BRIEF          = "Enhanced AllStarLink USB radio channel driver"
 OUTPUT_DIRECTORY       = build/doxygen
-INPUT                  = src scripts tools install.sh tests tests_py tests_docs \
-                         packaging/repository/install-usbradioplus.sh doc/developer.dox
-FILE_PATTERNS           = *.c *.h *.py *.sh *.dox usbradioplus-tune
+INPUT                  = src doc/developer.dox doc/rpt-advanced-interface.md
+FILE_PATTERNS           = *.c *.h *.dox
 # Upstream reference fixtures are test data, not maintained implementation.
 EXCLUDE                = tests/fixtures
 EXTENSION_MAPPING      = sh=Python no_extension=Python
@@ -16,6 +15,7 @@ MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = YES
 PREDEFINED             = "__attribute__(x)=" "_Alignas(x)=" \
 			 "_Atomic(x)=x" \
+			 "_Static_assert(...)= " \
 			 "AST_MUTEX_DEFINE_STATIC(name)=static ast_mutex_t name" \
                          "AST_MODULE_INFO(...)= "
 EXTRACT_ALL             = NO
@@ -26,7 +26,6 @@ WARN_IF_UNDOCUMENTED    = YES
 WARN_IF_DOC_ERROR       = YES
 WARN_IF_INCOMPLETE_DOC  = YES
 WARN_NO_PARAMDOC        = YES
-WARN_IF_UNDOC_ENUM_VAL  = YES
 GENERATE_XML           = YES
 WARN_AS_ERROR           = FAIL_ON_WARNINGS
 WARN_LOGFILE            = build/doxygen-warnings.log

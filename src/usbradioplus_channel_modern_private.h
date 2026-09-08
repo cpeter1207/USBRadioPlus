@@ -74,8 +74,6 @@ struct chan_usbradio_pvt {
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
 	short plus_link_native[URP_NATIVE_SAMPLES];
-	short plus_link_resampled[URP_NATIVE_SAMPLES * 2];
-	struct urp_native_fifo plus_native_fifo;
 	short plus_link_8k[URP_NATIVE_SAMPLES];
 	struct urp_program_queue plus_program_queue;
 	uint64_t plus_link_queue_underflows;
@@ -84,10 +82,7 @@ struct chan_usbradio_pvt {
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	unsigned int plus_rx_delay_index;
 	struct urp_src *plus_up;
-	/** Nonzero until one silence frame releases the pending transmitter SRC tail. */
-	unsigned int plus_link_src_pending;
 	struct urp_src *plus_down;
-	struct urp_clock_recovery plus_link_clock;
 	unsigned int plus_local_preemphasis_active;
 	unsigned int plus_link_preemphasis_active;
 	struct txagc_avfilter plus_local_avfilter;

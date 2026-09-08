@@ -109,133 +109,6 @@ static void test_same_rate_bypass(void)
 	assert(!memcmp(input, output, sizeof(input)));
 }
 
-/** @brief Verify clock recovery. */
-static void test_clock_recovery(void)
-{
-	struct urp_clock_recovery clock = {0};
-	double low = 0.0, high = 0.0;
-	int i;
-	for (i = 0; i < 500; ++i)
-		low = urp_clock_recovery_update(&clock, 960, 2880);
-	assert(low > 0.0 && low <= URP_CLOCK_MAX_CORRECTION);
-	for (i = 0; i < 1000; ++i)
-		high = urp_clock_recovery_update(&clock, 4800, 2880);
-	assert(high < 0.0 && high >= -URP_CLOCK_MAX_CORRECTION);
-	assert(fabs(high - low) < 2.0 * URP_CLOCK_MAX_CORRECTION);
-	urp_clock_recovery_reset(&clock);
-	assert(clock.correction == 0.0 && clock.filtered_error == 0.0 &&
-	       clock.integral_error == 0.0);
-}
-
-/** @brief Exercise elastic FIFO occupancy under a simulated independent producer clock.
- * @param producer_ppm Simulated producer clock offset in parts per million.
- */
-static void simulate_clock_drift(double producer_ppm)
-{
-	struct urp_clock_recovery clock = {0};
-	double app_phase =
-		(URP_FIFO_TARGET_NORMAL + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U;
-	double native_fifo = 0.0;
-	size_t target = URP_FIFO_TARGET_NORMAL;
-	unsigned int app_frames = 0, underflows = 0;
-	int tick;
-	for (tick = 0; tick < 60000; ++tick) { /* Twenty minutes at 20 ms. */
-		double correction;
-		app_phase += 1.0 + producer_ppm / 1000000.0;
-		while (app_phase >= 1.0) {
-			app_frames++;
-			app_phase -= 1.0;
-		}
-		correction = urp_clock_recovery_update(
-			&clock, (size_t)native_fifo + app_frames * URP_NATIVE_SAMPLES,
-			target + URP_FIFO_TARGET_STEP);
-		while (native_fifo < target && app_frames) {
-			native_fifo += 960.0 * (1.0 + correction);
-			app_frames--;
-		}
-		if (native_fifo >= 960.0)
-			native_fifo -= 960.0;
-		else {
-			underflows++;
-			target = target < URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP
-					 ? target + URP_FIFO_TARGET_STEP
-					 : URP_FIFO_TARGET_MAX;
-			urp_clock_recovery_reset(&clock);
-		}
-	}
-	printf("clock drift %+.0f ppm: underruns %u, app frames %u, native %.1f, correction %.6f\n",
-	       producer_ppm, underflows, app_frames, native_fifo, clock.correction);
-	assert(underflows <= 1);
-	assert(app_frames < URP_PROGRAM_QUEUE_FRAMES);
-	assert(native_fifo < URP_NATIVE_FIFO_SAMPLES);
-}
-
-/** @brief Verify simulated clock drift. */
-static void test_simulated_clock_drift(void)
-{
-	simulate_clock_drift(-1000.0);
-	simulate_clock_drift(1000.0);
-}
-
-/** @brief Exercise actual resampling and FIFO recovery under simulated clock drift.
- * @param producer_ppm Simulated producer clock offset in parts per million.
- * @param target_samples Adaptive FIFO target in native samples.
- */
-static void simulate_src_clock_drift(double producer_ppm, size_t target_samples)
-{
-	struct urp_clock_recovery clock = {0};
-	struct urp_src *src = urp_src_create(0, 1);
-	int16_t input[URP_LINK_SAMPLES], output[URP_NATIVE_SAMPLES * 2];
-	double phase = (target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES - 1U;
-	size_t native_count = 0;
-	unsigned int app_frames = 0, underflows = 0;
-	int primed = 0, tick;
-	assert(src);
-	tone(input, URP_LINK_SAMPLES, URP_RATE_LINK, 1000.0, 5000.0);
-	for (tick = 0; tick < 6000; ++tick) {
-		phase += 1.0 + producer_ppm / 1000000.0;
-		while (phase >= 1.0) {
-			app_frames++;
-			phase -= 1.0;
-		}
-		while (native_count < target_samples && app_frames) {
-			double correction = urp_clock_recovery_update(
-				&clock, native_count + app_frames * URP_NATIVE_SAMPLES,
-				target_samples + URP_FIFO_TARGET_STEP);
-			size_t used = 0, made = 0;
-			assert(!urp_src_process(src, input, URP_LINK_SAMPLES, output,
-						URP_NATIVE_SAMPLES * 2, 6.0 * (1.0 + correction),
-						&used, &made));
-			assert(used == URP_LINK_SAMPLES);
-			native_count += made;
-			assert(native_count < URP_NATIVE_FIFO_SAMPLES);
-			app_frames--;
-		}
-		if (!primed && native_count >= target_samples)
-			primed = 1;
-		if (primed) {
-			if (native_count >= URP_NATIVE_SAMPLES)
-				native_count -= URP_NATIVE_SAMPLES;
-			else {
-				underflows++;
-				primed = 0;
-			}
-		}
-	}
-	assert(underflows == 0);
-	assert(primed);
-	urp_src_destroy(src);
-}
-
-/** @brief Verify src clock drift. */
-static void test_src_clock_drift(void)
-{
-	simulate_src_clock_drift(-1000.0, URP_FIFO_TARGET_MIN);
-	simulate_src_clock_drift(1000.0, URP_FIFO_TARGET_MIN);
-	simulate_src_clock_drift(-1000.0, URP_FIFO_TARGET_MAX);
-	simulate_src_clock_drift(1000.0, URP_FIFO_TARGET_MAX);
-}
-
 /** @brief Verify echo. */
 static void test_echo(void)
 {
@@ -258,7 +131,6 @@ static void test_echo(void)
 /** @brief Verify defensive and boundary paths. */
 static void test_defensive_and_boundary_paths(void)
 {
-	struct urp_clock_recovery clock = {.correction = 0.25};
 	struct urp_echo_replacer echo;
 	struct urp_src *src;
 	int16_t mono[] = {20000, -20000, 100};
@@ -267,11 +139,6 @@ static void test_defensive_and_boundary_paths(void)
 	int16_t silent_native[URP_NATIVE_SAMPLES] = {0};
 	size_t used = 99, made = 99;
 
-	urp_clock_recovery_reset(NULL);
-	assert(urp_clock_recovery_update(NULL, 1, 1) == 0.0);
-	assert(urp_clock_recovery_update(&clock, 1, 0) == 0.0);
-	clock.correction = 0.0;
-	assert(urp_clock_recovery_update(&clock, 10000, 1) < 0.0);
 	assert(!urp_src_create(0, 0));
 	assert(!urp_src_create(999999, 1));
 	urp_src_destroy(NULL);
@@ -364,9 +231,6 @@ int main(void)
 {
 	test_src();
 	test_same_rate_bypass();
-	test_clock_recovery();
-	test_simulated_clock_drift();
-	test_src_clock_drift();
 	test_echo();
 	test_defensive_and_boundary_paths();
 	test_allocation_and_converter_failures();

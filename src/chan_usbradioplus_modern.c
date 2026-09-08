@@ -73,8 +73,6 @@
 
 #define DEBUG_FILETEST 0
 
-#define PLUS_LINK_NATIVE_TARGET_SAMPLES URP_FIFO_TARGET_NORMAL
-
 #define PLUS_DYNAMICS_SAMPLES 48 /* 1 ms control blocks at 48 kHz */
 
 #define DUPLEX3_LEVEL_MAX 999
@@ -3217,7 +3215,7 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		o->plus_final_avfilter.cleanup_post_8_plus_max_rms_dbfs = -INFINITY;
 		o->plus_final_avfilter.runtime_underrun_samples = 0;
 		urp_program_queue_reset_high_water(&o->plus_program_queue);
-		ast_cli(a->fd, "Native peak and FIFO event counters reset.\n");
+		ast_cli(a->fd, "Native peak and program-ring event counters reset.\n");
 		return CLI_SUCCESS;
 	}
 	ast_cli(a->fd,
@@ -3228,9 +3226,10 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		", local TX peak %.1f dBFS, local TX max %.1f dBFS, local ceiling interventions "
 		"%" PRIu64 ", final TX peak %.1f dBFS, final TX max %.1f dBFS"
 		", final ceiling interventions %" PRIu64
-		", pre gain %.2f dB, FIFO %u/%u (high %u, underruns %" PRIu64 ", overruns %" PRIu64
-		"), sound queue dropped frames %" PRIu64 ", short/errors %" PRIu64
-		", native echo %s, playback frames %" PRIu64 ", buffered %.2f seconds.\n",
+		", pre gain %.2f dB, program ring %u/%u (high %u, underruns %" PRIu64
+		", overruns %" PRIu64 "), sound queue dropped frames %" PRIu64
+		", short/errors %" PRIu64 ", native echo %s, playback frames %" PRIu64
+		", buffered %.2f seconds.\n",
 		o->name, o->plus_native_frames, o->plus_src_errors, o->plus_adc_peak_dbfs,
 		o->plus_adc_max_peak_dbfs, o->plus_adc_rail_samples, o->plus_deemphasis_peak_dbfs,
 		o->plus_deemphasis_max_peak_dbfs, o->plus_preemphasis_input_peak_dbfs,
@@ -3239,21 +3238,17 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		o->plus_local_tx_rail_samples, o->plus_tx_program_peak_dbfs,
 		o->plus_tx_program_max_peak_dbfs, o->plus_tx_program_rail_samples,
 		urp_mixer_to_gain_db(effective_rxmixerset(o)),
-		urp_program_queue_samples(&o->plus_program_queue), URP_PROGRAM_QUEUE_SAMPLES,
+		urp_program_queue_samples(&o->plus_program_queue),
+		o->plus_program_queue.ring.capacity,
 		urp_program_queue_high_water(&o->plus_program_queue), o->plus_link_queue_underflows,
 		o->plus_link_queue_overflows, o->plus_sound_dropped_frames,
 		o->plus_sound_short_writes, o->plus_parrot_playing ? "playing" : "idle",
 		o->plus_parrot_playback_frames, (double)o->plus_parrot_count / URP_RATE_NATIVE);
-	ast_cli(a->fd,
-		"Link clock recovery: app FIFO %u frames, native FIFO %u samples/%.2f ms, "
-		"target %u samples/%.2f ms, ratio correction %+.4f%%.\n",
-		o->plus_app_rpt_samples ? urp_program_queue_samples(&o->plus_program_queue) /
-						  o->plus_app_rpt_samples
-					: 0U,
-		o->plus_native_fifo.count, 1000.0 * o->plus_native_fifo.count / URP_RATE_NATIVE,
-		o->plus_native_fifo.target_samples,
-		1000.0 * o->plus_native_fifo.target_samples / URP_RATE_NATIVE,
-		100.0 * o->plus_link_clock.correction);
+	ast_cli(a->fd, "Program ring: %u samples/%.2f ms, target %u samples/%.2f ms.\n",
+		urp_program_queue_samples(&o->plus_program_queue),
+		1000.0 * urp_program_queue_samples(&o->plus_program_queue) / o->plus_app_rpt_rate,
+		o->plus_program_queue.target_samples,
+		1000.0 * o->plus_program_queue.target_samples / o->plus_app_rpt_rate);
 	ast_cli(a->fd,
 		"FFmpeg local: input peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
 		"output peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
@@ -3482,9 +3477,6 @@ AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "USB Radio Plus Channel D
  */
 /** @def DEBUG_FILETEST
  * @brief Build-time file-input diagnostic selection.
- */
-/** @def PLUS_LINK_NATIVE_TARGET_SAMPLES
- * @brief Target occupancy of the native transmitter FIFO in samples.
  */
 /** @def PLUS_DYNAMICS_SAMPLES
  * @brief 1 ms control blocks at 48 kHz

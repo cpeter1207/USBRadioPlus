@@ -14,13 +14,13 @@ The controller responds with transmit audio using this receive cadence, without
 an independent periodic audio timer.
 
 Transmit frames pass through the bounded scheduling queue without the app_rpt
-elastic FIFO, startup reserve, or clock-ratio correction. Scheduling stalls can
-still cause underruns; sharing a clock does not remove that possibility. The
+program-ring reserve or read-cursor de-drift. Scheduling stalls can still cause
+underruns; sharing a clock does not remove that possibility. The
 driver's local-repeat and echo paths are bypassed so controller audio is not
 repeated twice. Receiver and transmitter DSP remain in the shared engine.
 
-A subsequent `RadioPlus` reservation restores 8 kHz transport and its independent
-clock-recovery path. These interfaces cannot reserve the same radio concurrently.
+A subsequent `RadioPlus` reservation restores 8 kHz transport and its program
+ring. These interfaces cannot reserve the same radio concurrently.
 
 The adapter is under development. Existing channel tests and dedicated adapter
 fixtures do not constitute on-air or completed rpt_advanced integration testing.

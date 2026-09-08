@@ -123,21 +123,24 @@ void urp_program_queue_init(struct urp_program_queue *queue)
 	memset(queue->samples, 0, sizeof(queue->samples));
 	urp_sample_queue_init(&queue->ring, queue->samples, URP_PROGRAM_QUEUE_SAMPLES);
 	atomic_init(&queue->seed_samples, 0U);
+	queue->target_samples = 0;
+	queue->primed = 0;
 }
 
-unsigned int urp_program_queue_seed_samples(unsigned int native_target_samples,
-					    unsigned int app_rpt_rate, unsigned int app_rpt_samples)
+void urp_program_queue_configure(struct urp_program_queue *queue, unsigned int sample_rate)
 {
-	unsigned int frames;
+	unsigned int capacity;
 
-	if (!app_rpt_rate || !app_rpt_samples)
-		return 0;
-	frames = (native_target_samples + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES;
-	if (frames)
-		--frames;
-	if (app_rpt_rate != URP_RATE_NATIVE)
-		++frames;
-	return frames * app_rpt_samples;
+	if (!queue)
+		return;
+	capacity = sample_rate / 5U;
+	if (!capacity || capacity > URP_PROGRAM_QUEUE_SAMPLES)
+		capacity = URP_PROGRAM_QUEUE_SAMPLES;
+	urp_sample_queue_init(&queue->ring, queue->samples, capacity);
+	queue->target_samples = sample_rate * URP_PROGRAM_QUEUE_TARGET_MS / 1000U;
+	if (queue->target_samples > capacity)
+		queue->target_samples = capacity;
+	queue->primed = 0;
 }
 
 void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned int samples)
@@ -177,6 +180,42 @@ int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample)
 	return urp_sample_queue_pop_sample(&queue->ring, sample);
 }
 
+int urp_program_queue_pop_frame(struct urp_program_queue *queue, short *samples, size_t count)
+{
+	unsigned int occupancy;
+	int adjustment = 0;
+	size_t i;
+
+	if (!queue || !samples || !count)
+		return 0;
+	occupancy = urp_program_queue_samples(queue);
+	if (occupancy < count)
+		return 0;
+	/* A one-frame deadband rejects normal app_rpt scheduling jitter.  Each
+	 * correction changes the consumer cursor by one source sample only. */
+	if (occupancy > queue->target_samples + count)
+		adjustment = 1;
+	else if (occupancy < queue->target_samples)
+		adjustment = -1;
+	if (adjustment > 0) {
+		short discarded;
+
+		/* The observed occupancy already reserves this sample.  The SPSC
+		 * producer can only advance the write cursor, so this cannot underflow. */
+		(void)urp_program_queue_pop_sample(queue, &discarded);
+	}
+	if (adjustment < 0 && count > 1U) {
+		(void)urp_program_queue_pop_sample(queue, &samples[0]);
+		samples[1] = samples[0];
+		for (i = 2; i < count; ++i)
+			(void)urp_program_queue_pop_sample(queue, &samples[i]);
+		return 1;
+	}
+	for (i = 0; i < count; ++i)
+		(void)urp_program_queue_pop_sample(queue, &samples[i]);
+	return 1;
+}
+
 unsigned int urp_program_queue_samples(const struct urp_program_queue *queue)
 {
 	return urp_sample_queue_samples(&queue->ring);
@@ -190,111 +229,6 @@ unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue)
 void urp_program_queue_reset_high_water(struct urp_program_queue *queue)
 {
 	urp_sample_queue_reset_high_water(&queue->ring);
-}
-
-size_t urp_native_fifo_push(struct urp_native_fifo *fifo, const short *samples, size_t count)
-{
-	size_t overwritten = 0;
-
-	while (count--) {
-		unsigned int tail;
-		if (fifo->count == URP_NATIVE_FIFO_SAMPLES) {
-			fifo->head = (fifo->head + 1U) % URP_NATIVE_FIFO_SAMPLES;
-			fifo->count--;
-			overwritten++;
-		}
-		tail = (fifo->head + fifo->count) % URP_NATIVE_FIFO_SAMPLES;
-		fifo->samples[tail] = *samples++;
-		fifo->count++;
-	}
-	return overwritten;
-}
-
-int urp_native_fifo_pop(struct urp_native_fifo *fifo, short *samples)
-{
-	size_t i;
-
-	if (fifo->count < URP_NATIVE_SAMPLES)
-		return 0;
-	for (i = 0; i < URP_NATIVE_SAMPLES; ++i) {
-		samples[i] = fifo->samples[fifo->head];
-		fifo->head = (fifo->head + 1U) % URP_NATIVE_FIFO_SAMPLES;
-	}
-	fifo->count -= URP_NATIVE_SAMPLES;
-	return 1;
-}
-
-void urp_native_fifo_reset(struct urp_native_fifo *fifo)
-{
-	fifo->head = 0;
-	fifo->count = 0;
-	fifo->primed = 0;
-}
-
-void urp_native_fifo_note_underrun(struct urp_native_fifo *fifo)
-{
-	unsigned int target = fifo->target_samples ? fifo->target_samples : URP_FIFO_TARGET_NORMAL;
-	fifo->target_samples = target < URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP
-				       ? target + URP_FIFO_TARGET_STEP
-				       : URP_FIFO_TARGET_MAX;
-	fifo->stable_blocks = 0;
-}
-
-void urp_native_fifo_note_stable(struct urp_native_fifo *fifo)
-{
-	if (!fifo->target_samples)
-		fifo->target_samples = URP_FIFO_TARGET_NORMAL;
-	if (++fifo->stable_blocks < URP_FIFO_TARGET_DECAY_BLOCKS)
-		return;
-	fifo->stable_blocks = 0;
-	if (fifo->target_samples > URP_FIFO_TARGET_MIN + URP_FIFO_TARGET_STEP)
-		fifo->target_samples -= URP_FIFO_TARGET_STEP;
-	else
-		fifo->target_samples = URP_FIFO_TARGET_MIN;
-}
-
-int urp_native_fifo_render(struct urp_native_fifo *fifo, short *samples)
-{
-	size_t i, available = fifo->count;
-
-	if (available >= URP_NATIVE_SAMPLES) {
-		short previous[URP_NATIVE_SAMPLES];
-		int recovering = fifo->concealing && fifo->have_history;
-		memcpy(previous, fifo->history, sizeof(previous));
-		(void)urp_native_fifo_pop(fifo, samples);
-		if (recovering) {
-			const size_t crossfade = URP_NATIVE_SAMPLES / 20U;
-			for (i = 0; i < crossfade; ++i) {
-				double mix = (double)(i + 1U) / (double)crossfade;
-				samples[i] = (short)lrint(
-					previous[URP_NATIVE_SAMPLES - crossfade + i] * (1.0 - mix) +
-					samples[i] * mix);
-			}
-		}
-		memcpy(fifo->history, samples, sizeof(fifo->history));
-		fifo->have_history = 1;
-		fifo->concealing = 0;
-		return 1;
-	}
-
-	for (i = 0; i < available; ++i) {
-		samples[i] = fifo->samples[fifo->head];
-		fifo->head = (fifo->head + 1U) % URP_NATIVE_FIFO_SAMPLES;
-	}
-	fifo->count = 0;
-	for (; i < URP_NATIVE_SAMPLES; ++i) {
-		double fade = 1.0 - (double)(i - available + 1U) /
-					    (double)(URP_NATIVE_SAMPLES - available + 1U);
-		short source =
-			fifo->have_history
-				? fifo->history[(URP_NATIVE_SAMPLES / 2U + i) % URP_NATIVE_SAMPLES]
-				: 0;
-		samples[i] = (short)lrint(source * fade);
-	}
-	memcpy(fifo->history, samples, sizeof(fifo->history));
-	fifo->have_history = 1;
-	fifo->concealing = 1;
-	return 0;
 }
 
 int urp_gain_db_to_mixer(double gain_db)

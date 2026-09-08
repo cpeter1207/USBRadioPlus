@@ -80,10 +80,6 @@ struct chan_usbradio_pvt {
 	int plus_advanced;
 	/** One native-rate app_rpt transmitter block. */
 	short plus_link_native[URP_NATIVE_SAMPLES];
-	/** Workspace for elastic app_rpt-to-native resampling. */
-	short plus_link_resampled[URP_NATIVE_SAMPLES * 2];
-	/** Elastic native-rate transmitter FIFO. */
-	struct urp_native_fifo plus_native_fifo;
 	/** App_rpt-rate program input workspace. */
 	short plus_link_8k[URP_NATIVE_SAMPLES];
 	/** Pending app_rpt voice frames. */
@@ -100,12 +96,8 @@ struct chan_usbradio_pvt {
 	unsigned int plus_rx_delay_index;
 	/** App_rpt-to-native streaming resampler. */
 	struct urp_src *plus_up;
-	/** Nonzero until one silence frame releases the pending transmitter SRC tail. */
-	unsigned int plus_link_src_pending;
 	/** Native-to-app_rpt streaming resampler. */
 	struct urp_src *plus_down;
-	/** Smoothed clock correction derived from transmitter FIFO occupancy. */
-	struct urp_clock_recovery plus_link_clock;
 	/** Tracks emphasis selection for local native repeat audio. */
 	unsigned int plus_local_preemphasis_active;
 	/** Tracks emphasis selection for app_rpt transmitter audio. */

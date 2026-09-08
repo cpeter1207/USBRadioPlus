@@ -14,25 +14,15 @@
 /* A non-lock-free atomic implementation would violate the audio-thread contract. */
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "USBRadioPlus requires lock-free atomic cursors");
 
-/** Capacity includes startup padding and the first program frame at the maximum target. */
+/** Maximum retained program-audio history: 200 ms at the native rate. */
 #define URP_PROGRAM_QUEUE_FRAMES 10U
 /** Number of PCM samples held by the app_rpt-to-native SPSC program ring. */
 #define URP_PROGRAM_QUEUE_SAMPLES (URP_PROGRAM_QUEUE_FRAMES * URP_NATIVE_SAMPLES)
 /** Maximum duration retained by the legacy 8 kHz echo path: 20 seconds. */
 #define URP_ECHO_QUEUE_SAMPLES (URP_APP_RPT_RATE_DEFAULT * 20U)
 
-/** 200 ms capacity leaves room for a resampled block above the 170 ms target. */
-#define URP_NATIVE_FIFO_SAMPLES (URP_NATIVE_SAMPLES * 10U)
-/** Lowest adaptive FIFO target: 110 ms. */
-#define URP_FIFO_TARGET_MIN (URP_NATIVE_SAMPLES * 11U / 2U)
-/** Normal adaptive FIFO target: 120 ms, one adjustment above the floor. */
-#define URP_FIFO_TARGET_NORMAL (URP_NATIVE_SAMPLES * 6U)
-/** Adaptive target adjustment: 10 ms. */
-#define URP_FIFO_TARGET_STEP (URP_NATIVE_SAMPLES / 2U)
-/** Highest adaptive FIFO target: 170 ms. */
-#define URP_FIFO_TARGET_MAX (URP_NATIVE_SAMPLES * 17U / 2U)
-/** Stable 20 ms blocks required before reducing the target. */
-#define URP_FIFO_TARGET_DECAY_BLOCKS 9000U
+/** Fixed SPSC startup and de-drift reserve. */
+#define URP_PROGRAM_QUEUE_TARGET_MS 110U
 
 /** Transport-independent receive audio source values. */
 /** Receiver audio-source assignments. */
@@ -114,28 +104,10 @@ struct urp_program_queue {
 	short samples[URP_PROGRAM_QUEUE_SAMPLES];
 	/** Silence reserve requested by the consumer for the next producer write. */
 	atomic_uint seed_samples;
-};
-
-/** Native-rate elastic FIFO shared by the OSS and PortAudio adapters. */
-struct urp_native_fifo {
-	/** Audio samples retained in the stream buffer. */
-	short samples[URP_NATIVE_FIFO_SAMPLES];
-	/** Ring position of the next element to consume. */
-	unsigned int head;
-	/** Number of occupied elements. */
-	unsigned int count;
-	/** Nonzero after startup buffering permits output. */
-	unsigned int primed : 1;
-	/** Nonzero after at least one complete output block has been retained. */
-	unsigned int have_history : 1;
-	/** Nonzero when the preceding block used shortage concealment. */
-	unsigned int concealing : 1;
-	/** Current adaptive startup/recovery target in native samples. */
+	/** Fixed producer/consumer reserve, expressed at the app_rpt rate. */
 	unsigned int target_samples;
-	/** Stable keyed blocks accumulated toward a target reduction. */
-	unsigned int stable_blocks;
-	/** Most recently rendered block, retained for discontinuity concealment. */
-	short history[URP_NATIVE_SAMPLES];
+	/** Nonzero once the consumer may emit program audio. */
+	unsigned int primed : 1;
 };
 
 /** Buffer and playback cursor for native-rate echo audio. */
@@ -244,16 +216,11 @@ void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue);
  * @param queue Program queue to initialize.
  */
 void urp_program_queue_init(struct urp_program_queue *queue);
-
-/** @brief Calculate the app_rpt-rate reserve needed for native FIFO startup.
- * @param native_target_samples Desired native FIFO occupancy.
- * @param app_rpt_rate Asterisk-side sample rate.
- * @param app_rpt_samples Samples supplied by Asterisk per callback.
- * @return Number of silence samples to prepend to the next program write.
+/** @brief Set queue capacity and fixed reserve for the active app_rpt rate.
+ * @param queue Program queue to configure before either endpoint begins I/O.
+ * @param sample_rate Asterisk-side sample rate in Hz.
  */
-unsigned int urp_program_queue_seed_samples(unsigned int native_target_samples,
-					    unsigned int app_rpt_rate,
-					    unsigned int app_rpt_samples);
+void urp_program_queue_configure(struct urp_program_queue *queue, unsigned int sample_rate);
 
 /** @brief Request startup silence before the next program write.
  * @param queue Program ring whose producer will satisfy the request.
@@ -267,7 +234,7 @@ void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned in
  */
 unsigned int urp_program_queue_take_seed(struct urp_program_queue *queue);
 
-/** @brief Queue PCM samples, optionally prefixing silence for clock-recovery startup.
+/** @brief Queue PCM samples, optionally prefixing silence for startup reserve.
  * @param queue App_rpt frame queue.
  * @param samples Audio samples.
  * @param count Number of elements available in the supplied block.
@@ -291,6 +258,19 @@ int urp_program_queue_push_sample(struct urp_program_queue *queue, short sample)
  */
 int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample);
 
+/** @brief Read one fixed-duration frame while correcting persistent ring drift.
+ *
+ * The consumer advances its read cursor by one extra or one fewer source
+ * sample when occupancy is outside a one-frame deadband.  This is the same
+ * bounded insert/drop strategy used by legacy XPMR de-drift; the SPSC ring is
+ * the only asynchronous bridge between app_rpt and the hardware callback.
+ * @param queue Program ring whose consumer owns this operation.
+ * @param samples Destination frame.
+ * @param count Number of output samples requested.
+ * @return One when a complete frame was produced; zero when it cannot be read.
+ */
+int urp_program_queue_pop_frame(struct urp_program_queue *queue, short *samples, size_t count);
+
 /** @brief Return the current number of queued samples.
  * @param queue App_rpt frame queue.
  * @return Number of samples available to the consumer.
@@ -307,43 +287,6 @@ unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue)
  * @param queue Program ring.
  */
 void urp_program_queue_reset_high_water(struct urp_program_queue *queue);
-
-/** @brief Append samples, retaining the newest audio if the FIFO is full.
- * @param fifo Bounded audio FIFO.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @param count Number of elements available in the supplied block.
- * @return Number of older samples discarded to make room.
- */
-size_t urp_native_fifo_push(struct urp_native_fifo *fifo, const short *samples, size_t count);
-
-/** @brief Remove one 20 ms native-rate frame.
- * @param fifo Bounded audio FIFO.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @return One when a complete native block is returned; zero while awaiting samples.
- */
-int urp_native_fifo_pop(struct urp_native_fifo *fifo, short *samples);
-
-/** @brief Empty and de-prime the FIFO after clock-recovery loss.
- * @param fifo Bounded audio FIFO.
- */
-void urp_native_fifo_reset(struct urp_native_fifo *fifo);
-
-/** @brief Raise the adaptive reserve after a genuine keyed underrun.
- * @param fifo Bounded audio FIFO.
- */
-void urp_native_fifo_note_underrun(struct urp_native_fifo *fifo);
-
-/** @brief Decay the adaptive reserve after several stable minutes.
- * @param fifo Bounded audio FIFO.
- */
-void urp_native_fifo_note_stable(struct urp_native_fifo *fifo);
-
-/** @brief Render a block, concealing a shortage without an abrupt zero insertion.
- * @param fifo Bounded audio FIFO.
- * @param samples Destination for one native-rate audio block.
- * @return Nonzero when a complete FIFO block was available, otherwise zero.
- */
-int urp_native_fifo_render(struct urp_native_fifo *fifo, short *samples);
 
 /** @brief Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale.
  * @param gain_db Gain in dB.
@@ -530,8 +473,5 @@ int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode);
  * @{ */
 /** @def URP_PROGRAM_QUEUE_FRAMES
  * @brief Maximum queued app_rpt voice frames.
- */
-/** @def URP_NATIVE_FIFO_SAMPLES
- * @brief Capacity of the elastic native transmitter FIFO in samples.
  */
 /** @} */

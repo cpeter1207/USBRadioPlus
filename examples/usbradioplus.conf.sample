@@ -51,7 +51,7 @@ channel_enabled = yes
 ;hardware_interface_type = 0
 ;hardware_eeprom_enabled = yes
 ; Audio buffering and idle DSP controls.
-; App_rpt audio and idle silence keep the FIFO and resampler running across PTT
+; App_rpt audio and idle silence keep the program ring and resampler running across PTT
 ; transitions, except while echo playback owns the input.
 ;hardware_audio_fragment_count = 196
 ; Device output continues with silence while idle; this bounds its queued audio.

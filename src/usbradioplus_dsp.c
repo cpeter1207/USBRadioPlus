@@ -1,5 +1,5 @@
 /** @file
- * @brief Sample-rate conversion, elastic clock recovery, and receive-echo matching.
+ * @brief Sample-rate conversion and receive-echo matching.
  */
 
 #ifdef AST_MODULE
@@ -53,38 +53,6 @@ struct urp_src {
 	/** Allocated output workspace in samples. */
 	size_t output_capacity;
 };
-
-void urp_clock_recovery_reset(struct urp_clock_recovery *clock)
-{
-	if (clock)
-		memset(clock, 0, sizeof(*clock));
-}
-
-double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued_samples,
-				 size_t target_samples)
-{
-	double error, desired;
-
-	if (!clock || !target_samples)
-		return 0.0;
-	error = ((double)target_samples - (double)queued_samples) / (double)target_samples;
-	/* Filter scheduler jitter, then use a small integral term to follow a
-	 * persistent oscillator mismatch without requiring extra FIFO latency. */
-	clock->filtered_error += (error - clock->filtered_error) * 0.10;
-	clock->integral_error += clock->filtered_error * 0.00002;
-	if (clock->integral_error > URP_CLOCK_MAX_CORRECTION)
-		clock->integral_error = URP_CLOCK_MAX_CORRECTION;
-	if (clock->integral_error < -URP_CLOCK_MAX_CORRECTION)
-		clock->integral_error = -URP_CLOCK_MAX_CORRECTION;
-	desired = clock->filtered_error * 0.006 + clock->integral_error;
-	if (desired > URP_CLOCK_MAX_CORRECTION)
-		desired = URP_CLOCK_MAX_CORRECTION;
-	if (desired < -URP_CLOCK_MAX_CORRECTION)
-		desired = -URP_CLOCK_MAX_CORRECTION;
-	/* Smooth ratio changes so clock correction cannot modulate speech abruptly. */
-	clock->correction += (desired - clock->correction) * 0.10;
-	return clock->correction;
-}
 
 /** @brief Round and clamp a sample to the signed 16-bit PCM range.
  * @param value Sample amplitude in signed PCM codes.

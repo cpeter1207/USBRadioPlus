@@ -18,7 +18,7 @@ audio buffering is introduced by the trace.
 - chan_usbradioplus.c adapts OSS/libusb radio devices to Asterisk.
 - chan_usbradioplus_modern.c adapts the ASL radio-device API and PortAudio.
 - usbradioplus_channel_common.h defines shared channel lifecycle and tuning calls.
-- usbradioplus_channel_core.h defines PCM routing, queues, clock recovery, and echo state.
+- usbradioplus_channel_core.h defines PCM routing, lock-free queues, and echo state.
 - usbradioplus_native_tick.c runs the native receive/transmit block sequence.
 - usbradioplus_processing.h exposes validated profiles and live processing controls.
 - txagc_config describes the shared FFmpeg graph. Filtering, emphasis,
@@ -39,26 +39,19 @@ Signed PCM spans -32768 through 32767. Native floating-point workspaces retain
 PCM amplitude units. FFmpeg format conversion supplies the graph's normalized
 audio representation. dBFS measurements use the full signed PCM range.
 
-The app_rpt-to-CM119 elastic FIFO starts with a 120 ms occupancy target. Keyed
-underruns raise it by 10 ms, up to 170 ms; three minutes of stable keyed blocks
-accumulated across transmissions lower it by 10 ms, but never below 110 ms.
-Both queues hold 200 ms so startup padding and a complete resampled frame fit
-at the maximum target. These are occupancy targets, not an end-to-end latency
-guarantee: each device interval consumes 20 ms, and network jitter buffering
-adds its own delay.
+The app_rpt-to-CM119 program ring is the only cross-clock audio queue. It holds
+200 ms and begins output after a fixed 110 ms reserve. The hardware consumer
+uses bounded XPMR-style de-drift: when sustained occupancy crosses one app_rpt
+frame above or below the reserve, it advances the read cursor by one extra or
+one fewer sample. The correction is independent of device and network jitter
+buffers and changes no PTT state.
 
 Both adapters admit app_rpt program frames continuously, including idle
 silence, except while echo playback owns the input. PTT transitions preserve
-the FIFO, resampler state, clock recovery, and concealment history. Only
-stream startup or recovery seeds the FIFO reserve. Resampled streams receive
-one additional 20 ms leading silence frame so the sinc converter can fill
-its history and reach the FIFO target. If the program queue empties and
-fewer than 20 ms of native audio remain, one silence frame releases the
-converter's retained audio before underrun recovery. Further
-padding requires another queued input frame; a continuously arriving stream
-does not receive this tail padding while its FIFO reserve lasts. Native-rate
-input bypasses these resampling steps. Padding affects PCM audio only: app_rpt
-and tuning retain ownership of PTT, and FIFO draining does not extend it.
+the program ring and resampler state. Stream startup and recovery request one
+110 ms silence reserve. Native-rate input bypasses resampling. This padding
+affects PCM audio only: app_rpt and tuning retain ownership of PTT, and ring
+draining does not extend it.
 
 The device writer submits one 48 kHz stereo block per completed capture
 interval, including while idle. Transmit activity selects the rendered block

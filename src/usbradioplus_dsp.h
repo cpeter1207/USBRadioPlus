@@ -1,5 +1,5 @@
 /** @file
- * @brief Sample-rate conversion, elastic clock recovery, and receive-echo matching.
+ * @brief Sample-rate conversion and receive-echo matching.
  */
 
 #ifndef USBRADIOPLUS_DSP_H
@@ -19,31 +19,6 @@
 #define URP_NATIVE_SAMPLES 960
 
 #define URP_ECHO_HISTORY_FRAMES 32
-
-#define URP_CLOCK_MAX_CORRECTION 0.005
-
-/** Smoothed correction for independent app_rpt and USB audio clocks. */
-struct urp_clock_recovery {
-	/** Smoothed fractional rate correction around nominal conversion. */
-	double correction;
-	/** Low-pass-filtered occupancy error, excluding frame-to-frame jitter. */
-	double filtered_error;
-	/** Slow accumulated error that removes steady oscillator offset. */
-	double integral_error;
-};
-
-/** @brief Reset the elastic-buffer clock correction to nominal rate.
- * @param clock Elastic clock-recovery state.
- */
-void urp_clock_recovery_reset(struct urp_clock_recovery *clock);
-/** @brief Slew the conversion ratio toward the FIFO target without abrupt frame corrections.
- * @param clock Elastic clock-recovery state.
- * @param queued_samples Current FIFO occupancy in samples.
- * @param target_samples Desired FIFO occupancy in samples.
- * @return Fractional rate correction bounded by URP_CLOCK_MAX_CORRECTION.
- */
-double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued_samples,
-				 size_t target_samples);
 
 struct urp_src;
 
@@ -179,8 +154,5 @@ int urp_echo_remove(struct urp_echo_replacer *state, int16_t *mixed_link, int16_
  */
 /** @def URP_ECHO_HISTORY_FRAMES
  * @brief Number of paired receive frames retained for correlation.
- */
-/** @def URP_CLOCK_MAX_CORRECTION
- * @brief Maximum fractional elastic rate correction.
  */
 /** @} */

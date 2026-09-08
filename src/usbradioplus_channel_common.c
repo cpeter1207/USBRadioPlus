@@ -254,18 +254,13 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_app_rpt_rate = advanced ? URP_RATE_NATIVE : URP_APP_RPT_RATE_DEFAULT;
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
 	urp_program_queue_init(&channel->plus_program_queue);
+	urp_program_queue_configure(&channel->plus_program_queue, channel->plus_app_rpt_rate);
 	if (!advanced) {
-		urp_program_queue_request_seed(
-			&channel->plus_program_queue,
-			urp_program_queue_seed_samples(URP_FIFO_TARGET_NORMAL,
-						       channel->plus_app_rpt_rate,
-						       channel->plus_app_rpt_samples));
+		urp_program_queue_request_seed(&channel->plus_program_queue,
+					       channel->plus_program_queue.target_samples);
 	}
-	urp_native_fifo_reset(&channel->plus_native_fifo);
-	urp_clock_recovery_reset(&channel->plus_link_clock);
 	urp_src_reset(channel->plus_up);
 	urp_src_reset(channel->plus_down);
-	channel->plus_link_src_pending = 0;
 }
 
 void usbradioplus_configure_advanced(struct ast_channel *channel)
@@ -282,7 +277,7 @@ void usbradioplus_configure_advanced(struct ast_channel *channel)
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
 	/* The hardware worker requests startup/recovery silence through an atomic
-	 * handoff. The writer never reads the consumer-owned elastic FIFO. */
+	 * handoff. The writer only owns this SPSC ring's write cursor. */
 	unsigned int seed_samples = urp_program_queue_take_seed(&o->plus_program_queue);
 
 	if (urp_program_queue_push(&o->plus_program_queue, samples, count, seed_samples)) {
@@ -1700,7 +1695,6 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
-	o->plus_link_src_pending = 0;
 	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	if (!o->plus_up || !o->plus_down) {
@@ -1789,16 +1783,6 @@ void usbradioplus_wait_for_eeprom_idle(struct chan_usbradio_pvt *o)
 		usleep(10000);
 		ast_mutex_lock(&o->eepromlock);
 	}
-}
-
-void plus_link_native_push(struct chan_usbradio_pvt *o, const short *samples, size_t count)
-{
-	o->plus_link_queue_overflows += urp_native_fifo_push(&o->plus_native_fifo, samples, count);
-}
-
-int plus_link_native_pop(struct chan_usbradio_pvt *o, short *samples)
-{
-	return urp_native_fifo_pop(&o->plus_native_fifo, samples);
 }
 
 int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)

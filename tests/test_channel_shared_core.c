@@ -18,7 +18,6 @@ int main(void)
 	short input[URP_NATIVE_SAMPLES + 1];
 	short output[URP_NATIVE_SAMPLES];
 	short sample;
-	short native_input[URP_NATIVE_FIFO_SAMPLES + 1];
 	size_t i;
 	enum urp_rx_audio_mode rx_audio;
 	enum urp_tx_output_mode tx_output;
@@ -51,9 +50,6 @@ int main(void)
 		assert(sample == input[i]);
 	}
 	assert(!urp_program_queue_pop_sample(&queue, &sample));
-	assert(urp_program_queue_seed_samples(0, URP_RATE_NATIVE, URP_NATIVE_SAMPLES) == 0U);
-	assert(urp_program_queue_seed_samples(URP_NATIVE_SAMPLES, 0, URP_NATIVE_SAMPLES) == 0U);
-	assert(urp_program_queue_seed_samples(URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 0) == 0U);
 
 	/* The SPSC cursors wrap independently while retaining every sample in order. */
 	urp_program_queue_init(&queue);
@@ -104,71 +100,49 @@ int main(void)
 		assert(!urp_sample_queue_high_water(&generic));
 	}
 
-	{
-		struct urp_native_fifo fifo = {0};
-		assert(URP_FIFO_TARGET_MIN == 110U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_NORMAL == 120U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_MAX == 170U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES < URP_NATIVE_FIFO_SAMPLES);
-		assert((URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES <
-		       URP_PROGRAM_QUEUE_FRAMES);
-		for (i = 0; i < sizeof(native_input) / sizeof(native_input[0]); ++i)
-			native_input[i] = (short)i;
-		assert(!urp_native_fifo_pop(&fifo, output));
-		assert(urp_native_fifo_push(&fifo, native_input,
-					    sizeof(native_input) / sizeof(native_input[0])) == 1);
-		assert(fifo.count == URP_NATIVE_FIFO_SAMPLES && fifo.head == 1);
-		assert(urp_native_fifo_pop(&fifo, output));
-		assert(output[0] == native_input[1]);
-		fifo.primed = 1;
-		urp_native_fifo_reset(&fifo);
-		assert(!fifo.head && !fifo.count && !fifo.primed);
-		urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP);
+	/* The one SPSC ring owns both startup reserve and clock de-drift. */
+	urp_program_queue_init(&queue);
+	urp_program_queue_configure(NULL, URP_RATE_LINK);
+	urp_program_queue_configure(&queue, 0);
+	assert(queue.ring.capacity == URP_PROGRAM_QUEUE_SAMPLES);
+	urp_program_queue_configure(&queue, URP_PROGRAM_QUEUE_SAMPLES * 6U);
+	assert(queue.ring.capacity == URP_PROGRAM_QUEUE_SAMPLES);
+	urp_program_queue_configure(&queue, URP_PROGRAM_QUEUE_SAMPLES * 12U);
+	assert(queue.target_samples == URP_PROGRAM_QUEUE_SAMPLES);
+	urp_program_queue_configure(&queue, URP_RATE_LINK);
+	assert(queue.ring.capacity == URP_RATE_LINK / 5U);
+	assert(queue.target_samples == URP_RATE_LINK * URP_PROGRAM_QUEUE_TARGET_MS / 1000U);
+	assert(!queue.primed);
+	urp_program_queue_request_seed(&queue, queue.target_samples);
+	assert(urp_program_queue_take_seed(&queue) == queue.target_samples);
+	assert(!urp_program_queue_take_seed(&queue));
+	for (i = 0; i < queue.target_samples - 1U; ++i)
+		assert(urp_program_queue_push_sample(&queue, (short)i));
+	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
+	assert(output[0] == 0 && output[1] == 0);
 
-		urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + 2 * URP_FIFO_TARGET_STEP);
-		for (i = 0; i < 10; ++i)
-			urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MAX);
-		for (i = 0; i < URP_FIFO_TARGET_DECAY_BLOCKS; ++i)
-			urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP);
-		/* Sustained clean audio must never decay below the 110 ms floor. */
-		for (i = 0; i < 10U * URP_FIFO_TARGET_DECAY_BLOCKS; ++i) {
-			urp_native_fifo_note_stable(&fifo);
-			assert(fifo.target_samples >= 110U * (URP_RATE_NATIVE / 1000U));
-		}
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN && !fifo.stable_blocks);
-		fifo.target_samples = 0;
-		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
-		urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL - URP_FIFO_TARGET_STEP);
-		fifo.target_samples = URP_FIFO_TARGET_MIN;
-		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
-		urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
+	urp_program_queue_init(&queue);
+	urp_program_queue_configure(&queue, URP_RATE_LINK);
+	for (i = 0; i < queue.target_samples + URP_LINK_SAMPLES + 1U; ++i)
+		assert(urp_program_queue_push_sample(&queue, (short)i));
+	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
+	assert(output[0] == 1 && output[1] == 2);
 
-		memset(output, 1, sizeof(output));
-		assert(!urp_native_fifo_render(&fifo, output));
-		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
-			assert(output[i] == 0);
-		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
-			native_input[i] = 1000;
-		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
-		fifo.concealing = 1;
-		fifo.have_history = 0;
-		assert(urp_native_fifo_render(&fifo, output));
-		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] == 1000);
-		assert(!urp_native_fifo_push(&fifo, native_input, 100));
-		assert(!urp_native_fifo_render(&fifo, output));
-		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] <= 1);
-		assert(fifo.concealing);
-		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
-		assert(urp_native_fifo_render(&fifo, output));
-		assert(!fifo.concealing && output[URP_NATIVE_SAMPLES - 1] == 1000);
-	}
+	urp_program_queue_init(&queue);
+	urp_program_queue_configure(&queue, URP_RATE_LINK);
+	for (i = 0; i < queue.target_samples + 1U; ++i)
+		assert(urp_program_queue_push_sample(&queue, (short)i));
+	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
+	assert(output[0] == 0 && output[1] == 1);
+	assert(!urp_program_queue_pop_frame(NULL, output, URP_LINK_SAMPLES));
+	assert(!urp_program_queue_pop_frame(&queue, NULL, URP_LINK_SAMPLES));
+	/* A one-sample frame deliberately cannot duplicate its first sample. */
+	urp_program_queue_init(&queue);
+	urp_program_queue_configure(&queue, URP_RATE_LINK);
+	for (i = 0; i < queue.target_samples - 1U; ++i)
+		assert(urp_program_queue_push_sample(&queue, (short)i));
+	assert(urp_program_queue_pop_frame(&queue, output, 1));
+	assert(!urp_program_queue_pop_frame(&queue, output, 0));
 
 	for (i = 0; i < sizeof(rx_names) / sizeof(rx_names[0]); ++i) {
 		assert(!urp_parse_rx_audio_mode(rx_names[i], &rx_audio));

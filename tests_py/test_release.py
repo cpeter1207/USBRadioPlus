@@ -217,9 +217,10 @@ def test_software_duplex3_honors_dtmf_mute_state():
         assert "o->usedtmf && o->dsp && o->toneflag" in source
         assert '#include "usbradioplus_repeat.h"' in source
     assert "urp_rate_convert(o->plus_down" in source
-    assert "urp_src_process(o->plus_up" in source
+    assert "urp_rate_convert(o->plus_up" in source
     assert "o->plus_app_rpt_rate == URP_RATE_NATIVE" in source
-    assert "urp_clock_recovery_update" in source
+    assert "urp_program_queue_pop_frame" in source
+    assert "urp_clock_recovery_update" not in source
     assert ".plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT" in source
     assert not (ROOT / "patches/app_rpt-radioplus-duplex.patch").exists()
 

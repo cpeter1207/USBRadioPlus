@@ -5,8 +5,6 @@
 #ifndef USBRADIOPLUS_CHANNEL_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_PRIVATE_H
 
-#define PLUS_LINK_NATIVE_TARGET_SAMPLES URP_FIFO_TARGET_NORMAL
-
 #define DUPLEX3_LEVEL_MAX 999
 
 #define DEFAULT_ECHO_MAX 1000
@@ -134,18 +132,6 @@ enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *channel);
  * @param channel Private state of the selected radio channel.
  */
 void refresh_processing_hardware(struct chan_usbradio_pvt *channel);
-/** @brief Append resampled app_rpt audio to the elastic native FIFO.
- * @param channel Private state of the selected radio channel.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @param count Number of elements available in the supplied block.
- */
-void plus_link_native_push(struct chan_usbradio_pvt *channel, const short *samples, size_t count);
-/** @brief Take one complete native-rate transmitter block from the elastic FIFO.
- * @param channel Private state of the selected radio channel.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int plus_link_native_pop(struct chan_usbradio_pvt *channel, short *samples);
 /** @brief Update transmitter peak, RMS, and clipping measurements.
  * @param channel Private state of the selected radio channel.
  * @param samples Audio samples; mutable buffers are updated in place.
@@ -277,9 +263,6 @@ struct chan_usbradio_pvt *find_desc(const char *device);
 
 /** @name File-local and build-time constants
  * @{ */
-/** @def PLUS_LINK_NATIVE_TARGET_SAMPLES
- * @brief Target occupancy of the native transmitter FIFO in samples.
- */
 /** @def DUPLEX3_LEVEL_MAX
  * @brief Maximum normalized local-repeat level.
  */
