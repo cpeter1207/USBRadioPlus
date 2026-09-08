@@ -37,11 +37,19 @@ WARNFLAGS ?= -Wall -Wextra -Werror -Wno-old-style-declaration
 ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
-RPCR_SOURCE ?= ../rate_adjusting_pcm_ring
+RPCR_SOURCE ?=
+ifneq ($(strip $(RPCR_SOURCE)),)
 RPCR_STAGE ?= $(BUILD_DIR)/rpcr-stage
-RPCR_PREFIX ?= $(RPCR_STAGE)/usr
+RPCR_PREFIX := $(RPCR_STAGE)/usr
 RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so
 RPCR_HEADER := $(RPCR_PREFIX)/include/rate_adjusting_pcm_ring/rate_adjusting_pcm_ring.h
+RPCR_CFLAGS := -I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring
+RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring
+RPCR_BUILD_DEP := $(RPCR_LIBRARY)
+else
+RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring)
+RPCR_LIBS := $(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring)
+endif
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 
@@ -52,7 +60,7 @@ ASL_RADIO_API ?= $(strip $(shell \
 
 DSP_PACKAGES := rnnoise samplerate libavfilter libavutil alsa
 DSP_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DSP_PACKAGES))
-DSP_LIBS := $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES)) -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring
+DSP_LIBS := $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES)) $(RPCR_LIBS)
 ifeq ($(ASL_RADIO_API),modern)
 CHANNEL_SOURCE := src/chan_usbradioplus_modern.c
 CHANNEL_CPPFLAGS := -DURP_CHANNEL_MODERN
@@ -67,7 +75,7 @@ RADIO_LIBS := -lusb
 else
 $(error ASL_RADIO_API must be legacy or modern)
 endif
-COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc -I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring
+COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc $(RPCR_CFLAGS)
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
 AGC_PLUGIN := $(BUILD_DIR)/usbradioplus_agc.so
 AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
@@ -101,15 +109,17 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 print-asl-radio-api:
 	@echo $(ASL_RADIO_API)
 
-all: $(RPCR_LIBRARY) $(MODULE) $(AGC_PLUGIN)
+all: $(RPCR_BUILD_DEP) $(MODULE) $(AGC_PLUGIN)
 
 $(BUILD_DIR):
 	mkdir -p $@
 
+ifneq ($(strip $(RPCR_SOURCE)),)
 $(RPCR_LIBRARY):
 	$(MAKE) -C $(RPCR_SOURCE) DESTDIR=$(abspath $(RPCR_STAGE)) prefix=/usr install
 
 $(RPCR_HEADER): $(RPCR_LIBRARY)
+endif
 
 # A later staged install may select a different prefix from the initial build.
 # Track it so the module cannot retain a stale private-plugin location.
@@ -119,13 +129,13 @@ $(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
 
 $(BUILD_DIR)/txagc/avfilter_processor.o: $(BUILD_DIR)/agc-plugin-path
 
-$(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_HEADER) | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(AGC_PLUGIN_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
-$(MODULE): $(RPCR_LIBRARY) $(MODULE_OBJECTS)
+$(MODULE): $(RPCR_BUILD_DEP) $(MODULE_OBJECTS)
 	@echo "Building $(PACKAGE) for the $(ASL_RADIO_API) ASL3 radio API"
 	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
 		$(DSP_LIBS) $(RADIO_LIBS) -lm
@@ -137,9 +147,8 @@ $(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h | $(BUILD_D
 
 check: all
 	$(PYTHON) -m pytest -q tests_py
-	LD_LIBRARY_PATH=$(RPCR_PREFIX)/lib:$$LD_LIBRARY_PATH \
-		RPCR_CFLAGS="-I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring" \
-		RPCR_LIBS="-L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring" \
+	LD_LIBRARY_PATH=$(if $(RPCR_SOURCE),$(RPCR_PREFIX)/lib:)$$LD_LIBRARY_PATH \
+		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) validate-release
 
@@ -162,7 +171,7 @@ static-analysis:
 		--suppress=normalCheckLevelMaxBranches \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
 		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
-		-Isrc -I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring src & cppcheck_pid=$$!; \
+		-Isrc $(RPCR_CFLAGS) src & cppcheck_pid=$$!; \
 	clang-tidy $(CHANNEL_SOURCE) src/usbradioplus_rpt_advanced.c \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
@@ -182,7 +191,7 @@ static-analysis:
 	done; \
 	exit $$status
 
-coverage: $(RPCR_LIBRARY)
+coverage: $(RPCR_BUILD_DEP)
 	rm -rf $(BUILD_DIR)/coverage $(BUILD_DIR)/coverage-focus
 	rm -f $(MODULE) $(AGC_PLUGIN) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
 	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
@@ -194,11 +203,10 @@ coverage: $(RPCR_LIBRARY)
 		--cov=scripts --cov=tools --cov-branch --cov-fail-under=100 \
 		--cov-report=term --cov-report=html:$(BUILD_DIR)/coverage/python \
 		--cov-report=xml:$(BUILD_DIR)/coverage/python.xml
-	LD_LIBRARY_PATH=$(RPCR_PREFIX)/lib:$$LD_LIBRARY_PATH \
+	LD_LIBRARY_PATH=$(if $(RPCR_SOURCE),$(RPCR_PREFIX)/lib:)$$LD_LIBRARY_PATH \
 		C_TEST_CFLAGS="--coverage -O0 -g" \
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
-		RPCR_CFLAGS="-I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring" \
-		RPCR_LIBS="-L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring" \
+		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
 	sh ./tests/run_coverage_integration.sh
@@ -220,7 +228,7 @@ platform-verify:
 	$(MAKE) validate-release
 	$(MAKE) distcheck DISTCHECK_TEST_TARGET=
 
-docs: $(RPCR_HEADER)
+docs: $(RPCR_BUILD_DEP)
 	mkdir -p $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/doxygen-warnings.log
 	$(DOXYGEN) Doxyfile
