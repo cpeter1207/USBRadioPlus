@@ -225,6 +225,8 @@ static int src_new_calls;
 static int src_process_calls;
 /** Harness partial src process call used to script and verify host behavior. */
 static int partial_src_process_call;
+/** Harness partial src output call used to verify protected FIFO remainder handling. */
+static int partial_src_output_call;
 /** Harness config variables used to script and verify host behavior. */
 static struct ast_variable *test_config_variables;
 /** Harness config load result used to script and verify host behavior. */
@@ -914,6 +916,8 @@ int test_src_process(SRC_STATE *state, SRC_DATA *data)
 	result = __real_src_process(state, data);
 	if (!result && partial_src_process_call == src_process_calls && data->input_frames_used > 0)
 		data->input_frames_used--;
+	if (!result && partial_src_output_call == src_process_calls && data->output_frames_gen > 0)
+		data->output_frames_gen--;
 	return result;
 }
 
@@ -8101,6 +8105,20 @@ static void test_advanced_native_clock(void)
 	channel.plus_program_ring.primed = true;
 	rpcr_write(&channel.plus_program_ring, program, URP_LINK_SAMPLES);
 	usbradioplus_native_tick(&channel);
+	assert(channel.plus_link_queue_underflows == 2);
+	/* A partial output may still leave source PCM for the next callback; that
+	 * protected remainder must not be classified as an underrun. */
+	rpcr_destroy(&channel.plus_program_ring);
+	assert(rpcr_init(&channel.plus_program_ring, program_capacity, RPCR_SINC_BEST) == 0);
+	channel.plus_program_reserve_samples = 0;
+	channel.plus_program_target_samples = 1;
+	channel.plus_program_ring.primed = true;
+	rpcr_write(&channel.plus_program_ring, program, URP_NATIVE_SAMPLES);
+	rpcr_write(&channel.plus_program_ring, program, URP_NATIVE_SAMPLES);
+	src_process_calls = 0;
+	partial_src_output_call = 2;
+	usbradioplus_native_tick(&channel);
+	partial_src_output_call = 0;
 	assert(channel.plus_link_queue_underflows == 2);
 	channel.txkeyed = 0;
 	usbradioplus_native_tick(&channel);
