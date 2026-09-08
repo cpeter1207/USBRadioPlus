@@ -12,7 +12,8 @@ else
 	trap 'rm -rf -- "$out"' EXIT HUP INT TERM
 fi
 
-common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-}"
+common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS:-}"
+rpcr_libs=${RPCR_LIBS:--lrate_adjusting_pcm_ring}
 # Each parallel group gets its own instrumented plugin to avoid shared gcov
 # counter writes. FFmpeg discovers only these freshly compiled test effects.
 plugin_dir="$out/plugin-${C_TEST_GROUP:-parent}"
@@ -228,7 +229,8 @@ cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 	"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-test.o" \
 	$legacy_shared_objects -I/usr/include -I"$root/src" \
 	-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core" \
-	$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm
+	$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm \
+	$rpcr_libs
 "$out/channel-core"
 completed=$((completed + 1))
 
@@ -244,7 +246,8 @@ if [ "$have_sys_io" -eq 1 ]; then
 		$sysio_shared_objects \
 		-I/usr/include -I"$root/src" \
 		-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core-sysio" \
-		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm
+		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm \
+		$rpcr_libs
 	"$out/channel-core-sysio"
 	completed=$((completed + 1))
 	sys_io_tests=1
@@ -265,7 +268,8 @@ if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		-Wl,--wrap=libusb_close -Wl,--wrap=libusb_claim_interface \
 		-Wl,--wrap=libusb_detach_kernel_driver -o "$out/channel-core-modern" \
 		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa \
-			portaudio-2.0 libusb-1.0) -lm
+			portaudio-2.0 libusb-1.0) -lm \
+		$rpcr_libs
 	"$out/channel-core-modern"
 	completed=$((completed + 1))
 fi

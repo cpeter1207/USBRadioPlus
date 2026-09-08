@@ -4,6 +4,7 @@ PROJECT_NUMBER         =
 PROJECT_BRIEF          = "Enhanced AllStarLink USB radio channel driver"
 OUTPUT_DIRECTORY       = build/doxygen
 INPUT                  = src doc/developer.dox doc/rpt-advanced-interface.md
+INCLUDE_PATH           = build/rpcr-stage/usr/include/rate_adjusting_pcm_ring
 FILE_PATTERNS           = *.c *.h *.dox
 # Upstream reference fixtures are test data, not maintained implementation.
 EXCLUDE                = tests/fixtures

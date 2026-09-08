@@ -5,6 +5,8 @@
 #ifndef USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 
+#include <rate_adjusting_pcm_ring.h>
+
 struct chan_usbradio_pvt {
 	struct chan_usbradio_pvt *next;
 
@@ -76,14 +78,10 @@ struct chan_usbradio_pvt {
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	short plus_link_8k[URP_NATIVE_SAMPLES];
 	struct urp_program_queue plus_program_queue;
-	/** Preallocated contiguous source PCM for native program-FIFO clock recovery. */
-	short plus_program_elastic_input[URP_NATIVE_SAMPLES * 2U];
-	/** Persistent native program-FIFO clock-recovery converter. */
-	struct urp_src *plus_program_src;
-	/** Filtered native program-FIFO occupancy in thousandths of a sample. */
-	uint64_t plus_program_occupancy_milli;
-	/** Slowly adjusted native program output/input ratio. */
-	double plus_program_playout_ratio;
+	/** Shared native program-FIFO clock-recovery ring. */
+	struct rpcr_ring plus_program_ring;
+	/** Native program FIFO occupancy target in samples. */
+	unsigned int plus_program_target_samples;
 	/** Program samples retained as the protected native playout reserve. */
 	unsigned int plus_program_reserve_samples;
 	uint64_t plus_link_queue_underflows;

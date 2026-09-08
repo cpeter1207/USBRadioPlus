@@ -255,8 +255,6 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
 	urp_program_queue_init(&channel->plus_program_queue);
 	urp_program_queue_configure(&channel->plus_program_queue, channel->plus_app_rpt_rate);
-	channel->plus_program_occupancy_milli = 0;
-	channel->plus_program_playout_ratio = 0.0;
 	channel->plus_program_reserve_samples = 0;
 	if (advanced) {
 		/* Retain three full hardware callbacks.  Starting at the remaining queue
@@ -271,7 +269,7 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 		    channel->plus_program_reserve_samples > capacity - URP_NATIVE_SAMPLES)
 			channel->plus_program_reserve_samples =
 				capacity > URP_NATIVE_SAMPLES ? capacity - URP_NATIVE_SAMPLES : 0;
-		channel->plus_program_queue.target_samples =
+		channel->plus_program_target_samples =
 			capacity > 2U * URP_NATIVE_SAMPLES
 				? capacity - 2U * URP_NATIVE_SAMPLES
 				: channel->plus_program_reserve_samples + URP_NATIVE_SAMPLES;
@@ -281,7 +279,6 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	}
 	urp_src_reset(channel->plus_up);
 	urp_src_reset(channel->plus_down);
-	urp_src_reset(channel->plus_program_src);
 }
 
 void usbradioplus_configure_advanced(struct ast_channel *channel)
@@ -297,6 +294,16 @@ void usbradioplus_configure_advanced(struct ast_channel *channel)
 
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
+	if (o->plus_advanced) {
+		uint64_t discarded =
+			atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed);
+
+		rpcr_write(&o->plus_program_ring, samples, count);
+		if (atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed) !=
+		    discarded)
+			o->plus_link_queue_overflows++;
+		return;
+	}
 	/* The hardware worker requests startup/recovery silence through an atomic
 	 * handoff. The writer only owns this SPSC ring's write cursor. */
 	unsigned int seed_samples = urp_program_queue_take_seed(&o->plus_program_queue);
@@ -1718,10 +1725,8 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
 	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
-	o->plus_program_src = urp_src_create(SRC_SINC_FASTEST, 1);
-	if (!o->plus_up || !o->plus_down || !o->plus_program_src ||
-	    urp_src_reserve(o->plus_program_src, ARRAY_LEN(o->plus_program_elastic_input),
-			    URP_NATIVE_SAMPLES)) {
+	if (!o->plus_up || !o->plus_down ||
+	    rpcr_init(&o->plus_program_ring, URP_PROGRAM_QUEUE_SAMPLES, RPCR_SINC_BEST)) {
 		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native sample-rate converters\n",
 			o->name);
 		return -1;
@@ -1745,8 +1750,8 @@ void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 {
 	urp_src_destroy(o->plus_up);
 	urp_src_destroy(o->plus_down);
-	urp_src_destroy(o->plus_program_src);
-	o->plus_up = o->plus_down = o->plus_program_src = NULL;
+	o->plus_up = o->plus_down = NULL;
+	rpcr_destroy(&o->plus_program_ring);
 	txagc_rnnoise_destroy(&o->plus_local_rnnoise);
 	txagc_avfilter_destroy(&o->plus_local_avfilter);
 	txagc_avfilter_destroy(&o->plus_rx_filter);

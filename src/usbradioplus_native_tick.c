@@ -4,7 +4,6 @@
 
 #include "asterisk.h"
 
-#include <math.h>
 #include <search.h>
 #include <string.h>
 
@@ -23,98 +22,27 @@
 #include "usbradioplus_repeat.h"
 #include "usbradioplus_channel_private.h"
 
-/** @brief Copy unread program PCM without advancing its SPSC consumer cursor.
- * @param queue Native program ring.
- * @param output Preallocated contiguous PCM workspace.
- * @param capacity Number of samples available in output.
- * @param reserve Samples that must remain queued after the next conversion.
- * @param read Receives the cursor associated with the copied samples.
- * @return Number of source samples made available to the converter.
- */
-static size_t copy_program_elastic_input(struct urp_program_queue *queue, short *output,
-					 size_t capacity, unsigned int reserve, unsigned int *read)
-{
-	struct urp_sample_queue *ring = &queue->ring;
-	unsigned int written;
-	unsigned int available;
-	size_t count;
-
-	*read = atomic_load_explicit(&ring->read, memory_order_relaxed);
-	written = atomic_load_explicit(&ring->write, memory_order_acquire);
-	available = written - *read;
-	if (available > ring->capacity)
-		available = ring->capacity;
-	count = available > reserve ? (size_t)(available - reserve) : 0U;
-	if (count > capacity)
-		count = capacity;
-	for (size_t index = 0; index < count; ++index)
-		output[index] = ring->samples[(*read + (unsigned int)index) % ring->capacity];
-	return count;
-}
-
-/** @brief Derive a slowly varying native playout rate from FIFO occupancy.
- * @param channel Active native audio channel.
- * @param occupancy Current program FIFO occupancy in samples.
- * @return Output-to-input libsamplerate ratio, bounded to one thousand ppm.
- *
- * The two filters prevent normal 20 ms scheduling movement from becoming audible frequency
- * modulation while slowly removing independent Asterisk and CM119 clock drift.
- */
-static double program_elastic_ratio(struct chan_usbradio_pvt *channel, unsigned int occupancy)
-{
-	int64_t error;
-	double desired;
-
-	if (!channel->plus_program_occupancy_milli)
-		channel->plus_program_occupancy_milli = (uint64_t)occupancy * 1000U;
-	else
-		channel->plus_program_occupancy_milli +=
-			((int64_t)occupancy * 1000 -
-			 (int64_t)channel->plus_program_occupancy_milli) /
-			128;
-	error = (int64_t)channel->plus_program_occupancy_milli -
-		(int64_t)channel->plus_program_queue.target_samples * 1000;
-	desired = 1.0 -
-		  fmax(-1.0, fmin(1.0, (double)error /
-					       ((double)channel->plus_program_queue.target_samples *
-						1000.0))) *
-			  0.001;
-	if (!channel->plus_program_playout_ratio)
-		channel->plus_program_playout_ratio = 1.0;
-	channel->plus_program_playout_ratio +=
-		(desired - channel->plus_program_playout_ratio) / 512.0;
-	return channel->plus_program_playout_ratio;
-}
-
 /** @brief Render the native program FIFO through its persistent clock-recovery converter.
  * @param channel Active native audio channel.
  * @return Nonzero when a complete native output block was rendered.
  */
 static int read_native_program_elastic(struct chan_usbradio_pvt *channel)
 {
-	struct urp_program_queue *queue = &channel->plus_program_queue;
-	unsigned int available = urp_program_queue_samples(queue);
-	unsigned int read;
-	size_t input;
-	size_t used = 0;
-	size_t made = 0;
+	struct rpcr_ring *ring = &channel->plus_program_ring;
+	size_t available = rpcr_available(ring);
 
-	if (!queue->primed && available >= queue->target_samples)
-		queue->primed = 1;
-	if (!queue->primed || available <= channel->plus_program_reserve_samples)
+	if (!ring->primed && available >= channel->plus_program_target_samples)
+		ring->primed = true;
+	if (!ring->primed || available <= channel->plus_program_reserve_samples)
 		return 0;
-	input = copy_program_elastic_input(queue, channel->plus_program_elastic_input,
-					   ARRAY_LEN(channel->plus_program_elastic_input),
-					   channel->plus_program_reserve_samples, &read);
-	if (!input ||
-	    urp_src_process(channel->plus_program_src, channel->plus_program_elastic_input, input,
-			    channel->plus_link_native, URP_NATIVE_SAMPLES,
-			    program_elastic_ratio(channel, available), &used, &made)) {
-		channel->plus_src_errors++;
-		return 0;
-	}
-	atomic_store_explicit(&queue->ring.read, read + (unsigned int)used, memory_order_release);
-	return made == URP_NATIVE_SAMPLES;
+	size_t rendered = rpcr_render(ring, channel->plus_link_native, URP_NATIVE_SAMPLES,
+				      channel->plus_program_reserve_samples,
+				      channel->plus_program_target_samples);
+
+	/* A sinc stream may need a brief initial history fill. It is not a FIFO
+	 * underrun while protected program PCM is still available for the callback. */
+	return rendered == URP_NATIVE_SAMPLES ||
+	       rpcr_available(ring) > channel->plus_program_reserve_samples;
 }
 
 /* Shared native-rate channel engine instantiated by each hardware adapter. */
