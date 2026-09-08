@@ -143,9 +143,13 @@ static void test_defensive_and_boundary_paths(void)
 	assert(!urp_src_create(999999, 1));
 	urp_src_destroy(NULL);
 	urp_src_reset(NULL);
+	assert(urp_src_reserve(NULL, 1, 1) < 0);
 
 	src = urp_src_create(0, 1);
 	assert(src);
+	assert(urp_src_reserve(src, 0, 1) < 0);
+	assert(urp_src_reserve(src, 1, 0) < 0);
+	assert(!urp_src_reserve(src, 3, 3));
 	assert(urp_src_process(NULL, mono, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process(src, mono, 3, NULL, 3, 1.0, &used, &made) < 0);
@@ -211,6 +215,14 @@ static void test_allocation_and_converter_failures(void)
 	allocation_to_fail = 1;
 	assert(!urp_src_create(0, 1));
 	allocation_to_fail = 0;
+	src = urp_src_create(0, 1);
+	assert(src);
+	allocation_count = 0;
+	allocation_to_fail = 1;
+	assert(urp_src_reserve(src, 3, 3) < 0);
+	allocation_to_fail = 0;
+	assert(!urp_src_reserve(src, 3, 3));
+	urp_src_destroy(src);
 	src = urp_src_create(0, 1);
 	assert(src);
 	allocation_count = 0;

@@ -101,6 +101,32 @@ void urp_src_reset(struct urp_src *src)
 		src_reset(src->state);
 }
 
+int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_capacity)
+{
+	float *input;
+	float *output;
+
+	if (!src || !input_capacity || !output_capacity)
+		return -1;
+	input_capacity *= src->channels;
+	output_capacity *= src->channels;
+	if (input_capacity > src->input_capacity) {
+		input = URP_REALLOC(src->input, input_capacity * sizeof(*input));
+		if (!input)
+			return -1;
+		src->input = input;
+		src->input_capacity = input_capacity;
+	}
+	if (output_capacity > src->output_capacity) {
+		output = URP_REALLOC(src->output, output_capacity * sizeof(*output));
+		if (!output)
+			return -1;
+		src->output = output;
+		src->output_capacity = output_capacity;
+	}
+	return 0;
+}
+
 int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output,
 		    size_t output_capacity, double ratio, size_t *input_used,
 		    size_t *output_generated)
@@ -112,20 +138,8 @@ int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_coun
 		return -1;
 	in_values = input_count * src->channels;
 	out_values = output_capacity * src->channels;
-	if (in_values > src->input_capacity) {
-		float *p = URP_REALLOC(src->input, in_values * sizeof(*p));
-		if (!p)
-			return -1;
-		src->input = p;
-		src->input_capacity = in_values;
-	}
-	if (out_values > src->output_capacity) {
-		float *p = URP_REALLOC(src->output, out_values * sizeof(*p));
-		if (!p)
-			return -1;
-		src->output = p;
-		src->output_capacity = out_values;
-	}
+	if (urp_src_reserve(src, input_count, output_capacity))
+		return -1;
 	src_short_to_float_array(input, src->input, (int)in_values);
 	memset(&data, 0, sizeof(data));
 	data.data_in = src->input;

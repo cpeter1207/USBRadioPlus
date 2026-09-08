@@ -255,12 +255,33 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
 	urp_program_queue_init(&channel->plus_program_queue);
 	urp_program_queue_configure(&channel->plus_program_queue, channel->plus_app_rpt_rate);
-	if (!advanced) {
+	channel->plus_program_occupancy_milli = 0;
+	channel->plus_program_playout_ratio = 0.0;
+	channel->plus_program_reserve_samples = 0;
+	if (advanced) {
+		/* Retain three full hardware callbacks.  Starting at the remaining queue
+		 * depth gives the slowly varying resampler room to correct either clock. */
+		unsigned int capacity = channel->plus_program_queue.ring.capacity;
+		if (capacity <= URP_NATIVE_SAMPLES) {
+			channel->plus_program_reserve_samples = 0;
+		} else {
+			channel->plus_program_reserve_samples = 3U * URP_NATIVE_SAMPLES;
+		}
+		if (channel->plus_program_reserve_samples &&
+		    channel->plus_program_reserve_samples > capacity - URP_NATIVE_SAMPLES)
+			channel->plus_program_reserve_samples =
+				capacity > URP_NATIVE_SAMPLES ? capacity - URP_NATIVE_SAMPLES : 0;
+		channel->plus_program_queue.target_samples =
+			capacity > 2U * URP_NATIVE_SAMPLES
+				? capacity - 2U * URP_NATIVE_SAMPLES
+				: channel->plus_program_reserve_samples + URP_NATIVE_SAMPLES;
+	} else {
 		urp_program_queue_request_seed(&channel->plus_program_queue,
 					       channel->plus_program_queue.target_samples);
 	}
 	urp_src_reset(channel->plus_up);
 	urp_src_reset(channel->plus_down);
+	urp_src_reset(channel->plus_program_src);
 }
 
 void usbradioplus_configure_advanced(struct ast_channel *channel)
@@ -1697,7 +1718,10 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
 	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
 	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
-	if (!o->plus_up || !o->plus_down) {
+	o->plus_program_src = urp_src_create(SRC_SINC_FASTEST, 1);
+	if (!o->plus_up || !o->plus_down || !o->plus_program_src ||
+	    urp_src_reserve(o->plus_program_src, ARRAY_LEN(o->plus_program_elastic_input),
+			    URP_NATIVE_SAMPLES)) {
 		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native sample-rate converters\n",
 			o->name);
 		return -1;
@@ -1721,7 +1745,8 @@ void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 {
 	urp_src_destroy(o->plus_up);
 	urp_src_destroy(o->plus_down);
-	o->plus_up = o->plus_down = NULL;
+	urp_src_destroy(o->plus_program_src);
+	o->plus_up = o->plus_down = o->plus_program_src = NULL;
 	txagc_rnnoise_destroy(&o->plus_local_rnnoise);
 	txagc_avfilter_destroy(&o->plus_local_avfilter);
 	txagc_avfilter_destroy(&o->plus_rx_filter);

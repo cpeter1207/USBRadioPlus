@@ -8041,7 +8041,7 @@ static int advanced_backend_indicate(struct ast_channel *channel, int condition,
 	return 26;
 }
 
-/** @brief Verify native queue pacing without SRC, sidetone duplication, or clock correction. */
+/** @brief Verify native queue pacing through the persistent clock-recovery converter. */
 static void test_advanced_native_clock(void)
 {
 	struct chan_usbradio_pvt channel = {
@@ -8063,6 +8063,9 @@ static void test_advanced_native_clock(void)
 	usbradioplus_configure_advanced(NULL);
 	channel.hasusb = 0;
 	assert(channel.plus_app_rpt_rate == 48000 && channel.plus_app_rpt_samples == 960);
+	assert(channel.plus_program_reserve_samples == 3U * URP_NATIVE_SAMPLES &&
+	       channel.plus_program_queue.target_samples + 2U * URP_NATIVE_SAMPLES ==
+		       channel.plus_program_queue.ring.capacity);
 	short program[URP_NATIVE_SAMPLES];
 	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i)
 		program[i] = 123;
@@ -8070,15 +8073,38 @@ static void test_advanced_native_clock(void)
 	channel.duplex3 = 999;
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.plus_parrot_playing = 1;
-	usbradioplus_queue_program(&channel, program, URP_NATIVE_SAMPLES);
-	assert(urp_program_queue_samples(&channel.plus_program_queue) == URP_NATIVE_SAMPLES);
+	for (unsigned int frame = 0;
+	     frame < channel.plus_program_queue.target_samples / URP_NATIVE_SAMPLES + 1U; ++frame)
+		usbradioplus_queue_program(&channel, program, URP_NATIVE_SAMPLES);
+	assert(urp_program_queue_samples(&channel.plus_program_queue) >=
+	       channel.plus_program_queue.target_samples);
 	src_process_calls = 0;
+	/* A failed conversion must leave the producer-owned cursor untouched so the
+	 * next callback can render the same protected program audio. */
+	unsigned int queued_before_failure = urp_program_queue_samples(&channel.plus_program_queue);
+	uint64_t errors_before_failure = channel.plus_src_errors;
+	fail_src_process_call = 1;
 	usbradioplus_native_tick(&channel);
-	assert(!urp_program_queue_samples(&channel.plus_program_queue));
+	assert(urp_program_queue_samples(&channel.plus_program_queue) == queued_before_failure &&
+	       channel.plus_src_errors == errors_before_failure + 1U);
+	fail_src_process_call = 0;
+	/* The injected silent callback is itself an underrun event; isolate the
+	 * following steady-state and protected-tail assertions from that fixture. */
+	channel.plus_link_queue_underflows = 0;
+	/* A sinc converter has a finite startup history. Let it fill before
+	 * checking the steady native program block. */
+	for (unsigned int tick = 0; tick < 4U; ++tick)
+		usbradioplus_native_tick(&channel);
+	assert(urp_program_queue_samples(&channel.plus_program_queue) <
+	       channel.plus_program_queue.target_samples + URP_NATIVE_SAMPLES);
 	assert(channel.plus_link_native[0] == 123 && channel.plus_link_native[959] == 123);
-	assert(src_process_calls == 0 && channel.plus_parrot_playing && !channel.plus_parrot_play);
+	assert(src_process_calls == 5 && channel.plus_program_playout_ratio != 1.0 &&
+	       channel.plus_parrot_playing && !channel.plus_parrot_play);
 	assert(channel.plus_link_queue_underflows == 0);
-	usbradioplus_native_tick(&channel);
+	/* The reserve defers an underrun until the elastic input can no longer make
+	 * one complete native callback, rather than consuming the protected tail. */
+	for (unsigned int tick = 0; tick < 8U && !channel.plus_link_queue_underflows; ++tick)
+		usbradioplus_native_tick(&channel);
 	assert(channel.plus_link_queue_underflows == 1);
 	channel.txkeyed = 0;
 	usbradioplus_native_tick(&channel);
