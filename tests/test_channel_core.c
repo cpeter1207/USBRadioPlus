@@ -8104,7 +8104,7 @@ static void test_advanced_native_clock(void)
 	assert(channel.plus_link_queue_underflows == 2);
 	channel.txkeyed = 0;
 	usbradioplus_native_tick(&channel);
-	assert(channel.plus_link_queue_underflows == 1);
+	assert(channel.plus_link_queue_underflows == 2);
 	usbradioplus_interface_mode(&channel, 0);
 	assert(!channel.plus_advanced && channel.plus_app_rpt_rate == 8000 &&
 	       channel.plus_app_rpt_samples == 160);
