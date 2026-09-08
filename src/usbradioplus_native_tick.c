@@ -39,10 +39,11 @@ static int read_native_program_elastic(struct chan_usbradio_pvt *channel)
 				      channel->plus_program_reserve_samples,
 				      channel->plus_program_target_samples);
 
-	/* A sinc stream may need a brief initial history fill. It is not a FIFO
-	 * underrun while protected program PCM is still available for the callback. */
-	return rendered == URP_NATIVE_SAMPLES ||
-	       rpcr_available(ring) > channel->plus_program_reserve_samples;
+	/* A sinc stream may need a brief initial history fill. Sample both states so
+	 * statistics always see the current protected reserve, even after a full block. */
+	int complete = rendered == URP_NATIVE_SAMPLES;
+	int buffered = rpcr_available(ring) > channel->plus_program_reserve_samples;
+	return complete | buffered;
 }
 
 /* Shared native-rate channel engine instantiated by each hardware adapter. */
