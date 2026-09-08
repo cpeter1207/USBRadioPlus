@@ -38,6 +38,7 @@ ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
 RPCR_SOURCE ?=
+export RPCR_SOURCE
 ifneq ($(strip $(RPCR_SOURCE)),)
 RPCR_STAGE ?= $(BUILD_DIR)/rpcr-stage
 RPCR_PREFIX := $(RPCR_STAGE)/usr
