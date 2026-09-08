@@ -44,6 +44,12 @@ USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, plus
 listed in `doc/packaging.md`. Developers with those dependencies already
 installed may use `sudo ./install.sh --skip-deps`.
 
+Install the matching `rate_adjusting_pcm_ring` shared-library release before
+building USBRadioPlus. It supplies the lock-free native program FIFO and
+installs its shared object, public header, and pkg-config metadata. The
+USBRadioPlus build discovers this dependency with pkg-config; a full Asterisk
+source tree is not required.
+
 The build selects the radio-device interface exposed by the installed ASL3
 headers. ASL 22.9/app_rpt 3.9 uses the original OSS and libusb-0.1 interface;
 ASL 22.10/app_rpt 3.10 uses the shared-device, PortAudio, and libusb-1.0
