@@ -33,7 +33,7 @@ $root/src/txagc/agc_core.c $root/src/txagc/avfilter_processor.c \
 $root/src/txagc/rnnoise_processor.c"
 channel_variant_sources="$root/src/usbradioplus_channel_common.c \
 $root/src/usbradioplus_native_tick.c $root/src/usbradioplus_tune_menu.c"
-channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process \
+channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process -Wl,--wrap=rpcr_init \
 -Wl,--wrap=pthread_join -Wl,--wrap=read -Wl,--wrap=write -Wl,--wrap=usleep \
 -Wl,--wrap=ioctl -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=poll -Wl,--wrap=pipe \
 -Wl,--wrap=pipe2 -Wl,--wrap=ioperm -Wl,--wrap=usb_open -Wl,--wrap=usb_close \

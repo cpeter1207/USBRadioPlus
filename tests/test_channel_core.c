@@ -23,6 +23,7 @@
 #include "asterisk/pbx.h"
 #include "asterisk/res_usbradio.h"
 #include <libavutil/frame.h>
+#include <rate_adjusting_pcm_ring.h>
 #include <samplerate.h>
 #ifdef URP_TEST_MODERN
 #include <libusb-1.0/libusb.h>
@@ -53,6 +54,13 @@ int __real_src_process(SRC_STATE *state, SRC_DATA *data);
  * @return Wrapped API result, including the failure selected by the harness.
  */
 SRC_STATE *__real_src_new(int converter_type, int channels, int *error);
+/** @brief Linker entry point for the shared playout-ring initializer.
+ * @param ring Ring state to initialize.
+ * @param capacity Sample capacity.
+ * @param quality Converter quality selection.
+ * @return Zero on success or nonzero when allocation fails.
+ */
+int __real_rpcr_init(struct rpcr_ring *ring, size_t capacity, enum rpcr_quality quality);
 /** @brief Linker entry point for the real pthread_join operation behind the test wrapper.
  * @param thread Worker thread identifier supplied by the harness.
  * @param result Receives the parsed value or supplies a CLI result, as declared.
@@ -221,6 +229,10 @@ static int fail_src_process_call;
 static int fail_src_new_call;
 /** Recorded src new calls for assertions. */
 static int src_new_calls;
+/** Controls injected shared playout-ring initialization failure for this test. */
+static int fail_rpcr_init_call;
+/** Recorded shared playout-ring initialization calls for assertions. */
+static int rpcr_init_calls;
 /** Recorded src process calls for assertions. */
 static int src_process_calls;
 /** Harness partial src process call used to script and verify host behavior. */
@@ -965,6 +977,20 @@ int __wrap_src_process(SRC_STATE *state, SRC_DATA *data)
 SRC_STATE *__wrap_src_new(int converter_type, int channels, int *error)
 {
 	return test_src_new(converter_type, channels, error);
+}
+
+/** @brief Test wrapper for the playout-ring initializer's allocation failure.
+ * @param ring Ring state to initialize.
+ * @param capacity Sample capacity.
+ * @param quality Converter quality selection.
+ * @return Injected failure or the shared library's initializer result.
+ */
+int __wrap_rpcr_init(struct rpcr_ring *ring, size_t capacity, enum rpcr_quality quality)
+{
+	rpcr_init_calls++;
+	if (fail_rpcr_init_call == rpcr_init_calls)
+		return -1;
+	return __real_rpcr_init(ring, capacity, quality);
 }
 
 /** @brief Test wrapper for pthread_join controlled by the harness's failure-injection state.
@@ -7952,6 +7978,11 @@ static void test_dsp_init_failures(void)
 	assert(usbradioplus_dsp_init(&channel) == -1);
 	usbradioplus_dsp_destroy(&channel);
 	fail_ast_calloc_call = 0;
+	rpcr_init_calls = 0;
+	fail_rpcr_init_call = 1;
+	assert(usbradioplus_dsp_init(&channel) == -1);
+	usbradioplus_dsp_destroy(&channel);
+	fail_rpcr_init_call = 0;
 }
 
 /** Inject a backend device-reservation failure. */
