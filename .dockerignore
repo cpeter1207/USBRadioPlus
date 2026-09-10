@@ -5,3 +5,11 @@ work
 .pytest_cache
 **/__pycache__
 **/*.pyc
+.coverage*
+.ruff_cache/
+.test*/
+.usbradioplus-tests.*/
+.usbradioplus-radio-tests.*/
+**/*.gcda
+**/*.gcno
+**/*.gcov

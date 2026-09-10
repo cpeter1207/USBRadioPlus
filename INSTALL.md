@@ -22,6 +22,10 @@ changing the node. `--yes` permits an explicitly unattended installation.
 The archive signing-key fingerprint is
 `A0D5 A79E 0F5C 45E9 E636 7995 0951 502B AC79 5E55`. Installation does not
 activate the module, restart Asterisk, or edit `modules.conf` or `rpt.conf`.
+The current signaling configuration is a clean break: the installer does not
+translate an existing `chan_usbradio` or earlier USBRadioPlus configuration.
+Keep a backup and create `usbradioplus.conf` from the shipped sample before
+manual activation.
 
 After uploading and extracting the tarball on an ASL3 node, run:
 
@@ -44,11 +48,11 @@ USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, plus
 listed in `doc/packaging.md`. Developers with those dependencies already
 installed may use `sudo ./install.sh --skip-deps`.
 
-Install the matching `rate_adjusting_pcm_ring` shared-library release before
-building USBRadioPlus. It supplies the lock-free native program FIFO and
-installs its shared object, public header, and pkg-config metadata. The
-USBRadioPlus build discovers this dependency with pkg-config; a full Asterisk
-source tree is not required.
+The release archive includes the reviewed `rate_adjusting_pcm_ring` source
+used for the lock-free native program FIFO.  The build links its static archive
+privately into `chan_usbradioplus.so`; it does not require a second checkout,
+network download, or separately installed ring-library package.  A full
+Asterisk source tree is not required.
 
 The build selects the radio-device interface exposed by the installed ASL3
 headers. ASL 22.9/app_rpt 3.9 uses the original OSS and libusb-0.1 interface;

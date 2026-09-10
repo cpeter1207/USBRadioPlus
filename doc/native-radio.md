@@ -1,14 +1,15 @@
 # Native radio detection and signaling
 
-USBRadioPlus contains its carrier, CTCSS, measurement, and transmitter-control
+USBRadioPlus contains its carrier, CTCSS, DCS, measurement, and transmitter-control
 implementation. It does not link to or ship XPMR.
 
 The detector receives the pre-squelch 48 kHz CM119 stream. Its fixed-point
 front end decimates to 8 kHz while measuring discriminator noise for DSP COR.
 The same baseband copy feeds the subaudible low-pass filter and the parallel
 CTCSS tone detectors. VOX uses the decimated wideband level instead of the
-noise measurement. The hardware and local processing sections configure the
-squelch threshold, CTCSS decoder tolerance and level, and receive input gain.
+noise measurement. The `[receive]` section configures squelch, `[ctcss]`
+configures decoder tolerance and gain, and `[local]` configures receive input
+gain.
 
 ## Noise squelch
 
@@ -54,10 +55,30 @@ with optional dynamics bypassed when measuring detector timing. Compare
 against a hardware MICOR before claiming identical analog performance.
 
 The transmitter state machine selects the configured or received CTCSS tone,
-controls PTT settling and receiver blanking, and implements no-tone or
-phase-reversal squelch tails. It produces control state only. The native 48 kHz
-transmitter creates and mixes the CTCSS waveform after voice processing and
-limiting.
+controls PTT settling and receiver blanking, and implements configured CTCSS
+tail signaling. It produces control state only. The native 48 kHz transmitter
+creates and mixes the CTCSS waveform after voice processing and limiting.
+
+## DCS
+
+DCS uses a native 134.4-bps NRZ/Golay encoder and decoder. A direction selects
+carrier, CTCSS, or DCS in its corresponding `[receive]` or `[transmit]`
+section; no direction qualifies or transmits more than one signaling method.
+The DCS decoder receives the 48 kHz radio frontend before receive voice
+processing. The generator has its own direct `[dcs] peak_dbfs` PCM peak, which
+is independent of `[ctcss] transmit_peak_dbfs`; hardware output gain is applied
+after either waveform.
+
+The DCS waveform has only fixed shared-FFmpeg spectral shaping. It bypasses
+CTCSS generation, transmitter pre-emphasis, and all speech dynamics. It shares
+the configured hardware output route with CTCSS but not its audio controls. The
+optional DCS turn-off code is a 134.4 Hz replacement tone.
+Once its interval begins, the normal DCS word remains suppressed until physical
+PTT release completes; a new key request cancels the tail and resumes normal
+DCS. A qualified receiver recognizes a coherent 134.4 Hz tail after 100 ms and
+clears DCS promptly; short tones, ordinary DCS words, and broadband noise do
+not satisfy the tail detector. See `usbradioplus.conf(5)` for the transmitted
+tail's permitted duration.
 
 Receive and transmit audio filtering, emphasis, dynamics, rate conversion,
 mixing, signal generation, and CM119 access are outside the detector. This

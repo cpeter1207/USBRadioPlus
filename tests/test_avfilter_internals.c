@@ -5,8 +5,10 @@
 #include "../src/txagc/avfilter_processor_internal.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdio.h>
+#include <string.h>
 #include <wchar.h>
 
 /** @brief Create a valid baseline graph configuration for internal graph tests.
@@ -27,6 +29,44 @@ static struct txagc_config base_config(void)
 	cfg.compressor_low_crossover_hz = cfg.limiter_low_crossover_hz = 500.0;
 	cfg.compressor_high_crossover_hz = cfg.limiter_high_crossover_hz = 2000.0;
 	return cfg;
+}
+
+/** @brief Verify semantic graph configuration equality excludes padding and inactive stages. */
+static void test_config_equality(void)
+{
+	struct txagc_config left = base_config();
+	struct txagc_config right;
+
+	left.stage_count = 2;
+	left.stage_order[0] = TXAGC_STAGE_AGC;
+	left.stage_order[1] = TXAGC_STAGE_LIMITER;
+	left.output_gain_db = 1.0;
+	strcpy(left.ctcss_notch_frequencies, "100.0");
+	right = left;
+	assert(txagc_config_equal(&left, &right));
+
+	/* Graph construction does not read stage-order slots past stage_count. */
+	right.stage_order[TXAGC_MAX_DYNAMICS_STAGES - 1] = TXAGC_STAGE_DEESSER;
+	assert(txagc_config_equal(&left, &right));
+
+	right = left;
+	right.stage_order[0] = TXAGC_STAGE_DEESSER;
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
+	strcpy(right.ctcss_notch_frequencies, "123.0");
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
+	right.output_gain_db = 2.0;
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
+	right.stage_count = TXAGC_MAX_DYNAMICS_STAGES + 1;
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
+	left.stage_count = TXAGC_MAX_DYNAMICS_STAGES + 1;
+	assert(!txagc_config_equal(&left, &right));
+	left = right;
+	assert(!txagc_config_equal(NULL, &right));
+	assert(!txagc_config_equal(&left, NULL));
 }
 
 /** @brief Verify scalar and append helpers. */
@@ -325,8 +365,20 @@ static void test_graph_lifecycle_and_invalid_configuration(void)
 	AVFrame *frame;
 
 	txagc_avfilter_init(&state);
+	assert(input_capacity_for_rate(0) == 0);
+	assert(input_capacity_for_rate((unsigned int)INT_MAX + 1U) == 0);
+	assert(configure(NULL, &cfg, 48000) == AVERROR(EINVAL));
+	assert(configure(&state, NULL, 48000) == AVERROR(EINVAL));
 	assert(!configure(&state, &cfg, 48000));
 	assert(state.configured && state.graph && state.fifo);
+	{
+		AVFrame *first = state.input_frames[0];
+
+		state.input_frames[0] = NULL;
+		state.input_frame_index = 0;
+		assert(next_input_frame(&state) == state.input_frames[1]);
+		state.input_frames[0] = first;
+	}
 	txagc_avfilter_reset(&state);
 	assert(!state.configured && !state.graph && !state.fifo);
 	txagc_avfilter_reset(&state);
@@ -371,6 +423,7 @@ static void test_graph_lifecycle_and_invalid_configuration(void)
  */
 int main(void)
 {
+	test_config_equality();
 	test_scalar_and_append_helpers();
 	test_meter_updates();
 	test_graph_stage_helpers();

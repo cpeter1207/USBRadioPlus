@@ -56,7 +56,10 @@ def test_staged_install_manifest(tmp_path):
         f"usr/lib/{multiarch}asterisk/modules/chan_usbradioplus.so",
         f"usr/lib/{multiarch}usbradioplus/usbradioplus_agc.so",
         "usr/sbin/usbradioplus-tune",
+        "usr/share/doc/usbradioplus/CHANGELOG.md",
+        "usr/share/doc/usbradioplus/README.md",
         "usr/share/doc/usbradioplus/agc.md",
+        "usr/share/doc/usbradioplus/native-radio.md",
         "usr/share/doc/usbradioplus/usbradioplus.conf.sample",
         "usr/share/man/man5/usbradioplus.conf.5",
         "usr/share/man/man7/usbradioplus.7",
@@ -67,9 +70,15 @@ def test_staged_install_manifest(tmp_path):
     plugin = stage / f"usr/lib/{multiarch}usbradioplus/usbradioplus_agc.so"
     assert plugin.read_bytes() == (build / "usbradioplus_agc.so").read_bytes()
     assert plugin.stat().st_mode & 0o777 == 0o644
-    assert (stage / "usr/share/doc/usbradioplus/agc.md").read_bytes() == (
-        ROOT / "doc/agc.md"
-    ).read_bytes()
+    for installed_name, source_name in (
+        ("README.md", "README.md"),
+        ("CHANGELOG.md", "CHANGELOG.md"),
+        ("native-radio.md", "doc/native-radio.md"),
+        ("agc.md", "doc/agc.md"),
+    ):
+        assert (stage / "usr/share/doc/usbradioplus" / installed_name).read_bytes() == (
+            ROOT / source_name
+        ).read_bytes()
 
     # Reproduce dh_compress without allowing checkout or host samples to hide it.
     sample = stage / "usr/share/doc/usbradioplus/usbradioplus.conf.sample"
@@ -78,6 +87,9 @@ def test_staged_install_manifest(tmp_path):
     sample.unlink()
     installed = runpy.run_path(str(stage / "usr/sbin/usbradioplus-tune"), run_name="test_tuner")
     namespace = installed["shipped_configuration"].__globals__
+    # Package-layout validation is offline; never query an Asterisk instance on
+    # the test runner while resolving the sample's radio-specific sections.
+    namespace["OFFLINE"] = True
     namespace["DEFAULT_CONFIG_CANDIDATES"] = (str(sample),)
     config = stage / "etc/asterisk/usbradioplus.conf"
     config.unlink()
@@ -284,8 +296,8 @@ def test_node_installer_bootstraps_then_uses_make():
     """Verify node installer bootstraps then uses make."""
     source = (ROOT / "install.sh").read_text(encoding="utf-8")
     assert '"$root/scripts/install-build-deps.sh"' in source
-    assert 'make -C "$root" clean check' in source
-    assert 'make -C "$root" DESTDIR="$destdir" prefix=/usr install' in source
+    assert 'make -C "$root" clean distcheck' in source
+    assert 'make -C "$root" DESTDIR="$destdir" prefix=/usr install-from-dist' in source
     for forbidden in ("modules.conf", "rpt.conf", "systemctl", "asterisk -rx"):
         if forbidden in ("modules.conf", "rpt.conf"):
             continue  # The completion message explicitly states these are unchanged.
@@ -347,7 +359,9 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         "src/txagc/rms_agc_ladspa.c",
         "src/txagc/rms_agc_ladspa.h",
         "tests/test_rms_agc_ladspa.c",
+        "CHANGELOG.md",
         "doc/agc.md",
+        "doc/native-radio.md",
     ):
         assert f"{root}/{artifact}" in names
     assert not any(
@@ -356,6 +370,14 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         or "/build/" in name
         or "/dist/" in name
         or "/work/" in name
+        or "/outputs/" in name
+        or "/__pycache__/" in name
+        or "/.pytest_cache/" in name
+        or "/.ruff_cache/" in name
+        or "/.coverage" in name
+        or name.endswith((".cap", ".raw", ".wav", ".au", ".gcda", ".gcno", ".gcov"))
+        or name.endswith(".pyc")
+        or "/coverage/" in name
         for name in names
     )
     fixture = ROOT / "tests/fixtures/asterisk-dev"
@@ -378,9 +400,15 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         capture_output=True,
     )
     assert (stage / "usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so").is_file()
-    assert (stage / "usr/share/doc/usbradioplus/agc.md").read_bytes() == (
-        ROOT / "doc/agc.md"
-    ).read_bytes()
+    for installed_name, source_name in (
+        ("README.md", "README.md"),
+        ("CHANGELOG.md", "CHANGELOG.md"),
+        ("native-radio.md", "doc/native-radio.md"),
+        ("agc.md", "doc/agc.md"),
+    ):
+        assert (stage / "usr/share/doc/usbradioplus" / installed_name).read_bytes() == (
+            ROOT / source_name
+        ).read_bytes()
     assert (build / "agc-plugin-path").read_text(encoding="utf-8") == (
         "/usr/lib/test-linux-gnu/usbradioplus/usbradioplus_agc.so\n"
     )

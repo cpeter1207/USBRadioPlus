@@ -13,11 +13,13 @@ the app_rpt DTMF detector, which can replace a voice frame with a digit event.
 The controller responds with transmit audio using this receive cadence, without
 an independent periodic audio timer.
 
-Transmit frames pass through the bounded scheduling queue without the app_rpt
-program-ring reserve or read-cursor de-drift. Scheduling stalls can still cause
-underruns; sharing a clock does not remove that possibility. The
-driver's local-repeat and echo paths are bypassed so controller audio is not
-repeated twice. Receiver and transmitter DSP remain in the shared engine.
+Transmit frames enter the same lock-free program ring used by the legacy
+adapter. Its persistent conversion stream uses a one-to-one nominal ratio for
+the native controller format and still corrects independent controller and
+hardware clock drift. Scheduling stalls can still cause underruns; sharing a
+format does not remove that possibility. The driver's local-repeat and echo
+paths are bypassed so controller audio is not repeated twice. Receiver and
+transmitter DSP remain in the shared engine.
 
 A subsequent `RadioPlus` reservation restores 8 kHz transport and its program
 ring. These interfaces cannot reserve the same radio concurrently.

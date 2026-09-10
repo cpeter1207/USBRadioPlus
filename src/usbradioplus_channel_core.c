@@ -57,6 +57,15 @@ void urp_sample_queue_reset(struct urp_sample_queue *queue)
 	atomic_store_explicit(&queue->high_water, 0U, memory_order_relaxed);
 }
 
+void urp_sample_queue_discard(struct urp_sample_queue *queue)
+{
+	unsigned int write = atomic_load_explicit(&queue->write, memory_order_acquire);
+
+	/* Only the consumer advances read.  Keeping write monotonic means a
+	 * concurrent producer cannot be reset underneath its current publication. */
+	atomic_store_explicit(&queue->read, write, memory_order_release);
+}
+
 unsigned int urp_sample_queue_samples(const struct urp_sample_queue *queue)
 {
 	unsigned int write = atomic_load_explicit(&queue->write, memory_order_acquire);
@@ -116,119 +125,6 @@ void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue)
 {
 	atomic_store_explicit(&queue->high_water, urp_sample_queue_samples(queue),
 			      memory_order_relaxed);
-}
-
-void urp_program_queue_init(struct urp_program_queue *queue)
-{
-	memset(queue->samples, 0, sizeof(queue->samples));
-	urp_sample_queue_init(&queue->ring, queue->samples, URP_PROGRAM_QUEUE_SAMPLES);
-	atomic_init(&queue->seed_samples, 0U);
-	queue->target_samples = 0;
-	queue->primed = 0;
-}
-
-void urp_program_queue_configure(struct urp_program_queue *queue, unsigned int sample_rate)
-{
-	unsigned int capacity;
-
-	if (!queue)
-		return;
-	capacity = sample_rate / 5U;
-	if (!capacity || capacity > URP_PROGRAM_QUEUE_SAMPLES)
-		capacity = URP_PROGRAM_QUEUE_SAMPLES;
-	urp_sample_queue_init(&queue->ring, queue->samples, capacity);
-	queue->target_samples = sample_rate * URP_PROGRAM_QUEUE_TARGET_MS / 1000U;
-	if (queue->target_samples > capacity)
-		queue->target_samples = capacity;
-	queue->primed = 0;
-}
-
-void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned int samples)
-{
-	atomic_store_explicit(&queue->seed_samples, samples, memory_order_release);
-}
-
-unsigned int urp_program_queue_take_seed(struct urp_program_queue *queue)
-{
-	return atomic_exchange_explicit(&queue->seed_samples, 0U, memory_order_acq_rel);
-}
-
-int urp_program_queue_push_sample(struct urp_program_queue *queue, short sample)
-{
-	return urp_sample_queue_push_sample(&queue->ring, sample);
-}
-
-int urp_program_queue_push(struct urp_program_queue *queue, const short *samples, size_t count,
-			   unsigned int seed_samples)
-{
-	int overflowed = 0;
-
-	while (seed_samples--) {
-		if (!urp_program_queue_push_sample(queue, 0))
-			overflowed = 1;
-	}
-	while (count--) {
-		if (!urp_program_queue_push_sample(queue, *samples))
-			overflowed = 1;
-		++samples;
-	}
-	return overflowed;
-}
-
-int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample)
-{
-	return urp_sample_queue_pop_sample(&queue->ring, sample);
-}
-
-int urp_program_queue_pop_frame(struct urp_program_queue *queue, short *samples, size_t count)
-{
-	unsigned int occupancy;
-	int adjustment = 0;
-	size_t i;
-
-	if (!queue || !samples || !count)
-		return 0;
-	occupancy = urp_program_queue_samples(queue);
-	if (occupancy < count)
-		return 0;
-	/* A one-frame deadband rejects normal app_rpt scheduling jitter.  Each
-	 * correction changes the consumer cursor by one source sample only. */
-	if (occupancy > queue->target_samples + count)
-		adjustment = 1;
-	else if (occupancy < queue->target_samples)
-		adjustment = -1;
-	if (adjustment > 0) {
-		short discarded;
-
-		/* The observed occupancy already reserves this sample.  The SPSC
-		 * producer can only advance the write cursor, so this cannot underflow. */
-		(void)urp_program_queue_pop_sample(queue, &discarded);
-	}
-	if (adjustment < 0 && count > 1U) {
-		(void)urp_program_queue_pop_sample(queue, &samples[0]);
-		samples[1] = samples[0];
-		for (i = 2; i < count; ++i)
-			(void)urp_program_queue_pop_sample(queue, &samples[i]);
-		return 1;
-	}
-	for (i = 0; i < count; ++i)
-		(void)urp_program_queue_pop_sample(queue, &samples[i]);
-	return 1;
-}
-
-unsigned int urp_program_queue_samples(const struct urp_program_queue *queue)
-{
-	return urp_sample_queue_samples(&queue->ring);
-}
-
-unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue)
-{
-	return urp_sample_queue_high_water(&queue->ring);
-}
-
-void urp_program_queue_reset_high_water(struct urp_program_queue *queue)
-{
-	urp_sample_queue_reset_high_water(&queue->ring);
 }
 
 int urp_gain_db_to_mixer(double gain_db)
@@ -325,10 +221,10 @@ int urp_tx_pair_has_tone(enum urp_tx_output_mode output_a, enum urp_tx_output_mo
 	return urp_tx_output_has_tone(output_a) || urp_tx_output_has_tone(output_b);
 }
 
-int urp_tx_tone_route_missing(const char *frequency, enum urp_tx_output_mode output_a,
-			      enum urp_tx_output_mode output_b)
+int urp_tx_signaling_route_missing(int signaling_enabled, enum urp_tx_output_mode output_a,
+				   enum urp_tx_output_mode output_b)
 {
-	return frequency[0] && !urp_tx_pair_has_tone(output_a, output_b);
+	return signaling_enabled && !urp_tx_pair_has_tone(output_a, output_b);
 }
 
 int urp_parallel_pulser_needed(int parallel_port_enabled, int output_configured)
@@ -429,7 +325,8 @@ void urp_prepare_receive_block(const short *stereo, short *pcm, double *working,
 	}
 }
 
-unsigned long urp_render_transmit_block(const double *program, const double *ctcss, size_t count,
+unsigned long urp_render_transmit_block(const double *program, const double *ctcss,
+					const double *dcs, size_t count,
 					enum urp_tx_output_mode output_a,
 					enum urp_tx_output_mode output_b, double ctcss_peak_a,
 					double ctcss_bias_a, double ctcss_peak_b,
@@ -453,15 +350,15 @@ unsigned long urp_render_transmit_block(const double *program, const double *ctc
 		if (urp_tx_output_has_program(output_b))
 			stereo[i * 2 + 1] = urp_saturating_add(stereo[i * 2 + 1], output);
 		if (output_a == URP_TX_OUTPUT_TONE || output_a == URP_TX_OUTPUT_COMPOSITE) {
-			short tone = (short)lrint(
-				fmax(INT16_MIN,
-				     fmin(INT16_MAX, ctcss[i] * ctcss_peak_a + ctcss_bias_a)));
+			short tone = (short)lrint(fmax(
+				INT16_MIN,
+				fmin(INT16_MAX, ctcss[i] * ctcss_peak_a + ctcss_bias_a + dcs[i])));
 			stereo[i * 2] = urp_saturating_add(stereo[i * 2], tone);
 		}
 		if (output_b == URP_TX_OUTPUT_TONE || output_b == URP_TX_OUTPUT_COMPOSITE) {
-			short tone = (short)lrint(
-				fmax(INT16_MIN,
-				     fmin(INT16_MAX, ctcss[i] * ctcss_peak_b + ctcss_bias_b)));
+			short tone = (short)lrint(fmax(
+				INT16_MIN,
+				fmin(INT16_MAX, ctcss[i] * ctcss_peak_b + ctcss_bias_b + dcs[i])));
 			stereo[i * 2 + 1] = urp_saturating_add(stereo[i * 2 + 1], tone);
 		}
 	}
@@ -481,22 +378,6 @@ int urp_parse_rx_audio_mode(const char *text, enum urp_rx_audio_mode *mode)
 	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
 		return -1;
 	*mode = (enum urp_rx_audio_mode)result;
-	return 0;
-}
-
-int urp_parse_tx_output_mode(const char *text, enum urp_tx_output_mode *mode)
-{
-	static const struct urp_named_value values[] = {
-		{"no", URP_TX_OUTPUT_DISABLED},	       {"voice", URP_TX_OUTPUT_VOICE},
-		{"tone", URP_TX_OUTPUT_TONE},	       {"composite", URP_TX_OUTPUT_COMPOSITE},
-		{"auxvoice", URP_TX_OUTPUT_AUX_VOICE},
-	};
-	int result;
-	if (!mode)
-		return -1;
-	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
-		return -1;
-	*mode = (enum urp_tx_output_mode)result;
 	return 0;
 }
 
@@ -543,8 +424,9 @@ int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode)
 {
 	static const struct urp_named_value values[] = {
 		{"no", URP_TONE_OFF_NONE},
-		{"phase", URP_TONE_OFF_PHASE_REVERSE},
-		{"notone", URP_TONE_OFF_REMOVE},
+		{"ctcss_phase_shift", URP_TONE_OFF_PHASE_SHIFT},
+		{"ctcss_tone_remove", URP_TONE_OFF_TONE_REMOVE},
+		{"ctcss_tail_tone", URP_TONE_OFF_TAIL_TONE},
 	};
 	int result;
 	if (!mode)

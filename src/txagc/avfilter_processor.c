@@ -5,7 +5,9 @@
 #include "avfilter_processor.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
+#include <sched.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +28,7 @@
 #include <libavutil/dict.h>
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
+#include <libavutil/mem.h>
 #include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
@@ -45,6 +48,20 @@
 #define NAME_SIZE 32
 
 #define CTCSS_NOTCH_SECTIONS 8
+
+/* The largest supported callback block is 100 ms, or the 48 kHz native
+ * period when that is larger.  A bounded frame pool keeps FFmpeg input
+ * references from turning a real-time callback into an allocator. */
+/** Minimum preallocated FFmpeg input-frame capacity in samples. */
+#define AVFILTER_INPUT_CAPACITY_MIN 960U
+/** Divisor that converts the stream rate to a 100 ms input-frame capacity. */
+#define AVFILTER_INPUT_CAPACITY_DIVISOR 10U
+
+/** @brief One heap-owned graph published through a txagc_avfilter_slot. */
+struct txagc_avfilter_slot_node {
+	/** Fully configured graph state. */
+	struct txagc_avfilter filter;
+};
 
 /** @brief Convert a decibel amplitude gain to a linear multiplier.
  * @param db Amplitude gain in decibels.
@@ -750,7 +767,7 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 			    current);
 }
 
-/** @brief Release the FFmpeg graph and its output FIFO.
+/** @brief Release the FFmpeg graph and its preallocated runtime storage.
  * @param state Processor or stream state owned by the caller.
  */
 AVFILTER_PRIVATE void free_graph(struct txagc_avfilter *state)
@@ -768,6 +785,12 @@ AVFILTER_PRIVATE void free_graph(struct txagc_avfilter *state)
 		av_audio_fifo_free(state->fifo);
 		state->fifo = NULL;
 	}
+	for (size_t index = 0; index < TXAGC_AVFILTER_INPUT_FRAME_COUNT; ++index)
+		av_frame_free(&state->input_frames[index]);
+	av_frame_free(&state->output_frame);
+	state->input_capacity = 0;
+	state->fifo_capacity = 0;
+	state->input_frame_index = 0;
 	state->configured = 0;
 }
 
@@ -779,6 +802,59 @@ AVFILTER_PRIVATE void set_double_sample_format(AVFilterContext *sink)
 	const int formats[] = {AV_SAMPLE_FMT_DBL, AV_SAMPLE_FMT_NONE};
 	av_opt_set_bin(sink, "sample_fmts", (const uint8_t *)formats, sizeof(formats[0]),
 		       AV_OPT_SEARCH_CHILDREN);
+}
+
+/** @brief Derive a fixed source-frame capacity from the stream rate.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Frame capacity in samples, or zero when the rate cannot be represented.
+ */
+AVFILTER_PRIVATE unsigned int input_capacity_for_rate(unsigned int sample_rate)
+{
+	unsigned int capacity;
+
+	if (!sample_rate || sample_rate > INT_MAX)
+		return 0;
+	capacity = sample_rate / AVFILTER_INPUT_CAPACITY_DIVISOR;
+	return capacity < AVFILTER_INPUT_CAPACITY_MIN ? AVFILTER_INPUT_CAPACITY_MIN : capacity;
+}
+
+/** @brief Allocate the fixed storage used by the steady-state graph feeder.
+ * @param state Processor or stream state owned by the caller.
+ * @param sample_rate Audio sample rate in Hz.
+ * @return Zero on success; a negative FFmpeg error code on failure.
+ */
+AVFILTER_PRIVATE int allocate_runtime_buffers(struct txagc_avfilter *state,
+					      unsigned int sample_rate)
+{
+	unsigned int capacity = input_capacity_for_rate(sample_rate);
+
+	/* configure() has already rejected a rate that cannot produce a capacity.
+	 * It also divides every accepted rate by ten, so multiplying the result by
+	 * the fixed pool count cannot overflow an int. */
+	state->input_capacity = capacity;
+	state->fifo_capacity = capacity * TXAGC_AVFILTER_INPUT_FRAME_COUNT;
+	state->fifo = av_audio_fifo_alloc(AV_SAMPLE_FMT_DBL, 1, (int)state->fifo_capacity);
+	if (!state->fifo)
+		return AVERROR(ENOMEM);
+	for (size_t index = 0; index < TXAGC_AVFILTER_INPUT_FRAME_COUNT; ++index) {
+		AVFrame *frame = av_frame_alloc();
+		int result;
+
+		if (!frame)
+			return AVERROR(ENOMEM);
+		frame->format = AV_SAMPLE_FMT_DBL;
+		frame->sample_rate = (int)sample_rate;
+		frame->nb_samples = (int)capacity;
+		av_channel_layout_default(&frame->ch_layout, 1);
+		result = av_frame_get_buffer(frame, 0);
+		if (result < 0) {
+			av_frame_free(&frame);
+			return result;
+		}
+		state->input_frames[index] = frame;
+	}
+	state->output_frame = av_frame_alloc();
+	return state->output_frame ? 0 : AVERROR(ENOMEM);
 }
 
 /** @brief Rebuild the FFmpeg graph when its configuration or sample rate changes.
@@ -814,6 +890,8 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	char description[GRAPH_SIZE];
 	int result;
 
+	if (!state || !config || !input_capacity_for_rate(sample_rate))
+		return AVERROR(EINVAL);
 	free_graph(state);
 	result = build_description(description, sizeof(description), config, sample_rate);
 	if (result < 0) {
@@ -898,9 +976,8 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	if (result < 0) {
 		goto fail;
 	}
-	state->fifo = av_audio_fifo_alloc(AV_SAMPLE_FMT_DBL, 1, (int)(sample_rate / 2));
-	if (!state->fifo) {
-		result = AVERROR(ENOMEM);
+	result = allocate_runtime_buffers(state, sample_rate);
+	if (result < 0) {
 		goto fail;
 	}
 	memcpy(&state->config, config, sizeof(*config));
@@ -949,6 +1026,369 @@ void txagc_avfilter_reset(struct txagc_avfilter *state)
 	free_graph(state);
 }
 
+/** @brief Acquire the control-plane writer token for one published graph slot.
+ * @param slot Slot whose replacement or teardown is being serialized.
+ *
+ * The real-time reader never touches this token. A control-plane yield is
+ * preferable to a mutex here because it keeps the reader path entirely
+ * lock-free while still serializing reload and teardown callers.
+ */
+static void slot_lock(struct txagc_avfilter_slot *slot)
+{
+	while (atomic_flag_test_and_set_explicit(&slot->writer, memory_order_acquire))
+		sched_yield();
+}
+
+/** @brief Release the control-plane writer token for one published graph slot.
+ * @param slot Slot previously acquired by slot_lock().
+ */
+static void slot_unlock(struct txagc_avfilter_slot *slot)
+{
+	atomic_flag_clear_explicit(&slot->writer, memory_order_release);
+}
+
+/** @brief Compare every named configuration member without reading padding.
+ * @param left First validated graph configuration.
+ * @param right Second validated graph configuration.
+ * @return Nonzero when both configurations have the same semantic values.
+ *
+ * Configuration values cross the control-plane/real-time boundary and contain
+ * compiler-inserted padding.  Do not replace this explicit semantic comparison
+ * with a bytewise object comparison: padding is not configuration and can make
+ * an unchanged reload spuriously rebuild a graph.  Stage-order entries beyond
+ * stage_count are also deliberately ignored because graph construction never
+ * reads them.
+ */
+AVFILTER_PRIVATE int txagc_config_equal(const struct txagc_config *left,
+					const struct txagc_config *right)
+{
+	unsigned int index;
+	unsigned int stage_count;
+	int equal = 1;
+
+	if (!left || !right || left->stage_count > TXAGC_MAX_DYNAMICS_STAGES ||
+	    right->stage_count > TXAGC_MAX_DYNAMICS_STAGES)
+		return 0;
+	equal &= left->stage_count == right->stage_count;
+	/* The preceding bounds check makes the left count safe.  Compare that many
+	 * entries even when counts differ; equality is already false in that case
+	 * and this avoids depending on inactive storage or object representation. */
+	stage_count = left->stage_count;
+	for (index = 0; index < stage_count; ++index)
+		equal &= left->stage_order[index] == right->stage_order[index];
+	equal &= left->deemphasis_enabled == right->deemphasis_enabled;
+	equal &= left->preemphasis_enabled == right->preemphasis_enabled;
+	equal &= left->emphasis_corner_hz == right->emphasis_corner_hz;
+	equal &= left->emphasis_reference_hz == right->emphasis_reference_hz;
+	equal &= left->receive_bandpass_enabled == right->receive_bandpass_enabled;
+	equal &= left->receive_bandpass_highpass_hz == right->receive_bandpass_highpass_hz;
+	equal &= left->receive_bandpass_lowpass_hz == right->receive_bandpass_lowpass_hz;
+	equal &= left->ctcss_filter_mode == right->ctcss_filter_mode;
+	equal &= left->ctcss_notch_width_hz == right->ctcss_notch_width_hz;
+	equal &= left->ctcss_highpass_hz == right->ctcss_highpass_hz;
+	equal &= strncmp(left->ctcss_notch_frequencies, right->ctcss_notch_frequencies,
+			 sizeof(left->ctcss_notch_frequencies)) == 0;
+	equal &= left->input_gain_db == right->input_gain_db;
+	equal &= left->equalizer_enabled == right->equalizer_enabled;
+	equal &= left->equalizer_low_gain_db == right->equalizer_low_gain_db;
+	equal &= left->equalizer_low_frequency_hz == right->equalizer_low_frequency_hz;
+	equal &= left->equalizer_low_slope == right->equalizer_low_slope;
+	equal &= left->equalizer_mid_gain_db == right->equalizer_mid_gain_db;
+	equal &= left->equalizer_mid_frequency_hz == right->equalizer_mid_frequency_hz;
+	equal &= left->equalizer_mid_width_octaves == right->equalizer_mid_width_octaves;
+	equal &= left->equalizer_high_gain_db == right->equalizer_high_gain_db;
+	equal &= left->equalizer_high_frequency_hz == right->equalizer_high_frequency_hz;
+	equal &= left->equalizer_high_slope == right->equalizer_high_slope;
+	equal &= left->deesser_enabled == right->deesser_enabled;
+	equal &= left->deesser_frequency_hz == right->deesser_frequency_hz;
+	equal &= left->deesser_width_octaves == right->deesser_width_octaves;
+	equal &= left->deesser_threshold_dbfs == right->deesser_threshold_dbfs;
+	equal &= left->deesser_ratio == right->deesser_ratio;
+	equal &= left->deesser_max_reduction_db == right->deesser_max_reduction_db;
+	equal &= left->deesser_attack_ms == right->deesser_attack_ms;
+	equal &= left->deesser_release_ms == right->deesser_release_ms;
+	equal &= left->agc_enabled == right->agc_enabled;
+	equal &= left->target_dbfs == right->target_dbfs;
+	equal &= left->max_gain_db == right->max_gain_db;
+	equal &= left->max_attenuation_db == right->max_attenuation_db;
+	equal &= left->agc_rms_averaging_ms == right->agc_rms_averaging_ms;
+	equal &= left->agc_gain_increase_db_per_second == right->agc_gain_increase_db_per_second;
+	equal &= left->agc_gain_decrease_db_per_second == right->agc_gain_decrease_db_per_second;
+	equal &= left->agc_activity_threshold_dbfs == right->agc_activity_threshold_dbfs;
+	equal &= left->agc_activity_hysteresis_db == right->agc_activity_hysteresis_db;
+	equal &= left->agc_hold_ms == right->agc_hold_ms;
+	equal &= left->agc_deadband_db == right->agc_deadband_db;
+	equal &= left->sidechain_highpass_hz == right->sidechain_highpass_hz;
+	equal &= left->sidechain_lowpass_hz == right->sidechain_lowpass_hz;
+	equal &= left->expander_enabled == right->expander_enabled;
+	equal &= left->expander_threshold_dbfs == right->expander_threshold_dbfs;
+	equal &= left->expander_ratio == right->expander_ratio;
+	equal &= left->expander_max_attenuation_db == right->expander_max_attenuation_db;
+	equal &= left->expander_attack_ms == right->expander_attack_ms;
+	equal &= left->expander_release_ms == right->expander_release_ms;
+	equal &= left->expander_sidechain_highpass_hz == right->expander_sidechain_highpass_hz;
+	equal &= left->expander_sidechain_lowpass_hz == right->expander_sidechain_lowpass_hz;
+	equal &= left->compressor_enabled == right->compressor_enabled;
+	equal &= left->compressor_bands == right->compressor_bands;
+	equal &= left->compressor_low_crossover_hz == right->compressor_low_crossover_hz;
+	equal &= left->compressor_high_crossover_hz == right->compressor_high_crossover_hz;
+	equal &= left->compressor_low_threshold_dbfs == right->compressor_low_threshold_dbfs;
+	equal &= left->compressor_low_ratio == right->compressor_low_ratio;
+	equal &= left->compressor_low_makeup_gain_db == right->compressor_low_makeup_gain_db;
+	equal &= left->compressor_low_knee_db == right->compressor_low_knee_db;
+	equal &= left->compressor_low_attack_ms == right->compressor_low_attack_ms;
+	equal &= left->compressor_low_release_ms == right->compressor_low_release_ms;
+	equal &= left->compressor_mid_threshold_dbfs == right->compressor_mid_threshold_dbfs;
+	equal &= left->compressor_mid_ratio == right->compressor_mid_ratio;
+	equal &= left->compressor_mid_makeup_gain_db == right->compressor_mid_makeup_gain_db;
+	equal &= left->compressor_mid_knee_db == right->compressor_mid_knee_db;
+	equal &= left->compressor_mid_attack_ms == right->compressor_mid_attack_ms;
+	equal &= left->compressor_mid_release_ms == right->compressor_mid_release_ms;
+	equal &= left->compressor_high_threshold_dbfs == right->compressor_high_threshold_dbfs;
+	equal &= left->compressor_high_ratio == right->compressor_high_ratio;
+	equal &= left->compressor_high_makeup_gain_db == right->compressor_high_makeup_gain_db;
+	equal &= left->compressor_high_knee_db == right->compressor_high_knee_db;
+	equal &= left->compressor_high_attack_ms == right->compressor_high_attack_ms;
+	equal &= left->compressor_high_release_ms == right->compressor_high_release_ms;
+	equal &= left->compressor_threshold_dbfs == right->compressor_threshold_dbfs;
+	equal &= left->compressor_ratio == right->compressor_ratio;
+	equal &= left->compressor_makeup_gain_db == right->compressor_makeup_gain_db;
+	equal &= left->compressor_attack_ms == right->compressor_attack_ms;
+	equal &= left->compressor_release_ms == right->compressor_release_ms;
+	equal &= left->compressor_sidechain_highpass_hz == right->compressor_sidechain_highpass_hz;
+	equal &= left->compressor_sidechain_lowpass_hz == right->compressor_sidechain_lowpass_hz;
+	equal &= left->limiter_enabled == right->limiter_enabled;
+	equal &= left->limiter_bands == right->limiter_bands;
+	equal &= left->limiter_threshold_dbfs == right->limiter_threshold_dbfs;
+	equal &= left->limiter_ratio == right->limiter_ratio;
+	equal &= left->limiter_knee_db == right->limiter_knee_db;
+	equal &= left->limiter_attack_ms == right->limiter_attack_ms;
+	equal &= left->limiter_release_ms == right->limiter_release_ms;
+	equal &= left->splatter_filter_enabled == right->splatter_filter_enabled;
+	equal &= left->limiter_low_crossover_hz == right->limiter_low_crossover_hz;
+	equal &= left->limiter_high_crossover_hz == right->limiter_high_crossover_hz;
+	equal &= left->low_limiter_threshold_dbfs == right->low_limiter_threshold_dbfs;
+	equal &= left->low_limiter_ratio == right->low_limiter_ratio;
+	equal &= left->low_limiter_knee_db == right->low_limiter_knee_db;
+	equal &= left->low_limiter_attack_ms == right->low_limiter_attack_ms;
+	equal &= left->low_limiter_release_ms == right->low_limiter_release_ms;
+	equal &= left->mid_limiter_threshold_dbfs == right->mid_limiter_threshold_dbfs;
+	equal &= left->mid_limiter_ratio == right->mid_limiter_ratio;
+	equal &= left->mid_limiter_knee_db == right->mid_limiter_knee_db;
+	equal &= left->mid_limiter_attack_ms == right->mid_limiter_attack_ms;
+	equal &= left->mid_limiter_release_ms == right->mid_limiter_release_ms;
+	equal &= left->high_limiter_threshold_dbfs == right->high_limiter_threshold_dbfs;
+	equal &= left->high_limiter_ratio == right->high_limiter_ratio;
+	equal &= left->high_limiter_knee_db == right->high_limiter_knee_db;
+	equal &= left->high_limiter_attack_ms == right->high_limiter_attack_ms;
+	equal &= left->high_limiter_release_ms == right->high_limiter_release_ms;
+	equal &= left->lookahead_limiter_enabled == right->lookahead_limiter_enabled;
+	equal &= left->lookahead_limit_dbfs == right->lookahead_limit_dbfs;
+	equal &= left->lookahead_ms == right->lookahead_ms;
+	equal &= left->lookahead_attack_ms == right->lookahead_attack_ms;
+	equal &= left->lookahead_release_ms == right->lookahead_release_ms;
+	equal &= left->post_limiter_lowpass_enabled == right->post_limiter_lowpass_enabled;
+	equal &= left->post_limiter_lowpass_hz == right->post_limiter_lowpass_hz;
+	equal &= left->output_highpass_hz == right->output_highpass_hz;
+	equal &= left->output_lowpass_hz == right->output_lowpass_hz;
+	equal &= left->output_gain_db == right->output_gain_db;
+	return equal;
+}
+
+/** @brief Wait until no worker or control-plane reader can still reference a replaced graph.
+ * @param slot Slot whose active pointer was already replaced.
+ *
+ * Active-pointer publication and the reader count use one sequentially
+ * consistent order.  A reader increments first and then loads active; a writer
+ * stores a replacement and then observes readers.  If the writer sees zero,
+ * every later reader must load the replacement.  Otherwise the reader pins the
+ * old graph until this wait completes.  This prevents a worker from acquiring a
+ * graph after its old allocation has been retired without putting a lock in the
+ * audio callback.
+ */
+static void slot_wait_for_readers(const struct txagc_avfilter_slot *slot)
+{
+	while (atomic_load_explicit(&slot->readers, memory_order_seq_cst) != 0U)
+		sched_yield();
+}
+
+void txagc_avfilter_slot_init(struct txagc_avfilter_slot *slot)
+{
+	if (!slot)
+		return;
+	memset(slot, 0, sizeof(*slot));
+	atomic_init(&slot->active, NULL);
+	atomic_init(&slot->readers, 0U);
+	atomic_flag_clear_explicit(&slot->writer, memory_order_relaxed);
+}
+
+void txagc_avfilter_slot_destroy(struct txagc_avfilter_slot *slot)
+{
+	struct txagc_avfilter_slot_node *node;
+
+	if (!slot)
+		return;
+	slot_lock(slot);
+	atomic_store_explicit(&slot->active, NULL, memory_order_seq_cst);
+	slot_wait_for_readers(slot);
+	node = slot->owned;
+	slot->owned = NULL;
+	if (node) {
+		txagc_avfilter_destroy(&node->filter);
+		av_free(node);
+	}
+	slot_unlock(slot);
+}
+
+void txagc_avfilter_slot_candidate_destroy(struct txagc_avfilter_slot_candidate *candidate)
+{
+	if (!candidate || !candidate->node)
+		return;
+	txagc_avfilter_destroy(&candidate->node->filter);
+	av_free(candidate->node);
+	candidate->node = NULL;
+}
+
+int txagc_avfilter_slot_candidate_prepare(struct txagc_avfilter_slot_candidate *candidate,
+					  const struct txagc_config *config,
+					  unsigned int sample_rate)
+{
+	struct txagc_avfilter_slot_node *replacement;
+	int result;
+
+	if (!candidate || !config || candidate->node)
+		return AVERROR(EINVAL);
+	replacement = av_mallocz(sizeof(*replacement));
+	if (!replacement)
+		return AVERROR(ENOMEM);
+	txagc_avfilter_init(&replacement->filter);
+	result = txagc_avfilter_prepare(&replacement->filter, config, sample_rate);
+	if (result < 0) {
+		txagc_avfilter_destroy(&replacement->filter);
+		av_free(replacement);
+		return result;
+	}
+	candidate->node = replacement;
+	return 0;
+}
+
+int txagc_avfilter_slot_publish_candidate(struct txagc_avfilter_slot *slot,
+					  struct txagc_avfilter_slot_candidate *candidate)
+{
+	struct txagc_avfilter_slot_node *old;
+
+	if (!slot || !candidate || !candidate->node)
+		return AVERROR(EINVAL);
+	slot_lock(slot);
+	old = slot->owned;
+	/* owned is assigned only after candidate preparation completes, so an
+	 * existing node always contains a configured graph. */
+	if (old && old->filter.sample_rate == candidate->node->filter.sample_rate &&
+	    txagc_config_equal(&old->filter.config, &candidate->node->filter.config)) {
+		slot_unlock(slot);
+		txagc_avfilter_slot_candidate_destroy(candidate);
+		return 0;
+	}
+	/* Publish only a complete graph. Readers acquire active before touching any
+	 * graph member, so an unpublished candidate cannot disturb active audio. */
+	atomic_store_explicit(&slot->active, &candidate->node->filter, memory_order_seq_cst);
+	slot_wait_for_readers(slot);
+	slot->owned = candidate->node;
+	candidate->node = NULL;
+	if (old) {
+		txagc_avfilter_destroy(&old->filter);
+		av_free(old);
+	}
+	slot_unlock(slot);
+	return 0;
+}
+
+int txagc_avfilter_slot_prepare(struct txagc_avfilter_slot *slot, const struct txagc_config *config,
+				unsigned int sample_rate)
+{
+	struct txagc_avfilter_slot_candidate candidate = {0};
+	const struct txagc_avfilter_slot_node *active;
+	int result;
+
+	if (!slot || !config)
+		return AVERROR(EINVAL);
+	/* Preserve the no-op fast path: an unchanged control-plane reload must not
+	 * allocate an FFmpeg candidate simply to discard it moments later. */
+	slot_lock(slot);
+	active = slot->owned;
+	/* An owned node is always a successfully prepared graph. */
+	if (active && active->filter.sample_rate == sample_rate &&
+	    txagc_config_equal(&active->filter.config, config)) {
+		slot_unlock(slot);
+		return 0;
+	}
+	slot_unlock(slot);
+	result = txagc_avfilter_slot_candidate_prepare(&candidate, config, sample_rate);
+
+	if (result < 0)
+		return result;
+	/* A locally initialized candidate and non-NULL slot satisfy the only
+	 * fallible preconditions of publication. It either consumes the candidate
+	 * or completes a semantic no-op, so no post-publication cleanup is needed. */
+	return txagc_avfilter_slot_publish_candidate(slot, &candidate);
+}
+
+int txagc_avfilter_slot_process_prepared(struct txagc_avfilter_slot *slot, double *samples,
+					 size_t count)
+{
+	struct txagc_avfilter *state;
+	int result;
+
+	state = txagc_avfilter_slot_acquire(slot);
+	if (!state)
+		return AVERROR(EINVAL);
+	result = txagc_avfilter_process_prepared(state, samples, count);
+	txagc_avfilter_slot_release(slot);
+	return result;
+}
+
+struct txagc_avfilter *txagc_avfilter_slot_active(const struct txagc_avfilter_slot *slot)
+{
+	if (!slot)
+		return NULL;
+	return atomic_load_explicit(&slot->active, memory_order_seq_cst);
+}
+
+struct txagc_avfilter *txagc_avfilter_slot_acquire(struct txagc_avfilter_slot *slot)
+{
+	struct txagc_avfilter *state;
+
+	if (!slot)
+		return NULL;
+	/* Claim a read-side reference before loading active.  These operations pair
+	 * with replacement's sequentially-consistent active store and reader count
+	 * wait: either the reader pins the old graph before replacement observes its
+	 * count, or it loads the replacement after that zero-count observation. */
+	atomic_fetch_add_explicit(&slot->readers, 1U, memory_order_seq_cst);
+	state = atomic_load_explicit(&slot->active, memory_order_seq_cst);
+	if (!state)
+		atomic_fetch_sub_explicit(&slot->readers, 1U, memory_order_seq_cst);
+	return state;
+}
+
+void txagc_avfilter_slot_release(struct txagc_avfilter_slot *slot)
+{
+	if (slot)
+		atomic_fetch_sub_explicit(&slot->readers, 1U, memory_order_seq_cst);
+}
+
+int txagc_avfilter_prepare(struct txagc_avfilter *state, const struct txagc_config *config,
+			   unsigned int sample_rate)
+{
+	if (!state || !config)
+		return AVERROR(EINVAL);
+	if (state->configured && state->sample_rate == sample_rate &&
+	    txagc_config_equal(&state->config, config)) {
+		return 0;
+	}
+	return configure(state, config, sample_rate);
+}
+
 /** @brief Drain available frames from one spectral measurement sink.
  * @param state Processor or stream state owned by the caller.
  * @param sink FFmpeg filter sink.
@@ -968,46 +1408,50 @@ AVFILTER_PRIVATE int drain_cleanup_meter(struct txagc_avfilter *state, struct AV
 	return result == AVERROR(EAGAIN) || result == AVERROR_EOF ? 0 : result;
 }
 
-int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_config *config,
-			   double *samples, size_t count, unsigned int sample_rate)
+/** @brief Find a source frame that the graph no longer references.
+ * @param state Prepared processor state.
+ * @return A writable preallocated source frame, or NULL if the bounded pool is busy.
+ */
+AVFILTER_PRIVATE AVFrame *next_input_frame(struct txagc_avfilter *state)
 {
-	AVFrame *input = NULL;
-	AVFrame *output = NULL;
+	for (size_t offset = 0; offset < TXAGC_AVFILTER_INPUT_FRAME_COUNT; ++offset) {
+		unsigned int index =
+			(state->input_frame_index + offset) % TXAGC_AVFILTER_INPUT_FRAME_COUNT;
+		AVFrame *frame = state->input_frames[index];
+
+		if (frame && av_frame_is_writable(frame)) {
+			state->input_frame_index = (index + 1) % TXAGC_AVFILTER_INPUT_FRAME_COUNT;
+			return frame;
+		}
+	}
+	return NULL;
+}
+
+int txagc_avfilter_process_prepared(struct txagc_avfilter *state, double *samples, size_t count)
+{
+	AVFrame *input;
+	AVFrame *output;
 	int available;
 	int result;
 	int written;
 	double *output_pointer;
 	size_t copied = 0;
 
-	/* Configurations are zero-initialized before fields are assigned, making
-	 * their padding deterministic and this real-time comparison well-defined. */
-	if (!state->configured || state->sample_rate != sample_rate ||
-	    memcmp(&state->config, config, sizeof(*config)) != 0) { /* NOLINT */
-		result = configure(state, config, sample_rate);
-		if (result < 0) {
-			return result;
-		}
-	}
-	input = av_frame_alloc();
-	output = av_frame_alloc();
-	if (!input || !output) {
-		result = AVERROR(ENOMEM);
-		goto done;
-	}
-	input->format = AV_SAMPLE_FMT_DBL;
-	input->sample_rate = (int)sample_rate;
+	if (!state || !samples || !count || !state->configured || !state->fifo ||
+	    !state->output_frame || count > state->input_capacity)
+		return AVERROR(EINVAL);
+	input = next_input_frame(state);
+	if (!input)
+		return AVERROR(EAGAIN);
+	output = state->output_frame;
 	input->nb_samples = (int)count;
-	av_channel_layout_default(&input->ch_layout, 1);
-	result = av_frame_get_buffer(input, 0);
-	if (result < 0) {
-		goto done;
-	}
 	/* Asterisk/usbradio uses floating point with 16-bit PCM units while
 	 * libavfilter's DBL format uses the normalized -1.0 .. +1.0 convention. */
 	for (size_t index = 0; index < count; ++index) {
 		((double *)input->data[0])[index] = samples[index] / 32768.0;
 	}
-	result = av_buffersrc_add_frame_flags(state->source, input, AV_BUFFERSRC_FLAG_KEEP_REF);
+	result = av_buffersrc_add_frame_flags(state->source, input,
+					      AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_PUSH);
 	if (result < 0) {
 		goto done;
 	}
@@ -1019,7 +1463,7 @@ int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_conf
 	if (result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
 		goto done;
 	}
-	if (config->post_limiter_lowpass_enabled) {
+	if (state->config.post_limiter_lowpass_enabled) {
 		result = drain_cleanup_meter(state, state->cleanup_pre_sink, output,
 					     CLEANUP_PRE_FULL);
 		if (result < 0)
@@ -1045,9 +1489,8 @@ int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_conf
 	while ((result = av_buffersink_get_frame(state->sink, output)) >= 0) {
 		void *fifo_data[1];
 		update_astats(state, output, 0);
-		if (av_audio_fifo_realloc(state->fifo, av_audio_fifo_size(state->fifo) +
-							       output->nb_samples) < 0) {
-			result = AVERROR(ENOMEM);
+		if (output->nb_samples > av_audio_fifo_space(state->fifo)) {
+			result = AVERROR(ENOSPC);
 			goto done;
 		}
 		output_pointer = (double *)output->data[0];
@@ -1097,9 +1540,16 @@ int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_conf
 	result = 0;
 
 done:
-	av_frame_free(&input);
-	av_frame_free(&output);
+	av_frame_unref(output);
 	return result;
+}
+
+int txagc_avfilter_process(struct txagc_avfilter *state, const struct txagc_config *config,
+			   double *samples, size_t count, unsigned int sample_rate)
+{
+	int result = txagc_avfilter_prepare(state, config, sample_rate);
+
+	return result < 0 ? result : txagc_avfilter_process_prepared(state, samples, count);
 }
 
 /** @name File-local and build-time constants

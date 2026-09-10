@@ -5,6 +5,8 @@
 #ifndef USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
 
+#include <stdatomic.h>
+
 #include <rate_adjusting_pcm_ring.h>
 
 /** Private per-radio state shared by channel callbacks and device workers. */
@@ -80,18 +82,18 @@ struct chan_usbradio_pvt {
 	unsigned int plus_app_rpt_samples;
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
+	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
+	int plus_dsp_initialized;
+	/** Worker owning non-real-time native graph execution. */
+	struct usbradioplus_native_worker *plus_native_worker;
 	/** One native-rate app_rpt transmitter block. */
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	/** App_rpt-rate program input workspace. */
 	short plus_link_8k[URP_NATIVE_SAMPLES];
-	/** Pending app_rpt voice frames. */
-	struct urp_program_queue plus_program_queue;
-	/** Shared native program-FIFO clock-recovery ring. */
+	/** Shared app_rpt-input program ring with native-rate clock recovery. */
 	struct rpcr_ring plus_program_ring;
-	/** Native program FIFO occupancy target in samples. */
+	/** Program-ring source occupancy target for clock recovery in samples. */
 	unsigned int plus_program_target_samples;
-	/** Program samples retained as the protected native playout reserve. */
-	unsigned int plus_program_reserve_samples;
 	/** Count of empty app_rpt queue reads. */
 	uint64_t plus_link_queue_underflows;
 	/** Count of app_rpt queue overflow corrections. */
@@ -102,22 +104,38 @@ struct chan_usbradio_pvt {
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	/** Current receiver delay-ring position. */
 	unsigned int plus_rx_delay_index;
-	/** App_rpt-to-native streaming resampler. */
-	struct urp_src *plus_up;
+	/** Echo-to-native streaming resampler owned by the hardware worker. */
+	struct urp_src *plus_echo_up;
 	/** Native-to-app_rpt streaming resampler. */
 	struct urp_src *plus_down;
 	/** Tracks emphasis selection for local native repeat audio. */
 	unsigned int plus_local_preemphasis_active;
 	/** Tracks emphasis selection for app_rpt transmitter audio. */
 	unsigned int plus_link_preemphasis_active;
-	/** Local-receiver optional FFmpeg processing graph. */
-	struct txagc_avfilter plus_local_avfilter;
-	/** Fixed receive deemphasis and input-gain graph. */
-	struct txagc_avfilter plus_rx_filter;
-	/** Fixed receive band-pass and PL-filter graph. */
-	struct txagc_avfilter plus_rx_filter_after;
-	/** Fixed transmitter and voice/telemetry FFmpeg graph. */
-	struct txagc_avfilter plus_final_avfilter;
+	/** Complete native graph generation atomically published at setup/reload. */
+	struct usbradioplus_native_graph_slot plus_native_graphs;
+	/** Lock-free exclusion for rare signaling-parser reconfiguration. */
+	struct usbradioplus_radio_access_slot plus_radio_access;
+	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
+	_Atomic int plus_radio_tx_active;
+	/** Desired physical PTT state published synchronously from the signaling engine. */
+	atomic_int plus_hardware_ptt_request;
+	/** Physical PTT state acknowledged by the HID hardware worker. */
+	atomic_int plus_hardware_ptt_applied;
+	/** Nonzero while the HID worker owns a live hardware interface. */
+	atomic_int plus_hardware_online;
+	/** Packed HID and parallel receiver inputs published by the HID worker. */
+	atomic_uint plus_hardware_inputs;
+	/** Native-audio clip indication consumed by the HID worker. */
+	atomic_int plus_clip_led_request;
+	/** Odd while the control plane publishes a radio-programming request. */
+	atomic_uint plus_radio_program_generation;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_uint plus_radio_program_rx_frequency;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_uint plus_radio_program_tx_frequency;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_int plus_radio_program_high_power;
 	/** Local-receiver RNNoise stream state. */
 	struct txagc_rnnoise plus_local_rnnoise;
 	/** Resolved emphasis corner frequency in Hz. */
@@ -134,9 +152,15 @@ struct chan_usbradio_pvt {
 	int plus_applied_txmixbset;
 	/** plus_applied_txmixb: Last applied output-B routing assignment. */
 	/** Last applied output-A routing assignment. */
-	int plus_applied_txmixa;
+	_Atomic int plus_applied_txmixa;
 	/** Last applied output-B routing assignment. */
-	int plus_applied_txmixb;
+	_Atomic int plus_applied_txmixb;
+	/** Output-A CTCSS multiplier consumed by the native render worker. */
+	_Atomic int plus_applied_tx_output_gain_a;
+	/** Output-B CTCSS multiplier consumed by the native render worker. */
+	_Atomic int plus_applied_tx_output_gain_b;
+	/** Even when stable; brackets the lock-free hardware audio snapshot. */
+	_Atomic unsigned int plus_hardware_generation;
 	/** plus_applied_txctcssfreqs: Last applied transmit CTCSS frequency list. */
 	/** Last applied receive CTCSS frequency list. */
 	char plus_applied_rxctcssfreqs[512];
@@ -218,11 +242,11 @@ struct chan_usbradio_pvt {
 	/** Previous transmitter indication state. */
 	char lasttx;
 	/** PTT request received from app_rpt. */
-	char txkeyed; /* tx key request from upper layers */
+	atomic_char txkeyed;
 	/** PTT request from the calibration utility. */
-	char txtestkey;
-	/** Nonzero selects the native calibration tone. */
-	char plus_test_tone_enabled;
+	atomic_char txtestkey;
+	/** Atomically selected native calibration tone source. */
+	atomic_char plus_test_tone_enabled;
 	/** Native calibration oscillator phase in radians. */
 	double plus_test_tone_phase;
 	/** Continuous-phase native CTCSS oscillator. */
@@ -255,8 +279,6 @@ struct chan_usbradio_pvt {
 	/** Configured signaling user key. */
 	char ukey[48];
 
-	/** Received DCS indication retained in radio state. */
-	int rxdcsdecode;
 	/** Received low-speed-data indication retained in radio state. */
 	int rxlsddecode;
 
@@ -295,9 +317,9 @@ struct chan_usbradio_pvt {
 
 	/** Transmit CTCSS amplitude multiplier. */
 	float txctcssgain;
-	/** Output-A voice/CTCSS routing assignment. */
+	/** Output-A voice/transmit-signaling routing assignment. */
 	enum radio_tx_mix txmixa;
-	/** Output-B voice/CTCSS routing assignment. */
+	/** Output-B voice/transmit-signaling routing assignment. */
 	enum radio_tx_mix txmixb;
 	/** Receiver detector low-pass filter selector. */
 	int rxlpf;
@@ -324,6 +346,28 @@ struct chan_usbradio_pvt {
 	char txctcssfreq[32]; /* encode now */
 	/** Currently decoded receive CTCSS frequency. */
 	char rxctcssfreq[32]; /* decode now */
+	/** Configured receive DCS code, or empty to disable DCS reception. */
+	char dcs_receive_code[5];
+	/** Receive signaling selector: carrier, ctcss, or dcs. */
+	char receive_signaling_method[8];
+	/** Transmit signaling selector: carrier, ctcss, or dcs. */
+	char transmit_signaling_method[8];
+	/** Configured transmit DCS code, or empty to disable DCS transmission. */
+	char dcs_transmit_code[5];
+	/** Enable the standard DCS 134.4 Hz turn-off sequence. */
+	int dcs_turnoff_enabled;
+	/** DCS turn-off duration in milliseconds, constrained to 150 through 200. */
+	int dcs_turnoff_duration_ms;
+	/** DCS modulation level in PCM codes. */
+	double dcs_level;
+	/** CTCSS modulation peak in PCM codes. */
+	double ctcss_level;
+	/** CTCSS phase shift used for phase-tail signaling, in degrees. */
+	double ctcss_phase_shift_degrees;
+	/** CTCSS tail signaling duration in milliseconds. */
+	int ctcss_tail_duration_ms;
+	/** Replacement CTCSS tail tone frequency in Hz. */
+	double ctcss_tail_frequency_hz;
 
 	/** Number of receive CTCSS frequencies. */
 	char numrxctcssfreqs; /* how many */
@@ -433,14 +477,6 @@ struct chan_usbradio_pvt {
 	char had_pp_in;
 
 	/* bit fields */
-	/** indicator if receive capture is enabled */
-	unsigned int rxcapraw : 1; /* indicator if receive capture is enabled */
-	/** indicator if transmit capture is enabled */
-	unsigned int txcapraw : 1; /* indicator if transmit capture is enabled */
-	/** indicator if receive capture 2 is enabled */
-	unsigned int rxcap2 : 1; /* indicator if receive capture 2 is enabled */
-	/** indicator if transmit capture 2 is enabled */
-	unsigned int txcap2 : 1; /* indicator if transmit capture 2 is enabled */
 	/** Nonzero when remote-radio control is active. */
 	unsigned int remoted : 1; /* indicator if rx/tx frequency adjusted */
 	/** indicator to force use of first ctcss code */
@@ -449,10 +485,6 @@ struct chan_usbradio_pvt {
 	unsigned int rxpolarity : 1; /* indicator for receive polarity */
 	/** Transmit signaling polarity inversion. */
 	unsigned int txpolarity : 1; /* indicator for transmit polarity */
-	/** Receive DCS polarity inversion. */
-	unsigned int dcsrxpolarity : 1; /* indicator for dcs receive polarity */
-	/** Transmit DCS polarity inversion. */
-	unsigned int dcstxpolarity : 1; /* indicator for dcs transmit polarity */
 	/** Receive low-speed-data polarity inversion. */
 	unsigned int lsdrxpolarity : 1; /* indicator for lsd receive polarity */
 	/** Transmit low-speed-data polarity inversion. */

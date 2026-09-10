@@ -125,6 +125,14 @@ void urp_hardware_program_radio(struct urp_parallel_bus *bus, uint32_t rx_freq, 
 	urp_hardware_write(bus);
 }
 
+void urp_hardware_clear_transmit(struct urp_parallel_bus *bus)
+{
+	if (!bus || !bus->write)
+		return;
+	bus->value &= (uint8_t)(~(URP_DTX_TX | URP_DTX_TXPWR));
+	urp_hardware_write(bus);
+}
+
 /** @name File-local and build-time constants
  * @{ */
 /** @def URP_PP_REGISTER_BITS

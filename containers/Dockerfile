@@ -23,7 +23,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/usbradioplus-quality && \
     /opt/usbradioplus-quality/bin/pip install --no-cache-dir \
-      coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0 ruff==0.16.5
+      coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0 ruff==0.16.5 && \
+    /opt/usbradioplus-quality/bin/ruff --version >/dev/null
 
 ENV PATH="/opt/usbradioplus-quality/bin:${PATH}"
 
@@ -57,7 +58,8 @@ RUN ln -s librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
 	 test -x /usr/sbin/usbradioplus-tune && \
 	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
       tee /tmp/module-libraries && \
-    ! grep -q 'not found' /tmp/module-libraries && \
+	! grep -q 'not found' /tmp/module-libraries && \
+	! grep -q 'librate_adjusting_pcm_ring' /tmp/module-libraries && \
     if [ "$RUN_SMOKE_TEST" = 1 ]; then \
       /usr/local/libexec/usbradioplus/container-smoke-test.sh; \
     fi

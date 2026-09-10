@@ -23,6 +23,16 @@ publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
 
+The lock-free program FIFO is a reviewed GPL-2.0-only source snapshot in
+`third_party/rate_adjusting_pcm_ring`.  USBRadioPlus builds its static archive
+and links it privately into the channel module, so neither the upstream source
+archive nor the Debian build needs a sibling checkout, network access, a
+separate development package, or a runtime `librate_adjusting_pcm_ring.so`.
+The vendored directory retains its own Makefile, tests, coverage gate, and
+upstream record.  The top-level `make ci` and `make platform-verify` execute
+that gate before the USBRadioPlus gate.  Update the snapshot only from a
+reviewed upstream revision and then run both the top-level CI and distcheck.
+
 The package includes the original gated RMS AGC as a private LADSPA effect:
 `/usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so`. It runs only inside
 the shared FFmpeg graph. The build records that installed path in the channel

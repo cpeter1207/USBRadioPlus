@@ -57,8 +57,27 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     smoke = read("tests/container-smoke-test.sh")
     assert "module load res_usbradio.so" in smoke
     assert "module load chan_usbradioplus.so" in smoke
+    assert "core waitfullybooted" in smoke
     assert "wait_for_module chan_usbradioplus" in smoke
+    assert "fail_if_asterisk_exited" in smoke
+    assert "require_asterisk_cli 'chan_usbradioplus module readiness'" in smoke
+    assert "require_asterisk_cli 'radioplus processing CLI check'" in smoke
+    assert "Asterisk exited unexpectedly after $phase (status $status)" in smoke
     assert "radioplus processing show" in smoke
+
+
+def test_container_build_context_excludes_generated_quality_artifacts():
+    """Keep stale local quality data out of Docker release-build contexts."""
+    ignore = read(".dockerignore")
+    for pattern in (
+        ".coverage*",
+        ".ruff_cache/",
+        ".test*/",
+        "**/*.gcda",
+        "**/*.gcno",
+        "**/*.gcov",
+    ):
+        assert pattern in ignore
 
 
 def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
@@ -67,6 +86,11 @@ def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
     assert "pytest -q -n auto" in makefile
     assert "--cov-branch --cov-fail-under=100" in makefile
     assert "--fail-under-line 100 --fail-under-branch 100" in makefile
+    assert "find $(BUILD_DIR) -type f \\( -name '*.gcda' -o -name '*.gcno' \\" in makefile
+    ring_counter_cleanup = (
+        "find $(RPCR_SOURCE)/build -type f \\( -name '*.gcda' -o -name '*.gcno' \\) -delete"
+    )
+    assert ring_counter_cleanup in makefile
 
 
 def test_local_container_runner_cleans_only_labeled_test_containers():

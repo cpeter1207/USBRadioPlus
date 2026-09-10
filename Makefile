@@ -37,20 +37,17 @@ WARNFLAGS ?= -Wall -Wextra -Werror -Wno-old-style-declaration
 ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
-RPCR_SOURCE ?=
-export RPCR_SOURCE
-ifneq ($(strip $(RPCR_SOURCE)),)
-RPCR_STAGE ?= $(BUILD_DIR)/rpcr-stage
-RPCR_PREFIX := $(RPCR_STAGE)/usr
-RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so
-RPCR_HEADER := $(RPCR_PREFIX)/include/rate_adjusting_pcm_ring/rate_adjusting_pcm_ring.h
-RPCR_CFLAGS := -I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring
-RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring
-RPCR_BUILD_DEP := $(RPCR_LIBRARY)
-else
-RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring)
-RPCR_LIBS := $(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring)
-endif
+# The program ring is source-vendored so extracted release archives and Debian
+# source builds never rely on a sibling checkout or an unpublished package.
+# Link its archive privately: the channel has no extra runtime shared-object
+# dependency and the ring remains independently testable in third_party.
+RPCR_SOURCE := third_party/rate_adjusting_pcm_ring
+RPCR_ARCHIVE := $(RPCR_SOURCE)/build/librate_adjusting_pcm_ring.a
+RPCR_SOURCE_FILES := $(shell find $(RPCR_SOURCE) -type f \
+	! -path '$(RPCR_SOURCE)/build/*' | LC_ALL=C sort)
+RPCR_CFLAGS := -I$(RPCR_SOURCE)/include
+RPCR_LIBS := $(RPCR_ARCHIVE) $(shell $(PKG_CONFIG) --libs samplerate)
+RPCR_BUILD_DEP := $(RPCR_ARCHIVE)
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 
@@ -61,7 +58,7 @@ ASL_RADIO_API ?= $(strip $(shell \
 
 DSP_PACKAGES := rnnoise samplerate libavfilter libavutil alsa
 DSP_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DSP_PACKAGES))
-DSP_LIBS := $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES)) $(RPCR_LIBS)
+DSP_LIBS := $(RPCR_LIBS) $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES))
 ifeq ($(ASL_RADIO_API),modern)
 CHANNEL_SOURCE := src/chan_usbradioplus_modern.c
 CHANNEL_CPPFLAGS := -DURP_CHANNEL_MODERN
@@ -83,7 +80,7 @@ AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
-	src/usbradioplus_dsp.c src/usbradioplus_ctcss.c src/usbradioplus_hardware.c \
+	src/usbradioplus_dsp.c src/usbradioplus_ctcss.c src/usbradioplus_dcs.c src/usbradioplus_hardware.c \
 	src/usbradioplus_repeat.c src/usbradioplus_channel_core.c \
 	src/usbradioplus_channel_common.c src/usbradioplus_native_tick.c \
 	src/usbradioplus_tune_menu.c src/usbradioplus_rpt_advanced.c \
@@ -97,11 +94,15 @@ MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
 	RELEASE-CHECKLIST.md CONTRIBUTING.md AGENTS.md Doxyfile pyproject.toml \
 	.clang-format .clang-tidy .dockerignore install.sh
-DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tests_docs tools
+DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tests_docs tools third_party
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
-	! -name '*.pyc' ! -path '*/__pycache__/*' | LC_ALL=C sort)
+	! -name '*.pyc' ! -name '*.gcda' ! -name '*.gcno' ! -name '*.gcov' \
+	! -name '*.cap' ! -name '*.raw' ! -name '*.wav' ! -name '*.au' \
+	! -path '*/__pycache__/*' ! -path '*/.pytest_cache/*' ! -path '*/.ruff_cache/*' \
+	! -path '*/.coverage/*' ! -path '*/.coverage-*/*' \
+	! -path '*/build/*' ! -path '*/dist/*' ! -path '*/work/*' ! -path '*/outputs/*' | LC_ALL=C sort)
 
-.PHONY: all check ci coverage docs lint static-analysis platform-verify \
+.PHONY: all check ci coverage docs lint static-analysis platform-verify rpcr-ci rpcr-test \
 	clean dist distcheck install install-strip install-from-dist \
 	print-asl-radio-api uninstall validate-release
 
@@ -115,12 +116,17 @@ all: $(RPCR_BUILD_DEP) $(MODULE) $(AGC_PLUGIN)
 $(BUILD_DIR):
 	mkdir -p $@
 
-ifneq ($(strip $(RPCR_SOURCE)),)
-$(RPCR_LIBRARY):
-	$(MAKE) -C $(RPCR_SOURCE) DESTDIR=$(abspath $(RPCR_STAGE)) prefix=/usr install
+$(RPCR_ARCHIVE): $(RPCR_SOURCE_FILES)
+	$(MAKE) -C $(RPCR_SOURCE) build/librate_adjusting_pcm_ring.a
 
-$(RPCR_HEADER): $(RPCR_LIBRARY)
-endif
+# Keep the vendored project’s independent 100% coverage and installation
+# checks in the top-level quality gate.  A regular check runs its focused test
+# too, so distcheck proves an extracted USBRadioPlus tree contains it.
+rpcr-ci: $(RPCR_SOURCE_FILES)
+	$(MAKE) -C $(RPCR_SOURCE) ci
+
+rpcr-test: $(RPCR_BUILD_DEP)
+	$(MAKE) -C $(RPCR_SOURCE) test
 
 # A later staged install may select a different prefix from the initial build.
 # Track it so the module cannot retain a stale private-plugin location.
@@ -146,10 +152,9 @@ $(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h | $(BUILD_D
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -fPIC -shared $(LDFLAGS) \
 		-o $@ src/txagc/rms_agc_ladspa.c -lm
 
-check: all
+check: rpcr-test all
 	$(PYTHON) -m pytest -q tests_py
-	LD_LIBRARY_PATH=$(if $(RPCR_SOURCE),$(RPCR_PREFIX)/lib:)$$LD_LIBRARY_PATH \
-		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
+	RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) validate-release
 
@@ -164,7 +169,7 @@ lint:
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 
-static-analysis:
+static-analysis: $(RPCR_BUILD_DEP)
 	@set +e; \
 	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 \
 		--enable=warning,style,performance,portability \
@@ -178,7 +183,7 @@ static-analysis:
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& channel_tidy_pid=$$!; \
-	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dsp.c \
+	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dcs.c src/usbradioplus_dsp.c \
 		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
@@ -204,17 +209,21 @@ coverage: $(RPCR_BUILD_DEP)
 		--cov=scripts --cov=tools --cov-branch --cov-fail-under=100 \
 		--cov-report=term --cov-report=html:$(BUILD_DIR)/coverage/python \
 		--cov-report=xml:$(BUILD_DIR)/coverage/python.xml
-	LD_LIBRARY_PATH=$(if $(RPCR_SOURCE),$(RPCR_PREFIX)/lib:)$$LD_LIBRARY_PATH \
-		C_TEST_CFLAGS="--coverage -O0 -g" \
+	C_TEST_CFLAGS="--coverage -O0 -g" \
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
 		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
 	sh ./tests/run_coverage_integration.sh
-	# Keep the real-module smoke test mandatory, while using the channel harness
-	# counters for the adapter source compiled with explicit test interfaces.
-	rm -f $(CHANNEL_OBJECT:.o=.gcda) $(CHANNEL_OBJECT:.o=.gcno)
-	$(GCOVR) --root . --filter 'src/.*\.c' \
+	# Keep the real-module smoke test mandatory, while using focused-harness
+	# counters for complete source coverage. The smoke intentionally executes
+	# only module startup, so discard its partial counters before reporting.
+	find $(BUILD_DIR) -type f \( -name '*.gcda' -o -name '*.gcno' \) \
+		! -path '$(BUILD_DIR)/coverage/*' -delete
+	# The vendored ring has already enforced its independent 100% report above.
+	# Its counters are outside this report and otherwise make gcovr warn.
+	find $(RPCR_SOURCE)/build -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
+	$(GCOVR) --root . --object-directory $(BUILD_DIR)/coverage/raw --filter 'src/.*\.c' \
 		--exclude-unreachable-branches --exclude-throw-branches \
 		--txt - \
 		--html-details $(BUILD_DIR)/coverage/index.html \
@@ -224,7 +233,7 @@ coverage: $(RPCR_BUILD_DEP)
 # Coverage already executes every Python and C test.  Follow it with the
 # non-test release validator and a clean build/install from the tarball instead
 # of running the identical suites two more times on every platform.
-platform-verify:
+platform-verify: rpcr-ci
 	$(MAKE) coverage
 	$(MAKE) validate-release
 	$(MAKE) distcheck DISTCHECK_TEST_TARGET=
@@ -236,7 +245,13 @@ docs: $(RPCR_BUILD_DEP)
 	test ! -s $(BUILD_DIR)/doxygen-warnings.log
 	$(PYTHON) -m pytest -q tests_docs
 
-ci: lint static-analysis check coverage docs distcheck
+ci: rpcr-ci
+	$(MAKE) lint
+	$(MAKE) static-analysis
+	$(MAKE) check
+	$(MAKE) coverage
+	$(MAKE) docs
+	$(MAKE) distcheck
 
 install: all
 	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(agcplugindir) $(DESTDIR)$(sbindir) \
@@ -246,6 +261,9 @@ install: all
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 	$(INSTALL_DATA) $(AGC_PLUGIN) $(DESTDIR)$(agcplugindir)/usbradioplus_agc.so
 	$(INSTALL_PROGRAM) scripts/usbradioplus-tune $(DESTDIR)$(sbindir)/usbradioplus-tune
+	$(INSTALL_DATA) README.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) CHANGELOG.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/agc.md $(DESTDIR)$(docdir)/
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
@@ -269,6 +287,9 @@ uninstall:
 		$(DESTDIR)$(mandir)/man5/usbradioplus.conf.5 \
 		$(DESTDIR)$(mandir)/man7/usbradioplus.7 \
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
+		$(DESTDIR)$(docdir)/README.md \
+		$(DESTDIR)$(docdir)/CHANGELOG.md \
+		$(DESTDIR)$(docdir)/native-radio.md \
 		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
 		$(DESTDIR)$(docdir)/agc.md
 
@@ -278,7 +299,16 @@ $(TARBALL): $(DIST_FILES)
 	rm -rf $(BUILD_DIR)/$(DISTNAME)
 	mkdir -p $(BUILD_DIR)/$(DISTNAME) $(DIST_DIR)
 	cp -a $(DIST_TOP) $(DIST_DIRS) $(BUILD_DIR)/$(DISTNAME)/
-	rm -rf $(BUILD_DIR)/$(DISTNAME)/tests_py/__pycache__
+	# Copying source directories deliberately retains ordinary source metadata;
+	# remove only generated files so a locally exercised tree cannot contaminate
+	# an upstream archive or the release package built from it.
+	find $(BUILD_DIR)/$(DISTNAME) -type d \
+		\( -name .git -o -name __pycache__ -o -name .pytest_cache -o -name .ruff_cache \
+			-o -name .coverage -o -name '.coverage-*' -o -name build -o -name dist \
+			-o -name work -o -name outputs \) -prune -exec rm -rf {} +
+	find $(BUILD_DIR)/$(DISTNAME) -type f \
+		\( -name '*.pyc' -o -name '*.gcda' -o -name '*.gcno' -o -name '*.gcov' \
+			-o -name '*.cap' -o -name '*.raw' -o -name '*.wav' -o -name '*.au' \) -delete
 	find $(BUILD_DIR)/$(DISTNAME) -type d -exec chmod 0755 {} +
 	find $(BUILD_DIR)/$(DISTNAME) -type f -exec chmod 0644 {} +
 	chmod 0755 $(BUILD_DIR)/$(DISTNAME)/scripts/* \
@@ -310,4 +340,5 @@ install-from-dist: dist
 			asteriskmoduledir="$(asteriskmoduledir)" install
 
 clean:
+	$(MAKE) -C $(RPCR_SOURCE) clean
 	rm -rf $(BUILD_DIR) $(DIST_DIR)

@@ -1,10 +1,16 @@
 /build/
 /dist/
+/third_party/rate_adjusting_pcm_ring/build/
 /.test*/
+/.usbradioplus-tests.*/
+/.usbradioplus-radio-tests.*/
 *.o
 *.so
+*.gcov
 __pycache__/
 .pytest_cache/
 .coverage
+.coverage*/
+.ruff_cache/
 work/
 outputs/

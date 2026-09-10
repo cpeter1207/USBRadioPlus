@@ -14,64 +14,25 @@
  */
 int main(void)
 {
-	struct urp_program_queue queue = {0};
-	short input[URP_NATIVE_SAMPLES + 1];
-	short output[URP_NATIVE_SAMPLES];
 	short sample;
 	size_t i;
 	enum urp_rx_audio_mode rx_audio;
-	enum urp_tx_output_mode tx_output;
 	enum urp_carrier_source carrier;
 	enum urp_ctcss_source ctcss;
 	enum urp_tone_off_mode tone_off;
 	static const char *const rx_names[] = {"no", "SPEAKER", "flat"};
-	static const char *const tx_names[] = {"no", "VOICE", "tone", "composite", "auxvoice"};
 	static const char *const carrier_names[] = {"no",	 "dsp", "vox",	   "usb",
 						    "usbinvert", "pp",	"ppinvert"};
 	static const char *const ctcss_names[] = {"no",	 "usb", "usbinvert",
 						  "dsp", "pp",	"ppinvert"};
-	static const char *const tone_names[] = {"no", "phase", "notone"};
-
-	for (i = 0; i < sizeof(input) / sizeof(input[0]); ++i)
-		input[i] = (short)(i + 1);
-	urp_program_queue_init(&queue);
-	assert(!urp_program_queue_samples(&queue));
-	assert(!urp_program_queue_pop_sample(&queue, &sample));
-	assert(!urp_program_queue_push(&queue, input, URP_NATIVE_SAMPLES + 1,
-				       2U * URP_NATIVE_SAMPLES));
-	assert(urp_program_queue_samples(&queue) == 3U * URP_NATIVE_SAMPLES + 1U);
-	assert(urp_program_queue_high_water(&queue) == 3U * URP_NATIVE_SAMPLES + 1U);
-	for (i = 0; i < 2U * URP_NATIVE_SAMPLES; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == 0);
-	}
-	for (i = 0; i < URP_NATIVE_SAMPLES + 1U; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == input[i]);
-	}
-	assert(!urp_program_queue_pop_sample(&queue, &sample));
-
-	/* The SPSC cursors wrap independently while retaining every sample in order. */
-	urp_program_queue_init(&queue);
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(!urp_program_queue_push_sample(&queue, 0));
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES / 2U; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == (short)i);
-	}
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES / 2U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)(i + 100)));
-	assert(urp_program_queue_samples(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
-	assert(urp_program_queue_push(&queue, input, 1U, 1U));
-	assert(urp_program_queue_high_water(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
-	urp_program_queue_reset_high_water(&queue);
-	assert(urp_program_queue_high_water(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
+	static const char *const tone_names[] = {"no", "ctcss_phase_shift", "ctcss_tone_remove",
+						 "ctcss_tail_tone"};
 
 	/* The generic ring also backs legacy echo and rejects an uninitialized queue. */
 	{
 		struct urp_sample_queue generic = {0};
 		short generic_samples[2] = {0};
+		unsigned int cursor;
 
 		assert(!urp_sample_queue_push_sample(&generic, 1));
 		assert(!urp_sample_queue_pop_sample(&generic, &sample));
@@ -95,62 +56,27 @@ int main(void)
 		assert(sample == 11);
 		urp_sample_queue_reset_high_water(&generic);
 		assert(urp_sample_queue_high_water(&generic) == 1U);
+		/* A consumer-side discard must retain monotonic producer state.  The
+		 * next producer publication therefore remains usable without resetting
+		 * either endpoint under a live SPSC queue. */
+		cursor = atomic_load_explicit(&generic.write, memory_order_acquire);
+		urp_sample_queue_discard(&generic);
+		assert(!urp_sample_queue_samples(&generic));
+		assert(atomic_load_explicit(&generic.read, memory_order_acquire) == cursor);
+		assert(atomic_load_explicit(&generic.write, memory_order_acquire) == cursor);
+		assert(urp_sample_queue_push_sample(&generic, 14));
+		assert(atomic_load_explicit(&generic.write, memory_order_acquire) == cursor + 1U);
+		assert(urp_sample_queue_pop_sample(&generic, &sample));
+		assert(sample == 14);
 		urp_sample_queue_reset(&generic);
 		assert(!urp_sample_queue_samples(&generic));
 		assert(!urp_sample_queue_high_water(&generic));
+		assert(!urp_sample_queue_pop_sample(&generic, &sample));
 	}
-
-	/* The one SPSC ring owns both startup reserve and clock de-drift. */
-	urp_program_queue_init(&queue);
-	urp_program_queue_configure(NULL, URP_RATE_LINK);
-	urp_program_queue_configure(&queue, 0);
-	assert(queue.ring.capacity == URP_PROGRAM_QUEUE_SAMPLES);
-	urp_program_queue_configure(&queue, URP_PROGRAM_QUEUE_SAMPLES * 6U);
-	assert(queue.ring.capacity == URP_PROGRAM_QUEUE_SAMPLES);
-	urp_program_queue_configure(&queue, URP_PROGRAM_QUEUE_SAMPLES * 12U);
-	assert(queue.target_samples == URP_PROGRAM_QUEUE_SAMPLES);
-	urp_program_queue_configure(&queue, URP_RATE_LINK);
-	assert(queue.ring.capacity == URP_RATE_LINK / 5U);
-	assert(queue.target_samples == URP_RATE_LINK * URP_PROGRAM_QUEUE_TARGET_MS / 1000U);
-	assert(!queue.primed);
-	urp_program_queue_request_seed(&queue, queue.target_samples);
-	assert(urp_program_queue_take_seed(&queue) == queue.target_samples);
-	assert(!urp_program_queue_take_seed(&queue));
-	for (i = 0; i < queue.target_samples - 1U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
-	assert(output[0] == 0 && output[1] == 0);
-
-	urp_program_queue_init(&queue);
-	urp_program_queue_configure(&queue, URP_RATE_LINK);
-	for (i = 0; i < queue.target_samples + URP_LINK_SAMPLES + 1U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
-	assert(output[0] == 1 && output[1] == 2);
-
-	urp_program_queue_init(&queue);
-	urp_program_queue_configure(&queue, URP_RATE_LINK);
-	for (i = 0; i < queue.target_samples + 1U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(urp_program_queue_pop_frame(&queue, output, URP_LINK_SAMPLES));
-	assert(output[0] == 0 && output[1] == 1);
-	assert(!urp_program_queue_pop_frame(NULL, output, URP_LINK_SAMPLES));
-	assert(!urp_program_queue_pop_frame(&queue, NULL, URP_LINK_SAMPLES));
-	/* A one-sample frame deliberately cannot duplicate its first sample. */
-	urp_program_queue_init(&queue);
-	urp_program_queue_configure(&queue, URP_RATE_LINK);
-	for (i = 0; i < queue.target_samples - 1U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(urp_program_queue_pop_frame(&queue, output, 1));
-	assert(!urp_program_queue_pop_frame(&queue, output, 0));
 
 	for (i = 0; i < sizeof(rx_names) / sizeof(rx_names[0]); ++i) {
 		assert(!urp_parse_rx_audio_mode(rx_names[i], &rx_audio));
 		assert((size_t)rx_audio == i);
-	}
-	for (i = 0; i < sizeof(tx_names) / sizeof(tx_names[0]); ++i) {
-		assert(!urp_parse_tx_output_mode(tx_names[i], &tx_output));
-		assert((size_t)tx_output == i);
 	}
 	for (i = 0; i < sizeof(carrier_names) / sizeof(carrier_names[0]); ++i) {
 		assert(!urp_parse_carrier_source(carrier_names[i], &carrier));
@@ -170,8 +96,6 @@ int main(void)
 	assert(urp_parse_rx_audio_mode(NULL, &rx_audio));
 	assert(urp_parse_rx_audio_mode("invalid", &rx_audio));
 	assert(urp_parse_rx_audio_mode("no", NULL));
-	assert(urp_parse_tx_output_mode("invalid", &tx_output));
-	assert(urp_parse_tx_output_mode("no", NULL));
 	assert(urp_parse_carrier_source("invalid", &carrier));
 	assert(urp_parse_carrier_source("no", NULL));
 	assert(urp_parse_ctcss_source("invalid", &ctcss));
@@ -227,9 +151,9 @@ int main(void)
 	assert(!urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
 	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
 	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_COMPOSITE));
-	assert(!urp_tx_tone_route_missing("", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_DISABLED));
-	assert(urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
-	assert(!urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
+	assert(!urp_tx_signaling_route_missing(0, URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_signaling_route_missing(1, URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
+	assert(!urp_tx_signaling_route_missing(1, URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
 	assert(!urp_parallel_pulser_needed(0, 0));
 	assert(!urp_parallel_pulser_needed(0, 1));
 	assert(!urp_parallel_pulser_needed(1, 0));
@@ -307,11 +231,12 @@ int main(void)
 	{
 		const double program[] = {40000.0, -40000.0, 1000.0};
 		const double ctcss[] = {1.0, -1.0, 0.5};
+		const double dcs[] = {0.0, 0.0, 0.0};
 		short stereo[6] = {30000, -30000, 0, 0, 10, 20};
 		short meter[6] = {0};
 		unsigned long rails = urp_render_transmit_block(
-			program, ctcss, 3, URP_TX_OUTPUT_COMPOSITE, URP_TX_OUTPUT_TONE, 40000.0,
-			0.0, 40000.0, 0.0, stereo, meter);
+			program, ctcss, dcs, 3, URP_TX_OUTPUT_COMPOSITE, URP_TX_OUTPUT_TONE,
+			40000.0, 0.0, 40000.0, 0.0, stereo, meter);
 
 		assert(rails == 2);
 		assert(meter[0] == INT16_MAX && meter[1] == INT16_MAX);
@@ -319,12 +244,25 @@ int main(void)
 		assert(stereo[0] == INT16_MAX && stereo[1] == 2767);
 		assert(stereo[2] == INT16_MIN && stereo[3] == INT16_MIN);
 		assert(stereo[4] == 21010 && stereo[5] == 20020);
-		assert(urp_render_transmit_block(program + 2, ctcss + 2, 1, URP_TX_OUTPUT_DISABLED,
-						 URP_TX_OUTPUT_VOICE, 1.0, 0.0, 1.0, 0.0, stereo,
-						 NULL) == 0);
-		assert(urp_render_transmit_block(program + 2, ctcss + 2, 1, URP_TX_OUTPUT_TONE,
-						 URP_TX_OUTPUT_COMPOSITE, 1.0, 0.0, 1.0, 0.0,
-						 stereo, NULL) == 0);
+		assert(urp_render_transmit_block(program + 2, ctcss + 2, dcs + 2, 1,
+						 URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE, 1.0,
+						 0.0, 1.0, 0.0, stereo, NULL) == 0);
+		assert(urp_render_transmit_block(program + 2, ctcss + 2, dcs + 2, 1,
+						 URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_COMPOSITE, 1.0,
+						 0.0, 1.0, 0.0, stereo, NULL) == 0);
+	}
+	{
+		const double program[] = {0.0};
+		const double ctcss[] = {0.0};
+		const double dcs[] = {2000.0};
+		short stereo[] = {0, 0};
+
+		/* DCS is already an absolute PCM level. It must not be passed through
+		 * the CTCSS calibration multiplier before tone/composite routing. */
+		assert(urp_render_transmit_block(program, ctcss, dcs, 1, URP_TX_OUTPUT_TONE,
+						 URP_TX_OUTPUT_COMPOSITE, 16000.0, 0.0, 16000.0,
+						 0.0, stereo, NULL) == 0);
+		assert(stereo[0] == 2000 && stereo[1] == 2000);
 	}
 
 	puts("shared channel queue tests passed");

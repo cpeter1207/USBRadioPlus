@@ -5,6 +5,8 @@
 #ifndef USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 
+#include <stdatomic.h>
+
 #include <rate_adjusting_pcm_ring.h>
 
 struct chan_usbradio_pvt {
@@ -75,33 +77,59 @@ struct chan_usbradio_pvt {
 	unsigned int plus_app_rpt_samples;
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
+	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
+	int plus_dsp_initialized;
+	/** Worker owning non-real-time native graph execution. */
+	struct usbradioplus_native_worker *plus_native_worker;
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	short plus_link_8k[URP_NATIVE_SAMPLES];
-	struct urp_program_queue plus_program_queue;
-	/** Shared native program-FIFO clock-recovery ring. */
+	/** Shared app_rpt-input program ring with native-rate clock recovery. */
 	struct rpcr_ring plus_program_ring;
-	/** Native program FIFO occupancy target in samples. */
+	/** Program-ring source occupancy target for clock recovery in samples. */
 	unsigned int plus_program_target_samples;
-	/** Program samples retained as the protected native playout reserve. */
-	unsigned int plus_program_reserve_samples;
 	uint64_t plus_link_queue_underflows;
 	uint64_t plus_link_queue_overflows;
 	short plus_squelch_native[URP_NATIVE_SAMPLES * 2];
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	unsigned int plus_rx_delay_index;
-	struct urp_src *plus_up;
+	/** Echo-to-native streaming resampler owned by the hardware worker. */
+	struct urp_src *plus_echo_up;
 	struct urp_src *plus_down;
 	unsigned int plus_local_preemphasis_active;
 	unsigned int plus_link_preemphasis_active;
-	struct txagc_avfilter plus_local_avfilter;
-	struct txagc_avfilter plus_rx_filter;
-	struct txagc_avfilter plus_rx_filter_after;
-	struct txagc_avfilter plus_final_avfilter;
+	/** Complete native graph generation atomically published at setup/reload. */
+	struct usbradioplus_native_graph_slot plus_native_graphs;
+	/** Lock-free exclusion for rare signaling-parser reconfiguration. */
+	struct usbradioplus_radio_access_slot plus_radio_access;
+	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
+	_Atomic int plus_radio_tx_active;
+	/** Desired physical PTT state published synchronously from the signaling engine. */
+	atomic_int plus_hardware_ptt_request;
+	/** Physical PTT state acknowledged by the HID hardware worker. */
+	atomic_int plus_hardware_ptt_applied;
+	/** Nonzero while the HID worker owns a live hardware interface. */
+	atomic_int plus_hardware_online;
+	/** Packed HID and parallel receiver inputs published by the HID worker. */
+	atomic_uint plus_hardware_inputs;
+	/** Native-audio clip indication consumed by the HID worker. */
+	atomic_int plus_clip_led_request;
+	/** Odd while the control plane publishes a radio-programming request. */
+	atomic_uint plus_radio_program_generation;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_uint plus_radio_program_rx_frequency;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_uint plus_radio_program_tx_frequency;
+	/** Radio-programming snapshot consumed by the HID worker. */
+	atomic_int plus_radio_program_high_power;
 	struct txagc_rnnoise plus_local_rnnoise;
 	double plus_emphasis_corner_hz;
 	int plus_hardware_applied;
 	int plus_applied_rxmixer, plus_applied_txmixaset, plus_applied_txmixbset;
-	int plus_applied_txmixa, plus_applied_txmixb;
+	_Atomic int plus_applied_txmixa, plus_applied_txmixb;
+	/** CTCSS output multipliers consumed by the native render worker. */
+	_Atomic int plus_applied_tx_output_gain_a, plus_applied_tx_output_gain_b;
+	/** Even when stable; brackets the lock-free hardware audio snapshot. */
+	_Atomic unsigned int plus_hardware_generation;
 	char plus_applied_rxctcssfreqs[512], plus_applied_txctcssfreqs[512];
 	uint64_t plus_native_frames;
 	uint64_t plus_src_errors;
@@ -145,9 +173,12 @@ struct chan_usbradio_pvt {
 	char rxkeyed; /* Indicates rx signal is present */
 
 	char lasttx;
-	char txkeyed; /* tx key request from upper layers */
-	char txtestkey;
-	char plus_test_tone_enabled;
+	/** PTT request from app_rpt or other Asterisk control-plane users. */
+	atomic_char txkeyed;
+	/** PTT request from calibration controls. */
+	atomic_char txtestkey;
+	/** Atomically selected native calibration tone source. */
+	atomic_char plus_test_tone_enabled;
 	double plus_test_tone_phase;
 	struct urp_ctcss_generator plus_ctcss_generator;
 
@@ -166,7 +197,6 @@ struct chan_usbradio_pvt {
 	int txrxblankingtime;
 	char ukey[48];
 
-	int rxdcsdecode;
 	int rxlsddecode;
 
 	int rxoncnt;	/* Counts the number of 20 ms intervals after RX activity */
@@ -204,6 +234,19 @@ struct chan_usbradio_pvt {
 
 	char txctcssfreq[32]; /* encode now */
 	char rxctcssfreq[32]; /* decode now */
+	char dcs_receive_code[5];
+	char receive_signaling_method[8];
+	char transmit_signaling_method[8];
+	char dcs_transmit_code[5];
+	int dcs_turnoff_enabled;
+	/** DCS turn-off duration in milliseconds, constrained to 150 through 200. */
+	int dcs_turnoff_duration_ms;
+	double dcs_level;
+	/** CTCSS modulation peak in PCM codes. */
+	double ctcss_level;
+	double ctcss_phase_shift_degrees;
+	int ctcss_tail_duration_ms;
+	double ctcss_tail_frequency_hz;
 
 	char numrxctcssfreqs; /* how many */
 	char numtxctcssfreqs;
@@ -270,16 +313,10 @@ struct chan_usbradio_pvt {
 	char had_pp_in;
 
 	/* bit fields */
-	unsigned int rxcapraw : 1;	  /* indicator if receive capture is enabled */
-	unsigned int txcapraw : 1;	  /* indicator if transmit capture is enabled */
-	unsigned int rxcap2 : 1;	  /* indicator if receive capture 2 is enabled */
-	unsigned int txcap2 : 1;	  /* indicator if transmit capture 2 is enabled */
 	unsigned int remoted : 1;	  /* indicator if rx/tx frequency adjusted */
 	unsigned int forcetxcode : 1;	  /* indicator to force use of first ctcss code */
 	unsigned int rxpolarity : 1;	  /* indicator for receive polarity */
 	unsigned int txpolarity : 1;	  /* indicator for transmit polarity */
-	unsigned int dcsrxpolarity : 1;	  /* indicator for dcs receive polarity */
-	unsigned int dcstxpolarity : 1;	  /* indicator for dcs transmit polarity */
 	unsigned int lsdrxpolarity : 1;	  /* indicator for lsd receive polarity */
 	unsigned int lsdtxpolarity : 1;	  /* indicator for lsd transmit polarity */
 	unsigned int radioactive : 1;	  /* indicator for active radio channel */

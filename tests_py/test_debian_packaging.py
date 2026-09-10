@@ -1,5 +1,6 @@
 ## @file
 ## @brief Debian packaging regression checks.
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -34,9 +35,32 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "DEB_BINARY_PACKAGE ?= usbradioplus" in rules
     assert "debian/$(DEB_BINARY_PACKAGE)" in rules
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
-    assert "doc/agc.md" in rules
-    assert not list((ROOT / "debian").glob("*.postinst"))
-    assert not list((ROOT / "debian").glob("*.prerm"))
+    for document in ("README.md", "CHANGELOG.md", "doc/native-radio.md", "doc/agc.md"):
+        assert document in rules
+    for maintainer_script in ("*.preinst", "*.postinst", "*.prerm", "*.postrm"):
+        assert not list((ROOT / "debian").glob(maintainer_script))
+
+
+def test_debian_source_version_matches_the_release_archive_version():
+    """Keep Debian source-package metadata aligned with the upstream archive."""
+    version = read("VERSION").strip()
+    changelog_header = read("debian/changelog").splitlines()[0]
+    assert changelog_header.startswith(f"usbradioplus ({version}-")
+    source_options = read("debian/source/options")
+    for generated in (
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".coverage",
+        "gcda",
+        "gcno",
+        "gcov",
+        "cap",
+        "raw",
+        "wav",
+        "au",
+    ):
+        assert generated in source_options
 
 
 @pytest.mark.parametrize("package_name", ["usbradioplus", "usbradioplus-asl3105"])
@@ -66,6 +90,39 @@ def test_rnnoise_is_a_companion_shared_library_package():
     assert "Package: librnnoise0" in control
     assert "Package: librnnoise-dev" in control
     assert control.count("Architecture: amd64 arm64") == 2
+
+
+def test_rnnoise_debhelper_install_lists_are_regular_data_files():
+    """Keep Debian install-list files from becoming executable debhelper scripts.
+
+    An executable ``debian/*.install`` file is run by debhelper instead of
+    parsed as a list of installed paths.  The source archive has no Git
+    metadata, so check the tracked mode only when this is a checkout.
+    """
+    if not (ROOT / ".git").exists():
+        return
+    result = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--stage",
+            "packaging/rnnoise/debian/librnnoise0.install",
+            "packaging/rnnoise/debian/librnnoise-dev.install",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    modes = {
+        fields[3]: fields[0]
+        for line in result.stdout.splitlines()
+        if (fields := line.split(maxsplit=3))
+    }
+    assert modes == {
+        "packaging/rnnoise/debian/librnnoise-dev.install": "100644",
+        "packaging/rnnoise/debian/librnnoise0.install": "100644",
+    }
 
 
 def test_repository_workflow_builds_and_verifies_all_targets():

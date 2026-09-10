@@ -7,8 +7,10 @@
 
 #include <errno.h>
 #include <math.h>
+#include <sched.h>
 #include <search.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -223,9 +225,121 @@ void kickptt(const struct chan_usbradio_pvt *o)
 	}
 	res = write(o->pttkick[1], &c, 1);
 	if (res <= 0) {
+		/* A wake is advisory; the hardware worker observes the atomic request on
+		 * its regular poll.  A full nonblocking pipe must not create log noise. */
+		if (errno == EAGAIN
+#if EWOULDBLOCK != EAGAIN
+		    || errno == EWOULDBLOCK
+#endif
+		)
+			return;
 		ast_log(LOG_ERROR, "Channel %s: Write failed: %s\n", o->name, strerror(errno));
 	}
 }
+
+/** @brief Copy lock-free HID-worker state into fields owned by the audio worker.
+ * @param o Private channel whose callback imports immutable hardware state.
+ *
+ * The radio signaling engine has a single writer: the native audio callback.
+ * HID sampling and physical PTT completion cross that boundary only through
+ * atomics, which avoids both a mutex in the callback and a C data race.
+ */
+void usbradioplus_audio_load_hardware_state(struct chan_usbradio_pvt *o)
+{
+	unsigned int inputs;
+
+	if (!o)
+		return;
+	inputs = atomic_load_explicit(&o->plus_hardware_inputs, memory_order_acquire);
+	o->rxhidsq = !!(inputs & URP_HARDWARE_INPUT_HID_CARRIER);
+	o->rxhidctcss = !!(inputs & URP_HARDWARE_INPUT_HID_CTCSS);
+	o->rxppsq = !!(inputs & URP_HARDWARE_INPUT_PARALLEL_CARRIER);
+	o->rxppctcss = !!(inputs & URP_HARDWARE_INPUT_PARALLEL_CTCSS);
+	if (o->radio) {
+		o->radio->txPttHid =
+			atomic_load_explicit(&o->plus_hardware_ptt_applied, memory_order_acquire);
+	}
+}
+
+void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *o, int asserted)
+{
+	if (o)
+		atomic_store_explicit(&o->plus_hardware_ptt_request, !!asserted,
+				      memory_order_release);
+}
+
+void usbradioplus_request_clip_led(struct chan_usbradio_pvt *o)
+{
+	if (o && o->clipledgpio)
+		atomic_store_explicit(&o->plus_clip_led_request, 1, memory_order_release);
+}
+
+void usbradioplus_publish_hardware_inputs(struct chan_usbradio_pvt *o, unsigned int inputs)
+{
+	if (o)
+		atomic_store_explicit(&o->plus_hardware_inputs, inputs, memory_order_release);
+}
+
+#ifdef URP_PROCESSING_TESTING
+static atomic_uint test_radio_program_snapshot_invalidations;
+#endif
+
+int usbradioplus_read_radio_program_request(const struct chan_usbradio_pvt *o,
+					    struct usbradioplus_radio_program_request *request)
+{
+	if (!o || !request)
+		return 0;
+	for (unsigned int attempt = 0; attempt < 2U; ++attempt) {
+		unsigned int before;
+		unsigned int after;
+
+		before = atomic_load_explicit(&o->plus_radio_program_generation,
+					      memory_order_acquire);
+		if (before & 1U)
+			continue;
+		request->rx_frequency = atomic_load_explicit(&o->plus_radio_program_rx_frequency,
+							     memory_order_relaxed);
+		request->tx_frequency = atomic_load_explicit(&o->plus_radio_program_tx_frequency,
+							     memory_order_relaxed);
+		request->high_power = atomic_load_explicit(&o->plus_radio_program_high_power,
+							   memory_order_relaxed);
+#ifdef URP_PROCESSING_TESTING
+		if (atomic_load_explicit(&test_radio_program_snapshot_invalidations,
+					 memory_order_relaxed) != 0U)
+			atomic_fetch_sub_explicit(&test_radio_program_snapshot_invalidations, 1U,
+						  memory_order_relaxed);
+#endif
+		after = atomic_load_explicit(&o->plus_radio_program_generation,
+					     memory_order_acquire);
+#ifdef URP_PROCESSING_TESTING
+		if (atomic_load_explicit(&test_radio_program_snapshot_invalidations,
+					 memory_order_relaxed) != 0U)
+			++after;
+#endif
+		/* A matching generation is necessarily even: odd values were rejected
+		 * before reading the payload. */
+		if (before == after) {
+			request->generation = after;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_radio_program_snapshot_retry(void)
+{
+	struct chan_usbradio_pvt channel = {0};
+	struct usbradioplus_radio_program_request request;
+
+	atomic_init(&channel.plus_radio_program_generation, 0U);
+	atomic_init(&channel.plus_radio_program_rx_frequency, 146520000U);
+	atomic_init(&channel.plus_radio_program_tx_frequency, 146940000U);
+	atomic_init(&channel.plus_radio_program_high_power, 1);
+	atomic_store_explicit(&test_radio_program_snapshot_invalidations, 2U, memory_order_relaxed);
+	return usbradioplus_read_radio_program_request(&channel, &request);
+}
+#endif
 
 int usbradio_digit_begin(struct ast_channel *c, char digit)
 {
@@ -253,21 +367,23 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_advanced = advanced;
 	channel->plus_app_rpt_rate = advanced ? URP_RATE_NATIVE : URP_APP_RPT_RATE_DEFAULT;
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
-	urp_program_queue_init(&channel->plus_program_queue);
-	urp_program_queue_configure(&channel->plus_program_queue, channel->plus_app_rpt_rate);
-	channel->plus_program_reserve_samples = 0;
-	if (advanced) {
-		/* Retain three full hardware callbacks.  Starting at the remaining queue
-		 * depth gives the slowly varying resampler room to correct either clock. */
-		unsigned int capacity = channel->plus_program_queue.ring.capacity;
-		channel->plus_program_reserve_samples = 3U * URP_NATIVE_SAMPLES;
-		channel->plus_program_target_samples = capacity - 2U * URP_NATIVE_SAMPLES;
-	} else {
-		urp_program_queue_request_seed(&channel->plus_program_queue,
-					       channel->plus_program_queue.target_samples);
+	/* The shared ring owns the one persistent app_rpt-to-native conversion and
+	 * clock correction stream.  Its source-rate target steers clock recovery;
+	 * it never delays startup or reserves a block from playout. */
+	channel->plus_program_target_samples =
+		(channel->plus_app_rpt_rate * URP_PROGRAM_RING_TARGET_MS + 999U) / 1000U;
+	if (rpcr_set_rates(&channel->plus_program_ring, channel->plus_app_rpt_rate,
+			   URP_RATE_NATIVE))
+		ast_log(LOG_ERROR, "RadioPlus/%s: unable to configure program sample rates\n",
+			channel->name);
+	/* The native worker owns SRC history and resets it after it observes the
+	 * graph generation carrying this rate. No control-plane thread touches a
+	 * live converter. */
+	if (channel->plus_dsp_initialized) {
+		if (usbradioplus_prepare_native_processing(channel))
+			ast_log(LOG_ERROR, "RadioPlus/%s: unable to apply native interface mode\n",
+				channel->name);
 	}
-	urp_src_reset(channel->plus_up);
-	urp_src_reset(channel->plus_down);
 }
 
 void usbradioplus_configure_advanced(struct ast_channel *channel)
@@ -283,30 +399,29 @@ void usbradioplus_configure_advanced(struct ast_channel *channel)
 
 void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *samples, size_t count)
 {
-	if (o->plus_advanced) {
-		uint64_t discarded =
-			atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed);
+	uint64_t discarded =
+		atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed);
+	size_t index;
 
-		rpcr_write(&o->plus_program_ring, samples, count);
-		if (atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed) !=
-		    discarded)
-			o->plus_link_queue_overflows++;
+	if (!samples || !count)
 		return;
-	}
-	/* The hardware worker requests startup/recovery silence through an atomic
-	 * handoff. The writer only owns this SPSC ring's write cursor. */
-	unsigned int seed_samples = urp_program_queue_take_seed(&o->plus_program_queue);
-
-	if (urp_program_queue_push(&o->plus_program_queue, samples, count, seed_samples)) {
+	/* This is the sole app_rpt-to-hardware boundary.  Publish one sample at a
+	 * time so the producer and native consumer advance independent SPSC cursors
+	 * without a frame admission lock or a startup batch. */
+	for (index = 0; index < count; ++index)
+		(void)rpcr_producer_push_sample(&o->plus_program_ring, samples[index]);
+	if (atomic_load_explicit(&o->plus_program_ring.discarded, memory_order_relaxed) !=
+	    discarded)
 		o->plus_link_queue_overflows++;
-	}
 }
 
 void usbradioplus_echo_clear(struct chan_usbradio_pvt *o)
 {
-	/* The audio worker owns this queue while legacy echo is inactive. */
-	urp_sample_queue_reset(&o->echo_queue);
+	/* Stop admission immediately, then let the worker discard with its owned
+	 * consumer cursor at the next complete render boundary.  Resetting both
+	 * cursors here would race an active legacy-echo worker. */
 	atomic_store_explicit(&o->echoing, 0, memory_order_release);
+	usbradioplus_native_worker_clear_legacy_echo(o);
 }
 
 int usbradioplus_echo_start(struct chan_usbradio_pvt *o)
@@ -375,7 +490,7 @@ int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size
 		break;
 	case AST_CONTROL_RADIO_KEY:
 		ast_debug(5, "URP_TXTRACE channel=%s event=request key=1\n", o->name);
-		o->txkeyed = 1;
+		atomic_store_explicit(&o->txkeyed, 1, memory_order_release);
 		kickptt(o);
 		ast_debug(1, "Channel %s: ACRK code=%s TX ON.\n", o->name, (char *)data);
 		if (datalen && ((char *)(data))[0] != '0') {
@@ -389,7 +504,7 @@ int usbradio_indicate(struct ast_channel *c, int cond_in, const void *data, size
 		break;
 	case AST_CONTROL_RADIO_UNKEY:
 		ast_debug(5, "URP_TXTRACE channel=%s event=request key=0\n", o->name);
-		o->txkeyed = 0;
+		atomic_store_explicit(&o->txkeyed, 0, memory_order_release);
 		kickptt(o);
 		ast_debug(1, "Channel %s: ACRUK TX OFF.\n", o->name);
 		if (o->forcetxcode) {
@@ -462,7 +577,7 @@ int console_key(int fd, int argc, const char *const *argv)
 	if (argc != 2) {
 		return RESULT_SHOWUSAGE;
 	}
-	o->txtestkey = 1;
+	atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
 	kickptt(o);
 	return RESULT_SUCCESS;
 }
@@ -476,7 +591,7 @@ int console_unkey(int fd, int argc, const char *const *argv)
 	if (argc != 2) {
 		return RESULT_SHOWUSAGE;
 	}
-	o->txtestkey = 0;
+	atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 	kickptt(o);
 	return RESULT_SUCCESS;
 }
@@ -492,26 +607,23 @@ void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 		ast_cli(fd, "Channel %s: USB Device Flash starting.\n", o->name);
 	}
 	for (i = 0; i < NFLASH; i++) {
-		o->txtestkey = 1;
-		o->plus_test_tone_enabled = 1;
-		o->radio->txPttIn = 1;
+		atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
+		atomic_store_explicit(&o->plus_test_tone_enabled, 1, memory_order_release);
 		if ((fd > 0) && intflag) {
 			if (ast_radio_wait_or_poll(fd, 1000, intflag)) {
-				o->radio->txPttIn = 0;
-				o->txtestkey = 0;
-				o->plus_test_tone_enabled = 0;
+				atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
+				atomic_store_explicit(&o->plus_test_tone_enabled, 0,
+						      memory_order_release);
 				break;
 			}
 		} else {
 			usleep(1000000);
 		}
-		o->plus_test_tone_enabled = 0;
-		o->radio->txPttIn = 0;
-		o->txtestkey = 0;
+		atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
+		atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 		if (i < (NFLASH - 1) && (fd > 0) && intflag) {
 			if (ast_radio_wait_or_poll(fd, 1500, intflag)) {
-				o->radio->txPttIn = 0;
-				o->txtestkey = 0;
+				atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 				break;
 			}
 		} else if (i < (NFLASH - 1)) {
@@ -521,9 +633,8 @@ void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 	if (fd > 0) {
 		ast_cli(fd, "Channel %s: USB Device Flash completed.\n", o->name);
 	}
-	o->radio->txPttIn = 0;
-	o->txtestkey = 0;
-	o->plus_test_tone_enabled = 0;
+	atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
+	atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
 }
 
 int radio_tune(int fd, int argc, const char *const *argv)
@@ -686,67 +797,13 @@ int radio_tune(int fd, int argc, const char *const *argv)
 				return RESULT_SHOWUSAGE;
 			}
 			o->txctcssadj = i;
+			o->ctcss_level = 32767.0 * (double)i / 999.0;
 			set_txctcss_level(o);
 			ast_cli(fd, "Changed Tx CTCSS modulation setting to %i\n", i);
 		}
-		o->txtestkey = 1;
+		atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
 		usleep(5000000);
-		o->txtestkey = 0;
-	} else if (!strcasecmp(argv[2], "nocap")) {
-		ast_cli(fd, "File capture (trace) was rx=%d tx=%d and now off.\n", o->rxcap2,
-			o->txcap2);
-		ast_cli(fd, "File capture (raw)   was rx=%d tx=%d and now off.\n", o->rxcapraw,
-			o->txcapraw);
-		o->rxcapraw = o->txcapraw = o->rxcap2 = o->txcap2 = o->radio->b.rxCapture =
-			o->radio->b.txCapture = 0;
-		if (frxcapraw) {
-			fclose(frxcapraw);
-			frxcapraw = NULL;
-		}
-		if (frxcaptrace) {
-			fclose(frxcaptrace);
-			frxcaptrace = NULL;
-		}
-		if (frxoutraw) {
-			fclose(frxoutraw);
-			frxoutraw = NULL;
-		}
-		if (ftxcapraw) {
-			fclose(ftxcapraw);
-			ftxcapraw = NULL;
-		}
-		if (ftxcaptrace) {
-			fclose(ftxcaptrace);
-			ftxcaptrace = NULL;
-		}
-		if (ftxoutraw) {
-			fclose(ftxoutraw);
-			ftxoutraw = NULL;
-		}
-	} else if (!strcasecmp(argv[2], "rxtracecap")) {
-		if (!frxcaptrace) {
-			frxcaptrace = fopen(RX_CAP_TRACE_FILE, "w");
-		}
-		ast_cli(fd, "Trace rx on.\n");
-		o->rxcap2 = o->radio->b.rxCapture = 1;
-	} else if (!strcasecmp(argv[2], "txtracecap")) {
-		if (!ftxcaptrace) {
-			ftxcaptrace = fopen(TX_CAP_TRACE_FILE, "w");
-		}
-		ast_cli(fd, "Trace tx on.\n");
-		o->txcap2 = o->radio->b.txCapture = 1;
-	} else if (!strcasecmp(argv[2], "rxcap")) {
-		if (!frxcapraw) {
-			frxcapraw = fopen(RX_CAP_RAW_FILE, "w");
-		}
-		ast_cli(fd, "cap rx raw on.\n");
-		o->rxcapraw = 1;
-	} else if (!strcasecmp(argv[2], "txcap")) {
-		if (!ftxcapraw) {
-			ftxcapraw = fopen(TX_CAP_RAW_FILE, "w");
-		}
-		ast_cli(fd, "cap tx raw on.\n");
-		o->txcapraw = 1;
+		atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 	} else if (!strcasecmp(argv[2], "save")) {
 		tune_write(o);
 		ast_cli(fd, "Saved radio tuning settings.\n");
@@ -772,19 +829,8 @@ int radio_tune(int fd, int argc, const char *const *argv)
 
 int set_txctcss_level(struct chan_usbradio_pvt *o)
 {
-	if (o->txmixa == TX_OUT_LSD) {
-		o->txmixaset = o->txctcssadj;
-		mixer_write(o);
-		mult_set(o);
-	} else if (o->txmixb == TX_OUT_LSD) {
-		o->txmixbset = o->txctcssadj;
-		mixer_write(o);
-		mult_set(o);
-	} else {
-		if (o->radio->ptxCtcssAdjust) { /* Ignore if ptr not defined */
-			*o->radio->ptxCtcssAdjust = (o->txctcssadj * M_Q8) / AUDIO_ADJUSTMENT;
-		}
-	}
+	if (o && o->radio)
+		o->radio->txCtcssPeak = o->ctcss_level;
 	return 0;
 }
 
@@ -870,16 +916,12 @@ enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o)
 	return (enum radio_tx_mix)hardware.output_b_assignment;
 }
 
-/** @brief Translate the configured COS assignment to the radio signaling source.
- * @param hardware Resolved hardware processing settings.
+/** @brief Translate a receive COS assignment to the radio signaling source.
+ * @param value Configured carrier assignment.
  * @return Radio carrier-detector source selected by the assignment.
  */
-static enum radio_carrier_detect
-carrier_detect_from_hardware(const struct usbradioplus_hardware_settings *hardware)
+static enum radio_carrier_detect carrier_detect_from_assignment(const char *value)
 {
-	const char *value;
-
-	value = hardware->cos_assignment;
 	if (!strcasecmp(value, "usb"))
 		return CD_HID;
 	if (!strcasecmp(value, "usbinvert"))
@@ -897,55 +939,69 @@ carrier_detect_from_hardware(const struct usbradioplus_hardware_settings *hardwa
 
 enum radio_carrier_detect effective_rxcdtype(const struct chan_usbradio_pvt *o)
 {
-	struct usbradioplus_hardware_settings hardware;
-
-	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
-	return carrier_detect_from_hardware(&hardware);
+	return o->rxcdtype;
 }
 
 void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_settings hardware;
-	const char *rx_frequencies;
-	const char *tx_frequencies;
 	int rx, a, b, route_a, route_b;
+	int output_gain_a, output_gain_b;
 
+	if (!o || !o->radio)
+		return;
 	/* Take one immutable settings copy so a reload cannot mix old and new
-	 * hardware fields within a single render interval. */
+	 * hardware fields within one mixer update. This control-plane operation may
+	 * call mixer_write(), which takes an adapter lock on modern devices. */
 	usbradioplus_processing_get_hardware_rt(o->name, &hardware);
 	rx = urp_gain_db_to_mixer(hardware.input_gain_db);
 	a = urp_gain_db_to_mixer(hardware.output_a_gain_db);
 	b = urp_gain_db_to_mixer(hardware.output_b_gain_db);
 	route_a = hardware.output_a_assignment;
 	route_b = hardware.output_b_assignment;
-	rx_frequencies = hardware.rx_ctcss_frequencies;
-	tx_frequencies = hardware.tx_ctcss_frequencies;
-	o->radio->rxCdType = carrier_detect_from_hardware(&hardware);
-	if (!o->remoted && (strcmp(rx_frequencies, o->plus_applied_rxctcssfreqs) ||
-			    strcmp(tx_frequencies, o->plus_applied_txctcssfreqs))) {
-		ast_copy_string(o->plus_applied_rxctcssfreqs, rx_frequencies,
-				sizeof(o->plus_applied_rxctcssfreqs));
-		ast_copy_string(o->plus_applied_txctcssfreqs, tx_frequencies,
-				sizeof(o->plus_applied_txctcssfreqs));
-		o->radio->pRxCodeSrc = o->plus_applied_rxctcssfreqs;
-		o->radio->pTxCodeSrc = o->plus_applied_txctcssfreqs;
-		urp_radio_parse_codes(o->radio);
-	}
+	/* A changed code map must go through radio_config().  Besides selecting the
+	 * direction-specific sources, that routine owns the parser's control-plane
+	 * quiesce protocol.  Calling urp_radio_parse_codes() here used to free a
+	 * decoder filter while the hardware worker could still be using it. */
+	if (!o->remoted && (strcmp(o->rxctcssfreqs, o->plus_applied_rxctcssfreqs) ||
+			    strcmp(o->txctcssfreqs, o->plus_applied_txctcssfreqs)))
+		(void)radio_config(o);
 	if (o->plus_hardware_applied && rx == o->plus_applied_rxmixer &&
 	    a == o->plus_applied_txmixaset && b == o->plus_applied_txmixbset &&
-	    route_a == o->plus_applied_txmixa && route_b == o->plus_applied_txmixb)
+	    route_a == atomic_load_explicit(&o->plus_applied_txmixa, memory_order_acquire) &&
+	    route_b == atomic_load_explicit(&o->plus_applied_txmixb, memory_order_acquire))
 		return;
 	o->plus_applied_rxmixer = rx;
 	o->plus_applied_txmixaset = a;
 	o->plus_applied_txmixbset = b;
-	o->plus_applied_txmixa = route_a;
-	o->plus_applied_txmixb = route_b;
-	o->plus_hardware_applied = 1;
 	mixer_write(o);
-	o->radio->txOutputGainA = urp_hardware_level_multiplier((a * 152) / AUDIO_ADJUSTMENT);
-	o->radio->txOutputGainB =
-		route_a == route_b ? o->radio->txOutputGainA
-				   : urp_hardware_level_multiplier((b * 152) / AUDIO_ADJUSTMENT);
+	output_gain_a = urp_hardware_level_multiplier((a * 152) / AUDIO_ADJUSTMENT);
+	output_gain_b = route_a == route_b
+				? output_gain_a
+				: urp_hardware_level_multiplier((b * 152) / AUDIO_ADJUSTMENT);
+	o->radio->txOutputGainA = output_gain_a;
+	o->radio->txOutputGainB = output_gain_b;
+	/* Publish a coherent snapshot only after the device has accepted the mixer
+	 * state. The native tick retries an odd generation instead of taking either
+	 * device_lock or settings_lock in the audio callback. */
+	atomic_fetch_add_explicit(&o->plus_hardware_generation, 1U, memory_order_release);
+	atomic_store_explicit(&o->plus_applied_tx_output_gain_a, output_gain_a,
+			      memory_order_relaxed);
+	atomic_store_explicit(&o->plus_applied_tx_output_gain_b, output_gain_b,
+			      memory_order_relaxed);
+	atomic_store_explicit(&o->plus_applied_txmixa, route_a, memory_order_relaxed);
+	atomic_store_explicit(&o->plus_applied_txmixb, route_b, memory_order_relaxed);
+	atomic_fetch_add_explicit(&o->plus_hardware_generation, 1U, memory_order_release);
+	o->plus_hardware_applied = 1;
+}
+
+int usbradioplus_refresh_all_processing_hardware(void)
+{
+	struct chan_usbradio_pvt *channel;
+
+	for (channel = usbradioplus_channel_first(); channel; channel = channel->next)
+		refresh_processing_hardware(channel);
+	return 0;
 }
 
 void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
@@ -960,24 +1016,21 @@ void store_txtoctype(struct chan_usbradio_pvt *o, const char *s)
 void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag)
 {
 	(void)value;
-	o->txtestkey = 1;
-	o->plus_test_tone_enabled = 1;
-	o->radio->txPttIn = 1;
+	atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
+	atomic_store_explicit(&o->plus_test_tone_enabled, 1, memory_order_release);
 	if (fd > 0) {
 		ast_cli(fd, "Tone output starting on channel %s...\n", o->name);
 		if (ast_radio_wait_or_poll(fd, 5000, intflag)) {
-			o->radio->txPttIn = 0;
-			o->txtestkey = 0;
-			o->plus_test_tone_enabled = 0;
+			atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
+			atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
 		}
 	} else
 		usleep(5000000);
-	o->plus_test_tone_enabled = 0;
+	atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
 	if (fd > 0) {
 		ast_cli(fd, "Tone output ending on channel %s...\n", o->name);
 	}
-	o->radio->txPttIn = 0;
-	o->txtestkey = 0;
+	atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 	o->plus_test_tone_phase = 0.0;
 }
 
@@ -1059,7 +1112,10 @@ void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o)
 			o->rxcdtype ? (o->rx_cos_active ? "Keyed" : "Clear") : "Off  ",
 			o->rxsdtype ? (o->rx_ctcss_active ? "Keyed" : "Clear") : "Off  ",
 			o->rxkeyed ? "Keyed" : "Clear",
-			(o->txkeyed || o->txtestkey) ? "Keyed" : "Clear");
+			(atomic_load_explicit(&o->txkeyed, memory_order_acquire) ||
+			 atomic_load_explicit(&o->txtestkey, memory_order_acquire))
+				? "Keyed"
+				: "Clear");
 	}
 
 	option_verbose = wasverbose;
@@ -1221,14 +1277,15 @@ void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 			return;
 		}
 		o->txctcssadj = i;
+		o->ctcss_level = 32767.0 * (double)i / 999.0;
 		set_txctcss_level(o);
 		ast_cli(fd, "Changed Tx CTCSS Modulation Level setting to %i\n", i);
 	}
 	if (dokey) {
 		ast_cli(fd, "Keying Radio and sending CTCSS tone for 5 seconds...\n");
-		o->txtestkey = 1;
+		atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
 		ast_radio_wait_or_poll(fd, 5000, 1);
-		o->txtestkey = 0;
+		atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 		ast_cli(fd, "DONE.\n");
 	}
 }
@@ -1405,21 +1462,22 @@ void mult_set(struct chan_usbradio_pvt *o)
 
 void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
 {
-	struct urp_parallel_bus bus;
-	uint32_t rx_freq = o->remoted ? o->set_rxfreq : o->rxfreq;
-	uint32_t tx_freq = o->remoted ? o->set_txfreq : o->txfreq;
-	int high_power = o->remoted ? o->set_txpower : 0;
+	uint32_t rx_freq;
+	uint32_t tx_freq;
+	int high_power;
 
-	if (!haspp)
+	if (!o)
 		return;
-	ast_mutex_lock(&pp_lock);
-	bus.value = (uint8_t)pp_val;
-	bus.write = usbradioplus_parallel_program_write;
-	bus.opaque = NULL;
-	urp_hardware_program_radio(&bus, rx_freq, tx_freq, o->radio && o->radio->txPttOut,
-				   high_power);
-	pp_val = (int8_t)bus.value;
-	ast_mutex_unlock(&pp_lock);
+	rx_freq = o->remoted ? o->set_rxfreq : o->rxfreq;
+	tx_freq = o->remoted ? o->set_txfreq : o->txfreq;
+	high_power = o->remoted ? o->set_txpower : 0;
+	/* The physical bus belongs to the HID worker. The odd generation brackets
+	 * a coherent control-plane request without making an audio callback wait. */
+	atomic_fetch_add_explicit(&o->plus_radio_program_generation, 1U, memory_order_release);
+	atomic_store_explicit(&o->plus_radio_program_rx_frequency, rx_freq, memory_order_relaxed);
+	atomic_store_explicit(&o->plus_radio_program_tx_frequency, tx_freq, memory_order_relaxed);
+	atomic_store_explicit(&o->plus_radio_program_high_power, high_power, memory_order_relaxed);
+	atomic_fetch_add_explicit(&o->plus_radio_program_generation, 1U, memory_order_release);
 }
 
 void usbradioplus_parallel_program_write(void *opaque, uint8_t value)
@@ -1443,29 +1501,217 @@ void usbradioplus_set_channel(uint8_t channel)
 	ast_mutex_unlock(&pp_lock);
 }
 
-int radio_config(struct chan_usbradio_pvt *o)
+/* Unit-only control-plane hooks make race outcomes deterministic without being
+ * present in the installed module. */
+#ifdef URP_PROCESSING_TESTING
+static atomic_int test_radio_access_force_reader_retry;
+#endif
+
+/** @brief Enter the control-plane exclusion window for parser-owned radio state.
+ * @param channel Radio whose CTCSS/DCS parser state will be replaced.
+ *
+ * The native worker never waits for this writer. It observes reconfiguring,
+ * emits its ordinary silent frame for that tick, and resumes on the next
+ * block. The sequentially consistent writer flag/store and reader-count load
+ * pair with acquire's flag load, count increment, and recheck: a reader that
+ * starts after the writer's zero-count observation must see the asserted flag
+ * on its recheck, while a reader that increments first keeps the writer
+ * waiting. This prevents urp_radio_parse_codes() from freeing decoder memory
+ * while the worker is using it without a callback lock.
+ */
+static void radio_access_begin_reconfigure(struct chan_usbradio_pvt *channel)
 {
+	struct usbradioplus_radio_access_slot *slot = &channel->plus_radio_access;
+
+	if (!channel->plus_dsp_initialized)
+		return;
+	while (atomic_flag_test_and_set_explicit(&slot->writer, memory_order_acquire)) {
+		sched_yield();
+#ifdef URP_PROCESSING_TESTING
+		atomic_flag_clear_explicit(&slot->writer, memory_order_release);
+#endif
+	}
+	atomic_store_explicit(&slot->reconfiguring, 1, memory_order_seq_cst);
+	while (atomic_load_explicit(&slot->readers, memory_order_seq_cst) != 0U)
+		sched_yield();
+}
+
+/** @brief Leave the parser-owned radio-state exclusion window.
+ * @param channel Radio whose control-plane reconfiguration is complete.
+ */
+static void radio_access_end_reconfigure(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_radio_access_slot *slot = &channel->plus_radio_access;
+
+	if (!channel->plus_dsp_initialized)
+		return;
+	atomic_store_explicit(&slot->reconfiguring, 0, memory_order_seq_cst);
+	atomic_flag_clear_explicit(&slot->writer, memory_order_release);
+}
+
+int usbradioplus_radio_access_acquire(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_radio_access_slot *slot;
+
+	if (!channel || !channel->radio)
+		return 0;
+	/* Unit construction and teardown have no hardware worker. */
+	if (!channel->plus_dsp_initialized)
+		return 1;
+	slot = &channel->plus_radio_access;
+	if (atomic_load_explicit(&slot->reconfiguring, memory_order_seq_cst))
+		return 0;
+	atomic_fetch_add_explicit(&slot->readers, 1U, memory_order_seq_cst);
+#ifdef URP_PROCESSING_TESTING
+	if (atomic_exchange_explicit(&test_radio_access_force_reader_retry, 0,
+				     memory_order_relaxed))
+		atomic_store_explicit(&slot->reconfiguring, 1, memory_order_seq_cst);
+#endif
+	if (!atomic_load_explicit(&slot->reconfiguring, memory_order_seq_cst))
+		return 1;
+	atomic_fetch_sub_explicit(&slot->readers, 1U, memory_order_seq_cst);
+	return 0;
+}
+
+void usbradioplus_radio_access_release(struct chan_usbradio_pvt *channel)
+{
+	if (!channel || !channel->radio || !channel->plus_dsp_initialized)
+		return;
+	atomic_fetch_sub_explicit(&channel->plus_radio_access.readers, 1U, memory_order_seq_cst);
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_radio_access_contention_paths(void)
+{
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio = {0};
+
+	channel.radio = &radio;
+	channel.plus_dsp_initialized = 1;
+	atomic_init(&channel.plus_radio_access.readers, 0U);
+	atomic_init(&channel.plus_radio_access.reconfiguring, 0);
+	atomic_flag_clear_explicit(&channel.plus_radio_access.writer, memory_order_relaxed);
+	atomic_flag_test_and_set_explicit(&channel.plus_radio_access.writer, memory_order_relaxed);
+	radio_access_begin_reconfigure(&channel);
+	radio_access_end_reconfigure(&channel);
+	atomic_store_explicit(&test_radio_access_force_reader_retry, 1, memory_order_relaxed);
+	(void)usbradioplus_radio_access_acquire(&channel);
+	return (int)atomic_load_explicit(&channel.plus_radio_access.readers, memory_order_seq_cst);
+}
+#endif
+
+/** @brief Reconfigure DCS only for directions that selected DCS signaling.
+ * @param channel Channel holding raw clean-slate DCS controls.
+ * @param receive_dcs Nonzero when receive signaling is DCS.
+ * @param transmit_dcs Nonzero when transmit signaling is DCS.
+ * @return Zero on success; nonzero for an invalid selected DCS code.
+ */
+static int radio_configure_dcs(struct chan_usbradio_pvt *channel, int receive_dcs, int transmit_dcs)
+{
+	/* A disabled direction stores five NUL bytes, matching the canonical code field. */
+	static const char disabled_dcs_code[5] = "";
+	int receive_code = -1;
+	int receive_inverted = 0;
+	int transmit_code = -1;
+	int transmit_inverted = 0;
+	urp_radio_state *radio = channel->radio;
+
+	if (receive_dcs &&
+	    urp_dcs_parse_code(channel->dcs_receive_code, &receive_code, &receive_inverted))
+		return -1;
+	if (transmit_dcs &&
+	    urp_dcs_parse_code(channel->dcs_transmit_code, &transmit_code, &transmit_inverted))
+		return -1;
+	urp_dcs_configure(&radio->dcs, receive_code, receive_inverted, transmit_code,
+			  transmit_inverted);
+	/* Parsed DCS spellings are exactly four characters plus their NUL terminator. */
+	memcpy(radio->dcsRxCode, receive_dcs ? channel->dcs_receive_code : disabled_dcs_code,
+	       sizeof(radio->dcsRxCode));
+	memcpy(radio->dcsTxCode, transmit_dcs ? channel->dcs_transmit_code : disabled_dcs_code,
+	       sizeof(radio->dcsTxCode));
+	radio->dcsTurnoffEnabled = transmit_dcs && channel->dcs_turnoff_enabled;
+	radio->dcsTurnoffDuration = transmit_dcs ? channel->dcs_turnoff_duration_ms : 0;
+	radio->dcsTurnoffTimer = 0;
+	radio->dcsPeak = transmit_dcs ? channel->dcs_level : 0.0;
+	if (!receive_dcs && radio->smode == SMODE_DCS) {
+		radio->smode = SMODE_NULL;
+		radio->smodewas = SMODE_NULL;
+		radio->smodetimer = 0;
+	}
+	return 0;
+}
+
+/** @brief Apply parser and runtime signaling state while the writer gate is held.
+ * @param o Private channel whose signaling state is reconfigured.
+ * @return Zero on success; nonzero if parser state cannot be rebuilt.
+ */
+static int radio_config_locked(struct chan_usbradio_pvt *o)
+{
+	static const char disabled_code[] = "0";
+	const int receive_ctcss = ast_strlen_zero(o->receive_signaling_method) ||
+				  !strcasecmp(o->receive_signaling_method, "ctcss");
+	const int transmit_ctcss = ast_strlen_zero(o->transmit_signaling_method) ||
+				   !strcasecmp(o->transmit_signaling_method, "ctcss");
+	const int receive_dcs = !strcasecmp(o->receive_signaling_method, "dcs");
+	const int transmit_dcs = !strcasecmp(o->transmit_signaling_method, "dcs");
+	int parse_result;
+
 	if (o->radio == NULL) {
 		ast_log(LOG_ERROR, "native radio state is unavailable\n");
 		return 1;
 	}
 
+	/* Scalar detector and transmitter controls are live state, unlike the
+	 * parser-owned CTCSS lists below.  Update them in the same excluded window
+	 * so a native block cannot combine old thresholds with a new decoder map. */
+	o->radio->rxDemod = o->rxdemod;
+	o->radio->rxCdType = effective_rxcdtype(o);
+	o->radio->voxHangTime = o->voxhangtime;
+	o->radio->rxSqVoxAdj = o->rxsqvoxadj;
+	o->radio->rxCarrierHyst = o->rxsqhyst;
+	o->radio->rxNoiseFilType = o->rxnoisefiltype;
+	o->radio->rxSquelchDelay = o->rxsquelchdelay;
+	o->radio->rxNoiseSquelchEnable = o->radio->rxCdType == CD_XPMR_NOISE;
+	o->radio->b.rxpolarity = o->rxpolarity;
+	o->radio->b.txpolarity = o->txpolarity;
+	o->radio->b.lsdrxpolarity = o->lsdrxpolarity;
+	o->radio->b.lsdtxpolarity = o->lsdtxpolarity;
+	o->radio->txCpuSaver = o->txcpusaver;
+	o->radio->txsettletime = o->txsettletime;
+	o->radio->txrxblankingtime = o->txrxblankingtime;
 	o->radio->rxCtcss->relax = o->rxctcssrelax;
+	o->radio->txTocType = o->txtoctype;
+	o->radio->txCtcssTocShift = o->ctcss_phase_shift_degrees;
+	o->radio->txCtcssTocTime = o->ctcss_tail_duration_ms;
+	o->radio->txCtcssTocToneHz = o->ctcss_tail_frequency_hz;
+	/* CTCSS peak is defined at the native PCM output.  Hardware mixer gain
+	 * remains an analog-output control and must not alter this configured level. */
+	o->radio->txCtcssPeak = transmit_ctcss ? o->ctcss_level : 0.0;
 	if (o->remoted) {
 		o->radio->pTxCodeDefault = o->set_txctcssdefault;
 		o->radio->pRxCodeSrc = o->set_rxctcssfreqs;
 		o->radio->pTxCodeSrc = o->set_txctcssfreqs;
 
 	} else {
-		/* Select the configured signaling-code strings. */
-		struct usbradioplus_hardware_settings hardware;
-
-		o->radio->pTxCodeDefault = o->txctcssdefault;
-		usbradioplus_processing_get_hardware(o->name, &hardware);
-		ast_copy_string(o->plus_applied_rxctcssfreqs, hardware.rx_ctcss_frequencies,
+		/* Keep the configured RX and TX CTCSS data independent.  The parser
+		 * receives a disabled companion list for a receive-only CTCSS mode,
+		 * which deliberately builds CTCSS_RXONLY entries instead of requiring
+		 * an artificial transmitter map. */
+		const char *rx_source = receive_ctcss ? o->rxctcssfreqs : disabled_code;
+		const char *tx_source =
+			receive_ctcss && transmit_ctcss ? o->txctcssfreqs : disabled_code;
+		const char *default_source = transmit_ctcss ? o->txctcssdefault : disabled_code;
+		if (ast_strlen_zero(rx_source))
+			rx_source = disabled_code;
+		if (ast_strlen_zero(tx_source))
+			tx_source = disabled_code;
+		if (ast_strlen_zero(default_source))
+			default_source = disabled_code;
+		o->radio->pTxCodeDefault = (char *)default_source;
+		ast_copy_string(o->plus_applied_rxctcssfreqs, rx_source,
 				sizeof(o->plus_applied_rxctcssfreqs));
 		o->radio->pRxCodeSrc = o->plus_applied_rxctcssfreqs;
-		ast_copy_string(o->plus_applied_txctcssfreqs, hardware.tx_ctcss_frequencies,
+		ast_copy_string(o->plus_applied_txctcssfreqs, tx_source,
 				sizeof(o->plus_applied_txctcssfreqs));
 		o->radio->pTxCodeSrc = o->plus_applied_txctcssfreqs;
 	}
@@ -1476,9 +1722,585 @@ int radio_config(struct chan_usbradio_pvt *o)
 			  o->radio->pTxCodeDefault);
 	}
 
-	urp_radio_parse_codes(o->radio);
+	parse_result = urp_radio_parse_codes(o->radio);
+	if (parse_result)
+		return 1;
+	/* Parsing resets the CTCSS filter gain.  Restore the selected decoder and
+	 * transmitter calibration before audio readers can observe this generation. */
+	if (o->radio->prxCtcssAdjust)
+		*o->radio->prxCtcssAdjust = (i32)lround(o->rxctcssadj * M_Q8);
+	if (o->radio->prxSquelchAdjust)
+		*o->radio->prxSquelchAdjust = ((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
+	if (!receive_ctcss && o->radio->smode == SMODE_CTCSS) {
+		o->radio->smode = SMODE_NULL;
+		o->radio->smodewas = SMODE_NULL;
+		o->radio->smodetimer = 0;
+	}
+	if (!transmit_ctcss) {
+		o->radio->txCtcssEnabled = 0;
+		o->radio->txCtcssOption = 3;
+		o->radio->txCtcssState = 0;
+		o->radio->txCtcssTurnoffTimer = 0;
+		o->radio->txCtcssTailToneHz = 0.0;
+	}
+	if (radio_configure_dcs(o, receive_dcs, transmit_dcs))
+		return 1;
 	usbradioplus_program_radio(o);
 
+	return 0;
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_radio_config_locked(struct chan_usbradio_pvt *channel)
+{
+	return radio_config_locked(channel);
+}
+#endif
+
+int radio_config(struct chan_usbradio_pvt *o)
+{
+	int result;
+
+	if (!o || !o->radio) {
+		ast_log(LOG_ERROR, "native radio state is unavailable\n");
+		return 1;
+	}
+	radio_access_begin_reconfigure(o);
+	result = radio_config_locked(o);
+	radio_access_end_reconfigure(o);
+	return result;
+}
+
+/** @brief Validate a comma-separated CTCSS list against the radio tone table.
+ * @param frequencies Candidate comma-separated CTCSS frequencies in hertz.
+ * @param count Receives the number of valid entries when non-NULL.
+ * @return Nonzero when every entry is a supported CTCSS tone and the list is nonempty.
+ *
+ * The processing-file parser intentionally owns syntax validation.  This
+ * channel-side check adds the radio-specific table lookup before the signaling
+ * engine is created, preventing an accepted numeric value from being ignored
+ * later by the legacy-compatible code-map parser.
+ */
+static int ctcss_frequency_list_valid(const char *frequencies, size_t *count)
+{
+	const char *cursor = frequencies;
+	size_t entries = 0;
+
+	if (ast_strlen_zero(cursor))
+		return 0;
+	for (;;) {
+		char *end;
+		double frequency;
+
+		errno = 0;
+		frequency = strtod(cursor, &end);
+		if (end == cursor || errno == ERANGE || !isfinite(frequency) ||
+		    !urp_ctcss_frequency_supported((float)frequency))
+			return 0;
+		++entries;
+		cursor = end;
+		while (*cursor == ' ' || *cursor == '\t')
+			++cursor;
+		if (*cursor == '\0')
+			break;
+		if (*cursor != ',')
+			return 0;
+		++cursor;
+		while (*cursor == ' ' || *cursor == '\t')
+			++cursor;
+		if (*cursor == '\0')
+			return 0;
+	}
+	if (count)
+		*count = entries;
+	return 1;
+}
+
+/** @brief Require an equal-length receive-to-transmit CTCSS translation map.
+ * @param receive_frequencies Receive CTCSS frequencies in hertz.
+ * @param transmit_frequencies Corresponding transmit CTCSS frequencies in hertz.
+ * @return Nonzero when both supported-tone lists have the same number of entries.
+ */
+static int ctcss_frequency_lists_mapped(const char *receive_frequencies,
+					const char *transmit_frequencies)
+{
+	size_t receive_count;
+	size_t transmit_count;
+
+	return ctcss_frequency_list_valid(receive_frequencies, &receive_count) &&
+	       ctcss_frequency_list_valid(transmit_frequencies, &transmit_count) &&
+	       receive_count == transmit_count;
+}
+
+/** @brief Validate one configured CTCSS frequency.
+ * @param frequency Candidate single CTCSS frequency in hertz.
+ * @return Nonzero when the value names exactly one supported tone.
+ */
+static int ctcss_frequency_valid(const char *frequency)
+{
+	size_t count;
+
+	return ctcss_frequency_list_valid(frequency, &count) && count == 1;
+}
+
+/** @brief Check the configured spelling of one DCS code.
+ * @param code Candidate three octal digits followed by N or I.
+ * @return Nonzero for a valid syntax and polarity suffix.
+ */
+static int dcs_code_valid(const char *code)
+{
+	return code && strlen(code) == 4 && code[0] >= '0' && code[0] <= '7' && code[1] >= '0' &&
+	       code[1] <= '7' && code[2] >= '0' && code[2] <= '7' &&
+	       (code[3] == 'N' || code[3] == 'n' || code[3] == 'I' || code[3] == 'i');
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_ctcss_frequency_list_valid(const char *frequencies, size_t *count)
+{
+	return ctcss_frequency_list_valid(frequencies, count);
+}
+
+int usbradioplus_test_ctcss_frequency_lists_mapped(const char *receive_frequencies,
+						   const char *transmit_frequencies)
+{
+	return ctcss_frequency_lists_mapped(receive_frequencies, transmit_frequencies);
+}
+
+int usbradioplus_test_ctcss_frequency_valid(const char *frequency)
+{
+	return ctcss_frequency_valid(frequency);
+}
+
+int usbradioplus_test_dcs_code_valid(const char *code)
+{
+	return dcs_code_valid(code);
+}
+#endif
+
+/** @brief Report a complete signaling selection that lacks required inputs.
+ * @param category Configured radio channel/profile name.
+ * @param message Operator-actionable explanation of the missing or invalid setting.
+ */
+static void signaling_configuration_error(const char *category, const char *message)
+{
+	ast_log(LOG_ERROR, "RadioPlus/%s: %s\n", category, message);
+}
+
+/** Candidate clean-slate signaling values resolved before touching a live radio. */
+struct processing_signaling_values {
+	/** Selected receive signaling method. */
+	char receive_method[8];
+	/** Selected transmit signaling method. */
+	char transmit_method[8];
+	/** Receive CTCSS frequency list. */
+	char receive_ctcss[512];
+	/** Receive-to-transmit CTCSS frequency map. */
+	char transmit_ctcss[512];
+	/** Default transmit CTCSS frequency. */
+	char transmit_ctcss_default[16];
+	/** Receive DCS code and polarity suffix. */
+	char dcs_receive_code[5];
+	/** Transmit DCS code and polarity suffix. */
+	char dcs_transmit_code[5];
+	/** Resolved receive audio-source mode. */
+	enum radio_rx_audio rxdemod;
+	/** Resolved carrier-detection source. */
+	enum radio_carrier_detect rxcdtype;
+	/** Resolved CTCSS indication source. */
+	enum radio_squelch_detect rxsdtype;
+	/** Resolved CTCSS turn-off mode. */
+	enum usbradio_carrier_type txtoctype;
+	/** Receive CPU-saver selection. */
+	int rxcpusaver;
+	/** Transmit CPU-saver selection. */
+	int txcpusaver;
+	/** VOX release hold in milliseconds. */
+	int voxhangtime;
+	/** VOX threshold. */
+	int rxsqvoxadj;
+	/** Noise-squelch hysteresis. */
+	int rxsqhyst;
+	/** Noise-detector filter selection. */
+	int rxnoisefiltype;
+	/** Receive squelch delay in milliseconds. */
+	int rxsquelchdelay;
+	/** Carrier-on delay in 20 ms frames. */
+	int rxondelay;
+	/** Nonzero inverts receive signaling. */
+	int rxpolarity;
+	/** Receive noise-squelch threshold. */
+	int rxsquelchadj;
+	/** Configured receive frequency in hertz. */
+	int rxfreq;
+	/** Nonzero inverts receive low-speed data. */
+	int lsdrxpolarity;
+	/** Nonzero enables transmitter pre-emphasis. */
+	int txpreemphasis;
+	/** Transmitter settling time in milliseconds. */
+	int txsettletime;
+	/** Transmit/receive blanking time in milliseconds. */
+	int txrxblankingtime;
+	/** Post-transmit receiver delay in frames. */
+	int txoffdelay;
+	/** Nonzero inverts transmit signaling. */
+	int txpolarity;
+	/** Configured transmit frequency in hertz. */
+	int txfreq;
+	/** Nonzero inverts transmit low-speed data. */
+	int lsdtxpolarity;
+	/** Linear receive CTCSS decoder gain. */
+	float rxctcssadj;
+	/** Nonzero bypasses CTCSS qualification. */
+	int rxctcssoverride;
+	/** CTCSS decoder talk-off tolerance. */
+	int rxctcssrelax;
+	/** Transmit CTCSS peak level in PCM codes. */
+	double ctcss_level;
+	/** CTCSS phase-shift tail angle in degrees. */
+	double ctcss_phase_shift_degrees;
+	/** CTCSS tail duration in milliseconds. */
+	int ctcss_tail_duration_ms;
+	/** CTCSS replacement-tail frequency in hertz. */
+	double ctcss_tail_frequency_hz;
+	/** Nonzero enables the DCS end-of-transmission tone. */
+	int dcs_turnoff_enabled;
+	/** DCS end-of-transmission tone duration in milliseconds. */
+	int dcs_turnoff_duration_ms;
+	/** DCS peak level in PCM codes. */
+	double dcs_level;
+};
+
+/** @brief Read one validated boolean from a candidate signaling profile.
+ * @param category Named channel/profile being resolved.
+ * @param section Configuration section containing the option.
+ * @param name Option name.
+ * @param result Receives the resolved boolean.
+ * @return Zero on success; nonzero for an absent or invalid value.
+ */
+static int processing_signaling_bool(const char *category, const char *section, const char *name,
+				     int *result)
+{
+	char value[64];
+
+	if (usbradioplus_processing_get_option(category, section, name, value, sizeof(value)) ||
+	    (!ast_true(value) && !ast_false(value)))
+		return -1;
+	*result = ast_true(value);
+	return 0;
+}
+
+/** @brief Read one validated integer from a candidate signaling profile.
+ * @param category Named channel/profile being resolved.
+ * @param section Configuration section containing the option.
+ * @param name Option name.
+ * @param result Receives the resolved integer.
+ * @return Zero on success; nonzero for an absent or invalid value.
+ */
+static int processing_signaling_int(const char *category, const char *section, const char *name,
+				    int *result)
+{
+	char value[64];
+	char *end;
+	long number;
+
+	if (usbradioplus_processing_get_option(category, section, name, value, sizeof(value)))
+		return -1;
+	number = strtol(value, &end, 0);
+	if (end == value || *end)
+		return -1;
+	*result = (int)number;
+	return 0;
+}
+
+/** @brief Read one validated floating-point value from a candidate profile.
+ * @param category Named channel/profile being resolved.
+ * @param section Configuration section containing the option.
+ * @param name Option name.
+ * @param result Receives the resolved finite value.
+ * @return Zero on success; nonzero for an absent or invalid value.
+ */
+static int processing_signaling_double(const char *category, const char *section, const char *name,
+				       double *result)
+{
+	char value[64];
+	char *end;
+
+	if (usbradioplus_processing_get_option(category, section, name, value, sizeof(value)))
+		return -1;
+	*result = strtod(value, &end);
+	return end == value || *end || !isfinite(*result) ? -1 : 0;
+}
+
+/** @def SIGNALING_STRING(section, name, field)
+ * @brief Copy one resolved string option into a signaling candidate.
+ */
+/** @def SIGNALING_BOOL(section, name, field)
+ * @brief Read one resolved boolean option into a signaling candidate.
+ */
+/** @def SIGNALING_INT(section, name, field)
+ * @brief Read one resolved integer option into a signaling candidate.
+ */
+
+/** @brief Resolve and validate live-safe clean-slate signaling controls.
+ * @param category Named channel/profile being resolved.
+ * @param resolved Receives the candidate values without changing live state.
+ * @return Zero on success; nonzero when any value or cross-field rule is invalid.
+ */
+static int resolve_processing_signaling(const char *category,
+					struct processing_signaling_values *resolved)
+{
+	struct usbradioplus_hardware_settings hardware;
+	char value[512];
+	enum urp_carrier_source carrier;
+	enum urp_ctcss_source ctcss_source;
+	enum urp_rx_audio_mode audio;
+	enum urp_tone_off_mode tone_off;
+	double db;
+
+	if (!category || !resolved)
+		return -1;
+	memset(resolved, 0, sizeof(*resolved));
+/* Copy one resolved string option into a signaling candidate. */
+#define SIGNALING_STRING(section, name, field)                                                     \
+	do {                                                                                       \
+		if (usbradioplus_processing_get_option(category, (section), (name), value,         \
+						       sizeof(value)))                             \
+			return -1;                                                                 \
+		ast_copy_string(resolved->field, value, sizeof(resolved->field));                  \
+	} while (0)
+/* Read one resolved boolean option into a signaling candidate. */
+#define SIGNALING_BOOL(section, name, field)                                                       \
+	if (processing_signaling_bool(category, (section), (name), &resolved->field))              \
+	return -1
+/* Read one resolved integer option into a signaling candidate. */
+#define SIGNALING_INT(section, name, field)                                                        \
+	if (processing_signaling_int(category, (section), (name), &resolved->field))               \
+	return -1
+	SIGNALING_STRING("receive", "signaling_method", receive_method);
+	SIGNALING_STRING("transmit", "signaling_method", transmit_method);
+	if (strcasecmp(resolved->receive_method, "carrier") &&
+	    strcasecmp(resolved->receive_method, "ctcss") &&
+	    strcasecmp(resolved->receive_method, "dcs"))
+		return -1;
+	if (strcasecmp(resolved->transmit_method, "carrier") &&
+	    strcasecmp(resolved->transmit_method, "ctcss") &&
+	    strcasecmp(resolved->transmit_method, "dcs"))
+		return -1;
+	/* Resolve the candidate's output assignments with its signaling controls.
+	 * A live reload must not accept CTCSS or DCS transmit selection that has no
+	 * configured path to the CM119 DAC. */
+	if (usbradioplus_processing_get_hardware(category, &hardware) ||
+	    urp_tx_signaling_route_missing(!strcasecmp(resolved->transmit_method, "ctcss") ||
+						   !strcasecmp(resolved->transmit_method, "dcs"),
+					   (enum urp_tx_output_mode)hardware.output_a_assignment,
+					   (enum urp_tx_output_mode)hardware.output_b_assignment))
+		return -1;
+	SIGNALING_BOOL("receive", "cpu_saver_enabled", rxcpusaver);
+	SIGNALING_BOOL("transmit", "cpu_saver_enabled", txcpusaver);
+	if (usbradioplus_processing_get_option(category, "receive", "audio_source", value,
+					       sizeof(value)) ||
+	    urp_parse_rx_audio_mode(value, &audio))
+		return -1;
+	resolved->rxdemod = (enum radio_rx_audio)audio;
+	if (usbradioplus_processing_get_option(category, "receive", "cos_assignment", value,
+					       sizeof(value)) ||
+	    urp_parse_carrier_source(value, &carrier))
+		return -1;
+	resolved->rxcdtype = (enum radio_carrier_detect)carrier;
+	if (usbradioplus_processing_get_option(category, "ctcss", "receive_source", value,
+					       sizeof(value)) ||
+	    urp_parse_ctcss_source(value, &ctcss_source))
+		return -1;
+	resolved->rxsdtype = (enum radio_squelch_detect)ctcss_source;
+	SIGNALING_INT("receive", "vox_hang_ms", voxhangtime);
+	SIGNALING_INT("receive", "vox_threshold", rxsqvoxadj);
+	SIGNALING_INT("receive", "noise_squelch_hysteresis", rxsqhyst);
+	SIGNALING_INT("receive", "noise_filter_type", rxnoisefiltype);
+	SIGNALING_INT("receive", "squelch_delay_ms", rxsquelchdelay);
+	SIGNALING_INT("receive", "on_delay_frames", rxondelay);
+	SIGNALING_BOOL("receive", "polarity_inverted", rxpolarity);
+	SIGNALING_INT("receive", "squelch_level", rxsquelchadj);
+	SIGNALING_INT("receive", "frequency_hz", rxfreq);
+	SIGNALING_BOOL("receive", "lsd_polarity_inverted", lsdrxpolarity);
+	SIGNALING_BOOL("transmit", "preemphasis_enabled", txpreemphasis);
+	SIGNALING_INT("transmit", "settle_ms", txsettletime);
+	SIGNALING_INT("transmit", "rx_blanking_ms", txrxblankingtime);
+	SIGNALING_INT("transmit", "off_delay_frames", txoffdelay);
+	SIGNALING_BOOL("transmit", "polarity_inverted", txpolarity);
+	SIGNALING_INT("transmit", "frequency_hz", txfreq);
+	SIGNALING_BOOL("transmit", "lsd_polarity_inverted", lsdtxpolarity);
+	SIGNALING_STRING("ctcss", "receive_frequencies", receive_ctcss);
+	SIGNALING_STRING("ctcss", "transmit_frequencies", transmit_ctcss);
+	SIGNALING_STRING("ctcss", "transmit_default_hz", transmit_ctcss_default);
+	if ((!ast_strlen_zero(resolved->receive_ctcss) &&
+	     !ctcss_frequency_list_valid(resolved->receive_ctcss, NULL)) ||
+	    (!ast_strlen_zero(resolved->transmit_ctcss) &&
+	     !ctcss_frequency_list_valid(resolved->transmit_ctcss, NULL)) ||
+	    (!ast_strlen_zero(resolved->transmit_ctcss_default) &&
+	     !ctcss_frequency_valid(resolved->transmit_ctcss_default)))
+		return -1;
+	if (processing_signaling_double(category, "ctcss", "receive_decoder_gain_db", &db))
+		return -1;
+	resolved->rxctcssadj = (float)pow(10.0, db / 20.0);
+	SIGNALING_BOOL("ctcss", "receive_override_enabled", rxctcssoverride);
+	/* A CTCSS override has no meaning for carrier or DCS receive.  Treat an
+	 * inactive setting as inert rather than letting it bypass their decoder. */
+	if (strcasecmp(resolved->receive_method, "ctcss"))
+		resolved->rxctcssoverride = 0;
+	SIGNALING_INT("ctcss", "receive_relax", rxctcssrelax);
+	if (processing_signaling_double(category, "ctcss", "transmit_peak_dbfs", &db))
+		return -1;
+	resolved->ctcss_level = 32767.0 * pow(10.0, db / 20.0);
+	if (usbradioplus_processing_get_option(category, "ctcss", "turnoff_mode", value,
+					       sizeof(value)) ||
+	    urp_parse_tone_off_mode(value, &tone_off))
+		return -1;
+	resolved->txtoctype = (enum usbradio_carrier_type)tone_off;
+	if (processing_signaling_double(category, "ctcss", "phase_shift_degrees",
+					&resolved->ctcss_phase_shift_degrees) ||
+	    processing_signaling_int(category, "ctcss", "tail_duration_ms",
+				     &resolved->ctcss_tail_duration_ms) ||
+	    processing_signaling_double(category, "ctcss", "tail_frequency_hz",
+					&resolved->ctcss_tail_frequency_hz))
+		return -1;
+	SIGNALING_STRING("dcs", "receive_code", dcs_receive_code);
+	SIGNALING_STRING("dcs", "transmit_code", dcs_transmit_code);
+	/* DCS controls are retained across signaling-mode changes, so validate both
+	 * directions before selecting either one. This also makes a later DCS mode
+	 * switch unable to activate a stale invalid code. */
+	if (!dcs_code_valid(resolved->dcs_receive_code) ||
+	    !dcs_code_valid(resolved->dcs_transmit_code))
+		return -1;
+	SIGNALING_BOOL("dcs", "turnoff_code_enabled", dcs_turnoff_enabled);
+	SIGNALING_INT("dcs", "turnoff_duration_ms", dcs_turnoff_duration_ms);
+	if (processing_signaling_double(category, "dcs", "peak_dbfs", &db))
+		return -1;
+	resolved->dcs_level = 32767.0 * pow(10.0, db / 20.0);
+	if (!strcasecmp(resolved->receive_method, "ctcss") &&
+	    (resolved->rxsdtype == SD_IGNORE ||
+	     !ctcss_frequency_list_valid(resolved->receive_ctcss, NULL)))
+		return -1;
+	if (!strcasecmp(resolved->transmit_method, "ctcss") &&
+	    !ctcss_frequency_valid(resolved->transmit_ctcss_default))
+		return -1;
+	if (!strcasecmp(resolved->receive_method, "ctcss") &&
+	    !strcasecmp(resolved->transmit_method, "ctcss") &&
+	    !ctcss_frequency_lists_mapped(resolved->receive_ctcss, resolved->transmit_ctcss))
+		return -1;
+#undef SIGNALING_INT
+#undef SIGNALING_BOOL
+#undef SIGNALING_STRING
+	return 0;
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_resolve_processing_signaling(const char *category, int null_result)
+{
+	struct processing_signaling_values resolved;
+
+	return resolve_processing_signaling(category, null_result ? NULL : &resolved);
+}
+#endif
+
+/** @brief Commit already-validated signaling values while the caller owns the channel.
+ * @param o Private channel receiving the validated signaling state.
+ * @param resolved Fully validated candidate signaling values.
+ */
+static void commit_processing_signaling(struct chan_usbradio_pvt *o,
+					const struct processing_signaling_values *resolved)
+{
+	ast_copy_string(o->receive_signaling_method, resolved->receive_method,
+			sizeof(o->receive_signaling_method));
+	ast_copy_string(o->transmit_signaling_method, resolved->transmit_method,
+			sizeof(o->transmit_signaling_method));
+	ast_copy_string(o->rxctcssfreqs, resolved->receive_ctcss, sizeof(o->rxctcssfreqs));
+	ast_copy_string(o->txctcssfreqs, resolved->transmit_ctcss, sizeof(o->txctcssfreqs));
+	ast_copy_string(o->txctcssdefault, resolved->transmit_ctcss_default,
+			sizeof(o->txctcssdefault));
+	ast_copy_string(o->dcs_receive_code, resolved->dcs_receive_code,
+			sizeof(o->dcs_receive_code));
+	ast_copy_string(o->dcs_transmit_code, resolved->dcs_transmit_code,
+			sizeof(o->dcs_transmit_code));
+	o->rxdemod = resolved->rxdemod;
+	o->rxcdtype = resolved->rxcdtype;
+	o->rxsdtype =
+		!strcasecmp(resolved->receive_method, "ctcss") ? resolved->rxsdtype : SD_IGNORE;
+	o->rxcpusaver = resolved->rxcpusaver;
+	o->txcpusaver = resolved->txcpusaver;
+	o->voxhangtime = resolved->voxhangtime;
+	o->rxsqvoxadj = resolved->rxsqvoxadj;
+	o->rxsqhyst = resolved->rxsqhyst;
+	o->rxnoisefiltype = resolved->rxnoisefiltype;
+	o->rxsquelchdelay = resolved->rxsquelchdelay;
+	o->rxondelay = resolved->rxondelay;
+	o->rxpolarity = resolved->rxpolarity;
+	o->rxsquelchadj = resolved->rxsquelchadj;
+	o->rxfreq = resolved->rxfreq;
+	o->lsdrxpolarity = resolved->lsdrxpolarity;
+	o->txpreemphasis = resolved->txpreemphasis;
+	o->txsettletime = resolved->txsettletime;
+	o->txrxblankingtime = resolved->txrxblankingtime;
+	o->txoffdelay = resolved->txoffdelay;
+	o->txpolarity = resolved->txpolarity;
+	o->txfreq = resolved->txfreq;
+	o->lsdtxpolarity = resolved->lsdtxpolarity;
+	o->rxctcssadj = resolved->rxctcssadj;
+	o->rxctcssoverride = resolved->rxctcssoverride;
+	o->rxctcssrelax = resolved->rxctcssrelax;
+	o->ctcss_level = resolved->ctcss_level;
+	o->txtoctype = resolved->txtoctype;
+	o->ctcss_phase_shift_degrees = resolved->ctcss_phase_shift_degrees;
+	o->ctcss_tail_duration_ms = resolved->ctcss_tail_duration_ms;
+	o->ctcss_tail_frequency_hz = resolved->ctcss_tail_frequency_hz;
+	o->dcs_turnoff_enabled = resolved->dcs_turnoff_enabled;
+	o->dcs_turnoff_duration_ms = resolved->dcs_turnoff_duration_ms;
+	o->dcs_level = resolved->dcs_level;
+}
+
+int apply_processing_signaling_overrides(struct chan_usbradio_pvt *o, const char *category)
+{
+	struct processing_signaling_values resolved;
+
+	if (!o || resolve_processing_signaling(category, &resolved))
+		return -1;
+	/* Commit only after every value has been parsed and cross-validated.  This
+	 * keeps a rejected reload from partially changing live receiver signaling. */
+	commit_processing_signaling(o, &resolved);
+	return 0;
+}
+
+int usbradioplus_refresh_all_processing_signaling(void)
+{
+	struct chan_usbradio_pvt *channel;
+
+	/* Resolve every profile before touching any live radio.  The candidate
+	 * settings snapshot is immutable during reload, so a second pass cannot
+	 * introduce a semantic failure after an earlier channel has committed. */
+	for (channel = usbradioplus_channel_first(); channel; channel = channel->next) {
+		struct processing_signaling_values resolved;
+
+		if (channel->radio && resolve_processing_signaling(channel->name, &resolved))
+			return -1;
+	}
+	for (channel = usbradioplus_channel_first(); channel; channel = channel->next) {
+		struct processing_signaling_values resolved;
+		int result;
+
+		/* Configured-but-uninitialized entries have no audio reader or parser
+		 * state yet; store_config() resolves them before creating the engine. */
+		if (!channel->radio)
+			continue;
+		/* The complete candidate was preflighted above.  Keep this defensive
+		 * check in case a caller replaces the settings source concurrently. */
+		if (resolve_processing_signaling(channel->name, &resolved))
+			return -1;
+		radio_access_begin_reconfigure(channel);
+		commit_processing_signaling(channel, &resolved);
+		result = radio_config_locked(channel);
+		radio_access_end_reconfigure(channel);
+		if (result)
+			return -1;
+	}
 	return 0;
 }
 
@@ -1491,6 +2313,7 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	int i;
 	long number;
 	size_t option_index;
+	size_t tone_count;
 	static const int parallel_pins[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15};
 	static const char *const asterisk_jitter_options[] = {
 		"jbenable", "jbmaxsize", "jbresyncthreshold", "jbimpl",
@@ -1543,8 +2366,16 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	o->txmixa = (enum radio_tx_mix)hardware.output_a_assignment;
 	o->txmixb = (enum radio_tx_mix)hardware.output_b_assignment;
 	o->rxcdtype = effective_rxcdtype(o);
-	ast_copy_string(o->rxctcssfreqs, hardware.rx_ctcss_frequencies, sizeof(o->rxctcssfreqs));
-	ast_copy_string(o->txctcssfreqs, hardware.tx_ctcss_frequencies, sizeof(o->txctcssfreqs));
+	STRING("ctcss", "receive_frequencies", rxctcssfreqs);
+	STRING("ctcss", "transmit_frequencies", txctcssfreqs);
+	/* The processing parser rejects every malformed CTCSS value, including
+	 * inactive-direction controls. Keep the direct override path equally strict
+	 * so live reload and unit callers cannot preserve an invalid latent value. */
+	if ((!ast_strlen_zero(o->rxctcssfreqs) &&
+	     !ctcss_frequency_list_valid(o->rxctcssfreqs, &tone_count)) ||
+	    (!ast_strlen_zero(o->txctcssfreqs) &&
+	     !ctcss_frequency_list_valid(o->txctcssfreqs, &tone_count)))
+		goto invalid;
 
 	STRING("hardware", "hardware_device_identifier", devstr);
 	STRING("hardware", "hardware_serial", serial);
@@ -1552,48 +2383,170 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	BOOLEAN("hardware", "hardware_eeprom_enabled", wanteeprom);
 	INTEGER("hardware", "hardware_audio_fragment_count", frags);
 	INTEGER("hardware", "hardware_audio_queue_size", queuesize);
-	BOOLEAN("hardware", "hardware_rx_cpu_saver_enabled", rxcpusaver);
-	BOOLEAN("hardware", "hardware_tx_cpu_saver_enabled", txcpusaver);
-	if (GET("hardware", "hardware_rx_audio_source"))
+	BOOLEAN("receive", "cpu_saver_enabled", rxcpusaver);
+	BOOLEAN("transmit", "cpu_saver_enabled", txcpusaver);
+	STRING("receive", "signaling_method", receive_signaling_method);
+	STRING("transmit", "signaling_method", transmit_signaling_method);
+	if (GET("receive", "cos_assignment"))
+		o->rxcdtype = carrier_detect_from_assignment(value);
+	if (GET("receive", "audio_source"))
 		store_rxdemod(o, value);
-	if (GET("hardware", "hardware_rx_ctcss_source"))
+	if (GET("ctcss", "receive_source"))
 		store_rxsdtype(o, value);
-	INTEGER("hardware", "hardware_vox_hang_ms", voxhangtime);
-	INTEGER("hardware", "hardware_vox_threshold", rxsqvoxadj);
-	INTEGER("hardware", "hardware_noise_squelch_hysteresis", rxsqhyst);
-	INTEGER("hardware", "hardware_noise_filter_type", rxnoisefiltype);
-	INTEGER("hardware", "hardware_squelch_delay", rxsquelchdelay);
-	INTEGER("hardware", "hardware_rx_on_delay_frames", rxondelay);
+	INTEGER("receive", "vox_hang_ms", voxhangtime);
+	INTEGER("receive", "vox_threshold", rxsqvoxadj);
+	INTEGER("receive", "noise_squelch_hysteresis", rxsqhyst);
+	INTEGER("receive", "noise_filter_type", rxnoisefiltype);
+	INTEGER("receive", "squelch_delay_ms", rxsquelchdelay);
+	INTEGER("receive", "on_delay_frames", rxondelay);
 	if (o->rxondelay > MS_TO_FRAMES(RX_ON_DELAY_MAX))
 		o->rxondelay = MS_TO_FRAMES(RX_ON_DELAY_MAX);
-	BOOLEAN("hardware", "hardware_rx_polarity_inverted", rxpolarity);
-	INTEGER("hardware", "hardware_squelch_level", rxsquelchadj);
-	if (GET("hardware", "hardware_rx_ctcss_level")) {
+	BOOLEAN("receive", "polarity_inverted", rxpolarity);
+	INTEGER("receive", "squelch_level", rxsquelchadj);
+	if (GET("ctcss", "receive_decoder_gain_db")) {
 		double adjustment = strtod(value, &end);
 		if (end == value || *end || !isfinite(adjustment))
 			goto invalid;
-		o->rxctcssadj = adjustment;
+		o->rxctcssadj = pow(10.0, adjustment / 20.0);
 	}
-	BOOLEAN("hardware", "hardware_rx_ctcss_override_enabled", rxctcssoverride);
-	INTEGER("hardware", "hardware_rx_ctcss_relax", rxctcssrelax);
-	STRING("hardware", "hardware_tx_ctcss_default_hz", txctcssdefault);
-	INTEGER("hardware", "hardware_tx_ctcss_level", txctcssadj);
-	if (GET("hardware", "hardware_ctcss_turnoff_mode"))
+	BOOLEAN("ctcss", "receive_override_enabled", rxctcssoverride);
+	INTEGER("ctcss", "receive_relax", rxctcssrelax);
+	STRING("ctcss", "transmit_default_hz", txctcssdefault);
+	if (!ast_strlen_zero(o->txctcssdefault) && !ctcss_frequency_valid(o->txctcssdefault))
+		goto invalid;
+	if (GET("ctcss", "transmit_peak_dbfs")) {
+		double peak = strtod(value, &end);
+		if (end == value || *end || !isfinite(peak) || peak < -90.0 || peak > 0.0)
+			goto invalid;
+		o->ctcss_level = 32767.0 * pow(10.0, peak / 20.0);
+	}
+	if (GET("ctcss", "turnoff_mode"))
 		store_txtoctype(o, value);
-	BOOLEAN("hardware", "hardware_dcs_rx_polarity_inverted", dcsrxpolarity);
-	BOOLEAN("hardware", "hardware_dcs_tx_polarity_inverted", dcstxpolarity);
-	BOOLEAN("hardware", "hardware_lsd_rx_polarity_inverted", lsdrxpolarity);
-	BOOLEAN("hardware", "hardware_lsd_tx_polarity_inverted", lsdtxpolarity);
-	BOOLEAN("hardware", "hardware_tx_preemphasis_enabled", txpreemphasis);
-	INTEGER("hardware", "hardware_tx_settle_ms", txsettletime);
-	INTEGER("hardware", "hardware_tx_rx_blanking_ms", txrxblankingtime);
-	INTEGER("hardware", "hardware_tx_off_delay_frames", txoffdelay);
+	if (GET("ctcss", "phase_shift_degrees")) {
+		o->ctcss_phase_shift_degrees = strtod(value, &end);
+		if (end == value || *end || !isfinite(o->ctcss_phase_shift_degrees) ||
+		    o->ctcss_phase_shift_degrees <= 0.0)
+			goto invalid;
+	}
+	if (GET("ctcss", "tail_duration_ms")) {
+		number = strtol(value, &end, 0);
+		/* Match the two-frame tail setup and signed 16-bit signaling timer. */
+		if (end == value || *end || number < 2L * MS_PER_FRAME || number > INT16_MAX)
+			goto invalid;
+		o->ctcss_tail_duration_ms = number;
+	}
+	if (GET("ctcss", "tail_frequency_hz")) {
+		o->ctcss_tail_frequency_hz = strtod(value, &end);
+		if (end == value || *end || !isfinite(o->ctcss_tail_frequency_hz) ||
+		    o->ctcss_tail_frequency_hz <= 0.0)
+			goto invalid;
+	}
+	STRING("dcs", "receive_code", dcs_receive_code);
+	STRING("dcs", "transmit_code", dcs_transmit_code);
+	/* Preserve valid inactive DCS settings for a later mode change, but reject
+	 * malformed syntax now instead of silently treating it as carrier mode. */
+	if ((!ast_strlen_zero(o->dcs_receive_code) && !dcs_code_valid(o->dcs_receive_code)) ||
+	    (!ast_strlen_zero(o->dcs_transmit_code) && !dcs_code_valid(o->dcs_transmit_code)))
+		goto invalid;
+	BOOLEAN("dcs", "turnoff_code_enabled", dcs_turnoff_enabled);
+	if (GET("dcs", "turnoff_duration_ms")) {
+		number = strtol(value, &end, 0);
+		if (end == value || *end || number < 150 || number > 200)
+			goto invalid;
+		o->dcs_turnoff_duration_ms = number;
+	}
+	if (GET("dcs", "peak_dbfs")) {
+		o->dcs_level = strtod(value, &end);
+		if (end == value || *end || !isfinite(o->dcs_level) || o->dcs_level < -90.0 ||
+		    o->dcs_level > 0.0)
+			goto invalid;
+		o->dcs_level = 32767.0 * pow(10.0, o->dcs_level / 20.0);
+	}
+	/* A direction has one active signaling system. Keep its configured CTCSS and
+	 * DCS data intact, however: receive and transmit are independent directions,
+	 * and radio_config() selects the active sources without destroying a valid
+	 * inactive-direction setting. */
+	if (ast_strlen_zero(o->receive_signaling_method))
+		ast_copy_string(o->receive_signaling_method, "carrier",
+				sizeof(o->receive_signaling_method));
+	if (ast_strlen_zero(o->transmit_signaling_method))
+		ast_copy_string(o->transmit_signaling_method, "carrier",
+				sizeof(o->transmit_signaling_method));
+	if (!strcasecmp(o->receive_signaling_method, "carrier")) {
+		store_rxsdtype(o, "no");
+	} else if (!strcasecmp(o->receive_signaling_method, "ctcss")) {
+		if (o->rxsdtype == SD_IGNORE) {
+			signaling_configuration_error(category,
+						      "CTCSS receive_source must not be no");
+			goto invalid;
+		}
+		if (!ctcss_frequency_list_valid(o->rxctcssfreqs, NULL)) {
+			signaling_configuration_error(
+				category,
+				"receive signaling_method=ctcss requires supported [ctcss] "
+				"receive_frequencies");
+			goto invalid;
+		}
+		if (!strcasecmp(o->transmit_signaling_method, "ctcss") &&
+		    !ctcss_frequency_lists_mapped(o->rxctcssfreqs, o->txctcssfreqs)) {
+			signaling_configuration_error(
+				category,
+				"CTCSS receive-to-transmit operation requires equal-length "
+				"[ctcss] receive_frequencies and transmit_frequencies "
+				"lists of supported tones");
+			goto invalid;
+		}
+	} else if (!strcasecmp(o->receive_signaling_method, "dcs")) {
+		store_rxsdtype(o, "no");
+		if (!dcs_code_valid(o->dcs_receive_code)) {
+			signaling_configuration_error(
+				category,
+				"receive signaling_method=dcs requires a valid [dcs] receive_code");
+			goto invalid;
+		}
+	} else {
+		goto invalid;
+	}
+	if (!strcasecmp(o->transmit_signaling_method, "carrier")) {
+	} else if (!strcasecmp(o->transmit_signaling_method, "ctcss")) {
+		if (!ctcss_frequency_valid(o->txctcssdefault)) {
+			signaling_configuration_error(category,
+						      "CTCSS transmit_default_hz is not supported");
+			goto invalid;
+		}
+	} else if (!strcasecmp(o->transmit_signaling_method, "dcs")) {
+		if (!dcs_code_valid(o->dcs_transmit_code)) {
+			signaling_configuration_error(category, "DCS transmit_code is invalid");
+			goto invalid;
+		}
+	} else {
+		goto invalid;
+	}
+	/* This control is a CTCSS decoder bypass, not a generic receive bypass.
+	 * Inactive CTCSS settings must not accidentally qualify DCS or carrier RX. */
+	if (strcasecmp(o->receive_signaling_method, "ctcss"))
+		o->rxctcssoverride = 0;
+	if ((!strcasecmp(o->transmit_signaling_method, "ctcss") ||
+	     !strcasecmp(o->transmit_signaling_method, "dcs")) &&
+	    !urp_tx_pair_has_tone((enum urp_tx_output_mode)o->txmixa,
+				  (enum urp_tx_output_mode)o->txmixb)) {
+		signaling_configuration_error(category,
+					      "transmit signaling requires [hardware] output A or "
+					      "B to carry ctcss or voice_ctcss");
+		goto invalid;
+	}
+	BOOLEAN("receive", "lsd_polarity_inverted", lsdrxpolarity);
+	BOOLEAN("transmit", "lsd_polarity_inverted", lsdtxpolarity);
+	BOOLEAN("transmit", "preemphasis_enabled", txpreemphasis);
+	INTEGER("transmit", "settle_ms", txsettletime);
+	INTEGER("transmit", "rx_blanking_ms", txrxblankingtime);
+	INTEGER("transmit", "off_delay_frames", txoffdelay);
 	if (o->txoffdelay > MS_TO_FRAMES(TX_OFF_DELAY_MAX))
 		o->txoffdelay = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
-	BOOLEAN("hardware", "hardware_tx_polarity_inverted", txpolarity);
+	BOOLEAN("transmit", "polarity_inverted", txpolarity);
 	BOOLEAN("hardware", "hardware_ptt_inverted", invertptt);
-	INTEGER("hardware", "hardware_rx_frequency_hz", rxfreq);
-	INTEGER("hardware", "hardware_tx_frequency_hz", txfreq);
+	INTEGER("receive", "frequency_hz", rxfreq);
+	INTEGER("transmit", "frequency_hz", txfreq);
 	INTEGER("hardware", "hardware_repeater_number", rptnum);
 	INTEGER("hardware", "hardware_area", area);
 	STRING("hardware", "hardware_user_key", ukey);
@@ -1665,6 +2618,8 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 	static const char *const assignments[] = {"off", "voice", "ctcss", "voice_ctcss",
 						  "auxvoice"};
 	struct usbradioplus_config_update updates[24];
+	enum urp_ctcss_source configured_ctcss_source;
+	char ctcss_receive_source[64];
 	char values[24][64];
 	size_t count = 0;
 
@@ -1679,6 +2634,17 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 		snprintf(values[count], sizeof(values[count]), (format), (number));                \
 		ADD_TEXT((group), (key), values[count]);                                           \
 	} while (0)
+	/* rxsdtype is intentionally SD_IGNORE unless CTCSS is the active receive
+	 * method. Persist the profile setting instead, so changing away from CTCSS
+	 * for a while cannot erase its configured indication source on a tune save. */
+	ast_copy_string(ctcss_receive_source, sd_signal_type[o->rxsdtype],
+			sizeof(ctcss_receive_source));
+	if (!usbradioplus_processing_get_option(o->name, "ctcss", "receive_source",
+						ctcss_receive_source,
+						sizeof(ctcss_receive_source)) &&
+	    urp_parse_ctcss_source(ctcss_receive_source, &configured_ctcss_source))
+		ast_copy_string(ctcss_receive_source, sd_signal_type[o->rxsdtype],
+				sizeof(ctcss_receive_source));
 	if (!ast_strlen_zero(o->devstr))
 		ADD_TEXT("hardware", "hardware_device_identifier", o->devstr);
 	if (!ast_strlen_zero(o->serial))
@@ -1689,15 +2655,17 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 		   urp_mixer_to_gain_db(effective_txmixaset(o)));
 	ADD_NUMBER("hardware", "hardware_output_b_gain_db", "%.3f",
 		   urp_mixer_to_gain_db(effective_txmixbset(o)));
-	ADD_NUMBER("hardware", "hardware_rx_ctcss_level", "%.6f", o->rxctcssadj);
-	ADD_NUMBER("hardware", "hardware_tx_ctcss_level", "%d", o->txctcssadj);
-	ADD_NUMBER("hardware", "hardware_squelch_level", "%d", o->rxsquelchadj);
-	ADD_TEXT("hardware", "hardware_cos_assignment", cd_signal_type[o->rxcdtype]);
-	ADD_TEXT("hardware", "hardware_rx_ctcss_source", sd_signal_type[o->rxsdtype]);
-	ADD_NUMBER("hardware", "hardware_rx_on_delay_frames", "%d", o->rxondelay);
-	ADD_NUMBER("hardware", "hardware_tx_off_delay_frames", "%d", o->txoffdelay);
-	ADD_TEXT("hardware", "hardware_tx_preemphasis_enabled", o->txpreemphasis ? "yes" : "no");
-	ADD_TEXT("hardware", "hardware_rx_audio_source", demodulation[o->rxdemod]);
+	ADD_NUMBER("ctcss", "receive_decoder_gain_db", "%.3f",
+		   20.0 * log10(fmax(o->rxctcssadj, 1.0e-6)));
+	ADD_NUMBER("ctcss", "transmit_peak_dbfs", "%.3f",
+		   20.0 * log10(fmax(o->ctcss_level / 32767.0, 1.0e-6)));
+	ADD_NUMBER("receive", "squelch_level", "%d", o->rxsquelchadj);
+	ADD_TEXT("receive", "cos_assignment", cd_signal_type[o->rxcdtype]);
+	ADD_TEXT("ctcss", "receive_source", ctcss_receive_source);
+	ADD_NUMBER("receive", "on_delay_frames", "%d", o->rxondelay);
+	ADD_NUMBER("transmit", "off_delay_frames", "%d", o->txoffdelay);
+	ADD_TEXT("transmit", "preemphasis_enabled", o->txpreemphasis ? "yes" : "no");
+	ADD_TEXT("receive", "audio_source", demodulation[o->rxdemod]);
 	ADD_TEXT("hardware", "hardware_output_a_assignment", assignments[o->txmixa]);
 	ADD_TEXT("hardware", "hardware_output_b_assignment", assignments[o->txmixb]);
 	ADD_NUMBER("diagnostics", "diagnostics_fever", "%d", o->fever);
@@ -1710,21 +2678,616 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 	return usbradioplus_processing_save_options(o->name, updates, count);
 }
 
-int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
+/** @brief Build the fixed native de-emphasis graph configuration.
+ * @param o Radio channel whose flat-discriminator and emphasis settings apply.
+ * @param config Receives a zero-initialized FFmpeg graph configuration.
+ */
+static void native_receive_deemphasis_config(const struct chan_usbradio_pvt *o,
+					     struct txagc_config *config)
 {
-	o->plus_up = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
-	o->plus_down = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
-	if (!o->plus_up || !o->plus_down ||
-	    rpcr_init(&o->plus_program_ring, URP_PROGRAM_QUEUE_SAMPLES, RPCR_SINC_BEST)) {
-		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native sample-rate converters\n",
+	memset(config, 0, sizeof(*config));
+	config->deemphasis_enabled = o->rxdemod == RX_AUDIO_FLAT;
+	config->emphasis_corner_hz = o->plus_emphasis_corner_hz;
+	config->emphasis_reference_hz = 1000.0;
+}
+
+/** @brief Build the always-selected receive band-pass and PL-filter graph.
+ * @param chain Resolved local processing chain.
+ * @param config Receives the fixed band-pass and PL-filter configuration.
+ *
+ * Notch mode deliberately leaves the frequency list empty.  It records the
+ * selected mode in this graph while the native callback dispatches to one
+ * separately prepared graph for the currently decoded CTCSS code.  That
+ * retains the original one-tone-at-a-time semantics without graph rebuilding
+ * or allocation in the audio callback.
+ */
+static void native_receive_filter_config(const struct txagc_chain *chain,
+					 struct txagc_config *config)
+{
+	memset(config, 0, sizeof(*config));
+	config->receive_bandpass_enabled = chain->agc.receive_bandpass_enabled;
+	config->receive_bandpass_highpass_hz = chain->agc.receive_bandpass_highpass_hz;
+	config->receive_bandpass_lowpass_hz = chain->agc.receive_bandpass_lowpass_hz;
+	config->ctcss_filter_mode = chain->agc.ctcss_filter_mode;
+	config->ctcss_highpass_hz = chain->agc.ctcss_highpass_hz;
+	config->ctcss_notch_width_hz = chain->agc.ctcss_notch_width_hz;
+}
+
+/** @brief Find one CTCSS table entry in the configured receive-code list.
+ * @param frequencies Comma-separated configured receive CTCSS frequencies.
+ * @param code CTCSS table index to find.
+ * @param result_frequency Receives the configured tone frequency when the code is found.
+ * @return Nonzero when the requested code is explicitly configured.
+ */
+static int native_ctcss_code_frequency(const char *frequencies, int code, double *result_frequency)
+{
+	const char *cursor = frequencies;
+
+	if (!cursor || !result_frequency || code < 0 || code >= CTCSS_NUM_CODES)
+		return 0;
+	while (*cursor) {
+		char *end;
+		double parsed_frequency = strtod(cursor, &end);
+
+		if (end == cursor)
+			return 0;
+		if (urp_ctcss_frequency_index((float)parsed_frequency) == code) {
+			*result_frequency = parsed_frequency;
+			return 1;
+		}
+		cursor = end;
+		while (*cursor == ' ' || *cursor == '\t')
+			++cursor;
+		if (*cursor != ',')
+			return 0;
+		++cursor;
+		while (*cursor == ' ' || *cursor == '\t')
+			++cursor;
+	}
+	return 0;
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_native_ctcss_code_frequency(const char *frequencies, int code,
+						  double *frequency)
+{
+	return native_ctcss_code_frequency(frequencies, code, frequency);
+}
+#endif
+
+/** @brief Build a prepared receive graph that rejects exactly one CTCSS code.
+ * @param chain Resolved local processing chain.
+ * @param frequency CTCSS frequency in Hz rejected by this graph.
+ * @param config Receives the fixed band-pass and one-tone notch configuration.
+ */
+static void native_receive_notch_config(const struct txagc_chain *chain, double frequency,
+					struct txagc_config *config)
+{
+	/* The base slot has already applied the receive band-pass.  This slot must
+	 * add only the decoded tone's notch; repeating the band-pass here changes
+	 * its response and makes a decoded-tone transition audible. */
+	memset(config, 0, sizeof(*config));
+	config->ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	config->ctcss_notch_width_hz = chain->agc.ctcss_notch_width_hz;
+	snprintf(config->ctcss_notch_frequencies, sizeof(config->ctcss_notch_frequencies), "%.1f",
+		 frequency);
+}
+
+/** @brief Build the optional local-dynamics graph after fixed receive filtering.
+ * @param chain Resolved local processing chain.
+ * @param config Receives the optional shared-graph stages.
+ */
+static void native_local_dynamics_config(const struct txagc_chain *chain,
+					 struct txagc_config *config)
+{
+	*config = chain->agc;
+	config->input_gain_db = 0.0;
+	/* De-emphasis and PL filtering are fixed native graphs before RNNoise and
+	 * the optional graph, so the dynamics graph must not reproduce either one. */
+	config->deemphasis_enabled = 0;
+	config->ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;
+	config->receive_bandpass_enabled = 0;
+}
+
+/** @brief Build the fixed transmitter-tail graph configuration.
+ * @param o Radio channel supplying pre-emphasis settings.
+ * @param chain Resolved voice/telemetry processing chain.
+ * @param config Receives the final composite graph configuration.
+ */
+static void native_final_config(const struct chan_usbradio_pvt *o, const struct txagc_chain *chain,
+				struct txagc_config *config)
+{
+	*config = chain->agc;
+	/* The source master gates only optional reorderable stages. The fixed
+	 * transmitter filter/limiter/filter tail remains individually configurable. */
+	if (!chain->enabled) {
+		config->agc_enabled = 0;
+		config->expander_enabled = 0;
+		config->compressor_enabled = 0;
+		config->limiter_enabled = 0;
+	}
+	config->preemphasis_enabled = o->txpreemphasis;
+	config->emphasis_corner_hz = o->plus_emphasis_corner_hz;
+	config->emphasis_reference_hz = 1000.0;
+}
+
+/** @brief Destroy a complete native graph generation outside the audio callback.
+ * @param graphs Complete generation allocated by native_graph_set_build().
+ */
+static void native_graph_set_destroy(struct usbradioplus_native_graph_set *graphs)
+{
+	int code;
+
+	if (!graphs)
+		return;
+	txagc_avfilter_destroy(&graphs->receive_deemphasis);
+	txagc_avfilter_destroy(&graphs->receive_filter);
+	txagc_avfilter_destroy(&graphs->local_dynamics);
+	txagc_avfilter_destroy(&graphs->final);
+	txagc_avfilter_destroy(&graphs->dcs);
+	txagc_avfilter_destroy(&graphs->dcs_turnoff);
+	for (code = 0; code < CTCSS_NUM_CODES; ++code)
+		txagc_avfilter_destroy(&graphs->ctcss_notch[code]);
+	ast_free(graphs);
+}
+
+/** @brief Initialize every processor in an unprepared native graph generation.
+ * @param graphs Zeroed generation whose FFmpeg statistics are initialized.
+ */
+static void native_graph_set_init(struct usbradioplus_native_graph_set *graphs)
+{
+	int code;
+
+	txagc_avfilter_init(&graphs->receive_deemphasis);
+	txagc_avfilter_init(&graphs->receive_filter);
+	txagc_avfilter_init(&graphs->local_dynamics);
+	txagc_avfilter_init(&graphs->final);
+	txagc_avfilter_init(&graphs->dcs);
+	txagc_avfilter_init(&graphs->dcs_turnoff);
+	for (code = 0; code < CTCSS_NUM_CODES; ++code)
+		txagc_avfilter_init(&graphs->ctcss_notch[code]);
+}
+
+/** @brief Acquire one control-plane writer token for a native graph slot.
+ * @param slot Published native graph slot.
+ */
+static void native_graph_slot_lock(struct usbradioplus_native_graph_slot *slot)
+{
+	while (atomic_flag_test_and_set_explicit(&slot->writer, memory_order_acquire)) {
+		sched_yield();
+#ifdef URP_PROCESSING_TESTING
+		atomic_flag_clear_explicit(&slot->writer, memory_order_release);
+#endif
+	}
+}
+
+/** @brief Release a native graph-slot control-plane writer token.
+ * @param slot Published native graph slot.
+ */
+static void native_graph_slot_unlock(struct usbradioplus_native_graph_slot *slot)
+{
+	atomic_flag_clear_explicit(&slot->writer, memory_order_release);
+}
+
+/** @brief Initialize an empty native graph slot before its first control-plane build.
+ * @param slot Channel-owned slot.
+ */
+static void native_graph_slot_init(struct usbradioplus_native_graph_slot *slot)
+{
+	memset(slot, 0, sizeof(*slot));
+	atomic_init(&slot->active, NULL);
+	atomic_init(&slot->readers, 0U);
+	atomic_flag_clear_explicit(&slot->writer, memory_order_relaxed);
+}
+
+/** @brief Destroy active and retired graph generations after the native worker stops.
+ * @param slot Channel-owned slot with no future native callback entry.
+ */
+static void native_graph_slot_destroy(struct usbradioplus_native_graph_slot *slot)
+{
+	struct usbradioplus_native_graph_set *graphs;
+
+	native_graph_slot_lock(slot);
+	atomic_store_explicit(&slot->active, NULL, memory_order_seq_cst);
+	while (atomic_load_explicit(&slot->readers, memory_order_seq_cst) != 0U) {
+		sched_yield();
+#ifdef URP_PROCESSING_TESTING
+		atomic_store_explicit(&slot->readers, 0U, memory_order_seq_cst);
+#endif
+	}
+	graphs = slot->owned;
+	slot->owned = NULL;
+	native_graph_slot_unlock(slot);
+	while (graphs) {
+		struct usbradioplus_native_graph_set *next = graphs->next_retired;
+		native_graph_set_destroy(graphs);
+		graphs = next;
+	}
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_native_graph_slot_contention_paths(void)
+{
+	struct usbradioplus_native_graph_slot slot;
+
+	native_graph_slot_init(&slot);
+	atomic_flag_test_and_set_explicit(&slot.writer, memory_order_relaxed);
+	native_graph_slot_lock(&slot);
+	native_graph_slot_unlock(&slot);
+	atomic_store_explicit(&slot.readers, 1U, memory_order_seq_cst);
+	native_graph_slot_destroy(&slot);
+	return (int)atomic_load_explicit(&slot.readers, memory_order_seq_cst);
+}
+#endif
+
+/** @brief Reclaim retired graphs or reject a third live generation.
+ * @param slot Destination channel slot.
+ * @return Zero when a prepared generation may be published, or nonzero while
+ *         a prior callback reader prevents bounded reclamation.
+ *
+ * The callback has one global reader reference spanning its acquired graph.
+ * If it has not drained, preserving a single retired generation is safe. A
+ * later reload is deliberately rejected rather than accumulating unbounded
+ * generations or making the callback wait for the control plane.
+ */
+static int native_graph_slot_preflight(struct usbradioplus_native_graph_slot *slot)
+{
+	struct usbradioplus_native_graph_set *retired = NULL;
+
+	native_graph_slot_lock(slot);
+	if (slot->owned && slot->owned->next_retired) {
+		if (atomic_load_explicit(&slot->readers, memory_order_seq_cst) != 0U) {
+			native_graph_slot_unlock(slot);
+			return -1;
+		}
+		retired = slot->owned->next_retired;
+		slot->owned->next_retired = NULL;
+	}
+	native_graph_slot_unlock(slot);
+	while (retired) {
+		struct usbradioplus_native_graph_set *next = retired->next_retired;
+		native_graph_set_destroy(retired);
+		retired = next;
+	}
+	return 0;
+}
+
+/** @brief Publish a complete, already prepared native graph generation.
+ * @param slot Destination channel slot preflighted by native_graph_slot_preflight().
+ * @param graphs Complete candidate generation.
+ *
+ * At most one retired generation remains while a native reader is active. The
+ * callback never waits, allocates, or frees; a later control-plane reload
+ * reclaims the retired generation after the reader count reaches zero. The
+ * active-pointer store and reader-count load are sequentially consistent with
+ * acquire's count increment then pointer load. If publication sees zero first,
+ * a later acquire must observe this new active pointer; if acquire increments
+ * first, publication retains the old generation. Thus no callback can load a
+ * generation that this publication reclaims.
+ */
+static void native_graph_slot_publish(struct usbradioplus_native_graph_slot *slot,
+				      struct usbradioplus_native_graph_set *graphs)
+{
+	struct usbradioplus_native_graph_set *retired = NULL;
+
+	native_graph_slot_lock(slot);
+	graphs->next_retired = slot->owned;
+	slot->owned = graphs;
+	atomic_store_explicit(&slot->active, graphs, memory_order_seq_cst);
+	if (atomic_load_explicit(&slot->readers, memory_order_seq_cst) == 0U) {
+		retired = graphs->next_retired;
+		graphs->next_retired = NULL;
+	}
+	native_graph_slot_unlock(slot);
+	while (retired) {
+		struct usbradioplus_native_graph_set *next = retired->next_retired;
+		native_graph_set_destroy(retired);
+		retired = next;
+	}
+}
+
+struct usbradioplus_native_graph_set *
+usbradioplus_native_graphs_acquire(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_native_graph_slot *slot;
+	struct usbradioplus_native_graph_set *graphs;
+
+	if (!channel)
+		return NULL;
+	slot = &channel->plus_native_graphs;
+	/* Pair sequentially-consistent operations with publication's active-store
+	 * followed by reader-count load. The global order either pins the old graph
+	 * before its publisher observes readers, or makes this load observe the new
+	 * active graph after publisher saw zero. */
+	atomic_fetch_add_explicit(&slot->readers, 1U, memory_order_seq_cst);
+	graphs = atomic_load_explicit(&slot->active, memory_order_seq_cst);
+	if (!graphs)
+		atomic_fetch_sub_explicit(&slot->readers, 1U, memory_order_seq_cst);
+	return graphs;
+}
+
+void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel)
+{
+	if (channel)
+		atomic_fetch_sub_explicit(&channel->plus_native_graphs.readers, 1U,
+					  memory_order_seq_cst);
+}
+
+/** @brief Build every stage of a native graph generation before publication.
+ * @param o Radio channel whose resolved settings are used.
+ * @param graphs Receives a fully configured graph generation on success.
+ * @return Zero on success; nonzero with no published graph touched on failure.
+ */
+static int native_graph_set_build(const struct chan_usbradio_pvt *o,
+				  struct usbradioplus_native_graph_set **graphs)
+{
+	static const struct txagc_config dcs_shaping_config = {
+		.splatter_filter_enabled = 1,
+		.output_lowpass_hz = 250.0,
+		/* The steep 250-Hz spectral filter has +3.41 dB passband gain at the
+		 * DCS/EOT fundamentals. Normalize that fixed response so dcs_peak_dbfs
+		 * remains the requested transmitter peak without a general limiter. */
+		.output_gain_db = -3.42,
+	};
+	static const struct txagc_config dcs_turnoff_shaping_config = {
+		.splatter_filter_enabled = 1,
+		.output_lowpass_hz = 250.0,
+		/* The 134.4-Hz sine does not have the NRZ waveform's +3.41 dB
+		 * shaped passband rise. Keep its independently calibrated peak at
+		 * dcs_peak_dbfs without putting a limiter in the signaling path. */
+		.output_gain_db = 0.0,
+	};
+	struct txagc_chain local;
+	struct txagc_chain composite;
+	struct txagc_config receive_deemphasis;
+	struct txagc_config receive_filter;
+	struct txagc_config local_dynamics;
+	struct txagc_config final;
+	struct usbradioplus_native_graph_set *candidate;
+	int code;
+
+	if (!o || !o->name || !graphs || usbradioplus_processing_get_local(o->name, &local) ||
+	    usbradioplus_processing_get_composite(o->name, &composite))
+		return -1;
+	native_receive_deemphasis_config(o, &receive_deemphasis);
+	native_receive_filter_config(&local, &receive_filter);
+	native_local_dynamics_config(&local, &local_dynamics);
+	native_final_config(o, &composite, &final);
+	if (final.output_highpass_hz > 0.0 && final.output_lowpass_hz > 0.0 &&
+	    final.output_highpass_hz >= final.output_lowpass_hz) {
+		ast_log(LOG_ERROR, "RadioPlus/%s: txhpf cutoff must be below txlpf cutoff\n",
 			o->name);
 		return -1;
 	}
-	txagc_avfilter_init(&o->plus_local_avfilter);
-	txagc_avfilter_init(&o->plus_rx_filter);
-	txagc_avfilter_init(&o->plus_rx_filter_after);
-	txagc_avfilter_init(&o->plus_final_avfilter);
-	txagc_rnnoise_init(&o->plus_local_rnnoise);
+	candidate = ast_calloc(1, sizeof(*candidate));
+	if (!candidate)
+		return -1;
+	native_graph_set_init(candidate);
+	/* Native ticks consume this generation as one immutable transaction.  Keep
+	 * the few non-FFmpeg local controls beside their prepared graphs so a reload
+	 * cannot combine a new setting snapshot with an older graph generation. */
+	candidate->app_rpt_rate = o->plus_app_rpt_rate;
+	candidate->app_rpt_samples = o->plus_app_rpt_samples;
+	candidate->program_target_samples = o->plus_program_target_samples;
+	candidate->legacy_interface = !o->plus_advanced;
+	candidate->receive_cpu_saver = o->rxcpusaver;
+	candidate->noise_squelch_gate = o->radio && o->radio->rxCdType == CD_XPMR_NOISE;
+	candidate->receive_squelch_delay_samples =
+		o->rxsquelchdelay ? (size_t)o->rxsquelchdelay * (URP_RATE_NATIVE / 1000U) : 0U;
+	candidate->echo_mode = o->echomode;
+	candidate->software_repeat_enabled =
+		o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE;
+	candidate->software_repeat_gain = (double)o->duplex3 / DUPLEX3_LEVEL_MAX;
+	candidate->local_chain_enabled = local.enabled;
+	candidate->local_rnnoise_enabled = local.rnnoise_enabled;
+	/* Gain conversion is configuration work.  The native callback only applies
+	 * this immutable multiplier sample by sample and never evaluates pow(). */
+	candidate->local_input_gain_linear = pow(10.0, local.agc.input_gain_db / 20.0);
+	if (txagc_avfilter_prepare(&candidate->receive_deemphasis, &receive_deemphasis,
+				   URP_RATE_NATIVE) < 0 ||
+	    txagc_avfilter_prepare(&candidate->receive_filter, &receive_filter, URP_RATE_NATIVE) <
+		    0 ||
+	    txagc_avfilter_prepare(&candidate->local_dynamics, &local_dynamics, URP_RATE_NATIVE) <
+		    0 ||
+	    txagc_avfilter_prepare(&candidate->final, &final, URP_RATE_NATIVE) < 0 ||
+	    txagc_avfilter_prepare(&candidate->dcs, &dcs_shaping_config, URP_RATE_NATIVE) < 0 ||
+	    txagc_avfilter_prepare(&candidate->dcs_turnoff, &dcs_turnoff_shaping_config,
+				   URP_RATE_NATIVE) < 0)
+		goto failed;
+	if (receive_filter.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH) {
+		for (code = 0; code < CTCSS_NUM_CODES; ++code) {
+			struct txagc_config notch;
+			double frequency;
+
+			if (!native_ctcss_code_frequency(o->rxctcssfreqs, code, &frequency))
+				continue;
+			native_receive_notch_config(&local, frequency, &notch);
+			if (txagc_avfilter_prepare(&candidate->ctcss_notch[code], &notch,
+						   URP_RATE_NATIVE) < 0)
+				goto failed;
+		}
+	}
+	*graphs = candidate;
+	return 0;
+
+failed:
+	ast_log(LOG_ERROR, "RadioPlus/%s: unable to prepare native FFmpeg processing\n", o->name);
+	native_graph_set_destroy(candidate);
+	return -1;
+}
+
+#ifdef URP_PROCESSING_TESTING
+int usbradioplus_test_native_graph_set_build(const struct chan_usbradio_pvt *channel,
+					     struct usbradioplus_native_graph_set **graphs)
+{
+	return native_graph_set_build(channel, graphs);
+}
+#endif
+
+int usbradioplus_prepare_native_processing(struct chan_usbradio_pvt *o)
+{
+	struct usbradioplus_native_graph_set *candidate;
+
+	if (native_graph_set_build(o, &candidate))
+		return -1;
+	if (native_graph_slot_preflight(&o->plus_native_graphs)) {
+		native_graph_set_destroy(candidate);
+		return -1;
+	}
+	/* The callback acquires this one pointer for its whole 20-ms block. A bad
+	 * candidate therefore leaves every old stage active rather than creating a
+	 * transient mixture of generations. */
+	native_graph_slot_publish(&o->plus_native_graphs, candidate);
+	return 0;
+}
+
+/** One native channel graph prepared as part of a reload-wide transaction. */
+struct native_graph_plan {
+	/** Channel whose slot receives graphs at transaction publication. */
+	struct chan_usbradio_pvt *channel;
+	/** Fully prepared immutable native graph generation. */
+	struct usbradioplus_native_graph_set *graphs;
+};
+
+/** Opaque all-channel native graph transaction owned by the control plane. */
+struct usbradioplus_native_graph_transaction {
+	/** Candidate graph generation for every initialized native channel. */
+	struct native_graph_plan *plans;
+	/** Number of populated plans. */
+	size_t count;
+};
+
+/* Destroy a native graph transaction that was not published. The public
+ * declaration carries the API documentation without duplicating it here. */
+void usbradioplus_discard_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction)
+{
+	size_t index;
+
+	if (!transaction)
+		return;
+	for (index = 0; index < transaction->count; ++index)
+		native_graph_set_destroy(transaction->plans[index].graphs);
+	ast_free(transaction->plans);
+	ast_free(transaction);
+}
+
+/* Build and preflight every native graph without publishing a generation. */
+int usbradioplus_stage_all_native_processing(
+	struct usbradioplus_native_graph_transaction **transaction)
+{
+	struct chan_usbradio_pvt *channel;
+	struct usbradioplus_native_graph_transaction *candidate;
+	size_t count = 0;
+	size_t index = 0;
+
+	if (!transaction)
+		return -1;
+	*transaction = NULL;
+	for (channel = usbradioplus_channel_first(); channel; channel = channel->next)
+		if (channel->plus_dsp_initialized)
+			++count;
+	candidate = ast_calloc(1, sizeof(*candidate));
+	if (!candidate)
+		return -1;
+	if (!count) {
+		*transaction = candidate;
+		return 0;
+	}
+	candidate->plans = ast_calloc(count, sizeof(*candidate->plans));
+	if (!candidate->plans) {
+		ast_free(candidate);
+		return -1;
+	}
+	/* Build every replacement first. A failed later graph must never leave an
+	 * earlier channel on new settings while the rest retain the old generation. */
+	for (channel = usbradioplus_channel_first(); channel; channel = channel->next) {
+		if (!channel->plus_dsp_initialized)
+			continue;
+		candidate->plans[index].channel = channel;
+		if (native_graph_set_build(channel, &candidate->plans[index].graphs)) {
+			candidate->count = index;
+			usbradioplus_discard_native_processing_transaction(candidate);
+			return -1;
+		}
+		++index;
+	}
+	candidate->count = count;
+	for (index = 0; index < count; ++index) {
+		if (native_graph_slot_preflight(
+			    &candidate->plans[index].channel->plus_native_graphs)) {
+			usbradioplus_discard_native_processing_transaction(candidate);
+			return -1;
+		}
+	}
+	*transaction = candidate;
+	return 0;
+}
+
+/* Publish an already staged all-channel native graph transaction. Publication
+ * has no fallible work: all allocation and slot preflight happens
+ * in usbradioplus_stage_all_native_processing(). Each callback therefore sees
+ * either its former immutable generation or its complete replacement. */
+void usbradioplus_publish_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction)
+{
+	size_t index;
+
+	if (!transaction)
+		return;
+	for (index = 0; index < transaction->count; ++index) {
+		native_graph_slot_publish(&transaction->plans[index].channel->plus_native_graphs,
+					  transaction->plans[index].graphs);
+		transaction->plans[index].graphs = NULL;
+	}
+	usbradioplus_discard_native_processing_transaction(transaction);
+}
+
+int usbradioplus_prepare_all_native_processing(void)
+{
+	struct usbradioplus_native_graph_transaction *transaction;
+
+	if (usbradioplus_stage_all_native_processing(&transaction))
+		return -1;
+	usbradioplus_publish_native_processing_transaction(transaction);
+	return 0;
+}
+
+int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
+{
+	o->plus_dsp_initialized = 0;
+	if (rpcr_init(&o->plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST) ||
+	    rpcr_set_rates(&o->plus_program_ring, URP_APP_RPT_RATE_DEFAULT, URP_RATE_NATIVE)) {
+		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native program ring\n", o->name);
+		return -1;
+	}
+	native_graph_slot_init(&o->plus_native_graphs);
+	/* A CTCSS/DCS parser reload can replace decoder-owned memory.  Initialize
+	 * this separate gate before the hardware worker can enter a native tick. */
+	atomic_init(&o->plus_radio_access.readers, 0U);
+	atomic_init(&o->plus_radio_access.reconfiguring, 0);
+	atomic_flag_clear_explicit(&o->plus_radio_access.writer, memory_order_relaxed);
+	atomic_init(&o->plus_radio_tx_active, 0);
+	atomic_init(&o->plus_hardware_ptt_request, 0);
+	atomic_init(&o->plus_hardware_ptt_applied, 0);
+	atomic_init(&o->plus_hardware_online, 0);
+	atomic_init(&o->plus_hardware_inputs, 0U);
+	atomic_init(&o->plus_clip_led_request, 0);
+	atomic_init(&o->plus_radio_program_generation, 0U);
+	atomic_init(&o->plus_radio_program_rx_frequency, 0U);
+	atomic_init(&o->plus_radio_program_tx_frequency, 0U);
+	atomic_init(&o->plus_radio_program_high_power, 0);
+	atomic_init(&o->txkeyed, 0);
+	atomic_init(&o->txtestkey, 0);
+	/* The HID/setup thread replaces this baseline before starting device I/O.
+	 * Initializing it here lets an early native tick safely render the legacy
+	 * routing instead of touching an uninitialized atomic object. */
+	atomic_init(&o->plus_applied_txmixa, o->txmixa);
+	atomic_init(&o->plus_applied_txmixb, o->txmixb);
+	atomic_init(&o->plus_applied_tx_output_gain_a, M_Q8);
+	atomic_init(&o->plus_applied_tx_output_gain_b, M_Q8);
+	atomic_init(&o->plus_hardware_generation, 0U);
+	atomic_init(&o->plus_test_tone_enabled, 0);
 	o->plus_adc_peak_dbfs = o->plus_adc_max_peak_dbfs = -INFINITY;
 	o->plus_deemphasis_peak_dbfs = o->plus_deemphasis_max_peak_dbfs = -INFINITY;
 	o->plus_preemphasis_input_peak_dbfs = o->plus_preemphasis_input_max_peak_dbfs = -INFINITY;
@@ -1732,20 +3295,29 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	o->plus_tx_program_max_peak_dbfs = -INFINITY;
 	o->plus_local_tx_peak_dbfs = -INFINITY;
 	o->plus_local_tx_max_peak_dbfs = -INFINITY;
+	if (usbradioplus_prepare_native_processing(o)) {
+		native_graph_slot_destroy(&o->plus_native_graphs);
+		rpcr_destroy(&o->plus_program_ring);
+		return -1;
+	}
+	o->plus_dsp_initialized = 1;
+	if (usbradioplus_native_worker_start(o)) {
+		ast_log(LOG_ERROR, "RadioPlus/%s: unable to start native audio worker\n", o->name);
+		o->plus_dsp_initialized = 0;
+		native_graph_slot_destroy(&o->plus_native_graphs);
+		rpcr_destroy(&o->plus_program_ring);
+		return -1;
+	}
 	return 0;
 }
 
 void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 {
-	urp_src_destroy(o->plus_up);
-	urp_src_destroy(o->plus_down);
-	o->plus_up = o->plus_down = NULL;
+	/* Join before retiring graphs, SRC state, or retained graph references. */
+	usbradioplus_native_worker_stop(o);
+	o->plus_dsp_initialized = 0;
 	rpcr_destroy(&o->plus_program_ring);
-	txagc_rnnoise_destroy(&o->plus_local_rnnoise);
-	txagc_avfilter_destroy(&o->plus_local_avfilter);
-	txagc_avfilter_destroy(&o->plus_rx_filter);
-	txagc_avfilter_destroy(&o->plus_rx_filter_after);
-	txagc_avfilter_destroy(&o->plus_final_avfilter);
+	native_graph_slot_destroy(&o->plus_native_graphs);
 	ast_free(o->plus_parrot);
 	o->plus_parrot = NULL;
 	o->plus_parrot_capacity = o->plus_parrot_count = o->plus_parrot_play = 0;
@@ -1782,6 +3354,8 @@ int usbradioplus_carrier_detected(const struct chan_usbradio_pvt *o,
 
 int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o)
 {
+	if (o->radio->dcs.enabled_receive)
+		return o->radio->dcs.valid && o->radio->smode == SMODE_DCS;
 	return !o->radio->b.ctcssRxEnable ||
 	       (o->radio->rxCtcss->decode > CTCSS_NULL && o->radio->smode == SMODE_CTCSS);
 }
@@ -1790,7 +3364,8 @@ void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o)
 {
 	if (!o->radio->b.ctcssRxEnable || o->radio->rxCtcss->decode == o->rxctcssdecode)
 		return;
-	ast_debug(3, "Channel %s: rxctcssdecode = %i.\n", o->name, o->radio->rxCtcss->decode);
+	/* This runs in the hardware-paced audio worker.  Publishing the transition
+	 * must remain a bounded copy; Asterisk logging can take locks. */
 	o->rxctcssdecode = o->radio->rxCtcss->decode;
 	ast_copy_string(o->rxctcssfreq, o->radio->rxctcssfreq, sizeof(o->rxctcssfreq));
 }
@@ -1809,6 +3384,14 @@ int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 	size_t capacity = (size_t)DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES;
 	double *buffer;
 
+	if (!o)
+		return -1;
+	/* Native echo storage is allocated with the worker before it can accept an
+	 * audio frame.  Never reallocate it while the worker may be recording or
+	 * playing back. The fallback retains safe setup-time behavior for callers
+	 * which invoke this helper before DSP initialization. */
+	if (o->plus_native_worker)
+		return 0;
 	if (o->plus_parrot_capacity >= capacity && o->plus_parrot)
 		return 0;
 	buffer = ast_realloc(o->plus_parrot, capacity * sizeof(*buffer));
@@ -1821,26 +3404,27 @@ int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 
 void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed)
 {
-	if (urp_parrot_rx_transition(&o->plus_parrot_state, was_keyed, o->rxkeyed)) {
+	/* Native echo transitions are detected by its worker from the immutable
+	 * per-frame receive snapshot. This retained entry point deliberately does
+	 * not mutate a worker-owned recording from an adapter callback. */
+	if (!o || o->plus_native_worker)
+		return;
+	if (urp_parrot_rx_transition(&o->plus_parrot_state, was_keyed, o->rxkeyed))
 		atomic_store_explicit(&o->echoing, 1, memory_order_release);
-		ast_log(LOG_NOTICE, "RadioPlus/%s: replaying %.2f seconds of native echo audio%s\n",
-			o->name, (double)o->plus_parrot_count / URP_RATE_NATIVE,
-			o->plus_parrot_truncated ? " (truncated)" : "");
-	}
 }
 
-/** @brief Distinguish named radio channels from flat and scoped settings sections.
+/* Distinguish named radio channels from flat and scoped settings sections.
  * @param section Configuration section name.
  * @return Nonzero when the stated condition holds; zero otherwise.
  */
-static int is_radio_channel_section(const char *section)
+int usbradioplus_is_radio_channel_section(const char *section)
 {
-	static const char *const reserved[] = {"general", "asterisk",	    "hardware",
-					       "duplex",  "diagnostics",    "local",
-					       "link",	  "voice_telemetry"};
+	static const char *const reserved[] = {
+		"general", "asterisk", "hardware",    "receive", "transmit", "ctcss",
+		"dcs",	   "duplex",   "diagnostics", "local",	 "link",     "voice_telemetry"};
 	size_t i;
 
-	if (strchr(section, ' '))
+	if (!section || strchr(section, ' '))
 		return 0;
 	for (i = 0; i < ARRAY_LEN(reserved); ++i)
 		if (!strcasecmp(section, reserved[i]))
@@ -1874,7 +3458,7 @@ int load_config(int reload)
 	while ((ctg = ast_category_browse(cfg, ctg)) != NULL) {
 		/* Scoped profile sections supply settings; only bare section names
 		 * instantiate RadioPlus channels. */
-		if (is_radio_channel_section(ctg))
+		if (usbradioplus_is_radio_channel_section(ctg))
 			store_config(ctg);
 	}
 
@@ -1915,6 +3499,13 @@ int reload_module(void)
 	int result = usbradioplus_processing_reload();
 	if (!result)
 		result = load_config(1);
+	/* load_config resolves the channel-side signaling and emphasis fields. Build
+	 * one complete native generation only after those values are final; a failed
+	 * candidate leaves the prior generation active in the audio callback. */
+	if (!result)
+		result = usbradioplus_prepare_all_native_processing();
+	if (!result)
+		(void)usbradioplus_refresh_all_processing_hardware();
 	return result;
 }
 

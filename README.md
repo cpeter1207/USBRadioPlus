@@ -9,6 +9,10 @@ This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
 with suitable test equipment.
 
+The current `usbradioplus.conf` signaling interface is a clean break. It does
+not migrate `chan_usbradio` or earlier settings; start from the shipped sample
+and back up the prior configuration.
+
 ## Build and install
 
 Signed Debian packages for supported Intel PCs (`amd64`) and 64-bit Raspberry
@@ -48,6 +52,8 @@ commands.
   Debian packaging interface.
 - [Native radio notes](doc/native-radio.md) describe carrier detection,
   signaling, and their test boundary.
+- [The release checklist](RELEASE-CHECKLIST.md) lists the automated,
+  service-monitor, activation, and rollback evidence required for an alpha.
 - [Generated source documentation](https://cpeter1207.github.io/USBRadioPlus/docs/)
   provides the Doxygen API and call graphs.
 - [Contributing](CONTRIBUTING.md) describes the mandatory quality gate and

@@ -117,6 +117,23 @@ static void reset_failures(void)
 	short_input = 0;
 }
 
+/** @brief Populate a complete, non-owning prepared state for guard-path tests.
+ * @param state State whose mandatory prepared members will be supplied.
+ *
+ * The wrapped library entry points make these sentinel handles safe for tests
+ * that intentionally stop at a public precondition.  They are never passed to
+ * an unwrapped library routine.
+ */
+static void set_guard_ready_state(struct txagc_rnnoise *state)
+{
+	memset(state, 0, sizeof(*state));
+	state->prepared = 1;
+	state->input_rate = 48000;
+	state->denoise = (DenoiseState *)(uintptr_t)1;
+	state->upsampler = (SRC_STATE *)(uintptr_t)1;
+	state->downsampler = (SRC_STATE *)(uintptr_t)1;
+}
+
 /** @brief Verify configuration failures. */
 static void test_configuration_failures(void)
 {
@@ -154,6 +171,41 @@ static void test_configuration_failures(void)
 	state.upsampler = (SRC_STATE *)(uintptr_t)1;
 	fail_create_call = 1;
 	assert(configure_rate(&state, 48000) < 0);
+}
+
+/** @brief Exercise every mandatory prepared-state component before reconfiguration.
+ *
+ * A partial prepared state can result from a failed control-plane allocation.
+ * Verify that each incomplete combination is rebuilt rather than accepted as
+ * ready, while a fully populated state at a different rate is also rebuilt.
+ */
+static void test_prepared_state_reconfiguration_guards(void)
+{
+	struct txagc_rnnoise state;
+
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.input_rate = 8000;
+	assert(!configure_rate(&state, 48000));
+	txagc_rnnoise_destroy(&state);
+
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.denoise = NULL;
+	assert(!configure_rate(&state, 48000));
+	txagc_rnnoise_destroy(&state);
+
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.upsampler = NULL;
+	assert(!configure_rate(&state, 48000));
+	txagc_rnnoise_destroy(&state);
+
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.downsampler = NULL;
+	assert(!configure_rate(&state, 48000));
+	txagc_rnnoise_destroy(&state);
 }
 
 /** @brief Verify processing failures and fifo helpers. */
@@ -223,13 +275,106 @@ static void test_processing_failures_and_fifo_helpers(void)
 	txagc_rnnoise_destroy(&state);
 }
 
+/** @brief Verify the native prepared path never creates or replaces RNNoise state. */
+static void test_prepared_callback_has_no_lifecycle_work(void)
+{
+	struct txagc_rnnoise state;
+	double samples[960] = {0};
+	int prepared_creates;
+
+	reset_failures();
+	txagc_rnnoise_init(&state);
+	assert(txagc_rnnoise_prepare(NULL, 48000) < 0);
+	assert(txagc_rnnoise_prepare(&state, 0) < 0);
+	assert(!txagc_rnnoise_prepare(&state, 48000));
+	prepared_creates = create_call;
+	assert(prepared_creates == 3);
+	/* A prepared stream at the same rate must retain its converters rather than
+	 * rebuild them in the audio-control path. */
+	assert(!txagc_rnnoise_prepare(&state, 48000));
+	assert(create_call == prepared_creates);
+	assert(txagc_rnnoise_process_prepared(NULL, samples, sizeof(samples) / sizeof(samples[0])) <
+	       0);
+	assert(txagc_rnnoise_process_prepared(&state, NULL, sizeof(samples) / sizeof(samples[0])) <
+	       0);
+	assert(!txagc_rnnoise_process_prepared(&state, samples,
+					       sizeof(samples) / sizeof(samples[0])));
+	assert(create_call == prepared_creates);
+	txagc_rnnoise_bypass(&state);
+	assert(state.prepared && !state.active && create_call == prepared_creates);
+	fail_process_call = process_call + 1;
+	assert(txagc_rnnoise_process_prepared(&state, samples,
+					      sizeof(samples) / sizeof(samples[0])) < 0);
+	assert(state.prepared && !state.active && create_call == prepared_creates);
+	txagc_rnnoise_destroy(&state);
+}
+
+/** @brief Exercise each short-circuit guard in both floating-point entry points. */
+static void test_public_processing_guards(void)
+{
+	struct txagc_rnnoise state;
+	double samples[2049] = {0};
+
+	assert(txagc_rnnoise_process_double(NULL, samples, 1, 48000) < 0);
+	txagc_rnnoise_init(&state);
+	assert(txagc_rnnoise_process_double(&state, NULL, 1, 48000) < 0);
+	assert(txagc_rnnoise_process_double(&state, samples, 1, 0) < 0);
+	assert(txagc_rnnoise_process_double(&state, samples, 2049, 48000) < 0);
+
+	assert(txagc_rnnoise_process_prepared(NULL, samples, 1) < 0);
+	txagc_rnnoise_init(&state);
+	assert(txagc_rnnoise_process_prepared(&state, NULL, 1) < 0);
+	assert(txagc_rnnoise_process_prepared(&state, samples, 1) < 0);
+
+	set_guard_ready_state(&state);
+	state.input_rate = 0;
+	assert(txagc_rnnoise_process_prepared(&state, samples, 1) < 0);
+	set_guard_ready_state(&state);
+	state.denoise = NULL;
+	assert(txagc_rnnoise_process_prepared(&state, samples, 1) < 0);
+	set_guard_ready_state(&state);
+	state.upsampler = NULL;
+	assert(txagc_rnnoise_process_prepared(&state, samples, 1) < 0);
+	set_guard_ready_state(&state);
+	state.downsampler = NULL;
+	assert(txagc_rnnoise_process_prepared(&state, samples, 1) < 0);
+	set_guard_ready_state(&state);
+	assert(txagc_rnnoise_process_prepared(&state, samples, 2049) < 0);
+
+	/* Each incomplete prepared state must force setup rather than entering the
+	 * sample callback with a missing converter or denoiser. */
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.input_rate = 8000;
+	assert(!txagc_rnnoise_process_double(&state, samples, 0, 48000));
+	txagc_rnnoise_destroy(&state);
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.denoise = NULL;
+	assert(!txagc_rnnoise_process_double(&state, samples, 0, 48000));
+	txagc_rnnoise_destroy(&state);
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.upsampler = NULL;
+	assert(!txagc_rnnoise_process_double(&state, samples, 0, 48000));
+	txagc_rnnoise_destroy(&state);
+	reset_failures();
+	set_guard_ready_state(&state);
+	state.downsampler = NULL;
+	assert(!txagc_rnnoise_process_double(&state, samples, 0, 48000));
+	txagc_rnnoise_destroy(&state);
+}
+
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
 int main(void)
 {
 	test_configuration_failures();
+	test_prepared_state_reconfiguration_guards();
 	test_processing_failures_and_fifo_helpers();
+	test_prepared_callback_has_no_lifecycle_work();
+	test_public_processing_guards();
 	puts("RNNoise failure-path tests passed");
 	return 0;
 }

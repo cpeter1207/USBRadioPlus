@@ -109,6 +109,38 @@ static void test_same_rate_bypass(void)
 	assert(!memcmp(input, output, sizeof(input)));
 }
 
+/** @brief Verify the native prepared SRC path cannot grow callback storage. */
+static void test_prepared_src_no_allocation(void)
+{
+	struct urp_src *src;
+	int16_t input[URP_LINK_SAMPLES] = {0};
+	int16_t output[URP_NATIVE_SAMPLES];
+	size_t used = 0;
+	size_t made = 0;
+	int prepared_allocations;
+
+	src = urp_src_create(0, 1);
+	assert(src);
+	allocation_count = 0;
+	allocation_to_fail = 0;
+	assert(!urp_src_reserve(src, URP_LINK_SAMPLES, URP_NATIVE_SAMPLES));
+	prepared_allocations = allocation_count;
+	/* A hidden resize would both increment the counter and fail this call. */
+	allocation_to_fail = prepared_allocations + 1;
+	assert(!urp_rate_convert_prepared(src, input, URP_LINK_SAMPLES, URP_RATE_LINK, output,
+					  URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used, &made));
+	assert(allocation_count == prepared_allocations);
+	assert(urp_rate_convert_prepared(src, input, URP_LINK_SAMPLES + 1U, URP_RATE_LINK, output,
+					 URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used, &made) < 0);
+	assert(allocation_count == prepared_allocations);
+	/* Same-rate conversion intentionally needs neither a converter nor workspace. */
+	assert(!urp_rate_convert_prepared(NULL, input, URP_LINK_SAMPLES, URP_RATE_LINK, output,
+					  URP_LINK_SAMPLES, URP_RATE_LINK, &used, &made));
+	assert(allocation_count == prepared_allocations);
+	allocation_to_fail = 0;
+	urp_src_destroy(src);
+}
+
 /** @brief Verify echo. */
 static void test_echo(void)
 {
@@ -134,6 +166,7 @@ static void test_defensive_and_boundary_paths(void)
 	struct urp_echo_replacer echo;
 	struct urp_src *src;
 	int16_t mono[] = {20000, -20000, 100};
+	int16_t oversized[] = {20000, -20000, 100, -100};
 	int16_t stereo[6], extracted[3], short_output[2];
 	int16_t silent_link[URP_LINK_SAMPLES] = {0};
 	int16_t silent_native[URP_NATIVE_SAMPLES] = {0};
@@ -154,6 +187,14 @@ static void test_defensive_and_boundary_paths(void)
 	assert(urp_src_process(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process(src, mono, 3, NULL, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process(src, mono, 3, extracted, 3, 0.0, &used, &made) < 0);
+	assert(urp_src_process_prepared(NULL, mono, 3, extracted, 3, 1.0, &used, &made) < 0);
+	assert(urp_src_process_prepared(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
+	assert(urp_src_process_prepared(src, mono, 3, NULL, 3, 1.0, &used, &made) < 0);
+	assert(urp_src_process_prepared(src, mono, 3, extracted, 3, 0.0, &used, &made) < 0);
+	/* The callback-owned workspaces are fixed after preparation.  Oversized
+	 * source and destination requests must fail rather than allocate there. */
+	assert(urp_src_process_prepared(src, oversized, 4, extracted, 3, 1.0, &used, &made) < 0);
+	assert(urp_src_process_prepared(src, mono, 3, oversized, 4, 1.0, &used, &made) < 0);
 	urp_src_reset(src);
 	assert(!urp_src_process(src, mono, 3, extracted, 3, 1.0, NULL, NULL));
 	urp_src_destroy(src);
@@ -166,6 +207,11 @@ static void test_defensive_and_boundary_paths(void)
 	assert(short_output[0] == mono[0] && short_output[1] == mono[1]);
 	assert(!urp_rate_convert(NULL, mono, 2, 48000, extracted, 3, 48000, &used, &made));
 	assert(used == 2 && made == 2 && extracted[2] == 0);
+	assert(urp_rate_convert_prepared(NULL, NULL, 3, 48000, extracted, 3, 48000, &used, &made) <
+	       0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 0, extracted, 3, 48000, &used, &made) < 0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, NULL, 3, 48000, &used, &made) < 0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, extracted, 3, 0, &used, &made) < 0);
 
 	urp_duplicate_mono(mono, stereo, 3, 2.0, 2.0);
 	assert(stereo[0] == 32767 && stereo[1] == 32767);
@@ -234,6 +280,16 @@ static void test_allocation_and_converter_failures(void)
 	allocation_to_fail = 0;
 	assert(urp_src_process(src, input, 3, output, 3, 1000.0, NULL, NULL) != 0);
 	urp_src_destroy(src);
+
+	/* The allocating wrapper must fail cleanly before the prepared callback path. */
+	src = urp_src_create(0, 1);
+	assert(src);
+	allocation_count = 0;
+	allocation_to_fail = 1;
+	assert(urp_rate_convert(src, input, 3, URP_RATE_LINK, output, 3, URP_RATE_NATIVE, NULL,
+				NULL) < 0);
+	allocation_to_fail = 0;
+	urp_src_destroy(src);
 }
 
 /** @brief Execute this harness's regression assertions and report any failures.
@@ -243,6 +299,7 @@ int main(void)
 {
 	test_src();
 	test_same_rate_bypass();
+	test_prepared_src_no_allocation();
 	test_echo();
 	test_defensive_and_boundary_paths();
 	test_allocation_and_converter_failures();

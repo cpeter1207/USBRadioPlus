@@ -5,6 +5,8 @@
 #ifndef USBRADIOPLUS_CHANNEL_COMMON_H
 #define USBRADIOPLUS_CHANNEL_COMMON_H
 
+#include <stdint.h>
+
 #include "asterisk/channel.h"
 #include "asterisk/config.h"
 
@@ -27,20 +29,77 @@ extern int8_t pp_pulsemask;
 /** Previously applied parallel-port pulse mask. */
 extern int8_t pp_lastmask;
 
-extern int8_t pp_pulsemask;
-extern int8_t pp_lastmask;
-
 int hidhdwconfig(struct chan_usbradio_pvt *o);
+
+/** @brief Return the first configured radio channel in module-list order.
+ * @return Head of the configured channel list, or NULL when no radios exist.
+ */
+struct chan_usbradio_pvt *usbradioplus_channel_first(void);
 
 /** @brief Release a channel that failed before it was linked into the active list.
  * @param o Private state of the selected radio channel.
  */
 void destroy_unlinked_channel(struct chan_usbradio_pvt *o);
 
-/** @brief Wake the HID worker so a changed PTT request is applied promptly.
+/** @brief Wake the HID worker after a control-plane output request.
  * @param o Private state of the selected radio channel.
+ *
+ * Native audio never calls this helper. The worker also polls its atomic PTT
+ * request so a missed wake cannot delay a fail-safe unkey indefinitely.
  */
 void kickptt(const struct chan_usbradio_pvt *o);
+
+/** Bits packed by the HID worker into plus_hardware_inputs. */
+enum usbradioplus_hardware_input_bits {
+	URP_HARDWARE_INPUT_HID_CARRIER = 1U << 0,
+	URP_HARDWARE_INPUT_HID_CTCSS = 1U << 1,
+	URP_HARDWARE_INPUT_PARALLEL_CARRIER = 1U << 2,
+	URP_HARDWARE_INPUT_PARALLEL_CTCSS = 1U << 3,
+};
+
+/** @brief Snapshot of a control-plane radio-programming request. */
+struct usbradioplus_radio_program_request {
+	/** Requested receive frequency in hertz. */
+	uint32_t rx_frequency;
+	/** Requested transmit frequency in hertz. */
+	uint32_t tx_frequency;
+	/** Nonzero requests the high-power radio programming profile. */
+	int high_power;
+	/** Monotonic control-plane publication generation. */
+	unsigned int generation;
+};
+
+/* Copy hardware-worker input and PTT-ack snapshots for the native callback.
+ *
+ * This operation uses atomics only. The HID worker must never modify the
+ * signaling state directly.
+ */
+void usbradioplus_audio_load_hardware_state(struct chan_usbradio_pvt *channel);
+
+/** @brief Publish the signaling engine's immediate PTT request from the native callback.
+ * @param channel Private channel whose callback completed the signaling tick.
+ * @param asserted Nonzero requests physical PTT assertion.
+ */
+void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *channel, int asserted);
+
+/** @brief Publish a native-audio clipping indication for the HID worker.
+ * @param channel Private channel whose clip LED should pulse.
+ */
+void usbradioplus_request_clip_led(struct chan_usbradio_pvt *channel);
+
+/** @brief Publish a packed receiver-input snapshot from the HID worker.
+ * @param channel Private channel whose hardware inputs were sampled.
+ * @param inputs ORed usbradioplus_hardware_input_bits values.
+ */
+void usbradioplus_publish_hardware_inputs(struct chan_usbradio_pvt *channel, unsigned int inputs);
+
+/** @brief Read a coherent radio-programming request without taking a lock.
+ * @param channel Private channel providing the control-plane snapshot.
+ * @param request Receives a stable request on success.
+ * @return Nonzero when a stable request was read; zero while a writer is active.
+ */
+int usbradioplus_read_radio_program_request(const struct chan_usbradio_pvt *channel,
+					    struct usbradioplus_radio_program_request *request);
 
 /** @brief Accept the Asterisk start-of-DTMF notification.
  * @param c Asterisk channel associated with the radio or link.
@@ -63,7 +122,7 @@ int usbradio_digit_end(struct ast_channel *c, char digit, unsigned int duration)
  */
 int usbradio_answer(struct ast_channel *c);
 
-/** @brief Queue app_rpt PCM for asynchronous native-rate transmitter rendering.
+/** @brief Queue source-rate app_rpt PCM for asynchronous native transmitter rendering.
  * @param o Private state of the selected radio channel.
  * @param samples Audio samples; mutable buffers are updated in place.
  * @param count Number of elements available in the supplied block.
@@ -207,8 +266,11 @@ void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag);
  */
 void mult_set(struct chan_usbradio_pvt *o);
 
-/** @brief Program configured radio frequency and power through the hardware bus.
+/** @brief Publish configured radio frequency and power for the HID worker.
  * @param o Private state of the selected radio channel.
+ *
+ * The HID worker owns physical parallel-port writes. This function is safe for
+ * setup and control-plane callers but never performs bus I/O itself.
  */
 void usbradioplus_program_radio(struct chan_usbradio_pvt *o);
 
@@ -225,12 +287,60 @@ void usbradioplus_set_channel(uint8_t channel);
 
 int radio_config(struct chan_usbradio_pvt *o);
 
+#ifdef URP_PROCESSING_TESTING
+/** @brief Exercise CTCSS-list validation through the production parser helper. */
+int usbradioplus_test_ctcss_frequency_list_valid(const char *frequencies, size_t *count);
+/** @brief Exercise receive-to-transmit CTCSS-map validation through the production helper. */
+int usbradioplus_test_ctcss_frequency_lists_mapped(const char *receive_frequencies,
+						   const char *transmit_frequencies);
+/** @brief Exercise one-frequency CTCSS validation through the production helper. */
+int usbradioplus_test_ctcss_frequency_valid(const char *frequency);
+/** @brief Exercise DCS-code validation through the production parser helper. */
+int usbradioplus_test_dcs_code_valid(const char *code);
+/** @brief Exercise resolver argument validation without exposing its private candidate type. */
+int usbradioplus_test_resolve_processing_signaling(const char *category, int null_result);
+/** @brief Exercise the parser-held radio configuration failure path. */
+int usbradioplus_test_radio_config_locked(struct chan_usbradio_pvt *channel);
+/** @brief Exercise deterministic parser-access writer and reader contention paths. */
+int usbradioplus_test_radio_access_contention_paths(void);
+/** @brief Exercise a radio-program snapshot retry without relying on thread timing. */
+int usbradioplus_test_radio_program_snapshot_retry(void);
+/** @brief Find a configured CTCSS code exactly as native notch-graph preparation does. */
+int usbradioplus_test_native_ctcss_code_frequency(const char *frequencies, int code,
+						  double *frequency);
+/** @brief Build a native graph generation without publishing it for deterministic failure tests. */
+int usbradioplus_test_native_graph_set_build(const struct chan_usbradio_pvt *channel,
+					     struct usbradioplus_native_graph_set **graphs);
+/** @brief Exercise deterministic native-graph control-plane contention paths. */
+int usbradioplus_test_native_graph_slot_contention_paths(void);
+#endif
+
 /** @brief Resolve a named channel's unified hardware and radio options.
  * @param o Private state of the selected radio channel.
  * @param category Named radio configuration section.
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
 int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category);
+/** @brief Resolve only clean-slate signaling controls without touching parser state.
+ * @param o Channel receiving a fully validated scalar signaling selection.
+ * @param category Named channel/profile whose overrides are resolved.
+ * @return Zero on success; nonzero without modifying o for invalid input.
+ *
+ * The processing reload calls this helper after graph staging and before the
+ * candidate snapshot is published.  The caller must then invoke radio_config()
+ * to replace parser-owned CTCSS/DCS state under its control-plane gate.
+ */
+int apply_processing_signaling_overrides(struct chan_usbradio_pvt *o, const char *category);
+/** @brief Determine whether a bare configuration section creates a radio channel.
+ *
+ * Flat processing and signaling sections are defaults, never radio-channel
+ * definitions. Keep this classification shared with the configuration loader
+ * so a signaling section that precedes a named radio cannot become active.
+ *
+ * @param section Bare Asterisk configuration-section name.
+ * @return Nonzero when section names a radio channel; zero for a reserved or invalid name.
+ */
+int usbradioplus_is_radio_channel_section(const char *section);
 /** @brief Write current radio calibration values to the unified configuration.
  * @param o Private state of the selected radio channel.
  * @return Zero on success; a nonzero status if the operation cannot complete.
@@ -242,6 +352,38 @@ int save_tuning_config(struct chan_usbradio_pvt *o);
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o);
+
+/** @brief Build and atomically publish a channel's native FFmpeg graphs.
+ * @param o Private state of the selected radio channel.
+ * @return Zero on success; nonzero while retaining each prior graph on failure.
+ *
+ * This is a control-plane operation. Native audio ticks only use the already
+ * prepared graphs it publishes.
+ */
+int usbradioplus_prepare_native_processing(struct chan_usbradio_pvt *o);
+/** @brief Rebuild native graphs for all configured channels after a valid reload.
+ * @return Zero on success; nonzero if any channel keeps its earlier graph set.
+ */
+int usbradioplus_prepare_all_native_processing(void);
+
+/** Opaque all-channel native graph transaction built by the control plane. */
+struct usbradioplus_native_graph_transaction;
+/** @brief Stage all native graph replacements without changing callback state.
+ * @param transaction Receives a private transaction to publish or discard.
+ * @return Zero on success; nonzero while retaining all prior generations.
+ */
+int usbradioplus_stage_all_native_processing(
+	struct usbradioplus_native_graph_transaction **transaction);
+/** @brief Publish a successfully staged native graph transaction.
+ * @param transaction Transaction returned by native graph staging.
+ */
+void usbradioplus_publish_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction);
+/** @brief Destroy a staged native graph transaction without publishing it.
+ * @param transaction Transaction returned by native graph staging; NULL is accepted.
+ */
+void usbradioplus_discard_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction);
 
 /** @brief Release native processing, rate-conversion, and echo buffers.
  * @param o Private state of the selected radio channel.
@@ -267,7 +409,10 @@ int usbradioplus_carrier_detected(const struct chan_usbradio_pvt *o,
  */
 int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o);
 
-/** @brief Publish the current decoded tone before the native PL-filter stage.
+/** @brief Copy a decoded CTCSS transition for the channel frame source.
+ *
+ * The hardware-paced audio worker calls this helper, so it performs only a
+ * bounded state copy and does not log, wait, or acquire a lock.
  * @param o Private state of the selected radio channel.
  */
 void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o);

@@ -150,10 +150,29 @@ def test_active_node_selection(monkeypatch):
 
     @param monkeypatch Pytest fixture that restores patched process and module state.
     """
-    monkeypatch.setitem(globals_for("active_node"), "NODE", "1234")
+    namespace = globals_for("active_node")
+    monkeypatch.setitem(namespace, "OFFLINE", False)
+    monkeypatch.setitem(namespace, "NODE", "1234")
     assert MODULE["active_node"]() == "1234"
-    monkeypatch.setitem(globals_for("active_node"), "NODE", None)
-    monkeypatch.setitem(globals_for("active_node"), "run", lambda _args: "none")
+    monkeypatch.setitem(namespace, "NODE", None)
+    monkeypatch.setitem(namespace, "run", lambda _args: "none")
+    assert MODULE["active_node"]() is None
+    monkeypatch.setitem(namespace, "OFFLINE", True)
+    monkeypatch.setitem(
+        namespace, "run", lambda _args: (_ for _ in ()).throw(AssertionError("Asterisk called"))
+    )
+    assert MODULE["active_node"]() is None
+
+
+def test_active_node_unavailable_is_a_safe_profile_resolution_fallback(monkeypatch):
+    """Do not crash offline tuning when the Asterisk command is unavailable.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    namespace = globals_for("active_node")
+    monkeypatch.setitem(namespace, "NODE", None)
+    monkeypatch.setitem(namespace, "OFFLINE", False)
+    monkeypatch.setitem(namespace, "run", lambda _args: (_ for _ in ()).throw(OSError("missing")))
     assert MODULE["active_node"]() is None
 
 
@@ -190,7 +209,7 @@ def test_shipped_defaults_skip_an_incomplete_candidate(tmp_path, monkeypatch):
         (str(incomplete), str(complete)),
     )
     first_key = next(iter(MODULE["MODERN_SECTION_SETTINGS"]["general"]))
-    assert MODULE["shipped_modern_defaults"]()[first_key] == "value"
+    assert MODULE["shipped_modern_defaults"]()[("general", first_key)] == "value"
 
 
 def test_packaged_gzip_sample_supersedes_incomplete_plain_sample(tmp_path, monkeypatch):
@@ -208,8 +227,8 @@ def test_packaged_gzip_sample_supersedes_incomplete_plain_sample(tmp_path, monke
     monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (sample,))
     assert MODULE["shipped_configuration"]()[0] == content
     defaults = MODULE["shipped_modern_defaults"]()
-    assert defaults["asterisk_jitter_buffer_implementation"] == "fixed"
-    assert defaults["channel_enabled"] == "yes"
+    assert defaults[("asterisk", "asterisk_jitter_buffer_implementation")] == "fixed"
+    assert defaults[("general", "channel_enabled")] == "yes"
     config = tmp_path / "etc/asterisk/usbradioplus.conf"
     monkeypatch.setitem(namespace, "CONFIG", str(config))
     MODULE["ensure_config"]()
@@ -246,7 +265,7 @@ def test_corrupt_gzip_sample_is_reported_or_skipped(tmp_path, monkeypatch, conte
         "DEFAULT_CONFIG_CANDIDATES",
         (sample, ROOT / "examples/usbradioplus.conf.sample"),
     )
-    assert MODULE["shipped_modern_defaults"]()["hardware_input_gain_db"] == "0.0"
+    assert MODULE["shipped_modern_defaults"]()[("hardware", "hardware_input_gain_db")] == "0.0"
 
 
 def test_incomplete_sample_reports_missing_options_without_creating_config(tmp_path, monkeypatch):
@@ -261,7 +280,7 @@ def test_incomplete_sample_reports_missing_options_without_creating_config(tmp_p
     namespace = globals_for("shipped_configuration")
     monkeypatch.setitem(namespace, "DEFAULT_CONFIG_CANDIDATES", (sample,))
     monkeypatch.setitem(namespace, "CONFIG", str(config))
-    with pytest.raises(RuntimeError, match="missing asterisk_jitter_buffer_enabled"):
+    with pytest.raises(RuntimeError, match="missing asterisk\\.asterisk_jitter_buffer_enabled"):
         MODULE["ensure_config"]()
     assert not config.exists()
 
@@ -413,6 +432,69 @@ def test_numeric_prompt_cancel_and_display_helpers(monkeypatch):
     assert MODULE["display_value"]("float", str(math.pi)) == str(math.pi)
 
 
+@pytest.mark.parametrize(
+    ("low", "high", "entered", "limit_text", "error_text"),
+    (
+        (0.5, None, "0.25", "Minimum: 0.5 Hz", "Value must be at least 0.5 Hz."),
+        (None, 10.0, "10.25", "Maximum: 10 Hz", "Value must be no more than 10 Hz."),
+    ),
+)
+def test_numeric_prompt_enforces_one_sided_limits(
+    monkeypatch, low, high, entered, limit_text, error_text
+):
+    """Display and enforce each documented one-sided numeric limit.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    @param low Optional inclusive lower bound.
+    @param high Optional inclusive upper bound.
+    @param entered Out-of-range value supplied by the operator.
+    @param limit_text Expected editor limit text.
+    @param error_text Expected local validation message.
+    """
+    calls = []
+
+    def fake_dialog(args):
+        """Return the supplied numeric value, recording each dialog request.
+
+        @param args Dialog command-line arguments.
+        """
+        calls.append(args)
+        return (0, entered) if "--inputbox" in args else (0, "")
+
+    monkeypatch.setitem(globals_for("prompt_number"), "dialog", fake_dialog)
+    assert MODULE["prompt_number"]("Value", "1", "float", low, high, "Hz") == (1, "")
+    assert limit_text in " ".join(calls[0])
+    assert error_text in " ".join(calls[-1])
+
+
+def test_numeric_prompt_enforces_an_exclusive_positive_lower_bound(monkeypatch):
+    """Accept finite positive CTCSS-tail values while rejecting zero locally.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    calls = []
+
+    def fake_dialog(args):
+        """Return zero for the input box and retain its accessible limit text.
+
+        @param args Dialog command-line arguments.
+        """
+        calls.append(args)
+        return (0, "0") if "--inputbox" in args else (0, "")
+
+    namespace = globals_for("prompt_number")
+    monkeypatch.setitem(namespace, "dialog", fake_dialog)
+    assert MODULE["prompt_number"]("Phase", "120", "float", 0.0, None, "degrees", True) == (1, "")
+    assert "Must be greater than 0 degrees" in " ".join(calls[0])
+    assert "Value must be greater than 0 degrees." in " ".join(calls[-1])
+
+    monkeypatch.setitem(namespace, "dialog", lambda _args: (0, "0.0000001"))
+    assert MODULE["prompt_number"]("Phase", "120", "float", 0.0, None, "degrees", True) == (
+        0,
+        "1e-07",
+    )
+
+
 def test_subprocess_dialog_configuration_and_text_helpers(monkeypatch):
     """Verify subprocess dialog configuration and text helpers.
 
@@ -543,6 +625,143 @@ def test_resolved_sections_cover_passthrough_and_named_general(monkeypatch):
     assert MODULE["resolved_section"](config, "hardware") == "hardware usb"
 
 
+def test_resolved_section_prefers_the_active_radio_over_file_order(monkeypatch):
+    """Edit the active channel's scoped profile unless -n selects another one.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    namespace = globals_for("resolved_section")
+    monkeypatch.setitem(namespace, "NODE", None)
+    monkeypatch.setitem(namespace, "active_node", lambda: "second")
+    config = "[first]\n[second]\n[hardware second]\nhardware_eeprom_enabled = no\n"
+    assert MODULE["resolved_section"](config, "general") == "second"
+    assert MODULE["resolved_section"](config, "hardware") == "hardware second"
+
+
+def test_resolved_signaling_sections_follow_the_selected_radio_profiles(monkeypatch):
+    """Edit the selected radio's receive, transmit, CTCSS, and DCS profiles."""
+    namespace = globals_for("resolved_section")
+    monkeypatch.setitem(namespace, "NODE", "usb")
+    config = """[usb]
+receive_profile = receive-site
+transmit_profile = transmit-site
+ctcss_profile = ctcss-site
+dcs_profile = dcs-site
+[receive receive-site]
+[transmit transmit-site]
+[ctcss ctcss-site]
+[dcs dcs-site]
+"""
+    assert MODULE["resolved_section"](config, "receive") == "receive receive-site"
+    assert MODULE["resolved_section"](config, "transmit") == "transmit transmit-site"
+    assert MODULE["resolved_section"](config, "ctcss") == "ctcss ctcss-site"
+    assert MODULE["resolved_section"](config, "dcs") == "dcs dcs-site"
+
+
+def test_profile_names_and_removal_preserve_unrelated_configuration():
+    """List scoped profiles and restore an implicit named-channel selection."""
+    text = """[usb]
+hardware_profile = site
+channel_enabled = yes
+[hardware site]
+[hardware backup]
+[hardware ]
+[receive site]
+"""
+    assert MODULE["profile_names"](text, "hardware") == ("backup", "site")
+    assert (
+        MODULE["remove_value"](text, "usb", "hardware_profile")
+        == """[usb]
+channel_enabled = yes
+[hardware site]
+[hardware backup]
+[hardware ]
+[receive site]
+"""
+    )
+    assert MODULE["remove_value"](text, "usb", "missing") == text
+
+
+def test_profile_selection_menu_requires_a_configured_radio(monkeypatch):
+    """Reject profile edits until a named channel can be selected safely."""
+    namespace = globals_for("profile_selection_menu")
+    messages = []
+    monkeypatch.setitem(namespace, "NODE", None)
+    monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
+    monkeypatch.setitem(namespace, "active_node", lambda: None)
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args) or (0, ""))
+    MODULE["profile_selection_menu"]()
+    assert "Select a configured named radio channel" in " ".join(messages[-1])
+
+
+def test_profile_selection_menu_selects_existing_profile_and_preserves_focus(monkeypatch):
+    """Select an existing profile through the shared focused choice widget."""
+    namespace = globals_for("profile_selection_menu")
+    text = """[usb]
+hardware_profile = old
+[hardware old]
+[hardware new]
+"""
+    applied, prompts = [], []
+    monkeypatch.setitem(namespace, "NODE", "usb")
+    monkeypatch.setitem(namespace, "read_config", lambda: text)
+    replies = iter(((0, "2"), (1, "")))
+    monkeypatch.setitem(namespace, "dialog", lambda _args: next(replies))
+    monkeypatch.setitem(
+        namespace, "prompt_choice", lambda *args: prompts.append(args) or (0, "new")
+    )
+    monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append((old, new)))
+    MODULE["profile_selection_menu"]()
+    assert prompts == [
+        (
+            "Hardware profile",
+            "old",
+            (
+                ("__channel_default__", "Use channel default (usb)"),
+                ("new", "[hardware new]"),
+                ("old", "[hardware old]"),
+            ),
+        )
+    ]
+    assert applied == [(text, text.replace("hardware_profile = old", "hardware_profile = new"))]
+
+
+def test_profile_selection_menu_restores_default_handles_cancel_and_reports_failure(monkeypatch):
+    """Cover default, cancel, and failed-restart profile-selection outcomes."""
+    namespace = globals_for("profile_selection_menu")
+    text = "[usb]\nhardware_profile = missing\n[hardware site]\n"
+    prompts, applied, messages = [], [], []
+    monkeypatch.setitem(namespace, "NODE", "usb")
+    monkeypatch.setitem(namespace, "read_config", lambda: text)
+    replies = iter(((0, "2"), (1, "")))
+    monkeypatch.setitem(namespace, "dialog", lambda _args: next(replies))
+    monkeypatch.setitem(
+        namespace,
+        "prompt_choice",
+        lambda *args: prompts.append(args) or (0, "__channel_default__"),
+    )
+    monkeypatch.setitem(namespace, "apply_config", lambda old, new: applied.append((old, new)))
+    MODULE["profile_selection_menu"]()
+    assert prompts[0][1] == "__channel_default__"
+    assert applied == [(text, "[usb]\n[hardware site]\n")]
+
+    replies = iter(((0, "2"), (1, "")))
+    monkeypatch.setitem(namespace, "dialog", lambda _args: next(replies))
+    monkeypatch.setitem(namespace, "prompt_choice", lambda *_args: (1, ""))
+    MODULE["profile_selection_menu"]()
+
+    monkeypatch.setitem(namespace, "prompt_choice", lambda *_args: (0, "site"))
+    monkeypatch.setitem(
+        namespace,
+        "apply_config",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("restart failed")),
+    )
+    replies = iter(((0, "2"), (0, ""), (1, "")))
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args) or next(replies))
+    MODULE["profile_selection_menu"]()
+    assert "restart failed" in " ".join(messages[-2])
+
+
 def test_defaults_and_replacement_cover_scoped_and_missing_newline(tmp_path, monkeypatch):
     """Verify defaults and replacement cover scoped and missing newline.
 
@@ -559,7 +778,7 @@ def test_defaults_and_replacement_cover_scoped_and_missing_newline(tmp_path, mon
         "MODERN_SECTION_SETTINGS",
         {"local": {"agc_enabled": None}},
     )
-    assert MODULE["shipped_modern_defaults"]()["agc_enabled"] == "yes"
+    assert MODULE["shipped_modern_defaults"]()[("local", "agc_enabled")] == "yes"
     assert MODULE["replace_value"]("text", "hardware usb", "key", "value") == (
         "text\n\n[hardware usb]\nkey = value\n"
     )
@@ -658,15 +877,18 @@ def test_main_check_and_node_selection_paths(tmp_path, monkeypatch, capsys):
     @param capsys Pytest fixture capturing terminal output.
     """
     config = tmp_path / "processing.conf"
-    config.write_text("[local]\n[link]\n[voice_telemetry]\n", encoding="utf-8")
+    config.write_text("[usb]\n[local]\n[link]\n[voice_telemetry]\n", encoding="utf-8")
     lock = tmp_path / "lock"
     main_globals = globals_for("main")
     monkeypatch.setitem(main_globals, "ensure_config", lambda: None)
+    offline_commands = []
+    monkeypatch.setitem(main_globals, "run", lambda args: offline_commands.append(args) or "")
     monkeypatch.setattr(
         main_globals["sys"], "argv", ["tuner", "--check", "--offline", "--config", str(config)]
     )
     MODULE["main"]()
     assert "configuration and prerequisites are valid" in capsys.readouterr().out
+    assert offline_commands == []
 
     monkeypatch.setattr(main_globals["sys"], "argv", ["tuner", "--check", "--config", str(config)])
     monkeypatch.setattr(main_globals["shutil"], "which", lambda _name: None)

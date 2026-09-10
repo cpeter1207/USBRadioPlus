@@ -8,6 +8,10 @@ This file defines USBRadioPlus radio channels and their hardware, Asterisk,
 duplex, diagnostics, and audio-processing profiles.  Every noise-reduction and
 dynamics stage is disabled unless explicitly enabled.
 .PP
+This is a clean-slate configuration interface. It does not accept
+.BR chan_usbradio
+or earlier USBRadioPlus option names. Start a new file from the shipped sample.
+.PP
 A bare section name creates a channel.  For example,
 .B [usb]
 creates
@@ -15,6 +19,10 @@ creates
 The channel selects profiles with
 .BR asterisk_profile ,
 .BR hardware_profile ,
+.BR receive_profile ,
+.BR transmit_profile ,
+.BR ctcss_profile ,
+.BR dcs_profile ,
 .BR duplex_profile ,
 .BR diagnostics_profile ,
 .BR local_profile ,
@@ -31,11 +39,20 @@ channel.  Several channels may reference the same profile.
 .PP
 Flat sections such as
 .BR [hardware] ,
+.BR [receive] ,
+.BR [transmit] ,
+.BR [ctcss] ,
+.BR [dcs] ,
 .BR [local] ,
 and
 .B [voice_telemetry]
 provide shared defaults.  Settings in a channel's scoped or referenced profile
 override the corresponding flat-section settings.
+.PP
+For \fB[receive]\fR, \fB[transmit]\fR, \fB[ctcss]\fR, and \fB[dcs]\fR,
+an omitted option resolves to the concrete value in the shipped configuration
+sample.  An inactive CTCSS or DCS section does not select that protocol; each
+direction selects its signaling method explicitly.
 .PP
 Audio graph settings and live-safe mixer or signaling controls take effect on a
 processing reload. Device selection, buffering, interface layout, and channel
@@ -50,7 +67,7 @@ unchanged.
 .B channel_enabled = yes|no
 Enable this named radio channel. Default is yes.
 .TP
-.B asterisk_profile, hardware_profile, duplex_profile, diagnostics_profile
+.B asterisk_profile, hardware_profile, receive_profile, transmit_profile, ctcss_profile, dcs_profile, duplex_profile, diagnostics_profile
 Select the corresponding settings profiles.
 .TP
 .B local_profile, link_profile, voice_telemetry_profile
@@ -98,35 +115,34 @@ Set playback gain for CM119 output A or B. Zero dB is the normalized mixer
 midpoint.
 .TP
 .B hardware_output_a_assignment, hardware_output_b_assignment = off|voice|ctcss|voice_ctcss|auxvoice
-Route no signal, voice, CTCSS, voice mixed with CTCSS, or auxiliary voice to
-the corresponding CM119 output.
+Route no signal, voice, transmit signaling, voice mixed with transmit
+signaling, or auxiliary voice to the corresponding CM119 output. A selected
+CTCSS or DCS transmit method requires at least one output assigned to
+\fBctcss\fR or \fBvoice_ctcss\fR.
 .TP
-.B hardware_cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
-Select the carrier-operated-squelch source.
-.TP
-.B hardware_rx_ctcss_frequencies = list
-Set the comma-separated receive CTCSS frequency list.
-.TP
-.B hardware_tx_ctcss_frequencies = list
-Set the comma-separated transmit CTCSS frequency list corresponding to the
-receive list.
+.B hardware_ptt_inverted = yes|no
+Invert the physical PTT output.
 .TP
 .B hardware_emphasis_corner_hz = frequency
 Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
 be greater than zero and less than 300.
 .SS Device and buffering
-The app_rpt-to-transmitter program ring uses a fixed 110 ms startup reserve.
-This reserve is separate from the device queue and IAX jitter-buffer settings.
-The program and legacy echo queues are fixed-size, lock-free PCM sample rings;
-their producer and consumer transfer one sample at a time and never wait for
-each other. To correct the small frequency difference between app_rpt and the
-USB interface clocks, the hardware consumer occasionally repeats or skips one
-program-ring sample when sustained occupancy moves outside a one-frame band.
+The app_rpt-to-transmitter program ring is the only audio queue that bridges
+the app_rpt and 48 kHz native-rendering clock domains. It renders from its first
+available sample; it has no source-audio startup fill or playback reserve. Its
+110 ms occupancy target is used only by clock recovery, not as a fixed latency
+or keyed-transmit admission delay. These properties are separate from
+device-queue and IAX jitter-buffer settings. The ring is lock-free: its Asterisk
+producer and native rendering worker consumer never wait for one another. One
+persistent libsamplerate stream converts the active app_rpt rate to the 48 kHz
+hardware rate and gently adjusts that conversion ratio for independent clock
+drift. It does not periodically repeat or skip PCM samples. If the producer is
+temporarily short, the consumer conceals the shortfall smoothly rather than
+abruptly inserting silence.
 App_rpt program frames, including idle silence, enter the stream regardless
 of PTT, except while echo playback owns the input. PTT transitions preserve
-the program ring and resampler state. The reserve is seeded at stream startup
-or recovery. This padding affects PCM audio only and does not extend
-PTT, which remains controlled by app_rpt and tuning.
+the program ring and resampler state. This PCM buffering does not extend PTT,
+which remains controlled by app_rpt and tuning.
 Sound-device output runs continuously at 48 kHz, carrying silence while idle.
 PTT, carrier detection, and CTCSS decode do not stop device writes. Existing
 receive qualification and transmit muting still determine which audio is
@@ -141,30 +157,48 @@ Select the supported interface wiring layout.
 .B hardware_eeprom_enabled = yes|no
 Enable interface EEPROM tuning storage.
 .TP
-.B hardware_audio_fragment_count, hardware_audio_queue_size
-Set the audio fragment count and channel-driver queue depth.
+.B hardware_audio_fragment_count = integer
+Set the raw OSS \fBSNDCTL_DSP_SETFRAGMENT\fR request. Leave it at the adapter
+default unless the OSS device requires a documented override. It does not
+configure the app_rpt program ring, and the PortAudio adapter ignores it.
 .TP
-.B hardware_rx_cpu_saver_enabled, hardware_tx_cpu_saver_enabled = yes|no
-Reduce idle receive or transmit DSP activity.
-With RX CPU saver disabled, enabled local RNNoise and dynamics stages run
-on every native interval. With RX CPU saver enabled, they are bypassed while
-the receiver is unqualified. Receive muting, echo routing, and PTT ownership
-are unchanged; these controls do not stop sound-device reads or writes.
+.B hardware_audio_queue_size = integer
+Set the maximum queued OSS playback fragments. This bounds OSS device latency;
+it does not alter program-ring latency or PTT, and the PortAudio adapter
+ignores it.
+.SH RECEIVE OPTIONS
+The flat or scoped \fB[receive]\fR section controls receiver behavior.
+.TP
+.B signaling_method = carrier|ctcss|dcs
+Select exactly one receive qualification method: carrier, CTCSS, or DCS.
+Carrier uses COS only; CTCSS
+requires a non-\fBno\fR CTCSS source and a supported
+\fB[ctcss]\fR receive-frequency list. DCS requires a valid
+\fB[dcs]\fR receive code. A reload rejects a selected signaling method whose
+required inputs are absent or invalid. Default is \fBcarrier\fR.
+.TP
+.B audio_source = no|speaker|flat
+Select the receiver audio connection. Default is \fBflat\fR.
+.TP
+.B cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
+Select the carrier-operated-squelch source. Default is \fBdsp\fR.
+.TP
+.B cpu_saver_enabled = yes|no
+Reduce optional local receive processing while the receiver is unqualified.
+When disabled, enabled local RNNoise and dynamics run on every native interval.
+This control does not stop sound-device reads or writes. Default is \fBno\fR.
 .SS Receiver and squelch
 .TP
-.B hardware_rx_audio_source = no|speaker|flat
-Select the receiver audio connection.
+.B vox_hang_ms = 0..32767
+Set nonnegative VOX hang time in milliseconds. Default is 2000 ms.
 .TP
-.B hardware_rx_ctcss_source = no|usb|usbinvert|dsp|pp|ppinvert
-Select the receive CTCSS indication source.
+.B vox_threshold = 0..32767
+Set the nonnegative VOX detector threshold. Default is 0.
 .TP
-.B hardware_vox_hang_ms, hardware_vox_threshold
-Set VOX hang time and detection threshold.
-.TP
-.B hardware_noise_squelch_hysteresis, hardware_noise_filter_type
-Configure native noise-squelch hysteresis and detector filtering.
-Hysteresis is additional discriminator-noise margin while the gate is open,
-not a delay or a SINAD setting.
+.B noise_squelch_hysteresis = 0..32767
+Set nonnegative native noise-squelch hysteresis. Hysteresis is additional
+discriminator-noise margin while the gate is open, not a delay or a SINAD
+setting. Default is 3000.
 DSP COS follows a sample-rate MICOR-style fast detector and long-tail storage
 state: abrupt loss of a signal with at least 20 dB noise quieting closes
 quickly, while weak signals and gradual fading retain about 150 ms of hold.
@@ -172,57 +206,156 @@ The software receive audio gate updates within each 48 kHz frame; Asterisk
 carrier notifications remain frame-based. Hardware local repeat bypasses
 the software audio gate. Noise calibration and meter units are unchanged.
 .TP
-.B hardware_squelch_delay, hardware_rx_on_delay_frames
-Set receive audio squelch-tail delay and carrier acceptance delay.
+.B noise_filter_type = 0 or 1
+Select native noise-detector filter 0 or 1. Default is 0.
 .TP
-.B hardware_rx_polarity_inverted = yes|no
-Invert receive signaling polarity.
+.B squelch_delay_ms = 0..511
+Set receive audio squelch-tail delay in milliseconds. Default is 0.
 .TP
-.B hardware_squelch_level = 0..999
-Set the native carrier-squelch threshold.
+.B on_delay_frames = 0..3000
+Set carrier acceptance delay in 20 ms frames. Default is 0.
 .TP
-.B hardware_rx_ctcss_level
-Set the receive CTCSS decoder input level.
+.B polarity_inverted = yes|no
+Invert receive signaling polarity. Default is \fBno\fR.
 .TP
-.B hardware_rx_ctcss_override_enabled = yes|no
-Start in carrier-squelch operation without requiring CTCSS.
+.B squelch_level = 0..999
+Set the native carrier-squelch threshold. Default is 500.
 .TP
-.B hardware_rx_ctcss_relax
-Set CTCSS decoder tolerance.
-.SS Transmit signaling and timing
+.B frequency_hz = 0..2147483647
+Set the receiver frequency as an integral number of hertz for signaling, remote
+operation, and reporting. Default is 0.
 .TP
-.B hardware_tx_ctcss_default_hz
-Set the default transmitted CTCSS frequency.
+.B lsd_polarity_inverted = yes|no
+Invert received low-speed-data polarity. Default is \fBno\fR.
+.SH TRANSMIT OPTIONS
+The flat or scoped \fB[transmit]\fR section controls transmit behavior.
 .TP
-.B hardware_tx_ctcss_level = 0..999
-Set transmitted CTCSS deviation.
+.B signaling_method = carrier|ctcss|dcs
+Select exactly one transmitted signaling method: carrier, CTCSS, or DCS.
+Carrier sends no continuous
+squelch code. CTCSS requires one supported \fB[ctcss]\fR
+\fBtransmit_default_hz\fR value; DCS requires a valid \fB[dcs]\fR transmit
+code. A reload rejects a selected signaling method whose required inputs are
+absent or invalid, including a CTCSS or DCS method without a hardware output
+assigned to carry transmit signaling. Default is \fBcarrier\fR.
 .TP
-.B hardware_ctcss_turnoff_mode = no|phase|notone
-Select CTCSS turn-off signaling.
+.B cpu_saver_enabled = yes|no
+Reduce optional transmit signaling DSP activity while the transmitter is idle.
+This control does not stop sound-device writes. Default is \fBno\fR.
 .TP
-.B hardware_dcs_rx_polarity_inverted, hardware_dcs_tx_polarity_inverted = yes|no
-Invert receive or transmit DCS polarity.
-.TP
-.B hardware_lsd_rx_polarity_inverted, hardware_lsd_tx_polarity_inverted = yes|no
-Invert receive or transmit low-speed-data polarity.
-.TP
-.B hardware_tx_preemphasis_enabled = yes|no
+.B preemphasis_enabled = yes|no
 Enable transmitter pre-emphasis for a direct modulator connection. Disable it
-when the radio supplies its own pre-emphasis. This setting affects pre-emphasis
-only; configure limiting separately in the voice/telemetry processing chain.
+when the radio supplies its own pre-emphasis. Default is \fByes\fR.
+.SS Transmit timing
 .TP
-.B hardware_tx_settle_ms, hardware_tx_rx_blanking_ms
-Set transmitter settling and signaling blanking intervals.
+.B settle_ms = 0..2147483647
+Set transmitter settling time in milliseconds. Default is 500 ms.
 .TP
-.B hardware_tx_off_delay_frames
-Delay receiver acceptance after transmitter release.
+.B rx_blanking_ms = 0..32767
+Set transmit/receive blanking time in milliseconds. Default is 0.
 .TP
-.B hardware_tx_polarity_inverted, hardware_ptt_inverted = yes|no
-Invert transmit signaling or the physical PTT output.
+.B off_delay_frames = 0..3000
+Set post-transmit receive delay in 20 ms frames. Default is 0.
+.TP
+.B polarity_inverted = yes|no
+Invert transmitter radio-signaling polarity. Default is \fBno\fR.
+.TP
+.B lsd_polarity_inverted = yes|no
+Invert transmitter low-speed-data polarity. Default is \fBno\fR.
+.TP
+.B frequency_hz = 0..2147483647
+Set the transmitter frequency as an integral number of hertz for signaling,
+remote operation, and reporting. Default is 0.
+.SH CTCSS OPTIONS
+The \fB[ctcss]\fR section configures CTCSS only when the selected direction's
+\fBsignaling_method\fR is \fBctcss\fR.
+.TP
+.B receive_frequencies = list
+Set a comma-separated list of supported CTCSS frequencies in hertz. Receive
+CTCSS requires a nonempty list. Default is 100.0 Hz.
+.TP
+.B transmit_frequencies = list
+Set an optional comma-separated receive-to-transmit CTCSS frequency map. It is
+used only when both directions select CTCSS. In that case it must contain a
+supported transmit tone for every corresponding receive entry. Default is
+100.0 Hz.
+.TP
+.B receive_source = no|usb|usbinvert|dsp|pp|ppinvert
+Select the receive CTCSS indication source. Receive CTCSS selection requires a
+source other than \fBno\fR. Default is \fBdsp\fR.
+.TP
+.B receive_decoder_gain_db
+Set decoder-only gain from -60 through +60 dB. It does not alter voice audio.
+Default is 0 dB.
+.TP
+.B receive_override_enabled = yes|no
+Bypass received-tone qualification when receive signaling is CTCSS. It is
+ignored when receive signaling is carrier or DCS. Default is \fBno\fR.
+.TP
+.B receive_relax = 0|1
+Select strict (0) or relaxed (1) CTCSS decoder talk-off tolerance. Default is
+1 (relaxed).
+.TP
+.B transmit_default_hz = frequency
+Set the default transmitted CTCSS frequency. It must name one supported CTCSS
+tone. Default is 100.0 Hz.
+.TP
+.B transmit_peak_dbfs = -90..0
+Set the direct peak level of the generated CTCSS PCM waveform. Hardware output
+gain is applied later at the DAC and does not change this setting. Default is
+-24 dBFS.
+.TP
+.B turnoff_mode = no|ctcss_phase_shift|ctcss_tone_remove|ctcss_tail_tone
+Select no special turn-off, a phase-shift tail, early CTCSS removal, or a
+replacement tail tone. A phase-shift tail applies \fBphase_shift_degrees\fR
+when the tail begins. Tone removal suppresses CTCSS for
+\fBtail_duration_ms\fR before PTT release. A replacement tail tone substitutes
+\fBtail_frequency_hz\fR for CTCSS during that interval. Default is
+\fBctcss_phase_shift\fR.
+.TP
+.B phase_shift_degrees = positive degrees
+Set the phase angle applied when a \fBctcss_phase_shift\fR tail begins.
+Default is 120 degrees.
+.TP
+.B tail_duration_ms = 40..32767 milliseconds
+Set the pre-unkey duration for every non-\fBno\fR tail mode. Default is 180 ms.
+Zero is not a disable value; select \fBturnoff_mode = no\fR to disable CTCSS
+tail signaling.
+.TP
+.B tail_frequency_hz = positive frequency
+Set the frequency that replaces CTCSS during a \fBctcss_tail_tone\fR interval.
+Default is 55 Hz.
+.SH DCS OPTIONS
+The \fB[dcs]\fR section configures DCS only when the selected direction's
+\fBsignaling_method\fR is \fBdcs\fR.
+.TP
+.B receive_code = 000N..777I
+Set the receive DCS code: three octal digits from 000 through 777, followed by
+N for normal or I for inverted polarity. USBRadioPlus accepts the complete
+syntactically valid range to support standard and vendor-extension DCS/DPL code
+plans. Default is 023N.
+.TP
+.B transmit_code = 000N..777I
+Set the transmit DCS code using the same syntax. Default is 023N.
+.TP
+.B turnoff_code_enabled = yes|no
+Enable the 134.4 Hz DCS end-of-transmission tail tone. It is sent before PTT
+release. A qualified DCS receiver clears after at least 100 ms of a coherent
+134.4 Hz tail; short tones, normal DCS words, and broadband noise do not clear
+the receiver. Default is \fByes\fR.
+.TP
+.B turnoff_duration_ms = 150..200
+Set the DCS end-of-transmission tail duration in milliseconds. Default is 180.
+.TP
+.B peak_dbfs
+Set the direct DCS PCM peak from -90 through 0 dBFS. It is independent of
+\fB[ctcss]\fR \fBtransmit_peak_dbfs\fR; hardware output gain is applied later at
+the DAC. Default is -24 dBFS.
+.PP
+USBRadioPlus renders DCS as a native shaped NRZ/Golay waveform. Its fixed
+spectral-shaping filter bypasses transmitter pre-emphasis and all speech
+processing controls.
 .SS Radio identity and auxiliary controls
-.TP
-.B hardware_rx_frequency_hz, hardware_tx_frequency_hz
-Record receiver and transmitter frequencies.
 .TP
 .B hardware_repeater_number, hardware_area, hardware_user_key
 Set the native signaling-system identity.
@@ -277,7 +410,7 @@ OSS also reports queued bytes and estimated delay at 48 kHz, stereo,
 signed 16-bit. PortAudio reports submission results, not playback position.
 .PP
 Transmit a brief carrier with CTCSS, then release. A render record with
-reverse=1 marks the phase-shifted block. Add its queue delay to estimate
+phase_shift_degrees greater than zero marks the phase-shifted block. Add its queue delay to estimate
 playback time and compare with hid_begin/hid_end ptt=0. This excludes
 unreported device buffering. Write drops or failures invalidate this estimate.
 HID completion does not confirm electrical PTT or RF state.
@@ -390,7 +523,7 @@ gate and before PL filtering. Default is yes.
 .B receive_bandpass_highpass_hz = 20..2000
 Set the receive band-pass low-frequency cutoff. Default is 20 Hz.
 .TP
-.B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..5000
+.B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..6000
 Set the receive band-pass high-frequency cutoff. Default is 5000 Hz.
 .TP
 .B ctcss_filter_mode = disabled|notch|highpass
@@ -464,11 +597,6 @@ Default is 800 Hz.
 Set the two-pole detector low-pass cutoff, or 0 to disable it.
 Any positive frequency through 3500 Hz is accepted. When both detector
 filters are enabled, low-pass must be above high-pass. Default is 1500 Hz.
-.SS Migrating AGC settings
-Remove agc_floor_dbfs, agc_attack_ms, agc_release_ms, and agc_reset_after_ms
-from older files. They are not aliases for the activity threshold, gain rates,
-or hold interval. Retune against the detector-band RMS target with the
-current controls; old peak-based targets are not directly equivalent.
 .SH DOWNWARD EXPANDER
 .TP
 .B expander_enabled = yes|no
@@ -515,9 +643,8 @@ Divide the low and mid bands in three-band mode. Default is 500 Hz.
 .TP
 .B compressor_high_crossover_hz = compressor_low_crossover_hz..5000
 Divide the mid and high bands in three-band mode. Default is 2000 Hz.
-This must be strictly above the low crossover and below half the source
-sample rate: below 4000 Hz for an 8 kHz link. An invalid active crossover
-prevents graph activation.
+This must be strictly above the low crossover and below half the active source
+sample rate. An invalid active crossover prevents graph activation.
 .SS Single-band controls
 The following controls apply only when compressor_bands is 1.
 .TP
@@ -639,9 +766,8 @@ Divide the low and mid limiter bands. Default is 500 Hz.
 .TP
 .B limiter_high_crossover_hz = limiter_low_crossover_hz..5000
 Divide the mid and high limiter bands. Default is 2000 Hz.
-This must be strictly above the low crossover and below half the source
-sample rate: below 4000 Hz for an 8 kHz link. An invalid active crossover
-prevents graph activation.
+This must be strictly above the low crossover and below half the active source
+sample rate. An invalid active crossover prevents graph activation.
 .TP
 .B limiter_low_threshold_dbfs = -40..-1
 Set low-band limiting threshold. Default is -1.5 dBFS.
@@ -697,7 +823,7 @@ Enable the fixed transmit splatter-control filter. Default is yes.
 .B splatter_filter_highpass_hz = 20..2000
 Set the fixed transmitter high-pass cutoff. Default is 300 Hz.
 .TP
-.B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..5000
+.B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..6000
 Set the fixed transmitter low-pass cutoff. Default is 3000 Hz.
 .TP
 .B lookahead_limiter_enabled = yes|no
@@ -722,19 +848,26 @@ Enable the fixed cleanup low-pass after final limiting. Default is no.
 .B post_limiter_lowpass_hz = 5000..20000
 Set cleanup-filter cutoff. Default is 8000 Hz.
 .SH ORDER OF PROCESSING
-Local receiver audio is de-emphasized and squelch-gated, optionally passed
-through RNNoise, passed through the selected dynamics order, and then passed
-through one selected PL filter. Link audio uses only its dynamics graph;
+Local receiver audio is de-emphasized and squelch-gated, passed through the
+receive band-pass and one selected PL filter, optionally passed through RNNoise,
+and then passed through the selected dynamics order. Link audio uses only its dynamics graph;
 source-specific brick-wall filtering is not available. RNNoise and PL removal
 are not available on link or transmitter sources.
+.PP
+Link processing retains the attached channel's negotiated sample rate and
+renders one preceding completed audio frame. At startup, when worker output is
+late, or when a reload invalidates queued output, the module tapers the output
+to silence rather than replaying stale audio or stopping audio cadence.
+.B radioplus processing stats
+reports link-worker queue overflows, output shortfalls, malformed output, and
+level measurements. Link processing never asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
 dynamics graph, and then applies its fixed filtering and peak-control tail.
 .SH EXAMPLE
 .nf
-[general]
-enabled = yes
-channel = RadioPlus/
+[usb]
+channel_enabled = yes
 
 [local]
 enabled = yes

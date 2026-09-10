@@ -41,40 +41,20 @@
 #include <stdint.h>
 
 #include "asterisk/rpt_chan_shared.h"
+#include "usbradioplus_dcs.h"
 #include "usbradioplus_squelch.h"
 
 #define URP_RADIO_DEVELOPMENT 0 /* when running in test mode */
-
-#define URP_RADIO_TRACE_OVFLW 0
 
 #define URP_RADIO_TRACE_FRONTEND 0
 
 #define URP_RADIO_TRACE_LEVEL 0
 
-#ifdef CHAN_USBRADIO
-#ifndef URP_RADIO_DEBUG
-
-#define URP_RADIO_DEBUG 1
-#endif
-#ifndef URP_RADIO_TRACE
-
-#define URP_RADIO_TRACE 1
-#endif
-
-#define TRACEO(level, a)                                                                           \
-	{                                                                                          \
-		if (o && (o->tracelevel >= level)) {                                               \
-			printf a;                                                                  \
-		}                                                                                  \
-	}
-#else
 #ifndef URP_RADIO_DEBUG
 #define URP_RADIO_DEBUG 1
 #endif
 #ifndef URP_RADIO_TRACE
 #define URP_RADIO_TRACE 1
-#endif
-#define TRACEO(level, a)
 #endif
 
 #define LSD_DFS 5
@@ -98,18 +78,11 @@
 
 #if (URP_RADIO_TRACE == 1)
 
-#define TRACEC(level, ...)                                                                         \
-	{                                                                                          \
-		urp_radio_trace_log(pChan->tracelevel, level, "%08i ", pChan->frameCountRx);       \
-		urp_radio_trace_log(pChan->tracelevel, level, __VA_ARGS__);                        \
-	}
-
 #define TRACEF(level, ...)                                                                         \
 	{                                                                                          \
 		urp_radio_trace_log(pChan->tracelevel, level, __VA_ARGS__);                        \
 	}
 #else
-#define TRACEC(...)
 #define TRACEF(...)
 #endif
 
@@ -225,11 +198,9 @@
 
 #define CTCSS_HYSTERSIS 200
 
-#define CTCSS_TURN_OFF_TIME 160 /* ms */
+#define CTCSS_TURN_OFF_TIME 180 /* ms */
 
-#define CTCSS_TURN_OFF_SHIFT 240 /* degrees */
-
-#define TOC_NOTONE_TIME 600 /* ms */
+#define CTCSS_TURN_OFF_SHIFT 120.0 /* degrees */
 
 #define DDB_FRAME_SIZE 160 /* clock de-drift defaults */
 
@@ -299,11 +270,6 @@ enum dbg_pts {
 	RX_CTCSS_ACCUM /**< Receiver CTCSS ACCUM trace point. */,
 	RX_CTCSS_DVDT /**< Receiver CTCSS DVDT trace point. */,
 	RX_CTCSS_DECODE /**< Receiver CTCSS DECODE trace point. */,
-	RX_DCS_CENTER /**< Receiver DCS CENTER trace point. */,
-	RX_DCS_DEC /**< Receiver DCS DEC trace point. */,
-	RX_DCS_DIN /**< Receiver DCS DIN trace point. */,
-	RX_DCS_CLK /**< Receiver DCS CLK trace point. */,
-	RX_DCS_DAT /**< Receiver DCS DAT trace point. */,
 	RX_LSD_LPF /**< Receiver LSD low-pass filter trace point. */,
 	RX_LSD_CLK /**< Receiver LSD CLK trace point. */,
 	RX_LSD_DAT /**< Receiver LSD DAT trace point. */,
@@ -332,7 +298,10 @@ enum dbg_pts {
 	NUM_DEBUG_PTS /**< Number of available trace points. */
 };
 
-/** Selectable radio trace points and their interleaved capture workspace. */
+/** Selectable radio trace points and their preallocated in-memory workspace.
+ * The radio engine retains this diagnostic facility without a file-capture
+ * toggle or sink, so callback work remains bounded and callback-safe.
+ */
 typedef struct {
 	/** Selected diagnostic or processing mode. */
 	i16 mode;
@@ -683,7 +652,6 @@ typedef struct urp_radio_stage {
 	/** One radio-detection or measurement stage and its owned filter workspace. */
 } urp_radio_stage;
 
-struct t_dec_dcs;
 struct t_lsd_control;
 struct t_decLsd;
 ;
@@ -794,8 +762,6 @@ typedef struct urp_radio_state {
 	i16 rxCenterSlicerEnable;
 	/** Whether CTCSS decoding is enabled. */
 	i16 rxCtcssDecodeEnable;
-	/** DCS decode enable metadata. */
-	i16 rxDcsDecodeEnable;
 	/** Configured receiver squelch-tail delay. */
 	i16 rxSquelchDelay;
 
@@ -925,10 +891,12 @@ typedef struct urp_radio_state {
 	/** Receiver carrier decision hysteresis. */
 	i16 rxCarrierHyst;
 
-	/** CTCSS reverse-burst phase shift in degrees. */
-	i16 txCtcssTocShift;
-	/** CTCSS reverse-burst duration in milliseconds. */
+	/** Configured CTCSS turn-off phase shift in degrees. */
+	double txCtcssTocShift;
+	/** Configured CTCSS turn-off duration in milliseconds. */
 	i16 txCtcssTocTime;
+	/** Configured replacement tone frequency during CTCSS turn-off. */
+	double txCtcssTocToneHz;
 	/** CTCSS turn-off behavior. */
 	i8 txTocType;
 
@@ -945,18 +913,22 @@ typedef struct urp_radio_state {
 
 	/** Owned receive CTCSS decoder bank. */
 	urp_ctcss_decoder *rxCtcss;
-	/** DCS decoder metadata. */
-	struct t_dec_dcs *decDcs;
+	/** Native DCS encoder/decoder state. */
+	struct urp_dcs_state dcs;
+	/** Configured receive DCS code in canonical 023N spelling. */
+	char dcsRxCode[5];
+	/** Configured transmit DCS code in canonical 023N spelling. */
+	char dcsTxCode[5];
+	/** Nonzero enables the DCS 134.4 Hz turn-off code. */
+	i8 dcsTurnoffEnabled;
+	/** Remaining DCS turn-off interval in milliseconds. */
+	i32 dcsTurnoffTimer;
+	/** Configured DCS turn-off interval in milliseconds, from 150 through 200. */
+	i16 dcsTurnoffDuration;
+	/** DCS modulation amplitude in PCM codes. */
+	double dcsPeak;
 	/** Low-speed-data decoder metadata. */
 	struct t_decLsd *decLsd;
-	/** Tracked DCS amplitude metadata. */
-	i16 clamplitudeDcs;
-	/** Tracked DCS DC-center metadata. */
-	i16 centerDcs;
-	/** DCS blanking interval metadata. */
-	u32 dcsBlankingTimer;
-	/** DCS decode result metadata. */
-	i16 dcsDecode; /* current dcs decode value */
 
 	/** Tracked low-speed-data amplitude metadata. */
 	i16 clamplitudeLsd;
@@ -1037,8 +1009,12 @@ typedef struct urp_radio_state {
 	i8 txCtcssState;
 	/** Nonzero while the native oscillator should emit CTCSS. */
 	i8 txCtcssEnabled;
-	/** CTCSS reverse-burst phase shift in degrees. */
-	i8 txCtcssPhaseShift;
+	/** CTCSS turn-off phase shift in degrees. */
+	double txCtcssPhaseShift;
+	/** Replacement tone frequency while the CTCSS turn-off sequence is active. */
+	double txCtcssTailToneHz;
+	/** CTCSS peak amplitude in native PCM codes. */
+	double txCtcssPeak;
 	/** Nonzero selects the 250 Hz reference-level calibration. */
 	i8 txCtcssFilter250;
 	/** CTCSS amplitude gain with eight fractional bits. */
@@ -1086,10 +1062,6 @@ typedef struct urp_radio_state {
 		unsigned txPreEmphasis : 1;
 		/** External hardware carrier indication. */
 		unsigned extCarrierDetect : 1;
-		/** Transmit diagnostic capture enable. */
-		unsigned txCapture : 1;
-		/** Receive diagnostic capture enable. */
-		unsigned rxCapture : 1;
 		/** Receive CTCSS monitor mode. */
 		unsigned rxplmon : 1;
 		/** Nonzero when remote-radio control is active. */
@@ -1100,10 +1072,6 @@ typedef struct urp_radio_state {
 		unsigned rxpolarity : 1;
 		/** Transmit signaling polarity inversion. */
 		unsigned txpolarity : 1;
-		/** Receive DCS polarity inversion. */
-		unsigned dcsrxpolarity : 1;
-		/** Transmit DCS polarity inversion. */
-		unsigned dcstxpolarity : 1;
 		/** Receive low-speed-data polarity inversion. */
 		unsigned lsdrxpolarity : 1;
 		/** Transmit low-speed-data polarity inversion. */
@@ -1117,10 +1085,6 @@ typedef struct urp_radio_state {
 		unsigned ctcssRxEnable : 1;
 		/** Nonzero enables ctcss transmitter. */
 		unsigned ctcssTxEnable : 1;
-		/** Nonzero enables dcs receiver. */
-		unsigned dcsRxEnable : 1;
-		/** Nonzero enables dcs transmitter. */
-		unsigned dcsTxEnable : 1;
 		/** Nonzero enables lmr receiver. */
 		unsigned lmrRxEnable : 1;
 		/** Nonzero enables lmr transmitter. */
@@ -1199,31 +1163,8 @@ typedef struct urp_radio_state {
 	/** Centered low-speed-data workspace metadata. */
 	i16 *pRxLsdCen;
 
-	/** Transmitter diagnostic output workspace. */
-	i16 *pTstTxOut;
-
-	/** aliases sdbg->buffer while receive capture is active */
-	i16 *prxDebug; /* aliases sdbg->buffer while receive capture is active */
-	/** consolidated debug buffer */
-	i16 *ptxDebug; /* consolidated debug buffer */
-
 	/** Prx Debug0 diagnostic sample workspace. */
 	i16 *prxDebug0;
-	/** Prx Debug1 diagnostic sample workspace. */
-	i16 *prxDebug1;
-	/** Prx Debug2 diagnostic sample workspace. */
-	i16 *prxDebug2;
-	/** Prx Debug3 diagnostic sample workspace. */
-	i16 *prxDebug3;
-
-	/** Ptx Debug0 diagnostic sample workspace. */
-	i16 *ptxDebug0;
-	/** Ptx Debug1 diagnostic sample workspace. */
-	i16 *ptxDebug1;
-	/** Ptx Debug2 diagnostic sample workspace. */
-	i16 *ptxDebug2;
-	/** Ptx Debug3 diagnostic sample workspace. */
-	i16 *ptxDebug3;
 
 #endif
 
@@ -1253,7 +1194,9 @@ void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value);
  * @param sdbg Radio trace configuration and sample storage.
  */
 void strace2(t_sdbg *sdbg);
-/** @brief Emit a radio trace when the configured and requested levels permit it.
+/** @brief Emit a control-plane radio trace when the configured and requested levels permit it.
+ * This diagnostic helper is intentionally not callable from the native audio
+ * callback or its detector stages because Asterisk logging can lock and write.
  * @param configured_level Maximum enabled radio trace verbosity.
  * @param level Message trace verbosity.
  * @param format printf-style message format.
@@ -1284,6 +1227,8 @@ i16 urp_radio_destroy(urp_radio_state *pChan);
  */
 i16 urp_radio_stage_destroy(urp_radio_stage *pSps);
 /** @brief Measure discriminator noise and update DSP carrier qualification.
+ * This real-time stage uses only caller-owned preallocated state; it never
+ * logs, locks, allocates, or performs file I/O.
  * @param mySps Detector stage and its input/output workspace.
  * @return Zero after processing; one when the stage is disabled or cannot process.
  */
@@ -1304,6 +1249,8 @@ i16 gp_inte_00(urp_radio_stage *mySps);
  */
 i16 CenterSlicer(urp_radio_stage *mySps);
 /** @brief Update the enabled CTCSS tone detectors and decoded-tone state.
+ * This runs from the native audio callback and deliberately performs no
+ * Asterisk logging, locking, allocation, or file I/O.
  * @param radio Radio-signaling engine state.
  * @return Zero after processing; one when the stage is disabled or cannot process.
  */
@@ -1315,6 +1262,8 @@ i16 urp_ctcss_decode(urp_radio_state *radio);
 i16 DelayLine(urp_radio_stage *mySps);
 
 /** @brief Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block.
+ * This is the native audio callback's signaling step. It uses only prepared,
+ * caller-owned memory and never logs, locks, allocates, or performs file I/O.
  * @param PmrChan Radio-signaling engine state.
  * @param input Input samples; the caller retains ownership.
  * @param outputrx Base-rate receiver output buffer.
@@ -1356,9 +1305,6 @@ i16 MeasureBlock(urp_radio_stage *mySps);
 /** @def URP_RADIO_DEVELOPMENT
  * @brief when running in test mode
  */
-/** @def URP_RADIO_TRACE_OVFLW
- * @brief Build-time enable for detector overflow traces.
- */
 /** @def URP_RADIO_TRACE_FRONTEND
  * @brief Build-time enable for receive-frontend traces.
  */
@@ -1370,9 +1316,6 @@ i16 MeasureBlock(urp_radio_stage *mySps);
  */
 /** @def URP_RADIO_TRACE
  * @brief Build-time enable for radio trace output.
- */
-/** @def TRACEO
- * @brief Emit a channel trace when its configured level permits.
  */
 /** @def LSD_DFS
  * @brief Low-speed-data detector sampling factor.
@@ -1388,9 +1331,6 @@ i16 MeasureBlock(urp_radio_stage *mySps);
  */
 /** @def URP_RADIO_TRACE_AMP
  * @brief PCM amplitude used to display boolean trace states.
- */
-/** @def TRACEC
- * @brief Emit a radio trace prefixed by receive-frame count.
  */
 /** @def TRACEF
  * @brief Emit a formatted radio trace.
@@ -1568,9 +1508,6 @@ i16 MeasureBlock(urp_radio_stage *mySps);
  */
 /** @def CTCSS_TURN_OFF_SHIFT
  * @brief CTCSS reverse-burst phase shift in degrees.
- */
-/** @def TOC_NOTONE_TIME
- * @brief Tone-free interval before PTT release in milliseconds.
  */
 /** @def DDB_FRAME_SIZE
  * @brief clock de-drift defaults

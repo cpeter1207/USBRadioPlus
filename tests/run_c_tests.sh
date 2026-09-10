@@ -12,8 +12,19 @@ else
 	trap 'rm -rf -- "$out"' EXIT HUP INT TERM
 fi
 
-common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS:-}"
-rpcr_libs=${RPCR_LIBS:--lrate_adjusting_pcm_ring}
+# The Makefile supplies these paths during normal builds.  Keep direct harness
+# runs equally self-contained: build the bundled static ring instead of
+# silently reaching for an unpublished system library.
+if [ -z "${RPCR_CFLAGS:-}" ]; then
+	RPCR_CFLAGS="-I$root/third_party/rate_adjusting_pcm_ring/include"
+fi
+if [ -z "${RPCR_LIBS:-}" ]; then
+	rpcr_root="$root/third_party/rate_adjusting_pcm_ring"
+	make -C "$rpcr_root" build/librate_adjusting_pcm_ring.a
+	RPCR_LIBS="$rpcr_root/build/librate_adjusting_pcm_ring.a -lsamplerate"
+fi
+common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS}"
+rpcr_libs=$RPCR_LIBS
 # Each parallel group gets its own instrumented plugin to avoid shared gcov
 # counter writes. FFmpeg discovers only these freshly compiled test effects.
 plugin_dir="$out/plugin-${C_TEST_GROUP:-parent}"
@@ -25,7 +36,7 @@ export LADSPA_PATH="$plugin_dir"
 completed=0
 sys_io_tests=0
 channel_invariant_sources="$root/src/usbradioplus_config.c $root/src/usbradioplus_radio.c \
-$root/src/usbradioplus_dsp.c $root/src/usbradioplus_ctcss.c \
+$root/src/usbradioplus_dsp.c $root/src/usbradioplus_ctcss.c $root/src/usbradioplus_dcs.c \
 $root/src/usbradioplus_hardware.c $root/src/usbradioplus_repeat.c \
 $root/src/usbradioplus_channel_core.c $root/src/usbradioplus_processing.c \
 $root/src/usbradioplus_rpt_advanced.c \
@@ -34,8 +45,13 @@ $root/src/txagc/rnnoise_processor.c"
 channel_variant_sources="$root/src/usbradioplus_channel_common.c \
 $root/src/usbradioplus_native_tick.c $root/src/usbradioplus_tune_menu.c"
 channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process -Wl,--wrap=rpcr_init \
+	-Wl,--wrap=txagc_avfilter_prepare \
+	-Wl,--wrap=rpcr_set_rates \
+	-Wl,--wrap=usbradioplus_processing_get_option \
+	-Wl,--wrap=usbradioplus_processing_get_hardware \
+	-Wl,--wrap=usbradioplus_processing_get_composite \
 -Wl,--wrap=pthread_join -Wl,--wrap=read -Wl,--wrap=write -Wl,--wrap=usleep \
--Wl,--wrap=ioctl -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=poll -Wl,--wrap=pipe \
+-Wl,--wrap=ioctl -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=fcntl -Wl,--wrap=poll -Wl,--wrap=pipe \
 -Wl,--wrap=pipe2 -Wl,--wrap=ioperm -Wl,--wrap=usb_open -Wl,--wrap=usb_close \
 -Wl,--wrap=usb_claim_interface -Wl,--wrap=usb_detach_kernel_driver_np"
 
@@ -47,7 +63,7 @@ if [ -z "${C_TEST_GROUP:-}" ] && [ "${C_TEST_PARALLEL:-4}" != 1 ]; then
 	for group in basic channels rnnoise rms_agc validation avfilter_bandpass \
 		avfilter_ctcss avfilter_emphasis avfilter_equalizer avfilter_deesser \
 		avfilter_processor avfilter_agc avfilter_permutations avfilter_internals \
-		avfilter_failures; do
+		avfilter_failures avfilter_dcs; do
 		C_TEST_GROUP=$group C_TEST_OUTPUT="$out" sh "$0" &
 		pids="$pids $!"
 	done
@@ -90,6 +106,12 @@ completed=$((completed + 1))
 cc $common "$root/tests/test_ctcss_generator.c" \
 	"$root/src/usbradioplus_ctcss.c" -o "$out/ctcss-generator" -lm
 "$out/ctcss-generator"
+completed=$((completed + 1))
+
+# shellcheck disable=SC2086
+cc $common "$root/tests/test_dcs.c" "$root/src/usbradioplus_dcs.c" \
+	-I"$root/src" -o "$out/dcs" -lm
+"$out/dcs"
 completed=$((completed + 1))
 
 # shellcheck disable=SC2086
@@ -299,7 +321,8 @@ if run_group validation; then
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 	-DURP_PROCESSING_TESTING -DAST_MODULE_SELF_SYM=test_module_self \
 	"$root/tests/test_processing_validation.c" "$root/src/usbradioplus_processing.c" \
-	"$root/src/txagc/agc_core.c" -I/usr/include -I"$root/src" -Wl,--gc-sections \
+	"$root/src/usbradioplus_ctcss.c" "$root/src/txagc/agc_core.c" \
+	-I/usr/include -I"$root/src" -Wl,--gc-sections \
 	-o "$out/processing-validation" -lm
 "$out/processing-validation"
 completed=$((completed + 1))
@@ -329,6 +352,18 @@ for name in avfilter_bandpass avfilter_ctcss avfilter_emphasis \
 	fi
 done
 
+if run_group avfilter_dcs; then
+# DCS synthesis is filtered only through the same shared FFmpeg graph used by
+# the module.  This proves the transmitted data has no uncontrolled high-band
+# NRZ energy before it joins the hardware output routes.
+# shellcheck disable=SC2046,SC2086
+cc $common "$root/tests/test_avfilter_dcs.c" "$root/src/usbradioplus_dcs.c" \
+	"$root/src/txagc/agc_core.c" "$root/src/txagc/avfilter_processor.c" \
+	-I"$root/src" -o "$out/avfilter-dcs" $(pkg-config --cflags --libs libavfilter libavutil) -lm
+"$out/avfilter-dcs"
+completed=$((completed + 1))
+fi
+
 if run_group avfilter_internals; then
 # shellcheck disable=SC2046,SC2086
 cc $common "$root/tests/test_avfilter_internals.c" "$root/src/txagc/agc_core.c" \
@@ -341,21 +376,22 @@ fi
 if run_group avfilter_failures; then
 # Force every FFmpeg graph/frame allocation failure through the public API.
 # shellcheck disable=SC2046,SC2086
-cc $common "$root/tests/test_avfilter_failures.c" "$root/src/txagc/agc_core.c" \
+cc $common -pthread "$root/tests/test_avfilter_failures.c" "$root/src/txagc/agc_core.c" \
 	"$root/src/txagc/avfilter_processor.c" -o "$out/avfilter-failures" \
 	-Wl,--wrap=avfilter_graph_alloc -Wl,--wrap=avfilter_graph_create_filter \
 	-Wl,--wrap=avfilter_inout_alloc -Wl,--wrap=avfilter_graph_parse_ptr \
 	-Wl,--wrap=avfilter_graph_config -Wl,--wrap=av_audio_fifo_alloc \
 	-Wl,--wrap=av_frame_alloc -Wl,--wrap=av_frame_get_buffer \
 	-Wl,--wrap=av_buffersrc_add_frame_flags -Wl,--wrap=av_buffersink_get_frame \
-	-Wl,--wrap=av_audio_fifo_realloc -Wl,--wrap=av_audio_fifo_write \
+	-Wl,--wrap=av_audio_fifo_realloc -Wl,--wrap=av_audio_fifo_write -Wl,--wrap=av_mallocz \
+	-Wl,--wrap=sched_yield \
 	$(pkg-config --cflags --libs libavfilter libavutil) -lm
 "$out/avfilter-failures"
 completed=$((completed + 1))
 fi
 
 if [ -z "${C_TEST_GROUP:-}" ]; then
-	expected=$((25 + sys_io_tests))
+	expected=$((27 + sys_io_tests))
 	if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		expected=$((expected + 1))
 	fi

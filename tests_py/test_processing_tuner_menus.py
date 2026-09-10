@@ -23,11 +23,10 @@ def sequence(*responses):
     return lambda _args: next(values)
 
 
-def test_hardware_transmit_preemphasis_only():
+def test_transmit_preemphasis_only():
     """Keep pre-emphasis independent of the processing limiter controls."""
-    key = "hardware_tx_preemphasis_enabled"
-    assert MODULE["HARDWARE_SETTINGS"][key] == ("Pre-emphasis", "bool")
-    assert key in MODULE["HARDWARE_GROUP_KEYS"]["transmit"]
+    key = "preemphasis_enabled"
+    assert MODULE["TRANSMIT_SETTINGS"][key] == ("Pre-emphasis", "bool")
     for removed in (
         "hardware_tx_preemphasis_limiter_enabled",
         "hardware_tx_limiter_only_enabled",
@@ -35,6 +34,13 @@ def test_hardware_transmit_preemphasis_only():
     ):
         assert removed not in MODULE["HARDWARE_SETTINGS"]
         assert removed not in MODULE["HARDWARE_GROUP_KEYS"]["transmit"]
+
+
+def test_hardware_assignments_describe_both_supported_signaling_modes():
+    """Keep hardware routing labels correct for either CTCSS or DCS transmission."""
+    choices = dict(MODULE["CHOICES"]["assignment"])
+    assert choices["ctcss"] == "Signaling only"
+    assert choices["voice_ctcss"] == "Voice and signaling"
 
 
 @pytest.mark.parametrize(
@@ -527,6 +533,7 @@ def test_section_options_reports_missing_defaults_without_crashing(monkeypatch):
         ("bool", "prompt_boolean", "yes"),
         ("assignment", "prompt_choice", "voice"),
         ("gain", "prompt_number", "1"),
+        ("dbfs", "prompt_number", "-24"),
         ("integer", "prompt_number", "2"),
         ("level", "prompt_number", "500"),
         ("binary", "prompt_number", "1"),
@@ -534,7 +541,11 @@ def test_section_options_reports_missing_defaults_without_crashing(monkeypatch):
         ("address", "prompt_number", "0x378"),
         ("float", "prompt_number", "1.5"),
         ("emphasis", "prompt_number", "300"),
+        ("ctcss_frequency", "prompt_number", "100.0"),
+        ("ctcss_phase", "prompt_number", "120.0"),
+        ("ctcss_tail_frequency", "prompt_number", "55.0"),
         ("frequencies", "prompt_text", "100.0, 123.0"),
+        ("dcs_code", "prompt_dcs_code", "023N"),
         ("text", "prompt_text", "device"),
     ),
 )
@@ -548,16 +559,262 @@ def test_section_options_edits_every_setting_kind(monkeypatch, kind, editor, ent
     """
     namespace = globals_for("section_options_menu")
     applied = []
-    settings = {"test_key": ("Test value", kind)}
+    key = {
+        "gain": "receive_decoder_gain_db",
+        "ctcss_frequency": "transmit_default_hz",
+        "ctcss_phase": "phase_shift_degrees",
+        "ctcss_tail_frequency": "tail_frequency_hz",
+    }.get(kind, "test_key")
+    settings = {key: ("Test value", kind)}
     monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
-    monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {"test_key": "0"})
+    monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {("hardware", key): "0"})
     monkeypatch.setitem(namespace, editor, lambda *_args: (0, entered))
     monkeypatch.setitem(
         namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
     )
     monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (1, "")))
     MODULE["section_options_menu"]("hardware", settings, "Test")
-    assert applied and f"test_key = {entered}" in applied[0][1]
+    assert applied and f"{key} = {entered}" in applied[0][1]
+
+
+def test_signaling_level_editors_use_the_parser_ranges_and_units():
+    """Keep CTCSS and DCS gain controls aligned with configuration validation."""
+    assert MODULE["MODERN_GAIN_LIMITS"]["receive_decoder_gain_db"] == (-60.0, 60.0)
+    assert MODULE["MODERN_FLOAT_LIMITS"] == {
+        "transmit_default_hz": (0.001, None, "Hz"),
+        "phase_shift_degrees": (0.0, None, "degrees"),
+        "tail_frequency_hz": (0.0, None, "Hz"),
+    }
+    integer_limits = MODULE["MODERN_INTEGER_LIMITS"]
+    assert integer_limits["vox_hang_ms"] == (0, 32767)
+    assert integer_limits["vox_threshold"] == (0, 32767)
+    assert integer_limits["noise_squelch_hysteresis"] == (0, 32767)
+    assert integer_limits["noise_filter_type"] == (0, 1)
+    assert integer_limits["squelch_delay_ms"] == (0, 511)
+    assert integer_limits["on_delay_frames"] == (0, 3000)
+    assert integer_limits["off_delay_frames"] == (0, 3000)
+    assert integer_limits["receive_relax"] == (0, 1)
+    assert integer_limits["tail_duration_ms"] == (40, 32767)
+    assert integer_limits["turnoff_duration_ms"] == (150, 200)
+    assert MODULE["MODERN_INTEGER_UNITS"]["squelch_delay_ms"] == "ms"
+    assert MODULE["MODERN_INTEGER_UNITS"]["on_delay_frames"] == "frames"
+    assert MODULE["MODERN_INTEGER_UNITS"]["frequency_hz"] == "Hz"
+    assert MODULE["CTCSS_SETTINGS"]["transmit_peak_dbfs"][1] == "dbfs"
+    assert MODULE["DCS_SETTINGS"]["peak_dbfs"][1] == "dbfs"
+    assert MODULE["display_value"]("dbfs", "-24") == "-24 dBFS"
+
+
+def test_signaling_enum_labels_describe_the_implemented_controls():
+    """Present clean-slate signaling choices with their operational meaning."""
+    assert MODULE["CTCSS_SETTINGS"]["receive_relax"] == (
+        "Receive CTCSS talk-off tolerance",
+        "ctcss_relax",
+    )
+    assert MODULE["CHOICES"]["ctcss_relax"] == (
+        ("0", "Strict decoder tolerance"),
+        ("1", "Relaxed decoder tolerance"),
+    )
+    assert MODULE["DCS_SETTINGS"]["turnoff_code_enabled"] == (
+        "DCS 134.4 Hz turn-off tone",
+        "bool",
+    )
+    assert MODULE["CTCSS_SETTINGS"]["transmit_frequencies"] == (
+        "Receive-to-transmit CTCSS frequency map",
+        "frequencies",
+    )
+    assert MODULE["CHOICES"]["ctcss_turnoff"] == (
+        ("no", "No turn-off signaling"),
+        ("ctcss_phase_shift", "Apply configured CTCSS phase shift before PTT release"),
+        ("ctcss_tone_remove", "Remove CTCSS for the configured tail duration"),
+        ("ctcss_tail_tone", "Replace CTCSS with the configured tail tone"),
+    )
+
+
+def test_ctcss_frequency_validator_matches_the_module_tone_table(monkeypatch):
+    """Reject numeric CTCSS values that the processing parser will reject."""
+    validate = MODULE["ctcss_frequency_supported"]
+    assert len(MODULE["CTCSS_FREQUENCIES"]) == 38
+    assert validate(67.0)
+    assert validate(100.0)
+    assert validate(250.3)
+    assert not validate(49.0)
+    assert not validate(100.0001)
+    assert not validate(float("nan"))
+    # A finite Python float can still be outside the IEEE-754 single-precision
+    # range used by the module's CTCSS table comparison.
+    assert not validate(1.0e100)
+
+    namespace = globals_for("ctcss_frequency_supported")
+    original_struct = namespace["struct"]
+
+    class RejectingStruct:
+        """Isolate a platform float-packing range failure from the stdlib module."""
+
+        error = original_struct.error
+        unpack = staticmethod(original_struct.unpack)
+
+        @staticmethod
+        def pack(*_args):
+            """Reject the selected value as outside the single-precision range."""
+            raise RejectingStruct.error("single-precision range")
+
+    monkeypatch.setitem(namespace, "struct", RejectingStruct)
+    assert not validate(100.0)
+
+
+def test_ctcss_frequency_editors_reject_unsupported_tones_before_reload(monkeypatch):
+    """Keep the CTCSS menu from saving a tone outside the supported table."""
+    namespace = globals_for("section_options_menu")
+    messages = []
+    applied = []
+    settings = {"transmit_default_hz": MODULE["CTCSS_SETTINGS"]["transmit_default_hz"]}
+    monkeypatch.setitem(namespace, "read_config", lambda: "[ctcss]\n")
+    monkeypatch.setitem(
+        namespace,
+        "shipped_modern_defaults",
+        lambda: {("ctcss", "transmit_default_hz"): "100.0"},
+    )
+    monkeypatch.setitem(namespace, "prompt_number", lambda *_args: (0, "49.0"))
+    monkeypatch.setitem(
+        namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
+    )
+    # Stop after the rejected editor returns to the menu.
+    replies = iter(((0, "1"), (1, "")))
+    monkeypatch.setitem(
+        namespace,
+        "dialog",
+        lambda args: messages.append(args) or (next(replies) if "--menu" in args else (0, "")),
+    )
+    MODULE["section_options_menu"]("ctcss", settings, "CTCSS")
+    assert not applied
+    assert any("supported CTCSS frequency" in " ".join(args) for args in messages)
+
+
+def test_ctcss_transmit_frequency_map_editor_explains_positional_mapping(monkeypatch):
+    """Describe the receive-to-transmit map before saving a valid CTCSS list."""
+    namespace = globals_for("section_options_menu")
+    prompts = []
+    applied = []
+    settings = {"transmit_frequencies": MODULE["CTCSS_SETTINGS"]["transmit_frequencies"]}
+    monkeypatch.setitem(namespace, "read_config", lambda: "[ctcss]\n")
+    monkeypatch.setitem(
+        namespace,
+        "shipped_modern_defaults",
+        lambda: {("ctcss", "transmit_frequencies"): "100.0"},
+    )
+    monkeypatch.setitem(
+        namespace,
+        "prompt_text",
+        lambda *args: prompts.append(args) or (0, "100.0"),
+    )
+    monkeypatch.setitem(
+        namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
+    )
+    monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (1, "")))
+    MODULE["section_options_menu"]("ctcss", settings, "CTCSS")
+    assert prompts == [
+        (
+            "Receive-to-transmit CTCSS frequency map",
+            "100.0",
+            "Enter supported, positive comma-separated CTCSS frequencies; map receive entries by "
+            "position when both directions use CTCSS",
+        )
+    ]
+    assert applied and "transmit_frequencies = 100.0" in applied[0][1]
+
+
+@pytest.mark.parametrize(
+    ("key", "current", "expected"),
+    (
+        (
+            "transmit_default_hz",
+            "100.0",
+            ("Default transmit CTCSS frequency", "100.0", "float", 0.001, None, "Hz"),
+        ),
+        (
+            "phase_shift_degrees",
+            "120.0",
+            ("CTCSS phase shift", "120.0", "float", 0.0, None, "degrees"),
+        ),
+        (
+            "tail_frequency_hz",
+            "55.0",
+            ("CTCSS tail frequency", "55.0", "float", 0.0, None, "Hz"),
+        ),
+        ("tail_duration_ms", "180", ("CTCSS tail duration", "180", "integer", 40, 32767, "ms")),
+    ),
+)
+def test_ctcss_editors_show_documented_units_and_bounds(monkeypatch, key, current, expected):
+    """Keep every CTCSS editor aligned with its strict parser contract.
+
+    @param monkeypatch Scoped patch fixture.
+    @param key CTCSS setting under test.
+    @param current Displayed setting value.
+    @param expected Expected shared-editor arguments.
+    """
+    namespace = globals_for("section_options_menu")
+    prompts = []
+    settings = {key: MODULE["CTCSS_SETTINGS"][key]}
+    monkeypatch.setitem(namespace, "read_config", lambda: "[ctcss]\n")
+    monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {("ctcss", key): current})
+    monkeypatch.setitem(
+        namespace,
+        "prompt_number",
+        lambda *args, **kwargs: prompts.append((args, kwargs)) or (1, ""),
+    )
+    monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (1, "")))
+    MODULE["section_options_menu"]("ctcss", settings, "CTCSS")
+    expected_args = expected
+    if key in {"transmit_default_hz", "phase_shift_degrees", "tail_frequency_hz"}:
+        expected_args += (key in {"phase_shift_degrees", "tail_frequency_hz"},)
+    assert prompts == [(expected_args, {})]
+
+
+def test_dcs_code_editor_normalizes_and_rejects_invalid_codes(monkeypatch):
+    """Reject malformed DCS codes before a reload.
+
+    @param monkeypatch Scoped patch fixture.
+    """
+    namespace = globals_for("prompt_dcs_code")
+    messages = []
+    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, "023i"))
+    assert MODULE["prompt_dcs_code"]("DCS", "023N") == (0, "023I")
+    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, "000N"))
+    assert MODULE["prompt_dcs_code"]("DCS", "023N") == (0, "000N")
+    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, "888N"))
+    monkeypatch.setitem(namespace, "dialog", lambda args: messages.append(args) or (0, ""))
+    assert MODULE["prompt_dcs_code"]("DCS", "023N") == (1, "")
+    assert "three octal digits" in " ".join(messages[-1])
+    monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (1, "unchanged"))
+    assert MODULE["prompt_dcs_code"]("DCS", "023N") == (1, "unchanged")
+
+
+def test_dcs_turnoff_duration_editor_uses_the_documented_range(monkeypatch):
+    """Keep the DCS end-of-transmission editor aligned with parser validation."""
+    namespace = globals_for("section_options_menu")
+    prompts = []
+    applied = []
+    settings = {"turnoff_duration_ms": MODULE["DCS_SETTINGS"]["turnoff_duration_ms"]}
+    monkeypatch.setitem(namespace, "read_config", lambda: "[dcs]\n")
+    monkeypatch.setitem(
+        namespace,
+        "shipped_modern_defaults",
+        lambda: {("dcs", "turnoff_duration_ms"): "180"},
+    )
+    monkeypatch.setitem(
+        namespace,
+        "prompt_number",
+        lambda *args: prompts.append(args) or (0, "180"),
+    )
+    monkeypatch.setitem(
+        namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
+    )
+    monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (1, "")))
+    MODULE["section_options_menu"]("dcs", settings, "DCS")
+    assert prompts == [
+        ("DCS 134.4 Hz tail duration (when enabled)", "180", "integer", 150, 200, "ms")
+    ]
+    assert applied and "turnoff_duration_ms = 180" in applied[0][1]
 
 
 def test_section_options_actions_validation_restart_and_error(monkeypatch):
@@ -570,7 +827,9 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
     action_calls = []
     settings = {"test_key": ("Frequencies", "frequencies")}
     monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
-    monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {"test_key": "100"})
+    monkeypatch.setitem(
+        namespace, "shipped_modern_defaults", lambda: {("hardware", "test_key"): "100"}
+    )
 
     menu_replies = iter(((0, "A"), (0, "1"), (0, "1"), (1, "")))
     prompt_replies = iter(((0, "bad"), (0, "")))
@@ -589,7 +848,7 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
         "hardware", settings, "Test", (("A", "Action", lambda: action_calls.append(1)),)
     )
     assert action_calls == [1]
-    assert any("positive, comma-separated" in " ".join(args) for args in messages)
+    assert any("supported CTCSS frequencies" in " ".join(args) for args in messages)
 
     text_settings = {"test_key": ("Text", "text")}
     monkeypatch.setitem(namespace, "prompt_text", lambda *_args: (0, ""))
@@ -620,22 +879,78 @@ def test_section_options_actions_validation_restart_and_error(monkeypatch):
     MODULE["section_options_menu"]("hardware", settings, "Test")
 
 
-def test_hardware_menu_dispatches_group_meter_and_returns(monkeypatch):
-    """Verify hardware menu dispatches group meter and returns.
+def test_hardware_menu_dispatches_every_group_without_mixing_sections(monkeypatch):
+    """Expose every CM119 group without mixing its section with radio controls.
 
     @param monkeypatch Pytest fixture that restores patched process and module state.
     """
     namespace = globals_for("hardware_menu")
     calls = []
-    monkeypatch.setitem(namespace, "dialog", sequence((0, "M"), (0, "2"), (1, "")))
+    monkeypatch.setitem(
+        namespace,
+        "dialog",
+        sequence(
+            (0, "M"),
+            (0, "1"),
+            (0, "2"),
+            (0, "3"),
+            (0, "4"),
+            (0, "5"),
+            (0, "6"),
+            (0, "7"),
+            (0, "8"),
+            (0, "9"),
+            (0, "A"),
+            (1, ""),
+        ),
+    )
     monkeypatch.setitem(namespace, "launch_radio_meter", lambda mode: calls.append(("meter", mode)))
     monkeypatch.setitem(
         namespace,
         "section_options_menu",
-        lambda section, settings, label, actions: calls.append((section, label, bool(actions))),
+        lambda section, settings, label, actions: calls.append(
+            (section, label, tuple(settings), bool(actions))
+        ),
     )
     MODULE["hardware_menu"]()
-    assert calls == [("meter", "all"), ("hardware", "Receiver", True)]
+    assert calls == [
+        ("meter", "all"),
+        ("hardware", "USB interface", MODULE["HARDWARE_GROUP_KEYS"]["usb"], True),
+        (
+            "receive",
+            "Receiver signaling and squelch",
+            tuple(MODULE["RECEIVE_SETTINGS"]),
+            True,
+        ),
+        (
+            "transmit",
+            "Transmitter signaling and timing",
+            tuple(MODULE["TRANSMIT_SETTINGS"]),
+            True,
+        ),
+        ("ctcss", "CTCSS", tuple(MODULE["CTCSS_SETTINGS"]), True),
+        ("dcs", "DCS", tuple(MODULE["DCS_SETTINGS"]), False),
+        (
+            "hardware",
+            "CM119 receiver audio",
+            MODULE["HARDWARE_GROUP_KEYS"]["receive"],
+            False,
+        ),
+        (
+            "hardware",
+            "CM119 transmitter audio and PTT",
+            MODULE["HARDWARE_GROUP_KEYS"]["transmit"],
+            False,
+        ),
+        ("hardware", "CM119 GPIO", MODULE["HARDWARE_GROUP_KEYS"]["gpio"], False),
+        ("hardware", "Parallel port", MODULE["HARDWARE_GROUP_KEYS"]["parallel"], False),
+        (
+            "hardware",
+            "Hardware signaling",
+            MODULE["HARDWARE_GROUP_KEYS"]["signaling"],
+            False,
+        ),
+    ]
 
 
 class Terminal:
@@ -708,6 +1023,30 @@ def test_interactive_dispatches_every_configuration_section(
     monkeypatch.setitem(namespace, "hardware_menu", lambda: calls.append(("hardware",)))
     MODULE["interactive"]()
     assert calls == [expected]
+
+
+def test_general_channel_menu_exposes_profile_selection(monkeypatch, tmp_path):
+    """Offer named-channel profile selection beside the restart-bound channel switch."""
+    namespace, _config = prepare_interactive(monkeypatch, tmp_path)
+    calls = []
+    menus = iter(((0, "7"), (1, "")))
+    monkeypatch.setitem(
+        namespace, "dialog", lambda args: next(menus) if "--menu" in args else (0, "")
+    )
+    monkeypatch.setitem(
+        namespace,
+        "section_options_menu",
+        lambda section, settings, title, actions: calls.append((section, settings, title, actions)),
+    )
+    MODULE["interactive"]()
+    assert calls == [
+        (
+            "general",
+            MODULE["GENERAL_SETTINGS"],
+            "General channel settings",
+            (("P", "Select named-channel profiles", MODULE["profile_selection_menu"]),),
+        )
+    ]
 
 
 def test_interactive_dispatches_radio_selection(monkeypatch, tmp_path):

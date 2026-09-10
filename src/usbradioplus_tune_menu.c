@@ -20,7 +20,23 @@
 #include "usbradioplus_processing.h"
 #include "usbradioplus_radio.h"
 #include "usbradioplus_repeat.h"
+#include "usbradioplus_channel_common.h"
 #include "usbradioplus_channel_private.h"
+
+/** @brief Print a coherent transmitter meter snapshot without reading worker state live.
+ * @param fd Asterisk CLI output descriptor.
+ * @param channel Radio channel whose native worker publishes the measurements.
+ */
+static void print_native_tx_audio_stats(int fd, struct chan_usbradio_pvt *channel)
+{
+	struct audiostatistics statistics;
+
+	if (usbradioplus_native_worker_tx_audio_stats_read(channel, &statistics)) {
+		ast_cli(fd, "Tx audio statistics are not available.\n");
+		return;
+	}
+	ast_radio_print_audio_stats(fd, &statistics, "Tx");
+}
 
 void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 {
@@ -156,6 +172,8 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		break;
 	case 'k': /* change echo mode */
 		if (cmd[1]) {
+			int previous_echo_mode = o->echomode;
+
 			if (cmd[1] > '0') {
 				if (usbradioplus_native_echo(o) &&
 				    usbradioplus_ensure_parrot_capacity(o)) {
@@ -165,9 +183,13 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				o->echomode = 1;
 			} else {
 				o->echomode = 0;
-				o->plus_parrot_playing = 0;
-				atomic_store_explicit(&o->echoing, 0, memory_order_release);
-				o->plus_parrot_count = o->plus_parrot_play = 0;
+				usbradioplus_native_worker_clear_parrot(o);
+			}
+			if (usbradioplus_prepare_native_processing(o)) {
+				o->echomode = previous_echo_mode;
+				ast_cli(fd, "Unable to apply Echo Mode; keeping prior native audio "
+					    "state\n");
+				break;
 			}
 			ast_cli(fd, "Echo Mode changed to %s\n",
 				(o->echomode) ? "Enabled" : "Disabled");
@@ -188,12 +210,20 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		if (cmd[1]) {
 			char *end = NULL;
 			long level = strtol(cmd + 1, &end, 10);
+			int previous_level;
 			if (*end || level < 0 || level > DUPLEX3_LEVEL_MAX) {
 				ast_cli(fd, "Duplex 3 level must be between 0 and %d\n",
 					DUPLEX3_LEVEL_MAX);
 				break;
 			}
+			previous_level = o->duplex3;
 			o->duplex3 = (int)level;
+			if (usbradioplus_prepare_native_processing(o)) {
+				o->duplex3 = previous_level;
+				ast_cli(fd, "Unable to apply Duplex 3 level; keeping prior native "
+					    "audio state\n");
+				break;
+			}
 			mixer_write(o);
 			ast_cli(fd, "Duplex 3 level changed to %ld\n", level);
 		} else {
@@ -202,12 +232,21 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		break;
 	case 'M': /* Select hardware-mixer or native software local repeat. */
 		if (cmd[1]) {
+			enum duplex3_mode previous_mode;
+
 			if (cmd[1] != '0' && cmd[1] != '1') {
 				ast_cli(fd, "Duplex 3 mode must be hardware or software\n");
 				break;
 			}
+			previous_mode = o->duplex3mode;
 			o->duplex3mode =
 				cmd[1] == '1' ? DUPLEX3_MODE_SOFTWARE : DUPLEX3_MODE_HARDWARE;
+			if (usbradioplus_prepare_native_processing(o)) {
+				o->duplex3mode = previous_mode;
+				ast_cli(fd, "Unable to apply Duplex 3 mode; keeping prior native "
+					    "audio state\n");
+				break;
+			}
 			mixer_write(o);
 			ast_cli(fd, "Duplex 3 mode changed to %s\n",
 				o->duplex3mode == DUPLEX3_MODE_SOFTWARE ? "software" : "hardware");
@@ -325,7 +364,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		x = 1;
 		for (;;) {
 			if (o->txkeyed || o->txtestkey) {
-				ast_radio_print_audio_stats(fd, &o->txaudiostats, "Tx");
+				print_native_tx_audio_stats(fd, o);
 				x = 1;
 			} else if (x == 1) {
 				ast_cli(fd, "Tx not keyed\n");
@@ -353,7 +392,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				(o->txkeyed || o->txtestkey) ? "keyed" : "clear");
 			ast_radio_print_audio_stats(fd, &o->rxaudiostats, "Rx");
 			if (o->txkeyed || o->txtestkey) {
-				ast_radio_print_audio_stats(fd, &o->txaudiostats, "Tx");
+				print_native_tx_audio_stats(fd, o);
 			} else {
 				ast_cli(fd, "Tx not keyed\n");
 			}

@@ -15,14 +15,19 @@
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "USBRadioPlus requires lock-free atomic cursors");
 
 /** Maximum retained program-audio history: 200 ms at the native rate. */
-#define URP_PROGRAM_QUEUE_FRAMES 10U
-/** Number of PCM samples held by the app_rpt-to-native SPSC program ring. */
-#define URP_PROGRAM_QUEUE_SAMPLES (URP_PROGRAM_QUEUE_FRAMES * URP_NATIVE_SAMPLES)
+#define URP_PROGRAM_RING_FRAMES 10U
+/** Number of PCM samples allocated for the app_rpt-to-native program ring. */
+#define URP_PROGRAM_RING_SAMPLES (URP_PROGRAM_RING_FRAMES * URP_NATIVE_SAMPLES)
+/** Source-audio occupancy used by the program-ring drift controller.
+ *
+ * This is a controller setpoint, not an admission threshold: playout starts
+ * immediately and a temporary shortfall is concealed by the consumer.  The
+ * 110 ms target leaves room for independent Asterisk and CM119 clocks without
+ * adding a keyed-transmit startup delay.
+ */
+#define URP_PROGRAM_RING_TARGET_MS 110U
 /** Maximum duration retained by the legacy 8 kHz echo path: 20 seconds. */
 #define URP_ECHO_QUEUE_SAMPLES (URP_APP_RPT_RATE_DEFAULT * 20U)
-
-/** Fixed SPSC startup and de-drift reserve. */
-#define URP_PROGRAM_QUEUE_TARGET_MS 110U
 
 /** Transport-independent receive audio source values. */
 /** Receiver audio-source assignments. */
@@ -33,12 +38,16 @@ enum urp_rx_audio_mode {
 };
 
 /** Transport-independent transmit output routing values. */
-/** Hardware voice/CTCSS output assignments. */
+/** Hardware voice/transmit-signaling output assignments.
+ *
+ * The \c ctcss route names carry either selected transmit signaling method:
+ * CTCSS or DCS.
+ */
 enum urp_tx_output_mode {
 	URP_TX_OUTPUT_DISABLED /**< Silence on this DAC output. */,
-	URP_TX_OUTPUT_VOICE /**< Processed voice without CTCSS. */,
-	URP_TX_OUTPUT_TONE /**< CTCSS without voice. */,
-	URP_TX_OUTPUT_COMPOSITE /**< Processed voice mixed with CTCSS. */,
+	URP_TX_OUTPUT_VOICE /**< Processed voice without transmit signaling. */,
+	URP_TX_OUTPUT_TONE /**< Transmit signaling without voice. */,
+	URP_TX_OUTPUT_COMPOSITE /**< Processed voice mixed with transmit signaling. */,
 	URP_TX_OUTPUT_AUX_VOICE /**< Auxiliary voice routing. */
 };
 
@@ -69,16 +78,17 @@ enum urp_ctcss_source {
 /** Transmitter CTCSS turn-off sequences. */
 enum urp_tone_off_mode {
 	URP_TONE_OFF_NONE /**< End CTCSS with PTT release. */,
-	URP_TONE_OFF_PHASE_REVERSE /**< Send a CTCSS reverse burst before PTT release. */,
-	URP_TONE_OFF_REMOVE /**< Remove CTCSS before PTT release. */
+	URP_TONE_OFF_PHASE_SHIFT /**< Shift CTCSS phase before PTT release. */,
+	URP_TONE_OFF_TONE_REMOVE /**< Remove CTCSS before PTT release. */,
+	URP_TONE_OFF_TAIL_TONE /**< Substitute a low-frequency tail tone before PTT release. */
 };
 
 /**
- * Lock-free single-producer/single-consumer PCM ring shared by both adapters.
+ * Lock-free single-producer/single-consumer PCM queue for legacy echo audio.
  *
- * Its producer and consumer are fixed for each use. The app_rpt program ring
- * is written by the Asterisk channel and read by the hardware worker; the
- * legacy echo ring is owned by the hardware worker. The cursors
+ * Its producer and consumer are fixed for each use. App_rpt program audio uses
+ * the shared rate-adjusting PCM ring; this fixed-storage queue is retained for
+ * the hardware worker's legacy echo source. The cursors
  * deliberately are not reduced modulo the ring capacity; modulo arithmetic is
  * used only for indexing.  That lets each side determine occupancy without a
  * mutex and publish samples with acquire/release ordering.
@@ -94,20 +104,6 @@ struct urp_sample_queue {
 	atomic_uint write;
 	/** Largest observed occupancy, in samples. */
 	atomic_uint high_water;
-};
-
-/** Fixed-storage wrapper for the app_rpt-to-native program queue. */
-struct urp_program_queue {
-	/** Lock-free ring metadata. */
-	struct urp_sample_queue ring;
-	/** Queued app_rpt PCM codes. */
-	short samples[URP_PROGRAM_QUEUE_SAMPLES];
-	/** Silence reserve requested by the consumer for the next producer write. */
-	atomic_uint seed_samples;
-	/** Fixed producer/consumer reserve, expressed at the app_rpt rate. */
-	unsigned int target_samples;
-	/** Nonzero once the consumer may emit program audio. */
-	unsigned int primed : 1;
 };
 
 /** Buffer and playback cursor for native-rate echo audio. */
@@ -152,6 +148,7 @@ void urp_prepare_receive_block(const short *stereo, short *pcm, double *working,
 /** @brief Quantize and route one native transmitter block to the CM119 channels.
  * @param program Processed transmitter program audio.
  * @param ctcss Unit-amplitude native CTCSS samples.
+ * @param dcs Native DCS samples already scaled in PCM codes.
  * @param count Number of elements available in the supplied block.
  * @param output_a Output-A routing assignment.
  * @param output_b Output-B routing assignment.
@@ -163,7 +160,8 @@ void urp_prepare_receive_block(const short *stereo, short *pcm, double *working,
  * @param meter_stereo Optional unrouted program-audio buffer for transmitter metering.
  * @return Number of program samples outside signed 16-bit PCM range.
  */
-unsigned long urp_render_transmit_block(const double *program, const double *ctcss, size_t count,
+unsigned long urp_render_transmit_block(const double *program, const double *ctcss,
+					const double *dcs, size_t count,
 					enum urp_tx_output_mode output_a,
 					enum urp_tx_output_mode output_b, double ctcss_peak_a,
 					double ctcss_bias_a, double ctcss_peak_b,
@@ -180,6 +178,18 @@ void urp_sample_queue_init(struct urp_sample_queue *queue, short *samples, unsig
  * @param queue Queue to empty.
  */
 void urp_sample_queue_reset(struct urp_sample_queue *queue);
+
+/** @brief Discard samples already published to an active SPSC queue.
+ * @param queue Queue whose consumer owns this operation.
+ *
+ * This advances only the consumer cursor to an acquire-loaded producer cursor.
+ * The producer cursor and its high-water measurement remain monotonic, so a
+ * producer that publishes concurrently either contributes to the discarded
+ * prefix or remains available after the new read cursor.  Unlike
+ * @ref urp_sample_queue_reset, this operation is safe while the producer is
+ * active.
+ */
+void urp_sample_queue_discard(struct urp_sample_queue *queue);
 
 /** @brief Add one PCM sample to an SPSC queue.
  * @param queue Queue whose producer owns this operation.
@@ -211,82 +221,6 @@ unsigned int urp_sample_queue_high_water(const struct urp_sample_queue *queue);
  * @param queue Queue whose peak measurement is reset.
  */
 void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue);
-
-/** @brief Initialize the fixed app_rpt program ring.
- * @param queue Program queue to initialize.
- */
-void urp_program_queue_init(struct urp_program_queue *queue);
-/** @brief Set queue capacity and fixed reserve for the active app_rpt rate.
- * @param queue Program queue to configure before either endpoint begins I/O.
- * @param sample_rate Asterisk-side sample rate in Hz.
- */
-void urp_program_queue_configure(struct urp_program_queue *queue, unsigned int sample_rate);
-
-/** @brief Request startup silence before the next program write.
- * @param queue Program ring whose producer will satisfy the request.
- * @param samples Number of silence samples requested.
- */
-void urp_program_queue_request_seed(struct urp_program_queue *queue, unsigned int samples);
-
-/** @brief Take the pending startup-silence request exactly once.
- * @param queue Program ring whose producer owns the request.
- * @return Number of silence samples to prepend.
- */
-unsigned int urp_program_queue_take_seed(struct urp_program_queue *queue);
-
-/** @brief Queue PCM samples, optionally prefixing silence for startup reserve.
- * @param queue App_rpt frame queue.
- * @param samples Audio samples.
- * @param count Number of elements available in the supplied block.
- * @param seed_samples Initial silence samples to queue before first program audio.
- * @return Nonzero if the ring was full and one or more incoming samples were rejected.
- */
-int urp_program_queue_push(struct urp_program_queue *queue, const short *samples, size_t count,
-			   unsigned int seed_samples);
-
-/** @brief Queue one PCM sample.
- * @param queue Program ring.
- * @param sample Sample to append.
- * @return One on success; zero when the ring is full.
- */
-int urp_program_queue_push_sample(struct urp_program_queue *queue, short sample);
-
-/** @brief Remove one queued PCM sample.
- * @param queue App_rpt frame queue.
- * @param sample Receives the next sample.
- * @return One when a sample was removed; zero when the ring was empty.
- */
-int urp_program_queue_pop_sample(struct urp_program_queue *queue, short *sample);
-
-/** @brief Read one fixed-duration frame while correcting persistent ring drift.
- *
- * The consumer advances its read cursor by one extra or one fewer source
- * sample when occupancy is outside a one-frame deadband.  This is the same
- * bounded insert/drop strategy used by legacy XPMR de-drift; the SPSC ring is
- * the only asynchronous bridge between app_rpt and the hardware callback.
- * @param queue Program ring whose consumer owns this operation.
- * @param samples Destination frame.
- * @param count Number of output samples requested.
- * @return One when a complete frame was produced; zero when it cannot be read.
- */
-int urp_program_queue_pop_frame(struct urp_program_queue *queue, short *samples, size_t count);
-
-/** @brief Return the current number of queued samples.
- * @param queue App_rpt frame queue.
- * @return Number of samples available to the consumer.
- */
-unsigned int urp_program_queue_samples(const struct urp_program_queue *queue);
-
-/** @brief Return the peak observed sample occupancy.
- * @param queue Program ring.
- * @return Largest occupancy observed since initialization or reset.
- */
-unsigned int urp_program_queue_high_water(const struct urp_program_queue *queue);
-
-/** @brief Reset the peak occupancy without disturbing queued audio.
- * @param queue Program ring.
- */
-void urp_program_queue_reset_high_water(struct urp_program_queue *queue);
 
 /** @brief Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale.
  * @param gain_db Gain in dB.
@@ -352,7 +286,7 @@ int urp_tx_output_has_program(enum urp_tx_output_mode mode);
  */
 int urp_tx_output_has_voice(enum urp_tx_output_mode mode);
 
-/** @brief Return nonzero when an output assignment carries transmitter CTCSS.
+/** @brief Return nonzero when an output assignment carries transmitter signaling.
  * @param mode Configured routing, detection, or hardware-open mode.
  * @return Nonzero when the stated condition holds; zero otherwise.
  */
@@ -365,21 +299,21 @@ int urp_tx_output_has_tone(enum urp_tx_output_mode mode);
  */
 int urp_tx_pair_has_voice(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b);
 
-/** @brief Return nonzero when either output assignment carries transmitter CTCSS.
+/** @brief Return nonzero when either output assignment carries transmitter signaling.
  * @param output_a Output-A routing assignment.
  * @param output_b Output-B routing assignment.
  * @return Nonzero when the stated condition holds; zero otherwise.
  */
 int urp_tx_pair_has_tone(enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b);
 
-/** @brief Return nonzero when configured transmitter CTCSS has no assigned output.
- * @param frequency Configured CTCSS frequency string.
+/** @brief Return nonzero when configured transmitter signaling has no assigned output.
+ * @param signaling_enabled Nonzero when CTCSS or DCS transmit signaling is selected.
  * @param output_a Output-A routing assignment.
  * @param output_b Output-B routing assignment.
  * @return Nonzero when the stated condition holds; zero otherwise.
  */
-int urp_tx_tone_route_missing(const char *frequency, enum urp_tx_output_mode output_a,
-			      enum urp_tx_output_mode output_b);
+int urp_tx_signaling_route_missing(int signaling_enabled, enum urp_tx_output_mode output_a,
+				   enum urp_tx_output_mode output_b);
 
 /** @brief Return nonzero when configured parallel outputs require the pulse worker.
  * @param parallel_port_enabled Nonzero when parallel-port hardware is available.
@@ -439,13 +373,6 @@ size_t urp_parrot_record(struct urp_parrot_state *state, const double *input, si
  */
 int urp_parse_rx_audio_mode(const char *text, enum urp_rx_audio_mode *mode);
 
-/** @brief Parse a transmitter output assignment.
- * @param text Text to parse; mutable storage may be edited in place.
- * @param mode Receives the parsed assignment.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int urp_parse_tx_output_mode(const char *text, enum urp_tx_output_mode *mode);
-
 /** @brief Parse a carrier-detection source.
  * @param text Text to parse; mutable storage may be edited in place.
  * @param source Receives the parsed detector-source assignment.
@@ -471,7 +398,7 @@ int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode);
 
 /** @name File-local and build-time constants
  * @{ */
-/** @def URP_PROGRAM_QUEUE_FRAMES
- * @brief Maximum queued app_rpt voice frames.
+/** @def URP_PROGRAM_RING_FRAMES
+ * @brief Maximum retained app_rpt program-audio history at the native rate.
  */
 /** @} */

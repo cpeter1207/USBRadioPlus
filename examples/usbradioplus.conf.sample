@@ -8,6 +8,9 @@
 ; Flat sections provide shared defaults. A scoped section such as
 ; [hardware usb] overrides [hardware] for a radio named usb. A radio may also
 ; select another scoped profile explicitly.
+; For [receive], [transmit], [ctcss], and [dcs], an omitted option resolves to
+; the concrete value shown below. A scoped explicit option overrides the flat
+; section; inactive CTCSS and DCS settings do not enable either protocol.
 
 [usb]
 ; This named section creates RadioPlus/usb and inherits every flat section.
@@ -34,15 +37,13 @@ channel_enabled = yes
 ;hardware_input_gain_db = 0.0
 ;hardware_output_a_gain_db = 0.0
 ;hardware_output_b_gain_db = 0.0
-; Route voice, CTCSS, both, auxiliary voice, or nothing to each CM119 playback
-; channel.
+; Route voice, transmit signaling (CTCSS or DCS), both, auxiliary voice, or
+; nothing to each CM119 playback channel. Selected CTCSS or DCS transmission
+; requires ctcss or voice_ctcss on at least one output.
 ;hardware_output_a_assignment = voice_ctcss
 ;hardware_output_b_assignment = off
-; Select the COS source.
-;hardware_cos_assignment = dsp
-; Comma-separated receive and transmit CTCSS frequency lists.
-;hardware_rx_ctcss_frequencies = 100.0
-;hardware_tx_ctcss_frequencies = 100.0
+; Invert the physical PTT output for interfaces wired active-low.
+;hardware_ptt_inverted = no
 ; De-emphasis and pre-emphasis corner frequency.
 ;hardware_emphasis_corner_hz = 212.206590789
 ; Device selection and interface layout.
@@ -50,53 +51,20 @@ channel_enabled = yes
 ;hardware_serial =
 ;hardware_interface_type = 0
 ;hardware_eeprom_enabled = yes
-; Audio buffering and idle DSP controls.
-; App_rpt audio and idle silence keep the program ring and resampler running across PTT
-; transitions, except while echo playback owns the input.
+; Audio buffering.
+; App_rpt PCM enters one lock-free program ring. It renders from the first
+; queued sample; its 110 ms target is for clock recovery, not startup delay.
+; Its persistent converter handles source-rate conversion and hardware-clock
+; recovery across PTT transitions; a short producer gap is concealed smoothly.
+; The following OSS-device controls do not configure that program ring.
+; On the PortAudio adapter they are accepted but have no effect.
+; Raw OSS SNDCTL_DSP_SETFRAGMENT request; leave at the adapter default unless
+; the sound device requires a documented override.
 ;hardware_audio_fragment_count = 196
-; Device output continues with silence while idle; this bounds its queued audio.
+; Maximum queued OSS playback fragments. It bounds OSS device latency but
+; does not affect the program ring, PTT, or the PortAudio adapter.
 ;hardware_audio_queue_size = 20
-; With RX CPU saver off, enabled local RNNoise/dynamics also run while idle.
-; With it on, those stages are bypassed until the receiver is qualified.
-;hardware_rx_cpu_saver_enabled = no
-;hardware_tx_cpu_saver_enabled = no
-; Receiver audio and CTCSS indication sources.
-;hardware_rx_audio_source = flat
-;hardware_rx_ctcss_source = dsp
-;hardware_vox_hang_ms = 2000
-;hardware_vox_threshold = 0
-; DSP COS noise margin while open, not a delay or SINAD setting. The sample-rate
-; MICOR-style detector closes strong signals quickly and holds weak or gradually
-; fading signals for about 150 ms. Strong means at least 20 dB noise quieting.
-;hardware_noise_squelch_hysteresis = 3000
-;hardware_noise_filter_type = 0
-;hardware_squelch_delay = 0
-; Carrier timing, polarity, squelch, and receive CTCSS calibration.
-;hardware_rx_on_delay_frames = 0
-;hardware_rx_polarity_inverted = no
-;hardware_squelch_level = 500
-;hardware_rx_ctcss_level = 1.0
-;hardware_rx_ctcss_override_enabled = no
-;hardware_rx_ctcss_relax = 1
-; Transmit CTCSS, signaling polarity, modulation mode, and timing.
-;hardware_tx_ctcss_default_hz = 100.0
-;hardware_tx_ctcss_level = 200
-;hardware_ctcss_turnoff_mode = notone
-;hardware_dcs_rx_polarity_inverted = no
-;hardware_dcs_tx_polarity_inverted = no
-;hardware_lsd_rx_polarity_inverted = no
-;hardware_lsd_tx_polarity_inverted = no
-; Transmit pre-emphasis and keying delays. Limiting is set in [voice_telemetry].
-; Enable pre-emphasis for a direct modulator input; disable if supplied by the radio.
-;hardware_tx_preemphasis_enabled = yes
-;hardware_tx_settle_ms = 500
-;hardware_tx_rx_blanking_ms = 0
-;hardware_tx_off_delay_frames = 0
-;hardware_tx_polarity_inverted = no
-;hardware_ptt_inverted = no
-; Radio identity and signaling metadata.
-;hardware_rx_frequency_hz = 0
-;hardware_tx_frequency_hz = 0
+; Radio identity and signaling metadata remains hardware-specific.
 ;hardware_repeater_number = 0
 ;hardware_area = 0
 ;hardware_user_key =
@@ -136,6 +104,110 @@ channel_enabled = yes
 ;hardware_parallel_pin_13_assignment = in
 ;hardware_parallel_pin_15_assignment = in
 
+[receive]
+; Select exactly one receive qualification method: carrier, ctcss, or dcs.
+signaling_method = carrier
+; Run enabled local RNNoise and dynamics continuously when no qualified signal is
+; present. Set yes to bypass those optional stages while the receiver is idle.
+;cpu_saver_enabled = no
+; Select no receiver audio, de-emphasized speaker audio, or flat discriminator.
+;audio_source = flat
+; Select the COS source used by carrier qualification.
+;cos_assignment = dsp
+; Nonnegative VOX hold time in milliseconds and detector threshold (0--32767).
+;vox_hang_ms = 2000
+;vox_threshold = 0
+; Nonnegative DSP noise-squelch open-state margin (0--32767) and detector
+; filter selector (0 or 1).
+;noise_squelch_hysteresis = 3000
+;noise_filter_type = 0
+; Receive audio tail delay in milliseconds (0--511) and carrier acceptance
+; delay in 20 ms frames (0--3000).
+;squelch_delay_ms = 0
+;on_delay_frames = 0
+; Invert receiver signaling polarity when the radio uses the opposite sense.
+;polarity_inverted = no
+; DSP carrier-squelch threshold on the 0--999 tuning scale.
+;squelch_level = 500
+; Nonnegative integral receiver frequency in hertz for signaling and reporting.
+;frequency_hz = 0
+; Invert low-speed-data signaling when the attached system requires it.
+;lsd_polarity_inverted = no
+
+[transmit]
+; Select exactly one transmitted signaling method: carrier, ctcss, or dcs.
+signaling_method = carrier
+; Reduce optional transmitter DSP activity while no transmitter audio is active.
+;cpu_saver_enabled = no
+; Enable pre-emphasis for a direct modulator connection; disable it when the
+; radio supplies pre-emphasis.
+;preemphasis_enabled = yes
+; Nonnegative transmitter settle and receive-blanking times in milliseconds.
+; Post-transmit receive delay is 0--3000 20 ms frames.
+;settle_ms = 500
+;rx_blanking_ms = 0
+;off_delay_frames = 0
+; Invert transmitter radio-signaling polarity when the radio requires it.
+;polarity_inverted = no
+; Nonnegative integral transmitter frequency in hertz for signaling and reporting.
+;frequency_hz = 0
+; Invert low-speed-data signaling when the attached system requires it.
+;lsd_polarity_inverted = no
+
+[ctcss]
+; Used only in a direction whose signaling_method is ctcss. Before selecting
+; receive CTCSS, set a non-no receive source and supported receive frequencies.
+; Before selecting transmit CTCSS, set one supported transmit default tone.
+; transmit_frequencies is an optional translation map only when both directions
+; use CTCSS. In that case it must match receive_frequencies in length, and every
+; list entry must be a supported CTCSS tone.
+;receive_frequencies = 100.0
+;transmit_frequencies = 100.0
+; Select no external tone indication, a CM119/parallel input, or the native DSP
+; decoder.
+;receive_source = dsp
+; Receive decoder gain is relative gain, not an absolute signal level.
+;receive_decoder_gain_db = 0.0
+; Bypass received-tone qualification for receive CTCSS. This setting is ignored
+; when receive signaling is carrier or DCS. Set decoder talk-off tolerance to 0
+; (strict) or 1 (relaxed).
+;receive_override_enabled = no
+;receive_relax = 1
+; Use one supported CTCSS tone when no receive-tone translation selects one.
+; This is required before selecting transmit CTCSS.
+;transmit_default_hz = 100.0
+; Direct peak of the generated CTCSS PCM waveform relative to full scale. The
+; downstream hardware output gain still sets the DAC's analog level.
+;transmit_peak_dbfs = -24.0
+; Choose no tail action; shift CTCSS phase before unkey; remove CTCSS early;
+; or replace CTCSS with a tail tone before unkey.
+;turnoff_mode = ctcss_phase_shift
+; ctcss_phase_shift applies this positive phase shift when its tail begins.
+; ctcss_tone_remove suppresses CTCSS for the tail duration. ctcss_tail_tone
+; replaces CTCSS with the positive tail frequency for the tail duration. Tail
+; duration is 40 through 32767 milliseconds for every non-no mode. Zero does
+; not disable a tail; select turnoff_mode = no to disable CTCSS tail signaling.
+;phase_shift_degrees = 120.0
+;tail_duration_ms = 180
+;tail_frequency_hz = 55.0
+
+[dcs]
+; DCS is independent of CTCSS. Use three octal digits from 000 through 777,
+; followed by N or I for normal or inverted polarity (for example, 023N).
+; Receive and transmit codes apply only when the corresponding direction selects
+; DCS signaling and are required before that direction selects DCS.
+;receive_code = 023N
+;transmit_code = 023N
+; Send a 134.4 Hz DCS end-of-transmission tail tone for 150 through 200 ms
+; before PTT release. The default duration is 180 ms.
+;turnoff_code_enabled = yes
+;turnoff_duration_ms = 180
+; Direct peak of the generated DCS PCM waveform relative to full scale. It is
+; independent of [ctcss] transmit_peak_dbfs; hardware output gain is downstream.
+;peak_dbfs = -24.0
+; DCS uses a fixed shaped NRZ/Golay waveform. It bypasses transmitter
+; pre-emphasis and all speech-processing controls.
+
 [duplex]
 ; Radio duplex mode and local 48 kHz repeat route. Scoped duplex profiles
 ; inherit omitted values from this flat section.
@@ -161,30 +233,49 @@ enabled = yes
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band tone control.
 equalizer_enabled = yes
+; Low-shelf boost or cut in dB.
 equalizer_low_gain_db = 2.0
+; Low-shelf turnover frequency in hertz.
 equalizer_low_frequency_hz = 500.0
+; Low-shelf transition slope.
 equalizer_low_slope = 0.7
+; Mid-bell boost or cut in dB.
 equalizer_mid_gain_db = -0.5
+; Mid-bell center frequency in hertz.
 equalizer_mid_frequency_hz = 1000.0
+; Mid-bell bandwidth in octaves.
 equalizer_mid_width_octaves = 1.0
+; High-shelf boost or cut in dB.
 equalizer_high_gain_db = -1.0
+; High-shelf turnover frequency in hertz.
 equalizer_high_frequency_hz = 2000.0
+; High-shelf transition slope.
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction immediately before the compressor by default.
 deesser_enabled = no
+; Center frequency of the sibilance detector and attenuated band.
 deesser_frequency_hz = 4000.0
+; Width of the sibilance band in octaves.
 deesser_width_octaves = 1.0
+; Detector level at which de-essing begins, in dBFS.
 deesser_threshold_dbfs = -18.0
+; Attenuation ratio above the de-esser threshold.
 deesser_ratio = 3.0
+; Greatest allowed sibilance-band attenuation in dB.
 deesser_max_reduction_db = 4.0
+; Time to apply sibilance attenuation in milliseconds.
 deesser_attack_ms = 2.0
+; Time to restore sibilance-band level in milliseconds.
 deesser_release_ms = 60.0
 ; RNNoise runs after de-emphasis, squelch gating, and PL removal, before dynamics.
 rnnoise_enabled = no
 ; Apply a steep receive band-pass immediately after the squelch gate and before
-; PL filtering. Cutoffs are the -3 dB crossover frequencies.
+; PL filtering. Cutoffs are the -3 dB crossover frequencies; the high cutoff
+; may be set through 6000 Hz.
 receive_bandpass_enabled = yes
+; Lower -3 dB receive-bandpass cutoff in hertz.
 receive_bandpass_highpass_hz = 20.0
+; Upper -3 dB receive-bandpass cutoff in hertz.
 receive_bandpass_lowpass_hz = 5000.0
 ; Select one PL-removal filter after the receive band-pass and before RNNoise
 ; or dynamics: highpass or notch.
@@ -242,9 +333,11 @@ expander_ratio = 1.5
 expander_max_attenuation_db = 9.0
 ; Expander opening and closing times in milliseconds.
 expander_attack_ms = 25.0
+; Expander release time in milliseconds.
 expander_release_ms = 750.0
 ; Expander level-detector bandpass in hertz.
 expander_sidechain_highpass_hz = 300.0
+; Upper detector-band cutoff in hertz.
 expander_sidechain_lowpass_hz = 1500.0
 
 ; Enable compression of strong speech.
@@ -255,8 +348,8 @@ compressor_enabled = yes
 compressor_bands = 3
 ; Low/mid division, 100-2000 Hz.
 compressor_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 compressor_high_crossover_hz = 2000.0
 ; Low-band compression onset, -60 through 0 dBFS.
 compressor_low_threshold_dbfs = -6.0
@@ -304,9 +397,11 @@ compressor_ratio = 2.5
 compressor_makeup_gain_db = 0.0
 ; Compressor attack and release times in milliseconds.
 compressor_attack_ms = 100.0
+; Full-band compressor release time in milliseconds.
 compressor_release_ms = 800.0
 ; Compressor level-detector bandpass in hertz.
 compressor_sidechain_highpass_hz = 800.0
+; Upper full-band compressor detector cutoff in hertz.
 compressor_sidechain_lowpass_hz = 1500.0
 
 ; Enable the shared FFmpeg limiter.
@@ -327,26 +422,38 @@ limiter_release_ms = 50.0
 ; Band-specific controls and crossovers apply only with limiter_bands = 3.
 ; Low/mid division, 100-2000 Hz.
 limiter_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 limiter_high_crossover_hz = 2000.0
 ; Low-band threshold, ratio, knee, attack, and release.
 limiter_low_threshold_dbfs = -1.0
+; Low-band limiting ratio.
 limiter_low_ratio = 10.0
+; Low-band limiter soft-knee width in dB.
 limiter_low_knee_db = 6.0
+; Low-band limiter attack time in milliseconds.
 limiter_low_attack_ms = 50.0
+; Low-band limiter release time in milliseconds.
 limiter_low_release_ms = 300.0
 ; Mid-band threshold, ratio, knee, attack, and release.
 limiter_mid_threshold_dbfs = -1.0
+; Mid-band limiting ratio.
 limiter_mid_ratio = 10.0
+; Mid-band limiter soft-knee width in dB.
 limiter_mid_knee_db = 6.0
+; Mid-band limiter attack time in milliseconds.
 limiter_mid_attack_ms = 10.0
+; Mid-band limiter release time in milliseconds.
 limiter_mid_release_ms = 100.0
 ; High-band threshold, ratio, knee, attack, and release.
 limiter_high_threshold_dbfs = -1.0
+; High-band limiting ratio.
 limiter_high_ratio = 20.0
+; High-band limiter soft-knee width in dB.
 limiter_high_knee_db = 6.0
+; High-band limiter attack time in milliseconds.
 limiter_high_attack_ms = 1.0
+; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
 [link]
@@ -357,37 +464,67 @@ enabled = no
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band tone control.
 equalizer_enabled = yes
+; Low-shelf boost or cut in dB.
 equalizer_low_gain_db = 2.0
+; Low-shelf turnover frequency in hertz.
 equalizer_low_frequency_hz = 500.0
+; Low-shelf transition slope.
 equalizer_low_slope = 0.7
+; Mid-bell boost or cut in dB.
 equalizer_mid_gain_db = -0.5
+; Mid-bell center frequency in hertz.
 equalizer_mid_frequency_hz = 1000.0
+; Mid-bell bandwidth in octaves.
 equalizer_mid_width_octaves = 1.0
+; High-shelf boost or cut in dB.
 equalizer_high_gain_db = -1.0
+; High-shelf turnover frequency in hertz.
 equalizer_high_frequency_hz = 2000.0
+; High-shelf transition slope.
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction immediately before the compressor by default.
 deesser_enabled = no
+; Center frequency of the sibilance detector and attenuated band.
 deesser_frequency_hz = 4000.0
+; Width of the sibilance band in octaves.
 deesser_width_octaves = 1.0
+; Detector level at which de-essing begins, in dBFS.
 deesser_threshold_dbfs = -18.0
+; Attenuation ratio above the de-esser threshold.
 deesser_ratio = 3.0
+; Greatest allowed sibilance-band attenuation in dB.
 deesser_max_reduction_db = 4.0
+; Time to apply sibilance attenuation in milliseconds.
 deesser_attack_ms = 2.0
+; Time to restore sibilance-band level in milliseconds.
 deesser_release_ms = 60.0
 ; Gain before and after link dynamics, -30 through +30 dB.
 input_gain_db = 0.0
+; Gain after link dynamics, -30 through +30 dB.
 output_gain_db = -6.2
 ; Enable individual link dynamics stages as required.
 expander_enabled = yes
+; Enable or disable the gated RMS gain rider.
 agc_enabled = yes
+; Enable or disable link compression.
 compressor_enabled = yes
+; Enable or disable link peak limiting.
 limiter_enabled = yes
 ; Transparent dynamics settings. RNNoise and CTCSS filtering are not valid.
 ; Expander threshold and timing.
 expander_threshold_dbfs = -55.0
+; Expansion ratio, maximum attenuation, and detector-only speech band.
+expander_ratio = 1.5
+; Maximum downward-expander attenuation in dB.
+expander_max_attenuation_db = 9.0
+; Expander attack time in milliseconds.
 expander_attack_ms = 25.0
+; Expander release time in milliseconds.
 expander_release_ms = 750.0
+; Lower expander detector-band cutoff in hertz.
+expander_sidechain_highpass_hz = 300.0
+; Upper expander detector-band cutoff in hertz.
+expander_sidechain_lowpass_hz = 1500.0
 ; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
 agc_target_dbfs = -24.0
 ; Maximum boost for active weak speech, 0 through 30 dB.
@@ -421,8 +558,8 @@ agc_sidechain_lowpass_hz = 1500.0
 compressor_bands = 3
 ; Low/mid division, 100-2000 Hz.
 compressor_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 compressor_high_crossover_hz = 2000.0
 ; Low-band compression onset, -60 through 0 dBFS.
 compressor_low_threshold_dbfs = -6.0
@@ -462,9 +599,20 @@ compressor_high_attack_ms = 100.0
 compressor_high_release_ms = 800.0
 ; Three-band detectors measure their own bands without the single-band filters.
 ; The following unbanded controls apply only with compressor_bands = 1.
+; Full-band ratio, make-up gain, and detector-only speech band.
 compressor_threshold_dbfs = -6.0
+; Full-band compressor ratio.
+compressor_ratio = 2.0
+; Full-band gain after compression in dB.
+compressor_makeup_gain_db = 0.0
+; Full-band compressor attack time in milliseconds.
 compressor_attack_ms = 100.0
+; Full-band compressor release time in milliseconds.
 compressor_release_ms = 800.0
+; Lower full-band compressor detector cutoff in hertz.
+compressor_sidechain_highpass_hz = 800.0
+; Upper full-band compressor detector cutoff in hertz.
+compressor_sidechain_lowpass_hz = 1500.0
 ; One full-band limiter (1) or three independently limited bands (3).
 ; The fixed final transmitter limiter is separate and is not changed by this mode.
 limiter_bands = 3
@@ -481,18 +629,38 @@ limiter_release_ms = 50.0
 ; Band-specific controls and crossovers apply only with limiter_bands = 3.
 ; Low/mid division, 100-2000 Hz.
 limiter_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 limiter_high_crossover_hz = 2000.0
-; Three-band limiter thresholds and timing.
+; Low-band threshold, ratio, knee, attack, and release.
 limiter_low_threshold_dbfs = -1.0
+; Low-band limiting ratio.
+limiter_low_ratio = 10.0
+; Low-band limiter soft-knee width in dB.
+limiter_low_knee_db = 6.0
+; Low-band limiter attack time in milliseconds.
 limiter_low_attack_ms = 50.0
+; Low-band limiter release time in milliseconds.
 limiter_low_release_ms = 300.0
+; Mid-band threshold, ratio, knee, attack, and release.
 limiter_mid_threshold_dbfs = -1.0
+; Mid-band limiting ratio.
+limiter_mid_ratio = 10.0
+; Mid-band limiter soft-knee width in dB.
+limiter_mid_knee_db = 6.0
+; Mid-band limiter attack time in milliseconds.
 limiter_mid_attack_ms = 10.0
+; Mid-band limiter release time in milliseconds.
 limiter_mid_release_ms = 100.0
+; High-band threshold, ratio, knee, attack, and release.
 limiter_high_threshold_dbfs = -1.0
+; High-band limiting ratio.
+limiter_high_ratio = 20.0
+; High-band limiter soft-knee width in dB.
+limiter_high_knee_db = 6.0
+; High-band limiter attack time in milliseconds.
 limiter_high_attack_ms = 1.0
+; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
 [voice_telemetry]
@@ -505,34 +673,54 @@ input_gain_db = 6.0
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
 equalizer_enabled = yes
+; Low-shelf boost or cut in dB.
 equalizer_low_gain_db = 2.0
+; Low-shelf turnover frequency in hertz.
 equalizer_low_frequency_hz = 500.0
+; Low-shelf transition slope.
 equalizer_low_slope = 0.7
+; Mid-bell boost or cut in dB.
 equalizer_mid_gain_db = -0.5
+; Mid-bell center frequency in hertz.
 equalizer_mid_frequency_hz = 1000.0
+; Mid-bell bandwidth in octaves.
 equalizer_mid_width_octaves = 1.0
+; High-shelf boost or cut in dB.
 equalizer_high_gain_db = -1.0
+; High-shelf turnover frequency in hertz.
 equalizer_high_frequency_hz = 2000.0
+; High-shelf transition slope.
 equalizer_high_slope = 0.7
 ; Split-band sibilance reduction. Detection and attenuation are confined to a
 ; bell-shaped band so other voice frequencies do not dip with an S sound.
 deesser_enabled = no
+; Center frequency of the sibilance detector and attenuated band.
 deesser_frequency_hz = 4000.0
+; Width of the sibilance band in octaves.
 deesser_width_octaves = 1.0
+; Detector level at which de-essing begins, in dBFS.
 deesser_threshold_dbfs = -18.0
+; Attenuation ratio above the de-esser threshold.
 deesser_ratio = 3.0
+; Greatest allowed sibilance-band attenuation in dB.
 deesser_max_reduction_db = 4.0
+; Time to apply sibilance attenuation in milliseconds.
 deesser_attack_ms = 2.0
+; Time to restore sibilance-band level in milliseconds.
 deesser_release_ms = 60.0
 ; Enable individual transmitter dynamics stages as required.
 expander_enabled = no
+; Enable or disable the gated RMS gain rider.
 agc_enabled = no
+; Enable or disable transmitter compression.
 compressor_enabled = no
+; Enable or disable transmitter peak limiting.
 limiter_enabled = no
 ; Enable the fixed transmit splatter-control filter.
 splatter_filter_enabled = yes
-; Fixed transmitter bandpass cutoffs, 20..2000 Hz and up to 5000 Hz.
+; Fixed transmitter bandpass cutoffs, 20..2000 Hz and up to 6000 Hz.
 splatter_filter_highpass_hz = 20.0
+; Upper fixed transmitter bandpass cutoff in hertz.
 splatter_filter_lowpass_hz = 5000.0
 ; Enable or disable the fixed final limiter explicitly.
 lookahead_limiter_enabled = no
@@ -540,7 +728,9 @@ lookahead_limiter_enabled = no
 lookahead_limiter_ceiling_dbfs = -3.0
 ; Lookahead, attack, and release times in milliseconds.
 lookahead_limiter_lookahead_ms = 5.0
+; Final limiter attack time in milliseconds.
 lookahead_limiter_attack_ms = 1.0
+; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
 ; Enable the fixed cleanup low-pass after final limiting.
 post_limiter_lowpass_enabled = no
@@ -552,8 +742,18 @@ output_gain_db = 0.0
 ; Numeric dynamics defaults are present even though these stages remain off.
 ; Expander threshold and timing.
 expander_threshold_dbfs = -55.0
+; Expansion ratio, maximum attenuation, and detector-only speech band.
+expander_ratio = 1.5
+; Maximum downward-expander attenuation in dB.
+expander_max_attenuation_db = 9.0
+; Expander attack time in milliseconds.
 expander_attack_ms = 25.0
+; Expander release time in milliseconds.
 expander_release_ms = 750.0
+; Lower expander detector-band cutoff in hertz.
+expander_sidechain_highpass_hz = 800.0
+; Upper expander detector-band cutoff in hertz.
+expander_sidechain_lowpass_hz = 1500.0
 ; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
 agc_target_dbfs = -24.0
 ; Maximum boost for active weak speech, 0 through 30 dB.
@@ -587,8 +787,8 @@ agc_sidechain_lowpass_hz = 1500.0
 compressor_bands = 3
 ; Low/mid division, 100-2000 Hz.
 compressor_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 compressor_high_crossover_hz = 2000.0
 ; Low-band compression onset, -60 through 0 dBFS.
 compressor_low_threshold_dbfs = -6.0
@@ -628,9 +828,20 @@ compressor_high_attack_ms = 100.0
 compressor_high_release_ms = 800.0
 ; Three-band detectors measure their own bands without the single-band filters.
 ; The following unbanded controls apply only with compressor_bands = 1.
+; Full-band ratio, make-up gain, and detector-only speech band.
 compressor_threshold_dbfs = -6.0
+; Full-band compressor ratio.
+compressor_ratio = 2.0
+; Full-band gain after compression in dB.
+compressor_makeup_gain_db = 0.0
+; Full-band compressor attack time in milliseconds.
 compressor_attack_ms = 100.0
+; Full-band compressor release time in milliseconds.
 compressor_release_ms = 800.0
+; Lower full-band compressor detector cutoff in hertz.
+compressor_sidechain_highpass_hz = 800.0
+; Upper full-band compressor detector cutoff in hertz.
+compressor_sidechain_lowpass_hz = 1500.0
 ; One full-band limiter (1) or three independently limited bands (3).
 ; The fixed final transmitter limiter is separate and is not changed by this mode.
 limiter_bands = 3
@@ -647,16 +858,36 @@ limiter_release_ms = 50.0
 ; Band-specific controls and crossovers apply only with limiter_bands = 3.
 ; Low/mid division, 100-2000 Hz.
 limiter_low_crossover_hz = 500.0
-; Mid/high division: above low/mid, no more than 5000 Hz, and below half
-; the source sample rate (less than 4000 Hz on an 8 kHz link).
+; Mid/high division: above low/mid, no more than 5000 Hz, and below half the
+; active source sample rate.
 limiter_high_crossover_hz = 2000.0
 ; Three-band limiter thresholds and timing.
 limiter_low_threshold_dbfs = -1.0
+; Low-band limiting ratio.
+limiter_low_ratio = 10.0
+; Low-band limiter soft-knee width in dB.
+limiter_low_knee_db = 6.0
+; Low-band limiter attack time in milliseconds.
 limiter_low_attack_ms = 50.0
+; Low-band limiter release time in milliseconds.
 limiter_low_release_ms = 300.0
+; Mid-band limiting threshold in dBFS.
 limiter_mid_threshold_dbfs = -1.0
+; Mid-band limiting ratio.
+limiter_mid_ratio = 10.0
+; Mid-band limiter soft-knee width in dB.
+limiter_mid_knee_db = 6.0
+; Mid-band limiter attack time in milliseconds.
 limiter_mid_attack_ms = 10.0
+; Mid-band limiter release time in milliseconds.
 limiter_mid_release_ms = 100.0
+; High-band threshold, ratio, knee, attack, and release.
 limiter_high_threshold_dbfs = -1.0
+; High-band limiting ratio.
+limiter_high_ratio = 20.0
+; High-band limiter soft-knee width in dB.
+limiter_high_knee_db = 6.0
+; High-band limiter attack time in milliseconds.
 limiter_high_attack_ms = 1.0
+; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0

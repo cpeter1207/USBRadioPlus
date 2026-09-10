@@ -11,6 +11,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ## Module fixture used by these tests.
 MODULE = runpy.run_path(str(ROOT / "scripts/usbradioplus-tune"), run_name="test_module")
+# Pure configuration tests must not discover or contact a host Asterisk instance.
+# Tests that exercise active-channel discovery explicitly enable it and mock run().
+MODULE["OFFLINE"] = True
 
 
 def test_tuner_covers_every_chain_option():
@@ -62,7 +65,8 @@ def test_dynamics_modes_defaults_and_documented_shipped_controls():
             assert float(values[f"{stage}_low_crossover_hz"]) == 500
             assert float(values[f"{stage}_high_crossover_hz"]) == 2000
     assert "single-band detector filters do not apply in three-band mode" in manual
-    assert "below 4000 Hz for an 8 kHz link" in manual
+    assert "below half the active source\nsample rate" in manual
+    assert "below 4000 Hz for an 8 kHz link" not in manual
     for key, setting in MODULE["SETTINGS"].items():
         if setting[-1] in {"Compressor", "Limiter"} and key.endswith(("_knee_db", "_release_ms")):
             assert f".B {key} = {setting[2]:g}..{setting[3]:g}" in manual
@@ -107,16 +111,68 @@ def test_agc_controls_defaults_ranges_and_shipped_chains(key, default, low, high
     "key", ("agc_floor_dbfs", "agc_attack_ms", "agc_release_ms", "agc_reset_after_ms")
 )
 def test_obsolete_agc_controls_are_not_offered_or_shipped(key):
-    """Remove misleading old controls while retaining explicit migration guidance.
+    """Keep retired AGC names out of the clean-slate operator interface.
 
-    @param key Removed option with no valid one-to-one replacement.
+    @param key Retired option with no current configuration meaning.
     """
     assert key not in MODULE["SETTINGS"]
     assert key not in MODULE["DEFAULTS"]
     assert key not in (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    for path in ("man/usbradioplus.conf.5", "doc/agc.md", "scripts/usbradioplus-tune"):
+        assert key not in (ROOT / path).read_text(encoding="utf-8")
+
+
+def test_shipped_chains_document_every_applicable_processing_control():
+    """Keep each shipped source-chain example complete without invalid controls."""
+    sample = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    local_only = {
+        "rnnoise_enabled",
+        "ctcss_filter_mode",
+        "ctcss_notch_width_hz",
+        "ctcss_highpass_hz",
+        "receive_bandpass_enabled",
+        "receive_bandpass_highpass_hz",
+        "receive_bandpass_lowpass_hz",
+    }
+    transmitter_only = {
+        "splatter_filter_enabled",
+        "splatter_filter_highpass_hz",
+        "splatter_filter_lowpass_hz",
+        "lookahead_limiter_enabled",
+        "lookahead_limiter_ceiling_dbfs",
+        "lookahead_limiter_lookahead_ms",
+        "lookahead_limiter_attack_ms",
+        "lookahead_limiter_release_ms",
+        "post_limiter_lowpass_enabled",
+        "post_limiter_lowpass_hz",
+    }
+    for source in ("local", "link", "voice_telemetry"):
+        values = MODULE["section_values"](sample, source)
+        expected = set(MODULE["SETTINGS"])
+        if source != "local":
+            expected -= local_only
+        if source != "voice_telemetry":
+            expected -= transmitter_only
+        assert expected <= set(values)
+        if source != "local":
+            assert not (set(values) & local_only)
+        if source != "voice_telemetry":
+            assert not (set(values) & transmitter_only)
     manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
-    assert key in manual.split(".SS Migrating AGC settings", 1)[1]
-    assert f".B {key}" not in manual
+    assert ".B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..6000" in manual
+    assert ".B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..6000" in manual
+    assert "The following OSS-device controls do not configure that program ring." in sample
+    assert "PortAudio adapter\nignores it" in manual
+
+
+def test_shipped_sample_comments_each_active_setting():
+    """Require an adjacent explanation for every setting enabled in the sample."""
+    lines = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
+        if re.match(r"^\s*[a-z][a-z0-9_]*\s*=", line):
+            assert index > 0 and lines[index - 1].lstrip().startswith(";"), (
+                f"sample setting at line {index + 1} needs an adjacent comment: {line}"
+            )
 
 
 def test_section_parser_and_non_destructive_insert():
@@ -129,29 +185,198 @@ def test_section_parser_and_non_destructive_insert():
     assert MODULE["section_values"](updated, "link") == {"enabled": "no"}
 
 
-def test_hardware_pin_assignments_require_restart():
-    """Verify hardware pin assignments require restart."""
-    original = "[hardware]\nhardware_gpio_1_mode = in\n"
+def test_channel_construction_settings_require_restart(monkeypatch):
+    """Verify every channel-construction setting requires an Asterisk restart."""
+    monkeypatch.setitem(MODULE["restart_required"].__globals__, "active_node", lambda: None)
+    original = "[usb]\nchannel_enabled = yes\n\n[hardware]\nhardware_gpio_1_mode = in\n"
     output_routing = MODULE["replace_value"](
         original, "hardware", "hardware_output_a_assignment", "voice"
     )
-    gpio_routing = MODULE["replace_value"](original, "hardware", "hardware_gpio_1_mode", "out0")
-    parallel_routing = MODULE["replace_value"](
-        original, "hardware", "hardware_parallel_pin_2_assignment", "ptt"
-    )
     assert not MODULE["restart_required"](original, output_routing)
-    assert MODULE["restart_required"](original, gpio_routing)
-    assert MODULE["restart_required"](original, parallel_routing)
+    assert set(MODULE["HARDWARE_SETTINGS"]) == (
+        MODULE["LIVE_RELOAD_HARDWARE_KEYS"] | MODULE["RESTART_ONLY_HARDWARE_KEYS"]
+    )
+    assert not (MODULE["LIVE_RELOAD_HARDWARE_KEYS"] & MODULE["RESTART_ONLY_HARDWARE_KEYS"])
+    for key in MODULE["LIVE_RELOAD_HARDWARE_KEYS"]:
+        assert not MODULE["restart_required"](
+            original, MODULE["replace_value"](original, "hardware", key, "changed")
+        )
+    for key in MODULE["RESTART_ONLY_HARDWARE_KEYS"]:
+        assert MODULE["restart_required"](
+            original, MODULE["replace_value"](original, "hardware", key, "changed")
+        )
+    for section in ("asterisk", "duplex", "diagnostics"):
+        for key in MODULE["RESTART_ONLY_SECTION_KEYS"][section]:
+            assert MODULE["restart_required"](
+                original, MODULE["replace_value"](original, section, key, "changed")
+            )
+    for key in MODULE["RESTART_ONLY_CHANNEL_KEYS"]:
+        assert MODULE["restart_required"](
+            original,
+            MODULE["replace_value"](
+                original, "usb", key, "no" if key == "channel_enabled" else "site"
+            ),
+        )
 
 
 def test_every_nonchain_setting_has_a_concrete_shipped_default():
     """Verify every nonchain setting has a concrete shipped default."""
     defaults = MODULE["shipped_modern_defaults"]()
-    expected = {key for settings in MODULE["MODERN_SECTION_SETTINGS"].values() for key in settings}
+    expected = {
+        (section, key)
+        for section, settings in MODULE["MODERN_SECTION_SETTINGS"].items()
+        for key in settings
+    }
     assert defaults.keys() >= expected
-    assert defaults["hardware_input_gain_db"] == "0.0"
-    assert defaults["hardware_gpio_1_mode"] == "in"
-    assert defaults["asterisk_jitter_buffer_implementation"] == "fixed"
+    assert defaults[("hardware", "hardware_input_gain_db")] == "0.0"
+    assert defaults[("hardware", "hardware_gpio_1_mode")] == "in"
+    assert defaults[("asterisk", "asterisk_jitter_buffer_implementation")] == "fixed"
+    assert defaults[("receive", "frequency_hz")] == "0"
+    assert defaults[("transmit", "frequency_hz")] == "0"
+
+
+def test_clean_slate_signaling_defaults_match_the_shipped_sample():
+    """Keep every omitted signaling setting aligned with its installed sample value."""
+    defaults = MODULE["shipped_modern_defaults"]()
+    expected = {
+        ("receive", "signaling_method"): "carrier",
+        ("receive", "cpu_saver_enabled"): "no",
+        ("receive", "audio_source"): "flat",
+        ("receive", "cos_assignment"): "dsp",
+        ("receive", "vox_hang_ms"): "2000",
+        ("receive", "vox_threshold"): "0",
+        ("receive", "noise_squelch_hysteresis"): "3000",
+        ("receive", "noise_filter_type"): "0",
+        ("receive", "squelch_delay_ms"): "0",
+        ("receive", "on_delay_frames"): "0",
+        ("receive", "polarity_inverted"): "no",
+        ("receive", "squelch_level"): "500",
+        ("receive", "frequency_hz"): "0",
+        ("receive", "lsd_polarity_inverted"): "no",
+        ("transmit", "signaling_method"): "carrier",
+        ("transmit", "cpu_saver_enabled"): "no",
+        ("transmit", "preemphasis_enabled"): "yes",
+        ("transmit", "settle_ms"): "500",
+        ("transmit", "rx_blanking_ms"): "0",
+        ("transmit", "off_delay_frames"): "0",
+        ("transmit", "polarity_inverted"): "no",
+        ("transmit", "frequency_hz"): "0",
+        ("transmit", "lsd_polarity_inverted"): "no",
+        ("ctcss", "receive_frequencies"): "100.0",
+        ("ctcss", "transmit_frequencies"): "100.0",
+        ("ctcss", "receive_source"): "dsp",
+        ("ctcss", "receive_decoder_gain_db"): "0.0",
+        ("ctcss", "receive_override_enabled"): "no",
+        ("ctcss", "receive_relax"): "1",
+        ("ctcss", "transmit_default_hz"): "100.0",
+        ("ctcss", "transmit_peak_dbfs"): "-24.0",
+        ("ctcss", "turnoff_mode"): "ctcss_phase_shift",
+        ("ctcss", "phase_shift_degrees"): "120.0",
+        ("ctcss", "tail_duration_ms"): "180",
+        ("ctcss", "tail_frequency_hz"): "55.0",
+        ("dcs", "receive_code"): "023N",
+        ("dcs", "transmit_code"): "023N",
+        ("dcs", "turnoff_code_enabled"): "yes",
+        ("dcs", "turnoff_duration_ms"): "180",
+        ("dcs", "peak_dbfs"): "-24.0",
+    }
+    source = (ROOT / "src/usbradioplus_processing.c").read_text(encoding="utf-8")
+    table = source.split("clean_slate_option_defaults[] = {", 1)[1].split("};", 1)[0]
+    parser_defaults = {
+        (section, key): value
+        for section, key, value in re.findall(
+            r'\{"(receive|transmit|ctcss|dcs)",\s*"([a-z_]+)",\s*"([^"]+)"\}', table
+        )
+    }
+    assert parser_defaults == expected
+    assert {key: defaults[key] for key in parser_defaults} == parser_defaults
+
+
+def test_section_qualified_defaults_prevent_cross_section_key_collisions():
+    """Keep identically named receive and transmit controls independently addressable."""
+    defaults = {
+        ("receive", "frequency_hz"): "146520000",
+        ("transmit", "frequency_hz"): "146940000",
+    }
+    assert MODULE["shipped_default"](defaults, "receive", "frequency_hz") == "146520000"
+    assert MODULE["shipped_default"](defaults, "transmit", "frequency_hz") == "146940000"
+
+
+def test_signaling_configuration_artifacts_have_unambiguous_sections_and_examples():
+    """Keep clean-slate signaling samples, manual, and tuner vocabulary aligned."""
+    sample = (ROOT / "examples/usbradioplus.conf.sample").read_text(encoding="utf-8")
+    manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
+    headers = re.findall(r"(?m)^\[([^]]+)\]$", sample)
+    for section in ("hardware", "receive", "transmit", "ctcss", "dcs"):
+        assert headers.count(section) == 1
+    assert "\f" not in manual
+    assert "[usb]\nchannel_enabled = yes" in manual
+    assert "[general]\nenabled = yes" not in manual
+    source = (ROOT / "src/usbradioplus_processing.c").read_text(encoding="utf-8")
+    table = source.split("clean_slate_option_defaults[] = {", 1)[1].split("};", 1)[0]
+    parser_defaults = {
+        (section, key): value
+        for section, key, value in re.findall(
+            r'\{"(receive|transmit|ctcss|dcs)",\s*"([a-z_]+)",\s*"([^"]+)"\}', table
+        )
+    }
+    for section in ("receive", "transmit", "ctcss", "dcs"):
+        assert f"[{section}]" in manual
+        for key in MODULE["MODERN_SECTION_SETTINGS"][section]:
+            assert re.search(rf"(?m)^;?{re.escape(key)}\s*=", sample)
+            assert f".B {key}" in manual
+    shipped_defaults = MODULE["shipped_modern_defaults"]()
+    sample_defaults = {key: shipped_defaults[key] for key in parser_defaults}
+    assert sample_defaults == parser_defaults
+    assert "carrier, CTCSS, or DCS" in manual
+    assert "-90 through 0 dBFS" in manual
+    assert "omitted option resolves to the concrete value" in manual
+    assert "direct DCS PCM peak" in manual
+    assert "Hardware output\ngain is applied later at the DAC" in manual
+    assert "fixed\nspectral-shaping filter" in manual
+    assert "134.4 Hz DCS end-of-transmission tail tone" in manual
+    assert "before PTT\nrelease" in manual
+    assert "backward compatibility" not in sample.lower()
+    assert "backward compatibility" not in manual.lower()
+    assert "first\navailable sample; it has no source-audio startup" in manual
+    assert "no source-audio startup fill or playback reserve" in manual
+    assert "110 ms occupancy target is used only by clock" in manual
+    assert "shortfall smoothly" in manual
+    assert "starts after 160 ms" not in manual
+    assert "60 ms source-audio reserve" not in manual
+    assert "renders from the first\n; queued sample" in sample
+    developer = (ROOT / "doc/developer.dox").read_text(encoding="utf-8")
+    assert (
+        "first available sample; it has no source-audio startup fill or\nplayback reserve"
+        in developer
+    )
+    assert "110 ms occupancy target is a clock-recovery setpoint" in developer
+    assert "starts output after 160 ms" not in developer
+    assert "60 ms source-audio reserve" not in developer
+    tune_manual = (ROOT / "man/usbradioplus-tune.8").read_text(encoding="utf-8")
+    assert "CTCSS and DCS each have independent direct PCM peak dBFS controls" in tune_manual
+    assert "134.4 Hz end-of-transmission tail tone" in tune_manual
+    assert "before PTT release" in tune_manual
+
+
+def test_tuner_manual_documents_live_boundaries_profiles_and_ctcss_directionality():
+    """Keep the operator manual aligned with the tuner's safe apply boundaries."""
+    manual = (ROOT / "man/usbradioplus-tune.8").read_text(encoding="utf-8")
+    for key in MODULE["LIVE_RELOAD_HARDWARE_KEYS"]:
+        assert key in manual
+    for section in ("[receive]", "[transmit]", "[ctcss]", "[dcs]"):
+        assert section in manual
+    for section in ("[asterisk]", "[duplex]", "[diagnostics]"):
+        assert section in manual
+    for key in MODULE["PROFILE_SELECTORS"]:
+        assert key in manual
+    assert "Hardware signaling contains repeater number, area, user key, idle interval," in manual
+    assert "turn-off count, and voter-reporting controls." in manual
+    assert "Every menu returns focus to the item last selected." in manual
+    assert "Use channel default" in manual
+    assert "requires a CTCSS\nreceive method" in manual
+    assert "requires a transmit CTCSS method and a supported transmit default\ntone" in manual
+    assert "required only when both directions\nuse CTCSS" in manual
 
 
 def test_processing_config_permissions_allow_asterisk_save(tmp_path, monkeypatch):
@@ -204,7 +429,7 @@ def test_value_types_use_shared_accessible_editors():
     assert re.search(r'"yes",\s*"On"', source)
     assert re.search(r'"no",\s*"Off"', source)
     assert 'value_type = "gain" if key.endswith("_gain_db")' in source
-    assert 'prompt_number(label, current, "integer"' in source
+    assert re.search(r'prompt_number\(\s*label,\s*current,\s*"integer"', source)
 
 
 def test_all_enumerated_values_share_one_choice_table():
@@ -216,7 +441,9 @@ def test_all_enumerated_values_share_one_choice_table():
         "ctcss_filter",
         "rx_audio_source",
         "rx_ctcss_source",
+        "signaling_method",
         "ctcss_turnoff",
+        "ctcss_relax",
         "duplex_mode",
         "jitter_impl",
         "gpio_mode",
@@ -300,13 +527,18 @@ def test_hardware_submenus_place_calibration_with_related_settings():
     assert 'show_radio_result("COS, CTCSS, PTT, and audio levels", "A")' in source
     for label, key in (
         ("USB interface", "usb"),
-        ("Receiver", "receive"),
-        ("Transmitter", "transmit"),
-        ("CTCSS and signaling", "signaling"),
+        ("Receiver signaling and squelch", "receive"),
+        ("Transmitter signaling and timing", "transmit"),
+        ("CTCSS", "ctcss"),
+        ("DCS", "dcs"),
+        ("CM119 receiver audio", "receive"),
+        ("CM119 transmitter audio and PTT", "transmit"),
+        ("Hardware signaling", "signaling"),
         ("CM119 GPIO", "gpio"),
         ("Parallel port", "parallel"),
     ):
-        assert re.search(rf'"{label}",\s*"{key}"', source)
+        assert f'"{label}"' in source
+        assert f'"{key}"' in source
     interactive = source[source.index("def interactive():") :]
     assert '"T", "Radio calibration' not in interactive
     assert '"M", "Continuous status and RX/TX audio meters"' in source

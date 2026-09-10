@@ -15,8 +15,12 @@
 #define RNNOISE_PRIVATE static
 #endif
 
-/** @brief Discard RNNoise stream history and reset both rate converters.
+/** @brief Discard bounded stream history without allocating or replacing the denoiser.
  * @param state Processor or stream state owned by the caller.
+ *
+ * This function is used by the native render worker after a processing error
+ * or bypass transition.  Keeping the prepared denoiser object intact is what
+ * prevents a receiver-signal transition from allocating in real time.
  */
 RNNOISE_PRIVATE void reset_stream(struct txagc_rnnoise *state)
 {
@@ -25,10 +29,6 @@ RNNOISE_PRIVATE void reset_stream(struct txagc_rnnoise *state)
 	}
 	if (state->downsampler) {
 		src_reset(state->downsampler);
-	}
-	if (state->denoise) {
-		rnnoise_destroy(state->denoise);
-		state->denoise = rnnoise_create(NULL);
 	}
 	state->up_count = 0;
 	state->down_count = 0;
@@ -71,26 +71,40 @@ void txagc_rnnoise_bypass(struct txagc_rnnoise *state)
 RNNOISE_PRIVATE int configure_rate(struct txagc_rnnoise *state, unsigned int sample_rate)
 {
 	int error;
+	uint64_t errors;
 
-	if (state->active && state->input_rate == sample_rate && state->denoise &&
+	if (state->prepared && state->input_rate == sample_rate && state->denoise &&
 	    state->upsampler && state->downsampler) {
 		return 0;
 	}
+	errors = state->errors;
 	txagc_rnnoise_destroy(state);
+	state->errors = errors;
 	state->denoise = rnnoise_create(NULL);
 	state->upsampler = src_new(SRC_SINC_FASTEST, 1, &error);
 	if (!state->upsampler) {
 		state->errors++;
+		txagc_rnnoise_destroy(state);
+		state->errors = errors + 1;
 		return -1;
 	}
 	state->downsampler = src_new(SRC_SINC_FASTEST, 1, &error);
 	if (!state->denoise || !state->downsampler) {
 		state->errors++;
+		txagc_rnnoise_destroy(state);
+		state->errors = errors + 1;
 		return -1;
 	}
 	state->input_rate = sample_rate;
-	state->active = 1;
+	state->prepared = 1;
 	return 0;
+}
+
+int txagc_rnnoise_prepare(struct txagc_rnnoise *state, unsigned int sample_rate)
+{
+	if (!state || !sample_rate)
+		return -1;
+	return configure_rate(state, sample_rate);
 }
 
 /** @brief Append a block to a bounded RNNoise FIFO.
@@ -134,8 +148,7 @@ RNNOISE_PRIVATE int16_t pcm_from_double(double sample)
 	return (int16_t)lround(sample);
 }
 
-int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, size_t count,
-				 unsigned int sample_rate)
+int txagc_rnnoise_process_prepared(struct txagc_rnnoise *state, double *samples, size_t count)
 {
 	float input[2048];
 	float converted[4096];
@@ -144,8 +157,8 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, s
 	SRC_DATA data;
 	size_t i;
 
-	if (!sample_rate || count > sizeof(input) / sizeof(input[0]) ||
-	    configure_rate(state, sample_rate)) {
+	if (!state || !samples || !state->prepared || !state->input_rate || !state->denoise ||
+	    !state->upsampler || !state->downsampler || count > sizeof(input) / sizeof(input[0])) {
 		return -1;
 	}
 	state->active = 1;
@@ -157,7 +170,7 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, s
 	data.input_frames = count;
 	data.data_out = converted;
 	data.output_frames = sizeof(converted) / sizeof(converted[0]);
-	data.src_ratio = (double)TXAGC_RNNOISE_RATE / sample_rate;
+	data.src_ratio = (double)TXAGC_RNNOISE_RATE / state->input_rate;
 	if (src_process(state->upsampler, &data) || data.input_frames_used != (long)count ||
 	    append(state->up_fifo, &state->up_count, converted, data.output_frames_gen)) {
 		state->errors++;
@@ -182,7 +195,7 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, s
 		data.input_frames = TXAGC_RNNOISE_FRAME;
 		data.data_out = down;
 		data.output_frames = sizeof(down) / sizeof(down[0]);
-		data.src_ratio = (double)sample_rate / TXAGC_RNNOISE_RATE;
+		data.src_ratio = (double)state->input_rate / TXAGC_RNNOISE_RATE;
 		if (src_process(state->downsampler, &data)) {
 			state->errors++;
 			reset_stream(state);
@@ -212,6 +225,19 @@ int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, s
 		}
 	}
 	return 0;
+}
+
+int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, size_t count,
+				 unsigned int sample_rate)
+{
+	if (!state || !samples || !sample_rate || count > 2048U)
+		return -1;
+	if (!state->prepared || state->input_rate != sample_rate || !state->denoise ||
+	    !state->upsampler || !state->downsampler) {
+		if (txagc_rnnoise_prepare(state, sample_rate))
+			return -1;
+	}
+	return txagc_rnnoise_process_prepared(state, samples, count);
 }
 
 int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples, size_t count,

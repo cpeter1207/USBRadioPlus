@@ -1,4 +1,4 @@
-.TH USBRADIOPLUS-TUNE 8 "August 2026" "USBRadioPlus alpha" "System Administration"
+.TH USBRADIOPLUS-TUNE 8 "September 2026" "USBRadioPlus alpha" "System Administration"
 .SH NAME
 usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
 .SH SYNOPSIS
@@ -7,149 +7,194 @@ usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
 .B usbradioplus-tune
 [-n node] [--check] [--offline] [--config path] [--lock path]
 .SH DESCRIPTION
-This utility configures USBRadioPlus from a keyboard-operated terminal.
-Run it as root on the Asterisk node. Processing edits are written and applied
-immediately. Live calibration values are retained by the explicit save action.
+This keyboard-operated utility configures one USBRadioPlus radio channel.
+Run it as root on the Asterisk node. Use
+.B -n
+to select a named channel before opening the menu; otherwise the active channel
+is selected. If Asterisk cannot report an active channel, the utility falls
+back to the first named channel in the configuration file.
+.PP
+Each edit is written atomically. The following controls are safe to apply with
+a processing reload: all Local receiver, Linked audio, and Voice + telemetry
+graph settings; all
+.BR [receive] ,
+.BR [transmit] ,
+.BR [ctcss] ,
+and
+.B [dcs]
+settings; and
+.BR hardware_input_gain_db ,
+.BR hardware_output_a_gain_db ,
+.BR hardware_output_b_gain_db ,
+.BR hardware_output_a_assignment ,
+.BR hardware_output_b_assignment ,
+and
+.BR hardware_emphasis_corner_hz .
+.PP
+The utility restarts Asterisk for every other edit that changes channel or
+hardware construction: all
+.BR [asterisk] ,
+.BR [duplex] ,
+and
+.B [diagnostics]
+controls;
+.BR channel_enabled ;
+every named-channel
+.B *_profile
+selector; and all remaining
+.B [hardware]
+controls. The latter includes device identifier, serial number, interface
+type, EEPROM choice, fragment and queue sizes, PTT polarity, repeater
+signaling metadata, clipping LED, and GPIO or parallel-port assignments.
+The fragment request and playback queue limit apply only to the OSS adapter;
+they do not change the app_rpt program ring, and the PortAudio adapter ignores
+them.
+Automatic calibration changes live radio state; use the explicit
+.B Write live radio tuning and EEPROM values
+action to write those results to the configuration and, when enabled, the
+interface EEPROM.
 .PP
 Menu buttons use consistent action names. Select opens the highlighted item,
 Apply commits an edit, Back returns one menu level, Exit leaves the utility,
 Cancel abandons an edit, and Close dismisses information without changing it.
-The main menu operates on the active RadioPlus device. It provides:
+Every menu returns focus to the item last selected. Choice editors place focus
+on the current value, and numeric and text editors announce the current value
+and units before accepting input. These conventions permit efficient keyboard
+operation with a screen reader and do not require a mouse.
 .TP
-.B Select active USB device
-Choose one configured radio interface. Swap exchanges USB assignments between
-two configured interfaces; it does not exchange their radio settings.
-.TP
-.B Auto-detect RX noise level
-With no carrier present, adjust USB capture level and the DSP carrier-squelch
-starting point. Flat discriminator calibration targets 27,000 peak PCM codes,
-accepts values within 2,750 codes, and makes at most 12 attempts. Each attempt
-reports peak and RMS levels in PCM codes and dBFS. This requires flat
-discriminator audio and should be followed by receiver-level and squelch
-verification.
-.TP
-.B Set RX voice level using display
-Show a live deviation bar, then accept a 0--999 receive voice setting. This
-adjusts the local processing input gain. Press any key to leave the live
-display and reach the setting prompt.
-.TP
-.B Auto-detect RX CTCSS level
-Measure received CTCSS and adjust decoder level. Apply a carrier with the
-configured tone and specified tone deviation before selecting this action.
-.TP
-.B Set RX squelch level
-Display current DSP signal strength and accept a 0--999 squelch setting. Higher
-numbers require a stronger signal to open.
-.TP
-.B Set TX voice level
-Set the 0--999 mixer level for the output carrying voice or composite audio.
-When test-tone keying is enabled, the action keys PTT and sends 1 kHz for five
-seconds.
-.TP
-.B Set auxiliary voice level
-Set the 0--999 level on the output configured as auxvoice. The action is
-unavailable unless one output mixer carries auxvoice.
-.TP
-.B Set TX CTCSS level
-Set CTCSS deviation from 0--999. When test-tone keying is enabled, the action
-keys PTT and sends CTCSS for five seconds.
-.TP
-.B Auto-detect RX voice level
-Adjust the local processing input gain from a received 1 kHz tone at 3 kHz
-deviation. This action requires flat discriminator audio and a steady
-calibrated signal.
-.TP
-.B Echo mode
-Select Echo mode in the Local receiver menu to enable or disable it.
-Record a received transmission and return it to the transmitter for alignment.
-With software duplex-3 local repeat active, echo uses the native 48 kHz receive
-and transmit path. Otherwise it uses the 8 kHz Asterisk-path playback. Keying,
-maximum duration, and start and stop behavior are the same for both paths.
-Disable echo when the test is complete.
-.TP
-.B Flash transmitter
-Send three one-second PTT and 1 kHz tone bursts separated by 1.5 seconds.
-.TP
-.B Carrier and CTCSS source
-Select the COS and tone indication sources supported by usbradioplus.conf(5).
-.TP
-.B Hardware and processing options
-Set receiver audio source, RX-on and TX-off delays, transmit pre-emphasis,
-and USB output A and B routing. Set limiting separately in the processing menus.
-It also sets the duplex-3 repeat level from 0 through 999, and whether duplex-3 repeat audio uses
-the CM119 hardware mixer or the native software path.
-.TP
-.B Configure audio processing
-Each source has a Stages menu for enabling or disabling its processing stages.
-Select Processing order there to view or edit the comma-separated order of
-equalizer, expander, agc, deesser, compressor, and limiter. Each enabled stage
-must appear exactly once; disabled stages may remain in the order. RNNoise,
-receiver filters, and final transmitter filters and limiter have fixed positions
-and cannot be placed in this list. Apply saves the order; Cancel leaves it unchanged.
-The Equalizer menu edits the low shelf,
-mid-band bell, and high shelf. The De-esser menu edits its center frequency,
-bandwidth, threshold, ratio, maximum reduction, attack, and release.
+.B Select named-channel profiles
+This action is in General channel settings. It lists the documented
+.BR asterisk_profile ,
+.BR hardware_profile ,
+.BR receive_profile ,
+.BR transmit_profile ,
+.BR ctcss_profile ,
+.BR dcs_profile ,
+.BR duplex_profile ,
+.BR diagnostics_profile ,
+.BR local_profile ,
+.BR link_profile ,
+and
+.BR voice_telemetry_profile
+selectors for the selected named radio channel. For each selector, the picker
+offers only existing scoped sections of that type. Use
+.B Use channel default
+to remove the explicit selector and restore the documented implicit profile
+whose name matches the channel. A profile-selector edit restarts Asterisk.
+.SH CM119 AND SIGNALING MENUS
+The CM119 hardware menu provides USB-device selection and swapping, receiver,
+transmitter, CTCSS, DCS, Hardware signaling, GPIO, and parallel-port submenus.
+Hardware signaling contains repeater number, area, user key, idle interval,
+turn-off count, and voter-reporting controls. The receiver and
+transmitter submenus edit the corresponding
+.B [receive]
+and
+.B [transmit]
+configuration. The CTCSS and DCS submenus edit their separate signaling
+sections. Select one signaling method per direction: carrier, CTCSS, or DCS.
+Receive CTCSS is independent of transmit signaling: it requires a CTCSS
+receive method, a CTCSS source other than no indication, and a supported
+receive-frequency list. Transmit CTCSS is likewise independent of receive
+signaling: it requires a transmit CTCSS method and a supported transmit default
+tone. A receive-to-transmit frequency map is required only when both directions
+use CTCSS; then the receive and transmit lists must have equal length and map
+by position. Before selecting DCS, configure the corresponding receive or
+transmit code.
 See
 .BR usbradioplus.conf (5)
-for option definitions and ranges.
-On return, the radio tuning menu refreshes its displayed values.
-.TP
-.B Print current parameter values
-Report the selected interface, USB device, output routing, and principal RX/TX
-levels.
-.TP
-.B Live statistics and status
-Display COS, CTCSS, PTT, RX peak/RMS/clipping, and TX peak/RMS/clipping
-together. Press Enter to return. TX statistics report that PTT is clear when
-the transmitter is idle.
-.TP
-.B Save current parameter values
-Write device selection, signal sources, mixer and radio levels, squelch,
-delays, boosts, transmitter processing selections, and limiter setpoint to
-usbradioplus.conf. EEPROM values are also written when EEPROM storage is enabled.
-.SH CONFIGURATION MENUS
-The processing menu selects local receiver, linked audio, or voice and telemetry.
-If the configuration file is absent, the utility installs a copy of the shipped
-default before opening. Hardware menus provide device selection and swapping,
-automatic RX calibration, live RX level adjustment, CTCSS calibration,
-service-monitor transmit adjustment, auxiliary-output adjustment, test-tone
-keying, transmitter flash, and one continuous combined RX, TX,
-COS, CTCSS, and PTT display.
-Echo control is in the Local receiver menu.
-Only controls applicable to the selected source are shown. Stage toggles use
-single keys and the arrow, Tab, Shift+Tab, Enter, Escape, B, and Q keys. Numeric
-pages validate both the documented range and dependent relationships such as a
-low-pass cutoff being above its high-pass cutoff.
+for accepted values and routing rules.
 .PP
-The Filters page groups every fixed filter that applies to the selected source.
-For local receive it selects or disables CTCSS notch or high-pass
-filtering and sets the applicable cutoff or notch width. For voice and telemetry
-it enables or disables the transmit brick-wall band-pass and post-limiter
-low-pass and sets their cutoff frequencies. Dynamics pages contain the
-high-pass and low-pass detector filters for AGC, expansion, and compression.
-The Compressor and Limiter pages each select Single band or Three bands.
-Single-band mode shows full-band controls; three-band mode shows the low/mid
-and mid/high crossovers and independent low-, mid-, and high-band controls.
-The default divisions are below 500 Hz, 500 to 2000 Hz, and above 2000 Hz.
-The upper crossover must be below half the source sample rate: below 4000 Hz
-on an 8 kHz link. Compression detector filters apply only in single-band mode;
-three-band compression measures each band's own RMS level. Changing modes
-updates the page immediately and keeps inactive settings for later use.
-The AGC page also sets detector-band RMS target and averaging, maximum boost
-and attenuation, gain-increase and gain-decrease rates, activity threshold
-and hysteresis, gain-increase hold, and target deadband. Set either AGC
-detector cutoff to 0 to disable that filter. Inactive audio freezes AGC gain
-without muting; the hold delays gain increases only. The target is not a peak
-or full-band RMS target. See the automatic gain control section of
+CTCSS and DCS each have independent direct PCM peak dBFS controls. Hardware
+output gain is applied after either generated waveform. DCS uses fixed spectral
+shaping and bypasses transmitter pre-emphasis and all speech processing controls.
+Its optional 134.4 Hz end-of-transmission tail tone is sent before PTT release
+for 150 through 200 milliseconds; the default duration is 180 milliseconds.
+.TP
+.B Automatic RX noise and squelch calibration
+With no carrier present, this adjusts CM119 capture gain and reports peak and
+RMS measurements in PCM codes and dBFS. Flat discriminator calibration targets
+27,000 peak PCM codes within 2,750 codes and makes at most 48 attempts. When
+DSP carrier squelch is selected, it also derives and applies a squelch starting
+point. A warning identifies de-emphasized or inadequate discriminator noise.
+.TP
+.B Automatic RX voice calibration
+With a steady 1 kHz signal at 3 kHz deviation, this adjusts the local receiver
+input gain. It requires a calibrated signal and flat discriminator audio.
+.TP
+.B Automatic RX CTCSS calibration
+With the configured CTCSS signal present, this adjusts only the CTCSS decoder
+input gain. It does not change voice gain.
+.TP
+.B Flash transmitter
+Send three one-second PTT and calibrated 1 kHz tone bursts separated by
+1.5 seconds. Use it only into a dummy load or on an authorized test frequency.
+.TP
+.B Echo mode
+The Local receiver menu enables or disables echo playback. With a nonzero
+software local-repeat level, echo records and returns native 48 kHz audio.
+Otherwise it uses the 8 kHz Asterisk playback path. Disable echo when the test
+is complete.
+.SH PROCESSING MENUS
+The Local receiver, Linked audio, and Voice + telemetry menus edit their
+separate processing chains. Each Stages menu enables or disables the available
+stages and edits the order of equalizer, expander, AGC, de-esser, compressor,
+and limiter. RNNoise, local receiver filters, and the fixed transmitter tail
+are not reorderable. The local chain alone offers RNNoise and CTCSS filtering;
+the voice/telemetry chain alone offers the fixed transmitter filters and final
+limiter.
+.PP
+The Compressor and Limiter pages each select single-band or three-band mode.
+Three-band mode uses low, mid, and high controls around configurable
+crossovers. The Equalizer and De-esser pages expose their respective parameters.
+The AGC page exposes its detector-band RMS target, averaging, gain rates,
+limits, activity gate, hold, deadband, and optional detector filters. See
 .BR usbradioplus.conf (5)
-for the ranges and detector behavior.
+for parameter definitions and ranges.
+.TP
+.B Show processing measurement snapshot
+Show one coherent, recently published processing-statistics snapshot. It can be
+briefly stale rather than waiting for native or link rendering.
+.TP
+.B Show complete active configuration
+Show the module's selected radio state and active processing configuration.
+.TP
+.B Continuous status and RX/TX audio meters
+Display COS, CTCSS, PTT, and receive/transmit peak, RMS, and clipping status
+until Enter is pressed.
+.TP
+.B Save this live processing session
+Mark the current, already-applied configuration as the session restore point.
+.TP
+.B Write live radio tuning and EEPROM values
+Write live mixer, receiver calibration and squelch, CTCSS calibration, routing,
+local-repeat, and pre-emphasis values to the resolved configuration sections.
+Also write the interface EEPROM when EEPROM storage is enabled.
+.TP
+.B Discard live changes since the last save
+Restore the configuration from the session restore point.
+.TP
+.B Create a timestamped configuration backup
+Copy the current configuration to a timestamped adjacent backup file.
+.SH MENU BEHAVIOR
+If the configuration file is absent, the utility creates it from the shipped
+sample. Controls are grouped by source and signaling system; configure a
+signaling system before selecting it for either direction.
+The local Filters page controls the receive band-pass and one PL-removal mode:
+disabled, high-pass, or automatic decoded-tone notch. The voice/telemetry
+Filters page controls the fixed transmit band-pass and post-limiter low-pass.
+The link chain has no fixed filter page.
 .PP
-Each accepted edit is written atomically and reloaded so it can be evaluated
-live. If validation or reload fails, the preceding file and active settings are
-restored. Save commits the current processing session. Discard restores the
-last saved state, including when exiting. A separate action writes current
-radio tuning to usbradioplus.conf and, when enabled, the interface EEPROM. The
-main menu can also create a timestamped backup.
+Compressor and Limiter pages select single-band or three-band operation.
+Single-band mode shows full-band controls. Three-band mode shows low/mid and
+mid/high crossovers and separate low-, mid-, and high-band controls. Inactive
+mode controls are retained for later use. The utility validates entered ranges
+and relationships; the module validates the active graph against its current
+sample rate on reload.
+.PP
+Each accepted configuration edit is written atomically and reloaded for live
+evaluation. If validation or reload fails, the preceding file and active
+settings are restored. Save sets the session restore point. Discard restores
+that point, including when leaving the utility.
 .TP
 .B -n node
 Select the active RadioPlus channel before opening either tuning interface.
