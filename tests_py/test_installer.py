@@ -327,6 +327,18 @@ def test_installer_includes_asterisk_transitive_header_dependencies():
     assert "portaudio19-dev" in source
 
 
+def test_source_installer_configures_signed_shared_ring_dependency():
+    """Verify source installation obtains the released shared ring ABI."""
+    source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
+    assert "configure_project_repository()" in source
+    assert "packaging/repository/usbradioplus-archive-keyring.gpg" in source
+    assert "A0D5A79E0F5C45E9E63679950951502BAC795E55" in source
+    assert "signed-by=%s" in source
+    assert "bookworm|trixie" in source
+    assert "librate-adjusting-pcm-ring-dev" in source
+    assert "pkg-config --atleast-version=1.0.1 rate_adjusting_pcm_ring" in source
+
+
 def test_dist_archive_has_one_versioned_root(tmp_path):
     """Verify dist archive has one versioned root.
 
@@ -362,6 +374,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
         "CHANGELOG.md",
         "doc/agc.md",
         "doc/native-radio.md",
+        "packaging/repository/usbradioplus-archive-keyring.gpg",
     ):
         assert f"{root}/{artifact}" in names
     assert not any(

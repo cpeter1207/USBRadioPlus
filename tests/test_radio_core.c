@@ -784,6 +784,11 @@ static void test_transmit_timeline_admission(void)
 	for (size_t sample = 0; sample < sizeof(transmit) / sizeof(transmit[0]); ++sample)
 		assert(!transmit[sample]);
 
+	/* A caller without a DAC frame can omit its output buffer. The receive
+	 * timeline still advances, while transmitter signaling remains frozen. */
+	assert(!urp_radio_process_timed(state, input, output, NULL, 0));
+	assert(state->frameCountRx == 2 && state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
+
 	assert(!urp_radio_process_timed(state, input, output, transmit, 1));
 	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
 	state->txPttIn = 0;

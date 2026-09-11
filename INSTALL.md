@@ -33,10 +33,12 @@ After uploading and extracting the tarball on an ASL3 node, run:
 sudo ./install.sh
 ```
 
-This installs the required toolchain and development packages, builds RNNoise
-when Debian does not provide it, runs the complete hardware-free test suite,
-and installs USBRadioPlus. It does not activate the module, restart Asterisk,
-or edit `modules.conf` or `rpt.conf`.
+This verifies the shipped repository key, configures the signed project
+repository, and installs the required toolchain, development packages, and
+released `rate_adjusting_pcm_ring` ABI. It builds RNNoise when Debian does not
+provide it, runs the complete hardware-free test suite, and installs
+USBRadioPlus. It does not activate the module, restart Asterisk, or edit
+`modules.conf` or `rpt.conf`.
 
 The RNNoise bootstrap verifies and builds the official v0.2 release archive in
 the source tree's `build` directory. This permits installation on hardened
@@ -44,15 +46,14 @@ nodes where `/tmp` is mounted `noexec`. It also restores the support header
 omitted from the archive's ARM NEON sources. The temporary source is removed
 automatically.
 
-USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, plus the libraries
-listed in `doc/packaging.md`. Developers with those dependencies already
-installed may use `sudo ./install.sh --skip-deps`.
+USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, and
+the libraries listed in `doc/packaging.md`. Developers with those dependencies
+already installed may use `sudo ./install.sh --skip-deps`.
 
-The release archive includes the reviewed `rate_adjusting_pcm_ring` source
-used for the lock-free native program FIFO.  The build links its static archive
-privately into `chan_usbradioplus.so`; it does not require a second checkout,
-network download, or separately installed ring-library package.  A full
-Asterisk source tree is not required.
+USBRadioPlus uses the released `rate_adjusting_pcm_ring` shared library for
+the lock-free native program FIFO. The source installer installs the matching development package and
+runtime dependency from the signed project repository. Direct Make users must
+install those packages first. A full Asterisk source tree is not required.
 
 The build selects the radio-device interface exposed by the installed ASL3
 headers. ASL 22.9/app_rpt 3.9 uses the original OSS and libusb-0.1 interface;

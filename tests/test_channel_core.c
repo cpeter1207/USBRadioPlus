@@ -434,6 +434,14 @@ static unsigned long mock_ioctl_failure;
 static int mock_oss_fragments = 8;
 /** Harness oss fragment total used to script and verify host behavior. */
 static int mock_oss_fragment_total = 8;
+/** Harness OSS fragment size used to script output-space accounting. */
+static int mock_oss_fragment_size = 3840;
+/** Counts output-space queries made by the OSS test wrapper. */
+static int mock_oss_output_space_calls;
+/** Fails one numbered output-space query in the OSS test wrapper. */
+static int fail_oss_output_space_call;
+/** Makes one output-space query report a capacity that saturates callback accounting. */
+static int extreme_oss_output_space_call;
 /** Optional scripted OSS output-space byte count; negative follows fragments. */
 static int mock_oss_bytes = -1;
 /** Optional scripted OSS queued-byte delay; negative makes GETODELAY fail. */
@@ -901,16 +909,29 @@ int __wrap_ioctl(int descriptor, unsigned long request, ...)
 	va_end(arguments);
 	if (request == SNDCTL_DSP_GETOSPACE) {
 		struct audio_buf_info *info = argument;
+
+		mock_oss_output_space_calls++;
+		if (fail_oss_output_space_call == mock_oss_output_space_calls)
+			return -1;
 		memset(info, 0, sizeof(*info));
+		if (extreme_oss_output_space_call == mock_oss_output_space_calls) {
+			info->fragstotal = INT_MAX;
+			info->fragsize = INT_MAX;
+			return 0;
+		}
 		info->fragstotal = mock_oss_fragment_total;
 		info->fragments = mock_oss_fragments;
-		info->fragsize = 3840;
+		info->fragsize = mock_oss_fragment_size;
 		info->bytes =
 			mock_oss_bytes >= 0 ? mock_oss_bytes : info->fragments * info->fragsize;
 		return 0;
 	}
 #ifdef SNDCTL_DSP_GETODELAY
 	if (request == SNDCTL_DSP_GETODELAY) {
+		if (mock_oss_output_delay == INT_MIN) {
+			*(int *)argument = -1;
+			return 0;
+		}
 		if (mock_oss_output_delay < 0)
 			return -1;
 		*(int *)argument = mock_oss_output_delay;
@@ -7407,6 +7428,10 @@ static void test_continuous_soundcard_output(void)
 	radio.queuesize = 4;
 	mock_oss_io = 1;
 	mock_ioctl_failure = ULONG_MAX;
+	mock_oss_fragment_size = 3840;
+	mock_oss_output_space_calls = 0;
+	fail_oss_output_space_call = 0;
+	extreme_oss_output_space_call = 0;
 	mock_oss_fragment_total = 8;
 	mock_write_result = -2;
 #endif
@@ -7467,9 +7492,17 @@ static void test_tx_playout_hold(void)
 	usbradioplus_tx_playout_hold_reset(NULL);
 	usbradioplus_tx_playout_hold_note_output(NULL, 1, 1, 1);
 
-	channel.radio = &state;
 	atomic_init(&channel.plus_radio_tx_active, 0);
 	atomic_init(&channel.plus_hardware_ptt_request, 0);
+	/* Teardown can publish a channel before its signaling state is attached. */
+	usbradioplus_tx_playout_hold_prepare(&channel);
+	usbradioplus_tx_playout_hold_apply(&channel);
+	usbradioplus_tx_playout_hold_publish(&channel);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 1);
+	assert(!atomic_load_explicit(&channel.plus_radio_tx_active, memory_order_acquire));
+	assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
+
+	channel.radio = &state;
 	state.txrxblankingtime = 40;
 
 	/* A normal key publishes raw PTT and accepts audio as the timer origin. */
@@ -7551,6 +7584,12 @@ static void test_oss_audio_helpers(void)
 
 	mock_oss_io = 1;
 	mock_ioctl_failure = ULONG_MAX;
+	mock_oss_fragment_size = 3840;
+	mock_oss_bytes = -1;
+	mock_oss_output_delay = -1;
+	mock_oss_output_space_calls = 0;
+	fail_oss_output_space_call = 0;
+	extreme_oss_output_space_call = 0;
 	radio.name = "test";
 	radio.sounddev = 7;
 	radio.queuesize = 4;
@@ -7651,6 +7690,18 @@ static void test_oss_audio_helpers(void)
 	radio.total_blocks = 8;
 	radio.queuesize = 8;
 	mock_oss_fragments = 8;
+	/* A valid open device that cannot report space must reject the frame before
+	 * issuing a DAC write. */
+	{
+		unsigned int writes_before = mock_sound_write_calls;
+		uint64_t dropped_before = radio.plus_sound_dropped_frames;
+
+		mock_ioctl_failure = SNDCTL_DSP_GETOSPACE;
+		assert(soundcard_writeframe(&radio, output) == 0);
+		assert(mock_sound_write_calls == writes_before);
+		assert(radio.plus_sound_dropped_frames == dropped_before);
+		mock_ioctl_failure = ULONG_MAX;
+	}
 	mock_write_result = -1;
 	assert(soundcard_writeframe(&radio, output) == -1);
 	assert(mock_sound_write_calls == 2 && radio.plus_sound_short_writes == 1);
@@ -7697,6 +7748,39 @@ static void test_oss_audio_helpers(void)
 	usbradioplus_tx_playout_hold_reset(&radio);
 	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
 	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
+	/* A successful but invalid OSS delay report takes the same safe fallback. */
+	mock_oss_output_delay = INT_MIN;
+	mock_oss_fragments = 6;
+	usbradioplus_tx_playout_hold_reset(&radio);
+	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
+	mock_oss_output_delay = -1;
+	/* GETOSPACE can fail after a frame was admitted. The hold calculation must
+	 * then use that admission snapshot rather than dropping the accepted frame. */
+	mock_oss_output_space_calls = 0;
+	fail_oss_output_space_call = 2;
+	usbradioplus_tx_playout_hold_reset(&radio);
+	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(radio.plus_tx_playout_hold.callbacks_remaining == 4U);
+	fail_oss_output_space_call = 0;
+	/* A full admission snapshot has no device backlog; retain only the frame
+	 * that was just accepted plus the one callback safety hold. */
+	mock_oss_fragments = 8;
+	mock_oss_bytes = mock_oss_fragment_total * 3840;
+	mock_oss_output_space_calls = 0;
+	fail_oss_output_space_call = 2;
+	usbradioplus_tx_playout_hold_reset(&radio);
+	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(radio.plus_tx_playout_hold.callbacks_remaining == 2U);
+	fail_oss_output_space_call = 0;
+	mock_oss_bytes = -1;
+	/* OSS counter values can exceed the callback counter's public range. */
+	mock_oss_output_space_calls = 0;
+	extreme_oss_output_space_call = 2;
+	usbradioplus_tx_playout_hold_reset(&radio);
+	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
+	assert(radio.plus_tx_playout_hold.callbacks_remaining == UINT_MAX);
+	extreme_oss_output_space_call = 0;
 	mock_oss_fragments = 8;
 	mock_oss_output_delay = -1;
 	radio.duplex3 = 500;
@@ -7710,7 +7794,7 @@ static void test_oss_audio_helpers(void)
 	radio.sounddev = -1;
 	mock_open_result = -1;
 	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 10);
+	assert(mock_sound_write_calls == 14);
 	mock_open_result = 7;
 	mock_oss_io = 0;
 }
@@ -8904,6 +8988,13 @@ static void test_oss_complete_read_frame(void)
 	mock_oss_io = 1;
 	mock_ioctl_failure = ULONG_MAX;
 	mock_oss_fragment_total = mock_oss_fragments = 8;
+	mock_oss_fragment_size = 3840;
+	mock_oss_bytes = -1;
+	mock_oss_output_space_calls = 0;
+	fail_oss_output_space_call = 0;
+	extreme_oss_output_space_call = 0;
+	radio.total_blocks = 8;
+	radio.queuesize = 7;
 	mock_write_result = -2;
 	mock_read_errno = 0;
 	channel_state = AST_STATE_UP;
@@ -8926,6 +9017,18 @@ static void test_oss_complete_read_frame(void)
 	for (size_t sample = 0; sample < ARRAY_LEN(radio.usbradio_write_buf); ++sample)
 		assert(radio.usbradio_write_buf[sample] == 0);
 	assert(!atomic_load_explicit(&radio.plus_radio_tx_active, memory_order_acquire));
+	/* A full DAC follows the same no-wait reconfiguration path without writing
+	 * an unadmitted frame. */
+	mock_oss_bytes = (int)sizeof(radio.usbradio_write_buf) - 1;
+	mock_read_result = (ssize_t)(sizeof(radio.usbradio_read_buf) - radio.readpos);
+	{
+		unsigned int writes_before = mock_sound_write_calls;
+
+		assert(usbradio_read(channel) == &ast_null_frame);
+		assert(mock_sound_write_calls == writes_before);
+	}
+	mock_oss_bytes = -1;
+	radio.plus_sound_dropped_frames = 0;
 	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 0, memory_order_seq_cst);
 	radio.clipledgpio = 1;
 	mock_audio_clipping = 1;
@@ -9715,6 +9818,23 @@ static void test_program_ring_native_tick(void)
 	assert(channel.plus_native_frames == 42);
 	assert(!channel.plus_src_errors);
 	assert(rendered);
+	/* The receiver downsampler has its own fail-closed path. The dynamic
+	 * program ring is not involved in this source conversion. */
+	src_process_calls = 0;
+	fail_src_process_call = 1;
+	native_tick_then_process(&channel);
+	fail_src_process_call = 0;
+	assert(channel.plus_src_errors == 1U);
+	/* A nominal conversion with incomplete input consumption is also invalid. */
+	{
+		unsigned int src_errors = channel.plus_src_errors;
+
+		src_process_calls = 0;
+		partial_src_process_call = 1;
+		native_tick_then_process(&channel);
+		partial_src_process_call = 0;
+		assert(channel.plus_src_errors == src_errors + 1U);
+	}
 
 	usbradioplus_dsp_destroy(&channel);
 	assert(!urp_radio_destroy(channel.radio));
@@ -10237,16 +10357,26 @@ static void test_native_tick_processing_edges(void)
 	{
 		struct usbradioplus_native_graph_set *active = atomic_exchange_explicit(
 			&channel.plus_native_graphs.active, NULL, memory_order_seq_cst);
+		urp_radio_state *saved_radio = channel.radio;
 
 		assert(active);
 		memset(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0x5a,
 		       URP_NATIVE_SAMPLES * sizeof(short));
 		memset(channel.usbradio_write_buf, 0x5a, sizeof(channel.usbradio_write_buf));
+		/* A normal signaling state retains its PTT decision while graphs reload. */
 		usbradioplus_native_tick(&channel, 1);
 		assert(urp_pcm_peak((short *)(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
 				    URP_NATIVE_SAMPLES) == 0U);
 		assert(urp_pcm_peak((short *)channel.usbradio_write_buf, URP_NATIVE_SAMPLES * 2U) ==
 		       0U);
+		/* Teardown can remove the radio state during that same unpublished span. */
+		channel.radio = NULL;
+		usbradioplus_native_tick(&channel, 1);
+		assert(urp_pcm_peak((short *)(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
+				    URP_NATIVE_SAMPLES) == 0U);
+		assert(urp_pcm_peak((short *)channel.usbradio_write_buf, URP_NATIVE_SAMPLES * 2U) ==
+		       0U);
+		channel.radio = saved_radio;
 		atomic_store_explicit(&channel.plus_native_graphs.active, active,
 				      memory_order_seq_cst);
 	}
@@ -10585,7 +10715,6 @@ static void test_native_tick_processing_edges(void)
 	 * keyed transmit; it still resets the echo SRC in either state. */
 	urp_sample_queue_reset(&channel.echo_queue);
 	unsigned int underflows = channel.plus_link_queue_underflows;
-	uint64_t ring_shortfalls;
 	atomic_store_explicit(&channel.echoing, 1, memory_order_release);
 	native_tick_then_process(&channel);
 	assert(channel.plus_link_queue_underflows == underflows + 1U);
@@ -10642,50 +10771,31 @@ static void test_native_tick_processing_edges(void)
 	assert(channel.plus_link_native[URP_NATIVE_SAMPLES - 1U] == 0);
 	atomic_store_explicit(&channel.echoing, 0, memory_order_release);
 
-	for (unsigned int frame = 0;
-	     frame < channel.plus_program_target_samples / URP_LINK_SAMPLES + 2U; ++frame)
+	/* Converter failure details belong to the dynamically linked ring's own
+	 * test suite. Here, use only its public API to verify the channel contract:
+	 * queued program PCM is consumed without a false underflow, and exhaustion
+	 * reports one callback-level underflow to the channel. */
+	rpcr_destroy(&channel.plus_program_ring);
+	assert(!rpcr_init(&channel.plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST));
+	assert(!rpcr_set_rates(&channel.plus_program_ring, URP_APP_RPT_RATE_DEFAULT,
+			       URP_RATE_NATIVE));
+	for (unsigned int frame = 0; frame < 6U; ++frame)
 		usbradioplus_queue_program(&channel, program, URP_LINK_SAMPLES);
-	src_process_calls = 0;
-	fail_src_process_call = 1;
-	native_tick_then_process(&channel);
-	fail_src_process_call = 0;
-	for (unsigned int frame = 0;
-	     frame < channel.plus_program_target_samples / URP_LINK_SAMPLES + 2U; ++frame)
-		usbradioplus_queue_program(&channel, program, URP_LINK_SAMPLES);
-	underflows = channel.plus_link_queue_underflows;
-	ring_shortfalls =
-		atomic_load_explicit(&channel.plus_program_ring.missing, memory_order_relaxed);
-	/* Per-sample playout can retain a converted tail from the preceding tick.
-	 * Discard that test-only tail so this injected second SRC call reaches the
-	 * ring converter rather than merely consuming already-rendered PCM. */
-	channel.plus_program_ring.output_pending = 0;
-	channel.plus_program_ring.output_offset = 0;
-	src_process_calls = 0;
-	fail_src_process_call = 2;
-	native_tick_then_process(&channel);
-	fail_src_process_call = 0;
-	assert(channel.plus_link_queue_underflows == underflows + 1U);
-	assert(atomic_load_explicit(&channel.plus_program_ring.missing, memory_order_relaxed) >
-	       ring_shortfalls);
-	for (unsigned int frame = 0;
-	     frame < channel.plus_program_target_samples / URP_LINK_SAMPLES + 2U; ++frame)
-		usbradioplus_queue_program(&channel, program, URP_LINK_SAMPLES);
-	underflows = channel.plus_link_queue_underflows;
-	ring_shortfalls =
-		atomic_load_explicit(&channel.plus_program_ring.missing, memory_order_relaxed);
-	channel.plus_program_ring.output_pending = 0;
-	channel.plus_program_ring.output_offset = 0;
-	src_process_calls = 0;
-	partial_src_output_call = 2;
-	native_tick_then_process(&channel);
-	partial_src_output_call = 0;
-	/* A partial converter buffer is refilled before the next sample.  It is not
-	 * an underrun unless the sample-paced consumer actually exhausts source
-	 * PCM, so neither shortfall diagnostic may report a false event. */
-	assert(src_process_calls > 2);
-	assert(channel.plus_link_queue_underflows == underflows);
-	assert(atomic_load_explicit(&channel.plus_program_ring.missing, memory_order_relaxed) ==
-	       ring_shortfalls);
+	{
+		struct rpcr_observation before;
+		struct rpcr_observation after;
+
+		rpcr_observe(&channel.plus_program_ring, &before);
+		underflows = channel.plus_link_queue_underflows;
+		native_tick_then_process(&channel);
+		rpcr_observe(&channel.plus_program_ring, &after);
+		assert(channel.plus_link_queue_underflows == underflows);
+		assert(after.available_samples < before.available_samples);
+		for (unsigned int tick = 0;
+		     tick < 8U && channel.plus_link_queue_underflows == underflows; ++tick)
+			native_tick_then_process(&channel);
+		assert(channel.plus_link_queue_underflows == underflows + 1U);
+	}
 
 	usbradioplus_dsp_destroy(&channel);
 	assert(!urp_radio_destroy(channel.radio));

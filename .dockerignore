@@ -1,4 +1,5 @@
 .git
+third_party
 build
 dist
 work

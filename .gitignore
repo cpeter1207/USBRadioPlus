@@ -1,5 +1,6 @@
 /build/
 /dist/
+/.work/
 /third_party/rate_adjusting_pcm_ring/build/
 /.test*/
 /.usbradioplus-tests.*/

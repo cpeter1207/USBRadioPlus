@@ -21,10 +21,10 @@ remain manual operations described in `usbradioplus(7)`.
 - [ ] Run `make ci` on the release-candidate commit. It must pass strict
       compilation, Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy,
       Doxygen, all tests, and 100% line and branch coverage, including the
-      vendored program-ring gate.
+      rate-adjusting PCM ring package dependency.
 - [ ] Run `make distcheck`, then inspect the extracted archive's staged install.
       Confirm it contains the module, private AGC effect, unified tuner, sample,
-      manuals, and the vendored `rate_adjusting_pcm_ring` source, but no build
+      manuals, but no build
       output, coverage data, audio captures, or test recordings.
 - [ ] Run `python3 tools/validate_release.py`, `make docs`, and the man-page
       render checks. Confirm README, installation instructions, all three man

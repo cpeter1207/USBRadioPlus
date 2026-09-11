@@ -12,16 +12,13 @@ else
 	trap 'rm -rf -- "$out"' EXIT HUP INT TERM
 fi
 
-# The Makefile supplies these paths during normal builds.  Keep direct harness
-# runs equally self-contained: build the bundled static ring instead of
-# silently reaching for an unpublished system library.
+# The Makefile supplies these paths during staged CI builds. Direct harness
+# runs use the released shared library's pkg-config metadata.
 if [ -z "${RPCR_CFLAGS:-}" ]; then
-	RPCR_CFLAGS="-I$root/third_party/rate_adjusting_pcm_ring/include"
+	RPCR_CFLAGS=$(pkg-config --cflags rate_adjusting_pcm_ring)
 fi
 if [ -z "${RPCR_LIBS:-}" ]; then
-	rpcr_root="$root/third_party/rate_adjusting_pcm_ring"
-	make -C "$rpcr_root" build/librate_adjusting_pcm_ring.a
-	RPCR_LIBS="$rpcr_root/build/librate_adjusting_pcm_ring.a -lsamplerate"
+	RPCR_LIBS=$(pkg-config --libs rate_adjusting_pcm_ring)
 fi
 common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS}"
 rpcr_libs=$RPCR_LIBS

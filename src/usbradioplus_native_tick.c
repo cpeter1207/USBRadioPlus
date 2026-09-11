@@ -292,10 +292,8 @@ static void native_renderer_apply_requests(struct usbradioplus_native_renderer *
 
 	if (request != renderer->statistics_reset_seen) {
 		native_renderer_statistics_init(renderer);
-		if (graphs) {
-			native_renderer_reset_filter_statistics(&graphs->local_dynamics);
-			native_renderer_reset_filter_statistics(&graphs->final);
-		}
+		native_renderer_reset_filter_statistics(&graphs->local_dynamics);
+		native_renderer_reset_filter_statistics(&graphs->final);
 		renderer->statistics_reset_seen = request;
 	}
 	request = atomic_load_explicit(&renderer->parrot_clear_request, memory_order_acquire);
@@ -410,7 +408,7 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
 	snapshot->toneflag = channel->toneflag;
 	snapshot->usedtmf = channel->usedtmf;
 	snapshot->has_dsp = channel->dsp != NULL;
-	if (radio && radio->rxCtcss) {
+	if (radio) {
 		snapshot->decoded_ctcss = radio->rxCtcss->decode;
 		memcpy(snapshot->carrier_gate, radio->rxCarrierGate,
 		       sizeof(snapshot->carrier_gate));
@@ -440,7 +438,7 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
  * @param app_pcm Receives the app_rpt-format receive frame.
  */
 static void native_renderer_copy_receive_to_app(struct usbradioplus_native_renderer *renderer,
-						struct usbradioplus_native_graph_set *graphs,
+						const struct usbradioplus_native_graph_set *graphs,
 						short *app_pcm)
 {
 	size_t index;
@@ -641,7 +639,7 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 		urp_native_repeat_prepare(renderer->local_program, renderer->local_native,
 					  URP_NATIVE_SAMPLES, 1.0,
 					  input->usedtmf && input->has_dsp && input->toneflag);
-		if (graphs->echo_mode && renderer->parrot.audio)
+		if (graphs->echo_mode)
 			urp_parrot_record(&renderer->parrot, renderer->local_program,
 					  URP_NATIVE_SAMPLES, renderer->parrot.capacity);
 		for (index = 0; index < URP_NATIVE_SAMPLES; ++index)

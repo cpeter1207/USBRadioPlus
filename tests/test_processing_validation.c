@@ -3336,13 +3336,19 @@ static void test_processing_private_edge_paths(void)
 	candidate.profiles[0].chains[TXAGC_VOICE_TELEMETRY].enabled = 1;
 	assert(!usbradioplus_processing_get_composite("usb", &chain));
 	assert(chain.enabled);
-	candidate.profiles[0].override_count = 1;
+	candidate.profiles[0].override_count = 2;
 	ast_copy_string(candidate.profiles[0].overrides[0].section, "receive",
 			sizeof(candidate.profiles[0].overrides[0].section));
 	ast_copy_string(candidate.profiles[0].overrides[0].name, "different_option",
 			sizeof(candidate.profiles[0].overrides[0].name));
 	ast_copy_string(candidate.profiles[0].overrides[0].value, "different_value",
 			sizeof(candidate.profiles[0].overrides[0].value));
+	ast_copy_string(candidate.profiles[0].overrides[1].section, "different_section",
+			sizeof(candidate.profiles[0].overrides[1].section));
+	ast_copy_string(candidate.profiles[0].overrides[1].name, "signaling_method",
+			sizeof(candidate.profiles[0].overrides[1].name));
+	ast_copy_string(candidate.profiles[0].overrides[1].value, "different_value",
+			sizeof(candidate.profiles[0].overrides[1].value));
 	assert(!usbradioplus_processing_get_option("usb", "receive", "signaling_method", value,
 						   sizeof(value)));
 	assert(!strcmp(value, "carrier"));

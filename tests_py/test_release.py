@@ -763,37 +763,21 @@ def test_repository_uses_upstream_linux_layout():
     assert re.fullmatch(r"[0-9][0-9A-Za-z.+:~_-]*", text("VERSION").strip())
 
 
-def test_vendored_program_ring_keeps_distribution_builds_self_contained():
-    """Verify archive and Debian builds need no unpublished ring package."""
+def test_shared_program_ring_uses_its_public_abi():
+    """Verify builds and packages use the released program-ring ABI."""
     makefile = text("Makefile")
-    vendor = ROOT / "third_party/rate_adjusting_pcm_ring"
-    required = (
-        "AGENTS.md",
-        "Doxyfile",
-        "Makefile",
-        "QUALITY.md",
-        "README.md",
-        "UPSTREAM.md",
-        "include/rate_adjusting_pcm_ring.h",
-        "src/rate_adjusting_pcm_ring.c",
-        "tests/test_consumer.c",
-        "tests/test_ring.c",
-    )
-    assert all((vendor / path).is_file() for path in required)
-    assert "RPCR_SOURCE := third_party/rate_adjusting_pcm_ring" in makefile
-    assert "RPCR_ARCHIVE := $(RPCR_SOURCE)/build/librate_adjusting_pcm_ring.a" in makefile
-    assert "RPCR_LIBS := $(RPCR_ARCHIVE)" in makefile
-    assert "pkg-config rate_adjusting_pcm_ring" not in makefile
-    assert "rpcr-ci" in makefile and "rpcr-test" in makefile
-    assert "third_party" in makefile[makefile.index("DIST_DIRS :=") :]
-    assert "! -path '*/build/*'" in makefile
-    assert "-name build" in makefile
+    assert "third_party/rate_adjusting_pcm_ring" not in makefile
+    assert "$(PKG_CONFIG) --cflags rate_adjusting_pcm_ring" in makefile
+    assert "$(PKG_CONFIG) --libs rate_adjusting_pcm_ring" in makefile
+    assert "RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so" in makefile
+    assert "RPCR_ARCHIVE" not in makefile
     assert "librate_adjusting_pcm_ring' /tmp/module-libraries" in text("containers/Dockerfile")
-    assert "separately installed ring-library package" in text("INSTALL.md")
-    assert "third_party/rate_adjusting_pcm_ring/*" in text("debian/copyright")
+    assert "matching development package" in text("INSTALL.md")
+    assert "librate-adjusting-pcm-ring-dev" in text("debian/control")
     runner = text("tests/run_c_tests.sh")
-    assert 'make -C "$rpcr_root" build/librate_adjusting_pcm_ring.a' in runner
-    assert 'RPCR_LIBS="$rpcr_root/build/librate_adjusting_pcm_ring.a -lsamplerate"' in runner
+    assert "pkg-config --cflags rate_adjusting_pcm_ring" in runner
+    assert "pkg-config --libs rate_adjusting_pcm_ring" in runner
+    assert re.search(r"LD_LIBRARY_PATH=.*\\\n\s*sh \./tests/run_coverage_integration\.sh", makefile)
 
 
 def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():

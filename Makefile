@@ -37,17 +37,24 @@ WARNFLAGS ?= -Wall -Wextra -Werror -Wno-old-style-declaration
 ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
-# The program ring is source-vendored so extracted release archives and Debian
-# source builds never rely on a sibling checkout or an unpublished package.
-# Link its archive privately: the channel has no extra runtime shared-object
-# dependency and the ring remains independently testable in third_party.
-RPCR_SOURCE := third_party/rate_adjusting_pcm_ring
-RPCR_ARCHIVE := $(RPCR_SOURCE)/build/librate_adjusting_pcm_ring.a
-RPCR_SOURCE_FILES := $(shell find $(RPCR_SOURCE) -type f \
-	! -path '$(RPCR_SOURCE)/build/*' | LC_ALL=C sort)
-RPCR_CFLAGS := -I$(RPCR_SOURCE)/include
-RPCR_LIBS := $(RPCR_ARCHIVE) $(shell $(PKG_CONFIG) --libs samplerate)
-RPCR_BUILD_DEP := $(RPCR_ARCHIVE)
+# Use the released shared ring ABI. CI may stage a checked-out release source;
+# normal builds consume its installed pkg-config metadata and runtime SONAME.
+RPCR_SOURCE ?=
+ifneq ($(strip $(RPCR_SOURCE)),)
+RPCR_STAGE ?= $(CURDIR)/build/rpcr-stage
+RPCR_PREFIX := $(RPCR_STAGE)/usr
+RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so
+RPCR_SOURCE_FILES := $(RPCR_SOURCE)/Makefile \
+	$(RPCR_SOURCE)/rate_adjusting_pcm_ring.pc.in \
+	$(wildcard $(RPCR_SOURCE)/include/*.h $(RPCR_SOURCE)/src/*.c)
+RPCR_CFLAGS := -I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring
+RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring
+RPCR_BUILD_DEP := $(RPCR_LIBRARY)
+else
+RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring)
+RPCR_LIBS := $(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring)
+RPCR_BUILD_DEP :=
+endif
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 
@@ -59,6 +66,9 @@ ASL_RADIO_API ?= $(strip $(shell \
 DSP_PACKAGES := rnnoise samplerate libavfilter libavutil alsa
 DSP_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DSP_PACKAGES))
 DSP_LIBS := $(RPCR_LIBS) $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES))
+# ladspa-sdk installs its public header below this Debian include directory and
+# does not provide pkg-config metadata.
+LADSPA_CFLAGS := -I/usr/include/ladspa
 ifeq ($(ASL_RADIO_API),modern)
 CHANNEL_SOURCE := src/chan_usbradioplus_modern.c
 CHANNEL_CPPFLAGS := -DURP_CHANNEL_MODERN
@@ -94,7 +104,7 @@ MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
 	RELEASE-CHECKLIST.md CONTRIBUTING.md AGENTS.md Doxyfile pyproject.toml \
 	.clang-format .clang-tidy .dockerignore install.sh
-DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tests_docs tools third_party
+DIST_DIRS := .github containers debian packaging src scripts examples man doc tests tests_py tests_docs tools
 DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -name '*.pyc' ! -name '*.gcda' ! -name '*.gcno' ! -name '*.gcov' \
 	! -name '*.cap' ! -name '*.raw' ! -name '*.wav' ! -name '*.au' \
@@ -102,7 +112,7 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 	! -path '*/.coverage/*' ! -path '*/.coverage-*/*' \
 	! -path '*/build/*' ! -path '*/dist/*' ! -path '*/work/*' ! -path '*/outputs/*' | LC_ALL=C sort)
 
-.PHONY: all check ci coverage docs lint static-analysis platform-verify rpcr-ci rpcr-test \
+.PHONY: all check ci coverage docs lint static-analysis platform-verify \
 	clean dist distcheck install install-strip install-from-dist \
 	print-asl-radio-api uninstall validate-release
 
@@ -116,17 +126,10 @@ all: $(RPCR_BUILD_DEP) $(MODULE) $(AGC_PLUGIN)
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(RPCR_ARCHIVE): $(RPCR_SOURCE_FILES)
-	$(MAKE) -C $(RPCR_SOURCE) build/librate_adjusting_pcm_ring.a
-
-# Keep the vendored project’s independent 100% coverage and installation
-# checks in the top-level quality gate.  A regular check runs its focused test
-# too, so distcheck proves an extracted USBRadioPlus tree contains it.
-rpcr-ci: $(RPCR_SOURCE_FILES)
-	$(MAKE) -C $(RPCR_SOURCE) clean ci
-
-rpcr-test: $(RPCR_BUILD_DEP)
-	$(MAKE) -C $(RPCR_SOURCE) test
+ifneq ($(strip $(RPCR_SOURCE)),)
+$(RPCR_LIBRARY): $(RPCR_SOURCE_FILES)
+	$(MAKE) -C $(RPCR_SOURCE) DESTDIR=$(RPCR_STAGE) prefix=/usr install
+endif
 
 # A later staged install may select a different prefix from the initial build.
 # Track it so the module cannot retain a stale private-plugin location.
@@ -154,12 +157,13 @@ $(MODULE): $(RPCR_BUILD_DEP) $(MODULE_OBJECTS)
 
 # The graph loads this private LADSPA effect; it is not an Asterisk module.
 $(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNFLAGS) -fPIC -shared $(LDFLAGS) \
+	$(CC) $(CPPFLAGS) $(LADSPA_CFLAGS) $(CFLAGS) $(WARNFLAGS) -fPIC -shared $(LDFLAGS) \
 		-o $@ src/txagc/rms_agc_ladspa.c -lm
 
-check: rpcr-test all
+check: all
 	$(PYTHON) -m pytest -q tests_py
-	RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
+	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
+		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) validate-release
 
@@ -216,18 +220,17 @@ coverage: $(RPCR_BUILD_DEP)
 		--cov-report=xml:$(BUILD_DIR)/coverage/python.xml
 	C_TEST_CFLAGS="--coverage -O0 -g" \
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
+		LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
 		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
-	sh ./tests/run_coverage_integration.sh
+	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
+		sh ./tests/run_coverage_integration.sh
 	# Keep the real-module smoke test mandatory, while using focused-harness
 	# counters for complete source coverage. The smoke intentionally executes
 	# only module startup, so discard its partial counters before reporting.
 	find $(BUILD_DIR) -type f \( -name '*.gcda' -o -name '*.gcno' \) \
 		! -path '$(BUILD_DIR)/coverage/*' -delete
-	# The vendored ring has already enforced its independent 100% report above.
-	# Its counters are outside this report and otherwise make gcovr warn.
-	find $(RPCR_SOURCE)/build -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete
 	$(GCOVR) --root . --object-directory $(BUILD_DIR)/coverage/raw --filter 'src/.*\.c' \
 		--exclude-unreachable-branches --exclude-throw-branches \
 		--txt - \
@@ -238,7 +241,7 @@ coverage: $(RPCR_BUILD_DEP)
 # Coverage already executes every Python and C test.  Follow it with the
 # non-test release validator and a clean build/install from the tarball instead
 # of running the identical suites two more times on every platform.
-platform-verify: rpcr-ci
+platform-verify:
 	$(MAKE) coverage
 	$(MAKE) validate-release
 	$(MAKE) distcheck DISTCHECK_TEST_TARGET=
@@ -250,7 +253,7 @@ docs: $(RPCR_BUILD_DEP)
 	test ! -s $(BUILD_DIR)/doxygen-warnings.log
 	$(PYTHON) -m pytest -q tests_docs
 
-ci: rpcr-ci
+ci:
 	$(MAKE) lint
 	$(MAKE) static-analysis
 	$(MAKE) check
@@ -345,5 +348,4 @@ install-from-dist: dist
 			asteriskmoduledir="$(asteriskmoduledir)" install
 
 clean:
-	$(MAKE) -C $(RPCR_SOURCE) clean
 	rm -rf $(BUILD_DIR) $(DIST_DIR)

@@ -39,10 +39,11 @@ For a release archive on an ASL3 node, the supported convenience command is:
 sudo ./install.sh
 .fi
 .PP
-The convenience installer obtains the required Debian build packages, builds
-the module and utilities, runs the hardware-independent tests, and installs the
-result.  Installation does not load a module, restart Asterisk, or edit an
-Asterisk configuration file.
+The convenience installer verifies the shipped repository key, configures the
+signed project repository, obtains the required Debian build packages and
+released shared-library dependency, builds the module and utilities, runs the
+hardware-independent tests, and installs the result.  Installation does not
+load a module, restart Asterisk, or edit an Asterisk configuration file.
 .SH ACTIVATION
 Retain the installed
 .B chan_usbradio.so

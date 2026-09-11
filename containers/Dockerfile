@@ -35,9 +35,16 @@ RUN sh /tmp/usbradioplus/scripts/install-rnnoise.sh && rm -rf /tmp/usbradioplus
 
 WORKDIR /usr/src/usbradioplus
 
+# The ring is an explicit build context supplied by the deterministic container
+# workflow.  It is installed into a private staging prefix only for this build;
+# the resulting module remains dynamically linked to the released SONAME.
+FROM rate_adjusting_pcm_ring AS rpcr-source
+
 FROM quality AS staged
 COPY . .
-RUN make clean all && make DESTDIR=/stage prefix=/usr install
+COPY --from=rpcr-source / /usr/src/rate_adjusting_pcm_ring
+RUN RPCR_SOURCE=/usr/src/rate_adjusting_pcm_ring make clean all && \
+    RPCR_SOURCE=/usr/src/rate_adjusting_pcm_ring make DESTDIR=/stage prefix=/usr install
 
 FROM asl3-clean AS usbradioplus-installed
 ARG DEBIAN_VERSION
@@ -49,6 +56,7 @@ RUN if [ "$DEBIAN_VERSION" = 12 ]; then av_packages="libavfilter8 libavutil57"; 
       libusb-0.1-4 libusb-1.0-0 python3 whiptail && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=quality /usr/local/lib/librnnoise.so.0.4.1 /usr/local/lib/
+COPY --from=staged /usr/src/usbradioplus/build/rpcr-stage/usr/lib/librate_adjusting_pcm_ring.so* /usr/lib/
 COPY --from=staged /stage/ /
 COPY --chmod=0755 tests/container-smoke-test.sh /usr/local/libexec/usbradioplus/
 RUN ln -s librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
@@ -59,7 +67,7 @@ RUN ln -s librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
 	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
       tee /tmp/module-libraries && \
 	! grep -q 'not found' /tmp/module-libraries && \
-	! grep -q 'librate_adjusting_pcm_ring' /tmp/module-libraries && \
+	grep -q 'librate_adjusting_pcm_ring' /tmp/module-libraries && \
     if [ "$RUN_SMOKE_TEST" = 1 ]; then \
       /usr/local/libexec/usbradioplus/container-smoke-test.sh; \
     fi

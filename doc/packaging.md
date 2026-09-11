@@ -18,20 +18,16 @@ Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
 `asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
 `libusb-dev`, `portaudio19-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
-`ladspa-sdk`, `librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
+`ladspa-sdk`, `librnnoise-dev`, `librate-adjusting-pcm-ring-dev (>= 1.0.1)`,
+`python3`, and `python3-pytest`. The USBRadioPlus repository
 publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
 
-The lock-free program FIFO is a reviewed GPL-2.0-only source snapshot in
-`third_party/rate_adjusting_pcm_ring`.  USBRadioPlus builds its static archive
-and links it privately into the channel module, so neither the upstream source
-archive nor the Debian build needs a sibling checkout, network access, a
-separate development package, or a runtime `librate_adjusting_pcm_ring.so`.
-The vendored directory retains its own Makefile, tests, coverage gate, and
-upstream record.  The top-level `make ci` and `make platform-verify` execute
-that gate before the USBRadioPlus gate.  Update the snapshot only from a
-reviewed upstream revision and then run both the top-level CI and distcheck.
+USBRadioPlus links dynamically to the separately released GPL-2.0-only
+`rate_adjusting_pcm_ring` library. Build packages require its development
+package; installed modules require its matching runtime package. CI stages the
+released library source only to test that public ABI deterministically.
 
 The package includes the original gated RMS AGC as a private LADSPA effect:
 `/usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so`. It runs only inside

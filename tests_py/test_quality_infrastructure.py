@@ -87,10 +87,9 @@ def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
     assert "--cov-branch --cov-fail-under=100" in makefile
     assert "--fail-under-line 100 --fail-under-branch 100" in makefile
     assert "find $(BUILD_DIR) -type f \\( -name '*.gcda' -o -name '*.gcno' \\" in makefile
-    ring_counter_cleanup = (
-        "find $(RPCR_SOURCE)/build -type f \\( -name '*.gcda' -o -name '*.gcno' \\) -delete"
-    )
-    assert ring_counter_cleanup in makefile
+    # The shared library owns its independent counters and coverage report;
+    # the consumer gate must not reach into its installed or staged tree.
+    assert "find $(RPCR_SOURCE)/build" not in makefile
 
 
 def test_local_container_runner_cleans_only_labeled_test_containers():

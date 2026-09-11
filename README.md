@@ -29,10 +29,10 @@ cd usbradioplus-VERSION
 sudo ./install.sh
 ```
 
-The installer obtains the required build tools and dependencies, builds the
-module and utilities, runs the hardware-free test suite, and copies the files
-into their system locations. It does not load the module, restart Asterisk, or
-change `modules.conf` or `rpt.conf`.
+The installer verifies the shipped signing key, configures the project
+repository, installs build dependencies including the released shared library,
+builds and tests the module and utilities, and copies them into place. It does
+not load the module, restart Asterisk, or change `modules.conf` or `rpt.conf`.
 
 Developers and package maintainers can use the standard Makefile directly. See
 [INSTALL.md](INSTALL.md) for build, test, staged-install, and source-archive

@@ -1169,7 +1169,11 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 	pthread_exit(0);
 }
 
-/** @brief Query one OSS output-space snapshot and maintain its capacity cache. */
+/** @brief Query one OSS output-space snapshot and maintain its capacity cache.
+ * @param o Channel that owns the OSS device.
+ * @param info Receives the current OSS output-space snapshot.
+ * @return Zero on success, or minus one when OSS cannot report output space.
+ */
 static int soundcard_output_space(struct chan_usbradio_pvt *o, struct audio_buf_info *info)
 {
 	if (ioctl(o->sounddev, SNDCTL_DSP_GETOSPACE, info)) {
@@ -1206,7 +1210,12 @@ int used_blocks(struct chan_usbradio_pvt *o)
 }
 #endif
 
-/** @brief Test whether OSS can accept one complete native stereo frame. */
+/** @brief Test whether OSS can accept one complete native stereo frame.
+ * @param o Channel that owns the OSS device.
+ * @param admission Receives the successful output-space snapshot.
+ * @return One when admitted, zero when capacity is unavailable, or minus one
+ * when the device cannot be opened or queried.
+ */
 static int soundcard_admit_native_frame(struct chan_usbradio_pvt *o,
 					struct audio_buf_info *admission)
 {
@@ -1221,8 +1230,7 @@ static int soundcard_admit_native_frame(struct chan_usbradio_pvt *o,
 	if ((unsigned int)queued > o->queuesize ||
 	    info.bytes < (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short)))
 		return 0;
-	if (admission)
-		*admission = info;
+	*admission = info;
 	return 1;
 }
 
@@ -1285,7 +1293,12 @@ static unsigned int soundcard_playout_hold_callbacks(struct chan_usbradio_pvt *o
 	return callbacks > UINT_MAX ? UINT_MAX : (unsigned int)callbacks;
 }
 
-/** @brief Write one previously admitted native stereo frame without rechecking OSS. */
+/** @brief Write one previously admitted native stereo frame without rechecking OSS.
+ * @param o Channel that owns the OSS device.
+ * @param data Native stereo PCM to submit.
+ * @param admission Output-space snapshot that admitted @p data.
+ * @return Number of bytes written, or the OSS error result.
+ */
 static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *data,
 					  const struct audio_buf_info *admission)
 {

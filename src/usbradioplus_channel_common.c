@@ -270,7 +270,7 @@ void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *o, int asserted
 
 void usbradioplus_tx_playout_hold_prepare(struct chan_usbradio_pvt *channel)
 {
-	struct usbradioplus_tx_playout_hold *hold;
+	const struct usbradioplus_tx_playout_hold *hold;
 
 	if (!channel || !channel->radio)
 		return;
