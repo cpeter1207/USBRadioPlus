@@ -274,6 +274,10 @@ static int fail_avfilter_prepare_call;
 static int avfilter_prepare_calls;
 /** Prepared FFmpeg graph selected to fail during a native callback. */
 static struct txagc_avfilter *fail_avfilter_process_state;
+/** Prepared graph whose use is counted by a native callback assertion. */
+static const struct txagc_avfilter *observed_avfilter_process_state;
+/** Calls received by the prepared graph selected for observation. */
+static unsigned int observed_avfilter_process_calls;
 /** Injects one resolved-option lookup failure for parser transaction tests. */
 static int fail_processing_option_get_call;
 /** Counts resolved-option lookups made by a parser transaction. */
@@ -1207,6 +1211,10 @@ int __wrap_txagc_avfilter_prepare(struct txagc_avfilter *state, const struct txa
 int __wrap_txagc_avfilter_process_prepared(struct txagc_avfilter *state, double *samples,
 					   size_t sample_count)
 {
+	if (observed_avfilter_process_state && state == observed_avfilter_process_state) {
+		observed_avfilter_process_calls++;
+		return 0;
+	}
 	if (state == fail_avfilter_process_state)
 		return -1;
 	return __real_txagc_avfilter_process_prepared(state, samples, sample_count);
@@ -10644,6 +10652,33 @@ static void test_native_tick_processing_edges(void)
 		assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request,
 					     memory_order_acquire));
 		channel.radio = saved_radio;
+	}
+	/* Teardown can clear only the optional decoder while radio signaling remains
+	 * available to the callback. */
+	{
+		urp_ctcss_decoder *saved_ctcss = channel.radio->rxCtcss;
+		struct usbradioplus_native_graph_set *graphs = atomic_load_explicit(
+			&channel.plus_native_graphs.active, memory_order_acquire);
+		int saved_decode = saved_ctcss->decode;
+		int saved_notch_configured;
+
+		assert(graphs);
+		saved_notch_configured = graphs->ctcss_notch[0].configured;
+		graphs->ctcss_notch[0].configured = 1;
+		observed_avfilter_process_state = &graphs->ctcss_notch[0];
+		observed_avfilter_process_calls = 0U;
+		channel.radio->rxCtcss = NULL;
+		native_tick_then_process(&channel);
+		assert(observed_avfilter_process_calls == 0U);
+		/* A valid decoded index with no prepared notch must also bypass it. */
+		channel.radio->rxCtcss = saved_ctcss;
+		channel.radio->rxCtcss->decode = 0;
+		graphs->ctcss_notch[0].configured = 0;
+		native_tick_then_process(&channel);
+		assert(observed_avfilter_process_calls == 0U);
+		channel.radio->rxCtcss->decode = saved_decode;
+		observed_avfilter_process_state = NULL;
+		graphs->ctcss_notch[0].configured = saved_notch_configured;
 	}
 	channel.radio->rxCtcss->decode = urp_ctcss_frequency_index(100.0F);
 	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {

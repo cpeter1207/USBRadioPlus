@@ -18,6 +18,11 @@ on:
         default: "1"
         required: true
         type: string
+      include_debian12:
+        description: Also build and publish Debian 12 packages
+        default: false
+        required: false
+        type: boolean
 
 permissions:
   contents: write
@@ -31,5 +36,6 @@ jobs:
       source_ref: ${{ inputs.source_ref }}
       package_version: ${{ inputs.package_version }}
       package_revision: ${{ inputs.package_revision }}
+      include_debian12: ${{ inputs.include_debian12 }}
     secrets:
       APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}

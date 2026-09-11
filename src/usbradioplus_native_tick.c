@@ -404,12 +404,14 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
 	const urp_radio_state *radio = channel->radio;
 
 	memset(snapshot, 0, sizeof(*snapshot));
+	snapshot->decoded_ctcss = CTCSS_NULL;
 	snapshot->rxkeyed = channel->rxkeyed;
 	snapshot->toneflag = channel->toneflag;
 	snapshot->usedtmf = channel->usedtmf;
 	snapshot->has_dsp = channel->dsp != NULL;
 	if (radio) {
-		snapshot->decoded_ctcss = radio->rxCtcss->decode;
+		if (radio->rxCtcss)
+			snapshot->decoded_ctcss = radio->rxCtcss->decode;
 		memcpy(snapshot->carrier_gate, radio->rxCarrierGate,
 		       sizeof(snapshot->carrier_gate));
 		snapshot->tx_ptt_out = radio->txPttOut;
@@ -803,7 +805,10 @@ void usbradioplus_native_renderer_stop(struct chan_usbradio_pvt *channel)
 {
 	struct usbradioplus_native_renderer *renderer;
 
-	if (!channel || !(renderer = channel->plus_native_renderer))
+	if (!channel)
+		return;
+	renderer = channel->plus_native_renderer;
+	if (!renderer)
 		return;
 	channel->plus_native_renderer = NULL;
 	txagc_rnnoise_destroy(&renderer->local_rnnoise);
@@ -819,7 +824,10 @@ int usbradioplus_native_renderer_stats_read(struct chan_usbradio_pvt *channel,
 	struct usbradioplus_native_renderer *renderer;
 	unsigned int attempt;
 
-	if (!channel || !statistics || !(renderer = channel->plus_native_renderer))
+	if (!channel || !statistics)
+		return -1;
+	renderer = channel->plus_native_renderer;
+	if (!renderer)
 		return -1;
 	for (attempt = 0U; attempt < 3U; ++attempt) {
 		unsigned int index =
@@ -849,7 +857,10 @@ int usbradioplus_native_renderer_tx_audio_stats_read(struct chan_usbradio_pvt *c
 	struct usbradioplus_native_renderer *renderer;
 	unsigned int attempt;
 
-	if (!channel || !statistics || !(renderer = channel->plus_native_renderer))
+	if (!channel || !statistics)
+		return -1;
+	renderer = channel->plus_native_renderer;
+	if (!renderer)
 		return -1;
 	for (attempt = 0U; attempt < 3U; ++attempt) {
 		unsigned int index =
@@ -988,12 +999,13 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_re
 	short *app_pcm;
 	const short *adc_pcm;
 
-	if (!channel || !(renderer = channel->plus_native_renderer)) {
-		if (channel) {
-			native_renderer_silence(channel);
-			usbradioplus_publish_hardware_ptt(
-				channel, channel->radio ? channel->radio->txPttOut : 0);
-		}
+	if (!channel)
+		return;
+	renderer = channel->plus_native_renderer;
+	if (!renderer) {
+		native_renderer_silence(channel);
+		usbradioplus_publish_hardware_ptt(channel,
+						  channel->radio ? channel->radio->txPttOut : 0);
 		return;
 	}
 	native_renderer_silence(channel);

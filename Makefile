@@ -200,8 +200,13 @@ static-analysis: $(RPCR_BUILD_DEP)
 		src/txagc/rnnoise_processor.c \
 		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
 		& shared_tidy_pid=$$!; \
+	clang-tidy --extra-arg='-DAST_MODULE="chan_usbradioplus"' \
+		--extra-arg=-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
+		src/usbradioplus_native_tick.c \
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
+		& native_tick_tidy_pid=$$!; \
 	status=0; \
-	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid; do \
+	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid $$native_tick_tidy_pid; do \
 		wait $$pid || status=1; \
 	done; \
 	exit $$status
