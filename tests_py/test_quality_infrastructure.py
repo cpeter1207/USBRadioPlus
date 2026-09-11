@@ -19,14 +19,32 @@ def read(path):
 def test_quality_matrix_covers_every_supported_platform():
     """Verify quality matrix covers every supported platform."""
     workflow = read(".github/workflows/quality.yml")
+    assert "push:" in workflow
     assert "pull_request:" in workflow
     assert "workflow_dispatch:" in workflow
+    assert f"uses: {WORKFLOW_REF.format('preflight.yml')}" in workflow
     assert f"uses: {WORKFLOW_REF.format('quality.yml')}" in workflow
+    assert "contents: read" in workflow
+    assert "contents: write" not in workflow
+    assert "pages: write" not in workflow
+    assert "id-token: write" not in workflow
+    assert "if: github.event_name == 'push'" in workflow
+    assert "if: github.event_name != 'push'" in workflow
+    assert "runs-on:" not in workflow
+    assert "make " not in workflow
+
+
+def test_documentation_publishes_after_main_push_with_its_own_permissions():
+    """Keep Pages publication outside the read-only quality caller."""
+    workflow = read(".github/workflows/documentation.yml")
+    assert "push:" in workflow
+    assert "branches: [main]" in workflow
+    assert f"uses: {WORKFLOW_REF.format('documentation.yml')}" in workflow
+    assert "code_ref: ${{ github.sha }}" in workflow
     assert "contents: write" in workflow
     assert "pages: write" in workflow
     assert "id-token: write" in workflow
     assert "runs-on:" not in workflow
-    assert "make " not in workflow
 
 
 def test_container_workflow_builds_and_publishes_native_multiarch_images():
