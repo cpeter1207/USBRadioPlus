@@ -2919,7 +2919,8 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 		if (strcmp(ctg, "general") == 0) {
 			o = &usbradio_default;
 		} else {
-			if (!(o = ast_calloc(1, sizeof(*o)))) {
+			o = ast_calloc(1, sizeof(*o));
+			if (!o) {
 				return NULL;
 			}
 			*o = usbradio_default;
@@ -3138,6 +3139,8 @@ URP_CHANNEL_LOCAL char *handle_console_key(struct ast_cli_entry *e, int cmd, str
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	return res2cli(console_key(a->fd, a->argc, a->argv));
 }
@@ -3155,6 +3158,8 @@ URP_CHANNEL_LOCAL char *handle_console_unkey(struct ast_cli_entry *e, int cmd,
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	return res2cli(console_unkey(a->fd, a->argc, a->argv));
 }
@@ -3182,6 +3187,8 @@ URP_CHANNEL_LOCAL char *handle_radio_tune(struct ast_cli_entry *e, int cmd, stru
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	return res2cli(radio_tune(a->fd, a->argc, a->argv));
 }
@@ -3203,6 +3210,8 @@ URP_CHANNEL_LOCAL char *handle_radio_active(struct ast_cli_entry *e, int cmd,
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	return res2cli(radio_active(a->fd, a->argc, a->argv));
 }
@@ -3221,6 +3230,8 @@ URP_CHANNEL_LOCAL char *handle_show_settings(struct ast_cli_entry *e, int cmd,
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 
 	o = find_desc(usbradio_active);
@@ -3244,6 +3255,8 @@ URP_CHANNEL_LOCAL char *handle_set_dsp_debug(struct ast_cli_entry *e, int cmd,
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	return res2cli(radio_set_dsp_debug(a->fd, a->argc, a->argv));
 }
@@ -3265,6 +3278,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		return NULL;
 	case CLI_GENERATE:
 		return NULL;
+	default:
+		break;
 	}
 	if (a->argc != 3 && a->argc != 4)
 		return CLI_SHOWUSAGE;
@@ -3394,7 +3409,8 @@ URP_CHANNEL_LOCAL void usbradio_start_parallel_pulser(void)
 
 URP_CHANNEL_LOCAL int load_module(void)
 {
-	if (!(usbradio_tech.capabilities = ast_format_cap_alloc(AST_FORMAT_CAP_FLAG_DEFAULT))) {
+	usbradio_tech.capabilities = ast_format_cap_alloc(AST_FORMAT_CAP_FLAG_DEFAULT);
+	if (!usbradio_tech.capabilities) {
 		return AST_MODULE_LOAD_DECLINE;
 	}
 	ast_format_cap_append(usbradio_tech.capabilities, ast_format_slin, 0);

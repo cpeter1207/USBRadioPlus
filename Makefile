@@ -83,7 +83,9 @@ RADIO_LIBS := -lusb
 else
 $(error ASL_RADIO_API must be legacy or modern)
 endif
-COMMON_CPPFLAGS := -I$(ASTERISK_INCLUDEDIR) -Isrc $(RPCR_CFLAGS)
+# External Asterisk headers use GNU pthread declarations before autoconfig.h
+# can request them, so make that feature set explicit for every module build.
+COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc $(RPCR_CFLAGS)
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
 AGC_PLUGIN := $(BUILD_DIR)/usbradioplus_agc.so
 AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
@@ -198,12 +200,12 @@ static-analysis: $(RPCR_BUILD_DEP)
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
 		src/txagc/rms_agc_ladspa.c \
 		src/txagc/rnnoise_processor.c \
-		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
+		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
 		& shared_tidy_pid=$$!; \
 	clang-tidy --extra-arg='-DAST_MODULE="chan_usbradioplus"' \
 		--extra-arg=-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		src/usbradioplus_native_tick.c \
-		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
+		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		& native_tick_tidy_pid=$$!; \
 	status=0; \
 	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid $$native_tick_tidy_pid; do \
@@ -341,21 +343,36 @@ $(TARBALL): $(DIST_FILES)
 
 DISTCHECK_TEST_TARGET ?= check
 
-distcheck: dist
+# Release-tree checks must link the staged shared ring directly, not rebuild an
+# externally checked-out source tree that may be read-only.  Keep unrelated
+# pkg-config dependencies on their normal host paths.
+ifneq ($(strip $(RPCR_SOURCE)),)
+DIST_RPCR_ARGS := 'RPCR_CFLAGS=-I$(RPCR_PREFIX)/include/rate_adjusting_pcm_ring' \
+	'RPCR_LIBS=-L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring'
+DIST_RPCR_ENV = export LD_LIBRARY_PATH="$(RPCR_PREFIX)/lib$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"; \
+	unset RPCR_SOURCE RPCR_STAGE;
+else
+DIST_RPCR_ARGS :=
+DIST_RPCR_ENV = :;
+endif
+
+distcheck: dist $(RPCR_BUILD_DEP)
 	set -eu; tmp=$$(mktemp -d "$(CURDIR)/build/distcheck.XXXXXX"); \
 		trap 'rm -rf "$$tmp"' EXIT; \
 		$(TAR) -C "$$tmp" -xf $(TARBALL); \
+		$(DIST_RPCR_ENV) \
 		if test -n "$(DISTCHECK_TEST_TARGET)"; then \
-			$(MAKE) -C "$$tmp/$(DISTNAME)" $(DISTCHECK_TEST_TARGET); \
+			$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DISTCHECK_TEST_TARGET); \
 		fi; \
-		$(MAKE) -j$(PARALLEL_JOBS) -C "$$tmp/$(DISTNAME)" \
+		$(MAKE) -j$(PARALLEL_JOBS) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) \
 			DESTDIR="$$tmp/stage" prefix=/usr install
 
-install-from-dist: dist
+install-from-dist: dist $(RPCR_BUILD_DEP)
 	set -eu; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
 		$(TAR) -C "$$tmp" -xf $(TARBALL); \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" all; \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" DESTDIR="$(DESTDIR)" prefix="$(prefix)" \
+		$(DIST_RPCR_ENV) \
+		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) all; \
+		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) DESTDIR="$(DESTDIR)" prefix="$(prefix)" \
 			asteriskmoduledir="$(asteriskmoduledir)" install
 
 clean:

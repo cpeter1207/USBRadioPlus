@@ -20,7 +20,9 @@ fi
 if [ -z "${RPCR_LIBS:-}" ]; then
 	RPCR_LIBS=$(pkg-config --libs rate_adjusting_pcm_ring)
 fi
-common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS}"
+# Asterisk's public locking header requires GNU pthread declarations when it
+# is consumed by an external module rather than Asterisk's own build.
+common="-D_GNU_SOURCE -std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} ${RPCR_CFLAGS}"
 rpcr_libs=$RPCR_LIBS
 # Each parallel group gets its own instrumented plugin to avoid shared gcov
 # counter writes. FFmpeg discovers only these freshly compiled test effects.
@@ -141,12 +143,19 @@ completed=$((completed + 2))
 fi
 
 if run_group channels; then
+	# A modern host cannot compile the legacy adapter against its replaced radio
+	# service header. CI preserves the matching legacy header before it upgrades
+	# the disposable ASL runtime; ordinary legacy builds use /usr/include.
+	legacy_include=${ASL_LEGACY_INCLUDEDIR:-/usr/include}
+	test -f "$legacy_include/asterisk/res_usbradio.h"
+
 	## @brief Compile shared channel sources as separate test-instrumented objects.
 	compile_channel_shared()
 	{
 		variant=$1
 		variant_flags=$2
 		variant_sources=$3
+		variant_include=$4
 		compile_pids=
 		channel_pkg_cflags=$(pkg-config --cflags rnnoise samplerate libavfilter libavutil alsa)
 		for source in $variant_sources; do
@@ -157,7 +166,7 @@ if run_group channels; then
 			cc $common $variant_flags $channel_pkg_cflags \
 				-DAST_MODULE='"chan_usbradioplus"' \
 				-DAST_MODULE_SELF_SYM=test_module_self \
-				-I/usr/include -I"$root/src" \
+				-I"$variant_include" -I/usr/include -I"$root/src" \
 				-c "$source" -o "$object" &
 			compile_pids="$compile_pids $!"
 		done
@@ -187,18 +196,18 @@ if run_group channels; then
 	fi
 
 	compile_pids=
-	compile_channel_shared legacy "-DURP_PROCESSING_TESTING" \
-		"$channel_invariant_sources $channel_variant_sources" &
+	compile_channel_shared legacy "-DURP_PROCESSING_TESTING -include usb.h" \
+		"$channel_invariant_sources $channel_variant_sources" "$legacy_include" &
 	compile_pids="$compile_pids $!"
 	if [ "$have_sys_io" -eq 1 ]; then
-		compile_channel_shared sysio "-DHAVE_SYS_IO -DURP_PROCESSING_TESTING" \
-			"$channel_invariant_sources $channel_variant_sources" &
+		compile_channel_shared sysio "-DURP_PROCESSING_TESTING -include usb.h" \
+			"$channel_invariant_sources $channel_variant_sources" "$legacy_include" &
 		compile_pids="$compile_pids $!"
 	fi
 	if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		compile_channel_shared modern \
-			"-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_PROCESSING_TESTING -I$ASL_MODERN_INCLUDEDIR" \
-			"$channel_invariant_sources $channel_variant_sources" &
+			"-DURP_TEST_MODERN -DURP_CHANNEL_MODERN -DURP_PROCESSING_TESTING" \
+			"$channel_invariant_sources $channel_variant_sources" "$ASL_MODERN_INCLUDEDIR" &
 		compile_pids="$compile_pids $!"
 	fi
 
@@ -208,15 +217,17 @@ if run_group channels; then
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 	-DURP_CHANNEL_UNIT_TEST -DURP_PROCESSING_TESTING \
 	-DAST_MODULE='"chan_usbradioplus"' -DAST_MODULE_SELF_SYM=test_module_self \
-	-I/usr/include -I"$root/src" -c "$root/src/chan_usbradioplus.c" \
+	-include usb.h -I"$legacy_include" -I/usr/include -I"$root/src" \
+	-c "$root/src/chan_usbradioplus.c" \
 	-o "$out/chan-usbradioplus-test.o" &
 	compile_pids="$compile_pids $!"
 	if [ "$have_sys_io" -eq 1 ]; then
 		# shellcheck disable=SC2086
 		cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-			-DHAVE_SYS_IO -DURP_CHANNEL_UNIT_TEST -DURP_PROCESSING_TESTING \
+			-DURP_CHANNEL_UNIT_TEST -DURP_PROCESSING_TESTING \
 			-DAST_MODULE='"chan_usbradioplus"' -DAST_MODULE_SELF_SYM=test_module_self \
-			-I/usr/include -I"$root/src" -c "$root/src/chan_usbradioplus.c" \
+			-include usb.h -I"$legacy_include" -I/usr/include -I"$root/src" \
+			-c "$root/src/chan_usbradioplus.c" \
 			-o "$out/chan-usbradioplus-sysio-test.o" &
 		compile_pids="$compile_pids $!"
 	fi
@@ -246,7 +257,7 @@ cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
 	-DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
 	-DAST_MODULE_SELF_SYM=test_module_self \
 	"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-test.o" \
-	$legacy_shared_objects -I/usr/include -I"$root/src" \
+	$legacy_shared_objects -I"$legacy_include" -I/usr/include -I"$root/src" \
 	-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core" \
 	$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm \
 	$rpcr_libs
@@ -259,11 +270,11 @@ completed=$((completed + 1))
 if [ "$have_sys_io" -eq 1 ]; then
 	# shellcheck disable=SC2046,SC2086
 	cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-		-DHAVE_SYS_IO -DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
+		-DURP_PROCESSING_TESTING -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=test_module_self \
 		"$root/tests/test_channel_core.c" "$out/chan-usbradioplus-sysio-test.o" \
 		$sysio_shared_objects \
-		-I/usr/include -I"$root/src" \
+		-I"$legacy_include" -I/usr/include -I"$root/src" \
 		-Wl,--gc-sections $channel_wrap_flags -o "$out/channel-core-sysio" \
 		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa) -lusb -lm \
 		$rpcr_libs
