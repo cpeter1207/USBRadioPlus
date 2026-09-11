@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0~alpha16 - 2026-09-11
+
+- Use the released, versioned rate-adjusting PCM ring shared object.\n- Verify the modern channel package against the matching official ASL3 runtime.\n- Keep automated validation and packages on Debian 13; Debian 12 packages are manual-only.
+
 - Replace inherited radio-signaling options with clean-slate `[receive]`,
   `[transmit]`, `[ctcss]`, and `[dcs]` sections. Each direction now selects
   exactly one of carrier, CTCSS, or DCS signaling.
