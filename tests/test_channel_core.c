@@ -3441,7 +3441,8 @@ static void test_modern_hid_worker_baseline(void)
 	radio.pttkick[0] = radio.pttkick[1] = -1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	radio.wanteeprom = 1;
 	radio.gpios[0] = "in";
 	radio.gpios[1] = "out";
@@ -3542,7 +3543,8 @@ static void test_modern_hid_worker_baseline(void)
 	constructed.pttkick[0] = constructed.pttkick[1] = -1;
 	constructed.plus_app_rpt_rate = URP_RATE_LINK;
 	constructed.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	constructed.plus_emphasis_corner_hz = 300.0;
+	constructed.plus_deemphasis_corner_hz = 300.0;
+	constructed.plus_preemphasis_corner_hz = 300.0;
 	constructed.txmixa = TX_OUT_OFF;
 	constructed.txmixb = TX_OUT_OFF;
 	constructed.txpreemphasis = 1;
@@ -3657,7 +3659,8 @@ static void test_modern_audio_worker_baseline(void)
 	radio.pa.output_channels = 2;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	assert(usbradioplus_dsp_init(&radio) == 0);
 	modern_read_result = paNoError;
@@ -4252,7 +4255,8 @@ static void test_modern_hid_worker_retries(void)
 	radio.pttkick[0] = radio.pttkick[1] = -1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
 	assert(radio.radio);
 	modern_acquire_device = &device;
@@ -4264,7 +4268,8 @@ static void test_modern_hid_worker_retries(void)
 	constructed.pttkick[0] = constructed.pttkick[1] = -1;
 	constructed.plus_app_rpt_rate = URP_RATE_LINK;
 	constructed.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	constructed.plus_emphasis_corner_hz = 300.0;
+	constructed.plus_deemphasis_corner_hz = 300.0;
+	constructed.plus_preemphasis_corner_hz = 300.0;
 	fail_radio_state_allocation = 1;
 	run_modern_hid_retry(&constructed, 1);
 	fail_radio_state_allocation = 0;
@@ -4653,6 +4658,8 @@ static void test_clean_slate_signaling_defaults(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 
+	assert(fabs(usbradio_default.plus_deemphasis_corner_hz - 300.0) < 0.001);
+	assert(fabs(usbradio_default.plus_preemphasis_corner_hz - 300.0) < 0.001);
 	assert(fabs(usbradio_default.rxctcssadj - 1.0F) < 0.001F);
 	assert(fabs(urp_pcm_peak_dbfs((unsigned int)lround(usbradio_default.ctcss_level)) + 24.0) <
 	       0.1);
@@ -5020,7 +5027,8 @@ static void test_cli_handlers(void)
 	radio.pttkick[1] = -1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	settings_defaults(&settings);
 	ast_copy_string(settings.profiles[0].name, radio.name, sizeof(settings.profiles[0].name));
 	ast_copy_string(settings.profiles[0].channel, "RadioPlus/test",
@@ -6164,7 +6172,8 @@ static void add_complete_processing_override_fixture(void)
 		{"hardware", "hardware_parallel_port_device", "/dev/parport0"},
 		{"hardware", "hardware_parallel_port_base_address", "0x378"},
 		{"hardware", "hardware_parallel_pin_2_assignment", "out0"},
-		{"hardware", "hardware_emphasis_corner_hz", "299"},
+		{"hardware", "hardware_deemphasis_corner_hz", "250"},
+		{"hardware", "hardware_preemphasis_corner_hz", "500"},
 		{"receive", "cpu_saver_enabled", "yes"},
 		{"receive", "audio_source", "flat"},
 		{"receive", "signaling_method", "ctcss"},
@@ -6267,7 +6276,8 @@ static void test_processing_config_overrides(void)
 	add_processing_override("hardware", "hardware_user_key", "user-key");
 	add_processing_override("hardware", "hardware_gpio_1_mode", "in");
 	add_processing_override("hardware", "hardware_parallel_pin_15_assignment", "out");
-	add_processing_override("hardware", "hardware_emphasis_corner_hz", "300.0");
+	add_processing_override("hardware", "hardware_deemphasis_corner_hz", "250.0");
+	add_processing_override("hardware", "hardware_preemphasis_corner_hz", "500.0");
 	for (index = 0; index < ARRAY_LEN(asterisk_override_options); ++index) {
 		const char *value = "100";
 		if (index == 0 || index == 4 || index == 5 || index == 7)
@@ -6300,7 +6310,8 @@ static void test_processing_config_overrides(void)
 	assert(radio.duplex3 == 999);
 	assert(radio.radioactive);
 	assert(radio.txpreemphasis);
-	assert(fabs(radio.plus_emphasis_corner_hz - 300.0) < 0.001);
+	assert(fabs(radio.plus_deemphasis_corner_hz - 250.0) < 0.001);
+	assert(fabs(radio.plus_preemphasis_corner_hz - 500.0) < 0.001);
 	assert(radio.gpios[0] && !strcmp(radio.gpios[0], "in"));
 	assert(radio.pps[15] && !strcmp(radio.pps[15], "out"));
 	for (index = 0; index < GPIO_PINCOUNT; ++index) {
@@ -6343,7 +6354,10 @@ static void test_processing_config_overrides(void)
 	add_processing_override("duplex", duplex_override_options[2], "invalid");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
-	add_processing_override("hardware", "hardware_emphasis_corner_hz", "invalid");
+	add_processing_override("hardware", "hardware_deemphasis_corner_hz", "invalid");
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
+	settings_defaults(&settings);
+	add_processing_override("hardware", "hardware_preemphasis_corner_hz", "invalid");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
 	add_processing_override("asterisk", asterisk_override_options[0], "yes");
@@ -6474,7 +6488,8 @@ static void test_complete_processing_config_override_rejections(void)
 		{"ctcss", "phase_shift_degrees"},
 		{"ctcss", "tail_frequency_hz"},
 		{"dcs", "peak_dbfs"},
-		{"hardware", "hardware_emphasis_corner_hz"},
+		{"hardware", "hardware_deemphasis_corner_hz"},
+		{"hardware", "hardware_preemphasis_corner_hz"},
 	};
 	static const char *const malformed_integer[] = {"bad", "1x"};
 	static const char *const malformed_floating[] = {"bad", "1x", "nan"};
@@ -7323,9 +7338,10 @@ static void test_processing_override_parse_edges(void)
 			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
-	for (index = 0; index < 2; ++index) {
+	for (index = 0; index < 3; ++index) {
 		static const char *const floating_names[] = {"receive_decoder_gain_db",
-							     "hardware_emphasis_corner_hz"};
+							     "hardware_deemphasis_corner_hz",
+							     "hardware_preemphasis_corner_hz"};
 		static const char *const floating_values[] = {"bad", "1x", "nan"};
 		for (size_t malformed = 0; malformed < ARRAY_LEN(floating_values); ++malformed) {
 			settings_defaults(&settings);
@@ -8434,7 +8450,8 @@ static void test_oss_hid_worker_attach(void)
 	radio.queuesize = 2;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	radio.valid_gpios = (1 << 0) | (1 << 2);
 	radio.gpios[0] = "in";
 	radio.gpios[1] = "out";
@@ -8848,7 +8865,8 @@ static void test_oss_hid_worker_first_radio_construction(void)
 	radio.pttkick[0] = radio.pttkick[1] = -1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_emphasis_corner_hz = 250.0;
+	radio.plus_deemphasis_corner_hz = 250.0;
+	radio.plus_preemphasis_corner_hz = 250.0;
 	radio.radioactive = 1;
 	radio.txpreemphasis = 1;
 	radio.txmixa = TX_OUT_OFF;
@@ -9236,7 +9254,8 @@ static void test_oss_complete_read_frame(void)
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.plus_hardware_applied = 1;
-	radio.plus_emphasis_corner_hz = 300.0;
+	radio.plus_deemphasis_corner_hz = 300.0;
+	radio.plus_preemphasis_corner_hz = 300.0;
 	radio.readpos = AST_FRIENDLY_OFFSET;
 	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	radio_configuration.pRxCodeSrc = "100.0";
@@ -9865,7 +9884,8 @@ static void test_parrot_transitions(void)
 	channel.duplex3 = 999;
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.echomode = 1;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	/* Before startup, the callback must retain a silent audio cadence while
@@ -10038,7 +10058,8 @@ static void test_program_ring_native_tick(void)
 	channel.name = "program-ring";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	assert(!usbradioplus_dsp_init(&channel));
@@ -10119,7 +10140,8 @@ static void test_native_renderer_transmit_admission(void)
 	channel.name = "renderer-admission";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	assert(!usbradioplus_dsp_init(&channel));
@@ -10200,7 +10222,8 @@ static void test_native_tick_voice_graph_ownership(void)
 		channel.name = "voice-graph-ownership";
 		channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 		channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
-		channel.plus_emphasis_corner_hz = 300.0;
+		channel.plus_deemphasis_corner_hz = 250.0;
+		channel.plus_preemphasis_corner_hz = 500.0;
 		channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 		assert(channel.radio);
 		assert(!usbradioplus_dsp_init(&channel));
@@ -10229,6 +10252,8 @@ static void test_native_tick_voice_graph_ownership(void)
 
 		graphs = usbradioplus_native_graphs_acquire(&channel);
 		assert(graphs);
+		assert(fabs(graphs->receive_deemphasis.config.emphasis_corner_hz - 250.0) < 0.001);
+		assert(fabs(graphs->final.config.emphasis_corner_hz - 500.0) < 0.001);
 		final_config = graphs->final.config;
 		usbradioplus_native_graphs_release(&channel);
 		assert(!final_config.preemphasis_enabled);
@@ -10276,7 +10301,8 @@ static void test_native_graph_slot_deferred_reclaim(void)
 	channel.name = "native-slot";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	/* Teardown callers may have no channel to pin or release. */
@@ -10354,7 +10380,8 @@ static void test_native_graph_transaction_paths(void)
 	channel.name = "graph-transaction";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	assert(!usbradioplus_dsp_init(&channel));
@@ -10509,7 +10536,8 @@ static void test_radio_access_reconfigure_exclusion(void)
 	channel.name = "parser-reconfigure";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	/* Lightweight construction and teardown do not use the reader counter.
@@ -10590,7 +10618,8 @@ static void test_native_tick_processing_edges(void)
 	channel.duplex3 = 999;
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.txpreemphasis = 1;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
 	strcpy(channel.rxctcssfreq, "100.0");
@@ -11115,7 +11144,8 @@ static void test_native_sample_gate(void)
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	assert(!usbradioplus_dsp_init(&channel));
@@ -11171,7 +11201,8 @@ static void test_store_config_failure_and_option_edges(void)
 	char oversized_delay[32];
 
 	memset(&usbradio_default, 0, sizeof(usbradio_default));
-	usbradio_default.plus_emphasis_corner_hz = 250.0;
+	usbradio_default.plus_deemphasis_corner_hz = 250.0;
+	usbradio_default.plus_preemphasis_corner_hz = 250.0;
 	usbradio_default.plus_app_rpt_rate = URP_RATE_LINK;
 	usbradio_default.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	usbradio_default.rxsdtype = SD_XPMR;
@@ -11205,11 +11236,19 @@ static void test_store_config_failure_and_option_edges(void)
 	usbradio_default.duplex3 = -1;
 	assert(store_config("usb") == NULL);
 	usbradio_default.duplex3 = 0;
-	usbradio_default.plus_emphasis_corner_hz = 0.0;
+	usbradio_default.plus_deemphasis_corner_hz = 0.0;
 	assert(store_config("usb") == NULL);
-	usbradio_default.plus_emphasis_corner_hz = 300.0;
+	usbradio_default.plus_deemphasis_corner_hz = 250.0;
+	usbradio_default.plus_preemphasis_corner_hz = 0.0;
 	assert(store_config("usb") == NULL);
-	usbradio_default.plus_emphasis_corner_hz = 250.0;
+	usbradio_default.plus_preemphasis_corner_hz = 250.0;
+	usbradio_default.plus_deemphasis_corner_hz = 500.1;
+	assert(store_config("usb") == NULL);
+	usbradio_default.plus_deemphasis_corner_hz = 250.0;
+	usbradio_default.plus_preemphasis_corner_hz = 500.1;
+	assert(store_config("usb") == NULL);
+	usbradio_default.plus_deemphasis_corner_hz = 500.0;
+	usbradio_default.plus_preemphasis_corner_hz = 500.0;
 
 	ast_calloc_calls = 0;
 	fail_ast_calloc_call = 2;
@@ -11345,7 +11384,8 @@ static void test_native_renderer_start_failures(void)
 		channel.name = "renderer-start";
 		channel.plus_app_rpt_rate = URP_RATE_LINK;
 		channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-		channel.plus_emphasis_corner_hz = 300.0;
+		channel.plus_deemphasis_corner_hz = 300.0;
+		channel.plus_preemphasis_corner_hz = 300.0;
 		channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 		assert(channel.radio);
 		ast_calloc_calls = 0;
@@ -11371,7 +11411,8 @@ static void test_native_renderer_start_failures(void)
 		channel.name = "renderer-src";
 		channel.plus_app_rpt_rate = URP_RATE_LINK;
 		channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-		channel.plus_emphasis_corner_hz = 300.0;
+		channel.plus_deemphasis_corner_hz = 300.0;
+		channel.plus_preemphasis_corner_hz = 300.0;
 		channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 		assert(channel.radio);
 		src_new_calls = 0;
@@ -11398,7 +11439,8 @@ static void test_native_renderer_start_failures(void)
 		channel.name = "renderer-reserve";
 		channel.plus_app_rpt_rate = URP_RATE_LINK;
 		channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-		channel.plus_emphasis_corner_hz = 300.0;
+		channel.plus_deemphasis_corner_hz = 300.0;
+		channel.plus_preemphasis_corner_hz = 300.0;
 		channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 		assert(channel.radio);
 		assert(!usbradioplus_dsp_init(&channel));
@@ -11515,8 +11557,10 @@ static int advanced_backend_indicate(struct ast_channel *channel, int condition,
 /** @brief Verify native queue pacing through the persistent clock-recovery converter. */
 static void test_advanced_native_clock(void)
 {
-	struct chan_usbradio_pvt channel = {
-		.name = "test", .plus_hardware_applied = 1, .plus_emphasis_corner_hz = 300.0};
+	struct chan_usbradio_pvt channel = {.name = "test",
+					    .plus_hardware_applied = 1,
+					    .plus_deemphasis_corner_hz = 300.0,
+					    .plus_preemphasis_corner_hz = 300.0};
 	urp_radio_state configuration = {
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 	settings_defaults(&settings);
@@ -11673,7 +11717,8 @@ static void test_native_renderer_guard_paths(void)
 	channel.name = "renderer-guards";
 	channel.plus_app_rpt_rate = URP_RATE_LINK;
 	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	channel.plus_emphasis_corner_hz = 300.0;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
 	assert(channel.radio);
 	/* Public controls remain harmless before setup. A missing renderer emits

@@ -1,0 +1,16 @@
+name: Publish API documentation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  documentation:
+    uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/documentation.yml@main
+    with:
+      code_ref: ${{ github.sha }}

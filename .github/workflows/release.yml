@@ -4,11 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: Version currently in VERSION to release (for example, 0.1.0~alpha1)
-        required: true
-        type: string
-      next_version:
-        description: Development version to write after the release
+        description: Version already committed to main for release (for example, 0.1.0~alpha1)
         required: true
         type: string
       changes:
@@ -23,22 +19,15 @@ on:
 
 permissions:
   contents: write
-  actions: write
   packages: write
   pages: write
-  pull-requests: write
   id-token: write
 
 jobs:
-  quality:
-    uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/quality.yml@main
-
   release:
-    needs: quality
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/release.yml@main
     with:
       release_version: ${{ inputs.release_version }}
-      next_version: ${{ inputs.next_version }}
       changes: ${{ inputs.changes }}
       prerelease: ${{ inputs.prerelease }}
 

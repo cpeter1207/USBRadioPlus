@@ -15,25 +15,18 @@ remain manual operations described in `usbradioplus(7)`.
 - [ ] Review `git status --short`, the complete diff, and generated artifacts.
       Remove recordings, coverage output, package build output, and other
       non-source material before the release commit.
-- [ ] Set `VERSION`, `debian/changelog`, and the unreleased `CHANGELOG.md`
-      entry for the intended alpha. Confirm the release notes describe only
-      changes in this release.
-- [ ] Run `make ci` on the release-candidate commit. It must pass strict
-      compilation, Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy,
-      Doxygen, all tests, and 100% production-code line and branch coverage on
-      Debian 13 amd64, including the rate-adjusting PCM ring package dependency.
-- [ ] Run `make distcheck`, then inspect the extracted archive's staged install.
-      Confirm it contains the module, private AGC effect, unified tuner, sample,
-      manuals, but no build
-      output, coverage data, audio captures, or test recordings.
-- [ ] Run `python3 tools/validate_release.py`, `make docs`, and the man-page
-      render checks. Confirm README, installation instructions, all three man
-      pages, the sample, packaging notes, and native-radio notes link to files
-      shipped by the archive.
-- [ ] Run the Debian 13 amd64 and arm64 quality/install matrix for the same
-      commit. Record each job URL and its exact package or archive artifact.
-      Debian 12 packages are aspirational and may be built manually only when
-      explicitly requested.
+- [ ] Prepare `VERSION`, `debian/changelog`, and the unreleased `CHANGELOG.md`
+      entry for the intended alpha in a normal pull request. Confirm the release
+      notes describe only changes in this release and merge that pull request
+      only after its full quality and container gates pass.
+- [ ] Confirm the exact main revision selected for release has passed the full
+      Debian 13 amd64/arm64 pull-request gate, including strict compilation,
+      Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy, Doxygen, all tests,
+      staged installation, and 100% production-code line and branch coverage on
+      Debian 13 amd64. Debian 12 packages remain manual-only.
+- [ ] Dispatch the release workflow from that validated main revision. It runs
+      release-specific source-archive, package, and install validation without
+      repeating the complete quality gate. Record its artifact URLs.
 
 ## Clean-slate configuration and signaling
 
@@ -163,8 +156,13 @@ measured results beside each completed item.
       works before declaring the test reversible.
 - [ ] Obtain Chris's explicit approval after reviewing the current automated
       evidence and manual test record.
-- [ ] Dispatch the release workflow from the approved commit. Record its
-      quality, tag, source archive, package, signature, and GitHub Release URLs.
+- [ ] Dispatch the release workflow from the approved, already validated main
+      revision. Record its tag, source archive, package, signature, and GitHub
+      Release URLs.
+- [ ] After publication, prepare the next development `VERSION` and Debian
+      changelog entry in a separate normal pull request. It must pass the full
+      pull-request and container gates before it merges; the release workflow
+      does not create or merge bookkeeping changes.
 - [ ] Install the published package on one non-critical supported node and
       repeat startup, signaling, audio, and rollback smoke tests from the
       published artifact rather than a working-tree build.

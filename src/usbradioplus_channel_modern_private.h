@@ -122,7 +122,10 @@ struct chan_usbradio_pvt {
 	atomic_uint plus_radio_program_tx_frequency;
 	/** Radio-programming snapshot consumed by the HID worker. */
 	atomic_int plus_radio_program_high_power;
-	double plus_emphasis_corner_hz;
+	/** Resolved receiver de-emphasis corner frequency in Hz. */
+	double plus_deemphasis_corner_hz;
+	/** Resolved transmitter pre-emphasis corner frequency in Hz. */
+	double plus_preemphasis_corner_hz;
 	int plus_hardware_applied;
 	int plus_applied_rxmixer, plus_applied_txmixaset, plus_applied_txmixbset;
 	_Atomic int plus_applied_txmixa, plus_applied_txmixb;

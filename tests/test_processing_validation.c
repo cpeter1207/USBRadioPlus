@@ -1978,7 +1978,8 @@ static void test_section_override_parser(void)
 		{"receive", "polarity_inverted", "yes", "maybe"},
 		{"transmit", "preemphasis_enabled", "yes", "maybe"},
 		{"asterisk", "asterisk_jitter_buffer_implementation", "adaptive", "other"},
-		{"hardware", "hardware_emphasis_corner_hz", "120", "300"},
+		{"hardware", "hardware_deemphasis_corner_hz", "500", "500.1"},
+		{"hardware", "hardware_preemphasis_corner_hz", "500", "500.1"},
 		{"hardware", "hardware_gpio_1_mode", "in", "bad"},
 		{"hardware", "hardware_parallel_pin_10_assignment", "cor", "out0"},
 		{"hardware", "hardware_parallel_pin_2_assignment", "ptt", "in"},
@@ -2052,16 +2053,20 @@ static void test_section_override_parser(void)
 	assert(add_single_override("ctcss", "turnoff_mode", "ste") < 0);
 	assert(add_single_override("ctcss", "tail_duration_ms", "32768") < 0);
 	assert(!add_single_override("duplex", "duplex_local_repeat_mode", "hardware"));
-	assert(add_single_override("hardware", "hardware_emphasis_corner_hz", "") < 0);
-	assert(add_single_override("hardware", "hardware_emphasis_corner_hz", "120x") < 0);
-	assert(add_single_override("hardware", "hardware_emphasis_corner_hz", "0") < 0);
+	assert(add_single_override("hardware", "hardware_deemphasis_corner_hz", "") < 0);
+	assert(add_single_override("hardware", "hardware_preemphasis_corner_hz", "") < 0);
+	assert(add_single_override("hardware", "hardware_deemphasis_corner_hz", "120x") < 0);
+	assert(add_single_override("hardware", "hardware_preemphasis_corner_hz", "120x") < 0);
+	assert(add_single_override("hardware", "hardware_deemphasis_corner_hz", "0") < 0);
+	assert(add_single_override("hardware", "hardware_preemphasis_corner_hz", "0") < 0);
 	assert(add_single_override("hardware", "hardware_parallel_port_base_address", "") < 0);
 	assert(add_single_override("hardware", "hardware_parallel_port_base_address", "1x") < 0);
 	assert(add_single_override("hardware", "hardware_audio_fragment_count", "1x") < 0);
 	assert(!add_single_override("hardware", "hardware_parallel_pin_12_assignment", "in"));
 	assert(!add_single_override("hardware", "hardware_parallel_pin_13_assignment", "in"));
 	assert(!add_single_override("hardware", "hardware_parallel_pin_15_assignment", "in"));
-	assert(add_single_override("hardware", "hardware_emphasis_corner_hz", "nan") < 0);
+	assert(add_single_override("hardware", "hardware_deemphasis_corner_hz", "nan") < 0);
+	assert(add_single_override("hardware", "hardware_preemphasis_corner_hz", "nan") < 0);
 	assert(add_single_override("hardware", "hardware_parallel_port_base_address",
 				   "0x100000000") < 0);
 	assert(add_single_override("hardware", "hardware_audio_fragment_count", "nan") < 0);
@@ -2143,6 +2148,7 @@ static void test_option_name_validation(void)
 		{"test", "channel", 0},
 		{"asterisk test", asterisk_override_options[0], 1},
 		{"hardware test", "hardware_input_gain_db", 1},
+		{"hardware test", "hardware_emphasis_corner_hz", 0},
 		{"ctcss test", "receive_frequencies", 1},
 		{"dcs test", "receive_code", 1},
 		{"transmit test", "preemphasis_enabled", 1},
@@ -2316,12 +2322,18 @@ static void test_override_validation_short_circuits(void)
 		const char *text;
 		int valid;
 	} cases[] = {
-		{"hardware", "hardware_emphasis_corner_hz", "", 0},
-		{"hardware", "hardware_emphasis_corner_hz", "100Hz", 0},
-		{"hardware", "hardware_emphasis_corner_hz", "nan", 0},
-		{"hardware", "hardware_emphasis_corner_hz", "0", 0},
-		{"hardware", "hardware_emphasis_corner_hz", "300", 0},
-		{"hardware", "hardware_emphasis_corner_hz", "100", 1},
+		{"hardware", "hardware_deemphasis_corner_hz", "", 0},
+		{"hardware", "hardware_deemphasis_corner_hz", "100Hz", 0},
+		{"hardware", "hardware_deemphasis_corner_hz", "nan", 0},
+		{"hardware", "hardware_deemphasis_corner_hz", "0", 0},
+		{"hardware", "hardware_deemphasis_corner_hz", "500", 1},
+		{"hardware", "hardware_deemphasis_corner_hz", "500.1", 0},
+		{"hardware", "hardware_preemphasis_corner_hz", "", 0},
+		{"hardware", "hardware_preemphasis_corner_hz", "100Hz", 0},
+		{"hardware", "hardware_preemphasis_corner_hz", "nan", 0},
+		{"hardware", "hardware_preemphasis_corner_hz", "0", 0},
+		{"hardware", "hardware_preemphasis_corner_hz", "500", 1},
+		{"hardware", "hardware_preemphasis_corner_hz", "500.1", 0},
 		{"ctcss", "transmit_frequencies", "100.0", 1},
 		{"ctcss", "transmit_default_hz", "", 0},
 		{"ctcss", "transmit_default_hz", "100Hz", 0},

@@ -123,9 +123,13 @@ CTCSS or DCS transmit method requires at least one output assigned to
 .B hardware_ptt_inverted = yes|no
 Invert the physical PTT output.
 .TP
-.B hardware_emphasis_corner_hz = frequency
-Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
-be greater than zero and less than 300.
+.B hardware_deemphasis_corner_hz = frequency
+Set the receiver de-emphasis corner frequency in hertz. The value must be
+greater than zero and no more than 500. The default is 300.0 Hz.
+.TP
+.B hardware_preemphasis_corner_hz = frequency
+Set the transmitter pre-emphasis corner frequency in hertz. The value must be
+greater than zero and no more than 500. The default is 300.0 Hz.
 .SS Device and buffering
 The app_rpt-to-hardware-callback program ring is the only audio queue that
 bridges the app_rpt and 48 kHz native-rendering clock domains. It renders from

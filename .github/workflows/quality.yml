@@ -2,15 +2,17 @@ name: Required quality
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
+  preflight:
+    if: github.event_name == 'push'
+    uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/preflight.yml@main
+
   quality:
+    if: github.event_name != 'push'
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/quality.yml@main

@@ -89,7 +89,14 @@ HARDWARE_SETTINGS = {
     "hardware_parallel_pin_12_assignment": ("Parallel pin 12 assignment", "parallel_input"),
     "hardware_parallel_pin_13_assignment": ("Parallel pin 13 assignment", "parallel_input"),
     "hardware_parallel_pin_15_assignment": ("Parallel pin 15 assignment", "parallel_input"),
-    "hardware_emphasis_corner_hz": ("Emphasis corner frequency", "emphasis"),
+    "hardware_deemphasis_corner_hz": (
+        "Receiver de-emphasis corner frequency",
+        "corner_frequency",
+    ),
+    "hardware_preemphasis_corner_hz": (
+        "Transmitter pre-emphasis corner frequency",
+        "corner_frequency",
+    ),
 }
 
 RECEIVE_SETTINGS = {
@@ -243,7 +250,7 @@ HARDWARE_GROUP_KEYS = {
     ),
     "receive": (
         "hardware_input_gain_db",
-        "hardware_emphasis_corner_hz",
+        "hardware_deemphasis_corner_hz",
     ),
     "transmit": (
         "hardware_output_a_gain_db",
@@ -251,6 +258,7 @@ HARDWARE_GROUP_KEYS = {
         "hardware_output_a_assignment",
         "hardware_output_b_assignment",
         "hardware_ptt_inverted",
+        "hardware_preemphasis_corner_hz",
     ),
     "signaling": (
         "hardware_repeater_number",
@@ -356,7 +364,8 @@ LIVE_RELOAD_HARDWARE_KEYS = {
     "hardware_output_b_gain_db",
     "hardware_output_a_assignment",
     "hardware_output_b_assignment",
-    "hardware_emphasis_corner_hz",
+    "hardware_deemphasis_corner_hz",
+    "hardware_preemphasis_corner_hz",
 }
 RESTART_ONLY_HARDWARE_KEYS = set(HARDWARE_SETTINGS) - LIVE_RELOAD_HARDWARE_KEYS
 RESTART_ONLY_CHANNEL_KEYS = {"channel_enabled", *PROFILE_SELECTORS}
@@ -2132,9 +2141,12 @@ def section_options_menu(section, settings, title, actions=()):
             code, entered = prompt_number(
                 label, current, "integer", low, high, MODERN_INTEGER_UNITS.get(key, "")
             )
-        elif kind in {"float", "emphasis"}:
-            low, high, units = (0.001, 299.999, "Hz") if kind == "emphasis" else (None, None, "")
-            code, entered = prompt_number(label, current, "float", low, high, units)
+        elif kind == "corner_frequency":
+            code, entered = prompt_number(
+                label, current, "float", 0.0, 500.0, "Hz", exclusive_low=True
+            )
+        elif kind == "float":
+            code, entered = prompt_number(label, current, "float")
         else:
             code, entered = prompt_text(label, current)
         if code:

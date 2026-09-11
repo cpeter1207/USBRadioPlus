@@ -441,7 +441,8 @@ def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
         "hardware_parallel_pin_7_assignment hardware_parallel_pin_8_assignment "
         "hardware_parallel_pin_9_assignment hardware_parallel_pin_10_assignment "
         "hardware_parallel_pin_12_assignment hardware_parallel_pin_13_assignment "
-        "hardware_parallel_pin_15_assignment hardware_emphasis_corner_hz "
+        "hardware_parallel_pin_15_assignment hardware_deemphasis_corner_hz "
+        "hardware_preemphasis_corner_hz "
         "asterisk_jitter_buffer_enabled "
         "asterisk_jitter_buffer_max_size_ms asterisk_jitter_buffer_resync_threshold_ms "
         "asterisk_jitter_buffer_implementation asterisk_jitter_buffer_logging_enabled "
@@ -780,15 +781,16 @@ def test_shared_program_ring_uses_its_public_abi():
     assert re.search(r"LD_LIBRARY_PATH=.*\\\n\s*sh \./tests/run_coverage_integration\.sh", makefile)
 
 
-def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
-    """Verify release workflow uses debian asl packages and atomic tagging."""
+def test_release_workflow_publishes_from_a_prevalidated_main_revision():
+    """Verify release delegates only artifact publication after PR validation."""
     workflow = text(".github/workflows/release.yml")
     makefile = text("Makefile")
     base = "cpeter1207/USBRadioPlus-Workflows/.github/workflows/"
     sha = "@main"
-    for name in ("quality.yml", "containers.yml", "release.yml", "packages.yml"):
+    for name in ("containers.yml", "release.yml", "packages.yml"):
         assert f"uses: {base}{name}{sha}" in workflow
-    assert "needs: quality" in workflow
+    assert f"uses: {base}quality.yml{sha}" not in workflow
+    assert "needs: quality" not in workflow
     assert "needs: release" in workflow
     assert "source_ref: ${{ needs.release.outputs.tag_name }}" in workflow
     assert "APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}" in workflow

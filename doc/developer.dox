@@ -206,12 +206,14 @@ Generated HTML is written to `build/doxygen/html`; XML is written beside it. Dox
 undocumented symbols and enum values, parameter and return documentation, and
 invalid markup. Every diagnostic fails the target.
 
-The required quality workflow runs Doxygen concurrently with lint and static
-analysis. All three results must succeed before the Debian 13 amd64/arm64 test
-matrix. Release callers depend on that same required quality workflow. Debian
-12 packages are aspirational and may be built manually only when explicitly
-requested.
-Only successful main-branch checks publish this reference to GitHub Pages.
+The pull-request quality workflow runs Doxygen concurrently with lint and
+static analysis. All three results must succeed before the Debian 13 amd64/arm64
+test matrix. Ordinary pushes run only formatting, lint, and static analysis.
+Releases validate their artifacts from a main revision that has already passed
+the pull-request gate rather than rerunning it. Debian 12 packages are
+aspirational and may be built manually only when explicitly requested.
+Successful main-branch documentation publication rebuilds this reference for
+GitHub Pages.
 
 Shell documentation uses double-hash comments. The documentation filter exposes
 actual shell function names and those comments to Doxygen without executing
