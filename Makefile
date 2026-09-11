@@ -213,6 +213,12 @@ coverage: $(RPCR_BUILD_DEP)
 	# Manual focused runs may place GCC counters at the repository root. Never
 	# allow counters produced by another compiler/image to enter this report.
 	rm -f ./*.gcda ./*.gcno
+	# Focused diagnostics keep their temporary output under ignored .work. Remove
+	# only GCC counters there so an aggregate report cannot import paths from a
+	# different container or an earlier source copy.
+	@if [ -d .work ]; then \
+		find .work -type f \( -name '*.gcda' -o -name '*.gcno' \) -delete; \
+	fi
 	mkdir -p $(BUILD_DIR)/coverage
 	$(PYTHON) -m pytest -q -n auto tests_py \
 		--cov=scripts --cov=tools --cov-branch --cov-fail-under=100 \

@@ -3476,6 +3476,51 @@ static void test_modern_hid_worker_baseline(void)
 	settings_defaults(&settings);
 	assert(radio.stophid && modern_hid_input_calls == 1);
 	assert(!radio.radio_device);
+	/* The audio worker posts clipping asynchronously; only the HID worker may
+	 * turn that request into a timed physical GPIO pulse. */
+	radio.stophid = 0;
+	radio.clipledgpio = 1;
+	radio.hid_gpio_pulsetimer[0] = 0;
+	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
+	modern_hid_input_calls = 0;
+	modern_stop_hid_target = &radio;
+	assert(hidthread(&radio) == NULL);
+	assert(radio.hid_gpio_pulsetimer[0] == CLIP_LED_HOLD_TIME_MS);
+	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
+	/* A clear request, an unavailable LED, and an active pulse all consume no
+	 * additional GPIO time. */
+	radio.stophid = 0;
+	radio.clipledgpio = 1;
+	radio.hid_gpio_pulsetimer[0] = 0;
+	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
+	modern_hid_input_calls = 0;
+	modern_stop_hid_target = &radio;
+	assert(hidthread(&radio) == NULL);
+	assert(radio.hid_gpio_pulsetimer[0] == 0);
+	radio.stophid = 0;
+	radio.clipledgpio = 0;
+	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
+	modern_hid_input_calls = 0;
+	modern_stop_hid_target = &radio;
+	assert(hidthread(&radio) == NULL);
+	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
+	{
+		const long saved_clip_time_step = mock_tvnow_step;
+
+		mock_tvnow_step = 0;
+		radio.stophid = 0;
+		radio.clipledgpio = 1;
+		radio.hid_gpio_pulsetimer[0] = 1;
+		atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
+		modern_hid_input_calls = 0;
+		modern_stop_hid_target = &radio;
+		assert(hidthread(&radio) == NULL);
+		assert(radio.hid_gpio_pulsetimer[0] == 1);
+		assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
+		mock_tvnow_step = saved_clip_time_step;
+	}
+	radio.clipledgpio = 0;
+	radio.hid_gpio_pulsetimer[0] = 0;
 	modern_stop_hid_target = NULL;
 	mock_poll_enabled = 0;
 	ast_radio_pa_stop(&radio.pa);
@@ -3534,6 +3579,41 @@ static void test_modern_hid_worker_baseline(void)
 	usbradio_default.next = NULL;
 }
 
+/** @brief Verify a parallel-port PTT release is not gated by radio programming. */
+static void test_modern_parallel_ptt_release(void)
+{
+	struct chan_usbradio_pvt radio = {0};
+	unsigned char outputs[4] = {0};
+	unsigned char saved[4] = {0};
+	const int saved_haspp = haspp;
+	const int8_t saved_pp_val = pp_val;
+	const int saved_parallel_write_calls = parallel_write_calls;
+
+	radio.pps[2] = "ptt";
+	radio.hid_gpio_loc = 0;
+	radio.hid_gpio_ctl_loc = 1;
+	radio.hid_io_ptt = 1;
+	radio.hid_gpio_val = 1;
+	atomic_init(&radio.plus_hardware_ptt_applied, 1);
+	haspp = 2;
+	pp_val = (int8_t)0xff;
+	parallel_write_calls = 0;
+	/* A normal key-up must not run the unkey-only parallel clear path. */
+	hidthread_apply_ptt(&radio, (struct libusb_device_handle *)(uintptr_t)1, outputs, saved, 1,
+			    NULL, 0);
+	assert(radio.lasttx);
+	assert(atomic_load_explicit(&radio.plus_hardware_ptt_applied, memory_order_acquire));
+	parallel_write_calls = 0;
+	hidthread_apply_ptt(&radio, (struct libusb_device_handle *)(uintptr_t)1, outputs, saved, 0,
+			    NULL, 0);
+	assert(!radio.lasttx);
+	assert(!atomic_load_explicit(&radio.plus_hardware_ptt_applied, memory_order_acquire));
+	assert(parallel_write_calls > 0);
+	haspp = saved_haspp;
+	pp_val = saved_pp_val;
+	parallel_write_calls = saved_parallel_write_calls;
+}
+
 static void run_modern_audio_iteration(struct chan_usbradio_pvt *radio)
 {
 	radio->stopaudiothread = 0;
@@ -3579,6 +3659,27 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	assert(radio.stopaudiothread && !radio.audio_thread_ready && !radio.pa.active);
 
+	/* A parser reload must keep PortAudio paced with silence without consuming
+	 * signaling state; its write path also has terminal and full-queue cases. */
+	memset(radio.usbradio_read_buf_8k, 0x5a, sizeof(radio.usbradio_read_buf_8k));
+	memset(radio.usbradio_write_buf, 0x5a, sizeof(radio.usbradio_write_buf));
+	atomic_store_explicit(&radio.plus_radio_tx_active, 1, memory_order_release);
+	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 1, memory_order_seq_cst);
+	modern_write_result = paNoError;
+	run_modern_audio_iteration(&radio);
+	assert(!atomic_load_explicit(&radio.plus_radio_tx_active, memory_order_acquire));
+	assert(!memcmp(radio.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, silence_buf,
+		       radio.plus_app_rpt_samples * sizeof(short)));
+	assert(!memcmp(radio.usbradio_write_buf, silence_buf, sizeof(radio.usbradio_write_buf)));
+	modern_write_available = 0;
+	run_modern_audio_iteration(&radio);
+	modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
+	modern_write_result = paUnanticipatedHostError;
+	run_modern_audio_iteration(&radio);
+	assert(!radio.pa.active);
+	modern_write_result = paNoError;
+	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 0, memory_order_seq_cst);
+
 	/* The worker can open and start an inactive stream, not only reuse one. */
 	radio.stopaudiothread = 0;
 	radio.hasusb = 1;
@@ -3602,6 +3703,11 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	modern_write_result = paNoError;
 	radio.txkeyed = 0;
+	/* PortAudio's underflow recovery writes a priming frame but does not advance
+	 * the transmitter's submitted-frame accounting. */
+	modern_write_result = paOutputUnderflowed;
+	run_modern_audio_iteration(&radio);
+	modern_write_result = paNoError;
 	/* Isolate the following receive checks from the preceding transmit-error
 	 * scenario, including its deliberately conservative post-playout blanking. */
 	radio.radio->txPttIn = 0;
@@ -3624,6 +3730,11 @@ static void test_modern_audio_worker_baseline(void)
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	run_modern_audio_iteration(&radio);
 	assert(radio.rxkeyed && radio.lastrx);
+	/* A post-transmit blanking interval overrides an otherwise valid carrier. */
+	radio.radio->txrxblankingtimer = 2 * MS_PER_FRAME;
+	run_modern_audio_iteration(&radio);
+	assert(!radio.rx_cos_active);
+	radio.radio->txrxblankingtimer = 0;
 
 	/* Advanced transport delivers hardware-rate frames through this worker too. */
 	usbradioplus_interface_mode(&radio, 1);
@@ -3677,7 +3788,9 @@ static void test_modern_audio_worker_baseline(void)
 	run_modern_audio_iteration(&radio);
 	radio.txkeyed = 0;
 	radio.txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
+	radio.radio->txPttOut = 0;
 	run_modern_audio_iteration(&radio);
+	assert(radio.txoffcnt == MS_TO_FRAMES(TX_OFF_DELAY_MAX));
 	radio.txoffdelay = 0;
 
 	radio.echomode = 1;
@@ -3841,12 +3954,37 @@ static void test_modern_audio_worker_baseline(void)
 	radio.rxcdtype = CD_HID;
 	radio.rxsdtype = SD_HID;
 	radio.rxhidsq = radio.rxhidctcss = 1;
-	radio.radio->txPttOut = 1;
+	radio.radio->txPttIn = 0;
+	radio.radio->txPttOut = 0;
+	radio.radio->txState = CHAN_TXSTATE_IDLE;
+	radio.txkeyed = 1;
 	radio.radioduplex = 0;
 	radio.rxkeyed = radio.lastrx = 0;
 	run_modern_audio_iteration(&radio);
+	assert(!radio.rx_cos_active);
+	radio.txkeyed = 0;
 	radio.radio->txPttOut = 0;
 	radio.radioduplex = 1;
+
+	/* An advanced transport remains eligible for COR while its local PTT is
+	 * asserted; this takes the middle full-duplex admission arm. */
+	radio.radio->txPttIn = radio.radio->txPttOut = 1;
+	radio.radio->txState = CHAN_TXSTATE_ACTIVE;
+	radio.txkeyed = 1;
+	radio.plus_advanced = 1;
+	radio.radioduplex = 0;
+	radio.rxcdtype = CD_HID;
+	radio.rxsdtype = SD_HID;
+	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
+							     URP_HARDWARE_INPUT_HID_CTCSS);
+	run_modern_audio_iteration(&radio);
+	assert(radio.radio->txPttOut && radio.rx_cos_active);
+	radio.txkeyed = 0;
+	radio.plus_advanced = 0;
+	radio.radioduplex = 1;
+	radio.radio->txPttIn = radio.radio->txPttOut = 0;
+	radio.radio->txState = CHAN_TXSTATE_IDLE;
+	usbradioplus_tx_playout_hold_reset(&radio);
 
 	/* Both delay predicates are evaluated while receive qualification waits. */
 	radio.rxhidsq = radio.rxhidctcss = 1;
@@ -3889,15 +4027,40 @@ static void test_modern_audio_worker_baseline(void)
 	/* Signaling transitions remain safe without an attached channel, and with
 	 * local-repeat sidetone disabled. */
 	radio.owner = NULL;
-	radio.duplex3 = 0;
-	radio.rxkeyed = 0;
-	radio.lastrx = 1;
-	radio.rxhidsq = 0;
-	run_modern_audio_iteration(&radio);
+	radio.plus_advanced = 1;
+	radio.duplex3 = 999;
+	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
+	radio.rxcdtype = CD_HID;
+	radio.rxsdtype = SD_HID;
+	radio.rxctcssoverride = 0;
+	radio.rxondelay = radio.txoffdelay = 0;
+	radio.radio->txPttIn = radio.radio->txPttOut = 0;
+	radio.radio->txState = CHAN_TXSTATE_IDLE;
+	radio.radio->txrxblankingtimer = 0;
+	usbradioplus_tx_playout_hold_reset(&radio);
+	usbradioplus_publish_hardware_inputs(&radio, 0U);
 	radio.rxkeyed = 1;
-	radio.lastrx = 0;
-	radio.rxhidsq = radio.rxhidctcss = 1;
+	radio.lastrx = 1;
 	run_modern_audio_iteration(&radio);
+	assert(!radio.rxkeyed && !radio.lastrx);
+	/* A hardware key transition follows the same owner-free advanced path. */
+	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
+							     URP_HARDWARE_INPUT_HID_CTCSS);
+	radio.rxkeyed = 0;
+	radio.lastrx = 0;
+	run_modern_audio_iteration(&radio);
+	assert(radio.rxkeyed && radio.lastrx);
+	radio.plus_advanced = 0;
+	radio.duplex3 = 0;
+	usbradioplus_publish_hardware_inputs(&radio, 0U);
+	radio.rxkeyed = radio.lastrx = 1;
+	run_modern_audio_iteration(&radio);
+	assert(!radio.rxkeyed && !radio.lastrx);
+	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
+							     URP_HARDWARE_INPUT_HID_CTCSS);
+	radio.rxkeyed = radio.lastrx = 0;
+	run_modern_audio_iteration(&radio);
+	assert(radio.rxkeyed && radio.lastrx);
 	radio.owner = (struct ast_channel *)(uintptr_t)1;
 	channel_state = AST_STATE_DOWN;
 	run_modern_audio_iteration(&radio);
@@ -4032,6 +4195,36 @@ static void configure_modern_hid_status_iteration(struct chan_usbradio_pvt *radi
 	usbradioplus_publish_hardware_ptt(radio, 1);
 }
 
+/** @brief Script two idle HID polls around an unavailable program snapshot. */
+static void configure_modern_hid_idle_program_iteration(struct chan_usbradio_pvt *radio,
+							unsigned char *inputs, int call)
+{
+	assert(radio && call > 0);
+	assert(radio->hid_io_cor && radio->hid_io_ctcss);
+	inputs[radio->hid_io_cor_loc] |= (unsigned char)radio->hid_io_cor;
+	inputs[radio->hid_io_ctcss_loc] |= (unsigned char)radio->hid_io_ctcss;
+	radio->pps[12] = NULL;
+	radio->pps[13] = "ctcss";
+	mock_parallel_inputs = 0;
+	if (call == 1) {
+		/* Hold the sequence odd so the worker has no coherent program request. */
+		atomic_store_explicit(&radio->plus_radio_program_generation, 1U,
+				      memory_order_release);
+		radio->lasttx = 0;
+		usbradioplus_publish_hardware_ptt(radio, 1);
+	}
+}
+
+/** @brief Request PTT only after a valid program snapshot becomes current. */
+static void request_modern_hid_stable_program_ptt(struct chan_usbradio_pvt *radio,
+						  unsigned char *inputs, int call)
+{
+	(void)inputs;
+	assert(radio && call > 0);
+	if (call == 3)
+		usbradioplus_publish_hardware_ptt(radio, 1);
+}
+
 static void test_modern_hid_worker_retries(void)
 {
 	struct chan_usbradio_pvt radio = {0};
@@ -4143,6 +4336,57 @@ static void test_modern_hid_worker_retries(void)
 	mock_poll_enabled = 0;
 	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
 
+	/* Idle COR/CTCSS, a missing parallel CTCSS input, and a torn programming
+	 * publication must leave the second hardware pass as a no-op. */
+	radio.stophid = 0;
+	radio.lastaudiotime = 0;
+	modern_hid_input_calls = 0;
+	modern_stop_hid_after_inputs = 2;
+	modern_stop_hid_target = &radio;
+	modern_hid_input_hook = configure_modern_hid_idle_program_iteration;
+	radio.hdwtype = 0;
+	assert(hidhdwconfig(&radio) == 0);
+	haspp = 2;
+	mock_poll_enabled = 1;
+	mock_poll_result = 0;
+	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
+	assert(hidthread(&radio) == NULL);
+	assert(modern_hid_input_calls == 2);
+	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
+		 URP_HARDWARE_INPUT_HID_CARRIER));
+	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
+		 URP_HARDWARE_INPUT_HID_CTCSS));
+	modern_hid_input_hook = NULL;
+	modern_stop_hid_target = NULL;
+	modern_stop_hid_after_inputs = 1;
+	mock_poll_enabled = 0;
+	mock_parallel_inputs = 0;
+	haspp = 0;
+	atomic_store_explicit(&radio.plus_radio_program_generation, 0U, memory_order_release);
+	usbradioplus_publish_hardware_ptt(&radio, 0);
+
+	/* A stable program snapshot must distinguish an unchanged PTT request from
+	 * a later PTT transition, which reapplies the current radio request. */
+	radio.stophid = 0;
+	modern_hid_input_calls = 0;
+	modern_stop_hid_after_inputs = 3;
+	modern_stop_hid_target = &radio;
+	modern_hid_input_hook = request_modern_hid_stable_program_ptt;
+	mock_poll_enabled = 1;
+	mock_poll_result = 0;
+	radio.rxfreq = 146520000U;
+	radio.txfreq = 146940000U;
+	usbradioplus_program_radio(&radio);
+	usbradioplus_publish_hardware_ptt(&radio, 0);
+	assert(hidthread(&radio) == NULL);
+	assert(modern_hid_input_calls == 3);
+	assert(atomic_load_explicit(&radio.plus_hardware_ptt_request, memory_order_acquire));
+	modern_hid_input_hook = NULL;
+	modern_stop_hid_target = NULL;
+	modern_stop_hid_after_inputs = 1;
+	mock_poll_enabled = 0;
+	usbradioplus_publish_hardware_ptt(&radio, 0);
+
 	radio.swap_state = DEVICE_SWAP_QUIESCING;
 	radio.swap_audio_ready = 0;
 	modern_swap_first = &radio;
@@ -4191,10 +4435,18 @@ static void test_modern_hid_worker_retries(void)
 	mock_poll_revents = POLLIN;
 	mock_oss_io = 1;
 	mock_read_result = -1;
+	mock_read_errno = EIO;
 	radio.stophid = 0;
 	modern_stop_hid_target = &radio;
 	assert(hidthread(&radio) == NULL);
 	modern_stop_hid_target = NULL;
+	/* A closed wake pipe is benign and must not be reported as an I/O error. */
+	mock_read_result = 0;
+	radio.stophid = 0;
+	modern_stop_hid_target = &radio;
+	assert(hidthread(&radio) == NULL);
+	modern_stop_hid_target = NULL;
+	mock_read_errno = EAGAIN;
 	mock_oss_io = 0;
 	mock_poll_revents = 0;
 	mock_poll_result = 0;
@@ -11432,6 +11684,7 @@ int main(void)
 	RUN_TEST(test_modern_device_policy_helpers);
 	RUN_TEST(test_modern_channel_callbacks);
 	RUN_TEST(test_modern_hid_worker_baseline);
+	RUN_TEST(test_modern_parallel_ptt_release);
 	RUN_TEST(test_modern_hid_worker_retries);
 	RUN_TEST(test_modern_audio_worker_baseline);
 	RUN_TEST(test_modern_module_lifecycle_baseline);
