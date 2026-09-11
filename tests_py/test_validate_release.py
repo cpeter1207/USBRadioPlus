@@ -53,7 +53,30 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
         ROOT,
         tmp_path,
         dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(".git", "build", "dist", "work", "__pycache__"),
+        # The test needs a source-artifact fixture, not concurrent local test
+        # output.  In particular, a short-lived test directory may disappear
+        # while copytree walks the shared working tree.
+        ignore=shutil.ignore_patterns(
+            ".git",
+            "build",
+            "dist",
+            "work",
+            "outputs",
+            "__pycache__",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".coverage*",
+            ".test*",
+            ".usbradioplus-tests.*",
+            "*.pyc",
+            "*.gcda",
+            "*.gcno",
+            "*.gcov",
+            "*.cap",
+            "*.raw",
+            "*.wav",
+            "*.au",
+        ),
     )
     (tmp_path / "README.md").unlink()
     (tmp_path / "man/usbradioplus.7").write_text("incomplete\n", encoding="utf-8")
@@ -62,6 +85,7 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
         "service asterisk restart\n",
         encoding="utf-8",
     )
+    (tmp_path / "src/usbradioplus_channel_common.c").write_text("incomplete\n", encoding="utf-8")
     (tmp_path / "src/usbradioplus_native_tick.c").write_text("incomplete\n", encoding="utf-8")
     (tmp_path / "examples/usbradioplus.conf.sample").write_text("incomplete\n", encoding="utf-8")
     patch = tmp_path / "patches/app_rpt-radioplus-duplex.patch"

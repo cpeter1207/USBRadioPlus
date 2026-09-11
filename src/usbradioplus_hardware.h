@@ -46,5 +46,12 @@ void urp_hardware_set_channel(struct urp_parallel_bus *bus, uint8_t channel);
  */
 void urp_hardware_program_radio(struct urp_parallel_bus *bus, uint32_t rx_freq, uint32_t tx_freq,
 				int transmitting, int high_power);
+/** @brief Immediately clear the RTX transmit output without serial reprogramming.
+ * @param bus Parallel-port value and caller-supplied write callback.
+ *
+ * This is the hardware-worker fail-safe path. It leaves frequency-programming
+ * bits untouched so a disconnect or stop cannot delay transmitter release.
+ */
+void urp_hardware_clear_transmit(struct urp_parallel_bus *bus);
 
 #endif

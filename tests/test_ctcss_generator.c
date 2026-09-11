@@ -16,12 +16,16 @@
  */
 int main(void)
 {
-	struct urp_ctcss_generator normal = {0}, reversed = {0};
+	struct urp_ctcss_generator normal = {0}, reversed = {0}, tail = {0};
 	double output[48000], one[1], max = 0.0, min = 0.0, difference;
 	double amplitude, bias;
 	size_t i;
 
 	assert(fabs(urp_ctcss_legacy_frequency(114.8) - 114.74609375) < 1e-9);
+	assert(urp_ctcss_frequency_supported(67.0F));
+	assert(urp_ctcss_frequency_supported(250.3F));
+	assert(!urp_ctcss_frequency_supported(49.0F));
+	assert(!urp_ctcss_frequency_supported(100.0001F));
 	assert(urp_ctcss_legacy_peak(114.8, 0) == 17083.0);
 	assert(urp_ctcss_legacy_peak(114.8, 1) == 18417.0);
 	assert(urp_ctcss_legacy_scaled_peak(114.8, 0, 102, 252) == 6699.0);
@@ -52,13 +56,22 @@ int main(void)
 
 	normal.phase = reversed.phase = 0.75;
 	urp_ctcss_generate(&normal, one, 1, 114.8, 1.0, 1, 0);
-	urp_ctcss_generate(&reversed, one, 1, 114.8, 1.0, 1, 1);
+	urp_ctcss_generate(&reversed, one, 1, 114.8, 1.0, 1, 360.0 * 170.0 / 256.0);
 	difference = fmod(reversed.phase - normal.phase + 2.0 * TEST_PI, 2.0 * TEST_PI);
-	/* XPMR's integer table advances 170 of 256 positions, or 239.0625 degrees. */
 	assert(fabs(difference - 2.0 * TEST_PI * 170.0 / 256.0) < 1e-12);
+	normal.phase = reversed.phase = 0.75;
+	urp_ctcss_generate(&normal, one, 1, 114.8, 1.0, 1, 0);
+	urp_ctcss_generate(&reversed, one, 1, 114.8, 1.0, 1, 135);
+	difference = fmod(reversed.phase - normal.phase + 2.0 * TEST_PI, 2.0 * TEST_PI);
+	assert(fabs(difference - 2.0 * TEST_PI * 135.0 / 360.0) < 1e-12);
+	urp_ctcss_generate_tail_tone(&tail, output, 48000, 55.0, 1.0, 1);
+	assert(fabs(tail.phase) < 1e-12);
+	assert(output[1] > output[0]);
+	urp_ctcss_generate_tail_tone(&tail, output, 1, 55.0, 1.0, 0);
+	assert(output[0] == 0.0);
 	urp_ctcss_generate(&normal, output, 0, 114.8, 1.0, 1, 0);
 
-	puts("native CTCSS frequency, level, mute, and phase-reversal tests passed");
+	puts("native CTCSS frequency, level, tail-tone, mute, and phase-shift tests passed");
 	return 0;
 }
 

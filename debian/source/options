@@ -1,2 +1,4 @@
-extend-diff-ignore = "(^|/)(build|dist)/"
-
+# Keep local coverage, captures, and test output out of Debian source diffs.
+# Release builds normally start from a clean tag, but this also makes a local
+# source-package build obey the same artifact boundary as `make dist`.
+extend-diff-ignore = "(^|/)(build|dist|work|outputs|__pycache__|\\.pytest_cache|\\.ruff_cache|\\.coverage[^/]*|\\.usbradioplus-(tests|radio-tests)\\.[^/]*)($|/)|\\.(pyc|gcda|gcno|gcov|cap|raw|wav|au)$|(^|/)\\.test[^/]*($|/)"

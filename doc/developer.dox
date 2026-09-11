@@ -10,22 +10,28 @@ configuration and operation.
 Transmit observability uses opt-in Asterisk debug level 5 records prefixed
 URP_TXTRACE. Request, render, queue, write, and HID-call boundaries are distinct:
 generation or enqueue is not DAC playback, and HID return is not RF confirmation.
-OSS queue delay uses occupied bytes, including partial fragments. The PortAudio
-adapter does not claim an unavailable queue timestamp. See the configuration
-manual for bounded capture and disable instructions. No new PTT policy or
-audio buffering is introduced by the trace.
+OSS trace records report occupied bytes, including partial fragments. The
+PortAudio trace reports submission results rather than a per-write playback
+timestamp. Its playout guard separately uses the stream's output-latency
+estimate obtained at open. See the configuration manual for trace enablement
+and disable instructions. No new PTT policy or audio buffering is introduced
+by the trace.
 
 - chan_usbradioplus.c adapts OSS/libusb radio devices to Asterisk.
 - chan_usbradioplus_modern.c adapts the ASL radio-device API and PortAudio.
 - usbradioplus_channel_common.h defines shared channel lifecycle and tuning calls.
-- usbradioplus_channel_core.h defines PCM routing, queues, clock recovery, and echo state.
-- usbradioplus_native_tick.c runs the native receive/transmit block sequence.
+- usbradioplus_channel_core.h defines PCM routing, the lock-free program ring,
+  and echo state.
+- usbradioplus_native_tick.c directly renders local receive, final
+  voice/telemetry processing, CTCSS/DCS, and DAC PCM in the native hardware
+  callback.
 - usbradioplus_processing.h exposes validated profiles and live processing controls.
 - txagc_config describes the shared FFmpeg graph. Filtering, emphasis,
   equalization, dynamics, and limiting are implemented by that graph.
-- usbradioplus_radio.h contains carrier, CTCSS, measurement, and transmit-signaling state.
-- usbradioplus_ctcss.h and usbradioplus_hardware.h provide tone generation and
-  parallel-port radio programming.
+- usbradioplus_radio.h contains carrier, CTCSS, DCS, measurement, and
+  transmit-signaling state.
+- usbradioplus_ctcss.h, usbradioplus_dcs.h, and usbradioplus_hardware.h provide
+  tone/code generation and parallel-port radio programming.
 - scripts/usbradioplus-tune implements the screen-reader-friendly tuner.
 - tests and tests_py contain executable unit, failure-injection, integration,
   configuration, utility, and install checks. Upstream reference fixtures are test data.
@@ -34,70 +40,164 @@ audio buffering is introduced by the trace.
 
 The CM119 path runs at 48,000 samples per second with 960 samples in a 20 ms
 mono block. App_rpt starts at 8,000 samples per second; each channel stores its
-rate explicitly. Equal input and output rates bypass sample-rate conversion.
+rate explicitly. The program-ring converter uses a nominal one-to-one ratio
+when its input and output rates are equal.
 Signed PCM spans -32768 through 32767. Native floating-point workspaces retain
 PCM amplitude units. FFmpeg format conversion supplies the graph's normalized
 audio representation. dBFS measurements use the full signed PCM range.
 
-The app_rpt-to-CM119 elastic FIFO starts with a 120 ms occupancy target. Keyed
-underruns raise it by 10 ms, up to 170 ms; three minutes of stable keyed blocks
-accumulated across transmissions lower it by 10 ms, but never below 110 ms.
-Both queues hold 200 ms so startup padding and a complete resampled frame fit
-at the maximum target. These are occupancy targets, not an end-to-end latency
-guarantee: each device interval consumes 20 ms, and network jitter buffering
-adds its own delay.
+The app_rpt-to-hardware-callback program ring is the only cross-clock audio
+queue between app_rpt and the native path. It accepts PCM at the active app_rpt
+rate and renders from its first available sample; it has no source-audio startup
+fill or playback reserve. Its 110 ms occupancy target is a clock-recovery
+setpoint, not a fixed latency or keyed-transmit admission delay. One persistent
+libsamplerate stream converts the source rate to the native rate and gently
+adjusts its ratio for independent clock drift, including when the nominal ratio
+is one-to-one. This correction is independent of device and network jitter
+buffers and changes no PTT state. A temporary program-source shortfall is
+concealed smoothly by the callback renderer rather than rendered as an abrupt
+silence insertion.
 
 Both adapters admit app_rpt program frames continuously, including idle
-silence, except while echo playback owns the input. PTT transitions preserve
-the FIFO, resampler state, clock recovery, and concealment history. Only
-stream startup or recovery seeds the FIFO reserve. Resampled streams receive
-one additional 20 ms leading silence frame so the sinc converter can fill
-its history and reach the FIFO target. If the program queue empties and
-fewer than 20 ms of native audio remain, one silence frame releases the
-converter's retained audio before underrun recovery. Further
-padding requires another queued input frame; a continuously arriving stream
-does not receive this tail padding while its FIFO reserve lasts. Native-rate
-input bypasses these resampling steps. Padding affects PCM audio only: app_rpt
-and tuning retain ownership of PTT, and FIFO draining does not extend it.
+silence. A native-parrot implementation may be the sole external program-audio
+producer only while it supplies native-rate samples through that same lock-free
+program ring. Legacy app_rpt echo is distinct and is not an external producer
+under this exception. PTT transitions preserve program-ring state. Native-rate
+input uses the same stream with a nominal one-to-one ratio. This continuous PCM
+flow affects audio only: program-ring occupancy neither requests nor releases
+PTT. The signaling engine retains ownership of the desired PTT state.
+
+The hardware callback directly renders each prepared native block. It owns
+local receive processing, final voice/telemetry processing, CTCSS/DCS
+generation, and native DAC PCM rendering. The program ring is its only
+program-audio bridge: app_rpt normally produces it, and native-parrot playback
+may temporarily supply native-rate samples through it. No other audio worker
+is permitted; there is no per-channel native worker thread or native
+input/output worker queue. A program-source shortfall is concealed in the
+callback without changing PTT, COS, CTCSS, or DCS state.
 
 The device writer submits one 48 kHz stereo block per completed capture
-interval, including while idle. Transmit activity selects the rendered block
-or an immutable silence block; COS and CTCSS decode do not control device
+interval, including while idle. COS and CTCSS decode do not control device
 write cadence. The OSS writer does not prepend silence when its queue empties.
 Its queue-depth bound and short/failed-write diagnostics still apply during
-idle operation. PortAudio retains the ASL audio API's device recovery.
+idle operation. After a complete non-silent DAC submission, the adapter holds
+physical `txPttOut` through the measured or estimated device playout delay plus
+one native 20 ms block. It submits silence while draining, cancels the hold on
+a new key request, and never advances the hold for a short, failed, or
+underflowed submission. OSS measures queue delay after the write with an
+available-space fallback; PortAudio uses the output latency reported when the
+stream opens. This is a best-effort queue-drain guard, not a second PTT owner.
+PortAudio otherwise retains the ASL audio API's device recovery.
 
 When the local chain is enabled, its enabled RNNoise and FFmpeg dynamics
-stages advance every native interval with hardware_rx_cpu_saver_enabled=no.
-RX CPU saver bypasses those stages while the receiver is unqualified. Existing
-receive qualification, repeat routing, and final transmit muting still
-control audibility; processing continuity does not key the transmitter.
+stages advance in the direct callback every native interval with
+receive cpu_saver_enabled=no. RX CPU saver bypasses those stages while the
+receiver is unqualified. Existing receive qualification, repeat routing, and
+final transmit muting still control audibility; processing continuity does not
+key the transmitter.
 
 Hardware mixer settings use 0 through 999. Hardware gain is expressed in dB
 relative to setting 500. Receiver CTCSS decoder gain affects the detector input;
-it does not change voice gain. Native CTCSS is mixed after transmitter dynamics
-and limiting. Saturating PCM conversion prevents signed wraparound.
-The hardware_tx_preemphasis_enabled option controls only the composite graph's
+it does not change voice gain. Native CTCSS is generated at the direct
+`[ctcss] transmit_peak_dbfs` PCM peak and mixed after transmitter dynamics and
+limiting. Hardware output gain then sets the DAC's analog level. Saturating PCM
+conversion prevents signed wraparound.
+The transmit preemphasis_enabled option controls only the composite graph's
 pre-emphasis stage. Final limiting uses the voice/telemetry profile's explicit
 lookahead-limiter controls independently of pre-emphasis.
+
+Native DCS uses its own direct `[dcs] peak_dbfs` PCM peak and a fixed shared-FFmpeg
+spectral-shaping graph. It bypasses CTCSS generation, transmitter pre-emphasis,
+and speech processing, while sharing only the configured hardware output route
+and downstream hardware gain.
+
+Each direction declares exactly one signaling method in its `[receive]` or
+`[transmit]` profile. Selecting receive CTCSS requires a non-disabled CTCSS
+source and a supported receive-tone list; selecting transmit CTCSS requires
+one supported default transmit tone. A receive-to-transmit map is required
+only when both directions select CTCSS; then both supported-tone lists must
+have equal length. Selecting DCS requires the corresponding DCS code in
+`000N`- through `777I`-style spelling
+(three octal digits followed by `N` or `I`). The
+configuration parser rejects
+an incomplete or invalid selected method before a channel can start, rather
+than allowing the radio engine to silently fall back to carrier behavior.
+For a configured profile, omitted clean-slate `[receive]`, `[transmit]`,
+`[ctcss]`, and `[dcs]` options resolve to the concrete values in the shipped
+sample. Explicit scoped values take precedence over flat-section values.
+Integer signaling controls validate the exact storage units used by the channel
+adapter: receive squelch delay is 0--511 ms, receive-on and transmit-off delay
+are 0--3000 20 ms frames, receive CTCSS relax is 0 or 1, and transmit/receive
+frequencies are nonnegative integral hertz. This keeps a successful reload
+from deferring a malformed numeric value to channel construction.
 
 @section concurrency Thread and resource ownership
 
 Profile snapshot getters clear their output when a radio profile is absent.
-Workers must never consume uninitialized gain, routing, or CTCSS data while a
-profile is unavailable; the missing-profile status remains available to callers.
+Render paths must never consume uninitialized gain, routing, or CTCSS data
+while a profile is unavailable; the missing-profile status remains available to
+callers.
 
-Each channel owns its native graphs, resamplers, detector, queues, and echo
-recording. The app_rpt queue mutex protects frames passed from Asterisk to the
-device worker. The processing settings mutex protects profile snapshots.
-Never hold the processing settings mutex while looking up or locking an
-Asterisk channel: app_rpt can read processing settings while holding channel
-locks. The scanner copies the needed profile data before channel lookup.
+Each channel owns its native graphs, detector, program ring, and a
+callback-owned native renderer. Setup preallocates the renderer's resamplers,
+RNNoise state, echo recording, workspaces, and diagnostics. The hardware
+callback owns mutable per-frame renderer state, consumes the program ring, and
+directly produces the DAC block. It has no native worker to start or join and
+no native input/output queue to drain. The processing settings mutex protects
+profile snapshots. Never hold it while looking up or locking an Asterisk
+channel: app_rpt can read processing settings while holding channel locks. The
+scanner copies the needed profile data before channel lookup.
 
-An incoming link audiohook owns its graph through an Asterisk datastore.
-Stopping the processing subsystem joins the scanner and detaches those hooks
-before releasing its state. Hardware adapters own their device references and
-coordinate audio/HID workers when swapping USB assignments.
+Native-parrot playback may be a separate producer only when it hands
+native-rate samples to the hardware callback through the lock-free program
+ring. Legacy app_rpt echo is not covered by this exception. No other audio
+worker is permitted.
+
+The native radio callback, including carrier and CTCSS detector stages, uses
+only preallocated caller-owned state and prepared graphs. It must not call
+Asterisk logging, take locks, allocate memory, or perform file I/O. It directly
+executes the prepared FFmpeg graphs, RNNoise, and persistent sample-rate
+conversion when those stages apply; graph construction, reconfiguration, and
+destruction remain outside the callback. PTT is requested synchronously from
+the current signaling-engine state at the callback boundary. A completed
+non-silent DAC submission may hold physical `txPttOut` for the adapter's
+playout-delay guard while the callback feeds silence. Program-ring occupancy
+and audio shortfalls must never key or unkey the transmitter.
+
+Native renderer measurements are published as coherent lock-free snapshots.
+Control-plane meters and reset requests must use that snapshot/request boundary
+instead of reading or changing callback-owned graph, RNNoise, SRC, or echo state
+directly. A reader receives the most recently published complete snapshot, or
+reports it unavailable after bounded retries rather than waiting for rendering;
+a pinned pair of snapshot buffers can therefore leave measurements briefly stale.
+
+Configured radio traces remain preallocated in-memory diagnostic buffers. The
+obsolete receive/transmit capture toggles and file-capture path are absent, so
+they cannot add callback I/O or an alternate real-time path.
+
+Each incoming-link audiohook owns a prepared FFmpeg graph, a preallocated
+conversion workspace, and a reader-pinned statistics snapshot through its
+Asterisk datastore. The callback synchronously processes the current eligible
+frame in place. It has no deferred link-rendering thread or input/output SPSC
+handoff queues. Graph preparation and replacement occur outside the callback;
+the callback uses an atomically published prepared graph and never rebuilds it.
+
+A format or capacity mismatch, an unavailable graph, or a graph-processing
+error leaves the current Asterisk frame unchanged rather than allocating,
+reconfiguring, delaying, or replaying it. The prepared FFmpeg graph's bounded
+internal FIFO can report startup fill or runtime shortfall without creating a
+separate callback handoff. The published callback snapshot records those graph
+conditions, synchronous processing errors, and input/output levels. CLI
+readers pin a published snapshot buffer and can receive a briefly stale or
+unavailable snapshot rather than waiting for the callback. Link processing
+preserves the attached channel's negotiated sample rate and has no PTT policy.
+
+Hook teardown detaches and destroys the audiohook, quiescing its synchronous
+callback before its graph slot or callback-owned workspace is released. A
+reload atomically publishes a complete prepared graph before changing link
+admission, so each callback uses either the old graph, the new graph, or a
+clean bypass. Hardware adapters own their device references and coordinate
+device and HID state when swapping USB assignments.
 
 @section verification Building and checking the reference
 
@@ -107,8 +207,10 @@ undocumented symbols and enum values, parameter and return documentation, and
 invalid markup. Every diagnostic fails the target.
 
 The required quality workflow runs Doxygen concurrently with lint and static
-analysis. All three results must succeed before the Debian 12/13 amd64/arm64
-test matrix. Release callers depend on that same required quality workflow.
+analysis. All three results must succeed before the Debian 13 amd64/arm64 test
+matrix. Release callers depend on that same required quality workflow. Debian
+12 packages are aspirational and may be built manually only when explicitly
+requested.
 Only successful main-branch checks publish this reference to GitHub Pages.
 
 Shell documentation uses double-hash comments. The documentation filter exposes

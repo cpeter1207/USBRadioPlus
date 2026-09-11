@@ -39,8 +39,12 @@ if [ "$skip_deps" = no ]; then
 	"$root/scripts/install-build-deps.sh"
 fi
 
-make -C "$root" clean check
-make -C "$root" DESTDIR="$destdir" prefix=/usr install
+# Validate the archive that will be installed, rather than treating the source
+# checkout as the install payload.  distcheck extracts a fresh copy, runs the
+# hardware-free suite there, and stages an install before install-from-dist
+# rebuilds that same versioned archive for the requested destination.
+make -C "$root" clean distcheck
+make -C "$root" DESTDIR="$destdir" prefix=/usr install-from-dist
 
 cat <<'EOF'
 USBRadioPlus files were installed. A default usbradioplus.conf was

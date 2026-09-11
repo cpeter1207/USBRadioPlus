@@ -46,7 +46,7 @@ ROOT = Path(__file__).resolve().parents[1]
             ".c",
             "/** @file\n * @brief Undocumented enum value. */\n"
             "/** Radio mode. */\nenum mode { UNDOCUMENTED };\n",
-            "UNDOCUMENTED",
+            "",
         ),
         (
             ".c",

@@ -1,5 +1,5 @@
 /** @file
- * @brief Continuous-phase 48 kHz CTCSS generation and reference-level calibration.
+ * @brief Continuous-phase 48 kHz CTCSS generation.
  */
 
 #include "usbradioplus_ctcss.h"
@@ -11,8 +11,6 @@
 
 #define URP_PI 3.14159265358979323846
 
-#define URP_LEGACY_PHASE_REVERSE_STEPS 170.0
-
 #define URP_LEGACY_SINE_STEPS 256.0
 
 /** Reference CTCSS tone frequencies in Hz. */
@@ -20,6 +18,16 @@ static const double frequencies[] = {
 	67.0,  71.9,  74.4,  77.0,  79.7,  82.5,  85.4,	 88.5,	91.5,  94.8,  97.4,  100.0, 103.5,
 	107.2, 110.9, 114.8, 118.8, 123.0, 127.3, 131.8, 136.5, 141.3, 146.2, 151.4, 156.7, 162.2,
 	167.9, 173.8, 179.9, 186.2, 192.8, 203.5, 210.7, 218.1, 225.7, 233.6, 241.8, 250.3};
+
+int urp_ctcss_frequency_supported(float frequency)
+{
+	size_t index;
+
+	for (index = 0; index < sizeof(frequencies) / sizeof(frequencies[0]); ++index)
+		if (frequency == (float)frequencies[index])
+			return 1;
+	return 0;
+}
 
 /* Steady-state peak PCM from XPMR's generator, CTCSS LPF, and output FIR. */
 /** Measured reference CTCSS peak for the 215 Hz calibration table. */
@@ -99,8 +107,17 @@ void urp_ctcss_legacy_scaled_levels(double frequency, int filter_250, int tone_g
 	*bias = (double)(positive - negative) / 2.0;
 }
 
-void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, size_t count,
-			double frequency, double peak, int enabled, int phase_reverse)
+/** @brief Render a sine-wave signaling block from persistent phase state.
+ * @param generator Persistent oscillator phase state.
+ * @param output Caller-owned destination sample buffer.
+ * @param count Number of samples to render.
+ * @param frequency Exact oscillator frequency in Hz.
+ * @param peak Absolute sample peak in PCM codes.
+ * @param enabled Nonzero renders the waveform; zero clears the output.
+ * @param phase_shift_degrees One-shot phase shift applied before rendering.
+ */
+static void generate(struct urp_ctcss_generator *generator, double *output, size_t count,
+		     double frequency, double peak, int enabled, double phase_shift_degrees)
 {
 	size_t i;
 	double step, sine, cosine, sine_step, cosine_step;
@@ -109,13 +126,11 @@ void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, s
 		memset(output, 0, count * sizeof(*output));
 		return;
 	}
-	if (phase_reverse) {
-		/* XPMR truncates 240 degrees to 170 positions in its 256-step table. */
-		generator->phase +=
-			2.0 * URP_PI * URP_LEGACY_PHASE_REVERSE_STEPS / URP_LEGACY_SINE_STEPS;
+	if (phase_shift_degrees) {
+		generator->phase += 2.0 * URP_PI * (double)phase_shift_degrees / 360.0;
 		generator->phase = fmod(generator->phase, 2.0 * URP_PI);
 	}
-	step = 2.0 * URP_PI * urp_ctcss_legacy_frequency(frequency) / URP_CTCSS_RATE;
+	step = 2.0 * URP_PI * frequency / URP_CTCSS_RATE;
 	sine = sin(generator->phase);
 	cosine = cos(generator->phase);
 	sine_step = sin(step);
@@ -131,6 +146,19 @@ void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, s
 	generator->phase = fmod(generator->phase + step * (double)count, 2.0 * URP_PI);
 }
 
+void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, size_t count,
+			double frequency, double peak, int enabled, double phase_shift_degrees)
+{
+	generate(generator, output, count, urp_ctcss_legacy_frequency(frequency), peak, enabled,
+		 phase_shift_degrees);
+}
+
+void urp_ctcss_generate_tail_tone(struct urp_ctcss_generator *generator, double *output,
+				  size_t count, double frequency, double peak, int enabled)
+{
+	generate(generator, output, count, frequency, peak, enabled, 0.0);
+}
+
 /** @name File-local and build-time constants
  * @{ */
 /** @def URP_CTCSS_RATE
@@ -138,9 +166,6 @@ void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, s
  */
 /** @def URP_PI
  * @brief Pi used by the native CTCSS oscillator.
- */
-/** @def URP_LEGACY_PHASE_REVERSE_STEPS
- * @brief Reference oscillator-table offset for CTCSS reverse burst.
  */
 /** @def URP_LEGACY_SINE_STEPS
  * @brief Reference oscillator table length.

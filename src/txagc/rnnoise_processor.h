@@ -49,6 +49,8 @@ struct txagc_rnnoise {
 	uint64_t errors;
 	/** Nonzero while denoising is active. */
 	int active;
+	/** Nonzero after the control plane allocated the denoiser and converters. */
+	int prepared;
 	/** Nonzero after startup buffering permits output. */
 	int primed;
 };
@@ -61,6 +63,23 @@ void txagc_rnnoise_init(struct txagc_rnnoise *state);
  * @param state Processor or stream state owned by the caller.
  */
 void txagc_rnnoise_destroy(struct txagc_rnnoise *state);
+/** @brief Allocate or reconfigure RNNoise state before native callback processing.
+ * @param state Processor state owned by the radio channel.
+ * @param sample_rate Native input sample rate in Hz.
+ * @return Zero when a reusable denoiser and converters are ready, otherwise nonzero.
+ *
+ * A successful call makes txagc_rnnoise_process_prepared() allocation-free.
+ * The native receiver uses a fixed 48 kHz rate and prepares this state before
+ * its first native callback render.
+ */
+int txagc_rnnoise_prepare(struct txagc_rnnoise *state, unsigned int sample_rate);
+/** @brief Process an already prepared RNNoise stream without allocating or reconfiguring.
+ * @param state Prepared processor state.
+ * @param samples Audio samples; mutable buffers are updated in place.
+ * @param count Number of elements available in samples.
+ * @return Zero on success; a nonzero status when the prepared state cannot process.
+ */
+int txagc_rnnoise_process_prepared(struct txagc_rnnoise *state, double *samples, size_t count);
 /** @brief Denoise signed 16-bit receiver audio through the RNNoise stream adapter.
  * @param state Processor or stream state owned by the caller.
  * @param samples Audio samples; mutable buffers are updated in place.

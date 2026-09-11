@@ -28,22 +28,24 @@ struct txagc_chain {
 	int input_gain_configured;
 	/** Nonzero when the PL-filter setting is explicitly configured. */
 	int ctcss_filter_configured;
-	/** Nonzero when the transmitter band-pass is explicitly configured. */
-	int splatter_filter_configured;
 	/** Settings for all optional stages and the fixed FFmpeg filtering stages. */
 	struct txagc_config agc;
 };
 
-/** Hardware voice/CTCSS routing values shared with channel adapters. */
+/** Hardware voice/transmit-signaling routing values shared with channel adapters.
+ *
+ * The configuration spells the signaling routes \c ctcss and \c voice_ctcss,
+ * but either route carries the selected CTCSS or DCS waveform.
+ */
 enum usbradioplus_hardware_assignment {
 	USBRADIOPLUS_HW_OFF = 0 /**< Silence on this hardware output. */,
-	USBRADIOPLUS_HW_VOICE = 1 /**< Processed voice without CTCSS. */,
-	USBRADIOPLUS_HW_CTCSS = 2 /**< CTCSS without voice. */,
-	USBRADIOPLUS_HW_VOICE_CTCSS = 3 /**< Processed voice mixed with CTCSS. */,
+	USBRADIOPLUS_HW_VOICE = 1 /**< Processed voice without transmit signaling. */,
+	USBRADIOPLUS_HW_CTCSS = 2 /**< Transmit signaling without voice. */,
+	USBRADIOPLUS_HW_VOICE_CTCSS = 3 /**< Processed voice mixed with transmit signaling. */,
 	USBRADIOPLUS_HW_AUX_VOICE = 4 /**< Auxiliary voice routing. */
 };
 
-/** Resolved CM119 gains, routing, carrier source, and CTCSS frequency maps. */
+/** Resolved CM119 gains and playback routing. */
 struct usbradioplus_hardware_settings {
 	/** Input gain in DB. */
 	double input_gain_db;
@@ -57,26 +59,14 @@ struct usbradioplus_hardware_settings {
 	int output_a_gain_configured;
 	/** Nonzero when output b gain is explicitly configured. */
 	int output_b_gain_configured;
-	/** Voice/CTCSS routing for hardware output A. */
+	/** Voice/transmit-signaling routing for hardware output A. */
 	int output_a_assignment;
-	/** Voice/CTCSS routing for hardware output B. */
+	/** Voice/transmit-signaling routing for hardware output B. */
 	int output_b_assignment;
 	/** Nonzero when output a assignment is explicitly configured. */
 	int output_a_assignment_configured;
 	/** Nonzero when output b assignment is explicitly configured. */
 	int output_b_assignment_configured;
-	/** Carrier source and polarity assignment. */
-	char cos_assignment[16];
-	/** Comma-separated receive CTCSS frequencies in Hz. */
-	char rx_ctcss_frequencies[512];
-	/** Comma-separated transmit CTCSS frequencies in Hz. */
-	char tx_ctcss_frequencies[512];
-	/** Nonzero when cos assignment is explicitly configured. */
-	int cos_assignment_configured;
-	/** Nonzero when receiver ctcss frequencies is explicitly configured. */
-	int rx_ctcss_frequencies_configured;
-	/** Nonzero when transmitter ctcss frequencies is explicitly configured. */
-	int tx_ctcss_frequencies_configured;
 };
 
 /** One section/name/value assignment to save in the unified configuration. */
@@ -93,6 +83,8 @@ struct usbradioplus_config_update {
  * An absent profile produces a zeroed, disabled chain.
  * @param channel Configured radio channel name.
  * @param chain Processing-chain settings copied or updated by this operation.
+ * Omitted clean-slate receive, transmit, CTCSS, and DCS controls resolve to
+ * their shipped defaults when the channel profile exists.
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
  */
 int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain);
@@ -110,6 +102,13 @@ int usbradioplus_processing_get_local_rt(const char *channel, struct txagc_chain
  * @return Zero on success, one if the channel/option is absent, or -1 for invalid arguments.
  */
 int usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain);
+/** @brief Copy a final voice/telemetry chain from the immutable audio snapshot.
+ * This operation neither allocates nor locks and is safe from an audio callback.
+ * @param channel Configured radio channel name.
+ * @param chain Receives the resolved voice/telemetry chain.
+ * @return Zero on success, one if the channel is absent, or -1 for invalid arguments.
+ */
+int usbradioplus_processing_get_composite_rt(const char *channel, struct txagc_chain *chain);
 /** @brief Copy a channel's hardware settings under the settings mutex.
  * An absent profile produces zeroed settings with empty assignments and tone strings.
  * @param channel Configured radio channel name.

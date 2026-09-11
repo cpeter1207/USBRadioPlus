@@ -4,6 +4,8 @@
 
 #include "asterisk.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -25,8 +27,10 @@
 #include "./txagc/agc_core.h"
 #include "./txagc/avfilter_processor.h"
 #include "usbradioplus_config.h"
+#include "usbradioplus_ctcss.h"
 #include "usbradioplus_processing.h"
 #include "usbradioplus_processing_internal.h"
+#include "usbradioplus_radio.h"
 
 #define CONFIG_FILE "usbradioplus.conf"
 
@@ -41,6 +45,83 @@
 
 /** Configuration names for the local, link, and voice/telemetry chains. */
 static const char *source_names[TXAGC_SOURCE_COUNT] = {"local", "link", "voice_telemetry"};
+
+/** One shipped default for a clean-slate radio-signaling control. */
+struct clean_slate_option_default {
+	/** Configuration section which owns the control. */
+	const char *section;
+	/** Configuration key within the section. */
+	const char *name;
+	/** Textual value used by the parser and tuner. */
+	const char *value;
+};
+
+/** @brief Shipped defaults for omitted clean-slate signaling controls.
+ *
+ * These values resolve after explicit profile overrides, preserving the
+ * documented precedence of scoped sections over flat sections.
+ */
+static const struct clean_slate_option_default clean_slate_option_defaults[] = {
+	{"receive", "signaling_method", "carrier"},
+	{"receive", "cpu_saver_enabled", "no"},
+	{"receive", "audio_source", "flat"},
+	{"receive", "cos_assignment", "dsp"},
+	{"receive", "vox_hang_ms", "2000"},
+	{"receive", "vox_threshold", "0"},
+	{"receive", "noise_squelch_hysteresis", "3000"},
+	{"receive", "noise_filter_type", "0"},
+	{"receive", "squelch_delay_ms", "0"},
+	{"receive", "on_delay_frames", "0"},
+	{"receive", "polarity_inverted", "no"},
+	{"receive", "squelch_level", "500"},
+	{"receive", "frequency_hz", "0"},
+	{"receive", "lsd_polarity_inverted", "no"},
+	{"transmit", "signaling_method", "carrier"},
+	{"transmit", "cpu_saver_enabled", "no"},
+	{"transmit", "preemphasis_enabled", "yes"},
+	{"transmit", "settle_ms", "500"},
+	{"transmit", "rx_blanking_ms", "0"},
+	{"transmit", "off_delay_frames", "0"},
+	{"transmit", "polarity_inverted", "no"},
+	{"transmit", "frequency_hz", "0"},
+	{"transmit", "lsd_polarity_inverted", "no"},
+	{"ctcss", "receive_frequencies", "100.0"},
+	{"ctcss", "transmit_frequencies", "100.0"},
+	{"ctcss", "receive_source", "dsp"},
+	{"ctcss", "receive_decoder_gain_db", "0.0"},
+	{"ctcss", "receive_override_enabled", "no"},
+	{"ctcss", "receive_relax", "1"},
+	{"ctcss", "transmit_default_hz", "100.0"},
+	{"ctcss", "transmit_peak_dbfs", "-24.0"},
+	{"ctcss", "turnoff_mode", "ctcss_phase_shift"},
+	{"ctcss", "phase_shift_degrees", "120.0"},
+	{"ctcss", "tail_duration_ms", "180"},
+	{"ctcss", "tail_frequency_hz", "55.0"},
+	{"dcs", "receive_code", "023N"},
+	{"dcs", "transmit_code", "023N"},
+	{"dcs", "turnoff_code_enabled", "yes"},
+	{"dcs", "turnoff_duration_ms", "180"},
+	{"dcs", "peak_dbfs", "-24.0"},
+};
+
+/** @brief Find the shipped default for an omitted clean-slate signaling option.
+ * @param section Configuration section name.
+ * @param name Configuration option name.
+ * @return Static default text, or NULL when the option has no clean-slate default.
+ */
+static const char *clean_slate_option_default(const char *section, const char *name)
+{
+	size_t index;
+
+	for (index = 0; index < ARRAY_LEN(clean_slate_option_defaults); ++index) {
+		const struct clean_slate_option_default *entry =
+			&clean_slate_option_defaults[index];
+
+		if (!strcasecmp(entry->section, section) && !strcasecmp(entry->name, name))
+			return entry->value;
+	}
+	return NULL;
+}
 
 /** @brief Return the configuration spelling of a PL-filter mode.
  * @param mode PL-filter selection from enum txagc_ctcss_filter_mode.
@@ -58,20 +139,6 @@ PROCESSING_PRIVATE const char *ctcss_filter_name(int mode)
 	}
 }
 
-#ifndef URP_PROCESSING_TESTING
-/** Asterisk audiohook and graph state owned by its channel datastore. */
-struct txagc_hook {
-	/** Asterisk hook registered on the incoming link channel. */
-	struct ast_audiohook audiohook;
-	/** Per-source shared FFmpeg graph state. */
-	struct txagc_avfilter avfilter[TXAGC_SOURCE_COUNT];
-	/** Associated Asterisk channel name. */
-	char channel[AST_CHANNEL_NAME];
-	/** Name of the resolved channel profile. */
-	char profile[MAX_PROFILE_NAME];
-};
-#endif
-
 /** Protects live profile settings; release it before Asterisk channel lookup. */
 AST_MUTEX_DEFINE_STATIC(settings_lock);
 /** Live configuration snapshot protected by settings_lock. */
@@ -87,22 +154,40 @@ struct txagc_audio_snapshot {
 static _Atomic(struct txagc_audio_snapshot *) audio_settings;
 /** Writer-owned list of snapshots reclaimed only after audio processing stops. */
 static struct txagc_audio_snapshot *audio_settings_history;
+/** Candidate settings visible only while one control-plane reload builds graphs. */
+/* The reload control plane alone consults this pointer.  Test builds expose it
+ * so the candidate-only accessors can be verified without publishing a
+ * half-built generation to an audio callback. */
+PROCESSING_PRIVATE _Thread_local const struct txagc_settings *staged_settings;
 /** Background thread that attaches eligible link audiohooks. */
 PROCESSING_PRIVATE pthread_t scan_thread = AST_PTHREADT_NULL;
 /** Scanner stop request observed during module shutdown. */
 PROCESSING_PRIVATE int stopping;
 /** Set when a candidate configuration contains a malformed value. */
 PROCESSING_PRIVATE int settings_parse_error;
+#ifdef URP_PROCESSING_TESTING
+/* Test-only publication fault control for the lock-free statistics reader. */
+PROCESSING_PRIVATE int processing_test_statistics_flip_index;
+#endif
 static int is_flat_section(const char *category);
-static int validate_active_crossovers(struct txagc_settings *candidate);
+struct usbradioplus_native_graph_transaction;
+int usbradioplus_prepare_all_native_processing(void);
+int usbradioplus_stage_all_native_processing(
+	struct usbradioplus_native_graph_transaction **transaction);
+void usbradioplus_publish_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction);
+void usbradioplus_discard_native_processing_transaction(
+	struct usbradioplus_native_graph_transaction *transaction);
+int usbradioplus_refresh_all_processing_hardware(void);
+int usbradioplus_refresh_all_processing_signaling(void);
 
 /** @brief Find a profile without modifying an immutable settings snapshot.
  * @param current Immutable settings snapshot to search.
  * @param channel Configured profile name or Asterisk channel name.
  * @return Matching profile, or NULL when no profile matches.
  */
-static const struct txagc_profile *find_profile_const(const struct txagc_settings *current,
-						      const char *channel)
+PROCESSING_PRIVATE const struct txagc_profile *
+find_profile_const(const struct txagc_settings *current, const char *channel)
 {
 	size_t i;
 
@@ -130,15 +215,44 @@ static struct txagc_audio_snapshot *allocate_audio_snapshot(void)
 /** @brief Publish a complete immutable settings copy while settings_lock is held.
  * @param snapshot Storage allocated before taking settings_lock.
  */
-static void publish_audio_settings_locked(struct txagc_audio_snapshot *snapshot)
+static void publish_audio_snapshot_locked(struct txagc_audio_snapshot *snapshot)
 {
-	snapshot->settings = settings;
 	snapshot->next = audio_settings_history;
 	audio_settings_history = snapshot;
 	atomic_store_explicit(&audio_settings, snapshot, memory_order_release);
 }
 
-/** @brief Release settings snapshots after all audio hooks and workers are stopped. */
+/** @brief Publish the mutable settings copy after preparing a snapshot.
+ * @param snapshot Fully populated immutable snapshot allocated before locking.
+ *
+ * Callers that change one live setting use this helper. Reload builds a private
+ * candidate first and calls commit_candidate_settings() only after every native
+ * and link graph has prepared successfully.
+ */
+static void publish_audio_settings_locked(struct txagc_audio_snapshot *snapshot)
+{
+	snapshot->settings = settings;
+	publish_audio_snapshot_locked(snapshot);
+}
+
+/** @brief Commit an already validated and fully prepared reload generation.
+ * @param candidate Mutable settings to become live.
+ * @param snapshot Immutable callback snapshot containing candidate.
+ *
+ * Every fallible graph operation completes before this publication.  A failed
+ * reload therefore leaves both the mutable control-plane settings and the
+ * immutable callback snapshot on their prior generation.
+ */
+static void commit_candidate_settings(const struct txagc_settings *candidate,
+				      struct txagc_audio_snapshot *snapshot)
+{
+	ast_mutex_lock(&settings_lock);
+	settings = *candidate;
+	publish_audio_snapshot_locked(snapshot);
+	ast_mutex_unlock(&settings_lock);
+}
+
+/** @brief Release settings snapshots after all audio callbacks are stopped. */
 static void clear_audio_settings(void)
 {
 	struct txagc_audio_snapshot *snapshot;
@@ -206,7 +320,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->rnnoise_enabled = 0;
 	base->input_gain_configured = 1;
 	base->ctcss_filter_configured = 1;
-	base->splatter_filter_configured = 1;
 	base->agc.stage_count = 6;
 	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
 	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
@@ -296,7 +409,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.limiter_knee_db = 0.0;
 	base->agc.limiter_attack_ms = 1.0;
 	base->agc.limiter_release_ms = 50.0;
-	base->agc.splatter_filter_enabled = 0;
 	base->agc.limiter_low_crossover_hz = 500.0;
 	base->agc.limiter_high_crossover_hz = 2000.0;
 	base->agc.low_limiter_threshold_dbfs = -1.5;
@@ -321,8 +433,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.lookahead_release_ms = 100.0;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.post_limiter_lowpass_hz = 8000.0;
-	base->agc.output_highpass_hz = 300.0;
-	base->agc.output_lowpass_hz = 3000.0;
 	base->agc.output_gain_db = -6.2;
 	value->chains[TXAGC_LINK] = *base;
 	value->chains[TXAGC_VOICE_TELEMETRY] = *base;
@@ -350,8 +460,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.equalizer_low_gain_db = 2.0;
 	base->agc.equalizer_mid_gain_db = -0.5;
 	base->agc.equalizer_high_gain_db = -1.0;
-	base->agc.splatter_filter_enabled = 1;
-	base->splatter_filter_configured = 1;
 	base->agc.lookahead_limiter_enabled = 0;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.output_gain_db = 0.0;
@@ -365,15 +473,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	value->hardware.output_b_assignment = USBRADIOPLUS_HW_OFF;
 	value->hardware.output_a_assignment_configured = 1;
 	value->hardware.output_b_assignment_configured = 1;
-	value->hardware.cos_assignment_configured = 1;
-	ast_copy_string(value->hardware.cos_assignment, "dsp",
-			sizeof(value->hardware.cos_assignment));
-	value->hardware.rx_ctcss_frequencies_configured = 1;
-	value->hardware.tx_ctcss_frequencies_configured = 1;
-	ast_copy_string(value->hardware.rx_ctcss_frequencies, "100.0",
-			sizeof(value->hardware.rx_ctcss_frequencies));
-	ast_copy_string(value->hardware.tx_ctcss_frequencies, "100.0",
-			sizeof(value->hardware.tx_ctcss_frequencies));
 #ifdef URP_PROCESSING_TESTING
 	/* Test cases deliberately edit the global settings tree between callbacks. */
 	if (all == &settings)
@@ -489,8 +588,6 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(lookahead_attack_ms);
 	REQUIRE_FINITE(lookahead_release_ms);
 	REQUIRE_FINITE(post_limiter_lowpass_hz);
-	REQUIRE_FINITE(output_highpass_hz);
-	REQUIRE_FINITE(output_lowpass_hz);
 	REQUIRE_FINITE(output_gain_db);
 #undef REQUIRE_FINITE
 	if ((value->agc.compressor_bands != 1 && value->agc.compressor_bands != 3) ||
@@ -650,10 +747,7 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	    value->agc.lookahead_attack_ms < 0.1 || value->agc.lookahead_attack_ms > 20.0 ||
 	    value->agc.lookahead_release_ms < 1.0 || value->agc.lookahead_release_ms > 5000.0 ||
 	    value->agc.post_limiter_lowpass_hz < 5000.0 ||
-	    value->agc.post_limiter_lowpass_hz > 20000.0 || value->agc.output_highpass_hz < 20.0 ||
-	    value->agc.output_highpass_hz > 2000.0 ||
-	    value->agc.output_lowpass_hz <= value->agc.output_highpass_hz ||
-	    value->agc.output_lowpass_hz > 6000.0 || value->agc.output_gain_db < -30.0 ||
+	    value->agc.post_limiter_lowpass_hz > 20000.0 || value->agc.output_gain_db < -30.0 ||
 	    value->agc.output_gain_db > 30.0) {
 		return -1;
 	}
@@ -706,8 +800,7 @@ PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 			return -1;
 		}
 		if (source != TXAGC_VOICE_TELEMETRY &&
-		    (value->chains[source].agc.splatter_filter_enabled ||
-		     value->chains[source].agc.lookahead_limiter_enabled ||
+		    (value->chains[source].agc.lookahead_limiter_enabled ||
 		     value->chains[source].agc.post_limiter_lowpass_enabled)) {
 			ast_log(LOG_ERROR,
 				"RadioPlus [%s]: transmitter-tail stages are valid only in "
@@ -860,7 +953,6 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"limiter_knee_db",
 		"limiter_attack_ms",
 		"limiter_release_ms",
-		"splatter_filter_enabled",
 		"limiter_low_crossover_hz",
 		"limiter_high_crossover_hz",
 		"limiter_low_threshold_dbfs",
@@ -885,8 +977,6 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"lookahead_limiter_release_ms",
 		"post_limiter_lowpass_enabled",
 		"post_limiter_lowpass_hz",
-		"splatter_filter_highpass_hz",
-		"splatter_filter_lowpass_hz",
 		"output_gain_db",
 	};
 	size_t index;
@@ -897,73 +987,45 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 }
 
 /** Accepted non-audio hardware option names. */
-PROCESSING_PRIVATE const char *const hardware_override_options[] = {
-	"hardware_device_identifier",
-	"hardware_serial",
-	"hardware_interface_type",
-	"hardware_eeprom_enabled",
-	"hardware_audio_fragment_count",
-	"hardware_audio_queue_size",
-	"hardware_rx_cpu_saver_enabled",
-	"hardware_tx_cpu_saver_enabled",
-	"hardware_rx_audio_source",
-	"hardware_rx_ctcss_source",
-	"hardware_vox_hang_ms",
-	"hardware_vox_threshold",
-	"hardware_noise_squelch_hysteresis",
-	"hardware_noise_filter_type",
-	"hardware_squelch_delay",
-	"hardware_rx_on_delay_frames",
-	"hardware_rx_polarity_inverted",
-	"hardware_squelch_level",
-	"hardware_rx_ctcss_level",
-	"hardware_rx_ctcss_override_enabled",
-	"hardware_rx_ctcss_relax",
-	"hardware_tx_ctcss_default_hz",
-	"hardware_tx_ctcss_level",
-	"hardware_ctcss_turnoff_mode",
-	"hardware_dcs_rx_polarity_inverted",
-	"hardware_dcs_tx_polarity_inverted",
-	"hardware_lsd_rx_polarity_inverted",
-	"hardware_lsd_tx_polarity_inverted",
-	"hardware_tx_preemphasis_enabled",
-	"hardware_tx_settle_ms",
-	"hardware_tx_rx_blanking_ms",
-	"hardware_tx_off_delay_frames",
-	"hardware_tx_polarity_inverted",
-	"hardware_ptt_inverted",
-	"hardware_rx_frequency_hz",
-	"hardware_tx_frequency_hz",
-	"hardware_repeater_number",
-	"hardware_area",
-	"hardware_user_key",
-	"hardware_idle_interval",
-	"hardware_turnoff_count",
-	"hardware_voter_reporting",
-	"hardware_clip_led_gpio",
-	"hardware_gpio_1_mode",
-	"hardware_gpio_2_mode",
-	"hardware_gpio_3_mode",
-	"hardware_gpio_4_mode",
-	"hardware_gpio_5_mode",
-	"hardware_gpio_6_mode",
-	"hardware_gpio_7_mode",
-	"hardware_gpio_8_mode",
-	"hardware_parallel_port_device",
-	"hardware_parallel_port_base_address",
-	"hardware_parallel_pin_2_assignment",
-	"hardware_parallel_pin_3_assignment",
-	"hardware_parallel_pin_4_assignment",
-	"hardware_parallel_pin_5_assignment",
-	"hardware_parallel_pin_6_assignment",
-	"hardware_parallel_pin_7_assignment",
-	"hardware_parallel_pin_8_assignment",
-	"hardware_parallel_pin_9_assignment",
-	"hardware_parallel_pin_10_assignment",
-	"hardware_parallel_pin_12_assignment",
-	"hardware_parallel_pin_13_assignment",
-	"hardware_parallel_pin_15_assignment",
-	"hardware_emphasis_corner_hz",
+PROCESSING_PRIVATE const char
+	*const hardware_override_options[USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT] = {
+		"hardware_device_identifier",
+		"hardware_serial",
+		"hardware_interface_type",
+		"hardware_eeprom_enabled",
+		"hardware_audio_fragment_count",
+		"hardware_audio_queue_size",
+		"hardware_ptt_inverted",
+		"hardware_repeater_number",
+		"hardware_area",
+		"hardware_user_key",
+		"hardware_idle_interval",
+		"hardware_turnoff_count",
+		"hardware_voter_reporting",
+		"hardware_clip_led_gpio",
+		"hardware_gpio_1_mode",
+		"hardware_gpio_2_mode",
+		"hardware_gpio_3_mode",
+		"hardware_gpio_4_mode",
+		"hardware_gpio_5_mode",
+		"hardware_gpio_6_mode",
+		"hardware_gpio_7_mode",
+		"hardware_gpio_8_mode",
+		"hardware_parallel_port_device",
+		"hardware_parallel_port_base_address",
+		"hardware_parallel_pin_2_assignment",
+		"hardware_parallel_pin_3_assignment",
+		"hardware_parallel_pin_4_assignment",
+		"hardware_parallel_pin_5_assignment",
+		"hardware_parallel_pin_6_assignment",
+		"hardware_parallel_pin_7_assignment",
+		"hardware_parallel_pin_8_assignment",
+		"hardware_parallel_pin_9_assignment",
+		"hardware_parallel_pin_10_assignment",
+		"hardware_parallel_pin_12_assignment",
+		"hardware_parallel_pin_13_assignment",
+		"hardware_parallel_pin_15_assignment",
+		"hardware_emphasis_corner_hz",
 };
 /** Accepted Asterisk jitter-buffer option names. */
 PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
@@ -987,6 +1049,31 @@ PROCESSING_PRIVATE const char *const diagnostics_override_options[] = {
 	"diagnostics_trace_type",
 	"diagnostics_trace_level",
 	"diagnostics_fever",
+};
+/** Accepted DCS signaling options. */
+PROCESSING_PRIVATE const char *const dcs_override_options[] = {
+	"receive_code", "transmit_code", "turnoff_code_enabled", "turnoff_duration_ms", "peak_dbfs",
+};
+/** Accepted CTCSS signaling options. */
+PROCESSING_PRIVATE const char *const ctcss_override_options[] = {
+	"receive_frequencies",	   "transmit_frequencies",     "receive_source",
+	"receive_decoder_gain_db", "receive_override_enabled", "receive_relax",
+	"transmit_default_hz",	   "transmit_peak_dbfs",       "turnoff_mode",
+	"phase_shift_degrees",	   "tail_duration_ms",	       "tail_frequency_hz",
+};
+/** Accepted receiver controls. Exactly one signaling method is selected here. */
+PROCESSING_PRIVATE const char *const receive_override_options[] = {
+	"cpu_saver_enabled",	 "audio_source",     "signaling_method",
+	"vox_hang_ms",		 "vox_threshold",    "noise_squelch_hysteresis",
+	"noise_filter_type",	 "squelch_delay_ms", "on_delay_frames",
+	"polarity_inverted",	 "squelch_level",    "frequency_hz",
+	"lsd_polarity_inverted", "cos_assignment",
+};
+/** Accepted transmitter controls. Exactly one signaling method is selected here. */
+PROCESSING_PRIVATE const char *const transmit_override_options[] = {
+	"cpu_saver_enabled", "signaling_method", "preemphasis_enabled",
+	"settle_ms",	     "rx_blanking_ms",	 "off_delay_frames",
+	"polarity_inverted", "frequency_hz",	 "lsd_polarity_inverted",
 };
 
 /** @brief Compare a configuration name against an allowed-name table.
@@ -1014,15 +1101,15 @@ PROCESSING_PRIVATE int validate_named_option(const char *category, const char *k
 					     const struct ast_variable *variable)
 {
 	static const char *const radio_options[] = {
-		"channel_enabled", "asterisk_profile",	      "hardware_profile",
-		"duplex_profile",  "diagnostics_profile",     "local_profile",
-		"link_profile",	   "voice_telemetry_profile",
+		"channel_enabled", "asterisk_profile", "hardware_profile",
+		"receive_profile", "transmit_profile", "ctcss_profile",
+		"dcs_profile",	   "duplex_profile",   "diagnostics_profile",
+		"local_profile",   "link_profile",     "voice_telemetry_profile",
 	};
 	static const char *const hardware_options[] = {
-		"hardware_input_gain_db",	 "hardware_output_a_gain_db",
-		"hardware_output_b_gain_db",	 "hardware_output_a_assignment",
-		"hardware_output_b_assignment",	 "hardware_cos_assignment",
-		"hardware_rx_ctcss_frequencies", "hardware_tx_ctcss_frequencies",
+		"hardware_input_gain_db",	"hardware_output_a_gain_db",
+		"hardware_output_b_gain_db",	"hardware_output_a_assignment",
+		"hardware_output_b_assignment",
 	};
 	if (!strcmp(kind, "radio"))
 		return option_in_list(variable->name, radio_options, ARRAY_LEN(radio_options)) ? 0
@@ -1041,6 +1128,16 @@ PROCESSING_PRIVATE int validate_named_option(const char *category, const char *k
 				       ARRAY_LEN(hardware_override_options)))
 			       ? 0
 			       : -1;
+	if (!strcmp(kind, "receive"))
+		return option_in_list(variable->name, receive_override_options,
+				      ARRAY_LEN(receive_override_options))
+			       ? 0
+			       : -1;
+	if (!strcmp(kind, "transmit"))
+		return option_in_list(variable->name, transmit_override_options,
+				      ARRAY_LEN(transmit_override_options))
+			       ? 0
+			       : -1;
 	if (!strcmp(kind, "duplex"))
 		return option_in_list(variable->name, duplex_override_options,
 				      ARRAY_LEN(duplex_override_options))
@@ -1051,13 +1148,19 @@ PROCESSING_PRIVATE int validate_named_option(const char *category, const char *k
 				      ARRAY_LEN(diagnostics_override_options))
 			       ? 0
 			       : -1;
+	if (!strcmp(kind, "dcs"))
+		return option_in_list(variable->name, dcs_override_options,
+				      ARRAY_LEN(dcs_override_options))
+			       ? 0
+			       : -1;
+	if (!strcmp(kind, "ctcss"))
+		return option_in_list(variable->name, ctcss_override_options,
+				      ARRAY_LEN(ctcss_override_options))
+			       ? 0
+			       : -1;
 	if (strcmp(kind, "local") && strcmp(kind, "link") && strcmp(kind, "voice_telemetry"))
 		return -1;
 	if (strcmp(kind, "local") && !strncasecmp(variable->name, "receive_bandpass_", 17))
-		return -1;
-	if (!strcmp(kind, "link") && (!strcasecmp(variable->name, "splatter_filter_enabled") ||
-				      !strcasecmp(variable->name, "splatter_filter_highpass_hz") ||
-				      !strcasecmp(variable->name, "splatter_filter_lowpass_hz")))
 		return -1;
 	(void)category;
 	return known_chain_option(variable->name) ? 0 : -1;
@@ -1106,12 +1209,84 @@ PROCESSING_PRIVATE int validate_option_names(struct ast_config *cfg)
 	return validate_named_sections(cfg);
 }
 
-/** @brief Copy an explicitly configured option into a bounded channel override table.
- * @param updated Resolved named-channel profile.
- * @param cfg Asterisk configuration tree owned by the caller.
- * @param section Configuration section name.
- * @param name Option, metadata field, or channel name.
- * @return Zero on success; a nonzero status if the operation cannot complete.
+PROCESSING_PRIVATE int valid_frequency_list(const char *text);
+
+/** @brief Check the configured spelling of one DCS code.
+ * @param text Candidate three-digit octal code followed by N or I.
+ * @return One if the code has valid syntax and polarity; zero otherwise.
+ */
+PROCESSING_PRIVATE int valid_dcs_code(const char *text)
+{
+	return text && strlen(text) == 4 && text[0] >= '0' && text[0] <= '7' && text[1] >= '0' &&
+	       text[1] <= '7' && text[2] >= '0' && text[2] <= '7' &&
+	       (text[3] == 'N' || text[3] == 'n' || text[3] == 'I' || text[3] == 'i');
+}
+
+/** @brief Return an exact upper limit for an integer clean-slate control.
+ * @param name Configuration option name.
+ * @param maximum Receives the inclusive maximum when the option is recognized.
+ * @return One when the option requires a nonnegative integral value, otherwise zero.
+ *
+ * These controls are consumed with strtol() by the channel adapter. Validate
+ * their representation here so a successful processing reload cannot defer a
+ * decimal, overflowed, or out-of-range value to channel construction.
+ */
+static int clean_slate_integer_limit(const char *name, long *maximum)
+{
+	static const struct {
+		const char *name;
+		long maximum;
+	} limits[] = {
+		/* These controls are copied into signed 16-bit radio-engine fields. */
+		{"vox_hang_ms", INT16_MAX},
+		{"vox_threshold", INT16_MAX},
+		{"noise_squelch_hysteresis", INT16_MAX},
+		/* The receiver implements exactly the two documented detector filters. */
+		{"noise_filter_type", 1},
+		{"squelch_delay_ms", RXSQDELAYBUFSIZE / 8 - 1},
+		/* The channel adapter caps both frame counters at 60 s / 20 ms. */
+		{"on_delay_frames", 3000},
+		{"squelch_level", 999},
+		{"frequency_hz", INT_MAX},
+		{"receive_relax", 1},
+		{"settle_ms", INT_MAX},
+		{"rx_blanking_ms", INT16_MAX},
+		{"off_delay_frames", 3000},
+	};
+	size_t index;
+
+	for (index = 0; index < ARRAY_LEN(limits); ++index) {
+		if (!strcasecmp(name, limits[index].name)) {
+			*maximum = limits[index].maximum;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/** @brief Validate one nonnegative integer that is stored in a channel field.
+ * @param text Candidate configuration text.
+ * @param maximum Inclusive upper bound imposed by the receiving field.
+ * @return One for a complete in-range integer, otherwise zero.
+ */
+PROCESSING_PRIVATE int valid_nonnegative_integer(const char *text, long maximum)
+{
+	char *end;
+	long value;
+
+	if (!text)
+		return 0;
+	errno = 0;
+	value = strtol(text, &end, 0);
+	return end != text && !*end && errno != ERANGE && value >= 0 && value <= maximum;
+}
+
+/** @brief Read, validate, and retain one resolved non-audio option.
+ * @param updated Profile receiving the resolved option.
+ * @param cfg Parsed Asterisk configuration.
+ * @param section Section containing the option.
+ * @param name Option name.
+ * @return Zero when absent or valid, otherwise nonzero.
  */
 PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_config *cfg,
 				    const char *section, const char *name)
@@ -1119,6 +1294,7 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 	const char *value = ast_variable_retrieve(cfg, section, name);
 	struct section_override *entry;
 	char *end;
+	long integer_limit;
 	if (!value)
 		return 0;
 	if (strstr(name, "_enabled") || strstr(name, "_inverted")) {
@@ -1126,6 +1302,9 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 			goto invalid;
 	} else if (!strcasecmp(name, "asterisk_jitter_buffer_implementation")) {
 		if (strcasecmp(value, "fixed") && strcasecmp(value, "adaptive"))
+			goto invalid;
+	} else if (clean_slate_integer_limit(name, &integer_limit)) {
+		if (!valid_nonnegative_integer(value, integer_limit))
 			goto invalid;
 	} else if (!strcasecmp(name, "hardware_emphasis_corner_hz")) {
 		double frequency = strtod(value, &end);
@@ -1153,18 +1332,65 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 		unsigned long address = strtoul(value, &end, 0);
 		if (end == value || *end || address > UINT32_MAX)
 			goto invalid;
-	} else if (!strcasecmp(name, "hardware_rx_audio_source")) {
+	} else if (!strcasecmp(name, "audio_source")) {
 		if (strcasecmp(value, "no") && strcasecmp(value, "speaker") &&
 		    strcasecmp(value, "flat"))
 			goto invalid;
-	} else if (!strcasecmp(name, "hardware_rx_ctcss_source")) {
+	} else if (!strcasecmp(name, "receive_source")) {
 		if (strcasecmp(value, "no") && strcasecmp(value, "usb") &&
 		    strcasecmp(value, "usbinvert") && strcasecmp(value, "dsp") &&
 		    strcasecmp(value, "pp") && strcasecmp(value, "ppinvert"))
 			goto invalid;
-	} else if (!strcasecmp(name, "hardware_ctcss_turnoff_mode")) {
-		if (strcasecmp(value, "no") && strcasecmp(value, "phase") &&
-		    strcasecmp(value, "notone"))
+	} else if (!strcasecmp(name, "receive_frequencies") ||
+		   !strcasecmp(name, "transmit_frequencies")) {
+		if (!valid_frequency_list(value))
+			goto invalid;
+	} else if (!strcasecmp(name, "transmit_default_hz")) {
+		double number = strtod(value, &end);
+		/* A zero value is not a disabled setting: the radio engine would
+		 * silently replace it with a compatibility default.  Reject it here
+		 * so the configuration describes the requested signaling exactly. */
+		if (end == value || *end || !isfinite(number) || number <= 0.0 ||
+		    !urp_ctcss_frequency_supported((float)number))
+			goto invalid;
+	} else if (!strcasecmp(name, "phase_shift_degrees") ||
+		   !strcasecmp(name, "tail_frequency_hz")) {
+		double number = strtod(value, &end);
+		if (end == value || *end || !isfinite(number) || number <= 0.0)
+			goto invalid;
+	} else if (!strcasecmp(name, "tail_duration_ms")) {
+		long duration = strtol(value, &end, 0);
+		/* Phase and replacement-tone tails reserve two 20 ms state frames. */
+		if (end == value || *end || duration < 2L * MS_PER_FRAME || duration > INT16_MAX)
+			goto invalid;
+	} else if (!strcasecmp(name, "turnoff_mode")) {
+		if (strcasecmp(value, "no") && strcasecmp(value, "ctcss_phase_shift") &&
+		    strcasecmp(value, "ctcss_tone_remove") && strcasecmp(value, "ctcss_tail_tone"))
+			goto invalid;
+	} else if (!strcasecmp(name, "receive_code") || !strcasecmp(name, "transmit_code")) {
+		if (!valid_dcs_code(value))
+			goto invalid;
+	} else if (!strcasecmp(name, "turnoff_duration_ms")) {
+		long duration = strtol(value, &end, 0);
+		if (end == value || *end || duration < 150 || duration > 200)
+			goto invalid;
+	} else if (!strcasecmp(name, "signaling_method")) {
+		if (strcasecmp(value, "carrier") && strcasecmp(value, "ctcss") &&
+		    strcasecmp(value, "dcs"))
+			goto invalid;
+	} else if (!strcasecmp(name, "cos_assignment")) {
+		if (strcasecmp(value, "no") && strcasecmp(value, "usb") &&
+		    strcasecmp(value, "usbinvert") && strcasecmp(value, "dsp") &&
+		    strcasecmp(value, "vox") && strcasecmp(value, "pp") &&
+		    strcasecmp(value, "ppinvert"))
+			goto invalid;
+	} else if (!strcasecmp(name, "receive_decoder_gain_db")) {
+		double number = strtod(value, &end);
+		if (end == value || *end || !isfinite(number) || number < -60.0 || number > 60.0)
+			goto invalid;
+	} else if (!strcasecmp(name, "transmit_peak_dbfs") || !strcasecmp(name, "peak_dbfs")) {
+		double number = strtod(value, &end);
+		if (end == value || *end || !isfinite(number) || number < -90.0 || number > 0.0)
 			goto invalid;
 	} else if (!strcasecmp(name, "duplex_local_repeat_mode")) {
 		if (strcasecmp(value, "hardware") && strcasecmp(value, "software"))
@@ -1176,10 +1402,7 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 			goto invalid;
 		if (number < 0.0)
 			goto invalid;
-		if ((!strcasecmp(name, "hardware_squelch_level") ||
-		     !strcasecmp(name, "hardware_tx_ctcss_level") ||
-		     !strcasecmp(name, "duplex_local_repeat_level")) &&
-		    number > 999.0)
+		if (!strcasecmp(name, "duplex_local_repeat_level") && number > 999.0)
 			goto invalid;
 		if (!strcasecmp(name, "hardware_clip_led_gpio") && number > 8.0)
 			goto invalid;
@@ -1208,15 +1431,20 @@ invalid:
  * @param cfg Asterisk configuration tree owned by the caller.
  * @param asterisk_section Resolved Asterisk-options section name.
  * @param hardware_section Resolved hardware section name.
+ * @param receive_section Resolved receiver-options section name.
+ * @param transmit_section Resolved transmitter-options section name.
+ * @param ctcss_section Resolved CTCSS-options section name.
+ * @param dcs_section Resolved DCS-options section name.
  * @param duplex_section Resolved duplex section name.
  * @param diagnostics_section Resolved diagnostics section name.
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
-PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, struct ast_config *cfg,
-					      const char *asterisk_section,
-					      const char *hardware_section,
-					      const char *duplex_section,
-					      const char *diagnostics_section)
+PROCESSING_PRIVATE int
+read_section_overrides(struct txagc_profile *updated, struct ast_config *cfg,
+		       const char *asterisk_section, const char *hardware_section,
+		       const char *receive_section, const char *transmit_section,
+		       const char *ctcss_section, const char *dcs_section,
+		       const char *duplex_section, const char *diagnostics_section)
 {
 	size_t i;
 	for (i = 0; i < ARRAY_LEN(asterisk_override_options); ++i)
@@ -1225,12 +1453,24 @@ PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, str
 	for (i = 0; i < ARRAY_LEN(hardware_override_options); ++i)
 		if (add_override(updated, cfg, hardware_section, hardware_override_options[i]))
 			return -1;
+	for (i = 0; i < ARRAY_LEN(receive_override_options); ++i)
+		if (add_override(updated, cfg, receive_section, receive_override_options[i]))
+			return -1;
+	for (i = 0; i < ARRAY_LEN(transmit_override_options); ++i)
+		if (add_override(updated, cfg, transmit_section, transmit_override_options[i]))
+			return -1;
 	for (i = 0; i < ARRAY_LEN(duplex_override_options); ++i)
 		if (add_override(updated, cfg, duplex_section, duplex_override_options[i]))
 			return -1;
 	for (i = 0; i < ARRAY_LEN(diagnostics_override_options); ++i)
 		if (add_override(updated, cfg, diagnostics_section,
 				 diagnostics_override_options[i]))
+			return -1;
+	for (i = 0; i < ARRAY_LEN(dcs_override_options); ++i)
+		if (add_override(updated, cfg, dcs_section, dcs_override_options[i]))
+			return -1;
+	for (i = 0; i < ARRAY_LEN(ctcss_override_options); ++i)
+		if (add_override(updated, cfg, ctcss_section, ctcss_override_options[i]))
 			return -1;
 	return 0;
 }
@@ -1241,18 +1481,24 @@ PROCESSING_PRIVATE int read_section_overrides(struct txagc_profile *updated, str
  * @param radio Named radio section supplying channel-level options.
  * @param asterisk_section Resolved Asterisk-options section name.
  * @param hardware_section Resolved hardware section name.
+ * @param receive_section Resolved receiver-options section name.
+ * @param transmit_section Resolved transmitter-options section name.
+ * @param ctcss_section Resolved CTCSS-options section name.
+ * @param dcs_section Resolved DCS-options section name.
  * @param duplex_section Resolved duplex section name.
  * @param diagnostics_section Resolved diagnostics section name.
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
-PROCESSING_PRIVATE int read_profile_overrides(struct txagc_profile *updated, struct ast_config *cfg,
-					      const char *radio, const char *asterisk_section,
-					      const char *hardware_section,
-					      const char *duplex_section,
-					      const char *diagnostics_section)
+PROCESSING_PRIVATE int
+read_profile_overrides(struct txagc_profile *updated, struct ast_config *cfg, const char *radio,
+		       const char *asterisk_section, const char *hardware_section,
+		       const char *receive_section, const char *transmit_section,
+		       const char *ctcss_section, const char *dcs_section,
+		       const char *duplex_section, const char *diagnostics_section)
 {
-	if (read_section_overrides(updated, cfg, asterisk_section, hardware_section, duplex_section,
-				   diagnostics_section))
+	if (read_section_overrides(updated, cfg, asterisk_section, hardware_section,
+				   receive_section, transmit_section, ctcss_section, dcs_section,
+				   duplex_section, diagnostics_section))
 		return -1;
 	return add_override(updated, cfg, radio, "channel_enabled");
 }
@@ -1272,13 +1518,13 @@ PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *secti
 	if (!text)
 		return 0;
 	*configured = 1;
-	if (!strcasecmp(text, "off") || !strcasecmp(text, "no"))
+	if (!strcasecmp(text, "off"))
 		*value = USBRADIOPLUS_HW_OFF;
 	else if (!strcasecmp(text, "voice"))
 		*value = USBRADIOPLUS_HW_VOICE;
-	else if (!strcasecmp(text, "ctcss") || !strcasecmp(text, "tone"))
+	else if (!strcasecmp(text, "ctcss"))
 		*value = USBRADIOPLUS_HW_CTCSS;
-	else if (!strcasecmp(text, "voice_ctcss") || !strcasecmp(text, "composite"))
+	else if (!strcasecmp(text, "voice_ctcss"))
 		*value = USBRADIOPLUS_HW_VOICE_CTCSS;
 	else if (!strcasecmp(text, "auxvoice"))
 		*value = USBRADIOPLUS_HW_AUX_VOICE;
@@ -1289,9 +1535,9 @@ PROCESSING_PRIVATE int read_assignment(struct ast_config *cfg, const char *secti
 	return 0;
 }
 
-/** @brief Check a comma-separated CTCSS frequency list for valid finite values.
+/** @brief Check a comma-separated CTCSS frequency list against the tone table.
  * @param text Text to parse; mutable storage may be edited in place.
- * @return One for a valid frequency list; zero otherwise.
+ * @return One for a nonempty list of supported CTCSS tones; zero otherwise.
  */
 PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 {
@@ -1301,7 +1547,8 @@ PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 	for (;;) {
 		char *end;
 		double frequency = strtod(cursor, &end);
-		if (end == cursor || !isfinite(frequency) || frequency <= 0.0)
+		if (end == cursor || !isfinite(frequency) || frequency <= 0.0 ||
+		    !urp_ctcss_frequency_supported((float)frequency))
 			return 0;
 		while (*end == ' ' || *end == '\t')
 			++end;
@@ -1317,7 +1564,7 @@ PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 	}
 }
 
-/** @brief Read hardware gains, routing, carrier assignment, and CTCSS frequency lists.
+/** @brief Read hardware gains and playback routing.
  * @param cfg Asterisk configuration tree owned by the caller.
  * @param section Configuration section name.
  * @param hardware Receives the resolved hardware settings.
@@ -1326,7 +1573,6 @@ PROCESSING_PRIVATE int valid_frequency_list(const char *text)
 PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg, const char *section,
 				     struct usbradioplus_hardware_settings *hardware)
 {
-	const char *text;
 	if (ast_variable_retrieve(cfg, section, "hardware_input_gain_db")) {
 		hardware->input_gain_configured = 1;
 		read_double(cfg, section, "hardware_input_gain_db", &hardware->input_gain_db);
@@ -1338,46 +1584,6 @@ PROCESSING_PRIVATE int read_hardware(struct ast_config *cfg, const char *section
 	if (ast_variable_retrieve(cfg, section, "hardware_output_b_gain_db")) {
 		hardware->output_b_gain_configured = 1;
 		read_double(cfg, section, "hardware_output_b_gain_db", &hardware->output_b_gain_db);
-	}
-	text = ast_variable_retrieve(cfg, section, "hardware_cos_assignment");
-	if (text) {
-		if (strcasecmp(text, "no") && strcasecmp(text, "usb") &&
-		    strcasecmp(text, "usbinvert") && strcasecmp(text, "dsp") &&
-		    strcasecmp(text, "vox") && strcasecmp(text, "pp") &&
-		    strcasecmp(text, "ppinvert")) {
-			ast_log(LOG_ERROR,
-				"RadioPlus [hardware]: invalid hardware_cos_assignment '%s'\n",
-				text);
-			return -1;
-		}
-		hardware->cos_assignment_configured = 1;
-		ast_copy_string(hardware->cos_assignment, text, sizeof(hardware->cos_assignment));
-	}
-	text = ast_variable_retrieve(cfg, section, "hardware_rx_ctcss_frequencies");
-	if (text) {
-		if (!valid_frequency_list(text)) {
-			ast_log(LOG_ERROR,
-				"RadioPlus [hardware]: invalid hardware_rx_ctcss_frequencies "
-				"'%s'\n",
-				text);
-			return -1;
-		}
-		hardware->rx_ctcss_frequencies_configured = 1;
-		ast_copy_string(hardware->rx_ctcss_frequencies, text,
-				sizeof(hardware->rx_ctcss_frequencies));
-	}
-	text = ast_variable_retrieve(cfg, section, "hardware_tx_ctcss_frequencies");
-	if (text) {
-		if (!valid_frequency_list(text)) {
-			ast_log(LOG_ERROR,
-				"RadioPlus [hardware]: invalid hardware_tx_ctcss_frequencies "
-				"'%s'\n",
-				text);
-			return -1;
-		}
-		hardware->tx_ctcss_frequencies_configured = 1;
-		ast_copy_string(hardware->tx_ctcss_frequencies, text,
-				sizeof(hardware->tx_ctcss_frequencies));
 	}
 	return read_assignment(cfg, section, "hardware_output_a_assignment",
 			       &hardware->output_a_assignment,
@@ -1575,11 +1781,6 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "limiter_knee_db", &chain->agc.limiter_knee_db);
 	read_double(cfg, section, "limiter_attack_ms", &chain->agc.limiter_attack_ms);
 	read_double(cfg, section, "limiter_release_ms", &chain->agc.limiter_release_ms);
-	if (ast_variable_retrieve(cfg, section, "splatter_filter_enabled") ||
-	    ast_variable_retrieve(cfg, section, "splatter_filter_highpass_hz") ||
-	    ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz"))
-		chain->splatter_filter_configured = 1;
-	READ_BOOL("splatter_filter_enabled", chain->agc.splatter_filter_enabled);
 	read_double(cfg, section, "limiter_low_crossover_hz", &chain->agc.limiter_low_crossover_hz);
 	read_double(cfg, section, "limiter_high_crossover_hz",
 		    &chain->agc.limiter_high_crossover_hz);
@@ -1609,8 +1810,6 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "lookahead_limiter_release_ms", &chain->agc.lookahead_release_ms);
 	READ_BOOL("post_limiter_lowpass_enabled", chain->agc.post_limiter_lowpass_enabled);
 	read_double(cfg, section, "post_limiter_lowpass_hz", &chain->agc.post_limiter_lowpass_hz);
-	read_double(cfg, section, "splatter_filter_highpass_hz", &chain->agc.output_highpass_hz);
-	read_double(cfg, section, "splatter_filter_lowpass_hz", &chain->agc.output_lowpass_hz);
 	read_double(cfg, section, "output_gain_db", &chain->agc.output_gain_db);
 #undef READ_BOOL
 	return read_stage_order(cfg, section, chain);
@@ -1642,9 +1841,9 @@ static int scoped_section(char *destination, size_t size, const char *kind, cons
  */
 static int is_profile_section(const char *category)
 {
-	static const char *const prefixes[] = {"asterisk ",	  "hardware ", "duplex ",
-					       "diagnostics ",	  "local ",    "link ",
-					       "voice_telemetry "};
+	static const char *const prefixes[] = {
+		"asterisk ", "hardware ",    "receive ", "transmit ", "duplex ",	 "dcs ",
+		"ctcss ",    "diagnostics ", "local ",	 "link ",     "voice_telemetry "};
 	size_t i;
 	for (i = 0; i < ARRAY_LEN(prefixes); ++i)
 		if (!strncasecmp(category, prefixes[i], strlen(prefixes[i])))
@@ -1658,9 +1857,9 @@ static int is_profile_section(const char *category)
  */
 static int is_flat_section(const char *category)
 {
-	static const char *const sections[] = {"general", "asterisk",	    "hardware",
-					       "duplex",  "diagnostics",    "local",
-					       "link",	  "voice_telemetry"};
+	static const char *const sections[] = {
+		"general", "asterisk", "hardware",    "receive", "transmit", "dcs",
+		"ctcss",   "duplex",   "diagnostics", "local",	 "link",     "voice_telemetry"};
 	size_t i;
 	for (i = 0; i < ARRAY_LEN(sections); ++i)
 		if (!strcasecmp(category, sections[i]))
@@ -1694,17 +1893,27 @@ PROCESSING_PRIVATE int resolve_profile_section(struct ast_config *cfg, const cha
 	return 0;
 }
 
-/** @brief Parse and validate a candidate configuration before replacing the locked live snapshot.
- * @return Zero on success; a nonzero status if the operation cannot complete.
+/** @brief Parse a private, validated settings generation without publishing it.
+ * @param snapshot Receives the complete parsed configuration ready for later
+ * publication.
+ * @return Zero on success; a nonzero status if parsing or validation fails.
+ *
+ * Reload callers prepare all control-plane graph candidates against this value
+ * before calling commit_candidate_settings().  Keeping it private prevents a
+ * failed later graph build from becoming observable to either callback path.
  */
-PROCESSING_PRIVATE int load_settings(void)
+PROCESSING_PRIVATE int load_settings_candidate(struct txagc_audio_snapshot **snapshot)
 {
 	struct ast_flags flags = {0};
 	struct ast_config *cfg;
 	struct txagc_settings *defaults;
 	struct txagc_settings *updated;
-	struct txagc_audio_snapshot *snapshot;
+	struct txagc_audio_snapshot *candidate_snapshot;
 	const char *category = NULL;
+
+	if (!snapshot)
+		return -1;
+	*snapshot = NULL;
 
 	defaults = ast_calloc(1, sizeof(*defaults));
 	updated = ast_calloc(1, sizeof(*updated));
@@ -1736,8 +1945,8 @@ PROCESSING_PRIVATE int load_settings(void)
 				goto invalid;
 		}
 		if (read_hardware(cfg, "hardware", &shared->hardware) ||
-		    read_section_overrides(shared, cfg, "asterisk", "hardware", "duplex",
-					   "diagnostics") ||
+		    read_section_overrides(shared, cfg, "asterisk", "hardware", "receive",
+					   "transmit", "ctcss", "dcs", "duplex", "diagnostics") ||
 		    read_chain(cfg, "local", &shared->chains[TXAGC_LOCAL]) ||
 		    read_chain(cfg, "link", &shared->chains[TXAGC_LINK]) ||
 		    read_chain(cfg, "voice_telemetry", &shared->chains[TXAGC_VOICE_TELEMETRY]) ||
@@ -1749,6 +1958,10 @@ PROCESSING_PRIVATE int load_settings(void)
 		struct txagc_profile *profile;
 		char asterisk_section[MAX_CONFIG_SECTION];
 		char hardware_section[MAX_CONFIG_SECTION];
+		char receive_section[MAX_CONFIG_SECTION];
+		char transmit_section[MAX_CONFIG_SECTION];
+		char ctcss_section[MAX_CONFIG_SECTION];
+		char dcs_section[MAX_CONFIG_SECTION];
 		char duplex_section[MAX_CONFIG_SECTION];
 		char diagnostics_section[MAX_CONFIG_SECTION];
 		char local_section[MAX_CONFIG_SECTION];
@@ -1769,6 +1982,14 @@ PROCESSING_PRIVATE int load_settings(void)
 					    sizeof(asterisk_section)) ||
 		    resolve_profile_section(cfg, category, "hardware", hardware_section,
 					    sizeof(hardware_section)) ||
+		    resolve_profile_section(cfg, category, "receive", receive_section,
+					    sizeof(receive_section)) ||
+		    resolve_profile_section(cfg, category, "transmit", transmit_section,
+					    sizeof(transmit_section)) ||
+		    resolve_profile_section(cfg, category, "ctcss", ctcss_section,
+					    sizeof(ctcss_section)) ||
+		    resolve_profile_section(cfg, category, "dcs", dcs_section,
+					    sizeof(dcs_section)) ||
 		    resolve_profile_section(cfg, category, "duplex", duplex_section,
 					    sizeof(duplex_section)) ||
 		    resolve_profile_section(cfg, category, "diagnostics", diagnostics_section,
@@ -1788,12 +2009,13 @@ PROCESSING_PRIVATE int load_settings(void)
 		}
 		if (read_hardware(cfg, hardware_section, &profile->hardware) ||
 		    read_profile_overrides(profile, cfg, category, asterisk_section,
-					   hardware_section, duplex_section, diagnostics_section) ||
+					   hardware_section, receive_section, transmit_section,
+					   ctcss_section, dcs_section, duplex_section,
+					   diagnostics_section) ||
 		    read_chain(cfg, local_section, &profile->chains[TXAGC_LOCAL]) ||
 		    read_chain(cfg, link_section, &profile->chains[TXAGC_LINK]) ||
 		    read_chain(cfg, voice_section, &profile->chains[TXAGC_VOICE_TELEMETRY]))
 			goto invalid;
-		profile->chains[TXAGC_LINK].agc.splatter_filter_enabled = 0;
 		profile->local_enabled = profile->chains[TXAGC_LOCAL].enabled;
 		profile->link_enabled = profile->chains[TXAGC_LINK].enabled;
 		profile->rnnoise_enabled = profile->chains[TXAGC_LOCAL].rnnoise_enabled;
@@ -1806,21 +2028,12 @@ PROCESSING_PRIVATE int load_settings(void)
 		ast_log(LOG_ERROR, "RadioPlus: %s contains no named radio sections\n", CONFIG_FILE);
 		goto invalid;
 	}
-	/* Before the scanner starts there are no owned link hooks with known rates.
-	 * A running reload must preserve the old graph if an active link cannot use
-	 * the candidate crossovers. First frames still validate newly opened links. */
-	if (scan_thread != AST_PTHREADT_NULL && validate_active_crossovers(updated))
+	candidate_snapshot = allocate_audio_snapshot();
+	if (!candidate_snapshot)
 		goto invalid;
-	snapshot = allocate_audio_snapshot();
-	if (!snapshot)
-		goto invalid;
+	candidate_snapshot->settings = *updated;
+	*snapshot = candidate_snapshot;
 	ast_config_destroy(cfg);
-	ast_mutex_lock(&settings_lock);
-	settings = *updated;
-	publish_audio_settings_locked(snapshot);
-	ast_mutex_unlock(&settings_lock);
-	ast_log(LOG_NOTICE, "RadioPlus loaded %zu named radio configuration(s)\n",
-		updated->profile_count);
 	ast_free(defaults);
 	ast_free(updated);
 	return 0;
@@ -1834,22 +2047,136 @@ invalid:
 	return -1;
 }
 
+/** @brief Load and immediately publish settings when no graph transaction is needed.
+ * @return Zero on success; a nonzero status if parsing or validation fails.
+ */
+PROCESSING_PRIVATE int load_settings(void)
+{
+	struct txagc_audio_snapshot *snapshot = NULL;
+
+	/* Asterisk runs module loading on a small CLI worker stack. Keep the full
+	 * configuration generation in the already required heap snapshot rather than
+	 * placing several megabytes of profile storage on that stack. */
+	if (load_settings_candidate(&snapshot))
+		return -1;
+	commit_candidate_settings(&snapshot->settings, snapshot);
+	ast_log(LOG_NOTICE, "RadioPlus loaded %zu named radio configuration(s)\n",
+		snapshot->settings.profile_count);
+	return 0;
+}
+
+/** @brief Initialize callback-owned link measurements before the first graph block.
+ * @param statistics Measurement storage to reset.
+ */
+static void link_callback_statistics_init(struct txagc_link_statistics *statistics)
+{
+	memset(statistics, 0, sizeof(*statistics));
+	statistics->input_peak_dbfs = -INFINITY;
+	statistics->input_rms_dbfs = -INFINITY;
+	statistics->input_max_peak_dbfs = -INFINITY;
+	statistics->input_max_rms_dbfs = -INFINITY;
+	statistics->output_peak_dbfs = -INFINITY;
+	statistics->output_rms_dbfs = -INFINITY;
+	statistics->output_max_peak_dbfs = -INFINITY;
+	statistics->output_max_rms_dbfs = -INFINITY;
+}
+
+/** @brief Refresh callback-owned scalar measurements while the graph is retained.
+ * @param destination Callback measurement snapshot to update.
+ * @param source Retained FFmpeg graph providing the measurements.
+ */
+PROCESSING_PRIVATE void
+link_callback_copy_filter_statistics(struct txagc_link_statistics *destination,
+				     const struct txagc_avfilter *source)
+{
+	if (!destination || !source)
+		return;
+	destination->input_samples = source->input_samples;
+	destination->output_samples = source->output_samples;
+	destination->startup_fill_samples = source->startup_fill_samples;
+	destination->runtime_underrun_samples = source->runtime_underrun_samples;
+	destination->input_peak_dbfs = source->input_peak_dbfs;
+	destination->input_rms_dbfs = source->input_rms_dbfs;
+	destination->input_max_peak_dbfs = source->input_max_peak_dbfs;
+	destination->input_max_rms_dbfs = source->input_max_rms_dbfs;
+	destination->output_peak_dbfs = source->output_peak_dbfs;
+	destination->output_rms_dbfs = source->output_rms_dbfs;
+	destination->output_max_peak_dbfs = source->output_max_peak_dbfs;
+	destination->output_max_rms_dbfs = source->output_max_rms_dbfs;
+}
+
+/** @brief Publish a complete synchronous-link statistics snapshot without a data race.
+ * @param hook Link audiohook owning the callback and published snapshot slots.
+ *
+ * The callback writes the inactive buffer only after its reader count reaches
+ * zero, then release-publishes its index. Readers pin a selected buffer and
+ * recheck the index before copying. A temporarily pinned inactive buffer makes
+ * diagnostics one block stale instead of taking a lock in audio processing.
+ */
+PROCESSING_PRIVATE void link_callback_publish_statistics(struct txagc_hook *hook)
+{
+	unsigned int active = atomic_load_explicit(&hook->statistics_index, memory_order_acquire);
+	unsigned int inactive = active ^ 1U;
+
+	if (atomic_load_explicit(&hook->statistics_readers[inactive], memory_order_acquire) != 0U)
+		return;
+	hook->published_statistics[inactive] = hook->statistics;
+	atomic_store_explicit(&hook->statistics_index, inactive, memory_order_release);
+}
+
+/** @brief Copy one coherent synchronous-link statistics snapshot.
+ * @param hook Link audiohook publishing double-buffered measurements.
+ * @param statistics Receives a complete snapshot.
+ * @return Zero on success; nonzero when no stable snapshot is available.
+ */
+PROCESSING_PRIVATE int txagc_link_statistics_read(struct txagc_hook *hook,
+						  struct txagc_link_statistics *statistics)
+{
+	unsigned int attempt;
+
+	if (!hook || !statistics)
+		return -1;
+	for (attempt = 0; attempt < 3U; ++attempt) {
+		unsigned int index =
+			atomic_load_explicit(&hook->statistics_index, memory_order_acquire);
+
+		atomic_fetch_add_explicit(&hook->statistics_readers[index], 1U,
+					  memory_order_acquire);
+#ifdef URP_PROCESSING_TESTING
+		if (processing_test_statistics_flip_index > 0) {
+			atomic_store_explicit(&hook->statistics_index, index ^ 1U,
+					      memory_order_release);
+			--processing_test_statistics_flip_index;
+		}
+#endif
+		if (index == atomic_load_explicit(&hook->statistics_index, memory_order_acquire)) {
+			*statistics = hook->published_statistics[index];
+			atomic_fetch_sub_explicit(&hook->statistics_readers[index], 1U,
+						  memory_order_release);
+			return 0;
+		}
+		atomic_fetch_sub_explicit(&hook->statistics_readers[index], 1U,
+					  memory_order_release);
+	}
+	return -1;
+}
+
 /** @brief Detach and destroy graph resources owned by a channel audiohook datastore.
  * @param data Owned txagc_hook datastore payload to destroy.
  */
 PROCESSING_PRIVATE void hook_destroy(void *data)
 {
 	struct txagc_hook *hook = data;
-	int source;
 
 	if (!hook) {
 		return;
 	}
+	/* Detachment and destruction quiesce the synchronous callback before its
+	 * graph or callback-owned conversion workspace is released. */
 	ast_audiohook_detach(&hook->audiohook);
 	ast_audiohook_destroy(&hook->audiohook);
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-		txagc_avfilter_destroy(&hook->avfilter[source]);
-	}
+	txagc_avfilter_slot_destroy(&hook->avfilter);
+	ast_free(hook->samples);
 	ast_free(hook);
 }
 
@@ -1859,121 +2186,40 @@ static const struct ast_datastore_info txagc_datastore = {
 	.destroy = hook_destroy,
 };
 
-/** @brief Reject crossover changes that cannot run at a known active link's sample rate.
- * @param candidate Validated candidate profiles, not yet published to audio callbacks.
- * @return Zero on success; -1 for an incompatible active link or unavailable iterator.
- */
-static int validate_active_crossovers(struct txagc_settings *candidate)
-{
-	struct ast_channel_iterator *iterator = ast_channel_iterator_all_new();
-	struct ast_channel *channel;
-	int invalid = 0;
-	if (!iterator) {
-		ast_log(LOG_ERROR,
-			"RadioPlus: cannot inspect active link rates; keeping settings\n");
-		return -1;
-	}
-	while ((channel = ast_channel_iterator_next(iterator))) {
-		const struct ast_datastore *datastore;
-		ast_channel_lock(channel);
-		datastore = ast_channel_datastore_find(channel, &txagc_datastore, NULL);
-		if (datastore && datastore->data) {
-			struct txagc_hook *hook = datastore->data;
-			struct txagc_profile *profile = find_profile(candidate, hook->profile);
-			ast_audiohook_lock(&hook->audiohook);
-			unsigned int rate = hook->avfilter[TXAGC_LINK].sample_rate;
-			if (profile && profile->enabled && profile->chains[TXAGC_LINK].enabled &&
-			    rate) {
-				const struct txagc_config *cfg = &profile->chains[TXAGC_LINK].agc;
-				const char *const names[] = {"compressor", "limiter"};
-				const int enabled[] = {cfg->compressor_enabled,
-						       cfg->limiter_enabled};
-				const int bands[] = {cfg->compressor_bands, cfg->limiter_bands};
-				const double edges[] = {cfg->compressor_high_crossover_hz,
-							cfg->limiter_high_crossover_hz};
-				for (size_t stage = 0; stage < ARRAY_LEN(names); ++stage) {
-					if (enabled[stage] && bands[stage] == 3 &&
-					    edges[stage] >= rate * 0.5) {
-						ast_log(LOG_ERROR,
-							"RadioPlus [link %s]: %s_high_crossover_hz "
-							"%.9g "
-							"must be below %.9g Hz at active link rate "
-							"%u Hz\n",
-							profile->name, names[stage], edges[stage],
-							rate * 0.5, rate);
-						invalid = 1;
-					}
-				}
-			}
-			ast_audiohook_unlock(&hook->audiohook);
-		}
-		ast_channel_unlock(channel);
-		ast_channel_unref(channel);
-	}
-	ast_channel_iterator_destroy(iterator);
-	return invalid ? -1 : 0;
-}
-
 /* The Asterisk callback ABI requires a mutable audiohook pointer. */
 // cppcheck-suppress constParameterCallback
-/** @brief Process eligible link voice frames through their channel's current FFmpeg graph.
+/** @brief Process eligible link voice frames synchronously in the audiohook callback.
  * @param audiohook Attached link-processing hook.
  * @param chan Asterisk channel associated with the radio or link.
- * @param frame Asterisk voice frame processed in place.
+ * @param frame Asterisk voice frame replaced in place by the prior processed block.
  * @param direction Asterisk audiohook stream direction.
- * @return Zero after processing or bypassing the frame.
+ * @return Zero after synchronous processing or bypass.
+ *
+ * The graph and conversion workspace are prepared before attachment. This keeps
+ * the link source separate from app_rpt's mixed transmitter program while
+ * eliminating the worker handoff and its added block of scheduling latency.
  */
 PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *chan,
 				      struct ast_frame *frame,
 				      enum ast_audiohook_direction direction)
 {
 	struct txagc_hook *hook;
-	const struct ast_datastore *datastore;
-	struct txagc_profile current;
-	const struct txagc_profile *profile;
-	struct txagc_chain *chain;
-	enum txagc_source source;
+	struct txagc_avfilter *filter;
 	unsigned int sample_rate;
-	double *samples;
 	int16_t *pcm;
-	int i;
+	size_t index;
+	int result;
 
 	if (audiohook->status == AST_AUDIOHOOK_STATUS_DONE || frame->frametype != AST_FRAME_VOICE ||
 	    !frame->data.ptr || frame->samples <= 0) {
 		return 0;
 	}
-
-	datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
-	if (!datastore) {
-		return 0;
-	}
-	hook = datastore->data;
-	if (!hook) {
-		return 0;
-	}
-	{
-		const struct txagc_audio_snapshot *snapshot =
-			atomic_load_explicit(&audio_settings, memory_order_acquire);
-		const struct txagc_settings *current_settings =
-			snapshot ? &snapshot->settings : &settings;
-
-		profile = find_profile_const(current_settings, hook->profile);
-		if (profile)
-			current = *profile;
-	}
-	if (!profile)
-		return 0;
-	if (!strcmp(ast_channel_name(chan), current.channel)) {
-		/* Native RadioPlus processing owns both directions.  This also makes
-		 * stale hooks harmless across an in-place configuration reload. */
-		return 0;
-	} else if (direction == AST_AUDIOHOOK_DIRECTION_READ) {
-		source = TXAGC_LINK;
-	} else {
-		return 0;
-	}
-	chain = &current.chains[source];
-	if (!current.enabled || !chain->enabled) {
+	/* audiohook is the first member of its datastore payload.  Recovering that
+	 * owner avoids channel datastore lookup from Asterisk's audio callback. */
+	hook = (struct txagc_hook *)audiohook;
+	(void)chan;
+	if (direction != AST_AUDIOHOOK_DIRECTION_READ ||
+	    !atomic_load_explicit(&hook->link_enabled, memory_order_acquire)) {
 		return 0;
 	}
 
@@ -1981,24 +2227,40 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	if (!sample_rate) {
 		sample_rate = 8000;
 	}
-	samples = ast_alloca(frame->samples * sizeof(*samples));
-	pcm = frame->data.ptr;
-	for (i = 0; i < frame->samples; ++i)
-		samples[i] = pcm[i];
-	if (txagc_avfilter_process(&hook->avfilter[source], &chain->agc, samples, frame->samples,
-				   sample_rate) < 0) {
-		ast_log(LOG_WARNING, "RadioPlus processing failed on %s; leaving frame unchanged\n",
-			hook->channel);
+	/* The graph and workspace were prepared while attaching the hook. A format
+	 * change is intentionally bypassed rather than rebuilding from this audio
+	 * callback. Synchronous processing has no queued output to invalidate. */
+	if (sample_rate != hook->sample_rate || (size_t)frame->samples > hook->samples_capacity) {
 		return 0;
 	}
-	for (i = 0; i < frame->samples; ++i) {
-		double value = samples[i];
+	pcm = frame->data.ptr;
+	for (index = 0; index < (size_t)frame->samples; ++index)
+		hook->samples[index] = pcm[index];
+	filter = txagc_avfilter_slot_acquire(&hook->avfilter);
+	if (!filter) {
+		++hook->statistics.processing_errors;
+		link_callback_publish_statistics(hook);
+		return 0;
+	}
+	result = txagc_avfilter_process_prepared(filter, hook->samples, (size_t)frame->samples);
+	link_callback_copy_filter_statistics(&hook->statistics, filter);
+	txagc_avfilter_slot_release(&hook->avfilter);
+	if (result < 0) {
+		/* Leave the Asterisk frame intact when a prepared graph rejects a block. */
+		++hook->statistics.processing_errors;
+		link_callback_publish_statistics(hook);
+		return 0;
+	}
+	for (index = 0; index < (size_t)frame->samples; ++index) {
+		double value = hook->samples[index];
+
 		if (value > 32767.0)
 			value = 32767.0;
 		else if (value < -32768.0)
 			value = -32768.0;
-		pcm[i] = (int16_t)lrint(value);
+		pcm[index] = (int16_t)lrint(value);
 	}
+	link_callback_publish_statistics(hook);
 	return 0;
 }
 
@@ -2011,14 +2273,33 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 {
 	struct ast_datastore *datastore;
 	struct txagc_hook *hook;
-	int source;
+	struct txagc_profile *configured;
+	struct txagc_chain chain;
+	struct ast_format *format;
+	const struct txagc_avfilter *filter;
+	unsigned int sample_rate;
+	int profile_enabled = 0;
 
 	ast_channel_lock(chan);
 	datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
+	format = ast_channel_rawreadformat(chan);
+	sample_rate = format ? ast_format_get_sample_rate(format) : 0;
 	ast_channel_unlock(chan);
 	if (datastore) {
 		return 0;
 	}
+	if (!sample_rate)
+		sample_rate = 8000;
+	memset(&chain, 0, sizeof(chain));
+	ast_mutex_lock(&settings_lock);
+	configured = find_profile(&settings, profile);
+	if (configured) {
+		chain = configured->chains[TXAGC_LINK];
+		profile_enabled = configured->enabled;
+	}
+	ast_mutex_unlock(&settings_lock);
+	if (!configured || !profile_enabled || !chain.enabled)
+		return -1;
 
 	datastore = ast_datastore_alloc(&txagc_datastore, NULL);
 	hook = ast_calloc(1, sizeof(*hook));
@@ -2027,13 +2308,41 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 		ast_free(hook);
 		return -1;
 	}
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-		txagc_avfilter_init(&hook->avfilter[source]);
+	txagc_avfilter_slot_init(&hook->avfilter);
+	atomic_init(&hook->link_enabled, 1);
+	if (txagc_avfilter_slot_prepare(&hook->avfilter, &chain.agc, sample_rate) < 0) {
+		txagc_avfilter_slot_destroy(&hook->avfilter);
+		ast_datastore_free(datastore);
+		ast_free(hook);
+		return -1;
 	}
+	filter = txagc_avfilter_slot_active(&hook->avfilter);
+	if (!filter || !filter->input_capacity) {
+		txagc_avfilter_slot_destroy(&hook->avfilter);
+		ast_datastore_free(datastore);
+		ast_free(hook);
+		return -1;
+	}
+	hook->samples = ast_calloc(filter->input_capacity, sizeof(*hook->samples));
+	if (!hook->samples) {
+		txagc_avfilter_slot_destroy(&hook->avfilter);
+		ast_datastore_free(datastore);
+		ast_free(hook);
+		return -1;
+	}
+	hook->samples_capacity = filter->input_capacity;
+	hook->sample_rate = sample_rate;
+	atomic_init(&hook->statistics_index, 0U);
+	atomic_init(&hook->statistics_readers[0], 0U);
+	atomic_init(&hook->statistics_readers[1], 0U);
+	link_callback_statistics_init(&hook->statistics);
+	link_callback_publish_statistics(hook);
 	ast_copy_string(hook->channel, ast_channel_name(chan), sizeof(hook->channel));
 	ast_copy_string(hook->profile, profile, sizeof(hook->profile));
 	if (ast_audiohook_init(&hook->audiohook, AST_AUDIOHOOK_TYPE_MANIPULATE, "TXAGC",
 			       AST_AUDIOHOOK_MANIPULATE_ALL_RATES)) {
+		ast_free(hook->samples);
+		txagc_avfilter_slot_destroy(&hook->avfilter);
 		ast_datastore_free(datastore);
 		ast_free(hook);
 		return -1;
@@ -2058,6 +2367,174 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 	}
 	ast_log(LOG_NOTICE, "RadioPlus processing attached to %s\n", ast_channel_name(chan));
 	return 0;
+}
+
+/** One prepared replacement for an attached link callback. */
+struct link_graph_plan {
+	/** Retained channel keeps the datastore and hook alive through publication. */
+	struct ast_channel *channel;
+	/** Audiohook protected by its control-plane lock while the plan is live. */
+	struct txagc_hook *hook;
+	/** Graph candidate prepared outside the audio callback. */
+	struct txagc_avfilter_slot_candidate candidate;
+	/** Whether the candidate profile admits link processing after publication. */
+	int enabled;
+};
+
+/** All active link candidates for one private settings generation. */
+struct link_graph_transaction {
+	/** Locked and retained plans, released by publish or discard. */
+	struct link_graph_plan *plans;
+	/** Number of prepared plans. */
+	size_t count;
+};
+
+/** @brief Release an uncommitted or committed link graph transaction.
+ * @param transaction Transaction to release; NULL is accepted.
+ */
+PROCESSING_PRIVATE void discard_link_graph_transaction(struct link_graph_transaction *transaction)
+{
+	size_t index;
+
+	if (!transaction)
+		return;
+	for (index = 0; index < transaction->count; ++index) {
+		struct link_graph_plan *plan = &transaction->plans[index];
+
+		txagc_avfilter_slot_candidate_destroy(&plan->candidate);
+		ast_audiohook_unlock(&plan->hook->audiohook);
+		ast_channel_unref(plan->channel);
+	}
+	ast_free(transaction->plans);
+	ast_free(transaction);
+}
+
+/** @brief Stage every active link hook against one private settings generation.
+ * @param candidate Validated settings that are not yet visible to callbacks.
+ * @param result Receives the all-or-nothing prepared transaction.
+ * @return Zero on success; nonzero without changing any callback state on failure.
+ */
+PROCESSING_PRIVATE int stage_active_link_hooks(const struct txagc_settings *candidate,
+					       struct link_graph_transaction **result)
+{
+	struct ast_channel_iterator *iterator;
+	struct ast_channel *channel;
+	struct link_graph_transaction *transaction;
+	size_t capacity = 0;
+
+	if (!candidate || !result)
+		return -1;
+	*result = NULL;
+	iterator = ast_channel_iterator_all_new();
+	/* Before the scanner starts, no link hook can exist. A startup/prime reload
+	 * may therefore commit an empty link transaction without an iterator. Once
+	 * scanning is active, failure to enumerate could hide a live hook, so reject
+	 * the candidate rather than publishing a partial generation. */
+	if (!iterator) {
+		if (scan_thread != AST_PTHREADT_NULL)
+			return -1;
+		transaction = ast_calloc(1, sizeof(*transaction));
+		if (!transaction)
+			return -1;
+		*result = transaction;
+		return 0;
+	}
+	transaction = ast_calloc(1, sizeof(*transaction));
+	if (!transaction) {
+		ast_channel_iterator_destroy(iterator);
+		return -1;
+	}
+	while ((channel = ast_channel_iterator_next(iterator))) {
+		const struct ast_datastore *datastore;
+		struct link_graph_plan *plan;
+		const struct txagc_profile *profile;
+
+		ast_channel_lock(channel);
+		datastore = ast_channel_datastore_find(channel, &txagc_datastore, NULL);
+		if (!datastore || !datastore->data) {
+			ast_channel_unlock(channel);
+			ast_channel_unref(channel);
+			continue;
+		}
+		if (transaction->count == capacity) {
+			size_t new_capacity = capacity ? capacity * 2U : 8U;
+			struct link_graph_plan *expanded =
+				ast_realloc(transaction->plans, new_capacity * sizeof(*expanded));
+
+			if (!expanded) {
+				ast_channel_unlock(channel);
+				ast_channel_unref(channel);
+				ast_channel_iterator_destroy(iterator);
+				discard_link_graph_transaction(transaction);
+				return -1;
+			}
+			transaction->plans = expanded;
+			capacity = new_capacity;
+		}
+		plan = &transaction->plans[transaction->count];
+		memset(plan, 0, sizeof(*plan));
+		plan->channel = channel;
+		plan->hook = datastore->data;
+		ast_audiohook_lock(&plan->hook->audiohook);
+		ast_channel_unlock(channel);
+		profile = find_profile_const(candidate, plan->hook->profile);
+		plan->enabled = profile && profile->enabled && profile->chains[TXAGC_LINK].enabled;
+		/* Count the retained plan before a fallible prepare so the common
+		 * discard path releases this hook and channel on every failure edge. */
+		++transaction->count;
+		if (plan->enabled && txagc_avfilter_slot_candidate_prepare(
+					     &plan->candidate, &profile->chains[TXAGC_LINK].agc,
+					     plan->hook->sample_rate) < 0) {
+			ast_log(LOG_ERROR, "RadioPlus: keeping previous link graph on %s\n",
+				plan->hook->channel);
+			ast_channel_iterator_destroy(iterator);
+			discard_link_graph_transaction(transaction);
+			return -1;
+		}
+		/* Retain both locks through peer preparation. A later failure therefore
+		 * leaves every graph and admission flag on its prior generation. */
+	}
+	ast_channel_iterator_destroy(iterator);
+	*result = transaction;
+	return 0;
+}
+
+/** @brief Publish an all-or-nothing prepared link graph transaction.
+ * @param transaction Fully staged transaction; NULL is accepted.
+ *
+ * Candidate publication cannot fail after candidate_prepare() succeeds. Graph
+ * pointers are published before link_enabled so a callback either uses the old
+ * admitted graph or the complete new one, never a candidate settings snapshot.
+ */
+PROCESSING_PRIVATE void publish_link_graph_transaction(struct link_graph_transaction *transaction)
+{
+	size_t index;
+
+	if (!transaction)
+		return;
+	for (index = 0; index < transaction->count; ++index) {
+		struct link_graph_plan *plan = &transaction->plans[index];
+
+		if (plan->enabled) {
+			if (txagc_avfilter_slot_publish_candidate(&plan->hook->avfilter,
+								  &plan->candidate) < 0) {
+				/* A validated candidate is always publishable. This path protects
+				 * against an internal slot invariant failure without touching the
+				 * callback; retain the old admission state in that impossible case.
+				 */
+				ast_log(LOG_ERROR,
+					"RadioPlus: unable to publish link graph on %s\n",
+					plan->hook->channel);
+				continue;
+			}
+		}
+		/* Synchronous processing has no queued output. Publishing the complete
+		 * graph before changing admission therefore makes each callback use either
+		 * the old graph, the new graph, or a clean bypass. */
+		atomic_store_explicit(&plan->hook->link_enabled, plan->enabled,
+				      memory_order_release);
+	}
+	discard_link_graph_transaction(transaction);
 }
 
 /** @brief Discover eligible link channels without holding settings_lock during Asterisk lookup. */
@@ -2211,9 +2688,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 			chain->agc.equalizer_enabled ? "enabled" : "disabled");
 		ast_cli(args->fd, "de-esser %s, ",
 			chain->agc.deesser_enabled ? "enabled" : "disabled");
-		if (source == TXAGC_VOICE_TELEMETRY)
-			ast_cli(args->fd, "brick-wall band-pass %s, ",
-				chain->agc.splatter_filter_enabled ? "enabled" : "disabled");
 		ast_cli(args->fd, "final limiter %s, input gain %.1f dB, output gain %.1f dB\n",
 			chain->agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 			chain->agc.input_gain_db, chain->agc.output_gain_db);
@@ -2266,7 +2740,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"%.1f:1\n"
 		"Compressor make-up gain: %.1f dB\nCompressor attack: %.0f ms\n"
 		"Compressor release: %.0f ms\nCompressor sidechain band-pass: %.0f-%.0f Hz\n"
-		"Limiter: %s\nBrick-wall band-pass: %s\nThree-band limiter crossovers: %.0f/%.0f "
+		"Limiter: %s\nThree-band limiter crossovers: %.0f/%.0f "
 		"Hz\nLow-band threshold: %.1f dBFS\n"
 		"Low-band ratio: %.1f:1\nLow-band knee: %.1f dB\n"
 		"Low-band attack: %.1f ms\nLow-band release: %.0f ms\n"
@@ -2275,8 +2749,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"High-band limit: %.1f dBFS\nHigh-band ratio: %.1f:1\nHigh-band knee: %.1f dB\n"
 		"High-band attack: %.1f ms\nHigh-band release: %.1f ms\n"
 		"Final limiter: %s\nFinal-limiter ceiling: %.1f dBFS\nLookahead: %.1f ms\n"
-		"Final-limiter attack: %.1f ms\nFinal-limiter release: %.0f ms\nOutput band-pass: "
-		"%.0f-%.0f Hz\n"
+		"Final-limiter attack: %.1f ms\nFinal-limiter release: %.0f ms\n"
 		"Final output gain: %.1f dB\n",
 		current.enabled ? "yes" : "no", current.local_enabled ? "enabled" : "disabled",
 		current.link_enabled ? "enabled" : "disabled", current.channel,
@@ -2302,7 +2775,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.agc.compressor_release_ms, current.agc.compressor_sidechain_highpass_hz,
 		current.agc.compressor_sidechain_lowpass_hz,
 		current.agc.limiter_enabled ? "enabled" : "disabled",
-		current.agc.splatter_filter_enabled ? "enabled" : "disabled",
 		current.agc.limiter_low_crossover_hz, current.agc.limiter_high_crossover_hz,
 		current.agc.low_limiter_threshold_dbfs, current.agc.low_limiter_ratio,
 		current.agc.low_limiter_knee_db, current.agc.low_limiter_attack_ms,
@@ -2315,7 +2787,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 		current.agc.lookahead_limit_dbfs, current.agc.lookahead_ms,
 		current.agc.lookahead_attack_ms, current.agc.lookahead_release_ms,
-		current.agc.output_highpass_hz, current.agc.output_lowpass_hz,
 		current.agc.output_gain_db);
 	return CLI_SUCCESS;
 }
@@ -2331,11 +2802,7 @@ PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
 {
 	struct ast_channel_iterator *iterator;
 	struct ast_channel *chan;
-	const struct ast_datastore *datastore;
-	struct txagc_hook *hook;
-	struct txagc_avfilter *filter;
 	int found = 0;
-	int source;
 
 	switch (command) {
 	case CLI_INIT:
@@ -2356,30 +2823,29 @@ PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
 		return CLI_FAILURE;
 	}
 	while ((chan = ast_channel_iterator_next(iterator))) {
+		const struct ast_datastore *datastore;
+		struct txagc_hook *hook;
+
 		ast_channel_lock(chan);
 		datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
 		hook = datastore ? datastore->data : NULL;
 		if (hook) {
-			ast_audiohook_lock(&hook->audiohook);
-			for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-				filter = &hook->avfilter[source];
-				if (!filter->input_samples)
-					continue;
+			struct txagc_link_statistics statistics;
+
+			if (!txagc_link_statistics_read(hook, &statistics)) {
 				ast_cli(args->fd,
-					"%s/%s: input peak %.1f dBFS RMS %.1f dBFS; "
+					"%s/link: input peak %.1f dBFS RMS %.1f dBFS; "
 					"output peak %.1f dBFS RMS %.1f dBFS; max peak %.1f dBFS; "
 					"input %llu output %llu startup fill %llu runtime underrun "
-					"%llu samples\n",
-					hook->channel, source_names[source],
-					filter->input_peak_dbfs, filter->input_rms_dbfs,
-					filter->output_peak_dbfs, filter->output_rms_dbfs,
-					filter->output_max_peak_dbfs,
-					(unsigned long long)filter->input_samples,
-					(unsigned long long)filter->output_samples,
-					(unsigned long long)filter->startup_fill_samples,
-					(unsigned long long)filter->runtime_underrun_samples);
+					"%llu samples; synchronous graph errors %llu blocks\n",
+					hook->channel, statistics.input_peak_dbfs,
+					statistics.input_rms_dbfs, statistics.output_peak_dbfs,
+					statistics.output_rms_dbfs, statistics.output_max_peak_dbfs,
+					statistics.input_samples, statistics.output_samples,
+					statistics.startup_fill_samples,
+					statistics.runtime_underrun_samples,
+					statistics.processing_errors);
 			}
-			ast_audiohook_unlock(&hook->audiohook);
 			found = 1;
 		}
 		ast_channel_unlock(chan);
@@ -2497,18 +2963,10 @@ PROCESSING_PRIVATE char *cli_reload(struct ast_cli_entry *entry, int command,
 	if (args->argc != 3) {
 		return CLI_SHOWUSAGE;
 	}
-	if (load_settings()) {
+	if (usbradioplus_processing_reload()) {
 		ast_cli(args->fd, "RadioPlus processing configuration reload failed.\n");
 		return CLI_FAILURE;
 	}
-	/*
-	 * The audio callback reads the current settings for every frame, so active
-	 * hooks adopt a valid replacement configuration immediately.  Detaching
-	 * here can block behind an active manipulate callback and needlessly
-	 * interrupts audio.  A scan is still needed to attach hooks to sources that
-	 * have just become eligible.
-	 */
-	scan_channels();
 	ast_cli(args->fd, "RadioPlus processing configuration reloaded in place.\n");
 	return CLI_SUCCESS;
 }
@@ -2524,11 +2982,21 @@ static struct ast_cli_entry cli_entries[] = {
 
 int usbradioplus_processing_get_local(const char *channel, struct txagc_chain *chain)
 {
-	struct txagc_profile *profile;
+	const struct txagc_profile *profile;
 	if (!chain)
 		return -1;
 	/* A removed or unmatched profile must not leave callers with stale DSP state. */
 	memset(chain, 0, sizeof(*chain));
+	/* Native graph staging runs on the reload control plane against a private
+	 * candidate. It must not publish that candidate merely to resolve a chain. */
+	if (staged_settings) {
+		profile = find_profile_const(staged_settings, channel);
+		if (profile) {
+			*chain = profile->chains[TXAGC_LOCAL];
+			chain->enabled = chain->enabled && profile->enabled;
+		}
+		return profile ? 0 : 1;
+	}
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile) {
@@ -2569,8 +3037,17 @@ int usbradioplus_processing_get_hardware(const char *channel,
 		return -1;
 	/* Empty assignments and tone strings are safe even when a caller has no profile. */
 	memset(hardware, 0, sizeof(*hardware));
+	/* Reload staging reads only its thread-private candidate.  Taking the live
+	 * settings mutex here would both select stale values and defeat the
+	 * transaction's all-or-nothing graph/configuration preparation. */
+	if (staged_settings) {
+		profile = find_profile_const(staged_settings, channel);
+		if (profile)
+			*hardware = profile->hardware;
+		return profile ? 0 : 1;
+	}
 	ast_mutex_lock(&settings_lock);
-	profile = find_profile(&settings, channel);
+	profile = find_profile_const(&settings, channel);
 	if (profile)
 		*hardware = profile->hardware;
 	ast_mutex_unlock(&settings_lock);
@@ -2602,19 +3079,49 @@ int usbradioplus_processing_get_hardware_rt(const char *channel,
 int usbradioplus_processing_get_option(const char *channel, const char *section, const char *name,
 				       char *value, size_t value_size)
 {
+	const char *default_value;
 	size_t i;
-	struct txagc_profile *profile;
+	const struct txagc_profile *profile;
 	if (!channel || !section || !name || !value || !value_size)
 		return -1;
+	/* Candidate-only lookup lets validation and native graph staging see one
+	 * prospective configuration without publishing it to callbacks. */
+	if (staged_settings) {
+		profile = find_profile_const(staged_settings, channel);
+		for (i = profile ? profile->override_count : 0; i > 0; --i) {
+			const struct section_override *entry = &profile->overrides[i - 1];
+
+			if (!strcasecmp(entry->section, section) &&
+			    !strcasecmp(entry->name, name)) {
+				ast_copy_string(value, entry->value, value_size);
+				return 0;
+			}
+		}
+		default_value = profile ? clean_slate_option_default(section, name) : NULL;
+		if (default_value) {
+			ast_copy_string(value, default_value, value_size);
+			return 0;
+		}
+		return 1;
+	}
 	ast_mutex_lock(&settings_lock);
-	profile = find_profile(&settings, channel);
-	for (i = 0; profile && i < profile->override_count; ++i) {
-		if (!strcasecmp(profile->overrides[i].section, section) &&
-		    !strcasecmp(profile->overrides[i].name, name)) {
-			ast_copy_string(value, profile->overrides[i].value, value_size);
+	profile = find_profile_const(&settings, channel);
+	/* A scoped profile is appended after its flat profile values. Search backward
+	 * so an explicit scoped value takes precedence without duplicating defaults. */
+	for (i = profile ? profile->override_count : 0; i > 0; --i) {
+		const struct section_override *entry = &profile->overrides[i - 1];
+
+		if (!strcasecmp(entry->section, section) && !strcasecmp(entry->name, name)) {
+			ast_copy_string(value, entry->value, value_size);
 			ast_mutex_unlock(&settings_lock);
 			return 0;
 		}
+	}
+	default_value = profile ? clean_slate_option_default(section, name) : NULL;
+	if (default_value) {
+		ast_copy_string(value, default_value, value_size);
+		ast_mutex_unlock(&settings_lock);
+		return 0;
 	}
 	ast_mutex_unlock(&settings_lock);
 	return 1;
@@ -2724,10 +3231,20 @@ int usbradioplus_processing_save_input_gains(const char *channel, double hardwar
 
 int usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain)
 {
-	struct txagc_profile *profile;
+	const struct txagc_profile *profile;
 	if (!chain)
 		return -1;
 	memset(chain, 0, sizeof(*chain));
+	/* See usbradioplus_processing_get_local(): a reload builds the native
+	 * generation from the private candidate instead of exposing it early. */
+	if (staged_settings) {
+		profile = find_profile_const(staged_settings, channel);
+		if (profile) {
+			*chain = profile->chains[TXAGC_VOICE_TELEMETRY];
+			chain->enabled = chain->enabled && profile->enabled;
+		}
+		return profile ? 0 : 1;
+	}
 	ast_mutex_lock(&settings_lock);
 	profile = find_profile(&settings, channel);
 	if (profile) {
@@ -2736,6 +3253,28 @@ int usbradioplus_processing_get_composite(const char *channel, struct txagc_chai
 	}
 	ast_mutex_unlock(&settings_lock);
 	return profile ? 0 : 1;
+}
+
+int usbradioplus_processing_get_composite_rt(const char *channel, struct txagc_chain *chain)
+{
+	const struct txagc_profile *profile;
+
+	if (!chain)
+		return -1;
+	memset(chain, 0, sizeof(*chain));
+	{
+		const struct txagc_audio_snapshot *snapshot =
+			atomic_load_explicit(&audio_settings, memory_order_acquire);
+		const struct txagc_settings *current_settings =
+			snapshot ? &snapshot->settings : &settings;
+
+		profile = find_profile_const(current_settings, channel);
+	}
+	if (!profile)
+		return 1;
+	*chain = profile->chains[TXAGC_VOICE_TELEMETRY];
+	chain->enabled = chain->enabled && profile->enabled;
+	return 0;
 }
 
 int usbradioplus_processing_unload(void)
@@ -2783,10 +3322,44 @@ int usbradioplus_processing_prime(void)
 
 int usbradioplus_processing_reload(void)
 {
-	if (load_settings())
+	struct txagc_audio_snapshot *snapshot = NULL;
+	struct usbradioplus_native_graph_transaction *native_transaction = NULL;
+	struct link_graph_transaction *link_transaction = NULL;
+	size_t profile_count;
+
+	if (load_settings_candidate(&snapshot))
 		return -1;
+	/* This thread-local pointer is visible only to this control-plane thread.
+	 * Native graph construction resolves the candidate chains without ever
+	 * publishing them to a callback, scanner, or another reload thread. */
+	staged_settings = &snapshot->settings;
+	if (usbradioplus_stage_all_native_processing(&native_transaction) ||
+	    stage_active_link_hooks(&snapshot->settings, &link_transaction) ||
+	    usbradioplus_refresh_all_processing_signaling())
+		goto failed;
+	staged_settings = NULL;
+	/* No fallible operation remains. Publish complete graph transactions before
+	 * exposing the matching settings snapshot. Native ticks and link callbacks
+	 * read only their graph/admission transaction, so neither sees a mixed
+	 * candidate configuration during these control-plane stores. */
+	usbradioplus_publish_native_processing_transaction(native_transaction);
+	native_transaction = NULL;
+	publish_link_graph_transaction(link_transaction);
+	link_transaction = NULL;
+	profile_count = snapshot->settings.profile_count;
+	commit_candidate_settings(&snapshot->settings, snapshot);
+	snapshot = NULL;
+	(void)usbradioplus_refresh_all_processing_hardware();
 	scan_channels();
+	ast_log(LOG_NOTICE, "RadioPlus loaded %zu named radio configuration(s)\n", profile_count);
 	return 0;
+
+failed:
+	staged_settings = NULL;
+	usbradioplus_discard_native_processing_transaction(native_transaction);
+	discard_link_graph_transaction(link_transaction);
+	ast_free(snapshot);
+	return -1;
 }
 
 /** @name File-local and build-time constants

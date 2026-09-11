@@ -62,9 +62,10 @@ Compare at matched loudness; a louder result is not necessarily a cleaner result
 ## Configuration and validation
 
 All three source chains use the same numeric defaults. Stage enablement and
-position remain separate controls. See `man usbradioplus.conf` for every
-range and for removal of the obsolete floor, attack, release, and idle-reset
-options. Their values are not interchangeable with the new controls.
+position remain separate controls. The clean-slate configuration exposes the
+RMS target, averaging, gain rates, gain bounds, activity gate, hold, deadband,
+and detector filters described here. See `man usbradioplus.conf` for every
+range.
 
 Bench checks should include quiet/loud speech transitions, long pauses,
 noise below and near the activity threshold, isolated peaks, and detector

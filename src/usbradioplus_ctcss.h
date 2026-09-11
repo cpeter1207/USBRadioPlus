@@ -1,5 +1,5 @@
 /** @file
- * @brief Continuous-phase 48 kHz CTCSS generation and reference-level calibration.
+ * @brief Continuous-phase 48 kHz CTCSS generation.
  */
 
 #ifndef USBRADIOPLUS_CTCSS_H
@@ -13,9 +13,15 @@ struct urp_ctcss_generator {
 	double phase;
 };
 
-/** @brief Map a requested CTCSS tone to its calibrated reference oscillator frequency.
+/** @brief Check whether a frequency is one of the supported CTCSS tones.
  * @param frequency CTCSS frequency in Hz.
- * @return Calibrated oscillator frequency in Hz.
+ * @return Nonzero when the frequency has an exact radio-signaling table entry.
+ */
+int urp_ctcss_frequency_supported(float frequency);
+
+/** @brief Map a requested CTCSS tone to its compatibility oscillator frequency.
+ * @param frequency CTCSS frequency in Hz.
+ * @return Compatibility oscillator frequency in Hz.
  */
 double urp_ctcss_legacy_frequency(double frequency);
 /** @brief Read the reference CTCSS peak for the selected detector-filter calibration.
@@ -43,16 +49,26 @@ double urp_ctcss_legacy_scaled_peak(double frequency, int filter_250, int tone_g
  */
 void urp_ctcss_legacy_scaled_levels(double frequency, int filter_250, int tone_gain_q8,
 				    int output_gain_q8, double *amplitude, double *bias);
-/** @brief Render a phase-continuous CTCSS block at 48 kHz, including optional reverse burst.
+/** @brief Render a phase-continuous CTCSS block at 48 kHz, including a turn-off phase shift.
  * @param generator Persistent oscillator phase state.
  * @param output Destination sample buffer owned by the caller.
  * @param count Number of elements available in the supplied block.
  * @param frequency CTCSS frequency in Hz.
  * @param peak Absolute sample peak in PCM codes.
  * @param enabled Nonzero enables the operation.
- * @param phase_reverse Nonzero applies the configured reverse-burst phase shift.
+ * @param phase_shift_degrees Turn-off phase shift in degrees; zero preserves oscillator phase.
  */
 void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, size_t count,
-			double frequency, double peak, int enabled, int phase_reverse);
+			double frequency, double peak, int enabled, double phase_shift_degrees);
+/** @brief Render an exact-frequency tail tone at the native sample rate.
+ * @param generator Persistent oscillator phase state.
+ * @param output Destination sample buffer owned by the caller.
+ * @param count Number of elements available in the supplied block.
+ * @param frequency Tail-tone frequency in Hz.
+ * @param peak Absolute sample peak in PCM codes.
+ * @param enabled Nonzero enables the operation.
+ */
+void urp_ctcss_generate_tail_tone(struct urp_ctcss_generator *generator, double *output,
+				  size_t count, double frequency, double peak, int enabled);
 
 #endif

@@ -13,11 +13,10 @@
 #define BLOCK 960
 
 /** @brief Measure the filter response at the requested test frequency.
- * @param frequency CTCSS frequency in Hz.
- * @param receive Nonzero selects the receive band-pass; zero selects the transmitter band-pass.
+ * @param frequency Test frequency in Hz.
  * @return Measured level or response used by the caller's numerical assertions.
  */
-static double measure(double frequency, int receive)
+static double measure(double frequency)
 {
 	struct txagc_avfilter state;
 	struct txagc_config config;
@@ -26,15 +25,9 @@ static double measure(double frequency, int receive)
 	size_t count = 0;
 
 	memset(&config, 0, sizeof(config));
-	if (receive) {
-		config.receive_bandpass_enabled = 1;
-		config.receive_bandpass_highpass_hz = 300.0;
-		config.receive_bandpass_lowpass_hz = 3000.0;
-	} else {
-		config.splatter_filter_enabled = 1;
-		config.output_highpass_hz = 300.0;
-		config.output_lowpass_hz = 3000.0;
-	}
+	config.receive_bandpass_enabled = 1;
+	config.receive_bandpass_highpass_hz = 300.0;
+	config.receive_bandpass_lowpass_hz = 3000.0;
 	txagc_avfilter_init(&state);
 	for (int block = 0; block < 100; ++block) {
 		for (int i = 0; i < BLOCK; ++i) {
@@ -61,12 +54,9 @@ static double measure(double frequency, int receive)
  */
 int main(void)
 {
-	double low = measure(100.0, 0);
-	double pass = measure(1000.0, 0);
-	double high = measure(5000.0, 0);
-	double receive_low = measure(100.0, 1);
-	double receive_pass = measure(1000.0, 1);
-	double receive_high = measure(5000.0, 1);
+	double low = measure(100.0);
+	double pass = measure(1000.0);
+	double high = measure(5000.0);
 	double low_rejection = 20.0 * log10(pass / low);
 	double high_rejection = 20.0 * log10(pass / high);
 
@@ -76,9 +66,6 @@ int main(void)
 		return 1;
 	if (low_rejection < 60.0 || high_rejection < 60.0)
 		return 2;
-	if (fabs(receive_pass - pass) > 0.1 || fabs(receive_low - low) > 0.1 ||
-	    fabs(receive_high - high) > 0.1)
-		return 3;
 	return 0;
 }
 

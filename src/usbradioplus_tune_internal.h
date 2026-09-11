@@ -40,7 +40,6 @@ extern ssize_t (*read_bytes)(int fd, void *buffer, size_t count);
 int set_nonblocking_real(int fd);
 int open_null_real(void);
 void ourhandler(int sig);
-void launch_processing_tune(void);
 int qcompar(const void *a, const void *b);
 int explode_string(char *str, char *strp[], size_t limit, char delim, char quote);
 int parse_integer(const char *text, int minimum, int maximum, int *value);

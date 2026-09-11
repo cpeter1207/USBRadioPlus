@@ -9,11 +9,15 @@ This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
 with suitable test equipment.
 
+The current `usbradioplus.conf` signaling interface is a clean break. It does
+not migrate `chan_usbradio` or earlier settings; start from the shipped sample
+and back up the prior configuration.
+
 ## Build and install
 
-Signed Debian packages for supported Intel PCs (`amd64`) and 64-bit Raspberry
-Pi systems (`arm64`) are available for Debian 12 and 13. The bootstrap installer
-detects the ASL3 version and selects the matching package. See
+Signed Debian 13 packages for supported `amd64` and `arm64` systems are
+available automatically. The bootstrap installer selects the matching ASL3
+package. Debian 12 packages are aspirational and built manually only on request. See
 [INSTALL.md](INSTALL.md) for the two installation commands and validation
 details.
 
@@ -25,10 +29,10 @@ cd usbradioplus-VERSION
 sudo ./install.sh
 ```
 
-The installer obtains the required build tools and dependencies, builds the
-module and utilities, runs the hardware-free test suite, and copies the files
-into their system locations. It does not load the module, restart Asterisk, or
-change `modules.conf` or `rpt.conf`.
+The installer verifies the shipped signing key, configures the project
+repository, installs build dependencies including the released shared library,
+builds and tests the module and utilities, and copies them into place. It does
+not load the module, restart Asterisk, or change `modules.conf` or `rpt.conf`.
 
 Developers and package maintainers can use the standard Makefile directly. See
 [INSTALL.md](INSTALL.md) for build, test, staged-install, and source-archive
@@ -48,6 +52,8 @@ commands.
   Debian packaging interface.
 - [Native radio notes](doc/native-radio.md) describe carrier detection,
   signaling, and their test boundary.
+- [The release checklist](RELEASE-CHECKLIST.md) lists the automated,
+  service-monitor, activation, and rollback evidence required for an alpha.
 - [Generated source documentation](https://cpeter1207.github.io/USBRadioPlus/docs/)
   provides the Doxygen API and call graphs.
 - [Contributing](CONTRIBUTING.md) describes the mandatory quality gate and

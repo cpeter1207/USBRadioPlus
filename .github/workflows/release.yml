@@ -33,11 +33,8 @@ jobs:
   quality:
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/quality.yml@main
 
-  containers:
-    uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/containers.yml@main
-
   release:
-    needs: [quality, containers]
+    needs: quality
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/release.yml@main
     with:
       release_version: ${{ inputs.release_version }}

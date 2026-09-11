@@ -2,13 +2,31 @@
 
 ## Unreleased
 
+- Replace inherited radio-signaling options with clean-slate `[receive]`,
+  `[transmit]`, `[ctcss]`, and `[dcs]` sections. Each direction now selects
+  exactly one of carrier, CTCSS, or DCS signaling.
+- Add native DCS encode, decode, independent peak-level control, and
+  end-of-transmission code support. CTCSS and DCS modulation use separate peak
+  dBFS controls; CTCSS decoder gain is a separate relative-dB control.
+- Update the unified tuner, samples, and manuals for the new signaling
+  sections. Earlier signaling option names are not retained.
+- Use the lock-free sample-at-a-time program ring continuously, with its
+  110 ms occupancy target used only for clock recovery and bounded smooth
+  concealment for a temporary source shortfall.
+- Keep native carrier, CTCSS, and DCS callback processing out of Asterisk's
+  logging, locking, allocation, and file-I/O control plane.
+
 ## 0.1.0~alpha15 - 2026-09-07
 
-- Replace audio queues with lock-free sample rings.\n- Add exhaustive queue boundary and recovery coverage.\n- Document lock-free queue APIs for generated reference material.
+- Replace audio queues with lock-free sample rings.
+- Add exhaustive queue boundary and recovery coverage.
+- Document lock-free queue APIs for generated reference material.
 
 ## 0.1.0~alpha14 - 2026-09-07
 
-- Replace audio queues with lock-free sample rings.\n- Add exhaustive queue boundary and recovery coverage.\n- Document lock-free queue APIs for generated reference material.
+- Replace audio queues with lock-free sample rings.
+- Add exhaustive queue boundary and recovery coverage.
+- Document lock-free queue APIs for generated reference material.
 
 ## 0.1.0~alpha13 - 2026-09-06
 

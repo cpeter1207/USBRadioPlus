@@ -227,7 +227,8 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	TRACEF(1, "urp_radio_parse_codes(%i)\n", 0);
 	TRACEF(1, "pChan->pRxCodeSrc %s \n", pChan->pRxCodeSrc);
 	TRACEF(1, "pChan->pTxCodeSrc %s \n", pChan->pTxCodeSrc);
-	TRACEF(1, "pChan->pTxCodeDefault %s \n", pChan->pTxCodeDefault);
+	TRACEF(1, "pChan->pTxCodeDefault %s \n",
+	       pChan->pTxCodeDefault ? pChan->pTxCodeDefault : "(none)");
 
 	maxctcssindex = CTCSS_NULL;
 	maxctcsstxfreq = CTCSS_NULL;
@@ -235,7 +236,6 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	pChan->txctcssdefault_value = CTCSS_NULL;
 
 	pChan->b.ctcssRxEnable = pChan->b.ctcssTxEnable = 0;
-	pChan->b.dcsRxEnable = pChan->b.dcsTxEnable = 0;
 	pChan->b.lmrRxEnable = pChan->b.lmrTxEnable = 0;
 	pChan->b.mdcRxEnable = pChan->b.mdcTxEnable = 0;
 	pChan->b.dstRxEnable = pChan->b.dstTxEnable = 0;
@@ -254,9 +254,6 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 		return 1;
 	}
 
-	if (pChan->numrxcodes != pChan->numtxcodes) {
-		ast_log(LOG_ERROR, "numrxcodes != numtxcodes \n");
-	}
 	pChan->rxCtcss->enabled = 0;
 	pChan->rxCtcss->gain = 1 * M_Q8;
 	pChan->rxCtcss->limit = 8192;
@@ -278,6 +275,11 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	/* Do Receive Codes String */
 	for (i = 0; i < pChan->numrxcodes; i++) {
 		p = pChan->pStr = pChan->pRxCode[i];
+		/* A disabled companion list is how the clean-slate layer keeps the
+		 * receive and transmit directions independent.  It is not a malformed
+		 * CTCSS frequency and must not disable a transmit-default encoder. */
+		if (!strcmp(p, "0"))
+			continue;
 
 		{
 			i16 rx_index, tx_index;
@@ -310,9 +312,10 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 				}
 			} else {
 				tx_index = CTCSS_NULL;
-				frequency = -1.0; /* tone freq not provided */
-				ast_log(LOG_ERROR, "Invalid CTCSS configuration. Number of rx "
-						   "codes > number of tx codes\n");
+				/* A CTCSS receive direction is valid without a matching
+				 * transmitter map.  Mark missing TX entries as RX-only so
+				 * receive qualification remains independent of transmit mode. */
+				frequency = 0.0;
 			}
 
 			if (rx_index > CTCSS_NULL && tx_index > CTCSS_NULL) {
@@ -370,11 +373,12 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	}
 
 	/* DEFAULT TX CODE */
-	TRACEF(1, "urp_radio_parse_codes() Default Tx Code %s \n", pChan->pTxCodeDefault);
+	TRACEF(1, "urp_radio_parse_codes() Default Tx Code %s \n",
+	       pChan->pTxCodeDefault ? pChan->pTxCodeDefault : "(none)");
 	pChan->txcodedefaultsmode = SMODE_NULL;
 	p = pChan->pStr = pChan->pTxCodeDefault;
 
-	{
+	if (p && *p && strcmp(p, "0")) {
 		sscanf(p, N_FMT(f), &f);
 		ti = urp_ctcss_frequency_index(f);
 		if (ti == CTCSS_NULL) {
@@ -456,7 +460,7 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 #if URP_RADIO_DEBUG == 1
 	TRACEF(2, "urp_radio_parse_codes() ctcssRxEnable = %i \n", pChan->b.ctcssRxEnable);
 	TRACEF(2, "                    ctcssTxEnable = %i \n", pChan->b.ctcssTxEnable);
-	TRACEF(2, "                      dcsRxEnable = %i \n", pChan->b.dcsRxEnable);
+	TRACEF(2, "                  dcsEnabledReceive = %i \n", pChan->dcs.enabled_receive);
 	TRACEF(2, "                      lmrRxEnable = %i \n", pChan->b.lmrRxEnable);
 	TRACEF(2, "               txcodedefaultsmode = %i \n", pChan->txcodedefaultsmode);
 	for (i = 0; i < CTCSS_NUM_CODES; i++) {
@@ -595,21 +599,11 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 
 			y = ((y / calcAdjust) * outputGain) / M_Q8;
 
-#if URP_RADIO_TRACE_OVFLW == 1
-			if (y > 32767) {
-				y = 32767;
-				ast_log(LOG_ERROR, "urp_radio_receive_frontend() OVRFLW \n");
-			} else if (y < -32767) {
-				y = -32767;
-				ast_log(LOG_ERROR, "urp_radio_receive_frontend() UNDFLW \n");
-			}
-#else
 			if (y > 32767) {
 				y = 32767;
 			} else if (y < -32767) {
 				y = -32767;
 			}
-#endif
 			output[iOutput++] = y; /* Rx Baseband decimated */
 
 		} /* if decimator */
@@ -1032,11 +1026,6 @@ i16 DelayLine(urp_radio_stage *mySps)
 	i16 *output, *buff;
 	i16 i, npoints, buffsize, inindex, outindex;
 
-	const urp_radio_state *pChan;
-	pChan = mySps->parentChan;
-	(void)pChan; /* Used only by trace macros when tracing is compiled in. */
-	TRACEF(5, " DelayLine() %i\n", mySps->enabled);
-
 	if (!mySps->enabled || mySps->b.outzero) {
 		if (mySps->b.dirty) {
 			mySps->b.dirty = 0;
@@ -1084,9 +1073,6 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 	i16 points = 0;
 	i16 indexWas = 0;
 
-	TRACEF(5, "urp_ctcss_decode(%p) %i %i %i %i\n", pChan, pChan->rxCtcss->enabled, 0,
-	       pChan->rxCtcss->testIndex, pChan->rxCtcss->decode);
-
 	if (!pChan->rxCtcss->enabled) {
 		return 1;
 	}
@@ -1102,14 +1088,10 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 		i16 fudgeFactor;
 		i16 binFactor;
 
-		TRACEF(6, " urp_ctcss_decode() tnum=%i %i\n", tnum, pChan->rxCtcssMap[tnum]);
-
 		if ((pChan->rxCtcssMap[tnum] == CTCSS_NULL) ||
 		    (pChan->rxCtcss->decode > CTCSS_NULL && (tnum != pChan->rxCtcss->decode))) {
 			continue;
 		}
-
-		TRACEF(6, " urp_ctcss_decode() tnum=%i\n", tnum);
 
 		ptdet = &(pChan->rxCtcss->tdet[tnum]);
 		indexDebug = 0;
@@ -1194,10 +1176,6 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 				ptdet->decode = 0;
 				ptdet->z[0] = ptdet->z[1] = ptdet->z[2] = ptdet->z[3] = ptdet->dvu =
 					0;
-				TRACEF(4,
-				       "urp_ctcss_decode() turnoff detected by dvdt for tnum = "
-				       "%i.\n",
-				       tnum);
 			}
 
 			if (ptdet->decode < 0 || !pChan->rxCarrierDetect) {
@@ -1212,11 +1190,6 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 			}
 
 #if URP_RADIO_DEBUG == 1
-			if (thit >= 0 && thit == tnum) {
-				TRACEF(6, " urp_ctcss_decode() %i %i %i %i \n", tnum, ptdet->peak,
-				       ptdet->setpt, ptdet->hyst);
-			}
-
 			tv0 = ptdet->peak;
 			tv1 = ptdet->decode;
 			tv2 = tmp;
@@ -1268,12 +1241,10 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 	    !pChan->rxCtcss->BlankingTimer) {
 		pChan->rxCtcss->decode = thit;
 		sprintf(pChan->rxctcssfreq, "%.1f", freq_ctcss[thit]);
-		TRACEC(1, "ctcss decode  %i  %.1f\n", thit, freq_ctcss[thit]);
 	} else if (thit <= CTCSS_NULL && pChan->rxCtcss->decode > CTCSS_NULL) {
 		pChan->rxCtcss->BlankingTimer = SAMPLE_RATE_NETWORK / 5;
 		pChan->rxCtcss->decode = CTCSS_NULL;
 		strcpy(pChan->rxctcssfreq, "0");
-		TRACEC(1, "ctcss decode  NULL\n");
 		for (tnum = 0; tnum < CTCSS_NUM_CODES; tnum++) {
 			urp_ctcss_tone_detector *ptdet = NULL;
 			ptdet = &(pChan->rxCtcss->tdet[tnum]);
@@ -1345,7 +1316,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->rxDeEmpEnable = 0;
 		pChan->rxCenterSlicerEnable = 0;
 		pChan->rxCtcssDecodeEnable = 0;
-		pChan->rxDcsDecodeEnable = 0;
 
 		pChan->rxCarrierHyst = 2500;
 
@@ -1374,8 +1344,14 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->turnoffs = tChan->turnoffs;
 		pChan->b.rxpolarity = tChan->b.rxpolarity;
 		pChan->b.txpolarity = tChan->b.txpolarity;
-		pChan->b.dcsrxpolarity = tChan->b.dcsrxpolarity;
-		pChan->b.dcstxpolarity = tChan->b.dcstxpolarity;
+		ast_copy_string(pChan->dcsRxCode, tChan->dcsRxCode, sizeof(pChan->dcsRxCode));
+		ast_copy_string(pChan->dcsTxCode, tChan->dcsTxCode, sizeof(pChan->dcsTxCode));
+		pChan->dcsTurnoffEnabled = tChan->dcsTurnoffEnabled;
+		pChan->dcsTurnoffDuration = tChan->dcsTurnoffDuration;
+		pChan->dcsPeak = tChan->dcsPeak;
+		pChan->txCtcssTocShift = tChan->txCtcssTocShift;
+		pChan->txCtcssTocTime = tChan->txCtcssTocTime;
+		pChan->txCtcssTocToneHz = tChan->txCtcssTocToneHz;
 		pChan->b.lsdrxpolarity = tChan->b.lsdrxpolarity;
 		pChan->b.lsdtxpolarity = tChan->b.lsdtxpolarity;
 
@@ -1405,6 +1381,16 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 	if (pChan->rxCarrierHyst == 0) {
 		pChan->rxCarrierHyst = 3000;
 	}
+	if (pChan->txCtcssTocTime <= 0)
+		pChan->txCtcssTocTime = CTCSS_TURN_OFF_TIME;
+	if (pChan->txCtcssTocShift == 0.0)
+		pChan->txCtcssTocShift = CTCSS_TURN_OFF_SHIFT;
+	if (pChan->txCtcssTocToneHz <= 0.0)
+		pChan->txCtcssTocToneHz = 55.0;
+	if (pChan->dcsTurnoffDuration <= 0)
+		pChan->dcsTurnoffDuration = 180;
+	if (pChan->dcsPeak <= 0.0)
+		pChan->dcsPeak = 1000.0;
 
 	if (pChan->rxCdType == CD_XPMR_NOISE) {
 		pChan->rxNoiseSquelchEnable = 1;
@@ -1416,7 +1402,19 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	pChan->rxCarrierPoint = (pChan->rxSquelchPoint * 32767) / 100;
 
-	pChan->rxDcsDecodeEnable = 0;
+	urp_dcs_init(&pChan->dcs);
+	{
+		int rx_code = -1, tx_code = -1, rx_inverted = 0, tx_inverted = 0;
+		if (pChan->dcsRxCode[0] &&
+		    urp_dcs_parse_code(pChan->dcsRxCode, &rx_code, &rx_inverted))
+			ast_log(LOG_WARNING, "RadioPlus: ignoring invalid DCS receive code '%s'\n",
+				pChan->dcsRxCode);
+		if (pChan->dcsTxCode[0] &&
+		    urp_dcs_parse_code(pChan->dcsTxCode, &tx_code, &tx_inverted))
+			ast_log(LOG_WARNING, "RadioPlus: ignoring invalid DCS transmit code '%s'\n",
+				pChan->dcsTxCode);
+		urp_dcs_configure(&pChan->dcs, rx_code, rx_inverted, tx_code, tx_inverted);
+	}
 
 	pChan->lastrxdecode = CTCSS_NULL;
 
@@ -1437,16 +1435,8 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 #if URP_RADIO_DEBUG == 1
 	TRACEF(1, "configure tracing\n");
 
-	ALLOCATE_OR_FAIL(pChan->pTstTxOut, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->pRxLsdCen, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->prxDebug0, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->prxDebug1, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->prxDebug2, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->prxDebug3, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->ptxDebug0, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->ptxDebug1, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->ptxDebug2, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->ptxDebug3, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug0, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug1, numSamples, 2);
 	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug2, numSamples, 2);
@@ -1458,9 +1448,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug2, numSamples, 2);
 		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug3, numSamples, 2);
 	}
-
-	/* buffer, 2 bytes per sample, and 16 channels */
-	ALLOCATE_OR_FAIL(pChan->ptxDebug, numSamples * 16, 2);
 
 	/* TSCOPE CONFIGURATION SETSCOPE configure debug traces and sources for each channel of the
 	 * output */
@@ -1501,19 +1488,6 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->sdbg->trace[12] = RX_SMODE;
 		pChan->sdbg->trace[13] = TX_PTT_IN;
 		pChan->sdbg->trace[14] = TX_PTT_OUT;
-	} else if (pChan->tracetype == 3) { /* DCS DECODE */
-		pChan->sdbg->source[0] = pChan->pRxDemod;
-		pChan->sdbg->source[1] = pChan->pRxBase;
-		pChan->sdbg->trace[2] = RX_NOISE_TRIG;
-		pChan->sdbg->source[3] = pChan->pRxLsd;
-		pChan->sdbg->source[4] = pChan->pRxLsdCen;
-		pChan->sdbg->source[5] = pChan->pRxDcTrack;
-		pChan->sdbg->trace[6] = RX_DCS_CLK;
-		pChan->sdbg->trace[7] = RX_DCS_DIN;
-		pChan->sdbg->trace[8] = RX_DCS_DEC;
-		pChan->sdbg->trace[9] = RX_SMODE;
-		pChan->sdbg->trace[10] = TX_PTT_IN;
-		pChan->sdbg->trace[11] = TX_PTT_OUT;
 	} else if (pChan->tracetype == 4) { /* LSD DECODE */
 		pChan->sdbg->source[0] = pChan->pRxDemod;
 		pChan->sdbg->source[1] = pChan->pRxBase;
@@ -1851,20 +1825,7 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	ast_free(pChan->pTxCodeStr);
 
 #if URP_RADIO_DEBUG == 1
-	if (pChan->ptxDebug) {
-		ast_free(pChan->ptxDebug);
-	}
-
 	ast_free(pChan->prxDebug0);
-	ast_free(pChan->prxDebug1);
-	ast_free(pChan->prxDebug2);
-	ast_free(pChan->prxDebug3);
-
-	ast_free(pChan->ptxDebug0);
-	ast_free(pChan->ptxDebug1);
-	ast_free(pChan->ptxDebug2);
-	ast_free(pChan->ptxDebug3);
-	ast_free(pChan->pTstTxOut);
 	ast_free(pChan->pRxLsdCen);
 
 	if (pChan->rxCtcss) {
@@ -1943,25 +1904,21 @@ i16 urp_radio_stage_destroy(urp_radio_stage *pSps)
 /*
 	urp_radio_process handles a block of data from the usb audio device
 */
-i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)
+i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
+			    int advance_tx)
 {
 	int i, hit;
 	float f = 0;
 	urp_radio_stage *pmr_sps;
 
 	if (pChan == NULL) {
-		ast_log(LOG_ERROR, "urp_radio_process() pChan == NULL\n");
 		return 1;
 	}
-	TRACEC(5, "urp_radio_process(%p %p %p %p)\n", pChan, input, outputrx, outputtx);
 
 	pChan->frameCountRx++;
 
 #if URP_RADIO_DEBUG == 1
-	if (pChan->b.rxCapture) {
-		memset((void *)pChan->ptxDebug, 0,
-		       pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
-
+	if (pChan->tracetype) {
 		memset((void *)pChan->sdbg->buffer, 0,
 		       pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
 	}
@@ -1983,7 +1940,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		pChan->txrxblankingtimer -= MS_PER_FRAME;
 		if (pChan->txrxblankingtimer <= 0) {
 			pChan->txrxblankingtimer = 0;
-			TRACEC(1, "TXRXBLANKING TIME OUT **********\n");
 		}
 	}
 
@@ -1996,7 +1952,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 			}
 
 			pChan->b.rxhalted = 1;
-			TRACEC(1, "urp_radio_process() rx sps halted\n");
 		}
 	} else if (pChan->b.rxhalted) {
 		pChan->spsRxHpf->enabled = 1;
@@ -2005,12 +1960,9 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		}
 
 		pChan->b.rxhalted = 0;
-		TRACEC(1, "urp_radio_process() rx sps un-halted\n");
 	}
 
-	i = 0;
 	while (pmr_sps != NULL) {
-		TRACEC(5, "urp_radio_process() sps %i\n", i++);
 		pmr_sps->sigProc(pmr_sps);
 		pmr_sps = (urp_radio_stage *)(pmr_sps->nextSps);
 	}
@@ -2033,6 +1985,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		}
 	}
 
+	/* DCS follows the left capture channel used by the receive frontend. */
+	if (pChan->dcs.enabled_receive)
+		(void)urp_dcs_process(&pChan->dcs, input, (size_t)pChan->nSamplesRx * 6U, 2U,
+				      SAMPLE_RATE_INPUT);
+
 	/* stop and start these engines instead to eliminate falsing */
 	if (pChan->b.ctcssRxEnable &&
 	    (!pChan->b.rxhalted || pChan->rxCtcss->decode != CTCSS_NULL)) {
@@ -2041,7 +1998,6 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 
 	if (pChan->txPttIn != pChan->b.pttwas) {
 		pChan->b.pttwas = pChan->txPttIn;
-		TRACEC(1, "urp_radio_process() txPttIn=%i\n", pChan->b.pttwas);
 	}
 
 	if (pChan->smodetimer > 0 && !pChan->txPttIn) {
@@ -2052,19 +2008,17 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 			pChan->smodewas = pChan->smode;
 			pChan->smode = SMODE_NULL;
 			pChan->b.smodeturnoff = 1;
-			TRACEC(1, "smode timeout. smode was=%i\n", pChan->smodewas);
 		}
 	}
 
 	if (pChan->rxCtcss->decode > CTCSS_NULL &&
 	    (pChan->smode == SMODE_NULL || pChan->smode == SMODE_CTCSS)) {
 		if (pChan->smode != SMODE_CTCSS) {
-			TRACEC(1, "smode set=%i  code=%i\n", pChan->smode, pChan->rxCtcss->decode);
 			pChan->smode = pChan->smodewas = SMODE_CTCSS;
 		}
 		pChan->smodetimer = pChan->smodetime;
 	}
-	if (pChan->smode == SMODE_CTCSS) {
+	if (pChan->smode == SMODE_CTCSS && pChan->b.ctcssTxEnable) {
 		if (pChan->rxCtcss->decode != pChan->lastrxdecode) {
 			pChan->lastrxdecode = pChan->rxCtcss->decode;
 			f = 0;
@@ -2083,46 +2037,45 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	} else {
 		pChan->lastrxdecode = CTCSS_NULL;
 	}
+	if (pChan->dcs.valid && (pChan->smode == SMODE_NULL || pChan->smode == SMODE_DCS)) {
+		pChan->smode = pChan->smodewas = SMODE_DCS;
+		pChan->smodetimer = pChan->smodetime;
+	}
 #endif
+	/* The receiver still owns this captured frame, but transmitter timing must
+	 * not advance unless the matching native DAC frame will be rendered. */
+	if (!advance_tx) {
+		if (outputtx)
+			memset(outputtx, 0, pChan->nSamplesTx * 2 * 6 * sizeof(*outputtx));
+		return 0;
+	}
 	/* handle radio transmitter ptt input */
 	hit = 0;
 	{
 		if (pChan->txPttIn && (pChan->txState == CHAN_TXSTATE_IDLE)) {
-			TRACEC(1,
-			       "txPttIn==1 from CHAN_TXSTATE_IDLE && !SMODE_LSD. codeindex=%i  %i "
-			       "\n",
-			       pChan->rxCtcss->decode, pChan->rxCtcssMap[pChan->rxCtcss->decode]);
 			pChan->txCtcssFreq10 = 0;
-			if (pChan->smode == SMODE_CTCSS && !pChan->b.txCtcssInhibit) {
-				if (pChan->rxCtcss->decode > CTCSS_NULL) {
-					if (pChan->rxCtcssMap[pChan->rxCtcss->decode] !=
-					    CTCSS_RXONLY) {
-						f = freq_ctcss
-							[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
-					}
-				} else {
+			/* Transmit CTCSS is selected by the transmit direction. A received
+			 * CTCSS tone may select a mapped TX tone, but received DCS or carrier
+			 * must not suppress the configured transmit default. */
+			if (pChan->b.ctcssTxEnable && !pChan->b.txCtcssInhibit) {
+				if (pChan->smode == SMODE_CTCSS &&
+				    pChan->rxCtcss->decode > CTCSS_NULL &&
+				    pChan->rxCtcssMap[pChan->rxCtcss->decode] != CTCSS_RXONLY)
+					f = freq_ctcss[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
+				else if (pChan->smode != SMODE_CTCSS ||
+					 pChan->rxCtcss->decode == CTCSS_NULL)
 					f = pChan->txctcssdefault_value;
-				}
-				TRACEC(1, "txPttIn - Start CTCSSGen  %f \n", f);
 				if (f) {
 					pChan->txCtcssFreq10 = f * 10;
 					pChan->txCtcssOption = 1;
 					pChan->txCtcssEnabled = 1;
 					pChan->txCtcssTurnoffTimer = 0;
 				}
-			} else if (pChan->smode == SMODE_NULL &&
-				   pChan->txcodedefaultsmode == SMODE_CTCSS &&
-				   !pChan->b.txCtcssInhibit) {
-				TRACEC(1, "txPtt Encode txcodedefaultsmode==SMODE_CTCSS %f\n",
-				       pChan->txctcssdefault_value);
-				f = pChan->txctcssdefault_value;
-				pChan->txCtcssFreq10 = f * 10;
-				pChan->txCtcssOption = 1;
-				pChan->txCtcssEnabled = 1;
-				pChan->txCtcssTurnoffTimer = 0;
-				pChan->smode = SMODE_CTCSS;
-				pChan->smodetimer = pChan->smodetime;
 			}
+			/* DCS has its own fixed code configuration and does not participate in
+			 * CTCSS frequency selection or mapping. */
+			if (pChan->dcs.enabled_transmit)
+				pChan->dcsTurnoffTimer = 0;
 
 			memset(pChan->txctcssfreq, 0, sizeof(pChan->txctcssfreq));
 			sprintf(pChan->txctcssfreq, "%.1f", f);
@@ -2132,37 +2085,46 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 			pChan->txPttOut = 1;
 
 			pChan->txsettletimer = pChan->txsettletime;
-
-			TRACEC(1, "urp_radio_process() TxOn\n");
 		} else if (pChan->txPttIn && pChan->txState == CHAN_TXSTATE_ACTIVE) {
 			pChan->smodetimer = pChan->smodetime;
 		} else if (!pChan->txPttIn && pChan->txState == CHAN_TXSTATE_ACTIVE) {
-			TRACEC(1, "txPttIn==0 from CHAN_TXSTATE_ACTIVE\n");
-			if (pChan->smode == SMODE_CTCSS && !pChan->b.txCtcssInhibit) {
+			if (pChan->dcs.enabled_transmit && pChan->dcsTurnoffEnabled) {
+				pChan->txState = CHAN_TXSTATE_TOC;
+				pChan->dcsTurnoffTimer = pChan->dcsTurnoffDuration;
+				pChan->txHangTime = 0;
+			} else if (pChan->txCtcssEnabled && !pChan->b.txCtcssInhibit) {
 				if (pChan->txTocType == TOC_NONE || !pChan->b.ctcssTxEnable) {
-					TRACEC(1, "Tx Off Immediate.\n");
 					pChan->txCtcssOption = 3;
 					pChan->txBufferClear = 3;
 					pChan->txState = CHAN_TXSTATE_FINISHING;
 				} else if (pChan->txTocType == TOC_NOTONE) {
 					pChan->txState = CHAN_TXSTATE_TOC;
-					pChan->txHangTime = TOC_NOTONE_TIME / MS_PER_FRAME;
+					pChan->txHangTime = pChan->txCtcssTocTime / MS_PER_FRAME;
 					pChan->txCtcssOption = 3;
-					TRACEC(1, "Tx Turn Off No Tone Start.\n");
 				} else {
 					pChan->txState = CHAN_TXSTATE_TOC;
 					pChan->txHangTime = 0;
 					pChan->txCtcssOption = 2;
-					TRACEC(1, "Tx Turn Off Phase Shift Start.\n");
+					if (pChan->txTocType == 3) {
+						pChan->txCtcssTocShift = 0.0;
+					} else {
+						pChan->txCtcssTocToneHz = 0.0;
+					}
 				}
 			} else {
 				pChan->txBufferClear = 3;
 				pChan->txState = CHAN_TXSTATE_FINISHING;
-				TRACEC(1, "Tx Off No SMODE to Finish.\n");
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_TOC) {
-			if (pChan->txPttIn && pChan->smode == SMODE_CTCSS) {
-				TRACEC(1, "Tx Key During HangTime\n");
+			if (pChan->txPttIn && pChan->dcsTurnoffTimer > 0) {
+				/* Resume normal DCS immediately; do not finish an obsolete tail. */
+				pChan->dcsTurnoffTimer = 0;
+				pChan->txState = CHAN_TXSTATE_ACTIVE;
+				hit = 0;
+			} else if (pChan->txPttIn && pChan->b.ctcssTxEnable) {
+				/* A no-tone tail clears the emitted tone, not the configured
+				 * transmit CTCSS selection. Rekeying during that tail restores it.
+				 */
 				pChan->txState = CHAN_TXSTATE_ACTIVE;
 				pChan->txCtcssOption = 1;
 				pChan->txCtcssEnabled = 1;
@@ -2172,10 +2134,18 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 				if (--pChan->txHangTime == 0) {
 					pChan->txState = CHAN_TXSTATE_FINISHING;
 				}
+			} else if (pChan->dcsTurnoffTimer > 0) {
+				pChan->dcsTurnoffTimer -= MS_PER_FRAME;
+				if (pChan->dcsTurnoffTimer <= 0) {
+					pChan->dcsTurnoffTimer = 0;
+					pChan->txBufferClear = 3;
+					pChan->txState = CHAN_TXSTATE_FINISHING;
+				}
 			} else if (pChan->txCtcssState == 0) {
-				pChan->txBufferClear = 3;
+				/* A 55 Hz tail needs ten post-tone frames: two TOC frames
+				 * plus these eight finishing frames keep PTT high for 200 ms. */
+				pChan->txBufferClear = pChan->txTocType == 3 ? 8 : 3;
 				pChan->txState = CHAN_TXSTATE_FINISHING;
-				TRACEC(1, "Tx Off TOC.\n");
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_FINISHING) {
 			if (--pChan->txBufferClear <= 0) {
@@ -2190,12 +2160,10 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		pChan->txPttOut = 0;
 		pChan->txCtcssOption = 3;
 		pChan->txrxblankingtimer = pChan->txrxblankingtime;
-		TRACEC(1, "urp_radio_process() txrxblankingtimer=%i\n", pChan->txrxblankingtimer);
 		pChan->txState = CHAN_TXSTATE_IDLE;
 
 		memset(pChan->txctcssfreq, 0, sizeof(pChan->txctcssfreq));
 		pChan->b.txCtcssReady = 1;
-		TRACEC(1, "Tx Off hit.\n");
 	}
 
 	if (pChan->txsettletimer && pChan->txPttHid) {
@@ -2210,11 +2178,9 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	    pChan->txState == CHAN_TXSTATE_IDLE) {
 		if (!pChan->b.txhalted) {
 			pChan->b.txhalted = 1;
-			TRACEC(1, "urp_radio_process() tx sps halted\n");
 		}
 	} else if (pChan->b.txhalted) {
 		pChan->b.txhalted = 0;
-		TRACEC(1, "urp_radio_process() tx sps un-halted\n");
 	}
 
 	if (pChan->b.txhalted) {
@@ -2227,15 +2193,18 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	if (pChan->txCtcssOption == 1) {
 		pChan->txCtcssOption = 0;
 		pChan->txCtcssState = 1;
+		pChan->txCtcssTailToneHz = 0.0;
 	} else if (pChan->txCtcssOption == 2) {
 		pChan->txCtcssOption = 0;
 		pChan->txCtcssState = 2;
-		pChan->txCtcssTurnoffTimer = CTCSS_TURN_OFF_TIME - (2 * MS_PER_FRAME);
-		pChan->txCtcssPhaseShift = 1;
+		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - MS_PER_FRAME;
+		pChan->txCtcssPhaseShift = pChan->txCtcssTocShift;
+		pChan->txCtcssTailToneHz = pChan->txCtcssTocToneHz;
 	} else if (pChan->txCtcssOption == 3) {
 		pChan->txCtcssOption = 0;
 		pChan->txCtcssState = 0;
 		pChan->txCtcssEnabled = 0;
+		pChan->txCtcssTailToneHz = 0.0;
 	} else if (pChan->txCtcssState == 2) {
 		pChan->txCtcssTurnoffTimer -= MS_PER_FRAME;
 		if (pChan->txCtcssTurnoffTimer <= 0)
@@ -2247,10 +2216,9 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		memset(outputtx, 0, pChan->nSamplesTx * 2 * 6 * sizeof(*outputtx));
 
 #if URP_RADIO_DEBUG == 1
-	if (pChan->b.rxCapture) {
+	if (pChan->tracetype) {
 		for (i = 0; i < pChan->nSamplesRx; i++) {
 			pChan->pRxDemod[i] = input[i * 2 * 6];
-			pChan->pTstTxOut[i] = outputtx[i * 2 * 6 + 0]; /* txa */
 			TSCOPE((RX_NOISE_TRIG, pChan->sdbg, i,
 				(pChan->rxCarrierDetect * URP_RADIO_TRACE_AMP) -
 					URP_RADIO_TRACE_AMP / 2));
@@ -2267,9 +2235,12 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 #endif
 
 	strace2(pChan->sdbg);
-	TRACEC(5, "urp_radio_process() return  cd=%i smode=%i  txPttIn=%i  txPttOut=%i \n",
-	       pChan->rxCarrierDetect, pChan->smode, pChan->txPttIn, pChan->txPttOut);
 	return 0;
+}
+
+i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)
+{
+	return urp_radio_process_timed(pChan, input, outputrx, outputtx, 1);
 }
 
 #if GCC_VERSION > 40600

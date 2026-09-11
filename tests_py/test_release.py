@@ -64,7 +64,7 @@ def test_removed_legacy_options_are_not_accepted_or_documented():
         for option in options
         if re.search(rf"(?m)^;?{re.escape(option)}\s*=", public_artifacts)
     ]
-    assert len(options) == 97
+    assert len(options) == 95
 
 
 def test_optional_processors_default_off():
@@ -153,7 +153,9 @@ def test_flat_defaults_are_copied_before_named_overrides():
     """Verify flat defaults are copied before named overrides."""
     source = text("src/usbradioplus_processing.c")
     loader = source[
-        source.index("static int load_settings(void)") : source.index("static void hook_destroy")
+        source.index("static int load_settings_candidate(") : source.index(
+            "/** @brief Load and immediately publish settings"
+        )
     ]
     flat = loader.index('read_chain(cfg, "local", &shared->chains[TXAGC_LOCAL])')
     copy = loader.index("*profile = defaults->profiles[0]")
@@ -161,40 +163,54 @@ def test_flat_defaults_are_copied_before_named_overrides():
     assert flat < copy < scoped
 
 
-def test_link_rejects_brickwall_filter_options():
-    """Verify link rejects brickwall filter options."""
+def test_fixed_transmit_bandpass_options_are_not_supported():
+    """Verify speech filtering is owned by the configured processing graph."""
     source = text("src/usbradioplus_processing.c")
-    validator = function_definition(source, "validate_named_option")
-    assert '!strcmp(kind, "link")' in validator
     for option in (
         "splatter_filter_enabled",
         "splatter_filter_highpass_hz",
         "splatter_filter_lowpass_hz",
     ):
-        assert f'"{option}"' in validator
+        assert f'"{option}"' not in source
 
 
 def test_pl_filter_comes_only_from_unified_processing_settings():
     """Verify pl filter comes only from unified processing settings."""
-    for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(name)
-        block = source[source.index("struct txagc_config filter_cfg;") :]
-        assert "filter_cfg.ctcss_filter_mode = chain.agc.ctcss_filter_mode" in block
-        assert "filter_cfg.ctcss_highpass_hz = chain.agc.ctcss_highpass_hz" in block
-        assert "plus_rxhpf" not in block
+    source = text("src/usbradioplus_channel_common.c")
+    block = source[
+        source.index("static void native_receive_filter_config") : source.index(
+            "/** @brief Find one CTCSS table entry"
+        )
+    ]
+    assert "config->ctcss_filter_mode = chain->agc.ctcss_filter_mode" in block
+    assert "config->ctcss_highpass_hz = chain->agc.ctcss_highpass_hz" in block
+    assert "plus_rxhpf" not in block
 
 
 def test_invalid_reload_cannot_replace_live_settings():
     """Verify invalid reload cannot replace live settings."""
     source = text("src/usbradioplus_processing.c")
-    loader = source[
-        source.index("static int load_settings(void)") : source.index("static void hook_destroy")
+    candidate_loader = source[
+        source.index("static int load_settings_candidate(") : source.index(
+            "/** @brief Load and immediately publish settings"
+        )
     ]
-    commit = loader.rindex("settings = *updated")
-    assert loader.index("validate_option_names(cfg)") < commit
-    assert loader.index("settings_parse_error") < commit
-    assert loader.index("validate_profile(profile)") < commit
-    assert "keeping existing configuration" in loader
+    candidate_copy = candidate_loader.rindex("candidate_snapshot->settings = *updated")
+    assert candidate_loader.index("validate_option_names(cfg)") < candidate_copy
+    assert candidate_loader.index("settings_parse_error") < candidate_copy
+    assert candidate_loader.index("validate_profile(profile)") < candidate_copy
+    assert "keeping existing configuration" in candidate_loader
+
+    reload = source[
+        source.index("int usbradioplus_processing_reload(void)") : source.index(
+            "/** @name File-local and build-time constants"
+        )
+    ]
+    commit = reload.index("commit_candidate_settings(&snapshot->settings, snapshot)")
+    assert reload.index("load_settings_candidate(&snapshot)") < commit
+    assert reload.index("usbradioplus_stage_all_native_processing") < commit
+    assert reload.index("stage_active_link_hooks") < commit
+    assert reload.index("usbradioplus_discard_native_processing_transaction") > commit
 
 
 def test_duplex_routes_are_distinct():
@@ -210,17 +226,31 @@ def test_duplex_routes_are_distinct():
 
 
 def test_software_duplex3_honors_dtmf_mute_state():
-    """Verify software duplex3 honors dtmf mute state."""
-    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(path)
-        assert "urp_native_repeat_prepare(local_program, o->plus_local_native" in source
-        assert "o->usedtmf && o->dsp && o->toneflag" in source
-        assert '#include "usbradioplus_repeat.h"' in source
-    assert "urp_rate_convert(o->plus_down" in source
-    assert "urp_src_process(o->plus_up" in source
-    assert "o->plus_app_rpt_rate == URP_RATE_NATIVE" in source
-    assert "urp_clock_recovery_update" in source
-    assert ".plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT" in source
+    """Verify the direct renderer snapshots and mutes software-duplex3 DTMF."""
+    native_tick = text("src/usbradioplus_native_tick.c")
+    assert "snapshot->toneflag = channel->toneflag;" in native_tick
+    assert "snapshot->usedtmf = channel->usedtmf;" in native_tick
+    assert "snapshot->has_dsp = channel->dsp != NULL;" in native_tick
+    expected_repeat_prepare = (
+        "urp_native_repeat_prepare(renderer->local_program, renderer->local_native"
+    )
+    assert expected_repeat_prepare in native_tick
+    assert "input->usedtmf && input->has_dsp && input->toneflag" in native_tick
+    assert '#include "usbradioplus_repeat.h"' in native_tick
+    assert "urp_rate_convert_prepared(" in native_tick
+    assert "renderer->down" in native_tick
+    assert "graphs->app_rpt_rate == URP_RATE_NATIVE" in native_tick
+    common = text("src/usbradioplus_channel_common.c")
+    assert "rpcr_set_rates(&channel->plus_program_ring" in common
+    assert "rpcr_producer_push_sample(&o->plus_program_ring, samples[index])" in common
+    assert "rpcr_consumer_render_sample(ring, &output[index]" in native_tick
+    assert "ring->primed" not in common + native_tick
+    assert "rpcr_render(" not in native_tick
+    assert "URP_PROGRAM_RING_TARGET_MS" in text("src/usbradioplus_channel_core.h")
+    assert "plus_program_queue" not in common + native_tick
+    assert "plus_program_up" not in common + native_tick
+    assert "urp_clock_recovery_update" not in common + native_tick
+    assert "app_rpt_rate" in native_tick
     assert not (ROOT / "patches/app_rpt-radioplus-duplex.patch").exists()
 
 
@@ -238,17 +268,24 @@ def test_implementation_sources_are_never_textually_included():
 
 
 def test_echo_uses_native_buffer_only_for_software_duplex3():
-    """Verify echo uses native buffer only for software duplex3."""
+    """Verify software duplex3 selects callback-owned native echo."""
+    core = text("src/usbradioplus_channel_core.c")
+    private = text("src/usbradioplus_channel_private.h")
+    native_tick = text("src/usbradioplus_native_tick.c")
+    assert "return duplex3_level > 0 && software_mode;" in core
+    assert "urp_native_echo_enabled((channel)->duplex3" in private
+    assert "(channel)->duplex3mode == DUPLEX3_MODE_SOFTWARE" in private
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = " ".join(text(path).split())
-        assert "urp_native_echo_enabled" in source
-        assert "o->duplex3 > 0 && o->duplex3mode == DUPLEX3_MODE_SOFTWARE" in source
-        assert "o->echomode && usbradioplus_native_echo(o)" in source
+        source = " ".join((ROOT / path).read_text(encoding="utf-8").split())
+        assert "usbradioplus_native_echo(o)" in source
         assert "o->echomode && !usbradioplus_native_echo(o)" in source
-        assert "!o->plus_advanced && o->echomode && usbradioplus_native_echo(o)" in source
-        assert "DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES" in source
         assert "nativeparrot" not in source
         assert "parrotmaxseconds" not in source
+    assert "graphs->legacy_interface && graphs->echo_mode" in native_tick
+    assert "graphs->legacy_interface && renderer->parrot.playing" in native_tick
+    assert "graphs->legacy_interface && input->rxkeyed" in native_tick
+    assert "graphs->software_repeat_enabled" in native_tick
+    assert "DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES" in native_tick
 
 
 def test_native_transmit_only_clamps_at_pcm_boundary():
@@ -271,12 +308,18 @@ def test_native_transmit_only_clamps_at_pcm_boundary():
 def test_native_transmit_gain_and_limiter_precedence():
     """Verify native transmit gain and limiter precedence."""
     processing = text("src/usbradioplus_processing.c")
-    module = text("src/chan_usbradioplus.c")
+    module = text("src/usbradioplus_channel_common.c")
     assert "base->agc.input_gain_db = 6.0" in processing
     assert (
         'READ_BOOL("lookahead_limiter_enabled", chain->agc.lookahead_limiter_enabled)' in processing
     )
-    assert "final_cfg = composite_chain.agc" in module
+    final = module[
+        module.index("static void native_final_config") : module.index(
+            "/** @brief Destroy a complete native graph generation"
+        )
+    ]
+    assert "*config = chain->agc;" in final
+    assert "config->preemphasis_enabled = o->txpreemphasis;" in final
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         for removed in ("rxgain", "legacyaudioscaling", "txboost", "rxboost"):
@@ -290,15 +333,22 @@ def test_native_receive_uses_modern_level_and_delay():
     """Verify native receive uses modern level and delay."""
     source = text("src/chan_usbradioplus.c")
     processing = text("src/usbradioplus_processing.c")
-    assert "effective_rx_input_gain_db(o) / 20.0" in source
-    assert "dynamics_cfg.input_gain_db = 0.0" in source
+    common = text("src/usbradioplus_channel_common.c")
+    native = text("src/usbradioplus_native_tick.c")
+    core = text("src/usbradioplus_channel_core.c")
+    assert "effective_rx_input_gain_db(o) / 20.0" in common
+    assert "config->input_gain_db = 0.0;" in source
     assert "chain->input_gain_configured = 1" in processing
-    assert "o->rxsquelchdelay * (URP_RATE_NATIVE / 1000)" in source
-    assert "urp_prepare_receive_block" in source
-    assert "delay[*delay_index]" in source
-    detector = source.index("urp_radio_process(o->radio")
-    receiver = source.index("usbradioplus_native_tick(o)", detector)
+    assert "candidate->receive_squelch_delay_samples =" in common
+    assert "graphs->receive_squelch_delay_samples" in native
+    assert "urp_prepare_receive_block" in native
+    assert "delay[*delay_index]" in core
+    detector = source.index("urp_radio_process_timed(o->radio")
+    receiver = source.index("usbradioplus_native_tick(o, tx_write_ready)", detector)
     assert detector < receiver
+    admission = source.index("soundcard_admit_native_frame(o, &tx_admission)")
+    assert admission < detector
+    assert "info.bytes < (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short))" in source
 
 
 def test_hardware_input_gain_controls_capture():
@@ -322,14 +372,15 @@ def test_rx_noise_calibration_matches_usbradio_and_reports_levels():
     for name in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(name)
         calibration = function_definition(source, "tune_rxinput")
-        assert "const int maxtries = 12;" in calibration
+        assert "const int maxtries = 48;" in calibration
         assert "target = 27000;" in calibration
         assert "int tolerance = 2750;" in calibration
         assert "Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS)" in calibration
         assert "target = 32767;" not in calibration
     manual = text("man/usbradioplus-tune.8")
     assert "27,000 peak PCM codes" in manual
-    assert "peak and RMS levels" in manual
+    assert "at most 48 attempts" in manual
+    assert "peak and\nRMS measurements" in manual
 
 
 def test_hardware_section_covers_gain_and_routing():
@@ -344,9 +395,6 @@ def test_hardware_section_covers_gain_and_routing():
         "hardware_output_b_gain_db",
         "hardware_output_a_assignment",
         "hardware_output_b_assignment",
-        "hardware_cos_assignment",
-        "hardware_rx_ctcss_frequencies",
-        "hardware_tx_ctcss_frequencies",
     )
     assert "[hardware]" in sample
     for option in options:
@@ -359,9 +407,9 @@ def test_hardware_section_covers_gain_and_routing():
     assert "materialize_legacy_fallbacks" not in tuner
     for assignment in ("off", "voice", "ctcss", "voice_ctcss", "auxvoice"):
         assert assignment in parser
-    assert "hardware->cos_assignment_configured = 1" in parser
-    assert "hardware->rx_ctcss_frequencies_configured = 1" in parser
-    assert "hardware->tx_ctcss_frequencies_configured = 1" in parser
+    assert "cos_assignment" in parser
+    assert "receive_frequencies" in parser
+    assert "transmit_frequencies" in parser
 
 
 def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
@@ -374,17 +422,14 @@ def test_modern_channel_options_cover_flat_defaults_and_scoped_overrides():
     modern = (
         "hardware_device_identifier hardware_serial hardware_interface_type "
         "hardware_eeprom_enabled hardware_audio_fragment_count hardware_audio_queue_size "
-        "hardware_rx_cpu_saver_enabled hardware_tx_cpu_saver_enabled hardware_rx_audio_source "
-        "hardware_rx_ctcss_source hardware_vox_hang_ms hardware_vox_threshold "
-        "hardware_noise_squelch_hysteresis hardware_noise_filter_type hardware_squelch_delay "
-        "hardware_rx_on_delay_frames hardware_rx_polarity_inverted hardware_squelch_level "
-        "hardware_rx_ctcss_level hardware_rx_ctcss_override_enabled hardware_rx_ctcss_relax "
-        "hardware_tx_ctcss_default_hz hardware_tx_ctcss_level hardware_ctcss_turnoff_mode "
-        "hardware_dcs_rx_polarity_inverted hardware_dcs_tx_polarity_inverted "
-        "hardware_lsd_rx_polarity_inverted hardware_lsd_tx_polarity_inverted "
-        "hardware_tx_preemphasis_enabled hardware_tx_settle_ms hardware_tx_rx_blanking_ms "
-        "hardware_tx_off_delay_frames hardware_tx_polarity_inverted hardware_ptt_inverted "
-        "hardware_rx_frequency_hz hardware_tx_frequency_hz hardware_repeater_number "
+        "cpu_saver_enabled audio_source cos_assignment signaling_method vox_hang_ms vox_threshold "
+        "noise_squelch_hysteresis noise_filter_type squelch_delay_ms on_delay_frames "
+        "polarity_inverted squelch_level receive_decoder_gain_db receive_override_enabled "
+        "receive_relax transmit_default_hz transmit_peak_dbfs turnoff_mode phase_shift_degrees "
+        "tail_duration_ms tail_frequency_hz receive_code transmit_code turnoff_code_enabled "
+        "turnoff_duration_ms peak_dbfs lsd_polarity_inverted preemphasis_enabled settle_ms "
+        "rx_blanking_ms off_delay_frames frequency_hz hardware_ptt_inverted "
+        "hardware_repeater_number "
         "hardware_area hardware_user_key hardware_idle_interval hardware_turnoff_count "
         "hardware_voter_reporting hardware_clip_led_gpio "
         "hardware_gpio_1_mode hardware_gpio_2_mode hardware_gpio_3_mode "
@@ -455,14 +500,14 @@ def test_native_radio_interface_is_bounded():
     source = text("src/chan_usbradioplus.c")
     direct = set(
         re.findall(
-            r"\b(urp_radio_create|urp_radio_destroy|urp_radio_process|urp_radio_parse_codes)\s*\(",
+            r"\b(urp_radio_create|urp_radio_destroy|urp_radio_process_timed|urp_radio_parse_codes)\s*\(",
             source,
         )
     )
     assert direct == {
         "urp_radio_create",
         "urp_radio_destroy",
-        "urp_radio_process",
+        "urp_radio_process_timed",
         "urp_radio_parse_codes",
     }
     assert not (ROOT / "src/xpmr").exists()
@@ -472,17 +517,18 @@ def test_native_radio_interface_is_bounded():
         "urp_ctcss_decode",
         "MeasureBlock",
         "CHAN_TXSTATE_TOC",
-        "CTCSS_TURN_OFF_TIME - (2 * MS_PER_FRAME)",
+        "txCtcssTocTime - MS_PER_FRAME",
     ):
         assert behavior in radio
     assert "src/xpmr" not in text("Makefile")
 
 
 def test_native_radio_has_no_hardware_access_or_programming_state():
-    """Verify native radio has no hardware access or programming state."""
+    """Verify radio DSP has no hardware access and callback publishes requests only."""
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     hardware = text("src/usbradioplus_hardware.c")
-    module = text("src/chan_usbradioplus.c")
+    common = text("src/usbradioplus_channel_common.c")
+    native_tick = text("src/usbradioplus_native_tick.c")
     for retired in (
         "open(",
         "ioctl(",
@@ -505,20 +551,22 @@ def test_native_radio_has_no_hardware_access_or_programming_state():
         "urp_hardware_rtx_words",
     ):
         assert behavior in hardware
-    assert "usbradioplus_set_channel(chan)" in module
-    assert "ast_radio_ppwrite(haspp, ppfd, pbase, pport, value)" in module
-    assert "oldpttout != o->radio->txPttOut" in module
-    assert "usbradioplus_program_radio(o)" in module
+    assert "atomic_store_explicit(&o->plus_hardware_ptt_request" in common
+    assert "usbradioplus_publish_hardware_ptt(channel," in native_tick
+    assert "channel->radio ? channel->radio->txPttOut : 0" in native_tick
+    assert "urp_hardware_" not in native_tick
+    assert "usbradioplus_program_radio" not in native_tick
 
 
 def test_rnnoise_has_one_fixed_local_position():
     """Verify rnnoise has one fixed local position."""
-    source = text("src/chan_usbradioplus.c")
+    source = text("src/usbradioplus_native_tick.c")
     parser = text("src/usbradioplus_processing.c")
     graph_parser = text("src/txagc/agc_core.c")
-    rnnoise = source.index("txagc_rnnoise_process_double")
-    dynamics = source.index("txagc_avfilter_process(&o->plus_local_avfilter", rnnoise)
-    assert rnnoise < dynamics
+    fixed_filter = source.index("process_receive_filter(input, graphs")
+    rnnoise = source.index("txagc_rnnoise_process_prepared", fixed_filter)
+    dynamics = source.index("txagc_avfilter_process_prepared(&graphs->local_dynamics", rnnoise)
+    assert fixed_filter < rnnoise < dynamics
     assert "unknown, empty, or fixed stage" in graph_parser
     assert "RNNoise is local-receiver-only" in parser
 
@@ -575,7 +623,6 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
         assert re.search(rf"{re.escape(left)},\s*{re.escape(right)}", processing)
     assert re.search(r'"local":\s*\{\s*"ctcss_filter_mode":\s*"highpass"', processing)
     assert '"input_gain_db": "6.0"' in processing
-    assert '"splatter_filter_enabled": "yes"' in processing
     assert 'groups.remove("Filters")' in processing
     assert 'groups.remove("Final limiter")' in processing
     assert "Continuous status and RX/TX audio meters" in tune
@@ -615,17 +662,19 @@ def test_duplex3_tuning_is_live_and_persistent():
 
 def test_tuning_tone_uses_native_transmitter_path():
     """Verify tuning tone uses native transmitter path."""
-    module = text("src/chan_usbradioplus.c")
+    module = text("src/usbradioplus_channel_common.c")
+    native_tick = text("src/usbradioplus_native_tick.c")
+    private = text("src/usbradioplus_channel_private.h")
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     assert "plus_test_tone_enabled" in module
-    assert "#define URP_LEGACY_TEST_TONE_PEAK 7518.0" in module
-    assert "URP_LEGACY_TEST_TONE_PEAK * sin(o->plus_test_tone_phase)" in module
-    assert "2.0 * M_PI * 1000.0 / URP_RATE_NATIVE" in module
-    assert "if (o->txkeyed || o->txtestkey)" in module
+    assert "#define URP_LEGACY_TEST_TONE_PEAK 7518.0" in private
+    assert "URP_LEGACY_TEST_TONE_PEAK" in native_tick
+    assert "2.0 * M_PI * 1000.0 / URP_RATE_NATIVE" in native_tick
+    assert "if (input->test_tone_enabled)" in native_tick
     assert "TxTestTone" not in module
     assert "TxTestTone" not in radio
-    assert module.index("txagc_avfilter_process(&o->plus_final_avfilter") < module.index(
-        "program[i] = URP_LEGACY_TEST_TONE_PEAK * sin(o->plus_test_tone_phase)"
+    assert native_tick.index("txagc_avfilter_process_prepared(&graphs->final") < native_tick.index(
+        "URP_LEGACY_TEST_TONE_PEAK"
     )
 
 
@@ -664,12 +713,12 @@ def test_native_ctcss_has_no_duplicate_signal_rendering_after_voice_processing()
     assert "txCtcssGainQ8" in radio_header
     assert "txOutputGainA" in radio_header
     assert "txOutputGainB" in radio_header
-    assert "txCtcssPhaseShift = 1" in radio
-    assert "CTCSS_TURN_OFF_TIME - (2 * MS_PER_FRAME)" in radio
-    assert "TOC_NOTONE_TIME / MS_PER_FRAME" in radio
+    assert "txCtcssPhaseShift = pChan->txCtcssTocShift" in radio
+    assert "txCtcssTocTime - MS_PER_FRAME" in radio
+    assert "pChan->txCtcssTocTime / MS_PER_FRAME" in radio
     assert "urp_ctcss_legacy_frequency" in native
     assert "peak_215" in native and "peak_250" in native
-    limiter = module.index("txagc_avfilter_process(&o->plus_final_avfilter")
+    limiter = module.index("txagc_avfilter_process_prepared(&graphs->final")
     tone_mix = module.index("ctcss[i] * ctcss_peak_a")
     assert limiter < tone_mix
 
@@ -714,6 +763,23 @@ def test_repository_uses_upstream_linux_layout():
     assert re.fullmatch(r"[0-9][0-9A-Za-z.+:~_-]*", text("VERSION").strip())
 
 
+def test_shared_program_ring_uses_its_public_abi():
+    """Verify builds and packages use the released program-ring ABI."""
+    makefile = text("Makefile")
+    assert "third_party/rate_adjusting_pcm_ring" not in makefile
+    assert "$(PKG_CONFIG) --cflags rate_adjusting_pcm_ring" in makefile
+    assert "$(PKG_CONFIG) --libs rate_adjusting_pcm_ring" in makefile
+    assert "RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so" in makefile
+    assert "RPCR_ARCHIVE" not in makefile
+    assert "librate_adjusting_pcm_ring' /tmp/module-libraries" in text("containers/Dockerfile")
+    assert "matching development package" in text("INSTALL.md")
+    assert "librate-adjusting-pcm-ring-dev" in text("debian/control")
+    runner = text("tests/run_c_tests.sh")
+    assert "pkg-config --cflags rate_adjusting_pcm_ring" in runner
+    assert "pkg-config --libs rate_adjusting_pcm_ring" in runner
+    assert re.search(r"LD_LIBRARY_PATH=.*\\\n\s*sh \./tests/run_coverage_integration\.sh", makefile)
+
+
 def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     """Verify release workflow uses debian asl packages and atomic tagging."""
     workflow = text(".github/workflows/release.yml")
@@ -722,7 +788,7 @@ def test_release_workflow_uses_debian_asl_packages_and_atomic_tagging():
     sha = "@main"
     for name in ("quality.yml", "containers.yml", "release.yml", "packages.yml"):
         assert f"uses: {base}{name}{sha}" in workflow
-    assert "needs: [quality, containers]" in workflow
+    assert "needs: quality" in workflow
     assert "needs: release" in workflow
     assert "source_ref: ${{ needs.release.outputs.tag_name }}" in workflow
     assert "APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}" in workflow
@@ -778,9 +844,7 @@ def test_configuration_manuals_cover_parser_options():
         "hardware_output_b_gain_db",
         "hardware_output_a_assignment",
         "hardware_output_b_assignment",
-        "hardware_cos_assignment",
-        "hardware_rx_ctcss_frequencies",
-        "hardware_tx_ctcss_frequencies",
+        "cos_assignment",
     ]
     assert not [
         option
@@ -834,7 +898,6 @@ def test_processing_options_use_stage_first_names():
         "limiter_",
         "lookahead_limiter_",
         "post_limiter_",
-        "splatter_filter_",
     ):
         assert re.search(rf"(?m)^;?{prefix}[a-z0-9_]*\s*=", canonical)
 
@@ -871,8 +934,11 @@ def test_example_files_cover_every_documented_option():
 def test_manual_sections_and_install_layout():
     """Verify manual sections and install layout."""
     makefile = text("Makefile")
+    module_manual = text("man/usbradioplus.7")
     assert not (ROOT / "man/usbradioplus.5").exists()
-    assert text("man/usbradioplus.7").startswith(".TH USBRADIOPLUS 7")
+    assert module_manual.startswith(".TH USBRADIOPLUS 7")
+    assert "make distcheck" in module_manual
+    assert "install-from-dist" in module_manual
     assert text("man/usbradioplus.conf.5").startswith(".TH USBRADIOPLUS.CONF 5")
     for installed in (
         "man5/usbradioplus.conf.5",
@@ -893,29 +959,40 @@ def test_link_path_has_no_separate_highpass_filter():
         assert "linkhighpass" not in text(path).lower()
 
 
-def test_transmitter_has_only_final_brickwall_bandpass():
-    """Verify transmitter has only final brickwall bandpass."""
+def test_transmitter_has_no_fixed_speech_bandpass():
+    """Verify speech filtering is not hidden outside the processing graph."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "plus_tx_hpf" not in source
         assert '"txvoicehighpass"' not in source
         assert '"txvoicehighpass_hz"' not in source
-        assert "final_cfg = composite_chain.agc" in source
+    common = text("src/usbradioplus_channel_common.c")
+    assert "static void native_final_config" in common
+    assert "*config = chain->agc;" in common
+    assert "config->dcs_spectral_shaping_enabled = 0;" in common
+    assert "config->dcs_spectral_lowpass_hz = 0.0;" in common
     for path in ("examples/usbradioplus.conf.sample", "man/usbradioplus.conf.5"):
-        assert "txvoicehighpass" not in text(path).lower()
+        contents = text(path).lower()
+        assert "txvoicehighpass" not in contents
+        assert "splatter_filter" not in contents
 
 
 def test_fixed_pl_filter_precedes_local_dynamics():
     """Verify fixed pl filter precedes local dynamics."""
-    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(path)
-        assert "struct txagc_config dynamics_cfg = chain.agc;" in source
-        assert ("dynamics_cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;") in source
-        assert ("chain.agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;") not in source
-        fixed_filter = source.index("txagc_avfilter_process(&o->plus_rx_filter_after")
-        rnnoise = source.index("txagc_rnnoise_process_double(&o->plus_local_rnnoise")
-        dynamics = source.index("txagc_avfilter_process(&o->plus_local_avfilter")
-        assert fixed_filter < rnnoise < dynamics
+    common = text("src/usbradioplus_channel_common.c")
+    config = common[
+        common.index("static void native_local_dynamics_config") : common.index(
+            "/** @brief Build the final transmitter graph configuration"
+        )
+    ]
+    assert "*config = chain->agc;" in config
+    assert "config->ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;" in config
+    assert "chain->agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_DISABLED;" not in config
+    native = text("src/usbradioplus_native_tick.c")
+    fixed_filter = native.index("process_receive_filter(input, graphs")
+    rnnoise = native.index("txagc_rnnoise_process_prepared(", fixed_filter)
+    dynamics = native.index("txagc_avfilter_process_prepared(&graphs->local_dynamics", rnnoise)
+    assert fixed_filter < rnnoise < dynamics
 
 
 def test_receive_bandpass_precedes_pl_filter():
@@ -924,11 +1001,14 @@ def test_receive_bandpass_precedes_pl_filter():
     receive = graph.index('graph_input = "rxbandpass"')
     pl_filter = graph.index("if (cfg->ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH)")
     assert receive < pl_filter
-    for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
-        source = text(path)
-        fixed = source[source.index("struct txagc_config filter_cfg;") :]
-        assert "filter_cfg.receive_bandpass_enabled = chain.agc.receive_bandpass_enabled;" in fixed
-        assert "filter_cfg.receive_bandpass_highpass_hz =" in fixed
-        assert "chain.agc.receive_bandpass_highpass_hz;" in fixed
-        assert "filter_cfg.receive_bandpass_lowpass_hz =" in fixed
-        assert "chain.agc.receive_bandpass_lowpass_hz;" in fixed
+    common = text("src/usbradioplus_channel_common.c")
+    fixed = common[
+        common.index("static void native_receive_filter_config") : common.index(
+            "/** @brief Find one CTCSS table entry"
+        )
+    ]
+    assert "config->receive_bandpass_enabled = chain->agc.receive_bandpass_enabled;" in fixed
+    assert (
+        "config->receive_bandpass_highpass_hz = chain->agc.receive_bandpass_highpass_hz;" in fixed
+    )
+    assert "config->receive_bandpass_lowpass_hz = chain->agc.receive_bandpass_lowpass_hz;" in fixed

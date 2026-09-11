@@ -3,8 +3,6 @@ area
 carrierfrom
 clipledgpio
 ctcssfrom
-dcsrxpolarity
-dcstxpolarity
 devstr
 duplex
 duplex3

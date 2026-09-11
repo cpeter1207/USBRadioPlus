@@ -365,6 +365,7 @@ static void test_create_process_destroy(void)
 	template.rxhpf = 0;
 	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 	assert(state);
+	assert(state->b.ctcssTxEnable);
 	assert(state->rxNoiseSquelchEnable);
 	assert(state->rxDeEmpEnable);
 	assert(state->b.ctcssRxEnable && state->b.ctcssTxEnable);
@@ -375,12 +376,12 @@ static void test_create_process_destroy(void)
 /** @brief Verify create variants. */
 static void test_create_variants(void)
 {
-	static const char *const receive_codes[] = {"0",     "67.0", "250.3",	  "67.0,100.0",
-						    "123.4", "67.0", "100.0,67.0"};
-	static const char *const transmit_codes[] = {"0",     "0",	    "250.3",	 "67.0",
-						     "123.4", "67.0,100.0", "100.0,67.0"};
+	static const char *const receive_codes[] = {"0",     "67.0", "250.3",	   "67.0,100.0",
+						    "123.4", "67.0", "100.0,67.0", "67.0"};
+	static const char *const transmit_codes[] = {"0",     "0",	    "250.3",	  "67.0",
+						     "123.4", "67.0,100.0", "100.0,67.0", "123.4"};
 	static const char *const default_codes[] = {"0",     "67.0", "250.3", "123.4",
-						    "100.0", "0",    "100.0"};
+						    "100.0", "0",    "100.0", ""};
 	int16_t input[SAMPLES_PER_BLOCK * 6 * 2] = {0};
 	int16_t output[SAMPLES_PER_BLOCK] = {0};
 	int16_t transmit[SAMPLES_PER_BLOCK * 6 * 2] = {0};
@@ -402,9 +403,23 @@ static void test_create_variants(void)
 		template.tracelevel = variant & 1U ? 100 : 0;
 		urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 		assert(state);
-		state->b.rxCapture = 1;
 		state->txrxblankingtimer = MS_PER_FRAME;
 		assert(!urp_radio_process(state, input, output, transmit));
+		assert(!urp_radio_destroy(state));
+	}
+
+	/* A missing default is equivalent to no transmit CTCSS default rather than
+	 * an invalid CTCSS token. */
+	{
+		urp_radio_state template = {0};
+		urp_radio_state *state;
+
+		template.pRxCodeSrc = "0";
+		template.pTxCodeSrc = "0";
+		template.pTxCodeDefault = NULL;
+		template.tracelevel = 100;
+		state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		assert(state && !state->b.ctcssTxEnable);
 		assert(!urp_radio_destroy(state));
 	}
 
@@ -424,6 +439,44 @@ static int process_once(urp_radio_state *state)
 	int16_t output[SAMPLES_PER_BLOCK] = {0};
 	int16_t transmit[SAMPLES_PER_BLOCK * 6 * 2] = {0};
 	return urp_radio_process(state, input, output, transmit);
+}
+
+/** @brief Verify transmitter CTCSS startup leaves receive-only mappings silent. */
+static void test_ctcss_transmit_startup_edges(void)
+{
+	urp_radio_state template = {0};
+	urp_radio_state *state;
+	const int index = urp_ctcss_frequency_index(100.0F);
+
+	template.pRxCodeSrc = "100.0";
+	template.pTxCodeSrc = "100.0";
+	template.pTxCodeDefault = "100.0";
+	state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(state && index > CTCSS_NULL);
+
+	/* Bypass the live decoder so this test holds the modeled receive decision
+	 * steady while asserting the transmitter's mapping behavior. */
+	state->b.ctcssRxEnable = 0;
+	/* A decoded receive-only tone must not substitute the configured transmitter
+	 * default.  It leaves the startup tone unset rather than emitting a stale
+	 * value from an earlier transmission. */
+	state->smode = SMODE_CTCSS;
+	state->rxCtcss->decode = index;
+	state->rxCtcssMap[index] = CTCSS_RXONLY;
+	state->txPttIn = 1;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txCtcssFreq10 == 0 &&
+	       !state->txCtcssEnabled);
+
+	/* An explicit transmit CTCSS inhibit likewise starts PTT without generating
+	 * a tone.  This is distinct from a radio configured for carrier signaling. */
+	state->txState = CHAN_TXSTATE_IDLE;
+	state->txPttOut = 0;
+	state->txPttIn = 1;
+	state->b.txCtcssInhibit = 1;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && !state->txCtcssEnabled);
+	assert(!urp_radio_destroy(state));
 }
 
 /** @brief Verify runtime state machine. */
@@ -475,24 +528,98 @@ static void test_runtime_state_machine(void)
 	assert(state->txState == CHAN_TXSTATE_TOC);
 	state->txPttIn = 1;
 	assert(process_once(state) == 0);
-	assert(state->txState == CHAN_TXSTATE_ACTIVE);
+	/* A no-tone tail clears emitted CTCSS, but a rekey must restore the
+	 * configured signaling mode rather than remain in the tail state. */
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txCtcssEnabled &&
+	       state->txCtcssState == 1);
 	state->txPttIn = 0;
 	assert(process_once(state) == 0);
-	state->txHangTime = 2;
-	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_TOC);
-	assert(process_once(state) == 0);
+	{
+		unsigned int tail_blocks = 0U;
+
+		/* Tone removal holds PTT for the configured CTCSS tail duration even
+		 * though the generated CTCSS waveform is already disabled. */
+		while (state->txState == CHAN_TXSTATE_TOC) {
+			assert(state->txPttOut && !state->txCtcssEnabled);
+			assert(process_once(state) == 0);
+			assert(++tail_blocks <= 12U);
+		}
+	}
 	assert(state->txState == CHAN_TXSTATE_FINISHING);
 
 	state->txState = CHAN_TXSTATE_ACTIVE;
 	state->smode = SMODE_CTCSS;
 	state->txTocType = TOC_PHASE;
+	/* The receiver's selected mode does not imply a transmit tone. Model the
+	 * keyed transmit CTCSS state that precedes every real CTCSS tail. */
+	state->txCtcssEnabled = 1;
+	state->txCtcssState = 1;
+	state->txPttIn = 0;
 	assert(process_once(state) == 0);
-	assert(state->txState == CHAN_TXSTATE_TOC && state->txCtcssState == 2);
-	state->txHangTime = 0;
-	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_TOC);
-	state->txCtcssState = 0;
-	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->txCtcssState == 2 && state->txPttOut &&
+	       state->txCtcssPhaseShift == CTCSS_TURN_OFF_SHIFT && state->txCtcssTailToneHz == 0.0);
+	{
+		unsigned int tail_blocks = 0U;
+
+		while (state->txState == CHAN_TXSTATE_TOC) {
+			/* The final TOC frame observes the generator's completed state
+			 * before advancing to FINISHING, but PTT remains asserted. */
+			assert(state->txPttOut);
+			if (state->txCtcssState == 2)
+				assert(state->txCtcssTailToneHz == 0.0);
+			assert(process_once(state) == 0);
+			assert(++tail_blocks <= 12U);
+		}
+	}
 	assert(state->txState == CHAN_TXSTATE_FINISHING);
+
+	state->txState = CHAN_TXSTATE_ACTIVE;
+	state->smode = SMODE_CTCSS;
+	state->txTocType = TOC_PHASE;
+	state->txCtcssTocShift = 135.0;
+	state->txCtcssEnabled = 1;
+	state->txCtcssState = 1;
+	state->txPttIn = 0;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->txCtcssState == 2 && state->txPttOut &&
+	       state->txCtcssPhaseShift == 135.0);
+	assert(state->txCtcssTocShift == 135.0);
+	assert(state->txCtcssTocTime == CTCSS_TURN_OFF_TIME);
+	assert(state->txCtcssTocToneHz == 0.0);
+
+	state->txState = CHAN_TXSTATE_ACTIVE;
+	state->smode = SMODE_CTCSS;
+	state->txTocType = 3;
+	state->txCtcssTocTime = 250;
+	state->txCtcssTocToneHz = 55.0;
+	state->txCtcssEnabled = 1;
+	state->txCtcssState = 1;
+	state->txPttIn = 0;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->txCtcssState == 2 && state->txPttOut &&
+	       state->txCtcssPhaseShift == 0.0 && state->txCtcssTailToneHz == 55.0);
+	assert(state->txCtcssTocShift == 0.0);
+	assert(state->txCtcssTocTime == 250);
+	assert(state->txCtcssTocToneHz == 55.0);
+	{
+		unsigned int tail_blocks = 0U;
+
+		while (state->txState == CHAN_TXSTATE_TOC) {
+			assert(state->txPttOut);
+			if (state->txCtcssState == 2)
+				assert(state->txCtcssTailToneHz == 55.0);
+			assert(process_once(state) == 0);
+			assert(++tail_blocks <= 16U);
+		}
+	}
+	assert(state->txState == CHAN_TXSTATE_FINISHING && state->txBufferClear == 8);
+	for (unsigned int post_tail_frame = 0U; post_tail_frame < 8U; ++post_tail_frame) {
+		assert(state->txPttOut);
+		assert(process_once(state) == 0);
+	}
+	assert(state->txState == CHAN_TXSTATE_COMPLETE && state->txPttOut);
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
 
 	state->txState = CHAN_TXSTATE_IDLE;
 	state->txPttOut = 0;
@@ -505,10 +632,12 @@ static void test_runtime_state_machine(void)
 	assert(process_once(state) == 0 && state->txCtcssState == 1);
 	state->txCtcssOption = 2;
 	assert(process_once(state) == 0 && state->txCtcssState == 2);
+	assert(state->txCtcssTailToneHz == 55.0);
 	state->txCtcssTurnoffTimer = 2 * MS_PER_FRAME;
 	assert(process_once(state) == 0 && state->txCtcssOption == 0);
 	assert(process_once(state) == 0 && state->txCtcssOption == 3);
 	assert(process_once(state) == 0 && state->txCtcssState == 0);
+	assert(state->txCtcssTailToneHz == 0.0);
 
 	state->txsettletimer = 2 * MS_PER_FRAME;
 	state->txPttHid = 1;
@@ -633,6 +762,234 @@ static void test_runtime_state_machine(void)
 	state->txState = CHAN_TXSTATE_ACTIVE;
 	state->b.txCtcssInhibit = 1;
 	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_FINISHING);
+	assert(!urp_radio_destroy(state));
+}
+
+/** Verify transmitter signaling cannot run ahead of an unavailable DAC frame. */
+static void test_transmit_timeline_admission(void)
+{
+	urp_radio_state template = {
+		.pRxCodeSrc = "100.0", .pTxCodeSrc = "100.0", .pTxCodeDefault = "100.0"};
+	int16_t input[SAMPLES_PER_BLOCK * 6 * 2] = {0};
+	int16_t output[SAMPLES_PER_BLOCK] = {0};
+	int16_t transmit[SAMPLES_PER_BLOCK * 6 * 2];
+	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+
+	assert(state);
+	state->b.ctcssRxEnable = 0;
+	memset(transmit, 0x5a, sizeof(transmit));
+	state->txPttIn = 1;
+	assert(!urp_radio_process_timed(state, input, output, transmit, 0));
+	assert(state->frameCountRx == 1 && state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
+	for (size_t sample = 0; sample < sizeof(transmit) / sizeof(transmit[0]); ++sample)
+		assert(!transmit[sample]);
+
+	/* A caller without a DAC frame can omit its output buffer. The receive
+	 * timeline still advances, while transmitter signaling remains frozen. */
+	assert(!urp_radio_process_timed(state, input, output, NULL, 0));
+	assert(state->frameCountRx == 2 && state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
+
+	assert(!urp_radio_process_timed(state, input, output, transmit, 1));
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+	state->txPttIn = 0;
+	assert(!urp_radio_process_timed(state, input, output, transmit, 0));
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+	assert(!urp_radio_process_timed(state, input, output, transmit, 1));
+	assert(state->txState == CHAN_TXSTATE_FINISHING || state->txState == CHAN_TXSTATE_TOC);
+	assert(!urp_radio_destroy(state));
+}
+
+/** @brief Reject malformed DCS receive and transmit settings independently of CTCSS setup. */
+static void test_invalid_dcs_radio_configuration(void)
+{
+	urp_radio_state template = {0};
+	template.pRxCodeSrc = "0";
+	template.pTxCodeSrc = "0";
+	template.pTxCodeDefault = "0";
+	memcpy(template.dcsRxCode, "023X", sizeof(template.dcsRxCode));
+	memcpy(template.dcsTxCode, "888N", sizeof(template.dcsTxCode));
+	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(state);
+	assert(!state->dcs.enabled_receive);
+	assert(!state->dcs.enabled_transmit);
+	assert(state->dcs.receive_code == -1);
+	assert(state->dcs.transmit_code == -1);
+	assert(!urp_radio_destroy(state));
+}
+
+/** @brief Verify every user-selectable DCS turn-off duration retains PTT through its tail. */
+static void test_dcs_turnoff_duration_bounds(void)
+{
+	static const int durations[] = {150, 180, 200};
+	size_t duration_index;
+
+	for (duration_index = 0; duration_index < sizeof(durations) / sizeof(durations[0]);
+	     ++duration_index) {
+		urp_radio_state template = {0};
+		urp_radio_state *state;
+		unsigned int blocks = 0;
+
+		template.pRxCodeSrc = "0";
+		template.pTxCodeSrc = "0";
+		template.pTxCodeDefault = "0";
+		template.dcsTurnoffDuration = durations[duration_index];
+		memcpy(template.dcsTxCode, "023N", sizeof(template.dcsTxCode));
+		state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		assert(state);
+		state->dcsTurnoffEnabled = 1;
+		state->txPttIn = 1;
+		assert(process_once(state) == 0);
+		assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+		state->txPttIn = 0;
+		assert(process_once(state) == 0);
+		assert(state->txState == CHAN_TXSTATE_TOC &&
+		       state->dcsTurnoffTimer == durations[duration_index] && state->txPttOut);
+		while (state->txState == CHAN_TXSTATE_TOC) {
+			assert(state->txPttOut);
+			assert(process_once(state) == 0);
+			assert(++blocks <= 11U);
+		}
+		assert(state->txState == CHAN_TXSTATE_FINISHING && state->dcsTurnoffTimer == 0);
+		while (state->txState != CHAN_TXSTATE_IDLE) {
+			assert(process_once(state) == 0);
+			assert(++blocks <= 16U);
+		}
+		assert(!state->txPttOut);
+		assert(!urp_radio_destroy(state));
+	}
+}
+
+/** @brief Verify DCS receive qualification and DCS turn-off signaling transitions. */
+static void test_dcs_radio_state_machine(void)
+{
+	urp_radio_state template = {0};
+	template.pRxCodeSrc = "0";
+	template.pTxCodeSrc = "0";
+	template.pTxCodeDefault = "0";
+	template.txCtcssTocTime = 250;
+	template.txCtcssTocShift = 135.0;
+	template.txCtcssTocToneHz = 67.0;
+	template.dcsTurnoffDuration = 180;
+	template.dcsPeak = 500.0;
+	memcpy(template.dcsRxCode, "023N", sizeof(template.dcsRxCode));
+	memcpy(template.dcsTxCode, "023N", sizeof(template.dcsTxCode));
+	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(state);
+	assert(state->dcs.enabled_receive && state->dcs.enabled_transmit);
+	assert(state->txCtcssTocTime == 250 && state->txCtcssTocShift == 135.0);
+	assert(state->txCtcssTocToneHz == 67.0);
+	assert(state->dcsTurnoffDuration == 180 && state->dcsPeak == 500.0);
+
+	/* The 48 kHz discriminator stream advances the DCS detector before speech DSP. */
+	assert(process_once(state) == 0);
+	assert(state->dcs.receive_phase[0].bit_accumulator != 0U);
+
+	/* Keep a qualified detector result stable while exercising signaling selection. */
+	state->dcs.enabled_receive = 0;
+	state->dcs.valid = 1;
+	state->smode = SMODE_NULL;
+	state->smodetime = 3 * MS_PER_FRAME;
+	state->smodetimer = 0;
+	assert(process_once(state) == 0);
+	assert(state->smode == SMODE_DCS && state->smodewas == SMODE_DCS);
+	assert(state->smodetimer == 3 * MS_PER_FRAME);
+
+	/* A qualified DCS detector must not override an active CTCSS selection. */
+	state->smode = SMODE_CTCSS;
+	assert(process_once(state) == 0 && state->smode == SMODE_CTCSS);
+	state->smode = SMODE_NULL;
+	state->smodetimer = 0;
+	assert(process_once(state) == 0 && state->smode == SMODE_DCS);
+
+	state->dcsTurnoffTimer = 99;
+	state->txPttIn = 1;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+	assert(state->dcsTurnoffTimer == 0);
+
+	state->dcsTurnoffEnabled = 1;
+	state->txPttIn = 0;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC);
+	assert(state->dcsTurnoffTimer == 180 && state->txHangTime == 0 && state->txPttOut);
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 160);
+
+	/* A rapid rekey must cancel DCS tail audio rather than finish an obsolete TOC. */
+	state->txPttIn = 1;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->dcsTurnoffTimer == 0 &&
+	       state->txPttOut && !state->txCtcssEnabled);
+	state->txPttIn = 0;
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 180);
+	while (state->txState == CHAN_TXSTATE_TOC) {
+		assert(state->txPttOut);
+		assert(process_once(state) == 0);
+	}
+	assert(state->txState == CHAN_TXSTATE_FINISHING && state->dcsTurnoffTimer == 0 &&
+	       state->txBufferClear == 3);
+
+	/* A configured DCS transmitter without a turn-off code releases normally. */
+	state->txState = CHAN_TXSTATE_IDLE;
+	state->txPttOut = 0;
+	state->dcsTurnoffEnabled = 0;
+	state->txPttIn = 1;
+	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_ACTIVE);
+	state->txPttIn = 0;
+	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_FINISHING);
+	assert(!urp_radio_destroy(state));
+}
+
+/** @brief Verify a receive DCS selection cannot block a transmit CTCSS tail rekey. */
+static void test_ctcss_rekey_remains_transmit_directional(void)
+{
+	urp_radio_state template = {0};
+	urp_radio_state *state;
+
+	template.pRxCodeSrc = "0";
+	template.pTxCodeSrc = "0";
+	template.pTxCodeDefault = "100.0";
+	memcpy(template.dcsRxCode, "023N", sizeof(template.dcsRxCode));
+	state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(state);
+	assert(state->dcs.enabled_receive && !state->dcs.enabled_transmit &&
+	       state->b.ctcssTxEnable);
+	state->txPttIn = 1;
+	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_ACTIVE &&
+	       state->txCtcssEnabled);
+	state->txTocType = TOC_NOTONE;
+	state->txPttIn = 0;
+	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_TOC &&
+	       !state->txCtcssEnabled);
+	/* Model a qualified receive DCS decoder while the transmit CTCSS tail is
+	 * active. The transmit selection—not receive smode—must restore CTCSS. */
+	state->smode = SMODE_DCS;
+	state->txPttIn = 1;
+	assert(process_once(state) == 0 && state->smode == SMODE_DCS &&
+	       state->txState == CHAN_TXSTATE_ACTIVE && state->txCtcssEnabled &&
+	       state->txCtcssState == 1);
+	assert(!urp_radio_destroy(state));
+}
+
+/** @brief Verify an unselected receive CTCSS decoder uses the transmit default. */
+static void test_ctcss_transmit_default_without_decoded_receive_tone(void)
+{
+	urp_radio_state template = {0};
+	urp_radio_state *state;
+
+	template.pRxCodeSrc = "100.0";
+	template.pTxCodeSrc = "100.0";
+	template.pTxCodeDefault = "100.0";
+	state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(state);
+	assert(state->b.ctcssTxEnable);
+	state->smode = SMODE_CTCSS;
+	state->rxCtcss->decode = CTCSS_NULL;
+	state->txPttIn = 1;
+	assert(!process_once(state));
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txCtcssEnabled);
+	assert(state->txCtcssFreq10 == 1000);
 	assert(!urp_radio_destroy(state));
 }
 
@@ -1064,6 +1421,13 @@ int main(void)
 	RUN_TEST(test_create_process_destroy);
 	RUN_TEST(test_create_variants);
 	RUN_TEST(test_runtime_state_machine);
+	RUN_TEST(test_transmit_timeline_admission);
+	RUN_TEST(test_invalid_dcs_radio_configuration);
+	RUN_TEST(test_dcs_turnoff_duration_bounds);
+	RUN_TEST(test_dcs_radio_state_machine);
+	RUN_TEST(test_ctcss_rekey_remains_transmit_directional);
+	RUN_TEST(test_ctcss_transmit_default_without_decoded_receive_tone);
+	RUN_TEST(test_ctcss_transmit_startup_edges);
 	RUN_TEST(test_ctcss_decoder_states);
 	RUN_TEST(test_frontend_edges);
 	RUN_TEST(test_frontend_sample_gate);

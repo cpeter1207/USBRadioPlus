@@ -18,10 +18,16 @@ Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
 `asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
 `libusb-dev`, `portaudio19-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
-`ladspa-sdk`, `librnnoise-dev`, `python3`, and `python3-pytest`. The USBRadioPlus repository
+`ladspa-sdk`, `librnnoise-dev`, `librate-adjusting-pcm-ring-dev (>= 1.0.1)`,
+`python3`, and `python3-pytest`. The USBRadioPlus repository
 publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
+
+USBRadioPlus links dynamically to the separately released GPL-2.0-only
+`rate_adjusting_pcm_ring` library. Build packages require its development
+package; installed modules require its matching runtime package. CI stages the
+released library source only to test that public ABI deterministically.
 
 The package includes the original gated RMS AGC as a private LADSPA effect:
 `/usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so`. It runs only inside
@@ -58,8 +64,10 @@ contact the network.
 
 The `debian/` directory builds the `usbradioplus` binary package. Companion
 RNNoise packaging is under `packaging/rnnoise/`. GitHub Actions builds both
-packages natively for Debian 12 and 13 on amd64 and arm64, publishes signed APT
+packages natively for Debian 13 on amd64 and arm64, publishes signed APT
 metadata through GitHub Pages, and verifies installation from the public URL.
+Debian 12 packaging is aspirational and may be built manually only when
+explicitly requested; it has no automatic test or staged-install matrix.
 
 `src/usbradioplus_radio.c`, `src/usbradioplus_radio.h`, and `src/txagc/` are
 integrated implementation components, not convenience copies selected in

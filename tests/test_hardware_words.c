@@ -66,6 +66,20 @@ int main(void)
 	assert(write_count == 129U);
 	assert((bus.value & 0x18U) == 0);
 
+	/* A worker disconnect must clear transmit immediately, without replaying the
+	 * 129-byte synthesizer sequence that could otherwise delay fail-safe PTT. */
+	write_count = 0;
+	bus.value = 0xffU;
+	urp_hardware_clear_transmit(&bus);
+	assert(write_count == 1U);
+	assert(writes[0] == 0xe7U);
+	assert(bus.value == 0xe7U);
+	{
+		struct urp_parallel_bus no_writer = {0};
+		urp_hardware_clear_transmit(NULL);
+		urp_hardware_clear_transmit(&no_writer);
+	}
+
 	puts("legacy binary and RTX parallel-port protocol tests passed");
 	return 0;
 }

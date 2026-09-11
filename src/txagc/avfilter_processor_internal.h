@@ -25,6 +25,12 @@ enum cleanup_meter {
 
 double db_to_linear(double db);
 double clamp(double value, double low, double high);
+/** @brief Compare named configuration members without comparing padding.
+ * @param left First validated graph configuration.
+ * @param right Second validated graph configuration.
+ * @return Nonzero when both configurations have the same semantic values.
+ */
+int txagc_config_equal(const struct txagc_config *left, const struct txagc_config *right);
 int graph_append(char *graph, size_t size, const char *format, ...)
 	__attribute__((format(printf, 3, 4)));
 int astats_value(const AVFrame *frame, const char *name, double *value);
@@ -43,12 +49,14 @@ int add_dynamic_stage(char *graph, size_t size, const struct txagc_config *cfg,
 		      unsigned int sample_rate);
 int build_description(char *graph, size_t size, const struct txagc_config *cfg,
 		      unsigned int sample_rate);
+unsigned int input_capacity_for_rate(unsigned int sample_rate);
 void free_graph(struct txagc_avfilter *state);
 void set_double_sample_format(AVFilterContext *sink);
 int configure(struct txagc_avfilter *state, const struct txagc_config *config,
 	      unsigned int sample_rate);
 int drain_cleanup_meter(struct txagc_avfilter *state, AVFilterContext *sink, AVFrame *frame,
 			enum cleanup_meter meter);
+AVFrame *next_input_frame(struct txagc_avfilter *state);
 #endif
 
 #endif

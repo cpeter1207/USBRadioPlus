@@ -1,5 +1,5 @@
 /** @file
- * @brief Sample-rate conversion, elastic clock recovery, and receive-echo matching.
+ * @brief Sample-rate conversion and receive-echo matching.
  */
 
 #ifdef AST_MODULE
@@ -54,38 +54,6 @@ struct urp_src {
 	size_t output_capacity;
 };
 
-void urp_clock_recovery_reset(struct urp_clock_recovery *clock)
-{
-	if (clock)
-		memset(clock, 0, sizeof(*clock));
-}
-
-double urp_clock_recovery_update(struct urp_clock_recovery *clock, size_t queued_samples,
-				 size_t target_samples)
-{
-	double error, desired;
-
-	if (!clock || !target_samples)
-		return 0.0;
-	error = ((double)target_samples - (double)queued_samples) / (double)target_samples;
-	/* Filter scheduler jitter, then use a small integral term to follow a
-	 * persistent oscillator mismatch without requiring extra FIFO latency. */
-	clock->filtered_error += (error - clock->filtered_error) * 0.10;
-	clock->integral_error += clock->filtered_error * 0.00002;
-	if (clock->integral_error > URP_CLOCK_MAX_CORRECTION)
-		clock->integral_error = URP_CLOCK_MAX_CORRECTION;
-	if (clock->integral_error < -URP_CLOCK_MAX_CORRECTION)
-		clock->integral_error = -URP_CLOCK_MAX_CORRECTION;
-	desired = clock->filtered_error * 0.006 + clock->integral_error;
-	if (desired > URP_CLOCK_MAX_CORRECTION)
-		desired = URP_CLOCK_MAX_CORRECTION;
-	if (desired < -URP_CLOCK_MAX_CORRECTION)
-		desired = -URP_CLOCK_MAX_CORRECTION;
-	/* Smooth ratio changes so clock correction cannot modulate speech abruptly. */
-	clock->correction += (desired - clock->correction) * 0.10;
-	return clock->correction;
-}
-
 /** @brief Round and clamp a sample to the signed 16-bit PCM range.
  * @param value Sample amplitude in signed PCM codes.
  * @return Nearest bounded signed 16-bit PCM sample.
@@ -133,9 +101,35 @@ void urp_src_reset(struct urp_src *src)
 		src_reset(src->state);
 }
 
-int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output,
-		    size_t output_capacity, double ratio, size_t *input_used,
-		    size_t *output_generated)
+int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_capacity)
+{
+	float *input;
+	float *output;
+
+	if (!src || !input_capacity || !output_capacity)
+		return -1;
+	input_capacity *= src->channels;
+	output_capacity *= src->channels;
+	if (input_capacity > src->input_capacity) {
+		input = URP_REALLOC(src->input, input_capacity * sizeof(*input));
+		if (!input)
+			return -1;
+		src->input = input;
+		src->input_capacity = input_capacity;
+	}
+	if (output_capacity > src->output_capacity) {
+		output = URP_REALLOC(src->output, output_capacity * sizeof(*output));
+		if (!output)
+			return -1;
+		src->output = output;
+		src->output_capacity = output_capacity;
+	}
+	return 0;
+}
+
+int urp_src_process_prepared(struct urp_src *src, const int16_t *input, size_t input_count,
+			     int16_t *output, size_t output_capacity, double ratio,
+			     size_t *input_used, size_t *output_generated)
 {
 	SRC_DATA data;
 	size_t i, in_values, out_values;
@@ -144,20 +138,10 @@ int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_coun
 		return -1;
 	in_values = input_count * src->channels;
 	out_values = output_capacity * src->channels;
-	if (in_values > src->input_capacity) {
-		float *p = URP_REALLOC(src->input, in_values * sizeof(*p));
-		if (!p)
-			return -1;
-		src->input = p;
-		src->input_capacity = in_values;
-	}
-	if (out_values > src->output_capacity) {
-		float *p = URP_REALLOC(src->output, out_values * sizeof(*p));
-		if (!p)
-			return -1;
-		src->output = p;
-		src->output_capacity = out_values;
-	}
+	/* Prepared audio processing must not resize these workspaces. Setup and reload
+	 * reserve the largest supported source and destination blocks beforehand. */
+	if (in_values > src->input_capacity || out_values > src->output_capacity)
+		return -1;
 	src_short_to_float_array(input, src->input, (int)in_values);
 	memset(&data, 0, sizeof(data));
 	data.data_in = src->input;
@@ -179,17 +163,30 @@ int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_coun
 	return 0;
 }
 
-int urp_rate_convert(struct urp_src *src, const int16_t *input, size_t input_count,
-		     unsigned int input_rate, int16_t *output, size_t output_capacity,
-		     unsigned int output_rate, size_t *input_used, size_t *output_generated)
+int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output,
+		    size_t output_capacity, double ratio, size_t *input_used,
+		    size_t *output_generated)
+{
+	if (!src || !input || !output || ratio <= 0.0)
+		return -1;
+	if (urp_src_reserve(src, input_count, output_capacity))
+		return -1;
+	return urp_src_process_prepared(src, input, input_count, output, output_capacity, ratio,
+					input_used, output_generated);
+}
+
+int urp_rate_convert_prepared(struct urp_src *src, const int16_t *input, size_t input_count,
+			      unsigned int input_rate, int16_t *output, size_t output_capacity,
+			      unsigned int output_rate, size_t *input_used,
+			      size_t *output_generated)
 {
 	size_t copied;
 	if (!input || !output || !input_rate || !output_rate)
 		return -1;
 	if (input_rate != output_rate) {
-		return urp_src_process(src, input, input_count, output, output_capacity,
-				       (double)output_rate / input_rate, input_used,
-				       output_generated);
+		return urp_src_process_prepared(src, input, input_count, output, output_capacity,
+						(double)output_rate / input_rate, input_used,
+						output_generated);
 	}
 	/* Matching rates need no converter state, allocation, or filter delay. */
 	copied = input_count < output_capacity ? input_count : output_capacity;
@@ -201,6 +198,19 @@ int urp_rate_convert(struct urp_src *src, const int16_t *input, size_t input_cou
 	if (output_generated)
 		*output_generated = copied;
 	return input_count <= output_capacity ? 0 : -1;
+}
+
+int urp_rate_convert(struct urp_src *src, const int16_t *input, size_t input_count,
+		     unsigned int input_rate, int16_t *output, size_t output_capacity,
+		     unsigned int output_rate, size_t *input_used, size_t *output_generated)
+{
+	if (!input || !output || !input_rate || !output_rate)
+		return -1;
+	if (input_rate != output_rate && urp_src_reserve(src, input_count, output_capacity))
+		return -1;
+	return urp_rate_convert_prepared(src, input, input_count, input_rate, output,
+					 output_capacity, output_rate, input_used,
+					 output_generated);
 }
 
 void urp_extract_mono(const int16_t *stereo, int16_t *mono, size_t frames, unsigned int channel)

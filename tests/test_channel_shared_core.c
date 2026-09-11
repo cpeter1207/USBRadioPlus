@@ -14,68 +14,25 @@
  */
 int main(void)
 {
-	struct urp_program_queue queue = {0};
-	short input[URP_NATIVE_SAMPLES + 1];
-	short output[URP_NATIVE_SAMPLES];
 	short sample;
-	short native_input[URP_NATIVE_FIFO_SAMPLES + 1];
 	size_t i;
 	enum urp_rx_audio_mode rx_audio;
-	enum urp_tx_output_mode tx_output;
 	enum urp_carrier_source carrier;
 	enum urp_ctcss_source ctcss;
 	enum urp_tone_off_mode tone_off;
 	static const char *const rx_names[] = {"no", "SPEAKER", "flat"};
-	static const char *const tx_names[] = {"no", "VOICE", "tone", "composite", "auxvoice"};
 	static const char *const carrier_names[] = {"no",	 "dsp", "vox",	   "usb",
 						    "usbinvert", "pp",	"ppinvert"};
 	static const char *const ctcss_names[] = {"no",	 "usb", "usbinvert",
 						  "dsp", "pp",	"ppinvert"};
-	static const char *const tone_names[] = {"no", "phase", "notone"};
-
-	for (i = 0; i < sizeof(input) / sizeof(input[0]); ++i)
-		input[i] = (short)(i + 1);
-	urp_program_queue_init(&queue);
-	assert(!urp_program_queue_samples(&queue));
-	assert(!urp_program_queue_pop_sample(&queue, &sample));
-	assert(!urp_program_queue_push(&queue, input, URP_NATIVE_SAMPLES + 1,
-				       2U * URP_NATIVE_SAMPLES));
-	assert(urp_program_queue_samples(&queue) == 3U * URP_NATIVE_SAMPLES + 1U);
-	assert(urp_program_queue_high_water(&queue) == 3U * URP_NATIVE_SAMPLES + 1U);
-	for (i = 0; i < 2U * URP_NATIVE_SAMPLES; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == 0);
-	}
-	for (i = 0; i < URP_NATIVE_SAMPLES + 1U; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == input[i]);
-	}
-	assert(!urp_program_queue_pop_sample(&queue, &sample));
-	assert(urp_program_queue_seed_samples(0, URP_RATE_NATIVE, URP_NATIVE_SAMPLES) == 0U);
-	assert(urp_program_queue_seed_samples(URP_NATIVE_SAMPLES, 0, URP_NATIVE_SAMPLES) == 0U);
-	assert(urp_program_queue_seed_samples(URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 0) == 0U);
-
-	/* The SPSC cursors wrap independently while retaining every sample in order. */
-	urp_program_queue_init(&queue);
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)i));
-	assert(!urp_program_queue_push_sample(&queue, 0));
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES / 2U; ++i) {
-		assert(urp_program_queue_pop_sample(&queue, &sample));
-		assert(sample == (short)i);
-	}
-	for (i = 0; i < URP_PROGRAM_QUEUE_SAMPLES / 2U; ++i)
-		assert(urp_program_queue_push_sample(&queue, (short)(i + 100)));
-	assert(urp_program_queue_samples(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
-	assert(urp_program_queue_push(&queue, input, 1U, 1U));
-	assert(urp_program_queue_high_water(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
-	urp_program_queue_reset_high_water(&queue);
-	assert(urp_program_queue_high_water(&queue) == URP_PROGRAM_QUEUE_SAMPLES);
+	static const char *const tone_names[] = {"no", "ctcss_phase_shift", "ctcss_tone_remove",
+						 "ctcss_tail_tone"};
 
 	/* The generic ring also backs legacy echo and rejects an uninitialized queue. */
 	{
 		struct urp_sample_queue generic = {0};
 		short generic_samples[2] = {0};
+		unsigned int cursor;
 
 		assert(!urp_sample_queue_push_sample(&generic, 1));
 		assert(!urp_sample_queue_pop_sample(&generic, &sample));
@@ -99,84 +56,27 @@ int main(void)
 		assert(sample == 11);
 		urp_sample_queue_reset_high_water(&generic);
 		assert(urp_sample_queue_high_water(&generic) == 1U);
+		/* A consumer-side discard must retain monotonic producer state.  The
+		 * next producer publication therefore remains usable without resetting
+		 * either endpoint under a live SPSC queue. */
+		cursor = atomic_load_explicit(&generic.write, memory_order_acquire);
+		urp_sample_queue_discard(&generic);
+		assert(!urp_sample_queue_samples(&generic));
+		assert(atomic_load_explicit(&generic.read, memory_order_acquire) == cursor);
+		assert(atomic_load_explicit(&generic.write, memory_order_acquire) == cursor);
+		assert(urp_sample_queue_push_sample(&generic, 14));
+		assert(atomic_load_explicit(&generic.write, memory_order_acquire) == cursor + 1U);
+		assert(urp_sample_queue_pop_sample(&generic, &sample));
+		assert(sample == 14);
 		urp_sample_queue_reset(&generic);
 		assert(!urp_sample_queue_samples(&generic));
 		assert(!urp_sample_queue_high_water(&generic));
-	}
-
-	{
-		struct urp_native_fifo fifo = {0};
-		assert(URP_FIFO_TARGET_MIN == 110U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_NORMAL == 120U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_MAX == 170U * (URP_RATE_NATIVE / 1000U));
-		assert(URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES < URP_NATIVE_FIFO_SAMPLES);
-		assert((URP_FIFO_TARGET_MAX + URP_NATIVE_SAMPLES - 1U) / URP_NATIVE_SAMPLES <
-		       URP_PROGRAM_QUEUE_FRAMES);
-		for (i = 0; i < sizeof(native_input) / sizeof(native_input[0]); ++i)
-			native_input[i] = (short)i;
-		assert(!urp_native_fifo_pop(&fifo, output));
-		assert(urp_native_fifo_push(&fifo, native_input,
-					    sizeof(native_input) / sizeof(native_input[0])) == 1);
-		assert(fifo.count == URP_NATIVE_FIFO_SAMPLES && fifo.head == 1);
-		assert(urp_native_fifo_pop(&fifo, output));
-		assert(output[0] == native_input[1]);
-		fifo.primed = 1;
-		urp_native_fifo_reset(&fifo);
-		assert(!fifo.head && !fifo.count && !fifo.primed);
-		urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + URP_FIFO_TARGET_STEP);
-
-		urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL + 2 * URP_FIFO_TARGET_STEP);
-		for (i = 0; i < 10; ++i)
-			urp_native_fifo_note_underrun(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MAX);
-		for (i = 0; i < URP_FIFO_TARGET_DECAY_BLOCKS; ++i)
-			urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MAX - URP_FIFO_TARGET_STEP);
-		/* Sustained clean audio must never decay below the 110 ms floor. */
-		for (i = 0; i < 10U * URP_FIFO_TARGET_DECAY_BLOCKS; ++i) {
-			urp_native_fifo_note_stable(&fifo);
-			assert(fifo.target_samples >= 110U * (URP_RATE_NATIVE / 1000U));
-		}
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN && !fifo.stable_blocks);
-		fifo.target_samples = 0;
-		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
-		urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_NORMAL - URP_FIFO_TARGET_STEP);
-		fifo.target_samples = URP_FIFO_TARGET_MIN;
-		fifo.stable_blocks = URP_FIFO_TARGET_DECAY_BLOCKS - 1;
-		urp_native_fifo_note_stable(&fifo);
-		assert(fifo.target_samples == URP_FIFO_TARGET_MIN);
-
-		memset(output, 1, sizeof(output));
-		assert(!urp_native_fifo_render(&fifo, output));
-		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
-			assert(output[i] == 0);
-		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
-			native_input[i] = 1000;
-		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
-		fifo.concealing = 1;
-		fifo.have_history = 0;
-		assert(urp_native_fifo_render(&fifo, output));
-		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] == 1000);
-		assert(!urp_native_fifo_push(&fifo, native_input, 100));
-		assert(!urp_native_fifo_render(&fifo, output));
-		assert(output[0] == 1000 && output[URP_NATIVE_SAMPLES - 1] <= 1);
-		assert(fifo.concealing);
-		assert(!urp_native_fifo_push(&fifo, native_input, URP_NATIVE_SAMPLES));
-		assert(urp_native_fifo_render(&fifo, output));
-		assert(!fifo.concealing && output[URP_NATIVE_SAMPLES - 1] == 1000);
+		assert(!urp_sample_queue_pop_sample(&generic, &sample));
 	}
 
 	for (i = 0; i < sizeof(rx_names) / sizeof(rx_names[0]); ++i) {
 		assert(!urp_parse_rx_audio_mode(rx_names[i], &rx_audio));
 		assert((size_t)rx_audio == i);
-	}
-	for (i = 0; i < sizeof(tx_names) / sizeof(tx_names[0]); ++i) {
-		assert(!urp_parse_tx_output_mode(tx_names[i], &tx_output));
-		assert((size_t)tx_output == i);
 	}
 	for (i = 0; i < sizeof(carrier_names) / sizeof(carrier_names[0]); ++i) {
 		assert(!urp_parse_carrier_source(carrier_names[i], &carrier));
@@ -196,8 +96,6 @@ int main(void)
 	assert(urp_parse_rx_audio_mode(NULL, &rx_audio));
 	assert(urp_parse_rx_audio_mode("invalid", &rx_audio));
 	assert(urp_parse_rx_audio_mode("no", NULL));
-	assert(urp_parse_tx_output_mode("invalid", &tx_output));
-	assert(urp_parse_tx_output_mode("no", NULL));
 	assert(urp_parse_carrier_source("invalid", &carrier));
 	assert(urp_parse_carrier_source("no", NULL));
 	assert(urp_parse_ctcss_source("invalid", &ctcss));
@@ -253,9 +151,9 @@ int main(void)
 	assert(!urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
 	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
 	assert(urp_tx_pair_has_tone(URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_COMPOSITE));
-	assert(!urp_tx_tone_route_missing("", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_DISABLED));
-	assert(urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
-	assert(!urp_tx_tone_route_missing("100.0", URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
+	assert(!urp_tx_signaling_route_missing(0, URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_DISABLED));
+	assert(urp_tx_signaling_route_missing(1, URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE));
+	assert(!urp_tx_signaling_route_missing(1, URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_DISABLED));
 	assert(!urp_parallel_pulser_needed(0, 0));
 	assert(!urp_parallel_pulser_needed(0, 1));
 	assert(!urp_parallel_pulser_needed(1, 0));
@@ -333,11 +231,12 @@ int main(void)
 	{
 		const double program[] = {40000.0, -40000.0, 1000.0};
 		const double ctcss[] = {1.0, -1.0, 0.5};
+		const double dcs[] = {0.0, 0.0, 0.0};
 		short stereo[6] = {30000, -30000, 0, 0, 10, 20};
 		short meter[6] = {0};
 		unsigned long rails = urp_render_transmit_block(
-			program, ctcss, 3, URP_TX_OUTPUT_COMPOSITE, URP_TX_OUTPUT_TONE, 40000.0,
-			0.0, 40000.0, 0.0, stereo, meter);
+			program, ctcss, dcs, 3, URP_TX_OUTPUT_COMPOSITE, URP_TX_OUTPUT_TONE,
+			40000.0, 0.0, 40000.0, 0.0, stereo, meter);
 
 		assert(rails == 2);
 		assert(meter[0] == INT16_MAX && meter[1] == INT16_MAX);
@@ -345,12 +244,25 @@ int main(void)
 		assert(stereo[0] == INT16_MAX && stereo[1] == 2767);
 		assert(stereo[2] == INT16_MIN && stereo[3] == INT16_MIN);
 		assert(stereo[4] == 21010 && stereo[5] == 20020);
-		assert(urp_render_transmit_block(program + 2, ctcss + 2, 1, URP_TX_OUTPUT_DISABLED,
-						 URP_TX_OUTPUT_VOICE, 1.0, 0.0, 1.0, 0.0, stereo,
-						 NULL) == 0);
-		assert(urp_render_transmit_block(program + 2, ctcss + 2, 1, URP_TX_OUTPUT_TONE,
-						 URP_TX_OUTPUT_COMPOSITE, 1.0, 0.0, 1.0, 0.0,
-						 stereo, NULL) == 0);
+		assert(urp_render_transmit_block(program + 2, ctcss + 2, dcs + 2, 1,
+						 URP_TX_OUTPUT_DISABLED, URP_TX_OUTPUT_VOICE, 1.0,
+						 0.0, 1.0, 0.0, stereo, NULL) == 0);
+		assert(urp_render_transmit_block(program + 2, ctcss + 2, dcs + 2, 1,
+						 URP_TX_OUTPUT_TONE, URP_TX_OUTPUT_COMPOSITE, 1.0,
+						 0.0, 1.0, 0.0, stereo, NULL) == 0);
+	}
+	{
+		const double program[] = {0.0};
+		const double ctcss[] = {0.0};
+		const double dcs[] = {2000.0};
+		short stereo[] = {0, 0};
+
+		/* DCS is already an absolute PCM level. It must not be passed through
+		 * the CTCSS calibration multiplier before tone/composite routing. */
+		assert(urp_render_transmit_block(program, ctcss, dcs, 1, URP_TX_OUTPUT_TONE,
+						 URP_TX_OUTPUT_COMPOSITE, 16000.0, 0.0, 16000.0,
+						 0.0, stereo, NULL) == 0);
+		assert(stereo[0] == 2000 && stereo[1] == 2000);
 	}
 
 	puts("shared channel queue tests passed");

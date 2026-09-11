@@ -29,8 +29,8 @@ libraries, then build, test, and install with:
 .PP
 .nf
 make
-make check
-sudo make prefix=/usr install
+make distcheck
+sudo make prefix=/usr install-from-dist
 .fi
 .PP
 For a release archive on an ASL3 node, the supported convenience command is:
@@ -39,10 +39,11 @@ For a release archive on an ASL3 node, the supported convenience command is:
 sudo ./install.sh
 .fi
 .PP
-The convenience installer obtains the required Debian build packages, builds
-the module and utilities, runs the hardware-independent tests, and installs the
-result.  Installation does not load a module, restart Asterisk, or edit an
-Asterisk configuration file.
+The convenience installer verifies the shipped repository key, configures the
+signed project repository, obtains the required Debian build packages and
+released shared-library dependency, builds the module and utilities, runs the
+hardware-independent tests, and installs the result.  Installation does not
+load a module, restart Asterisk, or edit an Asterisk configuration file.
 .SH ACTIVATION
 Retain the installed
 .B chan_usbradio.so
@@ -88,9 +89,9 @@ for every option, graph rule, accepted value, and default.
 .SH TUNING UTILITIES
 .TP
 .B usbradioplus-tune
-Interactive, keyboard-operated setup for USB mixer levels, receive voice and
-CTCSS levels, squelch, transmit voice and CTCSS deviation, PTT, test tone,
-statistics, and EEPROM storage.
+Interactive, keyboard-operated setup for USB mixer and routing, receiver voice
+and CTCSS calibration, DSP squelch, CTCSS/DCS signaling, duplex operation,
+transmitter flash, status meters, and EEPROM storage.
 .PP
 See
 .BR usbradioplus-tune (8)

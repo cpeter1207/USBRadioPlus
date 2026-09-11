@@ -36,6 +36,7 @@ def validate(root=ROOT):
         "src/txagc/rms_agc_ladspa.h",
         "examples/usbradioplus.conf.sample",
         "README.md",
+        "CHANGELOG.md",
         "Makefile",
         "man/usbradioplus.7",
         "man/usbradioplus.conf.5",
@@ -45,6 +46,7 @@ def validate(root=ROOT):
         "VERSION",
         "doc/packaging.md",
         "doc/agc.md",
+        "doc/native-radio.md",
         "install.sh",
         "scripts/install-build-deps.sh",
     ):
@@ -61,7 +63,8 @@ def validate(root=ROOT):
         if re.search(pattern, installer):
             errors.append(f"installer may alter runtime state: {pattern}")
 
-    require("src/usbradioplus_native_tick.c", "DUPLEX3_MODE_SOFTWARE")
+    require("src/usbradioplus_channel_common.c", "DUPLEX3_MODE_SOFTWARE")
+    require("src/usbradioplus_native_tick.c", "software_repeat_enabled")
     require("examples/usbradioplus.conf.sample", "duplex_local_repeat_mode = hardware")
     require("README.md", "replacement for the ASL3 `chan_usbradio` channel driver")
     if (root / "patches/app_rpt-radioplus-duplex.patch").exists():
