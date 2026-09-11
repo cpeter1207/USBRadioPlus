@@ -1,0 +1,12 @@
+<map id="tune_txoutput" name="tune_txoutput">
+<area shape="rect" id="Node000001" title="Key the calibrated transmitter test tone for up to five seconds." alt="" coords="696,31,808,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a2b060af9d1b3c338e74ec8d119152735" title="Display or adjust the voice output and optional calibration tone." alt="" coords="527,5,648,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="682,35,648,30,649,25,683,30"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,31,287,56"/>
+<area shape="poly" id="edge5_Node000001_Node000004" title=" " alt="" coords="682,46,287,46,287,41,682,41"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,5,479,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="513,21,479,21,479,15,513,15"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="322,34,287,39,287,34,321,28"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,31,148,56"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="182,46,148,46,148,41,182,41"/>
+</map>

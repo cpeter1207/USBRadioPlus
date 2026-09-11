@@ -1,0 +1,23 @@
+<map id="urp_sample_queue_samples" name="urp_sample_queue_samples">
+<area shape="rect" id="Node000001" title="Return the number of queued PCM samples." alt="" coords="852,95,1059,121"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a8973a0f18cb975346c08ce584930922c" title="Render the transmitter branch directly into the hardware DAC buffer." alt="" coords="624,5,799,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="903,93,771,48,772,43,905,88"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__core_8c.html#a0d07fca268ef5965a40f6aeb8ab75924" title="Reset the sample occupancy high&#45;water mark." alt="" coords="619,171,804,211"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="905,128,772,173,771,168,903,123"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a87433736d9c2e066c9ddc2e35ec47cf2" title="Record one app_rpt&#45;rate receive block without allocating or locking." alt="" coords="380,70,571,95"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="838,105,571,90,571,85,838,99"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#abde834e4ad6b359cf0348c3bea416000" title="Begin legacy echo playback if captured samples are available." alt="" coords="385,119,565,145"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="838,117,566,130,566,125,838,111"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="383,21,567,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="610,31,568,33,568,28,610,26"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,46,332,71"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="370,48,333,52,332,47,369,42"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,95,304,121"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="402,52,381,60,357,73,333,86,301,98,299,93,331,82,355,68,379,55,401,47"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,46,113,71"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="147,61,114,61,114,56,147,56"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="366,74,332,70,332,65,366,69"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="366,97,304,104,304,99,366,92"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="402,118,379,110,331,86,294,74,296,69,333,82,381,106,404,113"/>
+<area shape="poly" id="edge12_Node000009_Node000006" title=" " alt="" coords="372,124,304,117,305,111,372,118"/>
+</map>

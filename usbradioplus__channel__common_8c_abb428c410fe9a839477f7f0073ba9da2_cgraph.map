@@ -1,0 +1,7 @@
+<map id="native_graph_set_destroy" name="native_graph_set_destroy">
+<area shape="rect" id="Node000001" title="Destroy a complete native graph generation outside the audio callback." alt="" coords="5,5,196,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="244,5,411,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="196,15,230,15,230,21,196,21"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="459,5,551,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="411,15,445,15,445,21,411,21"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="usbradioplus_processing_get_composite_rt" name="usbradioplus_processing_get_composite_rt">
+<area shape="rect" id="Node000001" title="Copy a final voice/telemetry chain from the immutable audio snapshot. This operation neither allocate..." alt="" coords="5,5,188,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="236,13,372,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,23,222,23,222,28,188,28"/>
+</map>

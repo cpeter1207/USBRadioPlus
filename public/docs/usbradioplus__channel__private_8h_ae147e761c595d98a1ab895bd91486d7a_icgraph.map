@@ -1,0 +1,11 @@
+<map id="usbradioplus_native_renderer_tx_audio_stats_read" name="usbradioplus_native_renderer_tx_audio_stats_read">
+<area shape="rect" id="Node000001" title="Copy transmitter audio measurements owned by the native renderer." alt="" coords="737,5,960,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__tune__menu_8c.html#a93d8a32b5a22ae6311891dd8843caeea" title="Print a coherent transmitter meter snapshot without reading renderer state live." alt="" coords="527,5,689,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="723,28,689,28,689,23,723,23"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,13,479,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="513,28,479,28,479,23,513,23"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,13,287,38"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="321,28,287,28,287,23,321,23"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,13,148,38"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="182,28,148,28,148,23,182,23"/>
+</map>

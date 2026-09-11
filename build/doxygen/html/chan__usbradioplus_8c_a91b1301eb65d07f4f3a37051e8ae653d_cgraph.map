@@ -1,0 +1,39 @@
+<map id="usbradio_text" name="usbradio_text">
+<area shape="rect" id="Node000001" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="5,103,116,129"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker after a control&#45;plane output request." alt="" coords="226,54,293,79"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,101,212,76,213,81,113,106"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="209,103,310,129"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,113,194,113,194,119,116,119"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__channel__common_8c.html#a7fd7ede6d42b48043eaa2ba896eec217" title="Select a binary channel on the configured parallel&#45;port interface." alt="" coords="164,185,355,210"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="94,126,216,177,214,182,92,131"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a3c58f512e1e7c3826b18d7944e654698" title="Enter the control&#45;plane exclusion window for parser&#45;owned radio state." alt="" coords="437,5,586,45"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="309,105,353,90,377,73,401,55,422,46,425,51,404,60,380,77,356,94,311,110"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#aa32a50ea833beee3f40b2fa85faec40a" title="Leave the parser&#45;owned radio&#45;state exclusion window." alt="" coords="403,70,620,95"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="310,107,401,95,402,100,311,112"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a8853fdf08ee684c808b961d3233f7f7b" title="Apply parser and runtime signaling state while the writer gate is held." alt="" coords="436,119,587,145"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="311,117,422,124,422,129,310,122"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a799ecbc2598edccb4b691f14af5520bd" title="Read the resolved hardware carrier&#45;detection source." alt="" coords="682,21,825,46"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="586,119,619,106,633,94,642,81,651,68,667,55,679,49,681,53,669,60,655,72,646,84,637,98,621,110,588,124"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a065a2a4222925ecf58dbd864fb6ee530" title="Reconfigure DCS only for directions that selected DCS signaling." alt="" coords="678,70,829,95"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="574,117,676,96,677,101,575,122"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__radio_8c.html#a6ac88139b2fcc40d646f6ed5ea779f1f" title="Resolve receive/transmit signaling lists and CTCSS tone mappings." alt="" coords="668,119,839,145"/>
+<area shape="poly" id="edge11_Node000006_Node000012" title=" " alt="" coords="587,129,654,129,654,135,587,135"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__channel__common_8c.html#af92a12ca243f8f04f87f2bd7a96a1495" title="Publish configured radio frequency and power for the HID worker." alt="" coords="670,169,837,209"/>
+<area shape="poly" id="edge14_Node000006_Node000015" title=" " alt="" coords="566,142,657,164,656,169,565,147"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dcs_8c.html#abcde7dd04fefa482c787572fd25858b1" title="Configure DCS reception and/or transmission." alt="" coords="895,21,1033,46"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="808,67,895,47,896,52,809,73"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__dcs_8c.html#a35006cbd844b2d493f3f88cba1d5c511" title="Parse a three&#45;digit octal DCS code with N or I polarity suffix." alt="" coords="887,70,1041,95"/>
+<area shape="poly" id="edge10_Node000008_Node000011" title=" " alt="" coords="829,80,874,80,874,85,829,85"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__dcs_8c.html#a459d90828d359b032294fb0317f82fad" title="Test whether a value fits the three&#45;digit octal DCS code field." alt="" coords="1089,21,1272,46"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1034,31,1075,31,1075,36,1034,36"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__radio_8c.html#a79c18d60196892d1d1ed065d5f16681d" title="Split a comma&#45;separated signaling&#45;code list into owned strings and a pointer table." alt="" coords="913,119,1015,145"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="839,129,899,129,899,135,839,135"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__radio_8c.html#ac665674abe7bea9e08923f5bbda6eeaa" title="Find the CTCSS table index corresponding to a requested tone." alt="" coords="887,169,1041,209"/>
+<area shape="poly" id="edge13_Node000012_Node000014" title=" " alt="" coords="802,142,878,163,876,168,800,147"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__hardware_8c.html#a79d30d28e38db06cba9169a5fa2b4f65" title="Latch a binary channel number onto the parallel&#45;port radio interface." alt="" coords="413,185,609,210"/>
+<area shape="poly" id="edge16_Node000016_Node000017" title=" " alt="" coords="355,195,400,195,400,200,355,200"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__channel__common_8c.html#a5e29c75973bbf6a2c5fb46a4252920fe" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="431,235,592,275"/>
+<area shape="poly" id="edge18_Node000016_Node000019" title=" " alt="" coords="317,207,417,231,416,236,315,213"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="678,234,829,259"/>
+<area shape="poly" id="edge17_Node000017_Node000018" title=" " alt="" coords="575,207,677,229,676,234,574,213"/>
+</map>

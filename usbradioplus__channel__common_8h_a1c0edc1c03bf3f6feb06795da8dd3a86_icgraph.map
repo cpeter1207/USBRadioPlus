@@ -1,0 +1,15 @@
+<map id="usbradioplus_publish_hardware_ptt" name="usbradioplus_publish_hardware_ptt">
+<area shape="rect" id="Node000001" title="Publish the signaling engine&#39;s immediate PTT request from the native callback." alt="" coords="612,27,771,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="380,5,564,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="598,38,564,33,565,28,599,32"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a998b7092e63fb09749ec3b4324b851d2" title="Publish effective PTT and select source PCM after applying the hold." alt="" coords="381,55,563,95"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="599,62,563,66,563,61,598,57"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,8,332,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="366,22,332,22,332,17,366,17"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,59,304,84"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="405,37,302,61,300,56,403,31"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,8,113,33"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="147,23,114,23,114,18,147,18"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="375,55,299,36,301,31,377,49"/>
+<area shape="poly" id="edge7_Node000006_Node000005" title=" " alt="" coords="367,76,304,75,304,70,367,71"/>
+</map>

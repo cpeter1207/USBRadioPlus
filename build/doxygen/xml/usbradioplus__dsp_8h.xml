@@ -1,0 +1,1232 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__dsp_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_dsp.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includes local="no">stdint.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__channel__core_8h" local="yes">src/usbradioplus_channel_core.h</includedby>
+    <includedby refid="usbradioplus__dsp_8c" local="yes">src/usbradioplus_dsp.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/usbradioplus_dsp.h</label>
+        <link refid="usbradioplus__dsp_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+      <node id="3">
+        <label>stdint.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_channel_core.c</label>
+        <link refid="usbradioplus__channel__core_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_channel_core.h</label>
+        <link refid="usbradioplus__channel__core_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>src/usbradioplus_dsp.c</label>
+        <link refid="usbradioplus__dsp_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_dsp.h</label>
+        <link refid="usbradioplus__dsp_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structurp__echo__frame" prot="public">urp_echo_frame</innerclass>
+    <innerclass refid="structurp__echo__replacer" prot="public">urp_echo_replacer</innerclass>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1a6ff4fe71ab38bf90f03943eba58693e2" prot="public" static="no">
+        <name>URP_APP_RPT_RATE_DEFAULT</name>
+        <initializer>8000</initializer>
+        <briefdescription>
+<para>Initial app_rpt sample rate in Hz. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="11" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="11" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1a13484531b093dbd8cf4a3b04ff0ca838" prot="public" static="no">
+        <name>URP_RATE_LINK</name>
+        <initializer><ref refid="usbradioplus__dsp_8h_1a6ff4fe71ab38bf90f03943eba58693e2" kindref="member">URP_APP_RPT_RATE_DEFAULT</ref></initializer>
+        <briefdescription>
+<para>Reference app_rpt sample rate in Hz. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="13" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="13" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1a45a5721d703b608f48c4f5da3e643bec" prot="public" static="no">
+        <name>URP_RATE_NATIVE</name>
+        <initializer>48000</initializer>
+        <briefdescription>
+<para>CM119 native audio sample rate in Hz. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="15" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="15" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1afa996df8abded688c62a84d10e3322d4" prot="public" static="no">
+        <name>URP_LINK_SAMPLES</name>
+        <initializer>160</initializer>
+        <briefdescription>
+<para>Samples in one reference app_rpt receive frame. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="17" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="17" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1aea72d79996e1612e002e0576dc266129" prot="public" static="no">
+        <name>URP_NATIVE_SAMPLES</name>
+        <initializer>960</initializer>
+        <briefdescription>
+<para>Samples in one native 20 ms audio frame. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="19" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="19" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__dsp_8h_1af9bd49f445018021044c2b515bf8003c" prot="public" static="no">
+        <name>URP_ECHO_HISTORY_FRAMES</name>
+        <initializer>32</initializer>
+        <briefdescription>
+<para>Number of paired receive frames retained for correlation. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="21" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="21" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a9441082c5203081c60709487f11df580" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+        <definition>struct urp_src * urp_src_create</definition>
+        <argsstring>(int converter, unsigned int channels)</argsstring>
+        <name>urp_src_create</name>
+        <param>
+          <type>int</type>
+          <declname>converter</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>channels</declname>
+        </param>
+        <briefdescription>
+<para>Allocate a streaming libsamplerate converter and reusable conversion workspace. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>converter</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>libsamplerate converter type. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>channels</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of interleaved audio channels. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Owned converter state, or NULL on invalid arguments or allocation failure. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="60" column="14" bodyfile="src/usbradioplus_dsp.c" bodystart="70" bodyend="86" declfile="src/usbradioplus_dsp.h" declline="60" declcolumn="14"/>
+        <references refid="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" compoundref="usbradioplus__dsp_8c" startline="46">urp_src::channels</references>
+        <references refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" compoundref="usbradioplus__dsp_8c" startline="44">urp_src::state</references>
+        <references refid="usbradioplus__dsp_8c_1a74c47d4543fbbc2046070bb4b752b88c" compoundref="usbradioplus__dsp_8c" startline="29">URP_CALLOC</references>
+        <references refid="usbradioplus__dsp_8c_1a7d125e06e4f85cbf8ba8d15bb22e7c0d" compoundref="usbradioplus__dsp_8c" startline="33">URP_FREE</references>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a01c3c33847014294b74858700455d9c8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_src_destroy</definition>
+        <argsstring>(struct urp_src *src)</argsstring>
+        <name>urp_src_destroy</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>Release a converter and its input and output buffers. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Streaming sample-rate converter. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="64" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="88" bodyend="96" declfile="src/usbradioplus_dsp.h" declline="64" declcolumn="6"/>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" compoundref="usbradioplus__dsp_8c" startline="44">urp_src::state</references>
+        <references refid="usbradioplus__dsp_8c_1a7d125e06e4f85cbf8ba8d15bb22e7c0d" compoundref="usbradioplus__dsp_8c" startline="33">URP_FREE</references>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a7d96da245f0f133fdf0fcc04eac7ea6d" compoundref="usbradioplus__native__tick_8c" startline="804" endline="819">usbradioplus_native_renderer_stop</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1ac386bf618a23376321bd65e0be3eea46" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_src_reset</definition>
+        <argsstring>(struct urp_src *src)</argsstring>
+        <name>urp_src_reset</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <briefdescription>
+<para>Clear resampler history at a stream discontinuity. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Streaming sample-rate converter. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="68" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="98" bodyend="102" declfile="src/usbradioplus_dsp.h" declline="68" declcolumn="6"/>
+        <references refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" compoundref="usbradioplus__dsp_8c" startline="44">urp_src::state</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a0d8615532856ba67084fe58dd7229fc4" compoundref="usbradioplus__native__tick_8c" startline="994" endline="1036">usbradioplus_native_tick</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a7e53206483e5fb5a726dc6aef5bb5e92" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_src_reserve</definition>
+        <argsstring>(struct urp_src *src, size_t input_capacity, size_t output_capacity)</argsstring>
+        <name>urp_src_reserve</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>input_capacity</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>output_capacity</declname>
+        </param>
+        <briefdescription>
+<para>Preallocate conversion workspaces before native callback processing. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Streaming sample-rate converter. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum input frames accepted by one conversion. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Maximum output frames generated by one conversion. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if storage could not be allocated. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="75" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="104" bodyend="128" declfile="src/usbradioplus_dsp.h" declline="75" declcolumn="5"/>
+        <references refid="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" compoundref="usbradioplus__dsp_8c" startline="46">urp_src::channels</references>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1ad7b4f3502819d1f2cde08782b16af0f7" compoundref="usbradioplus__dsp_8c" startline="52">urp_src::input_capacity</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" compoundref="usbradioplus__dsp_8c" startline="54">urp_src::output_capacity</references>
+        <references refid="usbradioplus__dsp_8c_1a2dfae8c606beb868a9eb4d2c32d6a07f" compoundref="usbradioplus__dsp_8c" startline="31">URP_REALLOC</references>
+        <referencedby refid="usbradioplus__dsp_8c_1aaca9104f82da02824fec2f6ff0e84e75" compoundref="usbradioplus__dsp_8c" startline="203" endline="214">urp_rate_convert</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a1606a7bd14a1f011cade73f4c6c6d32d" compoundref="usbradioplus__dsp_8c" startline="166" endline="176">urp_src_process</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a1606a7bd14a1f011cade73f4c6c6d32d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_src_process</definition>
+        <argsstring>(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output, size_t output_capacity, double ratio, size_t *input_used, size_t *output_generated)</argsstring>
+        <name>urp_src_process</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>input_count</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>output_capacity</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>ratio</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>input_used</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>output_generated</declname>
+        </param>
+        <briefdescription>
+<para>Convert an interleaved PCM block using a caller-supplied rate ratio. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Streaming sample-rate converter. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples; the caller retains ownership. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of input samples available. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of samples the output buffer can hold. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ratio</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output/input sample-rate ratio. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_used</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of input samples consumed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_generated</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of output samples produced. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="87" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="166" bodyend="176" declfile="src/usbradioplus_dsp.h" declline="87" declcolumn="5"/>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" compoundref="usbradioplus__dsp_8c" startline="54">urp_src::output_capacity</references>
+        <references refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</references>
+        <references refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1ae5ec641130119c7001929833a9cea583" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_src_process_prepared</definition>
+        <argsstring>(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output, size_t output_capacity, double ratio, size_t *input_used, size_t *output_generated)</argsstring>
+        <name>urp_src_process_prepared</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>input_count</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>output_capacity</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>ratio</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>input_used</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>output_generated</declname>
+        </param>
+        <briefdescription>
+<para>Convert through already reserved SRC workspaces without allocating. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Converter prepared with <ref refid="usbradioplus__dsp_8h_1a7e53206483e5fb5a726dc6aef5bb5e92" kindref="member">urp_src_reserve()</ref>. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples; the caller retains ownership. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of input samples available. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of samples the output buffer can hold. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ratio</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output/input sample-rate ratio. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_used</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of input samples consumed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_generated</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of output samples produced. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status when the prepared capacity is insufficient.</para>
+</simplesect>
+This prepared native-callback API never calls realloc; a changed block size must be handled by the control plane before rendering begins. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="104" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="130" bodyend="164" declfile="src/usbradioplus_dsp.h" declline="104" declcolumn="5"/>
+        <references refid="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" compoundref="usbradioplus__dsp_8c" startline="46">urp_src::channels</references>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1ad7b4f3502819d1f2cde08782b16af0f7" compoundref="usbradioplus__dsp_8c" startline="52">urp_src::input_capacity</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" compoundref="usbradioplus__dsp_8c" startline="54">urp_src::output_capacity</references>
+        <references refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" compoundref="usbradioplus__dsp_8c" startline="44">urp_src::state</references>
+        <referencedby refid="usbradioplus__dsp_8c_1ac3e6b80594c56efda361b49ad5b1b10b" compoundref="usbradioplus__dsp_8c" startline="178" endline="201">urp_rate_convert_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a1606a7bd14a1f011cade73f4c6c6d32d" compoundref="usbradioplus__dsp_8c" startline="166" endline="176">urp_src_process</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1aaca9104f82da02824fec2f6ff0e84e75" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_rate_convert</definition>
+        <argsstring>(struct urp_src *src, const int16_t *input, size_t input_count, unsigned int input_rate, int16_t *output, size_t output_capacity, unsigned int output_rate, size_t *input_used, size_t *output_generated)</argsstring>
+        <name>urp_rate_convert</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>input_count</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>input_rate</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>output_capacity</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>output_rate</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>input_used</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>output_generated</declname>
+        </param>
+        <briefdescription>
+<para>Convert between sample rates, copying directly when the rates match. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Streaming sample-rate converter. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples; the caller retains ownership. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of input samples available. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of samples the output buffer can hold. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_used</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of input samples consumed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_generated</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of output samples produced. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="119" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="203" bodyend="214" declfile="src/usbradioplus_dsp.h" declline="119" declcolumn="5"/>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" compoundref="usbradioplus__dsp_8c" startline="54">urp_src::output_capacity</references>
+        <references refid="usbradioplus__dsp_8c_1ac3e6b80594c56efda361b49ad5b1b10b" compoundref="usbradioplus__dsp_8c" startline="178" endline="201">urp_rate_convert_prepared</references>
+        <references refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1ac3e6b80594c56efda361b49ad5b1b10b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_rate_convert_prepared</definition>
+        <argsstring>(struct urp_src *src, const int16_t *input, size_t input_count, unsigned int input_rate, int16_t *output, size_t output_capacity, unsigned int output_rate, size_t *input_used, size_t *output_generated)</argsstring>
+        <name>urp_rate_convert_prepared</name>
+        <param>
+          <type>struct <ref refid="structurp__src" kindref="compound">urp_src</ref> *</type>
+          <declname>src</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>input_count</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>input_rate</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>output_capacity</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>output_rate</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>input_used</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>output_generated</declname>
+        </param>
+        <briefdescription>
+<para>Convert a fixed-rate PCM block using only pre-reserved converter storage. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>src</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Converter prepared with <ref refid="usbradioplus__dsp_8h_1a7e53206483e5fb5a726dc6aef5bb5e92" kindref="member">urp_src_reserve()</ref> for rate-changing paths. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples; the caller retains ownership. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of input samples available. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_capacity</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of samples the output buffer can hold. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input_used</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of input samples consumed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_generated</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the number of output samples produced. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status without allocating on insufficient capacity. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="134" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="178" bodyend="201" declfile="src/usbradioplus_dsp.h" declline="134" declcolumn="5"/>
+        <references refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" compoundref="usbradioplus__dsp_8c" startline="48">urp_src::input</references>
+        <references refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" compoundref="usbradioplus__dsp_8c" startline="50">urp_src::output</references>
+        <references refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" compoundref="usbradioplus__dsp_8c" startline="54">urp_src::output_capacity</references>
+        <references refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1a226dc5e80476e9853adbcf741982ae2b" compoundref="usbradioplus__native__tick_8c" startline="442" endline="470">native_renderer_copy_receive_to_app</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1aaca9104f82da02824fec2f6ff0e84e75" compoundref="usbradioplus__dsp_8c" startline="203" endline="214">urp_rate_convert</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a74f1a44f31ff2e835f44630011c94dd3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_extract_mono</definition>
+        <argsstring>(const int16_t *stereo, int16_t *mono, size_t frames, unsigned int channel)</argsstring>
+        <name>urp_extract_mono</name>
+        <param>
+          <type>const int16_t *</type>
+          <declname>stereo</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>mono</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>frames</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>channel</declname>
+        </param>
+        <briefdescription>
+<para>Extract one channel from interleaved stereo PCM. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>stereo</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Interleaved signed 16-bit stereo samples. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>mono</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Mono sample buffer. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>frames</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of audio frames. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Interleaved stereo channel index: 0 or 1. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="145" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="216" bodyend="222" declfile="src/usbradioplus_dsp.h" declline="145" declcolumn="6"/>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a45d11a93d4c866f549ee9efa3b9c9554" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_duplicate_mono</definition>
+        <argsstring>(const int16_t *mono, int16_t *stereo, size_t frames, double gain_a, double gain_b)</argsstring>
+        <name>urp_duplicate_mono</name>
+        <param>
+          <type>const int16_t *</type>
+          <declname>mono</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>stereo</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>frames</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>gain_a</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>gain_b</declname>
+        </param>
+        <briefdescription>
+<para>Route mono PCM to both stereo outputs with separate linear gains. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>mono</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Mono sample buffer. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stereo</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Interleaved signed 16-bit stereo samples. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>frames</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of audio frames. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>gain_a</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Linear gain for output A. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>gain_b</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Linear gain for output B. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="153" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="224" bodyend="232" declfile="src/usbradioplus_dsp.h" declline="153" declcolumn="6"/>
+        <references refid="usbradioplus__dsp_8c_1aae4d8c826353fd7e470c922f44701094" compoundref="usbradioplus__dsp_8c" startline="61" endline="68">saturate</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a317947c53ab52faefcd5157e69c0cc6b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_echo_init</definition>
+        <argsstring>(struct urp_echo_replacer *state)</argsstring>
+        <name>urp_echo_init</name>
+        <param>
+          <type>struct <ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Clear the paired app_rpt/native receive history used for echo matching. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="159" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="234" bodyend="240" declfile="src/usbradioplus_dsp.h" declline="159" declcolumn="6"/>
+        <references refid="structurp__echo__replacer_1ac75fadf8a628632a21f27a65356284bd" compoundref="usbradioplus__dsp_8h" startline="44">urp_echo_replacer::last_delay_frames</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1aac5c4a2fe916a695794a9a5443b6a413" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_echo_push</definition>
+        <argsstring>(struct urp_echo_replacer *state, const int16_t *link, const int16_t *native)</argsstring>
+        <name>urp_echo_push</name>
+        <param>
+          <type>struct <ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>link</declname>
+        </param>
+        <param>
+          <type>const int16_t *</type>
+          <declname>native</declname>
+        </param>
+        <briefdescription>
+<para>Store corresponding app_rpt and native receive frames in the echo history. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>link</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>One app_rpt-rate receive frame. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>native</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Corresponding native-rate receive frame. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="165" column="6" bodyfile="src/usbradioplus_dsp.c" bodystart="242" bodyend="252" declfile="src/usbradioplus_dsp.h" declline="165" declcolumn="6"/>
+        <references refid="structurp__echo__replacer_1a2f730d4fe93e417be8bd57e67089beef" compoundref="usbradioplus__dsp_8h" startline="38">urp_echo_replacer::history</references>
+        <references refid="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" compoundref="usbradioplus__dsp_8h" startline="28">urp_echo_frame::link</references>
+        <references refid="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" compoundref="usbradioplus__dsp_8h" startline="30">urp_echo_frame::native</references>
+        <references refid="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" compoundref="usbradioplus__dsp_8h" startline="32">urp_echo_frame::sequence</references>
+        <references refid="structurp__echo__replacer_1a03bf7484dd55fe2b050eff2da2f54d02" compoundref="usbradioplus__dsp_8h" startline="42">urp_echo_replacer::sequence</references>
+        <references refid="usbradioplus__dsp_8h_1af9bd49f445018021044c2b515bf8003c" compoundref="usbradioplus__dsp_8h" startline="21">URP_ECHO_HISTORY_FRAMES</references>
+        <references refid="structurp__echo__replacer_1a888055f3d92b11a906f499c39666059b" compoundref="usbradioplus__dsp_8h" startline="40">urp_echo_replacer::write_index</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__dsp_8h_1a050ae3f2a1e1575171fdbda2eddec685" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_echo_remove</definition>
+        <argsstring>(struct urp_echo_replacer *state, int16_t *mixed_link, int16_t *matched_native, double minimum_correlation)</argsstring>
+        <name>urp_echo_remove</name>
+        <param>
+          <type>struct <ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>mixed_link</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>matched_native</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>minimum_correlation</declname>
+        </param>
+        <briefdescription>
+<para>Subtract a correlated receive echo and return its matching native-rate frame. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>mixed_link</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>App_rpt mix from which correlated local audio is removed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>matched_native</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the native frame corresponding to the removed echo. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>minimum_correlation</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Minimum normalized correlation accepted as an echo match. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>One when a qualifying echo was removed; zero when no match was usable. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="173" column="5" bodyfile="src/usbradioplus_dsp.c" bodystart="254" bodyend="304" declfile="src/usbradioplus_dsp.h" declline="173" declcolumn="5"/>
+        <references refid="structurp__echo__replacer_1a2f730d4fe93e417be8bd57e67089beef" compoundref="usbradioplus__dsp_8h" startline="38">urp_echo_replacer::history</references>
+        <references refid="structurp__echo__replacer_1a3287c5631108e655ba32254b2d482e5e" compoundref="usbradioplus__dsp_8h" startline="48">urp_echo_replacer::last_correlation</references>
+        <references refid="structurp__echo__replacer_1ac75fadf8a628632a21f27a65356284bd" compoundref="usbradioplus__dsp_8h" startline="44">urp_echo_replacer::last_delay_frames</references>
+        <references refid="structurp__echo__replacer_1a657e0460f6e457bee8a2fb44d7cd1ca2" compoundref="usbradioplus__dsp_8h" startline="46">urp_echo_replacer::last_scale</references>
+        <references refid="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" compoundref="usbradioplus__dsp_8h" startline="28">urp_echo_frame::link</references>
+        <references refid="structurp__echo__replacer_1a892bbd9cbaf01364cdb876f23e4fa873" compoundref="usbradioplus__dsp_8h" startline="50">urp_echo_replacer::matches</references>
+        <references refid="structurp__echo__replacer_1ab99b4054bf31bbb8b30fa5a7610520b0" compoundref="usbradioplus__dsp_8h" startline="52">urp_echo_replacer::misses</references>
+        <references refid="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" compoundref="usbradioplus__dsp_8h" startline="30">urp_echo_frame::native</references>
+        <references refid="usbradioplus__dsp_8c_1aae4d8c826353fd7e470c922f44701094" compoundref="usbradioplus__dsp_8c" startline="61" endline="68">saturate</references>
+        <references refid="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" compoundref="usbradioplus__dsp_8h" startline="32">urp_echo_frame::sequence</references>
+        <references refid="structurp__echo__replacer_1a03bf7484dd55fe2b050eff2da2f54d02" compoundref="usbradioplus__dsp_8h" startline="42">urp_echo_replacer::sequence</references>
+        <references refid="usbradioplus__dsp_8h_1af9bd49f445018021044c2b515bf8003c" compoundref="usbradioplus__dsp_8h" startline="21">URP_ECHO_HISTORY_FRAMES</references>
+        <references refid="usbradioplus__dsp_8h_1afa996df8abded688c62a84d10e3322d4" compoundref="usbradioplus__dsp_8h" startline="17">URP_LINK_SAMPLES</references>
+        <references refid="usbradioplus__dsp_8h_1aea72d79996e1612e002e0576dc266129" compoundref="usbradioplus__dsp_8h" startline="19">URP_NATIVE_SAMPLES</references>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Sample-rate conversion and receive-echo matching. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_DSP_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_DSP_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11" refid="usbradioplus__dsp_8h_1a6ff4fe71ab38bf90f03943eba58693e2" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_APP_RPT_RATE_DEFAULT<sp/>8000</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="13" refid="usbradioplus__dsp_8h_1a13484531b093dbd8cf4a3b04ff0ca838" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_RATE_LINK<sp/>URP_APP_RPT_RATE_DEFAULT</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight></codeline>
+<codeline lineno="15" refid="usbradioplus__dsp_8h_1a45a5721d703b608f48c4f5da3e643bec" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_RATE_NATIVE<sp/>48000</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight></codeline>
+<codeline lineno="17" refid="usbradioplus__dsp_8h_1afa996df8abded688c62a84d10e3322d4" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_LINK_SAMPLES<sp/>160</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight></codeline>
+<codeline lineno="19" refid="usbradioplus__dsp_8h_1aea72d79996e1612e002e0576dc266129" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_NATIVE_SAMPLES<sp/>960</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21" refid="usbradioplus__dsp_8h_1af9bd49f445018021044c2b515bf8003c" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_ECHO_HISTORY_FRAMES<sp/>32</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__src" kindref="compound">urp_src</ref>;</highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight></codeline>
+<codeline lineno="26" refid="structurp__echo__frame" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__echo__frame" kindref="compound">urp_echo_frame</ref><sp/>{</highlight></codeline>
+<codeline lineno="28" refid="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int16_t<sp/><ref refid="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" kindref="member">link</ref>[<ref refid="usbradioplus__dsp_8h_1afa996df8abded688c62a84d10e3322d4" kindref="member">URP_LINK_SAMPLES</ref>];</highlight></codeline>
+<codeline lineno="30" refid="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int16_t<sp/><ref refid="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" kindref="member">native</ref>[<ref refid="usbradioplus__dsp_8h_1aea72d79996e1612e002e0576dc266129" kindref="member">URP_NATIVE_SAMPLES</ref>];</highlight></codeline>
+<codeline lineno="32" refid="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" kindref="member">sequence</ref>;</highlight></codeline>
+<codeline lineno="33"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="36" refid="structurp__echo__replacer" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref><sp/>{</highlight></codeline>
+<codeline lineno="38" refid="structurp__echo__replacer_1a2f730d4fe93e417be8bd57e67089beef" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__echo__frame" kindref="compound">urp_echo_frame</ref><sp/><ref refid="structurp__echo__replacer_1a2f730d4fe93e417be8bd57e67089beef" kindref="member">history</ref>[<ref refid="usbradioplus__dsp_8h_1af9bd49f445018021044c2b515bf8003c" kindref="member">URP_ECHO_HISTORY_FRAMES</ref>];</highlight></codeline>
+<codeline lineno="40" refid="structurp__echo__replacer_1a888055f3d92b11a906f499c39666059b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer_1a888055f3d92b11a906f499c39666059b" kindref="member">write_index</ref>;</highlight></codeline>
+<codeline lineno="42" refid="structurp__echo__replacer_1a03bf7484dd55fe2b050eff2da2f54d02" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structurp__echo__replacer_1a03bf7484dd55fe2b050eff2da2f54d02" kindref="member">sequence</ref>;</highlight></codeline>
+<codeline lineno="44" refid="structurp__echo__replacer_1ac75fadf8a628632a21f27a65356284bd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer_1ac75fadf8a628632a21f27a65356284bd" kindref="member">last_delay_frames</ref>;</highlight></codeline>
+<codeline lineno="46" refid="structurp__echo__replacer_1a657e0460f6e457bee8a2fb44d7cd1ca2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer_1a657e0460f6e457bee8a2fb44d7cd1ca2" kindref="member">last_scale</ref>;</highlight></codeline>
+<codeline lineno="48" refid="structurp__echo__replacer_1a3287c5631108e655ba32254b2d482e5e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer_1a3287c5631108e655ba32254b2d482e5e" kindref="member">last_correlation</ref>;</highlight></codeline>
+<codeline lineno="50" refid="structurp__echo__replacer_1a892bbd9cbaf01364cdb876f23e4fa873" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structurp__echo__replacer_1a892bbd9cbaf01364cdb876f23e4fa873" kindref="member">matches</ref>;</highlight></codeline>
+<codeline lineno="52" refid="structurp__echo__replacer_1ab99b4054bf31bbb8b30fa5a7610520b0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structurp__echo__replacer_1ab99b4054bf31bbb8b30fa5a7610520b0" kindref="member">misses</ref>;</highlight></codeline>
+<codeline lineno="53"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"></highlight></codeline>
+<codeline lineno="60"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*<ref refid="usbradioplus__dsp_8h_1a9441082c5203081c60709487f11df580" kindref="member">urp_src_create</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>converter,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" kindref="member">channels</ref>);</highlight></codeline>
+<codeline lineno="64"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a01c3c33847014294b74858700455d9c8" kindref="member">urp_src_destroy</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src);</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1ac386bf618a23376321bd65e0be3eea46" kindref="member">urp_src_reset</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src);</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a7e53206483e5fb5a726dc6aef5bb5e92" kindref="member">urp_src_reserve</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1ad7b4f3502819d1f2cde08782b16af0f7" kindref="member">input_capacity</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" kindref="member">output_capacity</ref>);</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a1606a7bd14a1f011cade73f4c6c6d32d" kindref="member">urp_src_process</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*<ref refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" kindref="member">input</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>input_count,<sp/>int16_t<sp/>*<ref refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" kindref="member">output</ref>,</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" kindref="member">output_capacity</ref>,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>ratio,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*input_used,</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*output_generated);</highlight></codeline>
+<codeline lineno="104"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1ae5ec641130119c7001929833a9cea583" kindref="member">urp_src_process_prepared</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*<ref refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" kindref="member">input</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>input_count,</highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>int16_t<sp/>*<ref refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" kindref="member">output</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" kindref="member">output_capacity</ref>,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>ratio,</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*input_used,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*output_generated);</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1aaca9104f82da02824fec2f6ff0e84e75" kindref="member">urp_rate_convert</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*<ref refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" kindref="member">input</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>input_count,</highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>input_rate,<sp/>int16_t<sp/>*<ref refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" kindref="member">output</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" kindref="member">output_capacity</ref>,</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>output_rate,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*input_used,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*output_generated);</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1ac3e6b80594c56efda361b49ad5b1b10b" kindref="member">urp_rate_convert_prepared</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__src" kindref="compound">urp_src</ref><sp/>*src,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*<ref refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" kindref="member">input</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>input_count,</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>input_rate,<sp/>int16_t<sp/>*<ref refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" kindref="member">output</ref>,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" kindref="member">output_capacity</ref>,</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>output_rate,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*input_used,</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*output_generated);</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"></highlight></codeline>
+<codeline lineno="145"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a74f1a44f31ff2e835f44630011c94dd3" kindref="member">urp_extract_mono</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*stereo,<sp/>int16_t<sp/>*mono,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>frames,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>channel);</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a45d11a93d4c866f549ee9efa3b9c9554" kindref="member">urp_duplicate_mono</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*mono,<sp/>int16_t<sp/>*stereo,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>frames,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>gain_a,</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>gain_b);</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"></highlight></codeline>
+<codeline lineno="159"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a317947c53ab52faefcd5157e69c0cc6b" kindref="member">urp_echo_init</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref><sp/>*<ref refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" kindref="member">state</ref>);</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1aac5c4a2fe916a695794a9a5443b6a413" kindref="member">urp_echo_push</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref><sp/>*<ref refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" kindref="member">state</ref>,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*link,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*native);</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__dsp_8h_1a050ae3f2a1e1575171fdbda2eddec685" kindref="member">urp_echo_remove</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__echo__replacer" kindref="compound">urp_echo_replacer</ref><sp/>*<ref refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" kindref="member">state</ref>,<sp/>int16_t<sp/>*mixed_link,<sp/>int16_t<sp/>*matched_native,</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>minimum_correlation);</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"></highlight></codeline>
+<codeline lineno="176"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="177"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_dsp.h"/>
+  </compounddef>
+</doxygen>

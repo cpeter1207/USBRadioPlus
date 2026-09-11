@@ -1,0 +1,5 @@
+<map id="usbradioplus_processing_load" name="usbradioplus_processing_load">
+<area shape="rect" id="Node000001" title="Load settings, register commands, and start the link&#45;hook scanner." alt="" coords="160,5,377,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="5,5,112,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,21,112,21,112,15,146,15"/>
+</map>

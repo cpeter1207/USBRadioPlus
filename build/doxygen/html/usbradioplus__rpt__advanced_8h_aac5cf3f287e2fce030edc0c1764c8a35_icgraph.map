@@ -1,0 +1,5 @@
+<map id="usbradioplus_advanced_unregister" name="usbradioplus_advanced_unregister">
+<area shape="rect" id="Node000001" title="Unregister and release the advanced interface after its channels stop." alt="" coords="176,5,351,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="5,13,128,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="162,28,128,28,128,23,162,23"/>
+</map>

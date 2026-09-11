@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structsection__override" kind="struct" language="C++" prot="public">
+    <compoundname>section_override</compoundname>
+    <includes refid="usbradioplus__processing__internal_8h" local="no">usbradioplus_processing_internal.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structsection__override_1afe5db4e0e49a5c6382496da3a5041ad6" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char section_override::section[MAX_CONFIG_SECTION]</definition>
+        <argsstring>[MAX_CONFIG_SECTION]</argsstring>
+        <name>section</name>
+        <qualifiedname>section_override::section</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration section name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="40" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="40" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a4beacd85acfc251b7a0acb0bbd673628" compoundref="usbradioplus__processing_8c" startline="1516" endline="1538">read_assignment</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ad0e15804c47f309d5cdc7a9c77a59378" compoundref="usbradioplus__processing_8c" startline="1625" endline="1640">read_band_count</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ac94af5aa3b6325845a677dfa5eda16f0" compoundref="usbradioplus__processing_8c" startline="1648" endline="1818">read_chain</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a82dc5eba7b229d78ae3f73151decd869" compoundref="usbradioplus__processing_8c" startline="1575" endline="1596">read_hardware</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a52dfb012da45db162cbd83c175999a8c" compoundref="usbradioplus__processing_8c" startline="1604" endline="1617">read_stage_order</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab608b17eb36972ea6e363a8017411037" compoundref="usbradioplus__processing_8c" startline="1880" endline="1896">resolve_profile_section</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structsection__override_1ac55c345c265fe062b35488266ffc9887" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char section_override::name[64]</definition>
+        <argsstring>[64]</argsstring>
+        <name>name</name>
+        <qualifiedname>section_override::name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Symbolic name used to identify this entry. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="42" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="42" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a4beacd85acfc251b7a0acb0bbd673628" compoundref="usbradioplus__processing_8c" startline="1516" endline="1538">read_assignment</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ad0e15804c47f309d5cdc7a9c77a59378" compoundref="usbradioplus__processing_8c" startline="1625" endline="1640">read_band_count</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a05e3652bd131446c943d24e28c02095b" compoundref="usbradioplus__processing_8c" startline="1827" endline="1838">scoped_section</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structsection__override_1a705e8d3aac18bce8bc072f7b491005a7" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char section_override::value[512]</definition>
+        <argsstring>[512]</argsstring>
+        <name>value</name>
+        <qualifiedname>section_override::value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved textual configuration value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="44" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="44" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a4beacd85acfc251b7a0acb0bbd673628" compoundref="usbradioplus__processing_8c" startline="1516" endline="1538">read_assignment</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ad0e15804c47f309d5cdc7a9c77a59378" compoundref="usbradioplus__processing_8c" startline="1625" endline="1640">read_band_count</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One resolved non-audio option copied into a channel profile. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_processing_internal.h" line="38" column="1" bodyfile="src/usbradioplus_processing_internal.h" bodystart="38" bodyend="45"/>
+    <listofallmembers>
+      <member refid="structsection__override_1ac55c345c265fe062b35488266ffc9887" prot="public" virt="non-virtual"><scope>section_override</scope><name>name</name></member>
+      <member refid="structsection__override_1afe5db4e0e49a5c6382496da3a5041ad6" prot="public" virt="non-virtual"><scope>section_override</scope><name>section</name></member>
+      <member refid="structsection__override_1a705e8d3aac18bce8bc072f7b491005a7" prot="public" virt="non-virtual"><scope>section_override</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

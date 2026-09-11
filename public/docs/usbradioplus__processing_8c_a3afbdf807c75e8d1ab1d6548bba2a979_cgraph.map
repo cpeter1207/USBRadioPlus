@@ -1,0 +1,23 @@
+<map id="publish_link_graph_transaction" name="publish_link_graph_transaction">
+<area shape="rect" id="Node000001" title="Publish an all&#45;or&#45;nothing prepared link graph transaction." alt="" coords="5,81,149,121"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a98b74d232597fddaaae2f2df5c8f6d36" title="Release an uncommitted or committed link graph transaction." alt="" coords="199,28,343,68"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="149,79,184,69,186,74,150,84"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a3c2e682493e4d45c45d6143910464906" title="Atomically publish an already prepared candidate graph." alt="" coords="197,113,344,153"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="150,111,184,116,183,122,149,116"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#aa54c866a53389d9ff0f8c8c5af97f295" title="Discard an unpublished candidate graph." alt="" coords="399,5,548,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="343,37,385,33,385,38,343,43"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="603,42,769,67"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="548,33,589,39,589,44,548,38"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="817,42,909,67"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="770,52,804,52,804,57,770,57"/>
+<area shape="poly" id="edge10_Node000006_Node000003" title=" " alt="" coords="304,111,391,62,416,49,418,54,393,66,307,116"/>
+<area shape="poly" id="edge9_Node000006_Node000004" title=" " alt="" coords="344,116,391,107,602,67,603,72,393,112,345,121"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a8ecd7b6343967718d3cf3c7d2c70713b" title="Acquire the control&#45;plane writer token for one published graph slot." alt="" coords="433,121,513,146"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="344,131,419,131,419,136,344,136"/>
+<area shape="rect" id="Node000008" href="$avfilter__processor_8c.html#af3eb3a96d027952039477a2251c76173" title="Release the control&#45;plane writer token for one published graph slot." alt="" coords="425,170,521,195"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="345,149,412,165,411,170,344,154"/>
+<area shape="rect" id="Node000009" href="$avfilter__processor_8c.html#a08117f46f83685472606b65a70491e92" title="Wait until no worker or control&#45;plane reader can still reference a replaced graph." alt="" coords="392,219,555,245"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="301,151,343,179,393,206,410,212,408,217,391,210,341,183,298,156"/>
+<area shape="rect" id="Node000010" href="$avfilter__processor_8c.html#a11830d916b957a0e787c49631c014c9d" title="Compare every named configuration member without reading padding." alt="" coords="400,269,547,294"/>
+<area shape="poly" id="edge11_Node000006_Node000010" title=" " alt="" coords="288,152,332,204,361,231,393,255,405,261,402,266,391,260,358,235,328,207,284,155"/>
+</map>

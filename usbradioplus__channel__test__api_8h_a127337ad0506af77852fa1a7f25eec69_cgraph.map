@@ -1,0 +1,5 @@
+<map id="setformat" name="setformat">
+<area shape="rect" id="Node000001" title="Open or reopen the OSS device with the required native audio format." alt="" coords="5,13,92,38"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#aa02e1a9727b22c30cecdfebaf9cd1311" title="Reset a DAC&#45;drain hold after the underlying audio device is reset." alt="" coords="140,5,321,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="92,23,126,23,126,28,92,28"/>
+</map>

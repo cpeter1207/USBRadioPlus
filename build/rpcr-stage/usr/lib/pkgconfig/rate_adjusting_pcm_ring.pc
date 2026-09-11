@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=/usr/lib
+includedir=${prefix}/include
+
+Name: rate_adjusting_pcm_ring
+Description: Lock-free rate-adjusting PCM playout ring
+Version: 1.0.1-dev
+Requires: samplerate
+Libs: -L${libdir} -lrate_adjusting_pcm_ring
+Cflags: -I${includedir}/rate_adjusting_pcm_ring

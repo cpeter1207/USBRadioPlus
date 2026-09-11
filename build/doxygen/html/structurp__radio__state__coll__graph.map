@@ -1,0 +1,18 @@
+<map id="urp_radio_state" name="urp_radio_state">
+<area shape="rect" id="Node000001" title=" " alt="" coords="223,181,346,207"/>
+<area shape="rect" id="Node000006" href="$structurp__radio__stage.html" title=" " alt="" coords="152,416,279,441"/>
+<area shape="poly" id="edge6_Node000006_Node000001" title=" " alt="" coords="231,215,213,232,202,256,196,281,196,334,204,381,214,415,209,417,199,383,190,334,191,280,197,254,209,229,228,211"/>
+<area shape="rect" id="Node000002" href="$structurp__ctcss__decoder.html" title=" " alt="" coords="37,93,180,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,122,262,179,260,183,144,127"/>
+<area shape="rect" id="Node000003" href="$structurp__ctcss__tone__detector.html" title=" " alt="" coords="5,5,185,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="102,44,109,92,104,93,97,44"/>
+<area shape="rect" id="Node000004" href="$structurp__dcs__state.html" title=" " alt="" coords="229,93,341,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="287,133,287,181,282,181,282,133"/>
+<area shape="rect" id="Node000005" href="$structurp__dcs__receive__phase.html" title="State for one fixed DCS receive&#45;symbol timing hypothesis." alt="" coords="210,5,383,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="296,44,289,93,284,92,291,44"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="276,408,295,390,306,367,311,342,310,289,299,242,287,208,292,206,304,240,316,289,317,343,311,369,299,394,280,412"/>
+<area shape="rect" id="Node000007" href="$structurp__micor__squelch.html" title=" " alt="" coords="14,181,158,207"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="80,221,72,257,67,302,72,349,79,371,91,390,103,403,118,412,152,422,151,428,116,417,100,407,87,394,74,373,66,350,62,302,66,256,75,219"/>
+<area shape="rect" id="Node000008" href="$structt__sdbg.html" title=" " alt="" coords="364,93,429,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="372,129,302,183,298,179,369,125"/>
+</map>

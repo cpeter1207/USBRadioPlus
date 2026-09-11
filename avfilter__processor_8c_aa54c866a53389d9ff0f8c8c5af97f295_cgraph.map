@@ -1,0 +1,7 @@
+<map id="txagc_avfilter_slot_candidate_destroy" name="txagc_avfilter_slot_candidate_destroy">
+<area shape="rect" id="Node000001" title="Discard an unpublished candidate graph." alt="" coords="5,5,155,45"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="203,13,369,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="155,23,189,23,189,28,155,28"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="417,13,509,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="370,23,404,23,404,28,370,28"/>
+</map>

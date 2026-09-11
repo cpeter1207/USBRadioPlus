@@ -1,0 +1,5 @@
+<map id="usbradio_write" name="usbradio_write">
+<area shape="rect" id="Node000001" title="Queue an outbound app_rpt voice frame for native transmitter rendering." alt="" coords="5,13,124,38"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a170c1766b71f78c020eeed0a8bb74a3b" title="Queue source&#45;rate app_rpt PCM for asynchronous native transmitter rendering." alt="" coords="172,5,324,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="124,23,158,23,158,28,124,28"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="radio_set_dsp_debug" name="radio_set_dsp_debug">
+<area shape="rect" id="Node000001" title="Set the selected radio&#39;s DSP trace verbosity." alt="" coords="5,5,164,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="212,5,295,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,15,198,15,198,21,164,21"/>
+</map>

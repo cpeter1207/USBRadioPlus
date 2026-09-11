@@ -1,0 +1,13 @@
+<map id="native_graph_slot_preflight" name="native_graph_slot_preflight">
+<area shape="rect" id="Node000001" title="Reclaim retired graphs or reject a third live generation." alt="" coords="5,55,204,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#abb428c410fe9a839477f7f0073ba9da2" title="Destroy a complete native graph generation outside the audio callback." alt="" coords="252,5,443,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,52,270,31,271,36,168,57"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#ade32697904e8a972626f046c2127fc1f" title="Acquire one control&#45;plane writer token for a native graph slot." alt="" coords="261,55,433,80"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="204,65,248,65,248,70,204,70"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a7f66d547898668cd1d4cabac8d7e4682" title="Release a native graph&#45;slot control&#45;plane writer token." alt="" coords="253,104,441,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="168,77,271,99,270,104,167,83"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="491,5,657,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="443,15,477,15,477,21,443,21"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="705,5,797,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="658,15,692,15,692,21,658,21"/>
+</map>

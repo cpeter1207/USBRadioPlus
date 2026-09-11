@@ -1,0 +1,7 @@
+<map id="ctcss_frequency_lists_mapped" name="ctcss_frequency_lists_mapped">
+<area shape="rect" id="Node000001" title="Require an equal&#45;length receive&#45;to&#45;transmit CTCSS translation map." alt="" coords="5,5,167,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a336fd0d84a8a716cbdb1b764e98757d6" title="Validate a comma&#45;separated CTCSS list against the radio tone table." alt="" coords="215,5,369,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="167,23,201,23,201,28,167,28"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__ctcss_8c.html#a7611b9d3d46efc9615e290d0122a639b" title="Check whether a frequency is one of the supported CTCSS tones." alt="" coords="417,5,572,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="370,23,403,23,403,28,370,28"/>
+</map>

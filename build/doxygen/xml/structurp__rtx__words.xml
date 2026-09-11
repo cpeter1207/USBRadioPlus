@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__rtx__words" kind="struct" language="C++" prot="public">
+    <compoundname>urp_rtx_words</compoundname>
+    <includes refid="usbradioplus__hardware_8h" local="no">usbradioplus_hardware.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_rtx_words::reference</definition>
+        <argsstring></argsstring>
+        <name>reference</name>
+        <qualifiedname>urp_rtx_words::reference</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RTX reference-divider programming word. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="13" column="10" bodyfile="src/usbradioplus_hardware.h" bodystart="13" bodyend="-1"/>
+        <referencedby refid="usbradioplus__hardware_8c_1abeee3f38f91b6c8b4697248ee607594e" compoundref="usbradioplus__hardware_8c" startline="108" endline="126">urp_hardware_program_radio</referencedby>
+        <referencedby refid="usbradioplus__hardware_8c_1a0758a1c7b137ded20636903be81c2c74" compoundref="usbradioplus__hardware_8c" startline="80" endline="92">urp_hardware_rtx_words</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_rtx_words::synthesizer</definition>
+        <argsstring></argsstring>
+        <name>synthesizer</name>
+        <qualifiedname>urp_rtx_words::synthesizer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RTX synthesizer programming word. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="15" column="10" bodyfile="src/usbradioplus_hardware.h" bodystart="15" bodyend="-1"/>
+        <referencedby refid="usbradioplus__hardware_8c_1abeee3f38f91b6c8b4697248ee607594e" compoundref="usbradioplus__hardware_8c" startline="108" endline="126">urp_hardware_program_radio</referencedby>
+        <referencedby refid="usbradioplus__hardware_8c_1a0758a1c7b137ded20636903be81c2c74" compoundref="usbradioplus__hardware_8c" startline="80" endline="92">urp_hardware_rtx_words</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>RTX reference-divider and synthesizer programming words. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_hardware.h" line="11" column="1" bodyfile="src/usbradioplus_hardware.h" bodystart="11" bodyend="16"/>
+    <listofallmembers>
+      <member refid="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" prot="public" virt="non-virtual"><scope>urp_rtx_words</scope><name>reference</name></member>
+      <member refid="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" prot="public" virt="non-virtual"><scope>urp_rtx_words</scope><name>synthesizer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

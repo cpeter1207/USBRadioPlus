@@ -1,0 +1,5 @@
+<map id="update_cleanup_astats" name="update_cleanup_astats">
+<area shape="rect" id="Node000001" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="5,5,177,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="225,5,331,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="178,15,212,15,212,21,178,21"/>
+</map>

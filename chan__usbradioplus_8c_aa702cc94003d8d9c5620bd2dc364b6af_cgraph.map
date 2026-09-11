@@ -1,0 +1,13 @@
+<map id="hidthread_failsafe_unkey" name="hidthread_failsafe_unkey">
+<area shape="rect" id="Node000001" title="Fail safe to an unkeyed state before losing a hardware interface." alt="" coords="5,92,145,132"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a7e942424600e6423d4f719ca11bf86c2" title="Build the configured parallel&#45;port PTT mask for one hardware worker." alt="" coords="207,5,347,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="117,89,192,55,208,48,210,53,194,60,119,94"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#ac42c2126e06ca5ab9723e8a203e5efa1" title="Apply logical PTT and polarity to the USB and optional parallel outputs." alt="" coords="193,70,360,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="145,99,179,94,180,99,146,104"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__hardware_8c.html#a46a10ad3db9a82903beffcc64b2a9112" title="Immediately clear the RTX transmit output without serial reprogramming." alt="" coords="201,120,352,160"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="146,119,188,125,187,130,145,124"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a5e29c75973bbf6a2c5fb46a4252920fe" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="196,184,357,224"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="115,130,194,170,210,176,208,181,192,174,112,135"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="408,127,559,153"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="352,137,394,137,394,143,352,143"/>
+</map>

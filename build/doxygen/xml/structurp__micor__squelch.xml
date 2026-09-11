@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__micor__squelch" kind="struct" language="C++" prot="public">
+    <compoundname>urp_micor_squelch</compoundname>
+    <includes refid="usbradioplus__squelch_8h" local="no">usbradioplus_squelch.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_micor_squelch::noise_power</definition>
+        <argsstring></argsstring>
+        <name>noise_power</name>
+        <qualifiedname>urp_micor_squelch::noise_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Smoothed discriminator-noise power, in squared calibration units. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="16" column="8" bodyfile="src/usbradioplus_squelch.h" bodystart="16" bodyend="-1"/>
+        <referencedby refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" compoundref="usbradioplus__squelch_8h" startline="33" endline="93">urp_micor_squelch_update</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_micor_squelch::idle_power</definition>
+        <argsstring></argsstring>
+        <name>idle_power</name>
+        <qualifiedname>urp_micor_squelch::idle_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Slowly tracked no-carrier reference for the 20 dB quieting comparator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="18" column="8" bodyfile="src/usbradioplus_squelch.h" bodystart="18" bodyend="-1"/>
+        <referencedby refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" compoundref="usbradioplus__squelch_8h" startline="33" endline="93">urp_micor_squelch_update</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_micor_squelch::hold_charge</definition>
+        <argsstring></argsstring>
+        <name>hold_charge</name>
+        <qualifiedname>urp_micor_squelch::hold_charge</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Long-tail capacitor charge, normalized to its fixed full-charge voltage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="20" column="8" bodyfile="src/usbradioplus_squelch.h" bodystart="20" bodyend="-1"/>
+        <referencedby refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" compoundref="usbradioplus__squelch_8h" startline="33" endline="93">urp_micor_squelch_update</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_micor_squelch::settling_samples</definition>
+        <argsstring></argsstring>
+        <name>settling_samples</name>
+        <qualifiedname>urp_micor_squelch::settling_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples accumulated during initial noise-detector settling. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="22" column="14" bodyfile="src/usbradioplus_squelch.h" bodystart="22" bodyend="-1"/>
+        <referencedby refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" compoundref="usbradioplus__squelch_8h" startline="33" endline="93">urp_micor_squelch_update</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Noise detector and long-tail capacitor state, independent of audio blocks. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_squelch.h" line="14" column="1" bodyfile="src/usbradioplus_squelch.h" bodystart="14" bodyend="23"/>
+    <listofallmembers>
+      <member refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" prot="public" virt="non-virtual"><scope>urp_micor_squelch</scope><name>hold_charge</name></member>
+      <member refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" prot="public" virt="non-virtual"><scope>urp_micor_squelch</scope><name>idle_power</name></member>
+      <member refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" prot="public" virt="non-virtual"><scope>urp_micor_squelch</scope><name>noise_power</name></member>
+      <member refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" prot="public" virt="non-virtual"><scope>urp_micor_squelch</scope><name>settling_samples</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

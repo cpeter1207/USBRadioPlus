@@ -1,0 +1,14 @@
+<map id="urp_src_reset" name="urp_src_reset">
+<area shape="rect" id="Node000001" title="Clear resampler history at a stream discontinuity." alt="" coords="835,42,944,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a8973a0f18cb975346c08ce584930922c" title="Render the transmitter branch directly into the hardware DAC buffer." alt="" coords="612,5,787,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="821,47,786,41,787,36,822,42"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="380,42,564,67"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="821,59,787,60,612,60,564,59,564,54,612,55,787,55,821,54"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="599,41,565,45,564,40,598,36"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,17,332,42"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="366,45,332,42,333,36,366,40"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,66,304,91"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="366,69,305,75,304,70,365,63"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,17,113,42"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="147,32,114,32,114,27,147,27"/>
+</map>

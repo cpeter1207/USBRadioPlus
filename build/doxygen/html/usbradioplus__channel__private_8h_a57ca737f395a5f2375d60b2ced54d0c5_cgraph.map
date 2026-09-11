@@ -1,0 +1,7 @@
+<map id="_menu_txtone" name="_menu_txtone">
+<area shape="rect" id="Node000001" title="Display or adjust transmit CTCSS level and optional keyed tone." alt="" coords="5,31,120,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#aa833e3dc2b785a564be69735de34e040" title="Parse a normalized hardware tuning level in the range 0 through 999." alt="" coords="169,5,302,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,32,155,27,156,32,121,38"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a4110f1dd407ad952eeb56d77b194faac" title="Apply transmit CTCSS deviation to the signaling generator." alt="" coords="168,55,303,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="121,49,155,53,154,59,120,54"/>
+</map>

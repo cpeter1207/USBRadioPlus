@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['dcgainbpfnoise_0',['DCgainBpfNoise',['../usbradioplus__radio_8c.html#aee46ae09a82cbd0de533b4533d91a280',1,'usbradioplus_radio.c']]],
+  ['dcs_5fclock_5fincrement_1',['DCS_CLOCK_INCREMENT',['../usbradioplus__dcs_8c.html#a9bb581b625cdeb8ce9027c0d2686846c',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fclock_5fscale_2',['DCS_CLOCK_SCALE',['../usbradioplus__dcs_8c.html#ae752c84de8946c50bbb455c27f830ea8',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fdc_5ftracker_5fscale_3',['DCS_DC_TRACKER_SCALE',['../usbradioplus__dcs_8c.html#a65ecdf7d71c207d8c33ad7cec5c1b40c',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fgenerator_4',['DCS_GENERATOR',['../usbradioplus__dcs_8c.html#abd85317cf30d011de366049b29ecea6d',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fpi_5',['DCS_PI',['../usbradioplus__dcs_8c.html#a6c300ea15ca10bfefb6f18dbe74a4889',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fturnoff_5fminimum_5fcoherence_6',['DCS_TURNOFF_MINIMUM_COHERENCE',['../usbradioplus__dcs_8c.html#a962587f2ced7692e7443ee1a98c67900',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fturnoff_5fminimum_5frms_7',['DCS_TURNOFF_MINIMUM_RMS',['../usbradioplus__dcs_8c.html#ac2c538150cff07436f52c3aa7690ad62',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fturnoff_5fwindow_5fms_8',['DCS_TURNOFF_WINDOW_MS',['../usbradioplus__dcs_8c.html#a87d874dcb622db0bfcd2783fb61dcebb',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fwire_5fgenerator_9',['DCS_WIRE_GENERATOR',['../usbradioplus__dcs_8c.html#a5e80a93b52bbb81867b205a0561dbc7d',1,'usbradioplus_dcs.c']]],
+  ['dcs_5fword_5fmask_10',['DCS_WORD_MASK',['../usbradioplus__dcs_8c.html#a86450a3370c9293440746acb31a64ba3',1,'usbradioplus_dcs.c']]],
+  ['ddb_5ferr_5fmodulus_11',['DDB_ERR_MODULUS',['../usbradioplus__radio_8h.html#a55cee86a7a3022f1527fac8006dc34ed',1,'usbradioplus_radio.h']]],
+  ['ddb_5fframe_5fsize_12',['DDB_FRAME_SIZE',['../usbradioplus__radio_8h.html#acde7d7846d2b7df0b08cf1cd6d8c0253',1,'usbradioplus_radio.h']]],
+  ['ddb_5fframes_5fin_5fbuff_13',['DDB_FRAMES_IN_BUFF',['../usbradioplus__radio_8h.html#ac90b5f16e144e18d47a06e571f5fa21b',1,'usbradioplus_radio.h']]],
+  ['debug_5fusbradio_14',['debug_usbradio',['../chan__usbradioplus_8c.html#a2ae1aa78c091791f02cb87444379561d',1,'DEBUG_USBRADIO:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#a2ae1aa78c091791f02cb87444379561d',1,'DEBUG_USBRADIO:&#160;chan_usbradioplus_modern.c']]],
+  ['default_5fecho_5fmax_15',['default_echo_max',['../chan__usbradioplus_8c.html#aff6956213642af11c244ddeecb185bb4',1,'DEFAULT_ECHO_MAX:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#aff6956213642af11c244ddeecb185bb4',1,'DEFAULT_ECHO_MAX:&#160;chan_usbradioplus_modern.c'],['../usbradioplus__channel__private_8h.html#aff6956213642af11c244ddeecb185bb4',1,'DEFAULT_ECHO_MAX:&#160;usbradioplus_channel_private.h']]],
+  ['default_5fecho_5fseconds_16',['default_echo_seconds',['../chan__usbradioplus_8c.html#a44441d6dfed1eba86d5b0a87a2920831',1,'DEFAULT_ECHO_SECONDS:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#a44441d6dfed1eba86d5b0a87a2920831',1,'DEFAULT_ECHO_SECONDS:&#160;chan_usbradioplus_modern.c']]],
+  ['delimchr_17',['delimchr',['../chan__usbradioplus_8c.html#abc0b3b46c37f2eac1a2bf215b0ec9f43',1,'DELIMCHR:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#abc0b3b46c37f2eac1a2bf215b0ec9f43',1,'DELIMCHR:&#160;chan_usbradioplus_modern.c']]],
+  ['device_5fretry_18',['DEVICE_RETRY',['../chan__usbradioplus__modern_8c.html#a77a6fb9d4d0f1b07512f7490b0af9a52',1,'chan_usbradioplus_modern.c']]],
+  ['duplex3_5flevel_5fmax_19',['duplex3_level_max',['../chan__usbradioplus_8c.html#ab22fe50fa1e6db82824bb040715d6da5',1,'DUPLEX3_LEVEL_MAX:&#160;chan_usbradioplus.c'],['../chan__usbradioplus__modern_8c.html#ab22fe50fa1e6db82824bb040715d6da5',1,'DUPLEX3_LEVEL_MAX:&#160;chan_usbradioplus_modern.c'],['../usbradioplus__channel__private_8h.html#ab22fe50fa1e6db82824bb040715d6da5',1,'DUPLEX3_LEVEL_MAX:&#160;usbradioplus_channel_private.h']]]
+];

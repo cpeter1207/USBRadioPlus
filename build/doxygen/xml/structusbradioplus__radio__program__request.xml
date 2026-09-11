@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__radio__program__request" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_radio_program_request</compoundname>
+    <includes refid="usbradioplus__channel__common_8h" local="no">usbradioplus_channel_common.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__radio__program__request_1aa1eb4e74288955f9a51eee775e9e290d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t usbradioplus_radio_program_request::rx_frequency</definition>
+        <argsstring></argsstring>
+        <name>rx_frequency</name>
+        <qualifiedname>usbradioplus_radio_program_request::rx_frequency</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Requested receive frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.h" line="64" column="10" bodyfile="src/usbradioplus_channel_common.h" bodystart="64" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__radio__program__request_1a6272d567e4509e662e74b48f055864d6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t usbradioplus_radio_program_request::tx_frequency</definition>
+        <argsstring></argsstring>
+        <name>tx_frequency</name>
+        <qualifiedname>usbradioplus_radio_program_request::tx_frequency</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Requested transmit frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.h" line="66" column="10" bodyfile="src/usbradioplus_channel_common.h" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__radio__program__request_1a93f65e6ef79732ad6746a3b7b2355f86" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_radio_program_request::high_power</definition>
+        <argsstring></argsstring>
+        <name>high_power</name>
+        <qualifiedname>usbradioplus_radio_program_request::high_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero requests the high-power radio programming profile. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.h" line="68" column="5" bodyfile="src/usbradioplus_channel_common.h" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__radio__program__request_1aacd98d1f5c323ed77a1ff3e1877c881e" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int usbradioplus_radio_program_request::generation</definition>
+        <argsstring></argsstring>
+        <name>generation</name>
+        <qualifiedname>usbradioplus_radio_program_request::generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Monotonic control-plane publication generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.h" line="70" column="14" bodyfile="src/usbradioplus_channel_common.h" bodystart="70" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Snapshot of a control-plane radio-programming request. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_common.h" line="62" column="1" bodyfile="src/usbradioplus_channel_common.h" bodystart="62" bodyend="71"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__radio__program__request_1aacd98d1f5c323ed77a1ff3e1877c881e" prot="public" virt="non-virtual"><scope>usbradioplus_radio_program_request</scope><name>generation</name></member>
+      <member refid="structusbradioplus__radio__program__request_1a93f65e6ef79732ad6746a3b7b2355f86" prot="public" virt="non-virtual"><scope>usbradioplus_radio_program_request</scope><name>high_power</name></member>
+      <member refid="structusbradioplus__radio__program__request_1aa1eb4e74288955f9a51eee775e9e290d" prot="public" virt="non-virtual"><scope>usbradioplus_radio_program_request</scope><name>rx_frequency</name></member>
+      <member refid="structusbradioplus__radio__program__request_1a6272d567e4509e662e74b48f055864d6" prot="public" virt="non-virtual"><scope>usbradioplus_radio_program_request</scope><name>tx_frequency</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

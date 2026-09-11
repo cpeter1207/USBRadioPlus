@@ -1,0 +1,9 @@
+<map id="stage_active_link_hooks" name="stage_active_link_hooks">
+<area shape="rect" id="Node000001" title="Stage every active link hook against one private settings generation." alt="" coords="403,31,585,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="172,23,355,63"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="389,46,355,46,355,41,389,41"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="22,5,107,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="158,33,107,26,108,21,158,27"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,55,124,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="158,59,125,63,124,58,158,53"/>
+</map>

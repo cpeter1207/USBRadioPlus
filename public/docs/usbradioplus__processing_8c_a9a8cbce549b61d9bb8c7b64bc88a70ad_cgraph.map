@@ -1,0 +1,11 @@
+<map id="validate_named_sections" name="validate_named_sections">
+<area shape="rect" id="Node000001" title="Reject unknown sections and options in a candidate configuration." alt="" coords="5,31,193,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a082af7a230525d61150ae3a40eb1348b" title="Recognize a shared flat defaults section." alt="" coords="271,5,386,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="193,30,257,23,257,28,194,36"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ae31866a1d4fa5ce17a7aa6058bd46130" title="Validate an option against the vocabulary for its section kind." alt="" coords="241,55,416,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,51,228,54,228,59,193,56"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="464,29,619,55"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="416,54,450,50,451,55,416,60"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#accc0626992a3ee315023800ac4a67a80" title="Compare a configuration name against an allowed&#45;name table." alt="" coords="487,79,596,104"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="416,75,473,81,473,86,416,80"/>
+</map>

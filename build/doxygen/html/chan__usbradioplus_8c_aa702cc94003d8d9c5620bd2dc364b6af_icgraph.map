@@ -1,0 +1,7 @@
+<map id="hidthread_failsafe_unkey" name="hidthread_failsafe_unkey">
+<area shape="rect" id="Node000001" title="Fail safe to an unkeyed state before losing a hardware interface." alt="" coords="293,5,433,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="161,13,245,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="280,28,246,28,246,23,280,23"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,13,113,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="147,28,114,28,114,23,147,23"/>
+</map>

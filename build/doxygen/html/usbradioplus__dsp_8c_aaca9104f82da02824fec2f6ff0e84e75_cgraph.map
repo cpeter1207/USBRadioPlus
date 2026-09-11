@@ -1,0 +1,9 @@
+<map id="urp_rate_convert" name="urp_rate_convert">
+<area shape="rect" id="Node000001" title="Convert between sample rates, copying directly when the rates match." alt="" coords="5,31,137,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dsp_8c.html#ac3e6b80594c56efda361b49ad5b1b10b" title="Convert a fixed&#45;rate PCM block using only pre&#45;reserved converter storage." alt="" coords="185,5,383,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="137,33,171,29,172,34,138,38"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#a7e53206483e5fb5a726dc6aef5bb5e92" title="Preallocate conversion workspaces before native callback processing." alt="" coords="221,55,347,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="138,48,208,56,207,61,137,53"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#ae5ec641130119c7001929833a9cea583" title="Convert through already reserved SRC workspaces without allocating." alt="" coords="431,5,621,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="383,15,417,15,417,21,383,21"/>
+</map>

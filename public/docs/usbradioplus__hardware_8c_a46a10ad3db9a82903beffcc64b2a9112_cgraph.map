@@ -1,0 +1,5 @@
+<map id="urp_hardware_clear_transmit" name="urp_hardware_clear_transmit">
+<area shape="rect" id="Node000001" title="Immediately clear the RTX transmit output without serial reprogramming." alt="" coords="5,5,156,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="204,13,355,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,23,190,23,190,28,156,28"/>
+</map>

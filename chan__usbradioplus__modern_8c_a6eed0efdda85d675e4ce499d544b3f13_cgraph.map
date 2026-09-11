@@ -1,0 +1,7 @@
+<map id="radio_active" name="radio_active">
+<area shape="rect" id="Node000001" title="Show or select the radio used by interactive calibration commands." alt="" coords="5,31,108,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="207,5,290,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,34,193,23,194,28,109,39"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#ac61148cf7b715227e21078f6c639a388" title="Copy the acquired USB identifier, serial number, and ALSA card number." alt="" coords="156,55,341,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="109,47,143,51,142,57,108,52"/>
+</map>

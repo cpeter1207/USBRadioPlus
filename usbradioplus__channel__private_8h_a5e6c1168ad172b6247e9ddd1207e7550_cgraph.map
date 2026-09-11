@@ -1,0 +1,7 @@
+<map id="effective_rx_input_gain_db" name="effective_rx_input_gain_db">
+<area shape="rect" id="Node000001" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="5,5,144,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a95124b3a47bea172607faa5d65e076b9" title="Copy a local chain from the immutable audio&#45;thread snapshot. This operation neither allocates nor loc..." alt="" coords="192,5,375,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,23,178,23,178,28,144,28"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="423,13,559,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="375,23,409,23,409,28,375,28"/>
+</map>

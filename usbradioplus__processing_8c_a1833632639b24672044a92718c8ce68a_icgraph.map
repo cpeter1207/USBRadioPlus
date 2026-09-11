@@ -1,0 +1,18 @@
+<map id="commit_candidate_settings" name="commit_candidate_settings">
+<area shape="rect" id="Node000001" title="Commit an already validated and fully prepared reload generation." alt="" coords="656,92,859,117"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a62ee21b0d844af4ddd7d7941638c6872" title="Load and immediately publish settings when no graph transaction is needed." alt="" coords="462,63,571,88"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="642,93,571,85,572,79,643,88"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="425,113,608,153"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="643,121,609,125,608,119,642,115"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#aae8223404088f39036d2f86bf10a63be" title="Load settings, register commands, and start the link&#45;hook scanner." alt="" coords="160,5,377,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="448,62,324,33,325,28,449,57"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#abeaeab57088b44ae99f98edcff0ff59d" title="Parse processing settings before radio channel creation." alt="" coords="177,55,360,95"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="448,78,360,78,360,73,448,73"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="5,35,112,60"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="164,35,113,43,112,37,164,30"/>
+<area shape="poly" id="edge5_Node000005_Node000004" title=" " alt="" coords="163,64,112,57,113,52,164,59"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="226,120,311,145"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="412,135,312,135,312,130,412,130"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="209,169,328,195"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="412,156,329,173,328,168,411,151"/>
+</map>

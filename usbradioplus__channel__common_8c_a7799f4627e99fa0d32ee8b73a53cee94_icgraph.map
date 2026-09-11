@@ -1,0 +1,19 @@
+<map id="mult_set" name="mult_set">
+<area shape="rect" id="Node000001" title="Refresh fixed&#45;point radio calibration multipliers after tuning." alt="" coords="707,80,785,105"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ae4f8a795df76c34c41a90221e644cd7d" title="Display or adjust the auxiliary voice output level." alt="" coords="527,5,659,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="713,75,658,44,631,33,633,28,660,40,715,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,80,287,105"/>
+<area shape="poly" id="edge9_Node000001_Node000004" title=" " alt="" coords="693,95,287,95,287,90,693,90"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a2b060af9d1b3c338e74ec8d119152735" title="Display or adjust the voice output and optional calibration tone." alt="" coords="532,55,653,80"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="693,87,653,80,654,75,694,81"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="551,156,635,181"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="709,114,660,139,621,158,619,154,657,134,707,109"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,55,479,80"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="532,37,456,57,455,52,530,32"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="322,83,287,88,287,83,321,78"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,80,148,105"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="182,95,148,95,148,90,182,90"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="518,70,479,70,479,65,518,65"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="353,156,461,181"/>
+<area shape="poly" id="edge8_Node000007_Node000008" title=" " alt="" coords="537,171,461,171,461,166,537,166"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="native_renderer_finish_block" name="native_renderer_finish_block">
+<area shape="rect" id="Node000001" title="Publish measurements and test observables after one direct block." alt="" coords="5,37,172,77"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a3acb0f7819e0e8c40828756d6dc59eec" title="Copy scalar measurements from one prepared FFmpeg graph." alt="" coords="228,5,391,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,43,214,36,215,42,173,48"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a9e9fa3a41654f5e43e28fec4a1936e63" title="Publish callback&#45;owned diagnostics without blocking the callback." alt="" coords="220,69,399,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="173,67,207,72,206,77,172,72"/>
+</map>

@@ -1,0 +1,15 @@
+<map id="usbradioplus_dsp_destroy" name="usbradioplus_dsp_destroy">
+<area shape="rect" id="Node000001" title="Release native processing, rate&#45;conversion, and echo buffers." alt="" coords="704,56,895,81"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a60c80db11845394b35ca4b33a0b7b213" title="Release a channel that failed before it was linked into the active list." alt="" coords="465,31,656,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="690,60,656,56,656,51,691,54"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="499,80,622,105"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="690,82,622,89,622,84,690,77"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="316,31,417,56"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="451,46,417,46,417,41,451,41"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="172,31,268,56"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="302,46,268,46,268,41,302,41"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="11,5,118,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="158,36,118,29,119,24,159,31"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,55,124,80"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="159,55,125,61,124,56,158,50"/>
+</map>

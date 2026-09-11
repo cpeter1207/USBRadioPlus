@@ -1,0 +1,139 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__parrot__state" kind="struct" language="C++" prot="public">
+    <compoundname>urp_parrot_state</compoundname>
+    <includes refid="usbradioplus__channel__core_8h" local="no">usbradioplus_channel_core.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__parrot__state_1ac6ba0fbae5bdf6b2fcc3e216a20ad731" prot="public" static="no" mutable="no">
+        <type>double *</type>
+        <definition>double* urp_parrot_state::audio</definition>
+        <argsstring></argsstring>
+        <name>audio</name>
+        <qualifiedname>urp_parrot_state::audio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned floating-point native echo recording. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="112" column="8" bodyfile="src/usbradioplus_channel_core.h" bodystart="112" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1aedc05ac7f06a992d7a703005ca0c1a8e" compoundref="usbradioplus__channel__core_8c" startline="266" endline="280">urp_parrot_play</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a1bbb62734d6f49a82d803042118451db" compoundref="usbradioplus__channel__core_8c" startline="282" endline="295">urp_parrot_record</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a7d96da245f0f133fdf0fcc04eac7ea6d" compoundref="usbradioplus__native__tick_8c" startline="804" endline="819">usbradioplus_native_renderer_stop</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__parrot__state_1acf502d3bbf1907d960c9fefee97fa930" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t urp_parrot_state::capacity</definition>
+        <argsstring></argsstring>
+        <name>capacity</name>
+        <qualifiedname>urp_parrot_state::capacity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated recording capacity in samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="114" column="8" bodyfile="src/usbradioplus_channel_core.h" bodystart="114" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__parrot__state_1aba71a1ce456d702fef542372ba5d2e0a" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t urp_parrot_state::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <qualifiedname>urp_parrot_state::count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of occupied elements. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="116" column="8" bodyfile="src/usbradioplus_channel_core.h" bodystart="116" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a2eb02cf7738a321dc5cd6effbd997882" compoundref="usbradioplus__native__tick_8c" startline="287" endline="316">native_renderer_apply_requests</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1aedc05ac7f06a992d7a703005ca0c1a8e" compoundref="usbradioplus__channel__core_8c" startline="266" endline="280">urp_parrot_play</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a1bbb62734d6f49a82d803042118451db" compoundref="usbradioplus__channel__core_8c" startline="282" endline="295">urp_parrot_record</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ac586bcfd7b038d83edaeceaa3e329382" compoundref="usbradioplus__channel__core_8c" startline="251" endline="264">urp_parrot_rx_transition</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__parrot__state_1a4fbeca23ad363ed9c9489a21df063fc4" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t urp_parrot_state::play</definition>
+        <argsstring></argsstring>
+        <name>play</name>
+        <qualifiedname>urp_parrot_state::play</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next playback sample offset. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="118" column="8" bodyfile="src/usbradioplus_channel_core.h" bodystart="118" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a2eb02cf7738a321dc5cd6effbd997882" compoundref="usbradioplus__native__tick_8c" startline="287" endline="316">native_renderer_apply_requests</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1aedc05ac7f06a992d7a703005ca0c1a8e" compoundref="usbradioplus__channel__core_8c" startline="266" endline="280">urp_parrot_play</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ac586bcfd7b038d83edaeceaa3e329382" compoundref="usbradioplus__channel__core_8c" startline="251" endline="264">urp_parrot_rx_transition</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__parrot__state_1a6ca0219a04507f4a49b4006e0bed9076" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_parrot_state::playing</definition>
+        <argsstring></argsstring>
+        <name>playing</name>
+        <qualifiedname>urp_parrot_state::playing</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while recorded audio is being transmitted. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="120" column="14" bodyfile="src/usbradioplus_channel_core.h" bodystart="120" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a2eb02cf7738a321dc5cd6effbd997882" compoundref="usbradioplus__native__tick_8c" startline="287" endline="316">native_renderer_apply_requests</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1aedc05ac7f06a992d7a703005ca0c1a8e" compoundref="usbradioplus__channel__core_8c" startline="266" endline="280">urp_parrot_play</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ac586bcfd7b038d83edaeceaa3e329382" compoundref="usbradioplus__channel__core_8c" startline="251" endline="264">urp_parrot_rx_transition</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__parrot__state_1af8b7bdd4d07c16ebc38f44441250d7b6" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_parrot_state::truncated</definition>
+        <argsstring></argsstring>
+        <name>truncated</name>
+        <qualifiedname>urp_parrot_state::truncated</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when the recording exceeded its configured duration. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="122" column="14" bodyfile="src/usbradioplus_channel_core.h" bodystart="122" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a2eb02cf7738a321dc5cd6effbd997882" compoundref="usbradioplus__native__tick_8c" startline="287" endline="316">native_renderer_apply_requests</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a1bbb62734d6f49a82d803042118451db" compoundref="usbradioplus__channel__core_8c" startline="282" endline="295">urp_parrot_record</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ac586bcfd7b038d83edaeceaa3e329382" compoundref="usbradioplus__channel__core_8c" startline="251" endline="264">urp_parrot_rx_transition</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Buffer and playback cursor for native-rate echo audio. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_core.h" line="110" column="1" bodyfile="src/usbradioplus_channel_core.h" bodystart="110" bodyend="123"/>
+    <listofallmembers>
+      <member refid="structurp__parrot__state_1ac6ba0fbae5bdf6b2fcc3e216a20ad731" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>audio</name></member>
+      <member refid="structurp__parrot__state_1acf502d3bbf1907d960c9fefee97fa930" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>capacity</name></member>
+      <member refid="structurp__parrot__state_1aba71a1ce456d702fef542372ba5d2e0a" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>count</name></member>
+      <member refid="structurp__parrot__state_1a4fbeca23ad363ed9c9489a21df063fc4" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>play</name></member>
+      <member refid="structurp__parrot__state_1a6ca0219a04507f4a49b4006e0bed9076" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>playing</name></member>
+      <member refid="structurp__parrot__state_1af8b7bdd4d07c16ebc38f44441250d7b6" prot="public" virt="non-virtual"><scope>urp_parrot_state</scope><name>truncated</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

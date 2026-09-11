@@ -1,0 +1,714 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structprocessing__signaling__values" kind="struct" language="C++" prot="public">
+    <compoundname>processing_signaling_values</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structprocessing__signaling__values_1aaad6a7a174ada0b30dad2e0b64897f9b" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::receive_method[8]</definition>
+        <argsstring>[8]</argsstring>
+        <name>receive_method</name>
+        <qualifiedname>processing_signaling_values::receive_method</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected receive signaling method. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2009" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2009" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a585bbebf6dd858729e273ea68265a7ee" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::transmit_method[8]</definition>
+        <argsstring>[8]</argsstring>
+        <name>transmit_method</name>
+        <qualifiedname>processing_signaling_values::transmit_method</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected transmit signaling method. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2011" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2011" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ae4c93553189eefacd9ee36f4fbeaf522" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::receive_ctcss[512]</definition>
+        <argsstring>[512]</argsstring>
+        <name>receive_ctcss</name>
+        <qualifiedname>processing_signaling_values::receive_ctcss</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive CTCSS frequency list. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2013" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2013" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ae94cb92776b2a88cf4f0a2b626448cbf" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::transmit_ctcss[512]</definition>
+        <argsstring>[512]</argsstring>
+        <name>transmit_ctcss</name>
+        <qualifiedname>processing_signaling_values::transmit_ctcss</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive-to-transmit CTCSS frequency map. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2015" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2015" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ab9505dee82899ca931716e484fa5ba89" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::transmit_ctcss_default[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>transmit_ctcss_default</name>
+        <qualifiedname>processing_signaling_values::transmit_ctcss_default</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Default transmit CTCSS frequency. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2017" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2017" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ab5ce1c585e0a831592b6513f310ad7b0" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::dcs_receive_code[5]</definition>
+        <argsstring>[5]</argsstring>
+        <name>dcs_receive_code</name>
+        <qualifiedname>processing_signaling_values::dcs_receive_code</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive DCS code and polarity suffix. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2019" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2019" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a90ad1184330b6e27cbcd9345742ffb21" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char processing_signaling_values::dcs_transmit_code[5]</definition>
+        <argsstring>[5]</argsstring>
+        <name>dcs_transmit_code</name>
+        <qualifiedname>processing_signaling_values::dcs_transmit_code</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit DCS code and polarity suffix. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2021" column="6" bodyfile="src/usbradioplus_channel_common.c" bodystart="2021" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ac2941cbbd70cb5a29a2fe48ec80404b8" prot="public" static="no" mutable="no">
+        <type>enum radio_rx_audio</type>
+        <definition>enum radio_rx_audio processing_signaling_values::rxdemod</definition>
+        <argsstring></argsstring>
+        <name>rxdemod</name>
+        <qualifiedname>processing_signaling_values::rxdemod</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved receive audio-source mode. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2023" column="20" bodyfile="src/usbradioplus_channel_common.c" bodystart="2023" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1aafb8d4b2188f3945b4322685f8ec5544" prot="public" static="no" mutable="no">
+        <type>enum radio_carrier_detect</type>
+        <definition>enum radio_carrier_detect processing_signaling_values::rxcdtype</definition>
+        <argsstring></argsstring>
+        <name>rxcdtype</name>
+        <qualifiedname>processing_signaling_values::rxcdtype</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved carrier-detection source. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2025" column="26" bodyfile="src/usbradioplus_channel_common.c" bodystart="2025" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a9ea22b77b5c1f289dcbd4c486f56a710" prot="public" static="no" mutable="no">
+        <type>enum radio_squelch_detect</type>
+        <definition>enum radio_squelch_detect processing_signaling_values::rxsdtype</definition>
+        <argsstring></argsstring>
+        <name>rxsdtype</name>
+        <qualifiedname>processing_signaling_values::rxsdtype</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved CTCSS indication source. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2027" column="26" bodyfile="src/usbradioplus_channel_common.c" bodystart="2027" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a09c8cb0469ebae4deae00d859e2956b4" prot="public" static="no" mutable="no">
+        <type>enum usbradio_carrier_type</type>
+        <definition>enum usbradio_carrier_type processing_signaling_values::txtoctype</definition>
+        <argsstring></argsstring>
+        <name>txtoctype</name>
+        <qualifiedname>processing_signaling_values::txtoctype</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved CTCSS turn-off mode. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2029" column="27" bodyfile="src/usbradioplus_channel_common.c" bodystart="2029" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a4d267f6337b7d7de992b6484c4ced520" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxcpusaver</definition>
+        <argsstring></argsstring>
+        <name>rxcpusaver</name>
+        <qualifiedname>processing_signaling_values::rxcpusaver</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive CPU-saver selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2031" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2031" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1add583ba4e24c9157044a21696852eb5e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txcpusaver</definition>
+        <argsstring></argsstring>
+        <name>txcpusaver</name>
+        <qualifiedname>processing_signaling_values::txcpusaver</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit CPU-saver selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2033" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2033" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a39ca64de03a5ecb0306bfb713a8113f5" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::voxhangtime</definition>
+        <argsstring></argsstring>
+        <name>voxhangtime</name>
+        <qualifiedname>processing_signaling_values::voxhangtime</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>VOX release hold in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2035" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2035" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a9b20765ce5091811897599ac93f5285d" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxsqvoxadj</definition>
+        <argsstring></argsstring>
+        <name>rxsqvoxadj</name>
+        <qualifiedname>processing_signaling_values::rxsqvoxadj</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>VOX threshold. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2037" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2037" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1af9fb58f2a1ed67e6d39a0d997e6b0347" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxsqhyst</definition>
+        <argsstring></argsstring>
+        <name>rxsqhyst</name>
+        <qualifiedname>processing_signaling_values::rxsqhyst</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Noise-squelch hysteresis. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2039" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2039" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a80b68867317796bc19ca1143800cc42c" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxnoisefiltype</definition>
+        <argsstring></argsstring>
+        <name>rxnoisefiltype</name>
+        <qualifiedname>processing_signaling_values::rxnoisefiltype</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Noise-detector filter selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2041" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2041" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a70dac1b56279d54d236f308f5676db72" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxsquelchdelay</definition>
+        <argsstring></argsstring>
+        <name>rxsquelchdelay</name>
+        <qualifiedname>processing_signaling_values::rxsquelchdelay</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive squelch delay in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2043" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2043" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1abb925f5f5eebcc6f350f8d6d723710b7" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxondelay</definition>
+        <argsstring></argsstring>
+        <name>rxondelay</name>
+        <qualifiedname>processing_signaling_values::rxondelay</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Carrier-on delay in 20 ms frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2045" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2045" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a244c01472d9828dc3a16779184580be1" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxpolarity</definition>
+        <argsstring></argsstring>
+        <name>rxpolarity</name>
+        <qualifiedname>processing_signaling_values::rxpolarity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero inverts receive signaling. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2047" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2047" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a49e21be9317990ee190f500dc4c9ce99" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxsquelchadj</definition>
+        <argsstring></argsstring>
+        <name>rxsquelchadj</name>
+        <qualifiedname>processing_signaling_values::rxsquelchadj</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive noise-squelch threshold. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2049" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2049" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ae4eb130063ae94b9790a244d31d229b3" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxfreq</definition>
+        <argsstring></argsstring>
+        <name>rxfreq</name>
+        <qualifiedname>processing_signaling_values::rxfreq</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured receive frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2051" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2051" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a832ba540d17a0540c7e1bdff3eed6df9" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::lsdrxpolarity</definition>
+        <argsstring></argsstring>
+        <name>lsdrxpolarity</name>
+        <qualifiedname>processing_signaling_values::lsdrxpolarity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero inverts receive low-speed data. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2053" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2053" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a2a62c2243249e24df867f3c89559cf9d" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txpreemphasis</definition>
+        <argsstring></argsstring>
+        <name>txpreemphasis</name>
+        <qualifiedname>processing_signaling_values::txpreemphasis</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables transmitter pre-emphasis. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2055" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2055" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a0778e42610484bfb85a25975dcbf8ca8" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txsettletime</definition>
+        <argsstring></argsstring>
+        <name>txsettletime</name>
+        <qualifiedname>processing_signaling_values::txsettletime</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmitter settling time in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2057" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2057" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ab52f3f79d5d6c56e3a38ee100a84382e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txrxblankingtime</definition>
+        <argsstring></argsstring>
+        <name>txrxblankingtime</name>
+        <qualifiedname>processing_signaling_values::txrxblankingtime</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit/receive blanking time in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2059" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2059" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a15599f9b3c4b412ac6d427acc698712f" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txoffdelay</definition>
+        <argsstring></argsstring>
+        <name>txoffdelay</name>
+        <qualifiedname>processing_signaling_values::txoffdelay</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Post-transmit receiver delay in frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2061" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2061" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ac6d01557e483bd5f4f0abb091e791c2f" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txpolarity</definition>
+        <argsstring></argsstring>
+        <name>txpolarity</name>
+        <qualifiedname>processing_signaling_values::txpolarity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero inverts transmit signaling. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2063" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2063" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a567f2bb5745ffcbdcb7c1a0cc4d1cd55" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::txfreq</definition>
+        <argsstring></argsstring>
+        <name>txfreq</name>
+        <qualifiedname>processing_signaling_values::txfreq</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured transmit frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2065" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2065" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a005c8241b52eadec701d88b73c172781" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::lsdtxpolarity</definition>
+        <argsstring></argsstring>
+        <name>lsdtxpolarity</name>
+        <qualifiedname>processing_signaling_values::lsdtxpolarity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero inverts transmit low-speed data. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2067" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2067" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1abe209e4c89c76589bb159954b8c0a02c" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float processing_signaling_values::rxctcssadj</definition>
+        <argsstring></argsstring>
+        <name>rxctcssadj</name>
+        <qualifiedname>processing_signaling_values::rxctcssadj</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Linear receive CTCSS decoder gain. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2069" column="7" bodyfile="src/usbradioplus_channel_common.c" bodystart="2069" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1ae80f877d0c84dc73fdddd021f6f2fbdf" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxctcssoverride</definition>
+        <argsstring></argsstring>
+        <name>rxctcssoverride</name>
+        <qualifiedname>processing_signaling_values::rxctcssoverride</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero bypasses CTCSS qualification. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2071" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2071" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a7eaa06175a4509d1b0bbaa61990d1328" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::rxctcssrelax</definition>
+        <argsstring></argsstring>
+        <name>rxctcssrelax</name>
+        <qualifiedname>processing_signaling_values::rxctcssrelax</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS decoder talk-off tolerance. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2073" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2073" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1aa24f44765e28832aa532b499fe46ba52" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double processing_signaling_values::ctcss_level</definition>
+        <argsstring></argsstring>
+        <name>ctcss_level</name>
+        <qualifiedname>processing_signaling_values::ctcss_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit CTCSS peak level in PCM codes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2075" column="8" bodyfile="src/usbradioplus_channel_common.c" bodystart="2075" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1abec374740ad0211d52d17d869b5eb1fd" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double processing_signaling_values::ctcss_phase_shift_degrees</definition>
+        <argsstring></argsstring>
+        <name>ctcss_phase_shift_degrees</name>
+        <qualifiedname>processing_signaling_values::ctcss_phase_shift_degrees</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS phase-shift tail angle in degrees. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2077" column="8" bodyfile="src/usbradioplus_channel_common.c" bodystart="2077" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1af860516a07d10dded01ed8d294e4016e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::ctcss_tail_duration_ms</definition>
+        <argsstring></argsstring>
+        <name>ctcss_tail_duration_ms</name>
+        <qualifiedname>processing_signaling_values::ctcss_tail_duration_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS tail duration in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2079" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2079" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a3188f316adf2268c54fcffb225885a72" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double processing_signaling_values::ctcss_tail_frequency_hz</definition>
+        <argsstring></argsstring>
+        <name>ctcss_tail_frequency_hz</name>
+        <qualifiedname>processing_signaling_values::ctcss_tail_frequency_hz</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS replacement-tail frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2081" column="8" bodyfile="src/usbradioplus_channel_common.c" bodystart="2081" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1aa4e7fd989f529ba2f9c469ab8255b661" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::dcs_turnoff_enabled</definition>
+        <argsstring></argsstring>
+        <name>dcs_turnoff_enabled</name>
+        <qualifiedname>processing_signaling_values::dcs_turnoff_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables the DCS end-of-transmission tone. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2083" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2083" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1a54b39e6a502c2f38d1548c0f8ca34c88" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int processing_signaling_values::dcs_turnoff_duration_ms</definition>
+        <argsstring></argsstring>
+        <name>dcs_turnoff_duration_ms</name>
+        <qualifiedname>processing_signaling_values::dcs_turnoff_duration_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DCS end-of-transmission tone duration in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2085" column="5" bodyfile="src/usbradioplus_channel_common.c" bodystart="2085" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structprocessing__signaling__values_1aac678147e652b8b2e860ff0d4abfc096" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double processing_signaling_values::dcs_level</definition>
+        <argsstring></argsstring>
+        <name>dcs_level</name>
+        <qualifiedname>processing_signaling_values::dcs_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DCS peak level in PCM codes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="2087" column="8" bodyfile="src/usbradioplus_channel_common.c" bodystart="2087" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a04584720f8ac36a3d77c1af21f6d8655" compoundref="usbradioplus__channel__common_8c" startline="2326" endline="2375">commit_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Candidate clean-slate signaling values resolved before touching a live radio. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_common.c" line="2007" column="1" bodyfile="src/usbradioplus_channel_common.c" bodystart="2007" bodyend="2088"/>
+    <listofallmembers>
+      <member refid="structprocessing__signaling__values_1aa24f44765e28832aa532b499fe46ba52" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>ctcss_level</name></member>
+      <member refid="structprocessing__signaling__values_1abec374740ad0211d52d17d869b5eb1fd" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>ctcss_phase_shift_degrees</name></member>
+      <member refid="structprocessing__signaling__values_1af860516a07d10dded01ed8d294e4016e" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>ctcss_tail_duration_ms</name></member>
+      <member refid="structprocessing__signaling__values_1a3188f316adf2268c54fcffb225885a72" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>ctcss_tail_frequency_hz</name></member>
+      <member refid="structprocessing__signaling__values_1aac678147e652b8b2e860ff0d4abfc096" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>dcs_level</name></member>
+      <member refid="structprocessing__signaling__values_1ab5ce1c585e0a831592b6513f310ad7b0" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>dcs_receive_code</name></member>
+      <member refid="structprocessing__signaling__values_1a90ad1184330b6e27cbcd9345742ffb21" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>dcs_transmit_code</name></member>
+      <member refid="structprocessing__signaling__values_1a54b39e6a502c2f38d1548c0f8ca34c88" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>dcs_turnoff_duration_ms</name></member>
+      <member refid="structprocessing__signaling__values_1aa4e7fd989f529ba2f9c469ab8255b661" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>dcs_turnoff_enabled</name></member>
+      <member refid="structprocessing__signaling__values_1a832ba540d17a0540c7e1bdff3eed6df9" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>lsdrxpolarity</name></member>
+      <member refid="structprocessing__signaling__values_1a005c8241b52eadec701d88b73c172781" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>lsdtxpolarity</name></member>
+      <member refid="structprocessing__signaling__values_1ae4c93553189eefacd9ee36f4fbeaf522" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>receive_ctcss</name></member>
+      <member refid="structprocessing__signaling__values_1aaad6a7a174ada0b30dad2e0b64897f9b" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>receive_method</name></member>
+      <member refid="structprocessing__signaling__values_1aafb8d4b2188f3945b4322685f8ec5544" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxcdtype</name></member>
+      <member refid="structprocessing__signaling__values_1a4d267f6337b7d7de992b6484c4ced520" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxcpusaver</name></member>
+      <member refid="structprocessing__signaling__values_1abe209e4c89c76589bb159954b8c0a02c" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxctcssadj</name></member>
+      <member refid="structprocessing__signaling__values_1ae80f877d0c84dc73fdddd021f6f2fbdf" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxctcssoverride</name></member>
+      <member refid="structprocessing__signaling__values_1a7eaa06175a4509d1b0bbaa61990d1328" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxctcssrelax</name></member>
+      <member refid="structprocessing__signaling__values_1ac2941cbbd70cb5a29a2fe48ec80404b8" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxdemod</name></member>
+      <member refid="structprocessing__signaling__values_1ae4eb130063ae94b9790a244d31d229b3" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxfreq</name></member>
+      <member refid="structprocessing__signaling__values_1a80b68867317796bc19ca1143800cc42c" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxnoisefiltype</name></member>
+      <member refid="structprocessing__signaling__values_1abb925f5f5eebcc6f350f8d6d723710b7" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxondelay</name></member>
+      <member refid="structprocessing__signaling__values_1a244c01472d9828dc3a16779184580be1" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxpolarity</name></member>
+      <member refid="structprocessing__signaling__values_1a9ea22b77b5c1f289dcbd4c486f56a710" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxsdtype</name></member>
+      <member refid="structprocessing__signaling__values_1af9fb58f2a1ed67e6d39a0d997e6b0347" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxsqhyst</name></member>
+      <member refid="structprocessing__signaling__values_1a49e21be9317990ee190f500dc4c9ce99" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxsquelchadj</name></member>
+      <member refid="structprocessing__signaling__values_1a70dac1b56279d54d236f308f5676db72" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxsquelchdelay</name></member>
+      <member refid="structprocessing__signaling__values_1a9b20765ce5091811897599ac93f5285d" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>rxsqvoxadj</name></member>
+      <member refid="structprocessing__signaling__values_1ae94cb92776b2a88cf4f0a2b626448cbf" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>transmit_ctcss</name></member>
+      <member refid="structprocessing__signaling__values_1ab9505dee82899ca931716e484fa5ba89" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>transmit_ctcss_default</name></member>
+      <member refid="structprocessing__signaling__values_1a585bbebf6dd858729e273ea68265a7ee" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>transmit_method</name></member>
+      <member refid="structprocessing__signaling__values_1add583ba4e24c9157044a21696852eb5e" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txcpusaver</name></member>
+      <member refid="structprocessing__signaling__values_1a567f2bb5745ffcbdcb7c1a0cc4d1cd55" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txfreq</name></member>
+      <member refid="structprocessing__signaling__values_1a15599f9b3c4b412ac6d427acc698712f" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txoffdelay</name></member>
+      <member refid="structprocessing__signaling__values_1ac6d01557e483bd5f4f0abb091e791c2f" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txpolarity</name></member>
+      <member refid="structprocessing__signaling__values_1a2a62c2243249e24df867f3c89559cf9d" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txpreemphasis</name></member>
+      <member refid="structprocessing__signaling__values_1ab52f3f79d5d6c56e3a38ee100a84382e" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txrxblankingtime</name></member>
+      <member refid="structprocessing__signaling__values_1a0778e42610484bfb85a25975dcbf8ca8" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txsettletime</name></member>
+      <member refid="structprocessing__signaling__values_1a09c8cb0469ebae4deae00d859e2956b4" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>txtoctype</name></member>
+      <member refid="structprocessing__signaling__values_1a39ca64de03a5ecb0306bfb713a8113f5" prot="public" virt="non-virtual"><scope>processing_signaling_values</scope><name>voxhangtime</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

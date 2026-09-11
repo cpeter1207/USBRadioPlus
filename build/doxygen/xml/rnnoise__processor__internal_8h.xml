@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="rnnoise__processor__internal_8h" kind="file" language="C++">
+    <compoundname>rnnoise_processor_internal.h</compoundname>
+    <includes refid="rnnoise__processor_8h" local="yes">rnnoise_processor.h</includes>
+    <incdepgraph>
+      <node id="2">
+        <label>rnnoise_processor.h</label>
+        <link refid="rnnoise__processor_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/txagc/rnnoise_processor_internal.h</label>
+        <link refid="rnnoise__processor__internal_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>rnnoise.h</label>
+      </node>
+      <node id="6">
+        <label>samplerate.h</label>
+      </node>
+      <node id="3">
+        <label>stddef.h</label>
+      </node>
+      <node id="4">
+        <label>stdint.h</label>
+      </node>
+    </incdepgraph>
+    <briefdescription>
+<para>Private RNNoise stream buffering and sample-conversion test interfaces. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>TXAGC_RNNOISE_PROCESSOR_INTERNAL_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TXAGC_RNNOISE_PROCESSOR_INTERNAL_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="rnnoise__processor_8h" kindref="compound">rnnoise_processor.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>URP_RNNOISE_TESTING</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state);</highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" kindref="member">configure_rate</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate);</highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" kindref="member">append</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*fifo,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*fifo_count,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*data,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count);</highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" kindref="member">consume</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*fifo,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*fifo_count,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count);</highlight></codeline>
+<codeline lineno="15"><highlight class="normal">int16_t<sp/><ref refid="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" kindref="member">pcm_from_double</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>sample);</highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/rnnoise_processor_internal.h"/>
+  </compounddef>
+</doxygen>

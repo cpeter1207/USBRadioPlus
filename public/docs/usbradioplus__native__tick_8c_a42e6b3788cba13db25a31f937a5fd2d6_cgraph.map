@@ -1,0 +1,5 @@
+<map id="usbradioplus_native_renderer_clear_legacy_echo" name="usbradioplus_native_renderer_clear_legacy_echo">
+<area shape="rect" id="Node000001" title="Request that the callback renderer discard queued legacy echo PCM." alt="" coords="5,5,216,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a4b85a831b29ef014cfb7014b59e863b0" title="Discard samples already published to an active SPSC queue." alt="" coords="264,13,463,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="216,23,251,23,251,28,216,28"/>
+</map>

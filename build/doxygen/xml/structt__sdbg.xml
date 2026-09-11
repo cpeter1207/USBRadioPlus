@@ -1,0 +1,139 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structt__sdbg" kind="struct" language="C++" prot="public">
+    <compoundname>t_sdbg</compoundname>
+    <includes refid="usbradioplus__radio_8h" local="no">usbradioplus_radio.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structt__sdbg_1a473661f2d3cb070af8cfff48fcdf73a6" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::mode</definition>
+        <argsstring></argsstring>
+        <name>mode</name>
+        <qualifiedname>t_sdbg::mode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected diagnostic or processing mode. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="307" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="307" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ad8a670cefa4fe69a9d09b7217d2efc27" compoundref="usbradioplus__radio_8c" startline="114" endline="122">strace</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1a460638c36f32de7ddda278b68c7b0ccd" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::point[NUM_DEBUG_PTS]</definition>
+        <argsstring>[NUM_DEBUG_PTS]</argsstring>
+        <name>point</name>
+        <qualifiedname>t_sdbg::point</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Trace-point selection for each output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="309" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="309" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ad8a670cefa4fe69a9d09b7217d2efc27" compoundref="usbradioplus__radio_8c" startline="114" endline="122">strace</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1a0a23a299b40b20fc507ba0f80a1cdd23" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::trace[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>trace</name>
+        <qualifiedname>t_sdbg::trace</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Enabled trace channels. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="311" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="311" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1adc1a358463935f0392c9d203433bbfc0" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::scale[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>scale</name>
+        <qualifiedname>t_sdbg::scale</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Scale applied to each diagnostic trace channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="313" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="313" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1aab2dffd8107e7ea54d77f926e7eefe02" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::offset[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>offset</name>
+        <qualifiedname>t_sdbg::offset</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DC offset applied to each diagnostic trace channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="315" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="315" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1a1ee18d06f87bc0f7aaec300db71e93be" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_sdbg::buffer[16 *SAMPLES_PER_BLOCK]</definition>
+        <argsstring>[16 *SAMPLES_PER_BLOCK]</argsstring>
+        <name>buffer</name>
+        <qualifiedname>t_sdbg::buffer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>allocate for rx and tx </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="317" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="317" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ad8a670cefa4fe69a9d09b7217d2efc27" compoundref="usbradioplus__radio_8c" startline="114" endline="122">strace</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a16b22836a4c264c4f8d2b3680c114507" compoundref="usbradioplus__radio_8c" startline="127" endline="142">strace2</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__sdbg_1ae69656efee626f05d2c713f35d3f5618" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* t_sdbg::source[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>source</name>
+        <qualifiedname>t_sdbg::source</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input buffer or source endpoint for this state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="319" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="319" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a16b22836a4c264c4f8d2b3680c114507" compoundref="usbradioplus__radio_8c" startline="127" endline="142">strace2</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Selectable radio trace points and their preallocated in-memory workspace. The radio engine retains this diagnostic facility without a file-capture toggle or sink, so callback work remains bounded and callback-safe. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_radio.h" line="305" column="1" bodyfile="src/usbradioplus_radio.h" bodystart="305" bodyend="320"/>
+    <listofallmembers>
+      <member refid="structt__sdbg_1a1ee18d06f87bc0f7aaec300db71e93be" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>buffer</name></member>
+      <member refid="structt__sdbg_1a473661f2d3cb070af8cfff48fcdf73a6" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>mode</name></member>
+      <member refid="structt__sdbg_1aab2dffd8107e7ea54d77f926e7eefe02" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>offset</name></member>
+      <member refid="structt__sdbg_1a460638c36f32de7ddda278b68c7b0ccd" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>point</name></member>
+      <member refid="structt__sdbg_1adc1a358463935f0392c9d203433bbfc0" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>scale</name></member>
+      <member refid="structt__sdbg_1ae69656efee626f05d2c713f35d3f5618" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>source</name></member>
+      <member refid="structt__sdbg_1a0a23a299b40b20fc507ba0f80a1cdd23" prot="public" virt="non-virtual"><scope>t_sdbg</scope><name>trace</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

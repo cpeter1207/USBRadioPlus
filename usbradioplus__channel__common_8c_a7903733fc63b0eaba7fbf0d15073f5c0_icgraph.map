@@ -1,0 +1,9 @@
+<map id="usbradioplus_interface_mode" name="usbradioplus_interface_mode">
+<area shape="rect" id="Node000001" title="Select transport mode before starting an exclusively owned channel." alt="" coords="380,35,595,60"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="179,5,313,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="369,36,313,29,314,23,370,30"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#aab26d31040560f7339622cbb8a218605" title="Configure a newly reserved Asterisk channel for rpt_advanced." alt="" coords="160,55,332,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="367,64,333,68,332,63,366,59"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="5,63,112,88"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="146,78,112,78,112,73,146,73"/>
+</map>

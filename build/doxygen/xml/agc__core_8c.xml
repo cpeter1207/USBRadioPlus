@@ -1,0 +1,282 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="agc__core_8c" kind="file" language="C++">
+    <compoundname>agc_core.c</compoundname>
+    <includes refid="agc__core_8h" local="yes">agc_core.h</includes>
+    <includes local="no">stdio.h</includes>
+    <includes local="no">string.h</includes>
+    <includes local="no">strings.h</includes>
+    <incdepgraph>
+      <node id="1">
+        <label>src/txagc/agc_core.c</label>
+        <link refid="agc__core_8c"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>stddef.h</label>
+      </node>
+      <node id="4">
+        <label>stdio.h</label>
+      </node>
+      <node id="5">
+        <label>string.h</label>
+      </node>
+      <node id="6">
+        <label>strings.h</label>
+      </node>
+    </incdepgraph>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" prot="public" static="no">
+        <name>REQUIRE_STAGE</name>
+        <param><defname>enabled</defname></param>
+        <param><defname>stage</defname></param>
+        <param><defname>name</defname></param>
+        <initializer>	do {                                                                                       \
+		if ((enabled) &amp;&amp; !(seen &amp; (1U &lt;&lt; (stage)))) {                                      \
+			if (error &amp;&amp; error_size)                                                   \
+				snprintf(error, error_size, &quot;enabled stage &apos;%s&apos; is missing&quot;,       \
+					 (name));                                                  \
+			return -1;                                                                 \
+		}                                                                                  \
+	} while (0)</initializer>
+        <briefdescription>
+<para>Append an enabled optional stage while enforcing order and capacity. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.c" line="76" column="9"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>static char * trim_token</definition>
+        <argsstring>(char *text)</argsstring>
+        <name>trim_token</name>
+        <param>
+          <type>char *</type>
+          <declname>text</declname>
+        </param>
+        <briefdescription>
+<para>Trim surrounding whitespace from a mutable stage-order token. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>text</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Text to parse; mutable storage may be edited in place. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Pointer into text after leading whitespace; trailing whitespace is terminated in place. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.c" line="17" column="13" bodyfile="src/txagc/agc_core.c" bodystart="17" bodyend="27"/>
+        <referencedby refid="agc__core_8c_1a7f491fc68e6176c73ba7248248524224" compoundref="agc__core_8c" startline="29" endline="97">txagc_parse_stage_order</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="agc__core_8c_1a7f491fc68e6176c73ba7248248524224" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_parse_stage_order</definition>
+        <argsstring>(const char *text, struct txagc_config *config, char *error, size_t error_size)</argsstring>
+        <name>txagc_parse_stage_order</name>
+        <param>
+          <type>const char *</type>
+          <declname>text</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>char *</type>
+          <declname>error</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>error_size</declname>
+        </param>
+        <briefdescription>
+<para>Parse the comma-separated optional-stage order; reject unknown and repeated stages. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>text</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Text to parse; mutable storage may be edited in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the shared FFmpeg graph. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>error</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives a diagnostic for invalid input. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>error_size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Diagnostic buffer capacity in bytes. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; -1 with a diagnostic for invalid order. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.c" line="29" column="5" bodyfile="src/txagc/agc_core.c" bodystart="29" bodyend="97"/>
+        <references refid="structtxagc__config_1a5ef51781f9206fe4cfda5b5a46dd7091" compoundref="agc__core_8h" startline="101">txagc_config::agc_enabled</references>
+        <references refid="structtxagc__config_1a510413f990cedf6dd1687301ce62ae68" compoundref="agc__core_8h" startline="143">txagc_config::compressor_enabled</references>
+        <references refid="structtxagc__config_1a5697f1540dc60e5591b5cdf0faeee9dd" compoundref="agc__core_8h" startline="85">txagc_config::deesser_enabled</references>
+        <references refid="structtxagc__config_1aefb02a48f064c511a95eeca2a46a6815" compoundref="agc__core_8h" startline="65">txagc_config::equalizer_enabled</references>
+        <references refid="structtxagc__config_1a6f227b96f8f7e237047c69eade1ef8fc" compoundref="agc__core_8h" startline="127">txagc_config::expander_enabled</references>
+        <references refid="structtxagc__config_1a69b210835526cff59a1a26058faf1194" compoundref="agc__core_8h" startline="201">txagc_config::limiter_enabled</references>
+        <references refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf">REQUIRE_STAGE</references>
+        <references refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" compoundref="agc__core_8h" startline="36">txagc_config::stage_count</references>
+        <references refid="structtxagc__config_1a0e223c6122abc26914253239598c545c" compoundref="agc__core_8h" startline="39">txagc_config::stage_order</references>
+        <references refid="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" compoundref="agc__core_8c" startline="17" endline="27">trim_token</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" compoundref="agc__core_8h" startline="17">TXAGC_STAGE_AGC</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" compoundref="agc__core_8h" startline="18">TXAGC_STAGE_COMPRESSOR</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" compoundref="agc__core_8h" startline="21">TXAGC_STAGE_DEESSER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" compoundref="agc__core_8h" startline="20">TXAGC_STAGE_EQUALIZER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" compoundref="agc__core_8h" startline="16">TXAGC_STAGE_EXPANDER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" compoundref="agc__core_8h" startline="19">TXAGC_STAGE_LIMITER</references>
+        <referencedby refid="usbradioplus__processing_8c_1a52dfb012da45db162cbd83c175999a8c" compoundref="usbradioplus__processing_8c" startline="1604" endline="1617">read_stage_order</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Processing-stage identifiers, graph parameters, and strict stage-order parsing. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="agc__core_8h" kindref="compound">agc_core.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdio.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;string.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;strings.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>This<sp/>file<sp/>contains<sp/>graph-configuration<sp/>parsing<sp/>only.<sp/>Audio<sp/>processing<sp/>is</highlight></codeline>
+<codeline lineno="12"><highlight class="comment"><sp/>*<sp/>intentionally<sp/>implemented<sp/>by<sp/>the<sp/>shared<sp/>FFmpeg<sp/>graph.<sp/>*/</highlight></codeline>
+<codeline lineno="17" refid="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" kindref="member">trim_token</ref>(</highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text)</highlight></codeline>
+<codeline lineno="18"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="19"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*end;</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">while</highlight><highlight class="normal"><sp/>(*text<sp/>==<sp/></highlight><highlight class="charliteral">&apos;<sp/>&apos;</highlight><highlight class="normal"><sp/>||<sp/>*text<sp/>==<sp/></highlight><highlight class="charliteral">&apos;\t&apos;</highlight><highlight class="normal">)</highlight></codeline>
+<codeline lineno="22"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>text++;</highlight></codeline>
+<codeline lineno="23"><highlight class="normal"><sp/><sp/><sp/><sp/>end<sp/>=<sp/>text<sp/>+<sp/>strlen(text);</highlight></codeline>
+<codeline lineno="24"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">while</highlight><highlight class="normal"><sp/>(end<sp/>&gt;<sp/>text<sp/>&amp;&amp;<sp/>(end[-1]<sp/>==<sp/></highlight><highlight class="charliteral">&apos;<sp/>&apos;</highlight><highlight class="normal"><sp/>||<sp/>end[-1]<sp/>==<sp/></highlight><highlight class="charliteral">&apos;\t&apos;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="25"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*--end<sp/>=<sp/></highlight><highlight class="charliteral">&apos;\0&apos;</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="26"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>text;</highlight></codeline>
+<codeline lineno="27"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight></codeline>
+<codeline lineno="29" refid="agc__core_8c_1a7f491fc68e6176c73ba7248248524224" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="agc__core_8c_1a7f491fc68e6176c73ba7248248524224" kindref="member">txagc_parse_stage_order</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*config,<sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*error,</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>error_size)</highlight></codeline>
+<codeline lineno="31"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="32"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>copy[128],<sp/>*cursor,<sp/>*token;</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>seen<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!text<sp/>||<sp/>!config)</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="37"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(strlen(text)<sp/>&gt;=<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(copy))<sp/>{</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(error<sp/>&amp;&amp;<sp/>error_size)</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>snprintf(error,<sp/>error_size,<sp/></highlight><highlight class="stringliteral">&quot;stage<sp/>order<sp/>is<sp/>too<sp/>long&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="42"><highlight class="normal"><sp/><sp/><sp/><sp/>memcpy(copy,<sp/>text,<sp/>strlen(text)<sp/>+<sp/>1);</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/><sp/><sp/>cursor<sp/>=<sp/>copy;</highlight></codeline>
+<codeline lineno="44"><highlight class="normal"><sp/><sp/><sp/><sp/>config-&gt;<ref refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" kindref="member">stage_count</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">while</highlight><highlight class="normal"><sp/>((token<sp/>=<sp/>strsep(&amp;cursor,<sp/></highlight><highlight class="stringliteral">&quot;,&quot;</highlight><highlight class="normal">)))<sp/>{</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552d" kindref="member">txagc_stage</ref><sp/>stage;</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>bit;</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>token<sp/>=<sp/><ref refid="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" kindref="member">trim_token</ref>(token);</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!*token)</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">goto</highlight><highlight class="normal"><sp/>unknown;</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;expander&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" kindref="member">TXAGC_STAGE_EXPANDER</ref>;</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;agc&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" kindref="member">TXAGC_STAGE_AGC</ref>;</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;compressor&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" kindref="member">TXAGC_STAGE_COMPRESSOR</ref>;</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;limiter&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" kindref="member">TXAGC_STAGE_LIMITER</ref>;</highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;equalizer&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" kindref="member">TXAGC_STAGE_EQUALIZER</ref>;</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!strcasecmp(token,<sp/></highlight><highlight class="stringliteral">&quot;deesser&quot;</highlight><highlight class="normal">))</highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>stage<sp/>=<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" kindref="member">TXAGC_STAGE_DEESSER</ref>;</highlight></codeline>
+<codeline lineno="64"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">goto</highlight><highlight class="normal"><sp/>unknown;</highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>bit<sp/>=<sp/>1U<sp/>&lt;&lt;<sp/>stage;</highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(seen<sp/>&amp;<sp/>bit)<sp/>{</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(error<sp/>&amp;&amp;<sp/>error_size)</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>snprintf(error,<sp/>error_size,<sp/></highlight><highlight class="stringliteral">&quot;duplicate<sp/>stage<sp/>&apos;%s&apos;&quot;</highlight><highlight class="normal">,<sp/>token);</highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="71"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>seen<sp/>|=<sp/>bit;</highlight></codeline>
+<codeline lineno="73"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>config-&gt;<ref refid="structtxagc__config_1a0e223c6122abc26914253239598c545c" kindref="member">stage_order</ref>[config-&gt;<ref refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" kindref="member">stage_count</ref>++]<sp/>=<sp/>stage;</highlight></codeline>
+<codeline lineno="74"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"></highlight></codeline>
+<codeline lineno="76"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>REQUIRE_STAGE(enabled,<sp/>stage,<sp/>name)<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="77"><highlight class="preprocessor"><sp/><sp/><sp/><sp/>do<sp/>{<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="78"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>if<sp/>((enabled)<sp/>&amp;&amp;<sp/>!(seen<sp/>&amp;<sp/>(1U<sp/>&lt;&lt;<sp/>(stage))))<sp/>{<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="79"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>if<sp/>(error<sp/>&amp;&amp;<sp/>error_size)<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="80"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>snprintf(error,<sp/>error_size,<sp/>&quot;enabled<sp/>stage<sp/>&apos;%s&apos;<sp/>is<sp/>missing&quot;,<sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="81"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>(name));<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="82"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>return<sp/>-1;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="83"><highlight class="preprocessor"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>\</highlight></codeline>
+<codeline lineno="84"><highlight class="preprocessor"><sp/><sp/><sp/><sp/>}<sp/>while<sp/>(0)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1a6f227b96f8f7e237047c69eade1ef8fc" kindref="member">expander_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" kindref="member">TXAGC_STAGE_EXPANDER</ref>,<sp/></highlight><highlight class="stringliteral">&quot;expander&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1a5ef51781f9206fe4cfda5b5a46dd7091" kindref="member">agc_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" kindref="member">TXAGC_STAGE_AGC</ref>,<sp/></highlight><highlight class="stringliteral">&quot;agc&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1a510413f990cedf6dd1687301ce62ae68" kindref="member">compressor_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" kindref="member">TXAGC_STAGE_COMPRESSOR</ref>,<sp/></highlight><highlight class="stringliteral">&quot;compressor&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1a69b210835526cff59a1a26058faf1194" kindref="member">limiter_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" kindref="member">TXAGC_STAGE_LIMITER</ref>,<sp/></highlight><highlight class="stringliteral">&quot;limiter&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1aefb02a48f064c511a95eeca2a46a6815" kindref="member">equalizer_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" kindref="member">TXAGC_STAGE_EQUALIZER</ref>,<sp/></highlight><highlight class="stringliteral">&quot;equalizer&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf" kindref="member">REQUIRE_STAGE</ref>(config-&gt;<ref refid="structtxagc__config_1a5697f1540dc60e5591b5cdf0faeee9dd" kindref="member">deesser_enabled</ref>,<sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" kindref="member">TXAGC_STAGE_DEESSER</ref>,<sp/></highlight><highlight class="stringliteral">&quot;deesser&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"></highlight><highlight class="preprocessor">#undef<sp/>REQUIRE_STAGE</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="93"><highlight class="normal">unknown:</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(error<sp/>&amp;&amp;<sp/>error_size)</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>snprintf(error,<sp/>error_size,<sp/></highlight><highlight class="stringliteral">&quot;unknown,<sp/>empty,<sp/>or<sp/>fixed<sp/>stage<sp/>&apos;%s&apos;&quot;</highlight><highlight class="normal">,<sp/>token);</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/agc_core.c"/>
+  </compounddef>
+</doxygen>

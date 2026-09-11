@@ -1,0 +1,24 @@
+<map id="install_error" name="install_error">
+<area shape="rect" id="Node000001" title="Add one correctable error pattern to a syndrome table." alt="" coords="1032,79,1132,104"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#acfde9b476cba7745acd7852b293dd114" title="Initialize a DCS state and its fixed Golay syndrome table." alt="" coords="884,79,984,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1018,94,984,94,984,89,1018,89"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#acd9dc17ab5d8bfca785969de9d6a9cee" title="Allocate a radio&#45;signaling engine and its detector buffers from channel settings." alt="" coords="694,49,825,75"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="870,83,825,76,825,70,871,78"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__native__tick_8c.html#aba263ce8c2039f07a1f323664a87224b" title="Create the persistent direct native renderer." alt="" coords="683,99,836,139"/>
+<area shape="poly" id="edge9_Node000002_Node000010" title=" " alt="" coords="871,104,837,110,836,104,870,99"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="511,5,595,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="686,49,595,30,596,24,687,44"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="319,81,421,107"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="680,71,421,93,421,87,680,66"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="316,5,424,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="497,21,424,21,424,15,497,15"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="172,81,268,107"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="306,97,268,97,268,91,306,91"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="11,56,118,81"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="158,87,118,80,119,75,159,81"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,105,124,131"/>
+<area shape="poly" id="edge8_Node000007_Node000009" title=" " alt="" coords="159,106,125,111,124,106,158,101"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#a2978b9bb69b48c3934b247d5d53f51d4" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="472,107,635,132"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="669,122,635,122,635,117,669,117"/>
+<area shape="poly" id="edge11_Node000011_Node000006" title=" " alt="" coords="458,109,420,104,421,98,459,104"/>
+</map>

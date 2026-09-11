@@ -1,0 +1,530 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="agc__core_8h" kind="file" language="C++">
+    <compoundname>agc_core.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="agc__core_8c" local="yes">src/txagc/agc_core.c</includedby>
+    <includedby refid="avfilter__processor_8h" local="yes">src/txagc/avfilter_processor.h</includedby>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <includedby refid="usbradioplus__processing_8h" local="yes">src/usbradioplus_processing.h</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/txagc/agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/txagc/agc_core.c</label>
+        <link refid="agc__core_8c"/>
+      </node>
+      <node id="1">
+        <label>src/txagc/agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>src/txagc/avfilter_processor.c</label>
+        <link refid="avfilter__processor_8c"/>
+      </node>
+      <node id="5">
+        <label>src/txagc/avfilter_processor.h</label>
+        <link refid="avfilter__processor_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>src/txagc/avfilter_processor_internal.h</label>
+        <link refid="avfilter__processor__internal_8h"/>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="10">
+        <label>src/usbradioplus_channel_common.h</label>
+        <link refid="usbradioplus__channel__common_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>src/usbradioplus_channel_private.h</label>
+        <link refid="usbradioplus__channel__private_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="11">
+        <label>src/usbradioplus_channel_test_api.h</label>
+        <link refid="usbradioplus__channel__test__api_8h"/>
+      </node>
+      <node id="12">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="14">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="16">
+        <label>src/usbradioplus_processing.h</label>
+        <link refid="usbradioplus__processing_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="15">
+        <label>src/usbradioplus_processing_internal.h</label>
+        <link refid="usbradioplus__processing__internal_8h"/>
+        <childnode refid="14" relation="include">
+        </childnode>
+      </node>
+      <node id="13">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structtxagc__config" prot="public">txagc_config</innerclass>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="agc__core_8h_1a0c783ebe65e11b07d547abd1586fb835" prot="public" static="no">
+        <name>TXAGC_CTCSS_FREQUENCIES_SIZE</name>
+        <initializer>512</initializer>
+        <briefdescription>
+<para>Capacity of the comma-separated notch-frequency string. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.h" line="10" column="9" bodyfile="src/txagc/agc_core.h" bodystart="10" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="agc__core_8h_1a0bbdd8c14e4494c832564866c2b4dc53" prot="public" static="no">
+        <name>TXAGC_MAX_DYNAMICS_STAGES</name>
+        <initializer>6</initializer>
+        <briefdescription>
+<para>Maximum reorderable stages in a source chain. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.h" line="12" column="9" bodyfile="src/txagc/agc_core.h" bodystart="12" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="enum">
+      <memberdef kind="enum" id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552d" prot="public" static="no" strong="no">
+        <type></type>
+        <name>txagc_stage</name>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" prot="public">
+          <name>TXAGC_STAGE_EXPANDER</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Downward expander. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" prot="public">
+          <name>TXAGC_STAGE_AGC</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Automatic level control. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" prot="public">
+          <name>TXAGC_STAGE_COMPRESSOR</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Dynamic-range compressor. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" prot="public">
+          <name>TXAGC_STAGE_LIMITER</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Shared FFmpeg multiband limiter. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" prot="public">
+          <name>TXAGC_STAGE_EQUALIZER</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Three-band equalizer. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" prot="public">
+          <name>TXAGC_STAGE_DEESSER</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Split-band de-esser. </para>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Reorderable optional stages in the shared FFmpeg graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.h" line="15" column="1" bodyfile="src/txagc/agc_core.h" bodystart="15" bodyend="22"/>
+      </memberdef>
+      <memberdef kind="enum" id="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81b" prot="public" static="no" strong="no">
+        <type></type>
+        <name>txagc_ctcss_filter_mode</name>
+        <enumvalue id="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba70297c21972338879418b94510ad8615" prot="public">
+          <name>TXAGC_CTCSS_FILTER_DISABLED</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Bypass PL filtering. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba1e2197ead2e799e1695094da501f9bb8" prot="public">
+          <name>TXAGC_CTCSS_FILTER_NOTCH</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Reject the currently decoded CTCSS tone. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba2008bc4d44aeec182471af2c238272f7" prot="public">
+          <name>TXAGC_CTCSS_FILTER_HIGHPASS</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Reject frequencies below the configured PL cutoff. </para>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed receive PL-filter selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.h" line="25" column="1" bodyfile="src/txagc/agc_core.h" bodystart="25" bodyend="29"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="agc__core_8h_1a7f491fc68e6176c73ba7248248524224" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_parse_stage_order</definition>
+        <argsstring>(const char *text, struct txagc_config *config, char *error, size_t error_size)</argsstring>
+        <name>txagc_parse_stage_order</name>
+        <param>
+          <type>const char *</type>
+          <declname>text</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>char *</type>
+          <declname>error</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>error_size</declname>
+        </param>
+        <briefdescription>
+<para>Parse the comma-separated optional-stage order; reject unknown and repeated stages. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>text</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Text to parse; mutable storage may be edited in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the shared FFmpeg graph. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>error</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives a diagnostic for invalid input. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>error_size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Diagnostic buffer capacity in bytes. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; -1 with a diagnostic for invalid order. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/agc_core.h" line="277" column="5" bodyfile="src/txagc/agc_core.c" bodystart="29" bodyend="97" declfile="src/txagc/agc_core.h" declline="277" declcolumn="5"/>
+        <references refid="structtxagc__config_1a5ef51781f9206fe4cfda5b5a46dd7091" compoundref="agc__core_8h" startline="101">txagc_config::agc_enabled</references>
+        <references refid="structtxagc__config_1a510413f990cedf6dd1687301ce62ae68" compoundref="agc__core_8h" startline="143">txagc_config::compressor_enabled</references>
+        <references refid="structtxagc__config_1a5697f1540dc60e5591b5cdf0faeee9dd" compoundref="agc__core_8h" startline="85">txagc_config::deesser_enabled</references>
+        <references refid="structtxagc__config_1aefb02a48f064c511a95eeca2a46a6815" compoundref="agc__core_8h" startline="65">txagc_config::equalizer_enabled</references>
+        <references refid="structtxagc__config_1a6f227b96f8f7e237047c69eade1ef8fc" compoundref="agc__core_8h" startline="127">txagc_config::expander_enabled</references>
+        <references refid="structtxagc__config_1a69b210835526cff59a1a26058faf1194" compoundref="agc__core_8h" startline="201">txagc_config::limiter_enabled</references>
+        <references refid="agc__core_8c_1a450d2881e0f4914b9d6787e5fa944ebf">REQUIRE_STAGE</references>
+        <references refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" compoundref="agc__core_8h" startline="36">txagc_config::stage_count</references>
+        <references refid="structtxagc__config_1a0e223c6122abc26914253239598c545c" compoundref="agc__core_8h" startline="39">txagc_config::stage_order</references>
+        <references refid="agc__core_8c_1a8e6b16574e1278971035a86a97373e95" compoundref="agc__core_8c" startline="17" endline="27">trim_token</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" compoundref="agc__core_8h" startline="17">TXAGC_STAGE_AGC</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" compoundref="agc__core_8h" startline="18">TXAGC_STAGE_COMPRESSOR</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" compoundref="agc__core_8h" startline="21">TXAGC_STAGE_DEESSER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" compoundref="agc__core_8h" startline="20">TXAGC_STAGE_EQUALIZER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" compoundref="agc__core_8h" startline="16">TXAGC_STAGE_EXPANDER</references>
+        <references refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" compoundref="agc__core_8h" startline="19">TXAGC_STAGE_LIMITER</references>
+        <referencedby refid="usbradioplus__processing_8c_1a52dfb012da45db162cbd83c175999a8c" compoundref="usbradioplus__processing_8c" startline="1604" endline="1617">read_stage_order</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Processing-stage identifiers, graph parameters, and strict stage-order parsing. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>TXAGC_CORE_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TXAGC_CORE_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="10" refid="agc__core_8h_1a0c783ebe65e11b07d547abd1586fb835" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TXAGC_CTCSS_FREQUENCIES_SIZE<sp/>512</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight></codeline>
+<codeline lineno="12" refid="agc__core_8h_1a0bbdd8c14e4494c832564866c2b4dc53" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TXAGC_MAX_DYNAMICS_STAGES<sp/>6</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight></codeline>
+<codeline lineno="15" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552d" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552d" kindref="member">txagc_stage</ref><sp/>{</highlight></codeline>
+<codeline lineno="16" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dae2cfc8a83f7b1b92758e377dc2132588" kindref="member">TXAGC_STAGE_EXPANDER</ref><sp/>,</highlight></codeline>
+<codeline lineno="17" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da874265d8126b7b0f1521fe6bd1d8c997" kindref="member">TXAGC_STAGE_AGC</ref><sp/>,</highlight></codeline>
+<codeline lineno="18" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da85f4b1b6ad20658ec8bee22c1e54ea1b" kindref="member">TXAGC_STAGE_COMPRESSOR</ref><sp/>,</highlight></codeline>
+<codeline lineno="19" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da48b4d496213c2b78a53f888eb6a66764" kindref="member">TXAGC_STAGE_LIMITER</ref><sp/>,</highlight></codeline>
+<codeline lineno="20" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552da5316059e572785a8d96d25ca6f5391e4" kindref="member">TXAGC_STAGE_EQUALIZER</ref><sp/>,</highlight></codeline>
+<codeline lineno="21"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" kindref="member">TXAGC_STAGE_DEESSER</ref><sp/></highlight></codeline>
+<codeline lineno="22" refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552dab04f308e7ad82ebc226480cd77b48d39" refkind="member"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight></codeline>
+<codeline lineno="25" refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81b" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81b" kindref="member">txagc_ctcss_filter_mode</ref><sp/>{</highlight></codeline>
+<codeline lineno="26" refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba70297c21972338879418b94510ad8615" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba70297c21972338879418b94510ad8615" kindref="member">TXAGC_CTCSS_FILTER_DISABLED</ref><sp/>,</highlight></codeline>
+<codeline lineno="27" refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba1e2197ead2e799e1695094da501f9bb8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba1e2197ead2e799e1695094da501f9bb8" kindref="member">TXAGC_CTCSS_FILTER_NOTCH</ref><sp/>,</highlight></codeline>
+<codeline lineno="28"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba2008bc4d44aeec182471af2c238272f7" kindref="member">TXAGC_CTCSS_FILTER_HIGHPASS</ref><sp/></highlight></codeline>
+<codeline lineno="29" refid="agc__core_8h_1a740b74d7165d39ca632a7acc0724c81ba2008bc4d44aeec182471af2c238272f7" refkind="member"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight></codeline>
+<codeline lineno="32" refid="structtxagc__config" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>{</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Order<sp/>applies<sp/>only<sp/>to<sp/>the<sp/>optional<sp/>dynamics<sp/>stages.<sp/><sp/>The<sp/>receive</highlight></codeline>
+<codeline lineno="34"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>conditioning<sp/>and<sp/>final<sp/>transmitter<sp/>tail<sp/>are<sp/>intentionally<sp/>outside<sp/>it.<sp/>*/</highlight></codeline>
+<codeline lineno="36" refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a5cd445e7f341efe14d534935714a1f09" kindref="member">stage_count</ref>;</highlight></codeline>
+<codeline lineno="39" refid="structtxagc__config_1a0e223c6122abc26914253239598c545c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="agc__core_8h_1afeb6d0e366c0d74e3c4a17093c98552d" kindref="member">txagc_stage</ref><sp/><ref refid="structtxagc__config_1a0e223c6122abc26914253239598c545c" kindref="member">stage_order</ref>[<ref refid="agc__core_8h_1a0bbdd8c14e4494c832564866c2b4dc53" kindref="member">TXAGC_MAX_DYNAMICS_STAGES</ref>];</highlight></codeline>
+<codeline lineno="41" refid="structtxagc__config_1a2419e1fef64f479718b095bee540aa9b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2419e1fef64f479718b095bee540aa9b" kindref="member">deemphasis_enabled</ref>;</highlight></codeline>
+<codeline lineno="43" refid="structtxagc__config_1ae146dd78b2d27bfa4d102f86197e8619" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae146dd78b2d27bfa4d102f86197e8619" kindref="member">preemphasis_enabled</ref>;</highlight></codeline>
+<codeline lineno="45" refid="structtxagc__config_1a0d49452a732751024725cbd6d89af3ca" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0d49452a732751024725cbd6d89af3ca" kindref="member">emphasis_corner_hz</ref>;</highlight></codeline>
+<codeline lineno="47" refid="structtxagc__config_1a0aa14e8b20186bf8db15ba57ed47a2db" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0aa14e8b20186bf8db15ba57ed47a2db" kindref="member">emphasis_reference_hz</ref>;</highlight></codeline>
+<codeline lineno="49" refid="structtxagc__config_1a0c7f3206c37ae6fb871f4c6d3332c1e4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0c7f3206c37ae6fb871f4c6d3332c1e4" kindref="member">receive_bandpass_enabled</ref>;</highlight></codeline>
+<codeline lineno="51" refid="structtxagc__config_1a0049a4c4d7d3c7a0e293f1e29d642db2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0049a4c4d7d3c7a0e293f1e29d642db2" kindref="member">receive_bandpass_highpass_hz</ref>;</highlight></codeline>
+<codeline lineno="53" refid="structtxagc__config_1a641ceb31219af5ccbec7d58265420f27" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a641ceb31219af5ccbec7d58265420f27" kindref="member">receive_bandpass_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="55" refid="structtxagc__config_1aa89e4c70463ab0bc2bcddb4ac6b0c834" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aa89e4c70463ab0bc2bcddb4ac6b0c834" kindref="member">ctcss_filter_mode</ref>;</highlight></codeline>
+<codeline lineno="57" refid="structtxagc__config_1a2c61c3fef5b05559fee0731ba49b55f9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2c61c3fef5b05559fee0731ba49b55f9" kindref="member">ctcss_notch_width_hz</ref>;</highlight></codeline>
+<codeline lineno="59" refid="structtxagc__config_1a6b752cd585e55acaf92a009d417e7e21" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6b752cd585e55acaf92a009d417e7e21" kindref="member">ctcss_highpass_hz</ref>;</highlight></codeline>
+<codeline lineno="61" refid="structtxagc__config_1ae0ac62c1425d6c22e953a175c5ae3519" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae0ac62c1425d6c22e953a175c5ae3519" kindref="member">ctcss_notch_frequencies</ref>[<ref refid="agc__core_8h_1a0c783ebe65e11b07d547abd1586fb835" kindref="member">TXAGC_CTCSS_FREQUENCIES_SIZE</ref>];</highlight></codeline>
+<codeline lineno="63" refid="structtxagc__config_1abc98912c9bdde7eb1f89136889b59ddd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1abc98912c9bdde7eb1f89136889b59ddd" kindref="member">input_gain_db</ref>;</highlight></codeline>
+<codeline lineno="65" refid="structtxagc__config_1aefb02a48f064c511a95eeca2a46a6815" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aefb02a48f064c511a95eeca2a46a6815" kindref="member">equalizer_enabled</ref>;</highlight></codeline>
+<codeline lineno="67" refid="structtxagc__config_1aa74954aa4c49dfc355a9ffba96daa3ef" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aa74954aa4c49dfc355a9ffba96daa3ef" kindref="member">equalizer_low_gain_db</ref>;</highlight></codeline>
+<codeline lineno="69" refid="structtxagc__config_1a2d431c34614677257fc0f5c84ff8d807" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2d431c34614677257fc0f5c84ff8d807" kindref="member">equalizer_low_frequency_hz</ref>;</highlight></codeline>
+<codeline lineno="71" refid="structtxagc__config_1aab648d8fd4548f88a66a61b48f619548" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aab648d8fd4548f88a66a61b48f619548" kindref="member">equalizer_low_slope</ref>;</highlight></codeline>
+<codeline lineno="73" refid="structtxagc__config_1ab9ea3009003a23aa07f7356cf79cfc2d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab9ea3009003a23aa07f7356cf79cfc2d" kindref="member">equalizer_mid_gain_db</ref>;</highlight></codeline>
+<codeline lineno="75" refid="structtxagc__config_1a5b1860d25912a33157eaff248f1dacc8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a5b1860d25912a33157eaff248f1dacc8" kindref="member">equalizer_mid_frequency_hz</ref>;</highlight></codeline>
+<codeline lineno="77" refid="structtxagc__config_1aa86e4ad2088ae84cd9f10b5610cc4e42" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aa86e4ad2088ae84cd9f10b5610cc4e42" kindref="member">equalizer_mid_width_octaves</ref>;</highlight></codeline>
+<codeline lineno="79" refid="structtxagc__config_1a8a9c903a801816978d7ff28d1f9a7a7d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a8a9c903a801816978d7ff28d1f9a7a7d" kindref="member">equalizer_high_gain_db</ref>;</highlight></codeline>
+<codeline lineno="81" refid="structtxagc__config_1aab01abb56febf0107000a585465fd409" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aab01abb56febf0107000a585465fd409" kindref="member">equalizer_high_frequency_hz</ref>;</highlight></codeline>
+<codeline lineno="83" refid="structtxagc__config_1a8a03cc6a88b3c27bf6158d53d121bd16" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a8a03cc6a88b3c27bf6158d53d121bd16" kindref="member">equalizer_high_slope</ref>;</highlight></codeline>
+<codeline lineno="85" refid="structtxagc__config_1a5697f1540dc60e5591b5cdf0faeee9dd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a5697f1540dc60e5591b5cdf0faeee9dd" kindref="member">deesser_enabled</ref>;</highlight></codeline>
+<codeline lineno="87" refid="structtxagc__config_1ad72ce676257deb6d18e0209fcb0f2d93" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ad72ce676257deb6d18e0209fcb0f2d93" kindref="member">deesser_frequency_hz</ref>;</highlight></codeline>
+<codeline lineno="89" refid="structtxagc__config_1a17c9af8bf76ba5e000b0d7f1002061e3" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a17c9af8bf76ba5e000b0d7f1002061e3" kindref="member">deesser_width_octaves</ref>;</highlight></codeline>
+<codeline lineno="91" refid="structtxagc__config_1af2389110bd9ee3e4d1a1afccd5da3c4a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1af2389110bd9ee3e4d1a1afccd5da3c4a" kindref="member">deesser_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="93" refid="structtxagc__config_1a0750aca0ecbb26c7db48df253cd40976" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0750aca0ecbb26c7db48df253cd40976" kindref="member">deesser_ratio</ref>;</highlight></codeline>
+<codeline lineno="95" refid="structtxagc__config_1a37a79785505dd18e120c468e0150b92c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a37a79785505dd18e120c468e0150b92c" kindref="member">deesser_max_reduction_db</ref>;</highlight></codeline>
+<codeline lineno="97" refid="structtxagc__config_1a4d210e5b92cc1a1794fa511608bce4d2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a4d210e5b92cc1a1794fa511608bce4d2" kindref="member">deesser_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="99" refid="structtxagc__config_1abdaa70bb51f3839c289a44c1efc85f49" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1abdaa70bb51f3839c289a44c1efc85f49" kindref="member">deesser_release_ms</ref>;</highlight></codeline>
+<codeline lineno="101" refid="structtxagc__config_1a5ef51781f9206fe4cfda5b5a46dd7091" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a5ef51781f9206fe4cfda5b5a46dd7091" kindref="member">agc_enabled</ref>;</highlight></codeline>
+<codeline lineno="103" refid="structtxagc__config_1a3d5213ea9e2b1212e60847fa0e933924" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3d5213ea9e2b1212e60847fa0e933924" kindref="member">target_dbfs</ref>;</highlight></codeline>
+<codeline lineno="105" refid="structtxagc__config_1a9b5c1a79da7af041263216f63f2aa36d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a9b5c1a79da7af041263216f63f2aa36d" kindref="member">max_gain_db</ref>;</highlight></codeline>
+<codeline lineno="107" refid="structtxagc__config_1ae2f56545217a5798c1e7fb69285e2482" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae2f56545217a5798c1e7fb69285e2482" kindref="member">max_attenuation_db</ref>;</highlight></codeline>
+<codeline lineno="109" refid="structtxagc__config_1a602e92e2db73845c921498d2f3b88106" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a602e92e2db73845c921498d2f3b88106" kindref="member">agc_rms_averaging_ms</ref>;</highlight></codeline>
+<codeline lineno="111" refid="structtxagc__config_1a53856be17f4244abfa3f7f95442c74c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a53856be17f4244abfa3f7f95442c74c6" kindref="member">agc_gain_increase_db_per_second</ref>;</highlight></codeline>
+<codeline lineno="113" refid="structtxagc__config_1a0e0e7972061366dc502623ee7359ef8c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0e0e7972061366dc502623ee7359ef8c" kindref="member">agc_gain_decrease_db_per_second</ref>;</highlight></codeline>
+<codeline lineno="115" refid="structtxagc__config_1aa80f4c9bcaefd7980709712388221f68" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aa80f4c9bcaefd7980709712388221f68" kindref="member">agc_activity_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="117" refid="structtxagc__config_1ae5b2429862c6f7482c87fce379ab369e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae5b2429862c6f7482c87fce379ab369e" kindref="member">agc_activity_hysteresis_db</ref>;</highlight></codeline>
+<codeline lineno="119" refid="structtxagc__config_1ae3587b14b808d4f6340a1bb093bf0702" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae3587b14b808d4f6340a1bb093bf0702" kindref="member">agc_hold_ms</ref>;</highlight></codeline>
+<codeline lineno="121" refid="structtxagc__config_1a982959aa98be0753e8b7a4e696803bb1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a982959aa98be0753e8b7a4e696803bb1" kindref="member">agc_deadband_db</ref>;</highlight></codeline>
+<codeline lineno="123" refid="structtxagc__config_1a09935a3d11b9f4492ab485a7da157b0f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a09935a3d11b9f4492ab485a7da157b0f" kindref="member">sidechain_highpass_hz</ref>;</highlight></codeline>
+<codeline lineno="125" refid="structtxagc__config_1a90812f9f2a0f3d6bd90f06bfdf8c5ce5" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a90812f9f2a0f3d6bd90f06bfdf8c5ce5" kindref="member">sidechain_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="127" refid="structtxagc__config_1a6f227b96f8f7e237047c69eade1ef8fc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6f227b96f8f7e237047c69eade1ef8fc" kindref="member">expander_enabled</ref>;</highlight></codeline>
+<codeline lineno="129" refid="structtxagc__config_1a92bd2577461708a20b66059111345544" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a92bd2577461708a20b66059111345544" kindref="member">expander_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="131" refid="structtxagc__config_1a4041d1355a2e0f12aef374b41f4cc93d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a4041d1355a2e0f12aef374b41f4cc93d" kindref="member">expander_ratio</ref>;</highlight></codeline>
+<codeline lineno="133" refid="structtxagc__config_1a18571baf0b4bb01797d38aab8e452352" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a18571baf0b4bb01797d38aab8e452352" kindref="member">expander_max_attenuation_db</ref>;</highlight></codeline>
+<codeline lineno="135" refid="structtxagc__config_1ac90185305801fc92a449a335474f3a54" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ac90185305801fc92a449a335474f3a54" kindref="member">expander_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="137" refid="structtxagc__config_1aafae2d580cd87615f0ea7118d54353e1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aafae2d580cd87615f0ea7118d54353e1" kindref="member">expander_release_ms</ref>;</highlight></codeline>
+<codeline lineno="139" refid="structtxagc__config_1a6804f87e5808368ddb46f1187567bbbd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6804f87e5808368ddb46f1187567bbbd" kindref="member">expander_sidechain_highpass_hz</ref>;</highlight></codeline>
+<codeline lineno="141" refid="structtxagc__config_1abe6d9bccdda5b4c948c150264d53a5f8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1abe6d9bccdda5b4c948c150264d53a5f8" kindref="member">expander_sidechain_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="143" refid="structtxagc__config_1a510413f990cedf6dd1687301ce62ae68" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a510413f990cedf6dd1687301ce62ae68" kindref="member">compressor_enabled</ref>;</highlight></codeline>
+<codeline lineno="145" refid="structtxagc__config_1aad522e4c4c6abe8f27f0c58180b8083b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aad522e4c4c6abe8f27f0c58180b8083b" kindref="member">compressor_bands</ref>;</highlight></codeline>
+<codeline lineno="147" refid="structtxagc__config_1a3aac74e76e93ff0632a3fcfda19480bd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3aac74e76e93ff0632a3fcfda19480bd" kindref="member">compressor_low_crossover_hz</ref>;</highlight></codeline>
+<codeline lineno="149" refid="structtxagc__config_1a32ff9702108a2a183734850a3b204dec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a32ff9702108a2a183734850a3b204dec" kindref="member">compressor_high_crossover_hz</ref>;</highlight></codeline>
+<codeline lineno="151" refid="structtxagc__config_1a1f4f61477a0fb7847496a3b2c441ddc7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1f4f61477a0fb7847496a3b2c441ddc7" kindref="member">compressor_low_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="153" refid="structtxagc__config_1ac72506a62e949e45239dd895843b2ba9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ac72506a62e949e45239dd895843b2ba9" kindref="member">compressor_low_ratio</ref>;</highlight></codeline>
+<codeline lineno="155" refid="structtxagc__config_1ab8e01b77224540c43bca349635d51ea0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab8e01b77224540c43bca349635d51ea0" kindref="member">compressor_low_makeup_gain_db</ref>;</highlight></codeline>
+<codeline lineno="157" refid="structtxagc__config_1ab8b14c666d396a0b83b1ff68c94a0bec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab8b14c666d396a0b83b1ff68c94a0bec" kindref="member">compressor_low_knee_db</ref>;</highlight></codeline>
+<codeline lineno="159" refid="structtxagc__config_1a76578001bd1f2e601d6d710964597223" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a76578001bd1f2e601d6d710964597223" kindref="member">compressor_low_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="161" refid="structtxagc__config_1a3e4f14752ba9b3d0a5631a6f1d10a81b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3e4f14752ba9b3d0a5631a6f1d10a81b" kindref="member">compressor_low_release_ms</ref>;</highlight></codeline>
+<codeline lineno="163" refid="structtxagc__config_1a2a7ef7ac87d9817fefc3a5f1f76dfff0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2a7ef7ac87d9817fefc3a5f1f76dfff0" kindref="member">compressor_mid_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="165" refid="structtxagc__config_1af4f9d2e0727e1be03574c7c3efbefee9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1af4f9d2e0727e1be03574c7c3efbefee9" kindref="member">compressor_mid_ratio</ref>;</highlight></codeline>
+<codeline lineno="167" refid="structtxagc__config_1a4b21143632fd9277e51072968bb8e11f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a4b21143632fd9277e51072968bb8e11f" kindref="member">compressor_mid_makeup_gain_db</ref>;</highlight></codeline>
+<codeline lineno="169" refid="structtxagc__config_1a6357230e10ee1e1ec7eda9a2c8d4b447" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6357230e10ee1e1ec7eda9a2c8d4b447" kindref="member">compressor_mid_knee_db</ref>;</highlight></codeline>
+<codeline lineno="171" refid="structtxagc__config_1a1d3c7c0e5e93853145ce6c5672f3b62d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1d3c7c0e5e93853145ce6c5672f3b62d" kindref="member">compressor_mid_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="173" refid="structtxagc__config_1ad6c10fb595808fbc80e8bebd9f580299" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ad6c10fb595808fbc80e8bebd9f580299" kindref="member">compressor_mid_release_ms</ref>;</highlight></codeline>
+<codeline lineno="175" refid="structtxagc__config_1af0cec8b617cf26cf213400ccdc025763" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1af0cec8b617cf26cf213400ccdc025763" kindref="member">compressor_high_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="177" refid="structtxagc__config_1a383bc5860dff1a5926a8ebf572c833c4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a383bc5860dff1a5926a8ebf572c833c4" kindref="member">compressor_high_ratio</ref>;</highlight></codeline>
+<codeline lineno="179" refid="structtxagc__config_1a2cde810ac336a2bb3e96e98fcfd1307a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2cde810ac336a2bb3e96e98fcfd1307a" kindref="member">compressor_high_makeup_gain_db</ref>;</highlight></codeline>
+<codeline lineno="181" refid="structtxagc__config_1adadc1c674b0bccdb7f03d07b9b2641d9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1adadc1c674b0bccdb7f03d07b9b2641d9" kindref="member">compressor_high_knee_db</ref>;</highlight></codeline>
+<codeline lineno="183" refid="structtxagc__config_1acfbf5a21584fe9fae52642eec90a1cec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1acfbf5a21584fe9fae52642eec90a1cec" kindref="member">compressor_high_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="185" refid="structtxagc__config_1a7560d931320a5e42823abd0d7e2825f7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a7560d931320a5e42823abd0d7e2825f7" kindref="member">compressor_high_release_ms</ref>;</highlight></codeline>
+<codeline lineno="187" refid="structtxagc__config_1a708342344e714eb14b28e5fa0b01e9b6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a708342344e714eb14b28e5fa0b01e9b6" kindref="member">compressor_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="189" refid="structtxagc__config_1a7242c2e687fc4d7b3636f7e98e03a192" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a7242c2e687fc4d7b3636f7e98e03a192" kindref="member">compressor_ratio</ref>;</highlight></codeline>
+<codeline lineno="191" refid="structtxagc__config_1a5fede91ae4ed4d715b4ecdbf362930b7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a5fede91ae4ed4d715b4ecdbf362930b7" kindref="member">compressor_makeup_gain_db</ref>;</highlight></codeline>
+<codeline lineno="193" refid="structtxagc__config_1a8cff6080b44114d70e7e777b07e282fd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a8cff6080b44114d70e7e777b07e282fd" kindref="member">compressor_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="195" refid="structtxagc__config_1ab410064a6504417ffbeb35242074e8bc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab410064a6504417ffbeb35242074e8bc" kindref="member">compressor_release_ms</ref>;</highlight></codeline>
+<codeline lineno="197" refid="structtxagc__config_1a7006fc9034add3128aa0db1dc01a01d1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a7006fc9034add3128aa0db1dc01a01d1" kindref="member">compressor_sidechain_highpass_hz</ref>;</highlight></codeline>
+<codeline lineno="199" refid="structtxagc__config_1a7c7003524833ca1b066f75c563946053" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a7c7003524833ca1b066f75c563946053" kindref="member">compressor_sidechain_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="201" refid="structtxagc__config_1a69b210835526cff59a1a26058faf1194" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a69b210835526cff59a1a26058faf1194" kindref="member">limiter_enabled</ref>;</highlight></codeline>
+<codeline lineno="203" refid="structtxagc__config_1ab734fd6e10a57ffab8cc5e98b0856a89" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab734fd6e10a57ffab8cc5e98b0856a89" kindref="member">limiter_bands</ref>;</highlight></codeline>
+<codeline lineno="205" refid="structtxagc__config_1ab1050bc14b26aad6e3668922ea62e859" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab1050bc14b26aad6e3668922ea62e859" kindref="member">limiter_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="207" refid="structtxagc__config_1ac552aa14137c34d2c2760b81f16e68aa" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ac552aa14137c34d2c2760b81f16e68aa" kindref="member">limiter_ratio</ref>;</highlight></codeline>
+<codeline lineno="209" refid="structtxagc__config_1a0129b5b769abe34aa7575733e3b44b80" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a0129b5b769abe34aa7575733e3b44b80" kindref="member">limiter_knee_db</ref>;</highlight></codeline>
+<codeline lineno="211" refid="structtxagc__config_1ab65ac637e62014d3b5b9392809e87080" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ab65ac637e62014d3b5b9392809e87080" kindref="member">limiter_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="213" refid="structtxagc__config_1a11a3fba71916149bfaf13f284350b1b8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a11a3fba71916149bfaf13f284350b1b8" kindref="member">limiter_release_ms</ref>;</highlight></codeline>
+<codeline lineno="215" refid="structtxagc__config_1a8cd971d187c0cb5c909a53d5f9750930" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a8cd971d187c0cb5c909a53d5f9750930" kindref="member">dcs_spectral_shaping_enabled</ref>;</highlight></codeline>
+<codeline lineno="217" refid="structtxagc__config_1a1a1e202508af51efac06ab6ebec17221" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1a1e202508af51efac06ab6ebec17221" kindref="member">limiter_low_crossover_hz</ref>;</highlight></codeline>
+<codeline lineno="219" refid="structtxagc__config_1ae81dbad2207163f7c94347b4c92e8f52" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae81dbad2207163f7c94347b4c92e8f52" kindref="member">limiter_high_crossover_hz</ref>;</highlight></codeline>
+<codeline lineno="221" refid="structtxagc__config_1a182867758e80b1a77354c3b2c8c3bf33" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a182867758e80b1a77354c3b2c8c3bf33" kindref="member">low_limiter_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="223" refid="structtxagc__config_1a90f36c1a6694022066e65447410dc607" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a90f36c1a6694022066e65447410dc607" kindref="member">low_limiter_ratio</ref>;</highlight></codeline>
+<codeline lineno="225" refid="structtxagc__config_1a6955a50d64748987d5fa96c7bbfbef7b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6955a50d64748987d5fa96c7bbfbef7b" kindref="member">low_limiter_knee_db</ref>;</highlight></codeline>
+<codeline lineno="227" refid="structtxagc__config_1a93596a24a87af704f8fff761a4b4d07f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a93596a24a87af704f8fff761a4b4d07f" kindref="member">low_limiter_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="229" refid="structtxagc__config_1a2f54a0dd457bbbb6cb941e5d5f28c475" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a2f54a0dd457bbbb6cb941e5d5f28c475" kindref="member">low_limiter_release_ms</ref>;</highlight></codeline>
+<codeline lineno="231" refid="structtxagc__config_1a4a0a5126c49a944a6ad96794899676b7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a4a0a5126c49a944a6ad96794899676b7" kindref="member">mid_limiter_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="233" refid="structtxagc__config_1aa2fa598ce7dc7d6ffa48a320912e4784" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aa2fa598ce7dc7d6ffa48a320912e4784" kindref="member">mid_limiter_ratio</ref>;</highlight></codeline>
+<codeline lineno="235" refid="structtxagc__config_1a1a2d57ed282b5b3afcaa55e27dd14f25" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1a2d57ed282b5b3afcaa55e27dd14f25" kindref="member">mid_limiter_knee_db</ref>;</highlight></codeline>
+<codeline lineno="237" refid="structtxagc__config_1aef46179f87f784b8c2895761598477bd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1aef46179f87f784b8c2895761598477bd" kindref="member">mid_limiter_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="239" refid="structtxagc__config_1a6d09ccc5e0579805902b2f375d8239d0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a6d09ccc5e0579805902b2f375d8239d0" kindref="member">mid_limiter_release_ms</ref>;</highlight></codeline>
+<codeline lineno="241" refid="structtxagc__config_1a96c9e0a54e64c2bae79d595db22e20e7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a96c9e0a54e64c2bae79d595db22e20e7" kindref="member">high_limiter_threshold_dbfs</ref>;</highlight></codeline>
+<codeline lineno="243" refid="structtxagc__config_1a8e3e2f62bb4a86ec24d6e2d4613a4ee6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a8e3e2f62bb4a86ec24d6e2d4613a4ee6" kindref="member">high_limiter_ratio</ref>;</highlight></codeline>
+<codeline lineno="245" refid="structtxagc__config_1a1cb121caeb757dab5acb009772158781" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1cb121caeb757dab5acb009772158781" kindref="member">high_limiter_knee_db</ref>;</highlight></codeline>
+<codeline lineno="247" refid="structtxagc__config_1af7cfeefeacffb1a0d740f8cac0853060" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1af7cfeefeacffb1a0d740f8cac0853060" kindref="member">high_limiter_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="249" refid="structtxagc__config_1abe7da8f4e2f89297db1f5985b2f2f67f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1abe7da8f4e2f89297db1f5985b2f2f67f" kindref="member">high_limiter_release_ms</ref>;</highlight></codeline>
+<codeline lineno="251" refid="structtxagc__config_1ad4f2f4418f8f848c1a16343cdb103c93" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ad4f2f4418f8f848c1a16343cdb103c93" kindref="member">lookahead_limiter_enabled</ref>;</highlight></codeline>
+<codeline lineno="253" refid="structtxagc__config_1a3cabd9483884c61241be8eb3a9beee71" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3cabd9483884c61241be8eb3a9beee71" kindref="member">lookahead_limit_dbfs</ref>;</highlight></codeline>
+<codeline lineno="255" refid="structtxagc__config_1a9a458423f909a800fbd977d54fd17335" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a9a458423f909a800fbd977d54fd17335" kindref="member">lookahead_ms</ref>;</highlight></codeline>
+<codeline lineno="257" refid="structtxagc__config_1ae01b425ee8ed62ec89d4915611f9e9f9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1ae01b425ee8ed62ec89d4915611f9e9f9" kindref="member">lookahead_attack_ms</ref>;</highlight></codeline>
+<codeline lineno="259" refid="structtxagc__config_1a3638837245f2ecaf2db5a8b22a606053" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3638837245f2ecaf2db5a8b22a606053" kindref="member">lookahead_release_ms</ref>;</highlight></codeline>
+<codeline lineno="261" refid="structtxagc__config_1af62e41eef48a4ebfcc3767c7ee8ea774" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1af62e41eef48a4ebfcc3767c7ee8ea774" kindref="member">post_limiter_lowpass_enabled</ref>;</highlight></codeline>
+<codeline lineno="263" refid="structtxagc__config_1a160e2ec45cbca0f964382cceb577e246" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a160e2ec45cbca0f964382cceb577e246" kindref="member">post_limiter_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="265" refid="structtxagc__config_1a3c0766ea4104f3f31062b507ffd1c984" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a3c0766ea4104f3f31062b507ffd1c984" kindref="member">dcs_spectral_lowpass_hz</ref>;</highlight></codeline>
+<codeline lineno="267" refid="structtxagc__config_1a1be6176f4833a652bec497849b91af0b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config_1a1be6176f4833a652bec497849b91af0b" kindref="member">output_gain_db</ref>;</highlight></codeline>
+<codeline lineno="268"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="269"><highlight class="normal"></highlight></codeline>
+<codeline lineno="277"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="agc__core_8h_1a7f491fc68e6176c73ba7248248524224" kindref="member">txagc_parse_stage_order</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*config,<sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*error,</highlight></codeline>
+<codeline lineno="278"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>error_size);</highlight></codeline>
+<codeline lineno="279"><highlight class="normal"></highlight></codeline>
+<codeline lineno="280"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="281"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/agc_core.h"/>
+  </compounddef>
+</doxygen>

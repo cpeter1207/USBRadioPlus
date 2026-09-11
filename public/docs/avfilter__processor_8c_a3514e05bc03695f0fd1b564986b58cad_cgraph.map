@@ -1,0 +1,58 @@
+<map id="txagc_avfilter_process" name="txagc_avfilter_process">
+<area shape="rect" id="Node000001" title="Process a mono block in place through the shared FFmpeg graph." alt="" coords="5,409,173,435"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a49bce11019ec43d2202a54d2496b601f" title="Allocate or rebuild a shared FFmpeg graph outside the audio callback." alt="" coords="221,233,389,259"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,407,276,265,280,270,108,411"/>
+<area shape="rect" id="Node000018" href="$avfilter__processor_8c.html#a42f97cbbe252ab72960adc41a094d7dc" title="Process one mono block through an already prepared FFmpeg graph." alt="" coords="221,527,389,567"/>
+<area shape="poly" id="edge27_Node000001_Node000018" title=" " alt="" coords="114,432,260,518,257,523,111,437"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a9e7cb869fcd27b93df8369ab599480af" title="Rebuild the FFmpeg graph when its configuration or sample rate changes." alt="" coords="475,233,558,259"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="390,243,461,243,461,249,390,249"/>
+<area shape="rect" id="Node000017" href="$avfilter__processor_8c.html#a11830d916b957a0e787c49631c014c9d" title="Compare every named configuration member without reading padding." alt="" coords="443,184,590,209"/>
+<area shape="poly" id="edge26_Node000002_Node000017" title=" " alt="" coords="360,231,448,210,449,215,361,236"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a6dcd265ad6fa0b9738e19fdde60acf62" title="Allocate the fixed storage used by the steady&#45;state graph feeder." alt="" coords="651,157,835,183"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="557,231,595,218,643,199,688,184,689,189,645,205,597,223,559,236"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a816370bd95800e4289ff53e23f0f4d6d" title="Derive a fixed source&#45;frame capacity from the stream rate." alt="" coords="891,5,1065,31"/>
+<area shape="poly" id="edge24_Node000003_Node000005" title=" " alt="" coords="558,242,629,238,713,229,791,214,820,204,841,192,855,176,863,159,866,124,868,86,875,67,889,48,907,34,910,39,893,52,880,70,873,87,871,124,868,161,860,179,844,196,823,209,792,219,714,234,630,243,559,247"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a4e4c712f217991d7500cd2c8bc39552e" title="Build the ordered optional graph between the fixed receive and transmitter stages." alt="" coords="677,259,810,284"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="558,248,663,260,663,265,558,253"/>
+<area shape="rect" id="Node000015" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="697,308,789,333"/>
+<area shape="poly" id="edge23_Node000003_Node000015" title=" " alt="" coords="549,256,645,293,685,304,684,310,643,298,547,261"/>
+<area shape="rect" id="Node000016" href="$avfilter__processor_8c.html#ac46253be3b53033157c300906252c3e0" title="Constrain the graph sink to double&#45;precision mono audio." alt="" coords="644,108,843,133"/>
+<area shape="poly" id="edge25_Node000003_Node000016" title=" " alt="" coords="557,236,577,229,594,219,610,200,617,181,625,162,642,143,651,137,653,142,646,147,630,164,622,183,615,203,598,223,579,234,559,241"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="820,155,841,143,858,121,865,97,871,73,889,48,910,34,913,39,893,52,876,75,870,99,863,123,844,147,822,160"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a6726e04f461e857fd24a853c4be7ae8f" title="Append the shared FFT band&#45;pass filter between two graph labels." alt="" coords="1121,461,1302,487"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="811,275,829,282,844,293,859,312,866,331,868,369,870,406,878,423,892,439,918,456,947,469,1008,485,1070,489,1128,486,1128,491,1070,494,1007,490,945,474,916,461,889,443,873,426,865,407,863,369,861,332,855,314,841,297,826,287,809,280"/>
+<area shape="rect" id="Node000008" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="1357,385,1472,411"/>
+<area shape="poly" id="edge22_Node000006_Node000008" title=" " alt="" coords="802,281,843,293,920,321,978,349,1036,374,1114,394,1174,402,1235,405,1344,402,1344,407,1235,410,1173,407,1113,399,1034,379,976,354,918,326,842,298,801,287"/>
+<area shape="rect" id="Node000009" href="$avfilter__processor_8c.html#a942db83871c8928c414177847157082d" title="Append one selected equalizer, expander, AGC, de&#45;esser, compressor, or limiter." alt="" coords="902,259,1054,284"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="811,269,888,269,888,274,811,274"/>
+<area shape="rect" id="Node000012" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="1383,157,1446,183"/>
+<area shape="poly" id="edge20_Node000006_Node000012" title=" " alt="" coords="808,256,841,242,855,231,864,220,874,208,889,197,953,173,1021,157,1089,148,1157,144,1279,148,1370,159,1370,165,1279,154,1157,149,1090,153,1022,162,955,178,892,202,877,212,868,223,859,235,844,247,810,261"/>
+<area shape="rect" id="Node000013" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="1363,208,1466,233"/>
+<area shape="poly" id="edge21_Node000006_Node000013" title=" " alt="" coords="791,256,934,222,1023,205,1113,193,1211,185,1310,193,1358,202,1357,207,1309,198,1211,191,1114,198,1024,210,935,227,792,261"/>
+<area shape="rect" id="Node000014" href="$avfilter__processor_8c.html#a53d91b1af5f22881f4f869695fb680e1" title="Append FFmpeg emphasis normalized at the configured reference frequency." alt="" coords="1153,511,1269,536"/>
+<area shape="poly" id="edge18_Node000006_Node000014" title=" " alt="" coords="812,275,829,282,845,293,863,319,870,346,871,372,867,398,865,424,865,449,874,472,892,495,920,514,950,528,983,537,1016,542,1083,543,1143,536,1144,541,1084,548,1016,547,982,542,948,533,917,518,889,499,869,475,860,450,859,424,862,398,865,372,865,346,858,321,841,297,826,287,809,279"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="1252,459,1308,440,1371,414,1373,419,1310,444,1254,464"/>
+<area shape="poly" id="edge17_Node000009_Node000008" title=" " alt="" coords="1055,281,1176,306,1244,324,1310,345,1380,376,1378,381,1308,350,1242,329,1175,311,1054,286"/>
+<area shape="rect" id="Node000010" href="$avfilter__processor_8c.html#a1fbfa190c6e570dbb69c96347c0fc8e3" title="Append a dynamics stage with a separately filtered detector input." alt="" coords="1132,360,1291,385"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1003,282,1053,309,1114,338,1155,353,1153,358,1112,343,1051,314,1000,287"/>
+<area shape="rect" id="Node000011" href="$avfilter__processor_8c.html#a137fd1cc3d50967049b18c3746154400" title="Split, independently compress, and recombine three complementary bands." alt="" coords="1113,208,1309,233"/>
+<area shape="poly" id="edge11_Node000009_Node000011" title=" " alt="" coords="1037,256,1139,234,1140,239,1038,261"/>
+<area shape="poly" id="edge15_Node000009_Node000012" title=" " alt="" coords="995,256,1046,223,1078,206,1113,193,1182,177,1252,168,1369,165,1370,171,1252,174,1183,182,1114,198,1080,211,1048,228,998,261"/>
+<area shape="poly" id="edge16_Node000009_Node000013" title=" " alt="" coords="1054,266,1174,258,1309,242,1351,234,1352,239,1310,247,1175,263,1055,271"/>
+<area shape="poly" id="edge10_Node000010_Node000008" title=" " alt="" coords="1291,380,1344,387,1343,392,1290,385"/>
+<area shape="poly" id="edge14_Node000011_Node000008" title=" " alt="" coords="1230,231,1311,301,1391,374,1388,378,1308,305,1226,235"/>
+<area shape="poly" id="edge12_Node000011_Node000012" title=" " alt="" coords="1263,205,1370,178,1371,183,1264,210"/>
+<area shape="poly" id="edge13_Node000011_Node000013" title=" " alt="" coords="1309,218,1350,218,1350,223,1309,223"/>
+<area shape="poly" id="edge19_Node000014_Node000008" title=" " alt="" coords="1269,511,1308,496,1333,479,1356,459,1393,420,1397,424,1360,463,1336,483,1311,500,1271,516"/>
+<area shape="rect" id="Node000019" href="$avfilter__processor_8c.html#ac891b46547a6d98840314bd3114a6629" title="Drain available frames from one spectral measurement sink." alt="" coords="437,560,596,585"/>
+<area shape="poly" id="edge28_Node000018_Node000019" title=" " alt="" coords="390,555,424,559,424,564,389,560"/>
+<area shape="rect" id="Node000022" href="$avfilter__processor_8c.html#aa9267bbf543edad3c49a9288605c4389" title="Find a source frame that the graph no longer references." alt="" coords="448,609,585,635"/>
+<area shape="poly" id="edge31_Node000018_Node000022" title=" " alt="" coords="357,565,438,595,460,603,458,608,436,601,355,570"/>
+<area shape="rect" id="Node000023" href="$avfilter__processor_8c.html#a8681a563c78717937cd38f3685472fb5" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="459,511,574,536"/>
+<area shape="poly" id="edge32_Node000018_Node000023" title=" " alt="" coords="389,535,445,529,446,534,390,540"/>
+<area shape="rect" id="Node000020" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="657,561,829,587"/>
+<area shape="poly" id="edge29_Node000019_Node000020" title=" " alt="" coords="596,570,643,571,643,576,596,576"/>
+<area shape="rect" id="Node000021" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="925,561,1031,587"/>
+<area shape="poly" id="edge30_Node000020_Node000021" title=" " alt="" coords="830,571,911,571,911,577,830,577"/>
+<area shape="poly" id="edge33_Node000023_Node000021" title=" " alt="" coords="575,524,698,532,843,547,912,559,912,564,842,553,698,538,574,529"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="txagc_rnnoise_prepare" name="txagc_rnnoise_prepare">
+<area shape="rect" id="Node000001" title="Allocate or reconfigure RNNoise state before native callback processing." alt="" coords="5,5,176,31"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#a6d2dea9944fec6fb2f446373fe61dbab" title="Create or reconfigure the RNNoise converters for the source sample rate." alt="" coords="224,5,339,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,15,210,15,210,21,176,21"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="387,5,556,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="339,15,373,15,373,21,339,21"/>
+</map>

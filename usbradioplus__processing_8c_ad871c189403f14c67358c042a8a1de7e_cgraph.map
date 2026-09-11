@@ -1,0 +1,16 @@
+<map id="read_section_overrides" name="read_section_overrides">
+<area shape="rect" id="Node000001" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="5,121,179,146"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Read, validate, and retain one resolved non&#45;audio option." alt="" coords="227,121,333,146"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="179,131,213,131,213,136,179,136"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ae2c06c0fa7a196ac27326466e123cebe" title="Return an exact upper limit for an integer clean&#45;slate control." alt="" coords="404,5,553,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="296,118,333,91,380,62,408,48,410,53,383,66,336,95,299,123"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__ctcss_8c.html#a7611b9d3d46efc9615e290d0122a639b" title="Check whether a frequency is one of the supported CTCSS tones." alt="" coords="624,113,779,153"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="321,118,381,105,479,98,576,105,611,110,610,115,576,111,479,103,382,111,322,123"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a5826b9dcabaec63f1644728f23235de9" title="Check the configured spelling of one DCS code." alt="" coords="418,121,539,146"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="333,131,404,131,404,136,333,136"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a5c781da3fe4c5f4a826fd9adb10c2e59" title="Check a comma&#45;separated CTCSS frequency list against the tone table." alt="" coords="402,170,555,195"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="332,143,414,164,413,169,331,149"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a5cc70832e8dfa7e6ce9045f437f401df" title="Validate one nonnegative integer that is stored in a channel field." alt="" coords="381,219,576,245"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="297,144,334,174,383,204,403,213,401,218,380,209,331,179,293,148"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="536,167,610,151,611,156,537,173"/>
+</map>

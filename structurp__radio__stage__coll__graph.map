@@ -1,0 +1,18 @@
+<map id="urp_radio_stage" name="urp_radio_stage">
+<area shape="rect" id="Node000001" title=" " alt="" coords="505,93,632,119"/>
+<area shape="rect" id="Node000002" href="$structurp__radio__state.html" title=" " alt="" coords="319,328,442,353"/>
+<area shape="poly" id="edge6_Node000002_Node000001" title=" " alt="" coords="493,117,467,128,445,144,432,164,426,182,428,219,432,259,429,281,420,305,399,329,395,326,416,303,424,280,427,259,423,220,421,181,427,161,441,141,464,123,491,112"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="456,333,529,323,558,314,576,302,589,281,596,256,598,230,596,204,585,155,571,120,576,118,590,153,601,203,603,230,601,257,594,283,580,306,560,319,530,328,456,338"/>
+<area shape="rect" id="Node000003" href="$structurp__ctcss__decoder.html" title=" " alt="" coords="48,93,191,119"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="129,131,142,169,164,216,194,263,233,302,253,314,275,323,320,333,319,339,273,328,250,319,230,306,190,266,159,218,137,171,124,133"/>
+<area shape="rect" id="Node000004" href="$structurp__ctcss__tone__detector.html" title=" " alt="" coords="5,5,185,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="105,43,119,92,113,94,100,45"/>
+<area shape="rect" id="Node000005" href="$structurp__dcs__state.html" title=" " alt="" coords="227,93,339,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="289,132,307,211,323,258,346,302,367,326,363,330,341,306,318,260,302,213,284,133"/>
+<area shape="rect" id="Node000006" href="$structurp__dcs__receive__phase.html" title="State for one fixed DCS receive&#45;symbol timing hypothesis." alt="" coords="210,5,383,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="295,44,288,93,283,92,290,44"/>
+<area shape="rect" id="Node000007" href="$structt__sdbg.html" title=" " alt="" coords="363,93,428,119"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="388,132,385,143,378,197,377,250,382,328,377,328,372,250,373,196,379,142,382,131"/>
+<area shape="rect" id="Node000008" href="$structurp__micor__squelch.html" title=" " alt="" coords="497,5,641,31"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="571,45,571,93,566,93,566,45"/>
+</map>

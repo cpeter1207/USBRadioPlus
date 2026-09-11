@@ -1,0 +1,5 @@
+<map id="usbradioplus_queue_program" name="usbradioplus_queue_program">
+<area shape="rect" id="Node000001" title="Queue source&#45;rate app_rpt PCM for asynchronous native transmitter rendering." alt="" coords="172,5,324,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a696d801705b177fcb32309a04958a26e" title="Queue an outbound app_rpt voice frame for native transmitter rendering." alt="" coords="5,13,124,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,28,124,28,124,23,158,23"/>
+</map>

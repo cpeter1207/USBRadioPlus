@@ -1,0 +1,13 @@
+<map id="resolve_processing_signaling" name="resolve_processing_signaling">
+<area shape="rect" id="Node000001" title="Resolve and validate live&#45;safe clean&#45;slate signaling controls." alt="" coords="652,37,799,77"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ab18f6356930ff7516867a190fd5578ef" title="Resolve only clean&#45;slate signaling controls without touching parser state." alt="" coords="403,5,604,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="638,47,604,42,604,37,639,42"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a1f8f4ad6383fd154cf808321ece65eef" title="Apply validated signaling selections to live radio states." alt="" coords="409,69,597,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="639,72,598,78,597,73,638,67"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="172,69,355,109"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="396,92,355,92,355,87,396,87"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="22,51,107,77"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="158,79,107,72,108,67,158,73"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,101,124,126"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="158,105,125,109,124,104,158,99"/>
+</map>

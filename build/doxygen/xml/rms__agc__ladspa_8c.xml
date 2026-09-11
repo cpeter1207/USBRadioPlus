@@ -1,0 +1,989 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="rms__agc__ladspa_8c" kind="file" language="C++">
+    <compoundname>rms_agc_ladspa.c</compoundname>
+    <includes refid="rms__agc__ladspa_8h" local="yes">rms_agc_ladspa.h</includes>
+    <includes local="no">float.h</includes>
+    <includes local="no">math.h</includes>
+    <includes local="no">stdlib.h</includes>
+    <includes local="no">string.h</includes>
+    <incdepgraph>
+      <node id="1">
+        <label>src/txagc/rms_agc_ladspa.c</label>
+        <link refid="rms__agc__ladspa_8c"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>rms_agc_ladspa.h</label>
+        <link refid="rms__agc__ladspa_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>float.h</label>
+      </node>
+      <node id="3">
+        <label>ladspa.h</label>
+      </node>
+      <node id="5">
+        <label>math.h</label>
+      </node>
+      <node id="6">
+        <label>stdlib.h</label>
+      </node>
+      <node id="7">
+        <label>string.h</label>
+      </node>
+    </incdepgraph>
+    <innerclass refid="structcontrol__spec" prot="public">control_spec</innerclass>
+    <innerclass refid="structrms__agc" prot="public">rms_agc</innerclass>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" prot="public" static="no">
+        <name>CONTROL_COUNT</name>
+        <initializer>(<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref> - <ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" kindref="member">USBRADIOPLUS_AGC_TARGET_DBFS</ref>)</initializer>
+        <briefdescription>
+<para>Number of scalar controls after the three audio ports. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="32" column="9" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="32" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="var">
+      <memberdef kind="variable" id="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" prot="public" static="yes" mutable="no">
+        <type>const struct <ref refid="structcontrol__spec" kindref="compound">control_spec</ref></type>
+        <definition>const struct control_spec specs[CONTROL_COUNT]</definition>
+        <argsstring>[CONTROL_COUNT]</argsstring>
+        <name>specs</name>
+        <initializer>= {
+	{-40.0, -3.0, -24.0},  {10.0, 5000.0, 200.0}, {0.1, 100.0, 2.0},     {0.1, 100.0, 6.0},
+	{0.0, 30.0, 6.0},      {0.0, 60.0, 6.0},      {-100.0, -3.0, -50.0}, {0.0, 12.0, 3.0},
+	{0.0, 10000.0, 500.0}, {0.0, 6.0, 1.0},
+}</initializer>
+        <briefdescription>
+<para>Control metadata follows the public LADSPA port order. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="42" column="32" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="42" bodyend="46"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" compoundref="rms__agc__ladspa_8c" startline="93" endline="100">read_control</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="rms__agc__ladspa_8c_1aa53b4ef631bf2a571c1d0a607f6d62c9" prot="public" static="yes" mutable="no">
+        <type>const LADSPA_PortDescriptor</type>
+        <definition>const LADSPA_PortDescriptor port_descriptors[USBRADIOPLUS_AGC_PORT_COUNT]</definition>
+        <argsstring>[USBRADIOPLUS_AGC_PORT_COUNT]</argsstring>
+        <name>port_descriptors</name>
+        <initializer>= {
+	LADSPA_PORT_INPUT | LADSPA_PORT_AUDIO,	 LADSPA_PORT_INPUT | LADSPA_PORT_AUDIO,
+	LADSPA_PORT_OUTPUT | LADSPA_PORT_AUDIO,	 LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+	LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL, LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+	LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL, LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+	LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL, LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+	LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL, LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+	LADSPA_PORT_INPUT | LADSPA_PORT_CONTROL,
+}</initializer>
+        <briefdescription>
+<para>Audio/control direction and type for every public port. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="300" column="36" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="300" bodyend="308"/>
+      </memberdef>
+      <memberdef kind="variable" id="rms__agc__ladspa_8c_1ac251434ac0cca1002dcea5951938014e" prot="public" static="yes" mutable="no">
+        <type>const char *const</type>
+        <definition>const char* const port_names[USBRADIOPLUS_AGC_PORT_COUNT]</definition>
+        <argsstring>[USBRADIOPLUS_AGC_PORT_COUNT]</argsstring>
+        <name>port_names</name>
+        <initializer>= {
+	&quot;Program input&quot;,
+	&quot;Detector input&quot;,
+	&quot;Output&quot;,
+	&quot;Target RMS (dBFS)&quot;,
+	&quot;Averaging (ms)&quot;,
+	&quot;Gain increase (dB/s)&quot;,
+	&quot;Gain decrease (dB/s)&quot;,
+	&quot;Maximum boost (dB)&quot;,
+	&quot;Maximum attenuation (dB)&quot;,
+	&quot;Activity threshold (dBFS)&quot;,
+	&quot;Activity hysteresis (dB)&quot;,
+	&quot;Gain-increase hold (ms)&quot;,
+	&quot;Deadband (dB)&quot;,
+}</initializer>
+        <briefdescription>
+<para>Human-readable port names for plugin hosts and troubleshooting. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="311" column="25" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="311" bodyend="325"/>
+      </memberdef>
+      <memberdef kind="variable" id="rms__agc__ladspa_8c_1af00dd409ff9dd7def14494caf02c6f93" prot="public" static="yes" mutable="no">
+        <type>const LADSPA_PortRangeHint</type>
+        <definition>const LADSPA_PortRangeHint port_hints[USBRADIOPLUS_AGC_PORT_COUNT]</definition>
+        <argsstring>[USBRADIOPLUS_AGC_PORT_COUNT]</argsstring>
+        <name>port_hints</name>
+        <initializer>= {
+	{0, 0, 0},
+	{0, 0, 0},
+	{0, 0, 0},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, -40, -3},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 10, 5000},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0.1F, 100},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0.1F, 100},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0, 30},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0, 60},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, -100, -3},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0, 12},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0, 10000},
+	{LADSPA_HINT_BOUNDED_BELOW | LADSPA_HINT_BOUNDED_ABOVE, 0, 6},
+}</initializer>
+        <briefdescription>
+<para>Advertise finite ranges; the surrounding graph always supplies explicit defaults. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="328" column="35" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="328" bodyend="342"/>
+      </memberdef>
+      <memberdef kind="variable" id="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" prot="public" static="yes" mutable="no">
+        <type>const LADSPA_Descriptor</type>
+        <definition>const LADSPA_Descriptor descriptor</definition>
+        <argsstring></argsstring>
+        <name>descriptor</name>
+        <initializer>= {
+	.UniqueID = 524950,
+	.Label = &quot;usbradioplus_agc&quot;,
+	.Properties = LADSPA_PROPERTY_HARD_RT_CAPABLE,
+	.Name = &quot;USBRadioPlus gated RMS gain rider&quot;,
+	.Maker = &quot;USBRadioPlus contributors&quot;,
+	.Copyright = &quot;MIT&quot;,
+	.PortCount = <ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>,
+	.PortDescriptors = <ref refid="rms__agc__ladspa_8c_1aa53b4ef631bf2a571c1d0a607f6d62c9" kindref="member">port_descriptors</ref>,
+	.PortNames = <ref refid="rms__agc__ladspa_8c_1ac251434ac0cca1002dcea5951938014e" kindref="member">port_names</ref>,
+	.PortRangeHints = <ref refid="rms__agc__ladspa_8c_1af00dd409ff9dd7def14494caf02c6f93" kindref="member">port_hints</ref>,
+	.<ref refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" kindref="member">instantiate</ref> = <ref refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" kindref="member">instantiate</ref>,
+	.<ref refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" kindref="member">connect_port</ref> = <ref refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" kindref="member">connect_port</ref>,
+	.<ref refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" kindref="member">activate</ref> = <ref refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" kindref="member">activate</ref>,
+	.<ref refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" kindref="member">run</ref> = <ref refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" kindref="member">run</ref>,
+	.<ref refid="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" kindref="member">cleanup</ref> = <ref refid="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" kindref="member">cleanup</ref>,
+}</initializer>
+        <briefdescription>
+<para>Sole plugin exported by this shared object; no alternate processing path exists. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="345" column="32" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="345" bodyend="361"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" compoundref="rms__agc__ladspa_8c" startline="199" endline="212">instantiate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af8066f62a237dbd38265a01186dc72a5" compoundref="rms__agc__ladspa_8c" startline="363" endline="366">ladspa_descriptor</referencedby>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>double</type>
+        <definition>static double bounded</definition>
+        <argsstring>(double value, double minimum, double maximum)</argsstring>
+        <name>bounded</name>
+        <param>
+          <type>double</type>
+          <declname>value</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>minimum</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>maximum</declname>
+        </param>
+        <briefdescription>
+<para>Restrict a finite scalar to a closed interval. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Scalar to restrict. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>minimum</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Lower boundary. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>maximum</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Upper boundary. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Restricted scalar. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="83" column="15" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="83" bodyend="86"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" compoundref="rms__agc__ladspa_8c" startline="93" endline="100">read_control</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>double</type>
+        <definition>static double read_control</definition>
+        <argsstring>(const struct rms_agc *state, unsigned int index)</argsstring>
+        <name>read_control</name>
+        <param>
+          <type>const struct <ref refid="structrms__agc" kindref="compound">rms_agc</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>index</declname>
+        </param>
+        <briefdescription>
+<para>Read one control using the same defaults with or without host connection. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Control index after the audio ports. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Finite, range-checked value. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="93" column="15" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="93" bodyend="100"/>
+        <references refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" compoundref="rms__agc__ladspa_8c" startline="83" endline="86">bounded</references>
+        <references refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" compoundref="rms__agc__ladspa_8c" startline="38">control_spec::fallback</references>
+        <references refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" compoundref="rms__agc__ladspa_8c" startline="50">rms_agc::ports</references>
+        <references refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" compoundref="rms__agc__ladspa_8c" startline="42" endline="46">specs</references>
+        <references refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" compoundref="rms__agc__ladspa_8h" startline="15">USBRADIOPLUS_AGC_TARGET_DBFS</references>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void configure</definition>
+        <argsstring>(struct rms_agc *state)</argsstring>
+        <name>configure</name>
+        <param>
+          <type>struct <ref refid="structrms__agc" kindref="compound">rms_agc</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Cache rate-dependent coefficients only when controls change. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="105" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="105" bodyend="128"/>
+        <references refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" compoundref="rms__agc__ladspa_8c" startline="83" endline="86">bounded</references>
+        <references refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" compoundref="rms__agc__ladspa_8c" startline="60">rms_agc::closing_power</references>
+        <references refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" compoundref="rms__agc__ladspa_8c" startline="74">rms_agc::configured</references>
+        <references refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" compoundref="rms__agc__ladspa_8c" startline="32">CONTROL_COUNT</references>
+        <references refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" compoundref="rms__agc__ladspa_8c" startline="51">rms_agc::controls</references>
+        <references refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" compoundref="rms__agc__ladspa_8c" startline="62">rms_agc::destination_gain</references>
+        <references refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" compoundref="rms__agc__ladspa_8c" startline="38">control_spec::fallback</references>
+        <references refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" compoundref="rms__agc__ladspa_8c" startline="61">rms_agc::gain</references>
+        <references refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" compoundref="rms__agc__ladspa_8c" startline="64">rms_agc::gain_db</references>
+        <references refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" compoundref="rms__agc__ladspa_8c" startline="65">rms_agc::hold_samples</references>
+        <references refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" compoundref="rms__agc__ladspa_8c" startline="54">rms_agc::level_coefficient</references>
+        <references refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" compoundref="rms__agc__ladspa_8c" startline="59">rms_agc::opening_power</references>
+        <references refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" compoundref="rms__agc__ladspa_8c" startline="72">rms_agc::ramp_remaining</references>
+        <references refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" compoundref="rms__agc__ladspa_8c" startline="52">rms_agc::rate</references>
+        <references refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" compoundref="rms__agc__ladspa_8c" startline="93" endline="100">read_control</references>
+        <references refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" compoundref="rms__agc__ladspa_8c" startline="42" endline="46">specs</references>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void update_gain</definition>
+        <argsstring>(struct rms_agc *state)</argsstring>
+        <name>update_gain</name>
+        <param>
+          <type>struct <ref refid="structrms__agc" kindref="compound">rms_agc</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Update the gain destination at a sample-derived one-kilohertz cadence. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="133" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="133" bodyend="170"/>
+        <references refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" compoundref="rms__agc__ladspa_8c" startline="67">rms_agc::acquisition_samples</references>
+        <references refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" compoundref="rms__agc__ladspa_8c" startline="73">rms_agc::active</references>
+        <references refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" compoundref="rms__agc__ladspa_8c" startline="69">rms_agc::active_samples</references>
+        <references refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" compoundref="rms__agc__ladspa_8c" startline="83" endline="86">bounded</references>
+        <references refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" compoundref="rms__agc__ladspa_8c" startline="51">rms_agc::controls</references>
+        <references refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" compoundref="rms__agc__ladspa_8c" startline="62">rms_agc::destination_gain</references>
+        <references refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" compoundref="rms__agc__ladspa_8c" startline="71">rms_agc::elapsed</references>
+        <references refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" compoundref="rms__agc__ladspa_8c" startline="55">rms_agc::fast_power</references>
+        <references refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" compoundref="rms__agc__ladspa_8c" startline="61">rms_agc::gain</references>
+        <references refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" compoundref="rms__agc__ladspa_8c" startline="64">rms_agc::gain_db</references>
+        <references refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" compoundref="rms__agc__ladspa_8c" startline="63">rms_agc::gain_step</references>
+        <references refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" compoundref="rms__agc__ladspa_8c" startline="65">rms_agc::hold_samples</references>
+        <references refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" compoundref="rms__agc__ladspa_8c" startline="56">rms_agc::level_power</references>
+        <references refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" compoundref="rms__agc__ladspa_8c" startline="57">rms_agc::level_weight</references>
+        <references refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" compoundref="rms__agc__ladspa_8c" startline="70">rms_agc::phase</references>
+        <references refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" compoundref="rms__agc__ladspa_8c" startline="72">rms_agc::ramp_remaining</references>
+        <references refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" compoundref="rms__agc__ladspa_8c" startline="52">rms_agc::rate</references>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void activate</definition>
+        <argsstring>(LADSPA_Handle handle)</argsstring>
+        <name>activate</name>
+        <param>
+          <type>LADSPA_Handle</type>
+          <declname>handle</declname>
+        </param>
+        <briefdescription>
+<para>Reset streaming state without disconnecting any host ports. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>handle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="175" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="175" bodyend="192"/>
+        <references refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" compoundref="rms__agc__ladspa_8c" startline="67">rms_agc::acquisition_samples</references>
+        <references refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" compoundref="rms__agc__ladspa_8c" startline="73">rms_agc::active</references>
+        <references refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" compoundref="rms__agc__ladspa_8c" startline="69">rms_agc::active_samples</references>
+        <references refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" compoundref="rms__agc__ladspa_8c" startline="74">rms_agc::configured</references>
+        <references refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" compoundref="rms__agc__ladspa_8c" startline="62">rms_agc::destination_gain</references>
+        <references refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" compoundref="rms__agc__ladspa_8c" startline="71">rms_agc::elapsed</references>
+        <references refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" compoundref="rms__agc__ladspa_8c" startline="55">rms_agc::fast_power</references>
+        <references refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" compoundref="rms__agc__ladspa_8c" startline="61">rms_agc::gain</references>
+        <references refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" compoundref="rms__agc__ladspa_8c" startline="64">rms_agc::gain_db</references>
+        <references refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" compoundref="rms__agc__ladspa_8c" startline="65">rms_agc::hold_samples</references>
+        <references refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" compoundref="rms__agc__ladspa_8c" startline="56">rms_agc::level_power</references>
+        <references refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" compoundref="rms__agc__ladspa_8c" startline="57">rms_agc::level_weight</references>
+        <references refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" compoundref="rms__agc__ladspa_8c" startline="70">rms_agc::phase</references>
+        <references refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" compoundref="rms__agc__ladspa_8c" startline="72">rms_agc::ramp_remaining</references>
+        <referencedby refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" compoundref="rms__agc__ladspa_8c" startline="199" endline="212">instantiate</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>LADSPA_Handle</type>
+        <definition>static LADSPA_Handle instantiate</definition>
+        <argsstring>(const LADSPA_Descriptor *descriptor, unsigned long sample_rate)</argsstring>
+        <name>instantiate</name>
+        <param>
+          <type>const LADSPA_Descriptor *</type>
+          <declname>descriptor</declname>
+        </param>
+        <param>
+          <type>unsigned long</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Allocate all state before real-time processing starts. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>descriptor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Host-provided descriptor; no descriptor-specific allocation is needed. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Samples per second, from 1000 through 384000. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Allocated instance, or NULL for an invalid rate or allocation failure. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="199" column="22" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="199" bodyend="212"/>
+        <references refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</references>
+        <references refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" compoundref="rms__agc__ladspa_8c" startline="345" endline="361">descriptor</references>
+        <references refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" compoundref="rms__agc__ladspa_8c" startline="53">rms_agc::fast_coefficient</references>
+        <references refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" compoundref="rms__agc__ladspa_8c" startline="52">rms_agc::rate</references>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void connect_port</definition>
+        <argsstring>(LADSPA_Handle handle, unsigned long port, LADSPA_Data *data)</argsstring>
+        <name>connect_port</name>
+        <param>
+          <type>LADSPA_Handle</type>
+          <declname>handle</declname>
+        </param>
+        <param>
+          <type>unsigned long</type>
+          <declname>port</declname>
+        </param>
+        <param>
+          <type>LADSPA_Data *</type>
+          <declname>data</declname>
+        </param>
+        <briefdescription>
+<para>Attach host-owned buffers; reconnecting ports does not reset the leveler. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>handle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>port</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Public audio or control port index. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>data</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Buffer or control value; NULL restores a control&apos;s default. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="219" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="219" bodyend="225"/>
+        <references refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" compoundref="rms__agc__ladspa_8c" startline="50">rms_agc::ports</references>
+        <references refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" compoundref="rms__agc__ladspa_8h" startline="28">USBRADIOPLUS_AGC_PORT_COUNT</references>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void run</definition>
+        <argsstring>(LADSPA_Handle handle, unsigned long count)</argsstring>
+        <name>run</name>
+        <param>
+          <type>LADSPA_Handle</type>
+          <declname>handle</declname>
+        </param>
+        <param>
+          <type>unsigned long</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Process samples in place or out of place without buffering the program audio. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>handle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin instance. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of connected audio samples. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="231" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="231" bodyend="289"/>
+        <references refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" compoundref="rms__agc__ladspa_8c" startline="67">rms_agc::acquisition_samples</references>
+        <references refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" compoundref="rms__agc__ladspa_8c" startline="73">rms_agc::active</references>
+        <references refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" compoundref="rms__agc__ladspa_8c" startline="69">rms_agc::active_samples</references>
+        <references refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" compoundref="rms__agc__ladspa_8c" startline="60">rms_agc::closing_power</references>
+        <references refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</references>
+        <references refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" compoundref="rms__agc__ladspa_8c" startline="51">rms_agc::controls</references>
+        <references refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" compoundref="rms__agc__ladspa_8c" startline="62">rms_agc::destination_gain</references>
+        <references refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" compoundref="rms__agc__ladspa_8c" startline="71">rms_agc::elapsed</references>
+        <references refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" compoundref="rms__agc__ladspa_8c" startline="53">rms_agc::fast_coefficient</references>
+        <references refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" compoundref="rms__agc__ladspa_8c" startline="55">rms_agc::fast_power</references>
+        <references refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" compoundref="rms__agc__ladspa_8c" startline="61">rms_agc::gain</references>
+        <references refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" compoundref="rms__agc__ladspa_8c" startline="64">rms_agc::gain_db</references>
+        <references refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" compoundref="rms__agc__ladspa_8c" startline="63">rms_agc::gain_step</references>
+        <references refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" compoundref="rms__agc__ladspa_8c" startline="65">rms_agc::hold_samples</references>
+        <references refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" compoundref="rms__agc__ladspa_8c" startline="54">rms_agc::level_coefficient</references>
+        <references refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" compoundref="rms__agc__ladspa_8c" startline="56">rms_agc::level_power</references>
+        <references refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" compoundref="rms__agc__ladspa_8c" startline="57">rms_agc::level_weight</references>
+        <references refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" compoundref="rms__agc__ladspa_8c" startline="59">rms_agc::opening_power</references>
+        <references refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" compoundref="rms__agc__ladspa_8c" startline="70">rms_agc::phase</references>
+        <references refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" compoundref="rms__agc__ladspa_8c" startline="50">rms_agc::ports</references>
+        <references refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" compoundref="rms__agc__ladspa_8c" startline="72">rms_agc::ramp_remaining</references>
+        <references refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" compoundref="rms__agc__ladspa_8c" startline="52">rms_agc::rate</references>
+        <references refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</references>
+        <references refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ab96fd020d7b8897fcac5c9ee76eb883a" compoundref="rms__agc__ladspa_8h" startline="13">USBRADIOPLUS_AGC_DETECTOR</references>
+        <references refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a75a76979cf58484610f96bd3e82f1dfc" compoundref="rms__agc__ladspa_8h" startline="12">USBRADIOPLUS_AGC_INPUT</references>
+        <references refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9cbd86b0a988b4192e0ec1340d54c226" compoundref="rms__agc__ladspa_8h" startline="14">USBRADIOPLUS_AGC_OUTPUT</references>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" prot="public" static="yes" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>static void cleanup</definition>
+        <argsstring>(LADSPA_Handle handle)</argsstring>
+        <name>cleanup</name>
+        <param>
+          <type>LADSPA_Handle</type>
+          <declname>handle</declname>
+        </param>
+        <briefdescription>
+<para>Release the instance after processing has stopped. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>handle</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Instance returned by instantiate. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="294" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="294" bodyend="297"/>
+      </memberdef>
+      <memberdef kind="function" id="rms__agc__ladspa_8c_1af8066f62a237dbd38265a01186dc72a5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>const LADSPA_Descriptor *</type>
+        <definition>const LADSPA_Descriptor * ladspa_descriptor</definition>
+        <argsstring>(unsigned long index)</argsstring>
+        <name>ladspa_descriptor</name>
+        <param>
+          <type>unsigned long</type>
+          <declname>index</declname>
+        </param>
+        <briefdescription>
+<para>Return the plugin descriptor for index zero. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin index; only zero is defined. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Static descriptor, or NULL for any other index. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="363" column="25" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="363" bodyend="366"/>
+        <references refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" compoundref="rms__agc__ladspa_8c" startline="345" endline="361">descriptor</references>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Causal, activity-gated RMS gain rider hosted only within the FFmpeg graph. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">/*<sp/>SPDX-License-Identifier:<sp/>MIT</highlight></codeline>
+<codeline lineno="2"><highlight class="comment"><sp/>*<sp/>Copyright<sp/>(c)<sp/>2026<sp/>USBRadioPlus<sp/>contributors</highlight></codeline>
+<codeline lineno="3"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="4"><highlight class="comment"><sp/>*<sp/>Permission<sp/>is<sp/>hereby<sp/>granted,<sp/>free<sp/>of<sp/>charge,<sp/>to<sp/>any<sp/>person<sp/>obtaining<sp/>a<sp/>copy</highlight></codeline>
+<codeline lineno="5"><highlight class="comment"><sp/>*<sp/>of<sp/>this<sp/>software<sp/>and<sp/>associated<sp/>documentation<sp/>files<sp/>(the<sp/>&quot;Software&quot;),<sp/>to<sp/>deal</highlight></codeline>
+<codeline lineno="6"><highlight class="comment"><sp/>*<sp/>in<sp/>the<sp/>Software<sp/>without<sp/>restriction,<sp/>including<sp/>without<sp/>limitation<sp/>the<sp/>rights</highlight></codeline>
+<codeline lineno="7"><highlight class="comment"><sp/>*<sp/>to<sp/>use,<sp/>copy,<sp/>modify,<sp/>merge,<sp/>publish,<sp/>distribute,<sp/>sublicense,<sp/>and/or<sp/>sell</highlight></codeline>
+<codeline lineno="8"><highlight class="comment"><sp/>*<sp/>copies<sp/>of<sp/>the<sp/>Software,<sp/>and<sp/>to<sp/>permit<sp/>persons<sp/>to<sp/>whom<sp/>the<sp/>Software<sp/>is</highlight></codeline>
+<codeline lineno="9"><highlight class="comment"><sp/>*<sp/>furnished<sp/>to<sp/>do<sp/>so,<sp/>subject<sp/>to<sp/>the<sp/>following<sp/>conditions:</highlight></codeline>
+<codeline lineno="10"><highlight class="comment"><sp/>*<sp/>The<sp/>above<sp/>copyright<sp/>notice<sp/>and<sp/>this<sp/>permission<sp/>notice<sp/>shall<sp/>be<sp/>included<sp/>in</highlight></codeline>
+<codeline lineno="11"><highlight class="comment"><sp/>*<sp/>all<sp/>copies<sp/>or<sp/>substantial<sp/>portions<sp/>of<sp/>the<sp/>Software.</highlight></codeline>
+<codeline lineno="12"><highlight class="comment"><sp/>*<sp/>THE<sp/>SOFTWARE<sp/>IS<sp/>PROVIDED<sp/>&quot;AS<sp/>IS&quot;,<sp/>WITHOUT<sp/>WARRANTY<sp/>OF<sp/>ANY<sp/>KIND,<sp/>EXPRESS<sp/>OR</highlight></codeline>
+<codeline lineno="13"><highlight class="comment"><sp/>*<sp/>IMPLIED,<sp/>INCLUDING<sp/>BUT<sp/>NOT<sp/>LIMITED<sp/>TO<sp/>THE<sp/>WARRANTIES<sp/>OF<sp/>MERCHANTABILITY,</highlight></codeline>
+<codeline lineno="14"><highlight class="comment"><sp/>*<sp/>FITNESS<sp/>FOR<sp/>A<sp/>PARTICULAR<sp/>PURPOSE<sp/>AND<sp/>NONINFRINGEMENT.<sp/>IN<sp/>NO<sp/>EVENT<sp/>SHALL<sp/>THE</highlight></codeline>
+<codeline lineno="15"><highlight class="comment"><sp/>*<sp/>AUTHORS<sp/>OR<sp/>COPYRIGHT<sp/>HOLDERS<sp/>BE<sp/>LIABLE<sp/>FOR<sp/>ANY<sp/>CLAIM,<sp/>DAMAGES<sp/>OR<sp/>OTHER</highlight></codeline>
+<codeline lineno="16"><highlight class="comment"><sp/>*<sp/>LIABILITY,<sp/>WHETHER<sp/>IN<sp/>AN<sp/>ACTION<sp/>OF<sp/>CONTRACT,<sp/>TORT<sp/>OR<sp/>OTHERWISE,<sp/>ARISING<sp/>FROM,</highlight></codeline>
+<codeline lineno="17"><highlight class="comment"><sp/>*<sp/>OUT<sp/>OF<sp/>OR<sp/>IN<sp/>CONNECTION<sp/>WITH<sp/>THE<sp/>SOFTWARE<sp/>OR<sp/>THE<sp/>USE<sp/>OR<sp/>OTHER<sp/>DEALINGS<sp/>IN</highlight></codeline>
+<codeline lineno="18"><highlight class="comment"><sp/>*<sp/>THE<sp/>SOFTWARE.</highlight></codeline>
+<codeline lineno="19"><highlight class="comment"><sp/>*/</highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="rms__agc__ladspa_8h" kindref="compound">rms_agc_ladspa.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;float.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;math.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdlib.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;string.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight></codeline>
+<codeline lineno="32" refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>CONTROL_COUNT<sp/>(USBRADIOPLUS_AGC_PORT_COUNT<sp/>-<sp/>USBRADIOPLUS_AGC_TARGET_DBFS)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="33"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35" refid="structcontrol__spec" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structcontrol__spec" kindref="compound">control_spec</ref><sp/>{</highlight></codeline>
+<codeline lineno="36" refid="structcontrol__spec_1abaed0c939ae9eb54c5b2ef41836bb811" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structcontrol__spec_1abaed0c939ae9eb54c5b2ef41836bb811" kindref="member">minimum</ref>;<sp/><sp/></highlight></codeline>
+<codeline lineno="37" refid="structcontrol__spec_1acd7f170544f7091790ef6eaaeeb5c72e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structcontrol__spec_1acd7f170544f7091790ef6eaaeeb5c72e" kindref="member">maximum</ref>;<sp/><sp/></highlight></codeline>
+<codeline lineno="38" refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" kindref="member">fallback</ref>;<sp/></highlight></codeline>
+<codeline lineno="39"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight></codeline>
+<codeline lineno="42" refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structcontrol__spec" kindref="compound">control_spec</ref><sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[<ref refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" kindref="member">CONTROL_COUNT</ref>]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/><sp/><sp/>{-40.0,<sp/>-3.0,<sp/>-24.0},<sp/><sp/>{10.0,<sp/>5000.0,<sp/>200.0},<sp/>{0.1,<sp/>100.0,<sp/>2.0},<sp/><sp/><sp/><sp/><sp/>{0.1,<sp/>100.0,<sp/>6.0},</highlight></codeline>
+<codeline lineno="44"><highlight class="normal"><sp/><sp/><sp/><sp/>{0.0,<sp/>30.0,<sp/>6.0},<sp/><sp/><sp/><sp/><sp/><sp/>{0.0,<sp/>60.0,<sp/>6.0},<sp/><sp/><sp/><sp/><sp/><sp/>{-100.0,<sp/>-3.0,<sp/>-50.0},<sp/>{0.0,<sp/>12.0,<sp/>3.0},</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/>{0.0,<sp/>10000.0,<sp/>500.0},<sp/>{0.0,<sp/>6.0,<sp/>1.0},</highlight></codeline>
+<codeline lineno="46"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49" refid="structrms__agc" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>{</highlight></codeline>
+<codeline lineno="50" refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_Data<sp/>*<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>];<sp/></highlight></codeline>
+<codeline lineno="51" refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" kindref="member">controls</ref>[<ref refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" kindref="member">CONTROL_COUNT</ref>];<sp/></highlight></codeline>
+<codeline lineno="52" refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="53" refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" kindref="member">fast_coefficient</ref>;<sp/><sp/></highlight></codeline>
+<codeline lineno="54" refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref>;<sp/></highlight></codeline>
+<codeline lineno="55" refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref>;<sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="56" refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref>;<sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="57" refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref>;<sp/><sp/></highlight></codeline>
+<codeline lineno="59" refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" kindref="member">opening_power</ref>;<sp/></highlight></codeline>
+<codeline lineno="60" refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" kindref="member">closing_power</ref>;<sp/></highlight></codeline>
+<codeline lineno="61" refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="62" refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref>;<sp/></highlight></codeline>
+<codeline lineno="63" refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" kindref="member">gain_step</ref>;<sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="64" refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref>;<sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="65" refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref>;<sp/></highlight></codeline>
+<codeline lineno="67" refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref>;<sp/></highlight></codeline>
+<codeline lineno="69" refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref>;<sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="70" refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="71" refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref>;<sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="72" refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref>;<sp/></highlight></codeline>
+<codeline lineno="73" refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="74" refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" kindref="member">configured</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="75"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="76"><highlight class="normal"></highlight></codeline>
+<codeline lineno="83" refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" kindref="member">bounded</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>value,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>minimum,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>maximum)</highlight></codeline>
+<codeline lineno="84"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>fmin(maximum,<sp/>fmax(minimum,<sp/>value));</highlight></codeline>
+<codeline lineno="86"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"></highlight></codeline>
+<codeline lineno="93" refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" kindref="member">read_control</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>index)</highlight></codeline>
+<codeline lineno="94"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_Data<sp/>*port<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[index<sp/>+<sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" kindref="member">USBRADIOPLUS_AGC_TARGET_DBFS</ref>];</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>value<sp/>=<sp/>port<sp/>?<sp/>(double)*port<sp/>:<sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[index].<ref refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" kindref="member">fallback</ref>;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!isfinite(value))</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>value<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[index].<ref refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" kindref="member">fallback</ref>;</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" kindref="member">bounded</ref>(value,<sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[index].minimum,<sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[index].maximum);</highlight></codeline>
+<codeline lineno="100"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"></highlight></codeline>
+<codeline lineno="105" refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" kindref="member">configure</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="106"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>values[<ref refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" kindref="member">CONTROL_COUNT</ref>];</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>changed<sp/>=<sp/>!state-&gt;<ref refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" kindref="member">configured</ref>;</highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>index<sp/>=<sp/>0;<sp/>index<sp/>&lt;<sp/><ref refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" kindref="member">CONTROL_COUNT</ref>;<sp/>++index)</highlight></codeline>
+<codeline lineno="110"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>values[index]<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" kindref="member">read_control</ref>(state,<sp/>index);</highlight></codeline>
+<codeline lineno="111"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>An<sp/>invalid<sp/>threshold<sp/>must<sp/>not<sp/>leave<sp/>the<sp/>activity<sp/>detector<sp/>permanently<sp/>shut.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="112"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(values[6]<sp/>&gt;=<sp/>values[0])</highlight></codeline>
+<codeline lineno="113"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>values[6]<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ad5232a1a5e489b480955de4c03276b08" kindref="member">specs</ref>[6].<ref refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" kindref="member">fallback</ref>;</highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>index<sp/>=<sp/>0;<sp/>index<sp/>&lt;<sp/><ref refid="rms__agc__ladspa_8c_1a63dbd1b2c46d952d554ecbdd1188c200" kindref="member">CONTROL_COUNT</ref>;<sp/>++index)</highlight></codeline>
+<codeline lineno="115"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>changed<sp/>|=<sp/>values[index]<sp/>!=<sp/>state-&gt;<ref refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" kindref="member">controls</ref>[index];</highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!changed)</highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="118"><highlight class="normal"><sp/><sp/><sp/><sp/>memcpy(state-&gt;<ref refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" kindref="member">controls</ref>,<sp/>values,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(values));</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref><sp/>=<sp/>-expm1(-1000.0<sp/>/<sp/>(state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>*<sp/>values[1]));</highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" kindref="member">opening_power</ref><sp/>=<sp/>pow(10.0,<sp/>values[6]<sp/>/<sp/>10.0);</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" kindref="member">closing_power</ref><sp/>=<sp/>pow(10.0,<sp/>(values[6]<sp/>-<sp/>values[7])<sp/>/<sp/>10.0);</highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" kindref="member">bounded</ref>(20.0<sp/>*<sp/>log10(state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>),<sp/>-values[5],<sp/>values[4]);</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref><sp/>=<sp/>pow(10.0,<sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>/<sp/>20.0);</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref><sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>;</highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" kindref="member">configured</ref><sp/>=<sp/>1;</highlight></codeline>
+<codeline lineno="128"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="129"><highlight class="normal"></highlight></codeline>
+<codeline lineno="133" refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" kindref="member">update_gain</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="134"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*control<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" kindref="member">controls</ref>;</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>level<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref><sp/>/<sp/>state-&gt;<ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref>;</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>wanted;</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>difference;</highlight></codeline>
+<codeline lineno="139"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>change;</highlight></codeline>
+<codeline lineno="140"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>On<sp/>acquisition,<sp/>the<sp/>fast<sp/>estimate<sp/>prevents<sp/>stale<sp/>silence<sp/>from<sp/>commanding<sp/>boost.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref><sp/>&gt;<sp/>0.0)</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>level<sp/>=<sp/>fmax(level,<sp/>state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref>);</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/>wanted<sp/>=<sp/>control[0]<sp/>-<sp/>10.0<sp/>*<sp/>log10(fmax(level,<sp/>DBL_MIN));</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"><sp/><sp/><sp/><sp/>difference<sp/>=<sp/>wanted<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref>;</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Deadband<sp/>describes<sp/>distance<sp/>from<sp/>the<sp/>RMS<sp/>target,<sp/>not<sp/>distance<sp/>from<sp/>a<sp/>gain<sp/>cap.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="150"><highlight class="normal"><sp/><sp/><sp/><sp/>wanted<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ad2959525ff319b889cf82eb5fa7696aa" kindref="member">bounded</ref>(wanted,<sp/>-control[5],<sp/>control[4]);</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"><sp/><sp/><sp/><sp/>change<sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(difference<sp/>&lt;<sp/>-control[9])<sp/>{</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>change<sp/>=<sp/>fmax(wanted<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref>,</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-control[3]<sp/>*<sp/>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal">)state-&gt;<ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref><sp/>/<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>);</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(difference<sp/>&gt;<sp/>control[9])<sp/>{</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>fmin(state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>+<sp/>state-&gt;<ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref>,</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>control[8]<sp/>*<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>/<sp/>1000.0);</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>&gt;=<sp/>control[8]<sp/>*<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>/<sp/>1000.0)</highlight></codeline>
+<codeline lineno="160"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>change<sp/>=<sp/>fmin(wanted<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref>,</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>control[2]<sp/>*<sp/>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal">)state-&gt;<ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref><sp/>/<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>);</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>+=<sp/>change;</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref><sp/>=<sp/>pow(10.0,<sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>/<sp/>20.0);</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>The<sp/>following<sp/>control<sp/>interval<sp/>may<sp/>differ<sp/>by<sp/>one<sp/>sample<sp/>at<sp/>unusual<sp/>rates.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="168"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref><sp/>=<sp/>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/>long)ceil((state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>-<sp/>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal">)state-&gt;<ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref>)<sp/>/<sp/>1000.0);</highlight></codeline>
+<codeline lineno="169"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" kindref="member">gain_step</ref><sp/>=<sp/>(state-&gt;<ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref><sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>)<sp/>/<sp/>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal">)state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref>;</highlight></codeline>
+<codeline lineno="170"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"></highlight></codeline>
+<codeline lineno="175" refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" kindref="member">activate</ref>(LADSPA_Handle<sp/>handle)</highlight></codeline>
+<codeline lineno="176"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state<sp/>=<sp/>handle;</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="181"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref><sp/>=<sp/>1.0;</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref><sp/>=<sp/>1.0;</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="185"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="187"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="188"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" kindref="member">configured</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="192"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="193"><highlight class="normal"></highlight></codeline>
+<codeline lineno="199" refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/>LADSPA_Handle<sp/><ref refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" kindref="member">instantiate</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_Descriptor<sp/>*<ref refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" kindref="member">descriptor</ref>,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>sample_rate)</highlight></codeline>
+<codeline lineno="200"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="201"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state;</highlight></codeline>
+<codeline lineno="202"><highlight class="normal"><sp/><sp/><sp/><sp/>(void)<ref refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" kindref="member">descriptor</ref>;</highlight></codeline>
+<codeline lineno="203"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(sample_rate<sp/>&lt;<sp/>1000<sp/>||<sp/>sample_rate<sp/>&gt;<sp/>384000)</highlight></codeline>
+<codeline lineno="204"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>NULL;</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"><sp/><sp/><sp/><sp/>state<sp/>=<sp/>calloc(1,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(*state));</highlight></codeline>
+<codeline lineno="206"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state)</highlight></codeline>
+<codeline lineno="207"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>NULL;</highlight></codeline>
+<codeline lineno="208"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>=<sp/>(double)sample_rate;</highlight></codeline>
+<codeline lineno="209"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" kindref="member">fast_coefficient</ref><sp/>=<sp/>-expm1(-100.0<sp/>/<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>);</highlight></codeline>
+<codeline lineno="210"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" kindref="member">activate</ref>(state);</highlight></codeline>
+<codeline lineno="211"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>state;</highlight></codeline>
+<codeline lineno="212"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="213"><highlight class="normal"></highlight></codeline>
+<codeline lineno="219" refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" kindref="member">connect_port</ref>(LADSPA_Handle<sp/>handle,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>port,<sp/>LADSPA_Data<sp/>*data)</highlight></codeline>
+<codeline lineno="220"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="221"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(port<sp/>&lt;<sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="222"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state<sp/>=<sp/>handle;</highlight></codeline>
+<codeline lineno="223"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[port]<sp/>=<sp/>data;</highlight></codeline>
+<codeline lineno="224"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="225"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="226"><highlight class="normal"></highlight></codeline>
+<codeline lineno="231" refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" kindref="member">run</ref>(LADSPA_Handle<sp/>handle,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>count)</highlight></codeline>
+<codeline lineno="232"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="233"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structrms__agc" kindref="compound">rms_agc</ref><sp/>*state<sp/>=<sp/>handle;</highlight></codeline>
+<codeline lineno="234"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*input<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a75a76979cf58484610f96bd3e82f1dfc" kindref="member">USBRADIOPLUS_AGC_INPUT</ref>];</highlight></codeline>
+<codeline lineno="235"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*detector<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ab96fd020d7b8897fcac5c9ee76eb883a" kindref="member">USBRADIOPLUS_AGC_DETECTOR</ref>];</highlight></codeline>
+<codeline lineno="236"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*output<sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" kindref="member">ports</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9cbd86b0a988b4192e0ec1340d54c226" kindref="member">USBRADIOPLUS_AGC_OUTPUT</ref>];</highlight></codeline>
+<codeline lineno="237"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!input<sp/>||<sp/>!detector<sp/>||<sp/>!output)</highlight></codeline>
+<codeline lineno="238"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="239"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" kindref="member">configure</ref>(state);</highlight></codeline>
+<codeline lineno="240"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>index<sp/>=<sp/>0;<sp/>index<sp/>&lt;<sp/>count;<sp/>++index)<sp/>{</highlight></codeline>
+<codeline lineno="241"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>sample<sp/>=<sp/>isfinite(detector[index])<sp/>?<sp/>(double)detector[index]<sp/>:<sp/>0.0;</highlight></codeline>
+<codeline lineno="242"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>power<sp/>=<sp/>sample<sp/>*<sp/>sample;</highlight></codeline>
+<codeline lineno="243"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>result;</highlight></codeline>
+<codeline lineno="244"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>A<sp/>floor<sp/>far<sp/>below<sp/>every<sp/>activity<sp/>threshold<sp/>prevents<sp/>denormal<sp/>CPU<sp/>stalls<sp/>in</highlight></codeline>
+<codeline lineno="245"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*<sp/>silence.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="246"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref><sp/>=</highlight></codeline>
+<codeline lineno="247"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>fmax(1e-30,<sp/>state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref><sp/>+</highlight></codeline>
+<codeline lineno="248"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" kindref="member">fast_coefficient</ref><sp/>*<sp/>(power<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref>));</highlight></codeline>
+<codeline lineno="249"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref><sp/>=</highlight></codeline>
+<codeline lineno="250"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>fmax(1e-30,<sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref><sp/>+<sp/>state-&gt;<ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref><sp/>*</highlight></codeline>
+<codeline lineno="251"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>(power<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref>));</highlight></codeline>
+<codeline lineno="252"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref><sp/>+=<sp/>state-&gt;<ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref><sp/>*<sp/>(1.0<sp/>-<sp/>state-&gt;<ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref>);</highlight></codeline>
+<codeline lineno="253"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="254"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref><sp/>&lt;<sp/>state-&gt;<ref refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" kindref="member">closing_power</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="255"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="256"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" kindref="member">hold_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="257"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="258"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="259"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" kindref="member">gain_db</ref><sp/>=<sp/>20.0<sp/>*<sp/>log10(state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>);</highlight></codeline>
+<codeline lineno="260"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="261"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" kindref="member">fast_power</ref><sp/>&gt;=<sp/>state-&gt;<ref refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" kindref="member">opening_power</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="262"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref><sp/>=<sp/>1;</highlight></codeline>
+<codeline lineno="263"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Normalize<sp/>the<sp/>new<sp/>activity&apos;s<sp/>EMA<sp/>instead<sp/>of<sp/>treating<sp/>earlier<sp/>silence<sp/>as</highlight></codeline>
+<codeline lineno="264"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*<sp/>speech.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="265"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" kindref="member">level_power</ref><sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref><sp/>*<sp/>power;</highlight></codeline>
+<codeline lineno="266"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" kindref="member">level_weight</ref><sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" kindref="member">level_coefficient</ref>;</highlight></codeline>
+<codeline lineno="267"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref><sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" kindref="member">controls</ref>[1]<sp/>*<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref><sp/>/<sp/>1000.0;</highlight></codeline>
+<codeline lineno="268"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="269"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" kindref="member">active</ref>)</highlight></codeline>
+<codeline lineno="270"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref><sp/>+=<sp/>1.0;</highlight></codeline>
+<codeline lineno="271"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref><sp/>=<sp/>fmax(0.0,<sp/>state-&gt;<ref refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" kindref="member">acquisition_samples</ref><sp/>-<sp/>1.0);</highlight></codeline>
+<codeline lineno="272"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref><sp/>+=<sp/>1000;</highlight></codeline>
+<codeline lineno="273"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref>++;</highlight></codeline>
+<codeline lineno="274"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>((</highlight><highlight class="keywordtype">double</highlight><highlight class="normal">)state-&gt;<ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref><sp/>&gt;=<sp/>state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="275"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" kindref="member">phase</ref><sp/>-=<sp/>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/>long)state-&gt;<ref refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" kindref="member">rate</ref>;</highlight></codeline>
+<codeline lineno="276"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" kindref="member">update_gain</ref>(state);</highlight></codeline>
+<codeline lineno="277"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" kindref="member">elapsed</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="278"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" kindref="member">active_samples</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="279"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="280"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="281"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref><sp/>+=<sp/>state-&gt;<ref refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" kindref="member">gain_step</ref>;</highlight></codeline>
+<codeline lineno="282"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!--state-&gt;<ref refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" kindref="member">ramp_remaining</ref>)</highlight></codeline>
+<codeline lineno="283"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref><sp/>=<sp/>state-&gt;<ref refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" kindref="member">destination_gain</ref>;</highlight></codeline>
+<codeline lineno="284"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="285"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Corrupt<sp/>input<sp/>is<sp/>silenced,<sp/>not<sp/>allowed<sp/>to<sp/>poison<sp/>detector<sp/>or<sp/>gain<sp/>state.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="286"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>result<sp/>=<sp/>(double)input[index]<sp/>*<sp/>state-&gt;<ref refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" kindref="member">gain</ref>;</highlight></codeline>
+<codeline lineno="287"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>output[index]<sp/>=<sp/>isfinite(result)<sp/>&amp;&amp;<sp/>fabs(result)<sp/>&lt;=<sp/>FLT_MAX<sp/>?<sp/>(float)result<sp/>:<sp/>0.0F;</highlight></codeline>
+<codeline lineno="288"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="289"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="290"><highlight class="normal"></highlight></codeline>
+<codeline lineno="294" refid="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" kindref="member">cleanup</ref>(LADSPA_Handle<sp/>handle)</highlight></codeline>
+<codeline lineno="295"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="296"><highlight class="normal"><sp/><sp/><sp/><sp/>free(handle);</highlight></codeline>
+<codeline lineno="297"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="298"><highlight class="normal"></highlight></codeline>
+<codeline lineno="300" refid="rms__agc__ladspa_8c_1aa53b4ef631bf2a571c1d0a607f6d62c9" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_PortDescriptor<sp/><ref refid="rms__agc__ladspa_8c_1aa53b4ef631bf2a571c1d0a607f6d62c9" kindref="member">port_descriptors</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="301"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_AUDIO,<sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_AUDIO,</highlight></codeline>
+<codeline lineno="302"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_OUTPUT<sp/>|<sp/>LADSPA_PORT_AUDIO,<sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="303"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,<sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="304"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,<sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="305"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,<sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="306"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,<sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="307"><highlight class="normal"><sp/><sp/><sp/><sp/>LADSPA_PORT_INPUT<sp/>|<sp/>LADSPA_PORT_CONTROL,</highlight></codeline>
+<codeline lineno="308"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="309"><highlight class="normal"></highlight></codeline>
+<codeline lineno="311" refid="rms__agc__ladspa_8c_1ac251434ac0cca1002dcea5951938014e" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8c_1ac251434ac0cca1002dcea5951938014e" kindref="member">port_names</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="312"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Program<sp/>input&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="313"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Detector<sp/>input&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="314"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Output&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="315"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Target<sp/>RMS<sp/>(dBFS)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="316"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Averaging<sp/>(ms)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="317"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Gain<sp/>increase<sp/>(dB/s)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="318"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Gain<sp/>decrease<sp/>(dB/s)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="319"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Maximum<sp/>boost<sp/>(dB)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="320"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Maximum<sp/>attenuation<sp/>(dB)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="321"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Activity<sp/>threshold<sp/>(dBFS)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="322"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Activity<sp/>hysteresis<sp/>(dB)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="323"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Gain-increase<sp/>hold<sp/>(ms)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="324"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="stringliteral">&quot;Deadband<sp/>(dB)&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="325"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="326"><highlight class="normal"></highlight></codeline>
+<codeline lineno="328" refid="rms__agc__ladspa_8c_1af00dd409ff9dd7def14494caf02c6f93" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_PortRangeHint<sp/><ref refid="rms__agc__ladspa_8c_1af00dd409ff9dd7def14494caf02c6f93" kindref="member">port_hints</ref>[<ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="329"><highlight class="normal"><sp/><sp/><sp/><sp/>{0,<sp/>0,<sp/>0},</highlight></codeline>
+<codeline lineno="330"><highlight class="normal"><sp/><sp/><sp/><sp/>{0,<sp/>0,<sp/>0},</highlight></codeline>
+<codeline lineno="331"><highlight class="normal"><sp/><sp/><sp/><sp/>{0,<sp/>0,<sp/>0},</highlight></codeline>
+<codeline lineno="332"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>-40,<sp/>-3},</highlight></codeline>
+<codeline lineno="333"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>10,<sp/>5000},</highlight></codeline>
+<codeline lineno="334"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0.1F,<sp/>100},</highlight></codeline>
+<codeline lineno="335"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0.1F,<sp/>100},</highlight></codeline>
+<codeline lineno="336"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0,<sp/>30},</highlight></codeline>
+<codeline lineno="337"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0,<sp/>60},</highlight></codeline>
+<codeline lineno="338"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>-100,<sp/>-3},</highlight></codeline>
+<codeline lineno="339"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0,<sp/>12},</highlight></codeline>
+<codeline lineno="340"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0,<sp/>10000},</highlight></codeline>
+<codeline lineno="341"><highlight class="normal"><sp/><sp/><sp/><sp/>{LADSPA_HINT_BOUNDED_BELOW<sp/>|<sp/>LADSPA_HINT_BOUNDED_ABOVE,<sp/>0,<sp/>6},</highlight></codeline>
+<codeline lineno="342"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="343"><highlight class="normal"></highlight></codeline>
+<codeline lineno="345" refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_Descriptor<sp/><ref refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" kindref="member">descriptor</ref><sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="346"><highlight class="normal"><sp/><sp/><sp/><sp/>.UniqueID<sp/>=<sp/>524950,</highlight></codeline>
+<codeline lineno="347"><highlight class="normal"><sp/><sp/><sp/><sp/>.Label<sp/>=<sp/></highlight><highlight class="stringliteral">&quot;usbradioplus_agc&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="348"><highlight class="normal"><sp/><sp/><sp/><sp/>.Properties<sp/>=<sp/>LADSPA_PROPERTY_HARD_RT_CAPABLE,</highlight></codeline>
+<codeline lineno="349"><highlight class="normal"><sp/><sp/><sp/><sp/>.Name<sp/>=<sp/></highlight><highlight class="stringliteral">&quot;USBRadioPlus<sp/>gated<sp/>RMS<sp/>gain<sp/>rider&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="350"><highlight class="normal"><sp/><sp/><sp/><sp/>.Maker<sp/>=<sp/></highlight><highlight class="stringliteral">&quot;USBRadioPlus<sp/>contributors&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="351"><highlight class="normal"><sp/><sp/><sp/><sp/>.Copyright<sp/>=<sp/></highlight><highlight class="stringliteral">&quot;MIT&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="352"><highlight class="normal"><sp/><sp/><sp/><sp/>.PortCount<sp/>=<sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref>,</highlight></codeline>
+<codeline lineno="353"><highlight class="normal"><sp/><sp/><sp/><sp/>.PortDescriptors<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1aa53b4ef631bf2a571c1d0a607f6d62c9" kindref="member">port_descriptors</ref>,</highlight></codeline>
+<codeline lineno="354"><highlight class="normal"><sp/><sp/><sp/><sp/>.PortNames<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1ac251434ac0cca1002dcea5951938014e" kindref="member">port_names</ref>,</highlight></codeline>
+<codeline lineno="355"><highlight class="normal"><sp/><sp/><sp/><sp/>.PortRangeHints<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1af00dd409ff9dd7def14494caf02c6f93" kindref="member">port_hints</ref>,</highlight></codeline>
+<codeline lineno="356"><highlight class="normal"><sp/><sp/><sp/><sp/>.instantiate<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" kindref="member">instantiate</ref>,</highlight></codeline>
+<codeline lineno="357"><highlight class="normal"><sp/><sp/><sp/><sp/>.connect_port<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" kindref="member">connect_port</ref>,</highlight></codeline>
+<codeline lineno="358"><highlight class="normal"><sp/><sp/><sp/><sp/>.activate<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" kindref="member">activate</ref>,</highlight></codeline>
+<codeline lineno="359"><highlight class="normal"><sp/><sp/><sp/><sp/>.run<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" kindref="member">run</ref>,</highlight></codeline>
+<codeline lineno="360"><highlight class="normal"><sp/><sp/><sp/><sp/>.cleanup<sp/>=<sp/><ref refid="rms__agc__ladspa_8c_1a414d8563606205959d4031bf3abc1925" kindref="member">cleanup</ref>,</highlight></codeline>
+<codeline lineno="361"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="362"><highlight class="normal"></highlight></codeline>
+<codeline lineno="363" refid="rms__agc__ladspa_8c_1af8066f62a237dbd38265a01186dc72a5" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_Descriptor<sp/>*<ref refid="rms__agc__ladspa_8c_1af8066f62a237dbd38265a01186dc72a5" kindref="member">ladspa_descriptor</ref>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>index)</highlight></codeline>
+<codeline lineno="364"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="365"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>index<sp/>==<sp/>0<sp/>?<sp/>&amp;<ref refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" kindref="member">descriptor</ref><sp/>:<sp/>NULL;</highlight></codeline>
+<codeline lineno="366"><highlight class="normal">}</highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/rms_agc_ladspa.c"/>
+  </compounddef>
+</doxygen>

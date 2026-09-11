@@ -1,0 +1,9 @@
+<map id="discard_link_graph_transaction" name="discard_link_graph_transaction">
+<area shape="rect" id="Node000001" title="Release an uncommitted or committed link graph transaction." alt="" coords="5,5,149,45"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#aa54c866a53389d9ff0f8c8c5af97f295" title="Discard an unpublished candidate graph." alt="" coords="197,5,347,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,23,183,23,183,28,150,28"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="395,13,561,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="347,23,381,23,381,28,347,28"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="609,13,701,38"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="562,23,596,23,596,28,562,28"/>
+</map>

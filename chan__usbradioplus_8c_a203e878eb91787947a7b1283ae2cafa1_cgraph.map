@@ -1,0 +1,9 @@
+<map id="soundcard_admit_native_frame" name="soundcard_admit_native_frame">
+<area shape="rect" id="Node000001" title="Test whether OSS can accept one complete native stereo frame." alt="" coords="5,31,188,71"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a5052d853da0fc58013ced505c9c8f3ed" title="Open or reopen the OSS device with the required native audio format." alt="" coords="284,13,371,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,38,270,29,270,34,188,43"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a461328acf7d22f0a4c22949afac1e7ae" title="Query one OSS output&#45;space snapshot and maintain its capacity cache." alt="" coords="236,62,419,87"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="188,58,223,61,222,66,188,63"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#aa02e1a9727b22c30cecdfebaf9cd1311" title="Reset a DAC&#45;drain hold after the underlying audio device is reset." alt="" coords="467,5,648,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="371,23,453,23,453,28,371,28"/>
+</map>

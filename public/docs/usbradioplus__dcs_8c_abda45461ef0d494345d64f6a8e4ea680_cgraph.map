@@ -1,0 +1,7 @@
+<map id="dcs_process_received_symbol" name="dcs_process_received_symbol">
+<area shape="rect" id="Node000001" title="Qualify one symbol decision in one timing hypothesis." alt="" coords="5,5,169,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#a771b50289951179c8b27e1523135a35f" title="Decode a sliding least&#45;significant&#45;bit&#45;first received codeword." alt="" coords="217,13,325,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="170,23,203,23,203,28,170,28"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dcs_8c.html#ae666193ad3e27dc56dda3f151abfd078" title="Return the cyclic Golay remainder of a 23&#45;bit word." alt="" coords="373,13,505,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="325,23,360,23,360,28,325,28"/>
+</map>

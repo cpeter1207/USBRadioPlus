@@ -1,0 +1,5 @@
+<map id="txagc_rnnoise_process_double" name="txagc_rnnoise_process_double">
+<area shape="rect" id="Node000001" title="Denoise floating&#45;point receiver audio using 480&#45;sample RNNoise frames." alt="" coords="224,5,395,45"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#ab590b8c5ed7056dbc0e521acb0598874" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="5,13,176,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="210,28,176,28,176,23,210,23"/>
+</map>

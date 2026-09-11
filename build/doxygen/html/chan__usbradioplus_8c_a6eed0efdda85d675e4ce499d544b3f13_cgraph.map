@@ -1,0 +1,5 @@
+<map id="radio_active" name="radio_active">
+<area shape="rect" id="Node000001" title="Show or select the radio used by interactive calibration commands." alt="" coords="5,5,108,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="156,5,239,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,15,143,15,143,21,108,21"/>
+</map>

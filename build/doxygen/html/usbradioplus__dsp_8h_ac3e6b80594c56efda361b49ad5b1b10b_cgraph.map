@@ -1,0 +1,5 @@
+<map id="urp_rate_convert_prepared" name="urp_rate_convert_prepared">
+<area shape="rect" id="Node000001" title="Convert a fixed&#45;rate PCM block using only pre&#45;reserved converter storage." alt="" coords="5,5,203,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dsp_8c.html#ae5ec641130119c7001929833a9cea583" title="Convert through already reserved SRC workspaces without allocating." alt="" coords="251,5,441,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="203,15,237,15,237,21,203,21"/>
+</map>

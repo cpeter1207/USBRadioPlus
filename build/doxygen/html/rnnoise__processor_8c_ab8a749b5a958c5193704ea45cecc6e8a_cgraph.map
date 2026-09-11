@@ -1,0 +1,9 @@
+<map id="txagc_rnnoise_process_prepared" name="txagc_rnnoise_process_prepared">
+<area shape="rect" id="Node000001" title="Process an already prepared RNNoise stream without allocating or reconfiguring." alt="" coords="5,47,176,87"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#af410170b51f2686eb5e50f1fa83bef6e" title="Append a block to a bounded RNNoise FIFO." alt="" coords="243,5,313,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="166,45,229,28,230,33,168,50"/>
+<area shape="rect" id="Node000003" href="$rnnoise__processor_8c.html#a37195b7be97f2b6d3d2ca3ff8aa8c32b" title="Remove samples from the front of an RNNoise FIFO." alt="" coords="237,55,319,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="176,65,224,65,224,70,176,70"/>
+<area shape="rect" id="Node000004" href="$rnnoise__processor_8c.html#a70a05b2edeae5dde96d2f59fc0f0e982" title="Discard bounded stream history without allocating or replacing the denoiser." alt="" coords="224,104,332,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="168,85,217,98,215,103,166,90"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="soundcard_output_space" name="soundcard_output_space">
+<area shape="rect" id="Node000001" title="Query one OSS output&#45;space snapshot and maintain its capacity cache." alt="" coords="844,46,1027,71"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a203e878eb91787947a7b1283ae2cafa1" title="Test whether OSS can accept one complete native stereo frame." alt="" coords="411,5,593,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="830,53,593,35,594,30,830,48"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a098f3a7cf862b90c4346628a57ead218" title="Estimate queued OSS bytes when the driver cannot report output delay." alt="" coords="641,67,796,107"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="831,75,796,79,796,74,830,70"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="5,46,120,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="397,36,121,57,120,52,396,31"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#ad5e0820d9a93725eff0512ad3383ef95" title="Convert an accepted OSS frame&#39;s remaining device delay into callback periods." alt="" coords="412,69,592,109"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="628,90,592,91,592,86,628,85"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#afab13a3006197f50ab5efe0d5bb644a8" title="Write one previously admitted native stereo frame without rechecking OSS." alt="" coords="168,67,363,107"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="398,91,363,90,363,85,398,85"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="154,74,120,69,121,64,155,69"/>
+</map>

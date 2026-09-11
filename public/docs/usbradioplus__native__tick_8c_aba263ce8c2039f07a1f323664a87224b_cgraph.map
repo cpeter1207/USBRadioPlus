@@ -1,0 +1,28 @@
+<map id="usbradioplus_native_renderer_start" name="usbradioplus_native_renderer_start">
+<area shape="rect" id="Node000001" title="Create the persistent direct native renderer." alt="" coords="5,213,159,253"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a9e9fa3a41654f5e43e28fec4a1936e63" title="Publish callback&#45;owned diagnostics without blocking the callback." alt="" coords="227,5,405,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="90,212,106,178,132,136,165,92,205,55,214,49,217,54,208,59,169,96,136,139,111,180,94,214"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#aa6b9c25942a33fe847604a2f78097490" title="Initialize direct&#45;renderer measurement values." alt="" coords="207,70,425,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="97,211,142,162,172,135,205,112,239,97,241,102,208,117,176,139,146,166,101,215"/>
+<area shape="rect" id="Node000004" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="636,197,805,222"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="106,211,150,181,177,167,206,156,270,143,335,138,401,139,466,145,582,166,670,190,669,195,581,171,465,150,401,144,336,143,271,148,207,161,180,172,153,185,109,215"/>
+<area shape="rect" id="Node000005" href="$rnnoise__processor_8c.html#a5969f86a6b2fcdf6effd3cc255d0eaf0" title="Initialize an empty local&#45;receiver denoiser." alt="" coords="245,171,387,197"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="159,215,242,197,243,202,160,220"/>
+<area shape="rect" id="Node000006" href="$rnnoise__processor_8c.html#ae1892106063053daaade436873564e22" title="Allocate or reconfigure RNNoise state before native callback processing." alt="" coords="231,221,401,246"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="159,231,217,231,217,236,159,236"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__dcs_8c.html#acfde9b476cba7745acd7852b293dd114" title="Initialize a DCS state and its fixed Golay syndrome table." alt="" coords="266,270,366,295"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="160,247,253,267,252,272,159,252"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__dsp_8c.html#a9441082c5203081c60709487f11df580" title="Allocate a streaming libsamplerate converter and reusable conversion workspace." alt="" coords="257,319,375,345"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="112,251,156,280,208,306,245,317,243,322,206,310,153,284,109,256"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="253,369,379,394"/>
+<area shape="poly" id="edge12_Node000001_Node000012" title=" " alt="" coords="100,252,144,304,174,332,208,355,241,368,239,373,205,360,171,336,140,308,95,255"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__dsp_8c.html#a7e53206483e5fb5a726dc6aef5bb5e92" title="Preallocate conversion workspaces before native callback processing." alt="" coords="253,418,379,443"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="94,252,111,286,136,328,168,370,208,404,241,419,239,424,205,409,164,373,131,331,106,289,89,255"/>
+<area shape="rect" id="Node000007" href="$rnnoise__processor_8c.html#a6d2dea9944fec6fb2f446373fe61dbab" title="Create or reconfigure the RNNoise converters for the source sample rate." alt="" coords="473,197,588,222"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="401,221,459,215,460,220,402,226"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="588,207,622,207,622,212,588,212"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dcs_8c.html#ac0da746029e69bcb4815d49032e75586" title="Add one correctable error pattern to a syndrome table." alt="" coords="481,270,581,295"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="367,280,467,280,467,285,367,285"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__dcs_8c.html#ae666193ad3e27dc56dda3f151abfd078" title="Return the cyclic Golay remainder of a 23&#45;bit word." alt="" coords="655,270,787,295"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="581,280,641,280,641,285,581,285"/>
+</map>

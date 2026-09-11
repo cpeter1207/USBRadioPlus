@@ -1,0 +1,41 @@
+<map id="save_tuning_config" name="save_tuning_config">
+<area shape="rect" id="Node000001" title="Write current radio calibration values to the unified configuration." alt="" coords="5,194,152,219"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="222,5,361,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="85,192,127,128,160,89,198,55,208,49,211,54,202,59,164,93,131,131,89,195"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="213,70,369,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="90,192,135,149,165,125,199,104,214,97,217,102,201,109,168,129,138,153,93,196"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#ab658ea7ea27aea944109872bd1d92ab5" title="Convert resolved output&#45;A hardware gain to the normalized CM119 mixer scale." alt="" coords="215,119,367,145"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="106,191,199,153,224,146,225,151,201,159,108,196"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a56a64663cee77a43455db316af6b0dae" title="Convert resolved output&#45;B hardware gain to the normalized CM119 mixer scale." alt="" coords="215,169,367,194"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="152,195,201,189,202,195,153,201"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__core_8c.html#a93a6afc55640158707a1de37361d28ce" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="209,270,374,295"/>
+<area shape="poly" id="edge14_Node000001_Node000010" title=" " alt="" coords="116,217,201,248,242,263,240,268,199,253,114,222"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__core_8c.html#a4de720cbfaa6e9bb3d1f01b1e8b6aceb" title="Parse a CTCSS&#45;detection source, including accepted symbolic aliases." alt="" coords="203,319,379,345"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="94,217,138,260,169,284,201,304,219,312,217,317,199,309,165,288,135,264,90,221"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__processing_8c.html#a0c9ceb1d5f070d4cff0f785236b0223e" title="Copy a resolved non&#45;audio option from a channel profile." alt="" coords="431,199,613,239"/>
+<area shape="poly" id="edge17_Node000001_Node000013" title=" " alt="" coords="152,206,417,213,417,218,152,211"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__processing_8c.html#aa11d8d9df4edb892604b97d2e3df7904" title="Persist tuning values to the selected channel&#39;s configuration sections." alt="" coords="200,369,383,409"/>
+<area shape="poly" id="edge19_Node000001_Node000014" title=" " alt="" coords="89,218,131,282,164,320,202,354,213,361,210,365,198,358,160,324,127,285,85,221"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a95124b3a47bea172607faa5d65e076b9" title="Copy a local chain from the immutable audio&#45;thread snapshot. This operation neither allocates nor loc..." alt="" coords="431,9,613,49"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="361,24,417,25,417,30,361,29"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="661,85,797,110"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="584,47,677,78,676,83,583,52"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="439,142,605,167"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="348,93,384,104,432,127,458,136,456,141,430,132,382,109,346,98"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa7e50df1c123aa5da2d2783f11a489a6" title="Copy hardware settings from the immutable audio&#45;thread snapshot. This operation neither allocates nor..." alt="" coords="431,77,613,117"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="370,85,417,88,417,93,370,90"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="614,95,647,95,647,100,614,100"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="368,137,426,143,425,148,368,142"/>
+<area shape="poly" id="edge10_Node000008_Node000007" title=" " alt="" coords="368,118,417,110,418,116,368,123"/>
+<area shape="poly" id="edge12_Node000009_Node000006" title=" " alt="" coords="368,170,425,163,426,168,368,175"/>
+<area shape="poly" id="edge13_Node000009_Node000007" title=" " alt="" coords="345,166,382,154,405,141,429,127,446,120,448,125,432,132,408,145,384,158,347,171"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__core_8c.html#a3f183d84fe49d97606dba6dff09a900e" title="Resolve a symbolic option through a bounded name/value table." alt="" coords="445,319,599,345"/>
+<area shape="poly" id="edge16_Node000011_Node000012" title=" " alt="" coords="380,329,432,329,432,335,380,335"/>
+<area shape="poly" id="edge18_Node000013_Node000004" title=" " alt="" coords="572,196,612,176,659,146,700,116,703,121,662,151,615,181,574,201"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__processing_8c.html#ab608b17eb36972ea6e363a8017411037" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="436,434,608,459"/>
+<area shape="poly" id="edge20_Node000014_Node000015" title=" " alt="" coords="373,407,458,428,456,433,372,412"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__config_8c.html#a64eeff2da27607aacf81861f6345c0e2" title="Update or append a category variable while preserving its Asterisk configuration context." alt="" coords="447,369,597,409"/>
+<area shape="poly" id="edge22_Node000014_Node000017" title=" " alt="" coords="383,387,433,387,433,392,383,392"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="668,434,791,459"/>
+<area shape="poly" id="edge21_Node000015_Node000016" title=" " alt="" coords="608,444,654,444,654,449,608,449"/>
+</map>

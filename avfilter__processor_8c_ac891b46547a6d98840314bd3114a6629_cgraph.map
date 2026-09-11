@@ -1,0 +1,7 @@
+<map id="drain_cleanup_meter" name="drain_cleanup_meter">
+<area shape="rect" id="Node000001" title="Drain available frames from one spectral measurement sink." alt="" coords="5,5,164,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="212,5,384,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,15,198,15,198,21,164,21"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="432,5,537,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="384,15,418,15,418,21,384,21"/>
+</map>

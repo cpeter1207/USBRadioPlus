@@ -1,0 +1,13 @@
+<map id="soundcard_write_admitted_frame" name="soundcard_write_admitted_frame">
+<area shape="rect" id="Node000001" title="Write one previously admitted native stereo frame without rechecking OSS." alt="" coords="5,69,200,109"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#ad5e0820d9a93725eff0512ad3383ef95" title="Convert an accepted OSS frame&#39;s remaining device delay into callback periods." alt="" coords="249,5,429,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,67,251,46,252,51,178,72"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a85ce5334b3b14cdd3fe544bab76c5849" title="Determine whether an interleaved PCM block contains any non&#45;silent sample." alt="" coords="253,69,424,109"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="200,87,240,87,240,92,200,92"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a358587f6a3fda42a1eab5578c355554e" title="Record one accepted native DAC block for post&#45;playout PTT timing." alt="" coords="248,133,429,173"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="178,107,252,127,251,132,176,112"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a098f3a7cf862b90c4346628a57ead218" title="Estimate queued OSS bytes when the driver cannot report output delay." alt="" coords="477,5,632,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="429,23,464,23,464,28,429,28"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a461328acf7d22f0a4c22949afac1e7ae" title="Query one OSS output&#45;space snapshot and maintain its capacity cache." alt="" coords="680,13,863,38"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="632,23,666,23,666,28,632,28"/>
+</map>

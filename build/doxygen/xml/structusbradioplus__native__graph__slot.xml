@@ -1,0 +1,133 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__native__graph__slot" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_native_graph_slot</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="no">usbradioplus_channel_private.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__native__graph__slot_1ad59185c525caf422e373ea3d09fe0db7" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__graph__set" kindref="compound">usbradioplus_native_graph_set</ref> *</type>
+        <definition>struct usbradioplus_native_graph_set* usbradioplus_native_graph_slot::active</definition>
+        <argsstring></argsstring>
+        <name>active</name>
+        <qualifiedname>usbradioplus_native_graph_slot::active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current complete graph generation, or NULL before setup succeeds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="129" column="39" bodyfile="src/usbradioplus_channel_private.h" bodystart="129" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa5a275d2423e010c2123cf45f44c7778" compoundref="usbradioplus__channel__common_8c" startline="3012" endline="3032">native_graph_slot_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1af0e9c57f41bc8d7a39050cbec766cfdf" compoundref="usbradioplus__channel__common_8c" startline="3001" endline="3007">native_graph_slot_init</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa4944961dbdba9e4004eef95ed907722" compoundref="usbradioplus__channel__common_8c" startline="3094" endline="3113">native_graph_slot_publish</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1acbba5ce3e655ca48f62f2afd28d2c50d" compoundref="usbradioplus__channel__common_8c" startline="3116" endline="3133">usbradioplus_native_graphs_acquire</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__slot_1ab70a948583f2ecd1709b51c171f20ca8" prot="public" static="no" mutable="no">
+        <type>_Atomic unsigned int</type>
+        <definition>_Atomic unsigned int usbradioplus_native_graph_slot::readers</definition>
+        <argsstring></argsstring>
+        <name>readers</name>
+        <qualifiedname>usbradioplus_native_graph_slot::readers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of ticks or readers holding a generation reference. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="131" column="22" bodyfile="src/usbradioplus_channel_private.h" bodystart="131" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa5a275d2423e010c2123cf45f44c7778" compoundref="usbradioplus__channel__common_8c" startline="3012" endline="3032">native_graph_slot_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1af0e9c57f41bc8d7a39050cbec766cfdf" compoundref="usbradioplus__channel__common_8c" startline="3001" endline="3007">native_graph_slot_init</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a5dd4f391e5f5e592a00c6f821b191155" compoundref="usbradioplus__channel__common_8c" startline="3059" endline="3079">native_graph_slot_preflight</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa4944961dbdba9e4004eef95ed907722" compoundref="usbradioplus__channel__common_8c" startline="3094" endline="3113">native_graph_slot_publish</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1acbba5ce3e655ca48f62f2afd28d2c50d" compoundref="usbradioplus__channel__common_8c" startline="3116" endline="3133">usbradioplus_native_graphs_acquire</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7bd11e5ae302f31d8f08883d8e16c44e" compoundref="usbradioplus__channel__common_8c" startline="3135" endline="3140">usbradioplus_native_graphs_release</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__slot_1ad3be859f6384e2439504084b0194af6d" prot="public" static="no" mutable="no">
+        <type>atomic_flag</type>
+        <definition>atomic_flag usbradioplus_native_graph_slot::writer</definition>
+        <argsstring></argsstring>
+        <name>writer</name>
+        <qualifiedname>usbradioplus_native_graph_slot::writer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Serializes setup/reload/teardown, never taken by the audio callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="133" column="13" bodyfile="src/usbradioplus_channel_private.h" bodystart="133" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1af0e9c57f41bc8d7a39050cbec766cfdf" compoundref="usbradioplus__channel__common_8c" startline="3001" endline="3007">native_graph_slot_init</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1ade32697904e8a972626f046c2127fc1f" compoundref="usbradioplus__channel__common_8c" startline="2980" endline="2988">native_graph_slot_lock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7f66d547898668cd1d4cabac8d7e4682" compoundref="usbradioplus__channel__common_8c" startline="2993" endline="2996">native_graph_slot_unlock</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__slot_1abf8ef12065cbeeb4f02f6d452bdadc24" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__graph__set" kindref="compound">usbradioplus_native_graph_set</ref> *</type>
+        <definition>struct usbradioplus_native_graph_set* usbradioplus_native_graph_slot::owned</definition>
+        <argsstring></argsstring>
+        <name>owned</name>
+        <qualifiedname>usbradioplus_native_graph_slot::owned</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current generation and any retired generations pending safe reclaim. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="135" column="36" bodyfile="src/usbradioplus_channel_private.h" bodystart="135" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa5a275d2423e010c2123cf45f44c7778" compoundref="usbradioplus__channel__common_8c" startline="3012" endline="3032">native_graph_slot_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a5dd4f391e5f5e592a00c6f821b191155" compoundref="usbradioplus__channel__common_8c" startline="3059" endline="3079">native_graph_slot_preflight</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa4944961dbdba9e4004eef95ed907722" compoundref="usbradioplus__channel__common_8c" startline="3094" endline="3113">native_graph_slot_publish</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Atomically published native graph generation owned by a radio channel. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="2">
+        <label>usbradioplus_native_graph_set</label>
+        <link refid="structusbradioplus__native__graph__set"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>ctcss_notch</edgelabel>
+          <edgelabel>dcs</edgelabel>
+          <edgelabel>dcs_turnoff</edgelabel>
+          <edgelabel>local_dynamics</edgelabel>
+          <edgelabel>receive_deemphasis</edgelabel>
+          <edgelabel>receive_filter</edgelabel>
+        </childnode>
+        <childnode refid="2" relation="usage">
+          <edgelabel>next_retired</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>usbradioplus_native_graph_slot</label>
+        <link refid="structusbradioplus__native__graph__slot"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>active</edgelabel>
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_channel_private.h" line="127" column="1" bodyfile="src/usbradioplus_channel_private.h" bodystart="127" bodyend="136"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__native__graph__slot_1ad59185c525caf422e373ea3d09fe0db7" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_slot</scope><name>active</name></member>
+      <member refid="structusbradioplus__native__graph__slot_1abf8ef12065cbeeb4f02f6d452bdadc24" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_slot</scope><name>owned</name></member>
+      <member refid="structusbradioplus__native__graph__slot_1ab70a948583f2ecd1709b51c171f20ca8" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_slot</scope><name>readers</name></member>
+      <member refid="structusbradioplus__native__graph__slot_1ad3be859f6384e2439504084b0194af6d" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_slot</scope><name>writer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

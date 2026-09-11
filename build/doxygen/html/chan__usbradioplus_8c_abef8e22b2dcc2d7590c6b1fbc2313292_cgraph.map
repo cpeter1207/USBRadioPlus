@@ -1,0 +1,16 @@
+<map id="radio_dump" name="radio_dump">
+<area shape="rect" id="Node000001" title="Report active radio settings, hardware assignment, and detector state." alt="" coords="5,42,104,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="161,5,299,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="104,44,146,37,147,42,105,49"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="152,70,308,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="105,60,139,65,138,71,104,65"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a95124b3a47bea172607faa5d65e076b9" title="Copy a local chain from the immutable audio&#45;thread snapshot. This operation neither allocates nor loc..." alt="" coords="356,5,539,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="300,23,342,23,342,28,300,28"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="587,70,723,95"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="521,43,595,64,594,69,520,48"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="365,70,530,95"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="308,80,351,80,351,85,308,85"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa7e50df1c123aa5da2d2783f11a489a6" title="Copy hardware settings from the immutable audio&#45;thread snapshot. This operation neither allocates nor..." alt="" coords="356,120,539,160"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="280,93,359,114,357,119,278,98"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="520,117,594,97,595,102,521,123"/>
+</map>

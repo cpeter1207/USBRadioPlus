@@ -1,0 +1,324 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__ctcss__tone__detector" kind="struct" language="C++" prot="public">
+    <compoundname>urp_ctcss_tone_detector</compoundname>
+    <includes refid="usbradioplus__radio_8h" local="no">usbradioplus_radio.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a018ab516eb57a2153da755595e071368" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::counter</definition>
+        <argsstring></argsstring>
+        <name>counter</name>
+        <qualifiedname>urp_ctcss_tone_detector::counter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Countdown to the next correlator sample. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="328" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="328" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1adba2766250a3c7e3703a8d42859c128c" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::counterFactor</definition>
+        <argsstring></argsstring>
+        <name>counterFactor</name>
+        <qualifiedname>urp_ctcss_tone_detector::counterFactor</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tone-period divisor used to advance the sample counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="330" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="330" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1aa7f10f73030f8146a63c53c1fb5ef8d5" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::binFactor</definition>
+        <argsstring></argsstring>
+        <name>binFactor</name>
+        <qualifiedname>urp_ctcss_tone_detector::binFactor</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Quarter-cycle correlator bin spacing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="332" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="332" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a4c1a441fc738f1a2ec07a861778b9495" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::fudgeFactor</definition>
+        <argsstring></argsstring>
+        <name>fudgeFactor</name>
+        <qualifiedname>urp_ctcss_tone_detector::fudgeFactor</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tone qualification count adjustment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="334" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="334" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a088ad76dcf136c8c13171318c01f6d27" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::peak</definition>
+        <argsstring></argsstring>
+        <name>peak</name>
+        <qualifiedname>urp_ctcss_tone_detector::peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest observed absolute sample magnitude. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="336" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="336" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a8c238a322f10f704878eb9e4bcdd3fd5" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>urp_ctcss_tone_detector::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables this channel, stage, or detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="338" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="338" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a02530090b0ffb062b35ecd683d3f7020" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::state</definition>
+        <argsstring></argsstring>
+        <name>state</name>
+        <qualifiedname>urp_ctcss_tone_detector::state</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current stage or stream state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="340" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="340" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a515bf8c3b547c0fb24e3821323193478" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::zIndex</definition>
+        <argsstring></argsstring>
+        <name>zIndex</name>
+        <qualifiedname>urp_ctcss_tone_detector::zIndex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current quadrature correlator bin. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="342" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="342" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a4386e16eae7a915e74ab71d186e26c35" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::z[4]</definition>
+        <argsstring>[4]</argsstring>
+        <name>z</name>
+        <qualifiedname>urp_ctcss_tone_detector::z</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Correlator history bins. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="344" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="344" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1ac2fd843e781828a1230d3440ce05655a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::zi</definition>
+        <argsstring></argsstring>
+        <name>zi</name>
+        <qualifiedname>urp_ctcss_tone_detector::zi</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Integrated quadrature-bin state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="346" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="346" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1ad5e8bfc8c0da616a24f12776c4e8e974" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::dvu</definition>
+        <argsstring></argsstring>
+        <name>dvu</name>
+        <qualifiedname>urp_ctcss_tone_detector::dvu</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Positive tone-envelope slope. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="348" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="348" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1ae0a5a7a92b5461573f565317619f905e" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::dvd</definition>
+        <argsstring></argsstring>
+        <name>dvd</name>
+        <qualifiedname>urp_ctcss_tone_detector::dvd</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Negative tone-envelope slope. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="350" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="350" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a3e7d96379e6630922e572c9970e05bc6" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::zd</definition>
+        <argsstring></argsstring>
+        <name>zd</name>
+        <qualifiedname>urp_ctcss_tone_detector::zd</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous correlator difference. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="352" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="352" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a3b5e45bf11658e6611b8a7bbc53b117a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::setpt</definition>
+        <argsstring></argsstring>
+        <name>setpt</name>
+        <qualifiedname>urp_ctcss_tone_detector::setpt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector decision threshold. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="354" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="354" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1afd1e99d8da97ab9060ef092c3222fffe" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::hyst</definition>
+        <argsstring></argsstring>
+        <name>hyst</name>
+        <qualifiedname>urp_ctcss_tone_detector::hyst</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector release hysteresis. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="356" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="356" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a255a281925f17a983b284b711f1447c3" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::decode</definition>
+        <argsstring></argsstring>
+        <name>decode</name>
+        <qualifiedname>urp_ctcss_tone_detector::decode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current decoded-tone or detector decision. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="358" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="358" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a3f64af5823b6453abff821144881ad94" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::diffpeak</definition>
+        <argsstring></argsstring>
+        <name>diffpeak</name>
+        <qualifiedname>urp_ctcss_tone_detector::diffpeak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Peak difference used to detect reverse burst. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="360" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="360" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__tone__detector_1a960eb1d6207e4b366d415f2b6bbabb3f" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_tone_detector::debug</definition>
+        <argsstring></argsstring>
+        <name>debug</name>
+        <qualifiedname>urp_ctcss_tone_detector::debug</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Per-detector debug enable state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="362" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="362" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Correlator, qualification, and reverse-burst state for one receive CTCSS tone. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_radio.h" line="326" column="1" bodyfile="src/usbradioplus_radio.h" bodystart="326" bodyend="384"/>
+    <listofallmembers>
+      <member refid="structurp__ctcss__tone__detector_1aa7f10f73030f8146a63c53c1fb5ef8d5" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>binFactor</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a018ab516eb57a2153da755595e071368" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>counter</name></member>
+      <member refid="structurp__ctcss__tone__detector_1adba2766250a3c7e3703a8d42859c128c" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>counterFactor</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a960eb1d6207e4b366d415f2b6bbabb3f" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>debug</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a255a281925f17a983b284b711f1447c3" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>decode</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a3f64af5823b6453abff821144881ad94" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>diffpeak</name></member>
+      <member refid="structurp__ctcss__tone__detector_1ae0a5a7a92b5461573f565317619f905e" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>dvd</name></member>
+      <member refid="structurp__ctcss__tone__detector_1ad5e8bfc8c0da616a24f12776c4e8e974" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>dvu</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a8c238a322f10f704878eb9e4bcdd3fd5" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>enabled</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a4c1a441fc738f1a2ec07a861778b9495" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>fudgeFactor</name></member>
+      <member refid="structurp__ctcss__tone__detector_1afd1e99d8da97ab9060ef092c3222fffe" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>hyst</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a088ad76dcf136c8c13171318c01f6d27" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>peak</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a3b5e45bf11658e6611b8a7bbc53b117a" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>setpt</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a02530090b0ffb062b35ecd683d3f7020" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>state</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a4386e16eae7a915e74ab71d186e26c35" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>z</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a3e7d96379e6630922e572c9970e05bc6" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>zd</name></member>
+      <member refid="structurp__ctcss__tone__detector_1ac2fd843e781828a1230d3440ce05655a" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>zi</name></member>
+      <member refid="structurp__ctcss__tone__detector_1a515bf8c3b547c0fb24e3821323193478" prot="public" virt="non-virtual"><scope>urp_ctcss_tone_detector</scope><name>zIndex</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

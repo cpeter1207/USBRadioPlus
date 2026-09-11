@@ -1,0 +1,7 @@
+<map id="read_stage_order" name="read_stage_order">
+<area shape="rect" id="Node000001" title="Parse a chain&#39;s optional processing order." alt="" coords="5,5,140,31"/>
+<area shape="rect" id="Node000002" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="188,5,373,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,15,174,15,174,21,140,21"/>
+<area shape="rect" id="Node000003" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="421,5,513,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="373,15,408,15,408,21,373,21"/>
+</map>

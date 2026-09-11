@@ -1,0 +1,1641 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__radio__stage" kind="struct" language="C++" prot="public">
+    <compoundname>urp_radio_stage</compoundname>
+    <includes refid="usbradioplus__radio_8h" local="no">usbradioplus_radio.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__radio__stage_1a51b486d0f547f24cbf7653a60bf13b2f" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::index</definition>
+        <argsstring></argsstring>
+        <name>index</name>
+        <qualifiedname>urp_radio_stage::index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Index assigned to this radio or detector stage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="458" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="458" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a43893ad572fedf89d66b2400ed6f0fd9" compoundref="usbradioplus__radio_8c" startline="1871" endline="1888">urp_radio_stage_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1af185f61aec66368a31061398138ca3ea" compoundref="usbradioplus__radio_8c" startline="1892" endline="1902">urp_radio_stage_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad06d4d3c18c51b12faf1feac9d815e36" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>urp_radio_stage::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables this channel, stage, or detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="461" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="461" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1af4fe5ecc2efaa4e2ca5f547dc06c5945" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structurp__radio__state" kindref="compound">urp_radio_state</ref> *</type>
+        <definition>struct urp_radio_state* urp_radio_stage::parentChan</definition>
+        <argsstring></argsstring>
+        <name>parentChan</name>
+        <qualifiedname>urp_radio_stage::parentChan</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Radio channel that owns this detector stage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="464" column="22" bodyfile="src/usbradioplus_radio.h" bodystart="464" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a43893ad572fedf89d66b2400ed6f0fd9" compoundref="usbradioplus__radio_8c" startline="1871" endline="1888">urp_radio_stage_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad429beef6a00ec5db2b0a20a7e114275" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::source</definition>
+        <argsstring></argsstring>
+        <name>source</name>
+        <qualifiedname>urp_radio_stage::source</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input buffer or source endpoint for this state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="466" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="466" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a4917172a40e19b7ca8b30857c661bc6a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::sourceB</definition>
+        <argsstring></argsstring>
+        <name>sourceB</name>
+        <qualifiedname>urp_radio_stage::sourceB</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Secondary detector input. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="468" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="468" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a41b58afed0f90e3c745781e989c3c8d1" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::sink</definition>
+        <argsstring></argsstring>
+        <name>sink</name>
+        <qualifiedname>urp_radio_stage::sink</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output buffer or sink endpoint for this state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="470" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="470" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a74bba14d2734e68a93eca755b6db4594" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::numChanOut</definition>
+        <argsstring></argsstring>
+        <name>numChanOut</name>
+        <qualifiedname>urp_radio_stage::numChanOut</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of output channels. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="473" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="473" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1adaa2699b1a551d35da8cd8d8872e8d13" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::selChanOut</definition>
+        <argsstring></argsstring>
+        <name>selChanOut</name>
+        <qualifiedname>urp_radio_stage::selChanOut</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected output channel index. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="475" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="475" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2dc56480ccab6aa49f8856572d5fffee" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::ticks</definition>
+        <argsstring></argsstring>
+        <name>ticks</name>
+        <qualifiedname>urp_radio_stage::ticks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Processing tick counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="478" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="478" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a971986a9e7463c2ee6ec03a4e41a1065" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::timer</definition>
+        <argsstring></argsstring>
+        <name>timer</name>
+        <qualifiedname>urp_radio_stage::timer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stage timing counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="480" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="480" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ae04ee54a4d06a22e517bb3649d0bfef2" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <qualifiedname>urp_radio_stage::count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of occupied elements. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="482" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="482" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2ada5c32cee2f1790a6b6fdd4aff9505" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::buff</definition>
+        <argsstring></argsstring>
+        <name>buff</name>
+        <qualifiedname>urp_radio_stage::buff</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned stage sample workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="485" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="485" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a1e72d001d31a866caaa985f3415206dc" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::debugBuff0</definition>
+        <argsstring></argsstring>
+        <name>debugBuff0</name>
+        <qualifiedname>urp_radio_stage::debugBuff0</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>debug buffer </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="488" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="488" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a085521b6d914f978f24ef2872e8422bf" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::debugBuff1</definition>
+        <argsstring></argsstring>
+        <name>debugBuff1</name>
+        <qualifiedname>urp_radio_stage::debugBuff1</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>debug buffer </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="490" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="490" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a53e87a2158e3f9e8131b0e2f0a138586" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::debugBuff2</definition>
+        <argsstring></argsstring>
+        <name>debugBuff2</name>
+        <qualifiedname>urp_radio_stage::debugBuff2</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>debug buffer </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="492" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="492" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ac8837b23bd1520eb59fcf47a9799d748" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_radio_stage::debugBuff3</definition>
+        <argsstring></argsstring>
+        <name>debugBuff3</name>
+        <qualifiedname>urp_radio_stage::debugBuff3</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>debug buffer </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="494" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="494" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a47e51e41b68dba2062910f6865510fee" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::nSamples</definition>
+        <argsstring></argsstring>
+        <name>nSamples</name>
+        <qualifiedname>urp_radio_stage::nSamples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples processed per block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="497" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="497" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1abdbb60a3f86ccb20a2c838faac3b1c12" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::buffSize</definition>
+        <argsstring></argsstring>
+        <name>buffSize</name>
+        <qualifiedname>urp_radio_stage::buffSize</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated sample-buffer capacity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="500" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="500" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a7c4f4d8fbf2922d4a0bd7f317a064f20" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::buffInIndex</definition>
+        <argsstring></argsstring>
+        <name>buffInIndex</name>
+        <qualifiedname>urp_radio_stage::buffInIndex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next input position in the stage buffer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="502" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="502" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ab4c0c0d56302c6d64f40f840fe3935d1" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::buffOutIndex</definition>
+        <argsstring></argsstring>
+        <name>buffOutIndex</name>
+        <qualifiedname>urp_radio_stage::buffOutIndex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next output position in the stage buffer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="504" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="504" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2b79298df2865cfef4211d6d3706e196" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::buffLead</definition>
+        <argsstring></argsstring>
+        <name>buffLead</name>
+        <qualifiedname>urp_radio_stage::buffLead</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input/output sample lead within the stage buffer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="506" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="506" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a1e6b53e7ae28b7a5c9f387fef0cf0e7f" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::decimate</definition>
+        <argsstring></argsstring>
+        <name>decimate</name>
+        <qualifiedname>urp_radio_stage::decimate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input-to-output decimation factor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="509" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="509" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a09c4f8d0d2a64a26c509f44e06a98e57" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::interpolate</definition>
+        <argsstring></argsstring>
+        <name>interpolate</name>
+        <qualifiedname>urp_radio_stage::interpolate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output interpolation factor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="511" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="511" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a5dca1c4670dd40c3b617d95024eafe30" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::decimator</definition>
+        <argsstring></argsstring>
+        <name>decimator</name>
+        <qualifiedname>urp_radio_stage::decimator</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current decimation phase. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="513" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="513" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1adf490653d000e00d0b12addaafd7c591" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::sampleRate</definition>
+        <argsstring></argsstring>
+        <name>sampleRate</name>
+        <qualifiedname>urp_radio_stage::sampleRate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stage sample rate in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="516" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="516" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a9820f4c4a16644f85021e3804e2b8470" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_radio_stage::freq</definition>
+        <argsstring></argsstring>
+        <name>freq</name>
+        <qualifiedname>urp_radio_stage::freq</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector operating frequency. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="518" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="518" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a4192a308dd14384e96d83197d0e56e9c" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::measPeak</definition>
+        <argsstring></argsstring>
+        <name>measPeak</name>
+        <qualifiedname>urp_radio_stage::measPeak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent peak-to-peak calibration measurement. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="521" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="521" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad08e5563da444d6435db922ea4a78898" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::amax</definition>
+        <argsstring></argsstring>
+        <name>amax</name>
+        <qualifiedname>urp_radio_stage::amax</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tracked positive sample extremum. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="523" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="523" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a54244f7ccc2e5a4e482b9c2e074325c0" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::amin</definition>
+        <argsstring></argsstring>
+        <name>amin</name>
+        <qualifiedname>urp_radio_stage::amin</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tracked negative sample extremum. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="525" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="525" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a40b1bb008d11f858ad73346272386fb7" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::apeak</definition>
+        <argsstring></argsstring>
+        <name>apeak</name>
+        <qualifiedname>urp_radio_stage::apeak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tracked absolute amplitude. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="527" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="527" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ab0f69eb35acbd981ace3645afc2e78ef" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::setpt</definition>
+        <argsstring></argsstring>
+        <name>setpt</name>
+        <qualifiedname>urp_radio_stage::setpt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector decision threshold. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="529" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="529" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a78208a053996066b07dc42df4f9182e3" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::hyst</definition>
+        <argsstring></argsstring>
+        <name>hyst</name>
+        <qualifiedname>urp_radio_stage::hyst</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector release hysteresis. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="531" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="531" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a6b0755dda63f906e78d3681301882054" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::compOut</definition>
+        <argsstring></argsstring>
+        <name>compOut</name>
+        <qualifiedname>urp_radio_stage::compOut</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector comparator output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="533" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="533" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a7c706592f91cfdbbac4408eb267229f1" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::blanking</definition>
+        <argsstring></argsstring>
+        <name>blanking</name>
+        <qualifiedname>urp_radio_stage::blanking</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while detector input is blanked. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="535" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="535" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a48b98a48cf0ca4c065cb871bccc79dc8" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structurp__micor__squelch" kindref="compound">urp_micor_squelch</ref></type>
+        <definition>struct urp_micor_squelch urp_radio_stage::micor_squelch</definition>
+        <argsstring></argsstring>
+        <name>micor_squelch</name>
+        <qualifiedname>urp_radio_stage::micor_squelch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Noise-dependent carrier qualification state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="537" column="24" bodyfile="src/usbradioplus_radio.h" bodystart="537" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad0f4f0cd52d3c0ddef6a613d7b57f9fc" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::discounteru</definition>
+        <argsstring></argsstring>
+        <name>discounteru</name>
+        <qualifiedname>urp_radio_stage::discounteru</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Upper-envelope decay counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="540" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="540" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a1888d600e72c6ca183521d9804ad1725" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::discounterl</definition>
+        <argsstring></argsstring>
+        <name>discounterl</name>
+        <qualifiedname>urp_radio_stage::discounterl</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Lower-envelope decay counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="542" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="542" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad233f8f69d788b316c82e8124ce73ef1" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::discfactor</definition>
+        <argsstring></argsstring>
+        <name>discfactor</name>
+        <qualifiedname>urp_radio_stage::discfactor</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Envelope decay factor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="544" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="544" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa6289edf60a7964469be8a051346e1b3" compoundref="usbradioplus__channel__common_8c" startline="1487" endline="1566">tune_rxctcss</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7adde97e4605867b8019073583e2085e" compoundref="usbradioplus__channel__common_8c" startline="1154" endline="1210">tune_rxdisplay</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a914c82a48687fc3143a9211cd91d9e81" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::err</definition>
+        <argsstring></argsstring>
+        <name>err</name>
+        <qualifiedname>urp_radio_stage::err</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Accumulated detector error. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="547" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="547" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2f162692147e620d52cb7aca93612611" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::option</definition>
+        <argsstring></argsstring>
+        <name>option</name>
+        <qualifiedname>urp_radio_stage::option</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Requested stage operation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="549" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="549" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a014b966d6cc60a37d379907c935227a5" compoundref="usbradioplus__radio_8c" startline="939" endline="1018">MeasureBlock</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1aab1dba7efdc4f8ec21713ee4d0577c18" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::state</definition>
+        <argsstring></argsstring>
+        <name>state</name>
+        <qualifiedname>urp_radio_stage::state</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current stage or stream state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="551" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="551" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a98e6518fe1716715d00c09a8c52f98d0" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::pending</definition>
+        <argsstring></argsstring>
+        <name>pending</name>
+        <qualifiedname>urp_radio_stage::pending</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Pending detector transition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="554" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="554" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a3a0cf3fec57ed7a072eb0dc42d945c87" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::hit</definition>
+        <argsstring></argsstring>
+        <name>hit</name>
+        <qualifiedname>urp_radio_stage::hit</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current detector match indicator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="558" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="558" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a9d38634f05e3af87f1844825fcd1eade" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::hitlast</definition>
+        <argsstring></argsstring>
+        <name>hitlast</name>
+        <qualifiedname>urp_radio_stage::hitlast</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous detector match indicator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="560" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="560" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a0d9cc267efbadc482be98d52f5466b9f" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::hita</definition>
+        <argsstring></argsstring>
+        <name>hita</name>
+        <qualifiedname>urp_radio_stage::hita</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>First detector match accumulator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="562" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="562" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a7351e8e1bbc8be079b1ae4858dcbdfc7" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::hitb</definition>
+        <argsstring></argsstring>
+        <name>hitb</name>
+        <qualifiedname>urp_radio_stage::hitb</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Second detector match accumulator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="564" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="564" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a261c125cb63e94731ccbe672ee9559c4" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::bithit</definition>
+        <argsstring></argsstring>
+        <name>bithit</name>
+        <qualifiedname>urp_radio_stage::bithit</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Matched signaling-bit indicator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="566" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="566" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2b165bd14e82b18a569ac59026ff6cfe" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::now</definition>
+        <argsstring></argsstring>
+        <name>now</name>
+        <qualifiedname>urp_radio_stage::now</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current stage timing/sample position. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="568" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="568" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1aa6287035641df2916ff8da3761649199" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::next</definition>
+        <argsstring></argsstring>
+        <name>next</name>
+        <qualifiedname>urp_radio_stage::next</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next configured radio in the channel list. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="570" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="570" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1aa4a265721dfab9add601e8b3be1dfce4" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::prev</definition>
+        <argsstring></argsstring>
+        <name>prev</name>
+        <qualifiedname>urp_radio_stage::prev</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous stage timing/sample position. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="572" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="572" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ada645850db6988d5ec5a451c7ce47147" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::clock</definition>
+        <argsstring></argsstring>
+        <name>clock</name>
+        <qualifiedname>urp_radio_stage::clock</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector clock recovery state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="574" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="574" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1afa71e82b9fa0ecda24c134468d3b8740" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::hold</definition>
+        <argsstring></argsstring>
+        <name>hold</name>
+        <qualifiedname>urp_radio_stage::hold</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector hold counter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="576" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="576" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a1fd717951fe7bb04e66fd13e6e8f6ccf" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::opt1</definition>
+        <argsstring></argsstring>
+        <name>opt1</name>
+        <qualifiedname>urp_radio_stage::opt1</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>First stage-specific option. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="578" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="578" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1af3be53cc73c80bdb54fb18a5e5f9c7e6" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::opt2</definition>
+        <argsstring></argsstring>
+        <name>opt2</name>
+        <qualifiedname>urp_radio_stage::opt2</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Second stage-specific option. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="580" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="580" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a62ad850a2f92957d6a95807384a909cd" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::polarity</definition>
+        <argsstring></argsstring>
+        <name>polarity</name>
+        <qualifiedname>urp_radio_stage::polarity</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Signal polarity inversion selector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="582" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="582" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a8fb26381ab5fe61fab76263dcecf6867" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::dotting</definition>
+        <argsstring></argsstring>
+        <name>dotting</name>
+        <qualifiedname>urp_radio_stage::dotting</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Alternating-bit signaling acquisition state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="584" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="584" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1adc340f4842f415c852a91924fdb52996" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::lastbitpending</definition>
+        <argsstring></argsstring>
+        <name>lastbitpending</name>
+        <qualifiedname>urp_radio_stage::lastbitpending</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when a final signaling bit is pending. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="586" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="586" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a410ca014533de930c3cbf597956ecc70" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::outzero</definition>
+        <argsstring></argsstring>
+        <name>outzero</name>
+        <qualifiedname>urp_radio_stage::outzero</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero requests a zeroed stage output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="588" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="588" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2b757517ccd144382e3c2f20ec062a9b" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::settling</definition>
+        <argsstring></argsstring>
+        <name>settling</name>
+        <qualifiedname>urp_radio_stage::settling</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the detector or transmitter settles. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="590" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="590" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a5889115331323489469c660846b8949d" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::syncing</definition>
+        <argsstring></argsstring>
+        <name>syncing</name>
+        <qualifiedname>urp_radio_stage::syncing</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while signaling synchronization is in progress. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="592" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="592" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a04db41f0af9a54d4237b116fac4f6d28" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::dirty</definition>
+        <argsstring></argsstring>
+        <name>dirty</name>
+        <qualifiedname>urp_radio_stage::dirty</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when stage state needs refreshing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="594" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="594" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1acb4870e6db8f82b16baf7a16f0faedf1" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_radio_stage::mute</definition>
+        <argsstring></argsstring>
+        <name>mute</name>
+        <qualifiedname>urp_radio_stage::mute</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero requests silent stage output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="596" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="596" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a1f9f83ac23c08b1e0ec524ee35b58b9e" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structurp__radio__stage" kindref="compound">urp_radio_stage</ref></type>
+        <definition>struct urp_radio_stage urp_radio_stage::b</definition>
+        <argsstring></argsstring>
+        <name>b</name>
+        <qualifiedname>urp_radio_stage::b</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Packed radio-signaling status and enable flags. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="598" column="9"/>
+        <referencedby refid="usbradioplus__radio_8c_1ae4fafcab9895e5438e534c2acc5c9597" compoundref="usbradioplus__radio_8c" startline="1023" endline="1062">DelayLine</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a2a73ba8bd704d15c1275b26c9399fee5" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::cleared</definition>
+        <argsstring></argsstring>
+        <name>cleared</name>
+        <qualifiedname>urp_radio_stage::cleared</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero after stage history has been cleared. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="601" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="601" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a181de7fc72836c8a9279f15b56782e52" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::delay</definition>
+        <argsstring></argsstring>
+        <name>delay</name>
+        <qualifiedname>urp_radio_stage::delay</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured stage delay. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="604" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="604" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a9336395cde773f70529da16f779d93ba" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::decode</definition>
+        <argsstring></argsstring>
+        <name>decode</name>
+        <qualifiedname>urp_radio_stage::decode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current decoded-tone or detector decision. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="606" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="606" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a237a4af36c79c4ba285d616a8c41fe30" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::inputGain</definition>
+        <argsstring></argsstring>
+        <name>inputGain</name>
+        <qualifiedname>urp_radio_stage::inputGain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Primary input gain in the stage&apos;s fixed-point scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="609" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="609" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a097e0327cafa5d175f26b7da8b6966b2" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::inputGainB</definition>
+        <argsstring></argsstring>
+        <name>inputGainB</name>
+        <qualifiedname>urp_radio_stage::inputGainB</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Secondary input gain in the stage&apos;s fixed-point scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="611" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="611" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a1d1e1e45b2613d34987d2f60a77171a0" compoundref="usbradioplus__radio_8c" startline="835" endline="933">CenterSlicer</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a0332670fbaf9c02c0015ba82bc9755c2" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::outputGain</definition>
+        <argsstring></argsstring>
+        <name>outputGain</name>
+        <qualifiedname>urp_radio_stage::outputGain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stage output gain in its fixed-point scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="613" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="613" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a3da06e68a526768b63883292b39a59ba" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::mixOut</definition>
+        <argsstring></argsstring>
+        <name>mixOut</name>
+        <qualifiedname>urp_radio_stage::mixOut</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero requests mixing into the existing output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="615" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="615" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a4b4792bc06f0780b9f25bf798de1433b" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::monoOut</definition>
+        <argsstring></argsstring>
+        <name>monoOut</name>
+        <qualifiedname>urp_radio_stage::monoOut</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero selects mono stage output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="617" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="617" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ab5485466c3fc0c148c01ec9c77bc009e" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::filterType</definition>
+        <argsstring></argsstring>
+        <name>filterType</name>
+        <qualifiedname>urp_radio_stage::filterType</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector-filter selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="620" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="620" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a511f63323014c82f51b357c0b959b350" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref>(*</type>
+        <definition>i16(* urp_radio_stage::sigProc) (struct urp_radio_stage *sps)</definition>
+        <argsstring>)(struct urp_radio_stage *sps)</argsstring>
+        <name>sigProc</name>
+        <qualifiedname>urp_radio_stage::sigProc</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stage processing callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="623" column="1" bodyfile="src/usbradioplus_radio.h" bodystart="623" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a49b5847135f8067d16ee7c302a0872ac" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_radio_stage::calcAdjust</definition>
+        <argsstring></argsstring>
+        <name>calcAdjust</name>
+        <qualifiedname>urp_radio_stage::calcAdjust</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Filter accumulation normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="626" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="626" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1aa10a354c494effd4ed442e52d290e494" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::nx</definition>
+        <argsstring></argsstring>
+        <name>nx</name>
+        <qualifiedname>urp_radio_stage::nx</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current filter-history position. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="628" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="628" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a0fe3a565f4fc183ffd9cc2b45490e354" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::ncoef</definition>
+        <argsstring></argsstring>
+        <name>ncoef</name>
+        <qualifiedname>urp_radio_stage::ncoef</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of active filter coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="630" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="630" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a93d0a24521962937540a76c457ba48c7" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::size_x</definition>
+        <argsstring></argsstring>
+        <name>size_x</name>
+        <qualifiedname>urp_radio_stage::size_x</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated filter-history length. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="632" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="632" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a7533bfb7ba6e5ca05a5e58db4651ebed" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_radio_stage::size_coef</definition>
+        <argsstring></argsstring>
+        <name>size_coef</name>
+        <qualifiedname>urp_radio_stage::size_coef</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated coefficient-table length. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="634" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="634" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a56560879ba893f1acc6df47bc017b4b6" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::x</definition>
+        <argsstring></argsstring>
+        <name>x</name>
+        <qualifiedname>urp_radio_stage::x</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Filter input history. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="636" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="636" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1af185f61aec66368a31061398138ca3ea" compoundref="usbradioplus__radio_8c" startline="1892" endline="1902">urp_radio_stage_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1ad1f5b1167a8c1742784c5c669c791b15" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::x2</definition>
+        <argsstring></argsstring>
+        <name>x2</name>
+        <qualifiedname>urp_radio_stage::x2</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Secondary filter input history. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="638" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="638" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a60aadce2a0bc2852189bdbf432b70d62" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::coef</definition>
+        <argsstring></argsstring>
+        <name>coef</name>
+        <qualifiedname>urp_radio_stage::coef</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed-point FIR coefficient table. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="640" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="640" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a5f0a13b21d31f1737cf57ae373c9a084" compoundref="usbradioplus__radio_8c" startline="788" endline="830">gp_inte_00</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a0f2fa98b98144b26ef163508544a289e" compoundref="usbradioplus__radio_8c" startline="632" endline="783">urp_radio_fir</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a765247f5f6929084cb8d433958679e2f" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::y</definition>
+        <argsstring></argsstring>
+        <name>y</name>
+        <qualifiedname>urp_radio_stage::y</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Recursive-filter output history. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="643" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="643" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a055d4578ba68358f8f487869d6c48d6e" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::coefa</definition>
+        <argsstring></argsstring>
+        <name>coefa</name>
+        <qualifiedname>urp_radio_stage::coefa</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Recursive-filter feedback coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="645" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="645" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a59fe6e2f19865324c7c73418dbb9b056" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::coefb</definition>
+        <argsstring></argsstring>
+        <name>coefb</name>
+        <qualifiedname>urp_radio_stage::coefb</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Recursive-filter feed-forward coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="647" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="647" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__radio__stage_1a33eadf1ae88bda6cf6cb6ce8347c3835" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_radio_stage::nextSps</definition>
+        <argsstring></argsstring>
+        <name>nextSps</name>
+        <qualifiedname>urp_radio_stage::nextSps</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next stage in the owned detector list. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="650" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="650" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a76ece62c69e00b2c0d8b92af65fc0471" compoundref="usbradioplus__radio_8c" startline="1269" endline="1277">urp_radio_stage_append</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One radio-detection or measurement stage and its owned filter workspace. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="7">
+        <label>t_sdbg</label>
+        <link refid="structt__sdbg"/>
+      </node>
+      <node id="3">
+        <label>urp_ctcss_decoder</label>
+        <link refid="structurp__ctcss__decoder"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>tdet</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>urp_ctcss_tone_detector</label>
+        <link refid="structurp__ctcss__tone__detector"/>
+      </node>
+      <node id="6">
+        <label>urp_dcs_receive_phase</label>
+        <link refid="structurp__dcs__receive__phase"/>
+      </node>
+      <node id="5">
+        <label>urp_dcs_state</label>
+        <link refid="structurp__dcs__state"/>
+        <childnode refid="6" relation="usage">
+          <edgelabel>receive_phase</edgelabel>
+        </childnode>
+      </node>
+      <node id="8">
+        <label>urp_micor_squelch</label>
+        <link refid="structurp__micor__squelch"/>
+      </node>
+      <node id="1">
+        <label>urp_radio_stage</label>
+        <link refid="structurp__radio__stage"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>parentChan</edgelabel>
+        </childnode>
+        <childnode refid="8" relation="usage">
+          <edgelabel>micor_squelch</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>urp_radio_state</label>
+        <link refid="structurp__radio__state"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>rxCtcss</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>dcs</edgelabel>
+        </childnode>
+        <childnode refid="1" relation="usage">
+          <edgelabel>spsDelayLine</edgelabel>
+          <edgelabel>spsMeasure</edgelabel>
+          <edgelabel>spsRx</edgelabel>
+          <edgelabel>spsRxDeEmp</edgelabel>
+          <edgelabel>spsRxHpf</edgelabel>
+          <edgelabel>spsRxLsd</edgelabel>
+          <edgelabel>spsRxLsdNrz</edgelabel>
+          <edgelabel>spsRxOut</edgelabel>
+          <edgelabel>spsRxSquelchDelay</edgelabel>
+          <edgelabel>spsRxVox</edgelabel>
+          <edgelabel>...</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>sdbg</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_radio.h" line="456" column="1" bodyfile="src/usbradioplus_radio.h" bodystart="456" bodyend="653"/>
+    <listofallmembers>
+      <member refid="structurp__radio__stage_1ad08e5563da444d6435db922ea4a78898" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>amax</name></member>
+      <member refid="structurp__radio__stage_1a54244f7ccc2e5a4e482b9c2e074325c0" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>amin</name></member>
+      <member refid="structurp__radio__stage_1a40b1bb008d11f858ad73346272386fb7" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>apeak</name></member>
+      <member refid="structurp__radio__stage_1a1f9f83ac23c08b1e0ec524ee35b58b9e" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>b</name></member>
+      <member refid="structurp__radio__stage_1a261c125cb63e94731ccbe672ee9559c4" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>bithit</name></member>
+      <member refid="structurp__radio__stage_1a7c706592f91cfdbbac4408eb267229f1" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>blanking</name></member>
+      <member refid="structurp__radio__stage_1a2ada5c32cee2f1790a6b6fdd4aff9505" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>buff</name></member>
+      <member refid="structurp__radio__stage_1a7c4f4d8fbf2922d4a0bd7f317a064f20" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>buffInIndex</name></member>
+      <member refid="structurp__radio__stage_1a2b79298df2865cfef4211d6d3706e196" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>buffLead</name></member>
+      <member refid="structurp__radio__stage_1ab4c0c0d56302c6d64f40f840fe3935d1" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>buffOutIndex</name></member>
+      <member refid="structurp__radio__stage_1abdbb60a3f86ccb20a2c838faac3b1c12" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>buffSize</name></member>
+      <member refid="structurp__radio__stage_1a49b5847135f8067d16ee7c302a0872ac" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>calcAdjust</name></member>
+      <member refid="structurp__radio__stage_1a2a73ba8bd704d15c1275b26c9399fee5" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>cleared</name></member>
+      <member refid="structurp__radio__stage_1ada645850db6988d5ec5a451c7ce47147" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>clock</name></member>
+      <member refid="structurp__radio__stage_1a60aadce2a0bc2852189bdbf432b70d62" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>coef</name></member>
+      <member refid="structurp__radio__stage_1a055d4578ba68358f8f487869d6c48d6e" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>coefa</name></member>
+      <member refid="structurp__radio__stage_1a59fe6e2f19865324c7c73418dbb9b056" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>coefb</name></member>
+      <member refid="structurp__radio__stage_1a6b0755dda63f906e78d3681301882054" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>compOut</name></member>
+      <member refid="structurp__radio__stage_1ae04ee54a4d06a22e517bb3649d0bfef2" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>count</name></member>
+      <member refid="structurp__radio__stage_1a1e72d001d31a866caaa985f3415206dc" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>debugBuff0</name></member>
+      <member refid="structurp__radio__stage_1a085521b6d914f978f24ef2872e8422bf" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>debugBuff1</name></member>
+      <member refid="structurp__radio__stage_1a53e87a2158e3f9e8131b0e2f0a138586" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>debugBuff2</name></member>
+      <member refid="structurp__radio__stage_1ac8837b23bd1520eb59fcf47a9799d748" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>debugBuff3</name></member>
+      <member refid="structurp__radio__stage_1a1e6b53e7ae28b7a5c9f387fef0cf0e7f" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>decimate</name></member>
+      <member refid="structurp__radio__stage_1a5dca1c4670dd40c3b617d95024eafe30" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>decimator</name></member>
+      <member refid="structurp__radio__stage_1a9336395cde773f70529da16f779d93ba" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>decode</name></member>
+      <member refid="structurp__radio__stage_1a181de7fc72836c8a9279f15b56782e52" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>delay</name></member>
+      <member refid="structurp__radio__stage_1a04db41f0af9a54d4237b116fac4f6d28" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>dirty</name></member>
+      <member refid="structurp__radio__stage_1ad233f8f69d788b316c82e8124ce73ef1" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>discfactor</name></member>
+      <member refid="structurp__radio__stage_1a1888d600e72c6ca183521d9804ad1725" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>discounterl</name></member>
+      <member refid="structurp__radio__stage_1ad0f4f0cd52d3c0ddef6a613d7b57f9fc" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>discounteru</name></member>
+      <member refid="structurp__radio__stage_1a8fb26381ab5fe61fab76263dcecf6867" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>dotting</name></member>
+      <member refid="structurp__radio__stage_1ad06d4d3c18c51b12faf1feac9d815e36" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>enabled</name></member>
+      <member refid="structurp__radio__stage_1a914c82a48687fc3143a9211cd91d9e81" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>err</name></member>
+      <member refid="structurp__radio__stage_1ab5485466c3fc0c148c01ec9c77bc009e" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>filterType</name></member>
+      <member refid="structurp__radio__stage_1a9820f4c4a16644f85021e3804e2b8470" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>freq</name></member>
+      <member refid="structurp__radio__stage_1a3a0cf3fec57ed7a072eb0dc42d945c87" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hit</name></member>
+      <member refid="structurp__radio__stage_1a0d9cc267efbadc482be98d52f5466b9f" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hita</name></member>
+      <member refid="structurp__radio__stage_1a7351e8e1bbc8be079b1ae4858dcbdfc7" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hitb</name></member>
+      <member refid="structurp__radio__stage_1a9d38634f05e3af87f1844825fcd1eade" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hitlast</name></member>
+      <member refid="structurp__radio__stage_1afa71e82b9fa0ecda24c134468d3b8740" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hold</name></member>
+      <member refid="structurp__radio__stage_1a78208a053996066b07dc42df4f9182e3" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>hyst</name></member>
+      <member refid="structurp__radio__stage_1a51b486d0f547f24cbf7653a60bf13b2f" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>index</name></member>
+      <member refid="structurp__radio__stage_1a237a4af36c79c4ba285d616a8c41fe30" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>inputGain</name></member>
+      <member refid="structurp__radio__stage_1a097e0327cafa5d175f26b7da8b6966b2" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>inputGainB</name></member>
+      <member refid="structurp__radio__stage_1a09c4f8d0d2a64a26c509f44e06a98e57" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>interpolate</name></member>
+      <member refid="structurp__radio__stage_1adc340f4842f415c852a91924fdb52996" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>lastbitpending</name></member>
+      <member refid="structurp__radio__stage_1a4192a308dd14384e96d83197d0e56e9c" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>measPeak</name></member>
+      <member refid="structurp__radio__stage_1a48b98a48cf0ca4c065cb871bccc79dc8" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>micor_squelch</name></member>
+      <member refid="structurp__radio__stage_1a3da06e68a526768b63883292b39a59ba" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>mixOut</name></member>
+      <member refid="structurp__radio__stage_1a4b4792bc06f0780b9f25bf798de1433b" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>monoOut</name></member>
+      <member refid="structurp__radio__stage_1acb4870e6db8f82b16baf7a16f0faedf1" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>mute</name></member>
+      <member refid="structurp__radio__stage_1a0fe3a565f4fc183ffd9cc2b45490e354" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>ncoef</name></member>
+      <member refid="structurp__radio__stage_1aa6287035641df2916ff8da3761649199" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>next</name></member>
+      <member refid="structurp__radio__stage_1a33eadf1ae88bda6cf6cb6ce8347c3835" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>nextSps</name></member>
+      <member refid="structurp__radio__stage_1a2b165bd14e82b18a569ac59026ff6cfe" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>now</name></member>
+      <member refid="structurp__radio__stage_1a47e51e41b68dba2062910f6865510fee" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>nSamples</name></member>
+      <member refid="structurp__radio__stage_1a74bba14d2734e68a93eca755b6db4594" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>numChanOut</name></member>
+      <member refid="structurp__radio__stage_1aa10a354c494effd4ed442e52d290e494" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>nx</name></member>
+      <member refid="structurp__radio__stage_1a1fd717951fe7bb04e66fd13e6e8f6ccf" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>opt1</name></member>
+      <member refid="structurp__radio__stage_1af3be53cc73c80bdb54fb18a5e5f9c7e6" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>opt2</name></member>
+      <member refid="structurp__radio__stage_1a2f162692147e620d52cb7aca93612611" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>option</name></member>
+      <member refid="structurp__radio__stage_1a0332670fbaf9c02c0015ba82bc9755c2" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>outputGain</name></member>
+      <member refid="structurp__radio__stage_1a410ca014533de930c3cbf597956ecc70" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>outzero</name></member>
+      <member refid="structurp__radio__stage_1af4fe5ecc2efaa4e2ca5f547dc06c5945" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>parentChan</name></member>
+      <member refid="structurp__radio__stage_1a98e6518fe1716715d00c09a8c52f98d0" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>pending</name></member>
+      <member refid="structurp__radio__stage_1a62ad850a2f92957d6a95807384a909cd" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>polarity</name></member>
+      <member refid="structurp__radio__stage_1aa4a265721dfab9add601e8b3be1dfce4" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>prev</name></member>
+      <member refid="structurp__radio__stage_1adf490653d000e00d0b12addaafd7c591" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>sampleRate</name></member>
+      <member refid="structurp__radio__stage_1adaa2699b1a551d35da8cd8d8872e8d13" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>selChanOut</name></member>
+      <member refid="structurp__radio__stage_1ab0f69eb35acbd981ace3645afc2e78ef" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>setpt</name></member>
+      <member refid="structurp__radio__stage_1a2b757517ccd144382e3c2f20ec062a9b" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>settling</name></member>
+      <member refid="structurp__radio__stage_1a511f63323014c82f51b357c0b959b350" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>sigProc</name></member>
+      <member refid="structurp__radio__stage_1a41b58afed0f90e3c745781e989c3c8d1" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>sink</name></member>
+      <member refid="structurp__radio__stage_1a7533bfb7ba6e5ca05a5e58db4651ebed" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>size_coef</name></member>
+      <member refid="structurp__radio__stage_1a93d0a24521962937540a76c457ba48c7" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>size_x</name></member>
+      <member refid="structurp__radio__stage_1ad429beef6a00ec5db2b0a20a7e114275" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>source</name></member>
+      <member refid="structurp__radio__stage_1a4917172a40e19b7ca8b30857c661bc6a" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>sourceB</name></member>
+      <member refid="structurp__radio__stage_1aab1dba7efdc4f8ec21713ee4d0577c18" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>state</name></member>
+      <member refid="structurp__radio__stage_1a5889115331323489469c660846b8949d" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>syncing</name></member>
+      <member refid="structurp__radio__stage_1a2dc56480ccab6aa49f8856572d5fffee" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>ticks</name></member>
+      <member refid="structurp__radio__stage_1a971986a9e7463c2ee6ec03a4e41a1065" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>timer</name></member>
+      <member refid="structurp__radio__stage_1a56560879ba893f1acc6df47bc017b4b6" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>x</name></member>
+      <member refid="structurp__radio__stage_1ad1f5b1167a8c1742784c5c669c791b15" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>x2</name></member>
+      <member refid="structurp__radio__stage_1a765247f5f6929084cb8d433958679e2f" prot="public" virt="non-virtual"><scope>urp_radio_stage</scope><name>y</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

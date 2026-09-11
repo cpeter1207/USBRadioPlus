@@ -1,0 +1,15 @@
+<map id="soundcard_writeframe" name="soundcard_writeframe">
+<area shape="rect" id="Node000001" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="5,84,173,109"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a5106944da4644f88ded9f119082b2ab5" title="Submit one native DAC block and report whether PortAudio accepted it intact." alt="" coords="221,77,416,117"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,94,208,94,208,99,174,99"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#ad7cb19659650b42c6323e2ea9fbe66f5" title="Report a USB/audio fault and latch recovery state." alt="" coords="483,5,626,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="369,74,463,39,488,32,490,37,465,45,370,79"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a95c57506604d3aeedaff8443e3a09597" title="Start PortAudio capture and playback for an acquired radio device." alt="" coords="475,55,634,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="416,82,461,76,462,82,417,87"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a85ce5334b3b14cdd3fe544bab76c5849" title="Determine whether an interleaved PCM block contains any non&#45;silent sample." alt="" coords="469,105,640,145"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="417,106,456,110,455,116,416,111"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a358587f6a3fda42a1eab5578c355554e" title="Record one accepted native DAC block for post&#45;playout PTT timing." alt="" coords="464,169,645,209"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="367,114,465,154,484,162,482,166,463,159,365,119"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a73b60fe2eea0e40cc821d3d1771d7d44" title="Adapt transmitter routing when the acquired device has one output channel." alt="" coords="693,47,864,87"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="634,65,680,65,680,70,634,70"/>
+</map>

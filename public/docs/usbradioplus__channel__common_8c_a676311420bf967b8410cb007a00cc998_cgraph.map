@@ -1,0 +1,7 @@
+<map id="processing_signaling_bool" name="processing_signaling_bool">
+<area shape="rect" id="Node000001" title="Read one validated boolean from a candidate signaling profile." alt="" coords="5,13,199,38"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a0c9ceb1d5f070d4cff0f785236b0223e" title="Copy a resolved non&#45;audio option from a channel profile." alt="" coords="247,5,429,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,23,233,23,233,28,199,28"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="477,13,613,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="430,23,463,23,463,28,430,28"/>
+</map>

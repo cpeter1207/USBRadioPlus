@@ -1,0 +1,5 @@
+<map id="dcs_reset_receive_phase_bank" name="dcs_reset_receive_phase_bank">
+<area shape="rect" id="Node000001" title="Reset the bounded receive phase bank for an input sample rate." alt="" coords="5,5,229,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#a46aa5805b8783b27b00badf1c72450d4" title="Reset the fixed&#45;frequency DCS turn&#45;off detector for one input rate." alt="" coords="277,5,472,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="230,15,264,15,264,21,230,21"/>
+</map>

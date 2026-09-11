@@ -1,0 +1,66 @@
+<map id="load_settings_candidate" name="load_settings_candidate">
+<area shape="rect" id="Node000001" title="Parse a private, validated settings generation without publishing it." alt="" coords="5,255,185,280"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a50f51a6be22c6622dcee683a1638aa83" title="Allocate a settings snapshot before entering the writer critical section." alt="" coords="233,5,416,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="98,253,113,212,140,154,180,93,204,64,232,40,240,35,243,39,235,44,208,68,184,96,145,157,118,214,103,255"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a082af7a230525d61150ae3a40eb1348b" title="Recognize a shared flat defaults section." alt="" coords="735,204,850,229"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="155,252,233,239,368,227,503,219,722,214,722,219,504,225,369,232,234,245,156,257"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a5dffc9e720d7d81247e828d943505cee" title="Recognize a scoped processing or hardware profile section." alt="" coords="257,104,392,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="105,253,155,197,192,166,232,138,246,132,248,137,235,143,195,170,159,201,109,256"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#ac94af5aa3b6325845a677dfa5eda16f0" title="Read the configurable stages belonging to one source chain." alt="" coords="278,55,371,80"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="101,253,119,220,147,175,185,129,232,89,264,75,266,79,235,94,189,133,152,179,123,223,105,256"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__processing_8c.html#a82dc5eba7b229d78ae3f73151decd869" title="Read hardware gains and playback routing." alt="" coords="265,153,384,179"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="118,252,232,196,270,181,272,186,234,200,121,257"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__processing_8c.html#a287e3a842c5ca4f5c10b6362bd24c41c" title="Apply shared flat defaults followed by a channel&#39;s resolved overrides." alt="" coords="241,353,408,379"/>
+<area shape="poly" id="edge13_Node000001_Node000013" title=" " alt="" coords="119,278,170,308,234,338,259,347,257,352,232,343,168,312,116,283"/>
+<area shape="rect" id="Node000020" href="$usbradioplus__processing_8c.html#ad871c189403f14c67358c042a8a1de7e" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="471,405,645,431"/>
+<area shape="poly" id="edge23_Node000001_Node000020" title=" " alt="" coords="104,279,121,313,149,359,187,404,209,423,234,438,269,451,306,459,344,461,381,460,452,448,510,432,511,438,453,454,382,465,344,466,305,464,268,456,232,443,206,427,183,408,144,362,116,316,100,281"/>
+<area shape="rect" id="Node000021" href="$usbradioplus__processing_8c.html#ab608b17eb36972ea6e363a8017411037" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="239,304,411,329"/>
+<area shape="poly" id="edge24_Node000001_Node000021" title=" " alt="" coords="156,277,252,298,251,304,154,283"/>
+<area shape="rect" id="Node000023" href="$usbradioplus__processing_8c.html#aa0f0e5fe0c78cfc4f55790c054ab2b2b" title="Initialize the complete named&#45;channel settings tree with shipped defaults." alt="" coords="257,403,392,428"/>
+<area shape="poly" id="edge26_Node000001_Node000023" title=" " alt="" coords="109,278,159,332,195,363,235,389,248,395,246,400,232,394,192,367,156,336,105,282"/>
+<area shape="rect" id="Node000024" href="$usbradioplus__processing_8c.html#a1719cf5b81c13c78a2980219fba72a12" title="Validate all section option names before parsing their values." alt="" coords="237,255,412,280"/>
+<area shape="poly" id="edge27_Node000001_Node000024" title=" " alt="" coords="186,265,224,265,224,270,186,270"/>
+<area shape="rect" id="Node000029" href="$usbradioplus__processing_8c.html#aa09fbf26e5737ba3d9ca992b453e2ef7" title="Validate all processing chains and hardware settings in one channel profile." alt="" coords="263,504,386,529"/>
+<area shape="poly" id="edge33_Node000001_Node000029" title=" " alt="" coords="104,279,120,318,147,373,186,432,209,459,235,483,257,496,255,501,232,487,205,462,182,435,143,376,115,321,99,281"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ad0e15804c47f309d5cdc7a9c77a59378" title="Read the explicitly supported one&#45;band or three&#45;band dynamics mode." alt="" coords="491,55,625,80"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="372,65,477,65,477,70,372,70"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="507,104,609,129"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="372,74,494,100,493,106,371,80"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#a52dfb012da45db162cbd83c175999a8c" title="Parse a chain&#39;s optional processing order." alt="" coords="491,5,625,31"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="371,55,483,31,485,36,372,60"/>
+<area shape="rect" id="Node000009" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="700,5,885,31"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="626,15,686,15,686,21,626,21"/>
+<area shape="rect" id="Node000010" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="985,5,1077,31"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="886,15,971,15,971,21,886,21"/>
+<area shape="poly" id="edge12_Node000011_Node000007" title=" " alt="" coords="384,151,493,128,494,133,385,156"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__processing_8c.html#a4beacd85acfc251b7a0acb0bbd673628" title="Read a hardware routing choice and record whether it was explicitly supplied." alt="" coords="491,153,625,179"/>
+<area shape="poly" id="edge11_Node000011_Node000012" title=" " alt="" coords="384,163,477,163,477,169,384,169"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Read, validate, and retain one resolved non&#45;audio option." alt="" coords="739,404,846,429"/>
+<area shape="poly" id="edge14_Node000013_Node000014" title=" " alt="" coords="408,369,652,391,726,402,726,408,652,397,408,374"/>
+<area shape="poly" id="edge21_Node000013_Node000020" title=" " alt="" coords="383,376,488,400,486,405,382,381"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__processing_8c.html#ae2c06c0fa7a196ac27326466e123cebe" title="Return an exact upper limit for an integer clean&#45;slate control." alt="" coords="956,454,1105,494"/>
+<area shape="poly" id="edge15_Node000014_Node000015" title=" " alt="" coords="847,427,943,450,942,455,846,432"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__ctcss_8c.html#a7611b9d3d46efc9615e290d0122a639b" title="Check whether a frequency is one of the supported CTCSS tones." alt="" coords="1176,430,1331,470"/>
+<area shape="poly" id="edge16_Node000014_Node000016" title=" " alt="" coords="809,427,861,468,896,488,934,503,987,516,1030,519,1073,514,1127,503,1168,491,1205,474,1207,479,1170,496,1129,509,1074,520,1030,525,986,521,933,509,894,493,858,472,806,431"/>
+<area shape="rect" id="Node000017" href="$usbradioplus__processing_8c.html#a5826b9dcabaec63f1644728f23235de9" title="Check the configured spelling of one DCS code." alt="" coords="970,305,1091,331"/>
+<area shape="poly" id="edge17_Node000014_Node000017" title=" " alt="" coords="813,402,866,371,932,340,956,332,957,337,934,344,868,376,815,406"/>
+<area shape="rect" id="Node000018" href="$usbradioplus__processing_8c.html#a5c781da3fe4c5f4a826fd9adb10c2e59" title="Check a comma&#45;separated CTCSS frequency list against the tone table." alt="" coords="954,355,1107,380"/>
+<area shape="poly" id="edge18_Node000014_Node000018" title=" " alt="" coords="846,403,955,380,956,385,847,408"/>
+<area shape="rect" id="Node000019" href="$usbradioplus__processing_8c.html#a5cc70832e8dfa7e6ce9045f437f401df" title="Validate one nonnegative integer that is stored in a channel field." alt="" coords="933,404,1128,429"/>
+<area shape="poly" id="edge20_Node000014_Node000019" title=" " alt="" coords="846,414,920,414,920,419,846,419"/>
+<area shape="poly" id="edge19_Node000018_Node000016" title=" " alt="" coords="1088,377,1129,390,1202,421,1200,426,1127,395,1086,383"/>
+<area shape="poly" id="edge22_Node000020_Node000014" title=" " alt="" coords="645,415,726,414,726,420,645,420"/>
+<area shape="rect" id="Node000022" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="497,304,619,329"/>
+<area shape="poly" id="edge25_Node000021_Node000022" title=" " alt="" coords="411,314,483,314,483,319,411,319"/>
+<area shape="rect" id="Node000025" href="$usbradioplus__processing_8c.html#a9a8cbce549b61d9bb8c7b64bc88a70ad" title="Reject unknown sections and options in a candidate configuration." alt="" coords="464,255,652,280"/>
+<area shape="poly" id="edge28_Node000024_Node000025" title=" " alt="" coords="413,265,450,265,450,270,413,270"/>
+<area shape="poly" id="edge29_Node000025_Node000003" title=" " alt="" coords="617,252,721,229,722,234,618,257"/>
+<area shape="rect" id="Node000026" href="$usbradioplus__processing_8c.html#ae31866a1d4fa5ce17a7aa6058bd46130" title="Validate an option against the vocabulary for its section kind." alt="" coords="705,255,880,280"/>
+<area shape="poly" id="edge30_Node000025_Node000026" title=" " alt="" coords="652,265,692,265,692,270,652,270"/>
+<area shape="rect" id="Node000027" href="$usbradioplus__processing_8c.html#ab70fdb7eff512149ff81a99fa06c5d5c" title="Test whether a name belongs to the processing&#45;chain option vocabulary." alt="" coords="953,205,1108,231"/>
+<area shape="poly" id="edge31_Node000026_Node000027" title=" " alt="" coords="854,252,955,231,956,236,855,257"/>
+<area shape="rect" id="Node000028" href="$usbradioplus__processing_8c.html#accc0626992a3ee315023800ac4a67a80" title="Compare a configuration name against an allowed&#45;name table." alt="" coords="976,255,1085,280"/>
+<area shape="poly" id="edge32_Node000026_Node000028" title=" " alt="" coords="880,265,963,265,963,270,880,270"/>
+<area shape="rect" id="Node000030" href="$usbradioplus__processing_8c.html#a5414c92d2485210b205f79d2794be131" title="Check processing parameter ranges, fixed stages, and optional&#45;stage ordering." alt="" coords="499,504,617,529"/>
+<area shape="poly" id="edge34_Node000029_Node000030" title=" " alt="" coords="386,514,485,514,485,519,386,519"/>
+</map>

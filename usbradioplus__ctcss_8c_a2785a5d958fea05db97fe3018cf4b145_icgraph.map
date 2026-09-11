@@ -1,0 +1,9 @@
+<map id="closest_frequency" name="closest_frequency">
+<area shape="rect" id="Node000001" title="Find the nearest entry in the CTCSS reference&#45;frequency table." alt="" coords="505,35,645,60"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__ctcss_8c.html#aafdb00dc607d2f65c769578506d03e5b" title="Read the reference CTCSS peak for the selected detector&#45;filter calibration." alt="" coords="280,5,452,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="491,38,452,33,452,27,492,33"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__ctcss_8c.html#a20af3a7785867986f3c4eebed7be9acf" title="Calculate reference CTCSS amplitude and DC bias after Q8 gain scaling." alt="" coords="275,55,457,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="492,61,458,66,457,60,491,56"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__ctcss_8c.html#a34d4240fc79542f6068b6fdd998f1249" title="Calculate CTCSS peak after the reference Q8 tone and output gains." alt="" coords="5,63,227,88"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="261,78,227,78,227,73,261,73"/>
+</map>

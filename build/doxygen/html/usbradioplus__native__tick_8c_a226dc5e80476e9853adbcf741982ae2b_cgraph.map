@@ -1,0 +1,9 @@
+<map id="native_renderer_copy_receive_to_app" name="native_renderer_copy_receive_to_app">
+<area shape="rect" id="Node000001" title="Copy processed local receive to the app_rpt receive frame." alt="" coords="5,23,168,63"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a385ca4e08912575fcfd3b7a12acf8576" title="Apply linear gain and saturate to the signed 16&#45;bit PCM range." alt="" coords="254,5,375,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="168,32,240,24,241,29,168,37"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#ac3e6b80594c56efda361b49ad5b1b10b" title="Convert a fixed&#45;rate PCM block using only pre&#45;reserved converter storage." alt="" coords="216,55,413,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="168,49,203,53,202,58,168,55"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dsp_8c.html#ae5ec641130119c7001929833a9cea583" title="Convert through already reserved SRC workspaces without allocating." alt="" coords="461,55,652,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="413,65,448,65,448,70,413,70"/>
+</map>

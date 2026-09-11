@@ -1,0 +1,21 @@
+<map id="link_graph_transaction" name="link_graph_transaction">
+<area shape="rect" id="Node000001" title=" " alt="" coords="13,559,183,584"/>
+<area shape="rect" id="Node000002" href="$structlink__graph__plan.html" title=" " alt="" coords="35,471,161,496"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="101,510,101,558,95,558,95,510"/>
+<area shape="rect" id="Node000003" href="$structtxagc__hook.html" title=" " alt="" coords="171,383,268,408"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="193,418,116,473,113,468,190,414"/>
+<area shape="rect" id="Node000004" href="$structtxagc__avfilter__slot.html" title="Atomically published, control&#45;plane&#45;owned FFmpeg graph." alt="" coords="293,269,436,295"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="361,309,351,336,332,361,302,379,269,390,268,385,300,374,328,357,346,333,357,307"/>
+<area shape="rect" id="Node000005" href="$structtxagc__avfilter.html" title=" " alt="" coords="240,93,351,119"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="309,130,331,180,363,268,358,270,326,182,304,132"/>
+<area shape="rect" id="Node000007" href="$structtxagc__avfilter__slot__node.html" title="One heap&#45;owned graph published through a txagc_avfilter_slot." alt="" coords="135,181,317,207"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="279,131,238,182,234,179,275,128"/>
+<area shape="rect" id="Node000006" href="$structtxagc__config.html" title=" " alt="" coords="243,5,347,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="298,45,298,93,293,93,293,45"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="254,213,299,243,343,267,340,272,297,248,251,217"/>
+<area shape="rect" id="Node000009" href="$structtxagc__avfilter__slot__candidate.html" title=" " alt="" coords="5,319,148,359"/>
+<area shape="poly" id="edge10_Node000009_Node000007" title=" " alt="" coords="184,215,142,238,104,271,90,295,83,319,78,317,86,293,100,268,139,234,181,210"/>
+<area shape="rect" id="Node000008" href="$structtxagc__link__statistics.html" title=" " alt="" coords="114,269,269,295"/>
+<area shape="poly" id="edge8_Node000003_Node000008" title=" " alt="" coords="193,309,194,333,199,358,212,381,207,384,194,360,189,334,187,309"/>
+<area shape="poly" id="edge9_Node000002_Node000009" title=" " alt="" coords="84,372,99,470,94,471,79,373"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="kickptt" name="kickptt">
+<area shape="rect" id="Node000001" title="Wake the HID worker after a control&#45;plane output request." alt="" coords="408,179,475,204"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a67d7fe2730aeeed9790bf5cfadbbed3b" title="Assert the selected radio&#39;s calibration PTT request." alt="" coords="240,5,343,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="430,167,404,105,384,72,358,44,341,33,344,28,362,40,388,69,409,103,435,165"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#acbf160305f6b8ddcbcc747f9335d4a98" title="Release the selected radio&#39;s calibration PTT request." alt="" coords="232,55,351,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="424,168,396,130,358,93,338,82,341,78,362,89,400,126,428,165"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="230,104,353,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="409,173,359,143,332,132,334,127,361,138,412,168"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a184fe58a499575e2239ec698ec1629f6" title="Swap USB assignments between two configured radio channels." alt="" coords="223,153,359,179"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="394,186,359,180,360,175,395,181"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="237,203,345,228"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="395,201,346,209,345,204,394,196"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus__modern_8c.html#afd5fb69b5da24d158a913caaaea4cd42" title="Release Asterisk ownership and reset radio call state." alt="" coords="225,252,358,277"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="411,214,361,242,331,254,329,249,359,237,408,209"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a9c723740edb97506ba6d5e2cde3a4ca4" title="Apply Asterisk radio key, unkey, and signaling indications." alt="" coords="223,301,360,327"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="427,218,399,255,362,291,338,304,335,299,358,287,395,251,423,215"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#a91b1301eb65d07f4f3a37051e8ae653d" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="236,351,347,376"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="435,218,409,279,388,311,362,340,341,353,338,348,358,336,384,308,404,276,430,216"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a710b80d634b236393ee64de5d51bbe75" title="Register, complete, or execute the radio key CLI command." alt="" coords="13,5,167,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="226,21,167,21,167,15,226,15"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a9a053417636415f194db2d800c15d5f5" title="Register, complete, or execute the radio unkey CLI command." alt="" coords="5,55,175,80"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="218,70,175,70,175,65,218,65"/>
+</map>

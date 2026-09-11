@@ -1,0 +1,17 @@
+<map id="usbradio_device_identity" name="usbradio_device_identity">
+<area shape="rect" id="Node000001" title="Copy the acquired USB identifier, serial number, and ALSA card number." alt="" coords="631,55,816,80"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a17706af59319c76f37ffb3caecfdd58e" title="Report active radio tuning and device assignments." alt="" coords="428,5,531,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="646,54,530,31,531,26,647,49"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a6eed0efdda85d675e4ce499d544b3f13" title="Show or select the radio used by interactive calibration commands." alt="" coords="428,55,531,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="617,70,531,70,531,65,617,65"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a5bafaa7b53e3e9a52bb870b85498b40b" title="Report recovery once after a previously latched USB/audio failure." alt="" coords="376,104,583,129"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="647,85,544,107,542,101,646,80"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#ae5847384c95c3cadfc4b00e8232e56d5" title="Register, complete, or print active radio settings." alt="" coords="161,5,328,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="414,21,328,21,328,15,414,15"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a21884bae255b9919b2246f8727a7bf03" title="Register, complete, or select the active radio for tuning." alt="" coords="168,55,321,80"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="414,70,321,70,321,65,414,65"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="203,104,287,129"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="362,119,287,119,287,114,362,114"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,104,113,129"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="189,119,113,119,113,114,189,114"/>
+</map>

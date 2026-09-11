@@ -1,0 +1,15 @@
+<map id="tune_rxinput" name="tune_rxinput">
+<area shape="rect" id="Node000001" title="Calibrate the hardware capture mixer from discriminator noise and optionally set squelch." alt="" coords="5,35,109,60"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a93a6afc55640158707a1de37361d28ce" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="171,5,336,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="109,37,157,30,158,35,110,42"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a77add100bf0d604a3d8b31f2aa13bfce" title="Apply a live CM119 input&#45;gain adjustment under the settings mutex." alt="" coords="157,55,349,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="110,52,144,57,143,62,109,57"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a50f51a6be22c6622dcee683a1638aa83" title="Allocate a settings snapshot before entering the writer critical section." alt="" coords="397,13,580,39"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="349,53,414,39,415,44,350,58"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="441,63,536,88"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="350,73,427,73,427,78,350,78"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a42c254f3835142b3c3a2cb97c2b77336" title="Publish the mutable settings copy after preparing a snapshot." alt="" coords="403,113,574,153"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="337,93,393,107,392,112,335,98"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aab2a9ca895bd3a853a7a72964b24ebcd" title="Publish a complete immutable settings copy while settings_lock is held." alt="" coords="628,113,807,153"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="574,130,615,130,615,135,574,135"/>
+</map>

@@ -1,0 +1,298 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__squelch_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_squelch.h</compoundname>
+    <includes local="no">stdint.h</includes>
+    <includedby refid="usbradioplus__radio_8h" local="yes">src/usbradioplus_radio.h</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/usbradioplus_squelch.h</label>
+        <link refid="usbradioplus__squelch_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stdint.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="3">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="4">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_channel_common.h</label>
+        <link refid="usbradioplus__channel__common_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_channel_private.h</label>
+        <link refid="usbradioplus__channel__private_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_channel_test_api.h</label>
+        <link refid="usbradioplus__channel__test__api_8h"/>
+      </node>
+      <node id="9">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="11">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="12">
+        <label>src/usbradioplus_radio.c</label>
+        <link refid="usbradioplus__radio_8c"/>
+      </node>
+      <node id="2">
+        <label>src/usbradioplus_radio.h</label>
+        <link refid="usbradioplus__radio_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_squelch.h</label>
+        <link refid="usbradioplus__squelch_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structurp__micor__squelch" prot="public">urp_micor_squelch</innerclass>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="usbradioplus__squelch_8h_1a587a34f6880035ac7896d57bb5206cdf" prot="public" static="no">
+        <name>URP_MICOR_SETTLE_SAMPLES</name>
+        <initializer>480U</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector settling interval at the fixed 48 kHz discriminator sample rate. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="11" column="9" bodyfile="src/usbradioplus_squelch.h" bodystart="11" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" prot="public" static="yes" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type>int</type>
+        <definition>static int urp_micor_squelch_update</definition>
+        <argsstring>(struct urp_micor_squelch *state, int squelched, double sample_power, uint32_t open_level, uint32_t hysteresis)</argsstring>
+        <name>urp_micor_squelch_update</name>
+        <param>
+          <type>struct <ref refid="structurp__micor__squelch" kindref="compound">urp_micor_squelch</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>squelched</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>sample_power</declname>
+        </param>
+        <param>
+          <type>uint32_t</type>
+          <declname>open_level</declname>
+        </param>
+        <param>
+          <type>uint32_t</type>
+          <declname>hysteresis</declname>
+        </param>
+        <briefdescription>
+<para>Advance the noise detector, three comparators and storage capacitor by one sample. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Persistent detector state; zero-initialize at stream creation. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>squelched</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Previous sample&apos;s output: nonzero closed, zero open. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_power</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Squared noise-filter sample scaled by 960/256 for compatibility. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>open_level</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Calibrated noise threshold at which weak-signal charging begins. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>hysteresis</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Additional noise margin while the squelch is open. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>New closed state for this 48 kHz sample, not the containing audio frame. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_squelch.h" line="33" column="19" bodyfile="src/usbradioplus_squelch.h" bodystart="33" bodyend="93"/>
+        <references refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" compoundref="usbradioplus__squelch_8h" startline="20">urp_micor_squelch::hold_charge</references>
+        <references refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" compoundref="usbradioplus__squelch_8h" startline="18">urp_micor_squelch::idle_power</references>
+        <references refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" compoundref="usbradioplus__squelch_8h" startline="16">urp_micor_squelch::noise_power</references>
+        <references refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" compoundref="usbradioplus__squelch_8h" startline="22">urp_micor_squelch::settling_samples</references>
+        <references refid="usbradioplus__squelch_8h_1a587a34f6880035ac7896d57bb5206cdf" compoundref="usbradioplus__squelch_8h" startline="11">URP_MICOR_SETTLE_SAMPLES</references>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Sample-clocked equivalent of the MICOR dual-time-constant squelch. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_SQUELCH_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_SQUELCH_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11" refid="usbradioplus__squelch_8h_1a587a34f6880035ac7896d57bb5206cdf" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_MICOR_SETTLE_SAMPLES<sp/>480U</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="14" refid="structurp__micor__squelch" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__micor__squelch" kindref="compound">urp_micor_squelch</ref><sp/>{</highlight></codeline>
+<codeline lineno="16" refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref>;</highlight></codeline>
+<codeline lineno="18" refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" kindref="member">idle_power</ref>;</highlight></codeline>
+<codeline lineno="20" refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref>;</highlight></codeline>
+<codeline lineno="22" refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" kindref="member">settling_samples</ref>;</highlight></codeline>
+<codeline lineno="23"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight></codeline>
+<codeline lineno="33" refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">inline</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__squelch_8h_1a65b1e03895c7ceed3038aba622f93d63" kindref="member">urp_micor_squelch_update</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__micor__squelch" kindref="compound">urp_micor_squelch</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>squelched,</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>sample_power,<sp/>uint32_t<sp/>open_level,</highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>hysteresis)</highlight></codeline>
+<codeline lineno="36"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="37"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Motorola<sp/>US3628058:<sp/>separate<sp/>fast<sp/>detector,<sp/>finite<sp/>charging<sp/>path,</highlight></codeline>
+<codeline lineno="38"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>fixed<sp/>long-tail<sp/>charge,<sp/>and<sp/>strong-signal<sp/>defeat.<sp/>A<sp/>sudden<sp/>loss<sp/>must</highlight></codeline>
+<codeline lineno="39"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>cross<sp/>the<sp/>charging<sp/>region<sp/>before<sp/>the<sp/>capacitor<sp/>can<sp/>reopen<sp/>the<sp/>gate.</highlight></codeline>
+<codeline lineno="40"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>Coefficients<sp/>are<sp/>1-exp(-1/(48000*tau));<sp/>no<sp/>per-sample<sp/>transcendental</highlight></codeline>
+<codeline lineno="41"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>functions<sp/>or<sp/>frame-boundary<sp/>decisions<sp/>are<sp/>needed.</highlight></codeline>
+<codeline lineno="42"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*</highlight></codeline>
+<codeline lineno="43"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>Detector<sp/>tau=5<sp/>ms,<sp/>defeat<sp/>tau=1<sp/>ms,<sp/>recharge<sp/>tau=15<sp/>ms.<sp/>The<sp/>detector</highlight></codeline>
+<codeline lineno="44"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>smooths<sp/>random<sp/>noise<sp/>troughs<sp/>that<sp/>otherwise<sp/>repeatedly<sp/>recharge<sp/>the</highlight></codeline>
+<codeline lineno="45"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>long<sp/>hold<sp/>even<sp/>with<sp/>no<sp/>carrier.<sp/>Long<sp/>decay<sp/>is<sp/>calibrated</highlight></codeline>
+<codeline lineno="46"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>to<sp/>150<sp/>ms<sp/>from<sp/>full<sp/>charge<sp/>to<sp/>the<sp/>3.8/5.5<sp/>comparator<sp/>fraction.<sp/>These</highlight></codeline>
+<codeline lineno="47"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>are<sp/>behavioral<sp/>constants,<sp/>not<sp/>inferred<sp/>IC<sp/>resistor<sp/>measurements.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>detector_alpha<sp/>=<sp/>0.00415799815489004;</highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>defeat_alpha<sp/>=<sp/>0.02061781866875989;</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>charge_alpha<sp/>=<sp/>0.00138792482909171;</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>release_alpha<sp/>=<sp/>0.00005135243496113;</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>idle_alpha<sp/>=<sp/>0.00003255155352044;</highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>hold_threshold<sp/>=<sp/>3.8<sp/>/<sp/>5.5;</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>open_power<sp/>=<sp/>(double)open_level<sp/>*<sp/>open_level;</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>limit<sp/>=<sp/>(double)open_level<sp/>+<sp/>(squelched<sp/>?<sp/>0.0<sp/>:<sp/>hysteresis);</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>limit_power<sp/>=<sp/>limit<sp/>*<sp/>limit;</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>strong_power,<sp/>direct_power;</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"></highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Settle<sp/>once,<sp/>without<sp/>treating<sp/>a<sp/>zero-filled<sp/>FIR<sp/>history<sp/>as<sp/>a<sp/>carrier.</highlight></codeline>
+<codeline lineno="60"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>Keep<sp/>this<sp/>running<sp/>average<sp/>independent<sp/>of<sp/>caller<sp/>buffer<sp/>partitioning.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" kindref="member">settling_samples</ref><sp/>&lt;<sp/><ref refid="usbradioplus__squelch_8h_1a587a34f6880035ac7896d57bb5206cdf" kindref="member">URP_MICOR_SETTLE_SAMPLES</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" kindref="member">settling_samples</ref>++;</highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>+=<sp/>(sample_power<sp/>-<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref>)<sp/>/<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a74021cb177e51684b08dcd603a95371f" kindref="member">settling_samples</ref>;</highlight></codeline>
+<codeline lineno="64"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" kindref="member">idle_power</ref><sp/>=<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref>;</highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>1;</highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>+=<sp/>detector_alpha<sp/>*<sp/>(sample_power<sp/>-<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref>);</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(squelched<sp/>&amp;&amp;<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>&gt;=<sp/>open_power)</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" kindref="member">idle_power</ref><sp/>+=<sp/>idle_alpha<sp/>*<sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>-<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" kindref="member">idle_power</ref>);</highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/><sp/><sp/>strong_power<sp/>=<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a4686dc8ce196fc459c03267a934b1912" kindref="member">idle_power</ref><sp/>*<sp/>0.01;</highlight></codeline>
+<codeline lineno="71"><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Preserve<sp/>the<sp/>calibrated<sp/>opening<sp/>threshold.<sp/>Interpolate<sp/>the<sp/>direct</highlight></codeline>
+<codeline lineno="73"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>comparator<sp/>between<sp/>the<sp/>manual&apos;s<sp/>2.8<sp/>V<sp/>charging<sp/>and<sp/>5.0<sp/>V<sp/>defeat</highlight></codeline>
+<codeline lineno="74"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>points;<sp/>its<sp/>3.8<sp/>V<sp/>position<sp/>is<sp/>5/11<sp/>of<sp/>that<sp/>interval.<sp/>This<sp/>maps<sp/>the</highlight></codeline>
+<codeline lineno="75"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>circuit<sp/>topology<sp/>onto<sp/>our<sp/>noise-power<sp/>units,<sp/>not<sp/>literal<sp/>voltages.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/><sp/><sp/>direct_power<sp/>=<sp/>strong_power<sp/>&lt;<sp/>limit_power</highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>?<sp/>limit_power<sp/>+<sp/>(strong_power<sp/>-<sp/>limit_power)<sp/>*<sp/>(5.0<sp/>/<sp/>11.0)</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>:<sp/>limit_power;</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>&lt;=<sp/>strong_power)<sp/>{</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>-=<sp/>defeat_alpha<sp/>*<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref>;</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>&lt;<sp/>limit_power)<sp/>{</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>+=<sp/>charge_alpha<sp/>*<sp/>(1.0<sp/>-<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref>);</highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><sp/><sp/>}<sp/></highlight><highlight class="keywordflow">else</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>-=<sp/>release_alpha<sp/>*<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref>;</highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Inaudible<sp/>residual<sp/>state<sp/>must<sp/>not<sp/>enter<sp/>slow<sp/>subnormal<sp/>arithmetic</highlight></codeline>
+<codeline lineno="87"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/>*<sp/>during<sp/>hours<sp/>of<sp/>idle<sp/>or<sp/>a<sp/>fully<sp/>quiet<sp/>discriminator.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>&lt;<sp/>1.0e-12)</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>&lt;<sp/>1.0e-12)</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>=<sp/>0.0;</highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>!(state-&gt;<ref refid="structurp__micor__squelch_1a1a41ce6ba86b6dfab587c3eaabf2d884" kindref="member">noise_power</ref><sp/>&lt;<sp/>direct_power<sp/>||<sp/>state-&gt;<ref refid="structurp__micor__squelch_1a6860666f00d723df4762610fa3409744" kindref="member">hold_charge</ref><sp/>&gt;<sp/>hold_threshold);</highlight></codeline>
+<codeline lineno="93"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"></highlight></codeline>
+<codeline lineno="95"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_squelch.h"/>
+  </compounddef>
+</doxygen>

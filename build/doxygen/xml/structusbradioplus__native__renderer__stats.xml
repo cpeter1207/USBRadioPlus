@@ -1,0 +1,504 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__native__renderer__stats" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_native_renderer_stats</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="no">usbradioplus_channel_private.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a4f486e9dcffef9b6d35482fb88b85265" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::native_frames</definition>
+        <argsstring></argsstring>
+        <name>native_frames</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::native_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Completed native render blocks. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="242" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="242" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a7a48817c169fd912743f3526a87de526" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::src_errors</definition>
+        <argsstring></argsstring>
+        <name>src_errors</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::src_errors</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Failed native-rate/sample-rate conversions. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="244" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="244" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a226dc5e80476e9853adbcf741982ae2b" compoundref="usbradioplus__native__tick_8c" startline="442" endline="470">native_renderer_copy_receive_to_app</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a00ab9440f8317ac485f162388301d6e2" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::link_queue_underflows</definition>
+        <argsstring></argsstring>
+        <name>link_queue_underflows</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::link_queue_underflows</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program-source shortfalls observed while transmit was requested. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="246" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="246" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1abc501d8cc1286f2f9da3e7a6fc5c16b2" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::parrot_playback_frames</definition>
+        <argsstring></argsstring>
+        <name>parrot_playback_frames</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::parrot_playback_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native echo playback blocks emitted. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="248" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="248" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1ab97c0b218d03664780de089f9916e09f" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t usbradioplus_native_renderer_stats::parrot_samples</definition>
+        <argsstring></argsstring>
+        <name>parrot_samples</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::parrot_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current native echo recording length in samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="250" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="250" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1adfa6691eea81e57744f20a833100097a" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_renderer_stats::parrot_playing</definition>
+        <argsstring></argsstring>
+        <name>parrot_playing</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::parrot_playing</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the native echo recording is playing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="252" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="252" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1aabd0cb02509433720833415105180867" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_renderer_stats::parrot_truncated</definition>
+        <argsstring></argsstring>
+        <name>parrot_truncated</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::parrot_truncated</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero if the native echo recording reached its configured limit. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="254" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="254" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1ad112fb6ac9b399cd280a46767f67081b" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::adc_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>adc_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::adc_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receiver ADC peak for the most recent rendered block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="256" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="256" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a1292e7af78c7e699cf2edff119d546ad" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::adc_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>adc_max_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::adc_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest receiver ADC peak since the last reset. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="258" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="258" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a43f17605a357eaa12a6136c5f8cd107a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::adc_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>adc_rail_samples</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::adc_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative receiver ADC PCM-rail samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="260" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="260" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a548f8b1822b222fc069cbd7e3ef74890" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::preemphasis_input_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>preemphasis_input_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::preemphasis_input_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Local-repeat input peak for the most recent block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="262" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="262" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1addd1ed8b8c4397f8a0cd37bfd505a656" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::preemphasis_input_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>preemphasis_input_max_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::preemphasis_input_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest local-repeat input peak since the last reset. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="264" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="264" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a01e46d813695fcb2efb891fcfb4c1b3b" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::local_tx_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>local_tx_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::local_tx_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Local-repeat program peak for the most recent block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="266" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="266" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a2ad26410e11efed7276f38d4f49e5aaf" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::local_tx_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>local_tx_max_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::local_tx_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest local-repeat program peak since the last reset. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="268" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="268" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a2c2414a44f817a3f530735bdfa156986" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::tx_program_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>tx_program_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::tx_program_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Final transmitter program peak for the most recent block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="270" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="270" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a1dc17dae5eba8145f828317f61e6b0b3" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::tx_program_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>tx_program_max_peak_dbfs</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::tx_program_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest final transmitter program peak since the last reset. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="272" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="272" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aa6b9c25942a33fe847604a2f78097490" compoundref="usbradioplus__native__tick_8c" startline="183" endline="194">native_renderer_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1ae23c0c1adc09b02eb5ac4dbf7a630dec" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::tx_program_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>tx_program_rail_samples</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::tx_program_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative final transmitter PCM-rail samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="274" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="274" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1ab817fc54fdbc88aea511486434f39f87" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::rnnoise_frames</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_frames</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::rnnoise_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RNNoise frames completed on the local-receive callback branch. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="276" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="276" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a076c26c6bbba6fb0d45de966579cef41" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::rnnoise_output_samples</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_output_samples</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::rnnoise_output_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RNNoise output samples delivered by the local-receive callback branch. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="278" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="278" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a6e5a81ea693c0b669003d31d974b3b34" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::rnnoise_startup_samples</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_startup_samples</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::rnnoise_startup_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RNNoise startup samples withheld before output became available. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="280" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="280" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a9634ed6836804b3ed5b93e345f448fa0" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t usbradioplus_native_renderer_stats::rnnoise_errors</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_errors</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::rnnoise_errors</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RNNoise or its converters&apos; cumulative failures. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="282" column="10" bodyfile="src/usbradioplus_channel_private.h" bodystart="282" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a28988c7546a55d495073e9a206c13e1b" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_renderer_stats::rnnoise_vad_probability</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_vad_probability</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::rnnoise_vad_probability</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent RNNoise voice-activity probability. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="284" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="284" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a8bd5b0fd2361cd8e99b707ebe790dac8" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__filter__statistics" kindref="compound">usbradioplus_native_filter_statistics</ref></type>
+        <definition>struct usbradioplus_native_filter_statistics usbradioplus_native_renderer_stats::local_filter</definition>
+        <argsstring></argsstring>
+        <name>local_filter</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::local_filter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Measurements from the local receive dynamics graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="286" column="44" bodyfile="src/usbradioplus_channel_private.h" bodystart="286" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a38bf122c4d803467d1945d124020a665" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__filter__statistics" kindref="compound">usbradioplus_native_filter_statistics</ref></type>
+        <definition>struct usbradioplus_native_filter_statistics usbradioplus_native_renderer_stats::receive_deemphasis_filter</definition>
+        <argsstring></argsstring>
+        <name>receive_deemphasis_filter</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::receive_deemphasis_filter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Measurements from the fixed receive deemphasis graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="288" column="44" bodyfile="src/usbradioplus_channel_private.h" bodystart="288" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__renderer__stats_1a729c31f30e45487543715e60c65a967f" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__filter__statistics" kindref="compound">usbradioplus_native_filter_statistics</ref></type>
+        <definition>struct usbradioplus_native_filter_statistics usbradioplus_native_renderer_stats::final_filter</definition>
+        <argsstring></argsstring>
+        <name>final_filter</name>
+        <qualifiedname>usbradioplus_native_renderer_stats::final_filter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Measurements from the fixed transmitter final graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="290" column="44" bodyfile="src/usbradioplus_channel_private.h" bodystart="290" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Lock-free snapshot of measurements owned by the native callback renderer.</para>
+<para>The hardware callback is the sole writer. Control-plane users obtain a coherent copy through <ref refid="usbradioplus__channel__private_8h_1a2e84fa5329e90bed16d2692053cfb956" kindref="member">usbradioplus_native_renderer_stats_read()</ref> rather than reading live FFmpeg, RNNoise, SRC, or parrot state directly. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>usbradioplus_native_filter_statistics</label>
+        <link refid="structusbradioplus__native__filter__statistics"/>
+      </node>
+      <node id="1">
+        <label>usbradioplus_native_renderer_stats</label>
+        <link refid="structusbradioplus__native__renderer__stats"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>final_filter</edgelabel>
+          <edgelabel>local_filter</edgelabel>
+          <edgelabel>receive_deemphasis_filter</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_channel_private.h" line="240" column="1" bodyfile="src/usbradioplus_channel_private.h" bodystart="240" bodyend="291"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__native__renderer__stats_1a1292e7af78c7e699cf2edff119d546ad" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>adc_max_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1ad112fb6ac9b399cd280a46767f67081b" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>adc_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a43f17605a357eaa12a6136c5f8cd107a" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>adc_rail_samples</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a729c31f30e45487543715e60c65a967f" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>final_filter</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a00ab9440f8317ac485f162388301d6e2" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>link_queue_underflows</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a8bd5b0fd2361cd8e99b707ebe790dac8" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>local_filter</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a2ad26410e11efed7276f38d4f49e5aaf" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>local_tx_max_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a01e46d813695fcb2efb891fcfb4c1b3b" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>local_tx_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a4f486e9dcffef9b6d35482fb88b85265" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>native_frames</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1abc501d8cc1286f2f9da3e7a6fc5c16b2" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>parrot_playback_frames</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1adfa6691eea81e57744f20a833100097a" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>parrot_playing</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1ab97c0b218d03664780de089f9916e09f" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>parrot_samples</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1aabd0cb02509433720833415105180867" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>parrot_truncated</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1addd1ed8b8c4397f8a0cd37bfd505a656" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>preemphasis_input_max_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a548f8b1822b222fc069cbd7e3ef74890" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>preemphasis_input_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a38bf122c4d803467d1945d124020a665" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>receive_deemphasis_filter</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a9634ed6836804b3ed5b93e345f448fa0" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>rnnoise_errors</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1ab817fc54fdbc88aea511486434f39f87" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>rnnoise_frames</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a076c26c6bbba6fb0d45de966579cef41" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>rnnoise_output_samples</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a6e5a81ea693c0b669003d31d974b3b34" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>rnnoise_startup_samples</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a28988c7546a55d495073e9a206c13e1b" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>rnnoise_vad_probability</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a7a48817c169fd912743f3526a87de526" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>src_errors</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a1dc17dae5eba8145f828317f61e6b0b3" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>tx_program_max_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1a2c2414a44f817a3f530735bdfa156986" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>tx_program_peak_dbfs</name></member>
+      <member refid="structusbradioplus__native__renderer__stats_1ae23c0c1adc09b02eb5ac4dbf7a630dec" prot="public" virt="non-virtual"><scope>usbradioplus_native_renderer_stats</scope><name>tx_program_rail_samples</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

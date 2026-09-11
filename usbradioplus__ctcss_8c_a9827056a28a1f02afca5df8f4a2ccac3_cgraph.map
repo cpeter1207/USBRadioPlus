@@ -1,0 +1,5 @@
+<map id="urp_ctcss_generate_tail_tone" name="urp_ctcss_generate_tail_tone">
+<area shape="rect" id="Node000001" title="Render an exact&#45;frequency tail tone at the native sample rate." alt="" coords="5,5,153,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__ctcss_8c.html#afadf7c326a81ac71570f6ef2c8aa45b6" title="Render a sine&#45;wave signaling block from persistent phase state." alt="" coords="201,13,281,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="153,23,188,23,188,28,153,28"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="update_gain" name="update_gain">
+<area shape="rect" id="Node000001" title="Update the gain destination at a sample&#45;derived one&#45;kilohertz cadence." alt="" coords="5,5,108,31"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#ad2959525ff319b889cf82eb5fa7696aa" title="Restrict a finite scalar to a closed interval." alt="" coords="156,5,235,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="108,15,142,15,142,21,108,21"/>
+</map>

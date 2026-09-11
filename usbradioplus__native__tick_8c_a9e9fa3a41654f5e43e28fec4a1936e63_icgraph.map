@@ -1,0 +1,25 @@
+<map id="native_renderer_publish_statistics" name="native_renderer_publish_statistics">
+<area shape="rect" id="Node000001" title="Publish callback&#45;owned diagnostics without blocking the callback." alt="" coords="993,71,1172,111"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#abe52e94221f93d6a76c0d44df662d8c7" title="Publish measurements and test observables after one direct block." alt="" coords="779,39,945,79"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="979,79,945,74,946,69,980,74"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html#aba263ce8c2039f07a1f323664a87224b" title="Create the persistent direct native renderer." alt="" coords="785,103,939,143"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="980,109,939,115,938,110,980,104"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="547,47,731,72"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="765,62,731,62,731,57,765,57"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="328,5,499,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="555,47,483,33,484,28,556,41"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="356,55,471,80"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="532,66,471,68,471,63,532,60"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="172,5,280,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="314,21,280,21,280,15,314,15"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a2978b9bb69b48c3934b247d5d53f51d4" title="Allocate native receive/transmit processing and sample&#45;rate&#45;conversion state." alt="" coords="557,111,720,136"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="771,126,720,126,720,121,771,121"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="363,111,464,136"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="543,126,464,126,464,121,543,121"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="178,111,274,136"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="349,126,274,126,274,121,349,121"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="11,85,118,111"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="164,116,118,109,119,104,165,111"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,135,124,160"/>
+<area shape="poly" id="edge11_Node000010_Node000012" title=" " alt="" coords="165,135,125,141,124,136,164,130"/>
+</map>

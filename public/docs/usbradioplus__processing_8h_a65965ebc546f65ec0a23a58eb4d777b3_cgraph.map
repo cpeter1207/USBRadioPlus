@@ -1,0 +1,11 @@
+<map id="usbradioplus_processing_save_input_gains" name="usbradioplus_processing_save_input_gains">
+<area shape="rect" id="Node000001" title="Persist the hardware and local&#45;receiver input gains." alt="" coords="5,27,188,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa11d8d9df4edb892604b97d2e3df7904" title="Persist tuning values to the selected channel&#39;s configuration sections." alt="" coords="236,27,419,67"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,45,222,45,222,50,188,50"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ab608b17eb36972ea6e363a8017411037" title="Resolve an explicit profile reference or the channel&#39;s scoped section." alt="" coords="467,5,639,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="419,33,453,28,453,34,420,38"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__config_8c.html#a64eeff2da27607aacf81861f6345c0e2" title="Update or append a category variable while preserving its Asterisk configuration context." alt="" coords="477,55,628,95"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="420,56,464,62,464,67,419,61"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a05e3652bd131446c943d24e28c02095b" title="Construct a bounded channel&#45;scoped section name." alt="" coords="687,5,809,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="639,15,673,15,673,21,639,21"/>
+</map>

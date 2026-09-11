@@ -1,0 +1,11 @@
+<map id="usbradioplus_processing_set_local_input_gain" name="usbradioplus_processing_set_local_input_gain">
+<area shape="rect" id="Node000001" title="Apply a live local&#45;receiver gain adjustment under the settings mutex." alt="" coords="5,47,188,87"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a50f51a6be22c6622dcee683a1638aa83" title="Allocate a settings snapshot before entering the writer critical section." alt="" coords="236,5,419,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,45,253,31,254,36,189,50"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="280,55,375,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="188,65,266,65,266,70,188,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a42c254f3835142b3c3a2cb97c2b77336" title="Publish the mutable settings copy after preparing a snapshot." alt="" coords="242,105,413,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="178,85,234,99,232,104,177,90"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#aab2a9ca895bd3a853a7a72964b24ebcd" title="Publish a complete immutable settings copy while settings_lock is held." alt="" coords="467,105,645,145"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="413,122,453,122,453,127,413,127"/>
+</map>

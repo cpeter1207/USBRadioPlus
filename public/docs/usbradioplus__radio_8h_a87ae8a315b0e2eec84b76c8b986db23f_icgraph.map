@@ -1,0 +1,11 @@
+<map id="urp_radio_process_timed" name="urp_radio_process_timed">
+<area shape="rect" id="Node000001" title="Advance a radio&#45;signaling block while optionally freezing TX time." alt="" coords="380,55,565,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#ad324bc0e605de95d2197fa20067feccc" title="Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block...." alt="" coords="177,5,317,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="400,54,305,33,306,28,401,49"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,55,332,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="366,70,332,70,332,65,366,65"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,104,304,129"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="401,86,305,107,304,102,400,80"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,55,113,80"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="147,70,114,70,114,65,147,65"/>
+</map>

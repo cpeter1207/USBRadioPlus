@@ -1,0 +1,12 @@
+<map id="usbradioplus_publish_native_processing_transaction" name="usbradioplus_publish_native_processing_transaction">
+<area shape="rect" id="Node000001" title="Publish a successfully staged native graph transaction." alt="" coords="403,37,629,77"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a0416610043eed13df398e3625af6e6ed" title="Rebuild native graphs for all configured channels after a valid reload." alt="" coords="178,5,349,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="389,44,348,39,349,33,389,39"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="172,69,355,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="389,76,355,80,354,75,389,71"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,21,124,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="164,32,124,34,124,28,164,27"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="178,68,110,49,111,44,180,63"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="22,77,107,102"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="158,92,108,92,108,87,158,87"/>
+</map>

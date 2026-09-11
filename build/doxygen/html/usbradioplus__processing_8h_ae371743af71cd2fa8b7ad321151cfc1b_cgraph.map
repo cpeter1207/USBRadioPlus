@@ -1,0 +1,7 @@
+<map id="usbradioplus_processing_unload" name="usbradioplus_processing_unload">
+<area shape="rect" id="Node000001" title="Stop the scanner, detach audiohooks, and unregister processing commands." alt="" coords="5,23,188,63"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#aa6f47039356c1d945ce188c4e2b5dde2" title="Release settings snapshots after all audio callbacks are stopped." alt="" coords="236,5,392,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="188,30,222,26,223,31,189,35"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#af1f022d6853c7b6de1915d63b8f163da" title="Remove processing hooks from all channels during shutdown." alt="" coords="269,55,359,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="189,51,256,58,255,64,188,56"/>
+</map>

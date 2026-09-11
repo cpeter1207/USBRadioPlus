@@ -1,0 +1,78 @@
+<map id="native_graph_set_build" name="native_graph_set_build">
+<area shape="rect" id="Node000001" title="Build every stage of a native graph generation before publication." alt="" coords="5,433,179,458"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ac98f0a66c10dfd05f2d8bccf8a88f36f" title="Find one CTCSS table entry in the configured receive&#45;code list." alt="" coords="227,178,440,203"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,431,108,389,134,329,173,266,197,237,225,212,233,207,236,212,228,217,201,241,177,269,139,332,113,391,99,433"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a1bedca66f900bb5ac1996f6abbf11a2f" title="Build the final transmitter graph configuration." alt="" coords="261,227,405,253"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="97,431,113,397,141,351,178,302,201,280,225,262,247,251,249,255,228,266,204,284,182,306,145,354,118,399,101,433"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#abb428c410fe9a839477f7f0073ba9da2" title="Destroy a complete native graph generation outside the audio callback." alt="" coords="238,277,429,302"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="100,431,149,373,185,339,225,311,239,304,242,309,228,316,188,343,153,376,104,434"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#aa1d95ff17522dcccc7f1f281abd0e0b9" title="Initialize every processor in an unprepared native graph generation." alt="" coords="252,375,415,401"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="146,430,265,401,266,406,147,435"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#aa0f884f0546b481d61dd0d639511203a" title="Build the optional local&#45;dynamics graph after fixed receive filtering." alt="" coords="248,425,419,465"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="179,443,234,443,234,448,179,448"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#aa7d40a75cbdcda9d72749caf810c73e3" title="Build the fixed native de&#45;emphasis graph configuration." alt="" coords="231,489,435,529"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="142,455,245,483,243,488,140,461"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__common_8c.html#ac446f8970f88f5d7033f191ba92324df" title="Build the always&#45;selected receive band&#45;pass and PL&#45;filter graph." alt="" coords="256,553,411,593"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="110,456,160,496,228,539,244,546,241,551,225,544,157,501,106,460"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__channel__common_8c.html#a12c76d8d3b18054c0ccc21062fa62344" title="Build a prepared receive graph that rejects exactly one CTCSS code." alt="" coords="253,617,414,657"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="103,457,149,526,186,568,228,603,242,611,239,615,225,607,182,571,145,530,98,460"/>
+<area shape="rect" id="Node000014" href="$avfilter__processor_8c.html#a49bce11019ec43d2202a54d2496b601f" title="Allocate or rebuild a shared FFmpeg graph outside the audio callback." alt="" coords="249,326,417,351"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="109,430,159,395,226,360,247,353,249,358,228,365,162,400,112,435"/>
+<area shape="rect" id="Node000029" href="$usbradioplus__processing_8c.html#a1ec98f39aaa9de143d15bee683e35dba" title="Copy a channel&#39;s final voice/telemetry chain under the settings mutex. An absent profile produces a z..." alt="" coords="242,745,425,785"/>
+<area shape="poly" id="edge39_Node000001_Node000029" title=" " alt="" coords="98,458,109,509,133,583,150,623,172,662,198,699,228,731,234,736,231,740,225,735,194,703,167,665,145,625,128,585,104,510,93,459"/>
+<area shape="rect" id="Node000032" href="$usbradioplus__processing_8c.html#a2142f868836deb99a034eac7389128f3" title="Copy a channel&#39;s local&#45;receiver chain under the settings mutex. An absent profile produces a zeroed,..." alt="" coords="242,681,425,721"/>
+<area shape="poly" id="edge42_Node000001_Node000032" title=" " alt="" coords="100,457,115,498,141,555,179,615,202,643,228,667,236,672,233,677,225,671,198,647,174,618,136,557,110,500,95,459"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#ac665674abe7bea9e08923f5bbda6eeaa" title="Find the CTCSS table index corresponding to a requested tone." alt="" coords="494,171,649,211"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="440,188,480,188,480,193,440,193"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="488,255,655,281"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="428,278,474,274,474,279,429,283"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="756,255,848,281"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="655,265,742,265,742,271,655,271"/>
+<area shape="rect" id="Node000009" href="$avfilter__processor_8c.html#a1c76f7b09d096081aadbbe5265da11ad" title="Initialize an empty FFmpeg processor and its level statistics." alt="" coords="502,405,641,430"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="415,395,488,404,488,410,415,401"/>
+<area shape="rect" id="Node000015" href="$avfilter__processor_8c.html#a9e7cb869fcd27b93df8369ab599480af" title="Rebuild the FFmpeg graph when its configuration or sample rate changes." alt="" coords="530,355,613,381"/>
+<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="418,346,517,359,516,364,417,352"/>
+<area shape="rect" id="Node000028" href="$avfilter__processor_8c.html#a11830d916b957a0e787c49631c014c9d" title="Compare every named configuration member without reading padding." alt="" coords="498,306,645,331"/>
+<area shape="poly" id="edge38_Node000014_Node000028" title=" " alt="" coords="417,329,484,323,485,329,418,334"/>
+<area shape="poly" id="edge35_Node000015_Node000007" title=" " alt="" coords="612,357,653,340,668,328,676,315,686,302,701,290,741,274,743,279,704,294,690,306,681,318,671,332,656,345,614,362"/>
+<area shape="rect" id="Node000016" href="$avfilter__processor_8c.html#a6dcd265ad6fa0b9738e19fdde60acf62" title="Allocate the fixed storage used by the steady&#45;state graph feeder." alt="" coords="710,469,894,494"/>
+<area shape="poly" id="edge15_Node000015_Node000016" title=" " alt="" coords="614,373,656,390,672,402,681,415,690,428,704,440,745,461,743,466,701,445,686,431,677,418,668,406,653,394,612,378"/>
+<area shape="rect" id="Node000017" href="$avfilter__processor_8c.html#a816370bd95800e4289ff53e23f0f4d6d" title="Derive a fixed source&#45;frame capacity from the stream rate." alt="" coords="949,494,1124,519"/>
+<area shape="poly" id="edge36_Node000015_Node000017" title=" " alt="" coords="612,357,673,350,748,349,788,352,828,360,867,373,903,391,922,410,929,431,936,452,951,473,973,486,970,491,948,477,931,455,924,433,917,413,900,395,865,378,827,365,787,358,748,354,673,355,613,363"/>
+<area shape="rect" id="Node000018" href="$avfilter__processor_8c.html#a4e4c712f217991d7500cd2c8bc39552e" title="Build the ordered optional graph between the fixed receive and transmitter stages." alt="" coords="735,305,869,330"/>
+<area shape="poly" id="edge17_Node000015_Node000018" title=" " alt="" coords="612,356,729,330,731,336,613,362"/>
+<area shape="rect" id="Node000027" href="$avfilter__processor_8c.html#ac46253be3b53033157c300906252c3e0" title="Constrain the graph sink to double&#45;precision mono audio." alt="" coords="703,406,901,431"/>
+<area shape="poly" id="edge37_Node000015_Node000027" title=" " alt="" coords="613,374,731,400,729,405,612,379"/>
+<area shape="poly" id="edge16_Node000016_Node000017" title=" " alt="" coords="895,489,936,493,935,498,894,494"/>
+<area shape="rect" id="Node000019" href="$avfilter__processor_8c.html#a6726e04f461e857fd24a853c4be7ae8f" title="Append the shared FFT band&#45;pass filter between two graph labels." alt="" coords="1179,38,1361,63"/>
+<area shape="poly" id="edge18_Node000018_Node000019" title=" " alt="" coords="868,306,900,290,911,278,918,267,924,242,930,216,936,202,947,189,1005,143,1071,108,1136,82,1195,64,1196,69,1138,87,1073,113,1008,148,951,193,941,205,935,217,929,243,922,269,915,281,903,294,870,311"/>
+<area shape="rect" id="Node000020" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="1416,114,1531,139"/>
+<area shape="poly" id="edge34_Node000018_Node000020" title=" " alt="" coords="868,308,885,301,899,290,915,270,923,250,924,209,925,166,932,143,947,121,973,94,998,74,1022,59,1047,49,1102,36,1171,23,1227,11,1272,4,1316,6,1369,23,1397,38,1422,59,1458,101,1454,105,1418,63,1394,43,1367,28,1315,12,1272,9,1228,16,1173,28,1103,41,1048,54,1024,64,1001,78,977,98,951,124,937,146,931,167,930,209,928,251,920,273,903,294,888,305,870,313"/>
+<area shape="rect" id="Node000021" href="$avfilter__processor_8c.html#a942db83871c8928c414177847157082d" title="Append one selected equalizer, expander, AGC, de&#45;esser, compressor, or limiter." alt="" coords="961,273,1113,298"/>
+<area shape="poly" id="edge20_Node000018_Node000021" title=" " alt="" coords="869,306,947,295,947,300,870,311"/>
+<area shape="rect" id="Node000024" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="1442,342,1505,367"/>
+<area shape="poly" id="edge32_Node000018_Node000024" title=" " alt="" coords="861,327,950,341,1086,351,1222,355,1428,353,1429,359,1222,360,1086,356,949,347,861,333"/>
+<area shape="rect" id="Node000025" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="1422,291,1525,317"/>
+<area shape="poly" id="edge33_Node000018_Node000025" title=" " alt="" coords="869,321,966,329,1091,335,1229,335,1368,325,1413,317,1414,322,1368,331,1229,340,1091,340,966,334,869,327"/>
+<area shape="rect" id="Node000026" href="$avfilter__processor_8c.html#a53d91b1af5f22881f4f869695fb680e1" title="Append FFmpeg emphasis normalized at the configured reference frequency." alt="" coords="979,203,1095,229"/>
+<area shape="poly" id="edge30_Node000018_Node000026" title=" " alt="" coords="865,302,900,290,924,275,948,258,995,232,998,237,951,262,927,279,902,294,866,307"/>
+<area shape="poly" id="edge19_Node000019_Node000020" title=" " alt="" coords="1313,61,1369,80,1432,106,1430,111,1367,85,1311,66"/>
+<area shape="poly" id="edge29_Node000021_Node000020" title=" " alt="" coords="1082,270,1211,230,1367,173,1434,143,1436,148,1369,178,1212,235,1083,275"/>
+<area shape="rect" id="Node000022" href="$avfilter__processor_8c.html#a1fbfa190c6e570dbb69c96347c0fc8e3" title="Append a dynamics stage with a separately filtered detector input." alt="" coords="1191,139,1349,165"/>
+<area shape="poly" id="edge21_Node000021_Node000022" title=" " alt="" coords="1068,270,1095,256,1122,238,1136,223,1145,210,1155,196,1170,182,1199,167,1202,172,1174,186,1159,199,1150,213,1141,227,1126,242,1098,261,1070,275"/>
+<area shape="rect" id="Node000023" href="$avfilter__processor_8c.html#a137fd1cc3d50967049b18c3746154400" title="Split, independently compress, and recombine three complementary bands." alt="" coords="1172,291,1368,317"/>
+<area shape="poly" id="edge23_Node000021_Node000023" title=" " alt="" coords="1113,289,1159,292,1158,298,1113,294"/>
+<area shape="poly" id="edge27_Node000021_Node000024" title=" " alt="" coords="1072,296,1119,311,1173,325,1242,337,1312,344,1429,351,1428,356,1312,350,1241,342,1171,331,1118,317,1070,301"/>
+<area shape="poly" id="edge28_Node000021_Node000025" title=" " alt="" coords="1113,275,1233,270,1301,271,1368,276,1417,285,1416,290,1368,281,1301,276,1233,275,1113,280"/>
+<area shape="poly" id="edge22_Node000022_Node000020" title=" " alt="" coords="1349,139,1402,133,1402,138,1350,145"/>
+<area shape="poly" id="edge26_Node000023_Node000020" title=" " alt="" coords="1285,289,1366,219,1446,147,1450,151,1370,223,1288,293"/>
+<area shape="poly" id="edge24_Node000023_Node000024" title=" " alt="" coords="1323,314,1430,341,1428,346,1321,319"/>
+<area shape="poly" id="edge25_Node000023_Node000025" title=" " alt="" coords="1368,301,1408,301,1408,307,1368,307"/>
+<area shape="poly" id="edge31_Node000026_Node000020" title=" " alt="" coords="1049,201,1100,161,1134,140,1171,124,1231,111,1292,107,1351,108,1403,113,1402,118,1351,113,1293,112,1232,117,1173,129,1136,144,1103,165,1053,205"/>
+<area shape="rect" id="Node000030" href="$usbradioplus__processing_8c.html#aa9d7512772749a397b13bb9bc2af4c5f" title="Find a named channel profile in the supplied settings snapshot." alt="" coords="524,749,619,774"/>
+<area shape="poly" id="edge40_Node000029_Node000030" title=" " alt="" coords="425,761,510,760,510,765,425,766"/>
+<area shape="rect" id="Node000031" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="503,695,639,721"/>
+<area shape="poly" id="edge41_Node000029_Node000031" title=" " alt="" coords="416,743,504,721,505,726,418,748"/>
+<area shape="poly" id="edge43_Node000032_Node000030" title=" " alt="" coords="414,719,511,744,510,749,413,724"/>
+<area shape="poly" id="edge44_Node000032_Node000031" title=" " alt="" coords="425,701,490,703,490,708,425,706"/>
+</map>

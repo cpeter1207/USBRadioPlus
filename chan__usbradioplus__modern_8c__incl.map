@@ -1,0 +1,150 @@
+<map id="src/chan_usbradioplus_modern.c" name="src/chan_usbradioplus_modern.c">
+<area shape="rect" id="Node000001" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="2352,5,2519,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,101,92,126"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="2352,30,1867,37,1166,50,496,70,250,82,105,96,91,99,90,94,104,91,249,77,495,64,1166,45,1867,32,2352,25"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="117,101,183,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="2352,30,1884,35,1211,47,569,67,334,80,196,96,186,98,185,93,195,91,333,75,569,62,1211,42,1884,30,2352,25"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="208,101,295,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="2352,30,1267,51,660,71,437,83,306,96,293,99,292,94,306,91,437,77,659,66,1267,46,2351,25"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="319,101,389,126"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="2352,30,1923,37,1314,50,736,69,525,82,401,96,391,99,390,93,400,91,525,76,736,64,1314,44,1922,32,2352,25"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="413,101,481,126"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="2352,30,1940,37,1360,50,812,70,611,82,493,96,484,98,483,93,492,91,611,77,811,64,1360,45,1940,32,2352,25"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="505,101,576,126"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="2352,29,1992,28,1482,35,1215,43,965,55,751,73,589,96,579,99,578,93,588,91,750,67,965,50,1215,38,1482,30,1992,23,2352,23"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="601,101,675,126"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="2352,29,2009,30,1528,38,1277,46,1042,58,840,74,688,96,677,99,676,94,687,91,839,69,1041,52,1276,40,1527,32,2009,25,2352,24"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="699,101,787,126"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="2352,30,2029,33,1580,43,1347,51,1129,62,941,77,800,96,786,99,785,94,799,91,941,72,1129,57,1347,46,1580,37,2029,28,2352,24"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="812,101,875,126"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="2352,29,2044,30,1620,38,1401,47,1196,59,1020,75,888,96,879,98,878,93,887,91,1020,69,1196,53,1401,41,1620,33,2044,25,2352,24"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="899,101,990,126"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="2352,30,2065,35,1675,47,1286,66,1124,80,1002,96,988,99,987,94,1002,91,1124,74,1286,61,1675,41,2065,30,2352,25"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1015,101,1085,126"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="2352,30,2082,34,1719,44,1359,64,1210,78,1097,96,1088,98,1086,93,1096,91,1209,73,1358,58,1719,39,2082,28,2352,25"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="1109,101,1177,126"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="2352,30,2100,35,1764,46,1432,65,1294,79,1191,96,1181,99,1180,93,1189,91,1294,74,1431,60,1764,41,2100,30,2352,25"/>
+<area shape="rect" id="Node000014" title=" " alt="" coords="1202,101,1277,126"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="2352,31,2118,37,1811,49,1509,68,1384,81,1289,96,1278,99,1277,94,1288,91,1383,76,1508,63,1811,44,2118,32,2352,26"/>
+<area shape="rect" id="Node000015" title=" " alt="" coords="1301,101,1378,126"/>
+<area shape="poly" id="edge14_Node000001_Node000015" title=" " alt="" coords="2352,32,2137,39,1859,52,1588,70,1475,82,1391,96,1379,99,1378,94,1389,91,1475,77,1587,65,1859,46,2137,33,2352,26"/>
+<area shape="rect" id="Node000016" title=" " alt="" coords="1402,101,1530,126"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="2352,31,2200,36,1998,47,1771,67,1542,96,1520,100,1519,95,1542,91,1770,61,1998,42,2200,31,2352,26"/>
+<area shape="rect" id="Node000017" title=" " alt="" coords="1554,101,1663,126"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="2352,32,2221,38,2052,49,1864,68,1676,96,1659,100,1657,94,1675,91,1863,63,2051,44,2220,32,2351,26"/>
+<area shape="rect" id="Node000018" title=" " alt="" coords="1687,101,1805,126"/>
+<area shape="poly" id="edge17_Node000001_Node000018" title=" " alt="" coords="2352,34,2110,55,1963,72,1816,96,1798,100,1797,95,1815,91,1962,67,2110,49,2352,29"/>
+<area shape="rect" id="Node000019" title=" " alt="" coords="1828,101,1947,126"/>
+<area shape="poly" id="edge18_Node000001_Node000019" title=" " alt="" coords="2352,38,2171,61,1960,96,1942,100,1941,95,1959,91,2171,56,2352,33"/>
+<area shape="rect" id="Node000020" title=" " alt="" coords="1971,101,2145,126"/>
+<area shape="poly" id="edge19_Node000001_Node000020" title=" " alt="" coords="2353,48,2122,100,2121,95,2352,43"/>
+<area shape="rect" id="Node000021" href="$usbradioplus__radio_8h.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="2139,277,2297,302"/>
+<area shape="poly" id="edge20_Node000001_Node000021" title=" " alt="" coords="2388,48,2351,68,2317,95,2232,265,2227,263,2313,92,2348,63,2386,43"/>
+<area shape="rect" id="Node000027" href="$usbradioplus__dsp_8h.html" title="Sample&#45;rate conversion and receive&#45;echo matching." alt="" coords="2369,365,2515,390"/>
+<area shape="poly" id="edge28_Node000001_Node000027" title=" " alt="" coords="2424,47,2394,94,2364,161,2354,198,2348,235,2350,273,2362,308,2382,335,2408,355,2405,360,2378,339,2357,311,2345,274,2343,235,2348,196,2359,159,2390,92,2419,44"/>
+<area shape="rect" id="Node000028" href="$usbradioplus__ctcss_8h.html" title="Continuous&#45;phase 48 kHz CTCSS generation." alt="" coords="2422,189,2579,214"/>
+<area shape="poly" id="edge31_Node000001_Node000028" title=" " alt="" coords="2442,45,2470,132,2490,175,2485,177,2465,134,2437,46"/>
+<area shape="rect" id="Node000029" href="$usbradioplus__hardware_8h.html" title="Parallel&#45;port channel selection and RTX synthesizer programming." alt="" coords="1929,277,2115,302"/>
+<area shape="poly" id="edge33_Node000001_Node000029" title=" " alt="" coords="2389,48,2341,69,2291,96,2220,141,2151,190,2048,270,2045,266,2148,185,2217,137,2289,91,2339,65,2387,43"/>
+<area shape="rect" id="Node000030" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="3220,365,3360,390"/>
+<area shape="poly" id="edge35_Node000001_Node000030" title=" " alt="" coords="2519,24,3195,27,4207,37,4708,45,5137,57,5441,72,5530,81,5569,91,5577,102,5579,113,5577,124,5569,135,5550,151,5523,166,5447,194,5344,219,5217,242,5072,263,4911,282,4562,314,4201,339,3862,357,3374,376,3374,371,3861,352,4201,333,4562,309,4911,277,5071,258,5216,237,5342,214,5445,188,5521,161,5547,146,5565,132,5572,122,5574,113,5572,104,5566,96,5529,86,5441,77,5137,62,4708,51,4207,42,3195,33,2519,30"/>
+<area shape="rect" id="Node000031" href="$avfilter__processor_8h.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="2846,277,3043,302"/>
+<area shape="poly" id="edge37_Node000001_Node000031" title=" " alt="" coords="2460,43,2518,91,2540,113,2563,131,2594,144,2620,152,2669,157,2719,162,2747,168,2779,179,2820,199,2859,222,2921,266,2918,270,2856,226,2817,203,2777,184,2746,173,2718,167,2669,163,2619,157,2592,149,2561,136,2536,117,2515,95,2457,47"/>
+<area shape="rect" id="Node000033" href="$rnnoise__processor_8h.html" title="RNNoise frame buffering and rate adaptation for local receiver denoising." alt="" coords="1453,365,1652,390"/>
+<area shape="poly" id="edge41_Node000001_Node000033" title=" " alt="" coords="2363,48,2295,69,2226,96,2192,115,2158,136,2000,208,1842,273,1600,363,1598,358,1840,268,1998,203,2155,131,2189,111,2224,91,2294,64,2361,43"/>
+<area shape="rect" id="Node000036" href="$usbradioplus__processing_8h.html" title="Named&#45;channel processing configuration, audiohooks, live controls, and meters." alt="" coords="3193,277,3387,302"/>
+<area shape="poly" id="edge46_Node000001_Node000036" title=" " alt="" coords="2519,25,2867,29,3332,39,3557,48,3749,59,3887,73,3930,82,3952,91,3976,122,3985,150,3982,176,3967,198,3942,216,3909,232,3823,257,3718,274,3606,284,3401,292,3401,286,3606,279,3718,269,3822,252,3907,227,3940,212,3963,194,3977,174,3980,151,3971,125,3948,95,3928,87,3887,78,3749,64,3557,53,3332,44,2867,34,2519,30"/>
+<area shape="rect" id="Node000037" href="$usbradioplus__repeat_8h.html" title="Prepare native repeat audio with repeat level and DTMF muting." alt="" coords="5629,189,5796,214"/>
+<area shape="poly" id="edge49_Node000001_Node000037" title=" " alt="" coords="2519,24,3187,25,4193,33,4696,42,5134,53,5456,70,5557,79,5611,91,5640,108,5665,130,5701,176,5697,179,5661,134,5637,112,5609,96,5556,85,5455,75,5134,59,4696,47,4192,39,3187,31,2519,29"/>
+<area shape="rect" id="Node000038" href="$usbradioplus__channel__core_8h.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="2371,269,2534,309"/>
+<area shape="poly" id="edge51_Node000001_Node000038" title=" " alt="" coords="2430,47,2420,80,2410,124,2406,172,2413,221,2431,257,2426,259,2407,222,2401,173,2405,123,2414,79,2425,45"/>
+<area shape="rect" id="Node000039" href="$usbradioplus__config_8h.html" title="Update Asterisk configuration variables while preserving their category context." alt="" coords="2811,101,2974,126"/>
+<area shape="poly" id="edge56_Node000001_Node000039" title=" " alt="" coords="2519,40,2819,96,2818,101,2518,45"/>
+<area shape="rect" id="Node000040" title=" " alt="" coords="2998,101,3115,126"/>
+<area shape="poly" id="edge57_Node000001_Node000040" title=" " alt="" coords="2519,31,2732,52,2859,69,2987,91,3005,95,3004,100,2985,96,2859,75,2731,58,2519,36"/>
+<area shape="rect" id="Node000041" title=" " alt="" coords="3139,101,3268,126"/>
+<area shape="poly" id="edge58_Node000001_Node000041" title=" " alt="" coords="2519,28,2791,48,2959,66,3128,91,3149,95,3148,100,3127,96,2958,72,2790,54,2519,33"/>
+<area shape="rect" id="Node000042" title=" " alt="" coords="3293,101,3423,126"/>
+<area shape="poly" id="edge59_Node000001_Node000042" title=" " alt="" coords="2519,26,2664,32,2854,44,3067,63,3281,91,3303,95,3302,100,3280,96,3066,68,2853,49,2664,38,2519,32"/>
+<area shape="rect" id="Node000043" title=" " alt="" coords="3403,189,3545,214"/>
+<area shape="poly" id="edge60_Node000001_Node000043" title=" " alt="" coords="2519,31,2631,51,2692,68,2750,91,2766,101,2776,112,2785,122,2800,131,2885,159,2959,173,3026,178,3090,176,3224,168,3302,169,3393,179,3417,183,3416,188,3392,184,3302,174,3224,173,3090,181,3026,183,2959,179,2884,164,2798,136,2782,126,2772,116,2762,105,2747,96,2690,73,2630,56,2518,37"/>
+<area shape="rect" id="Node000044" title=" " alt="" coords="3498,101,3637,126"/>
+<area shape="poly" id="edge61_Node000001_Node000044" title=" " alt="" coords="2519,25,2694,30,2933,41,3205,60,3480,91,3507,95,3506,101,3479,96,3204,66,2933,46,2694,35,2519,31"/>
+<area shape="rect" id="Node000045" title=" " alt="" coords="3661,101,3799,126"/>
+<area shape="poly" id="edge62_Node000001_Node000045" title=" " alt="" coords="2519,24,2720,26,3000,35,3322,55,3488,71,3649,91,3674,95,3673,100,3648,96,3487,76,3322,60,3000,40,2719,31,2519,29"/>
+<area shape="rect" id="Node000046" title=" " alt="" coords="3823,101,3938,126"/>
+<area shape="poly" id="edge63_Node000001_Node000046" title=" " alt="" coords="2519,26,2794,33,3168,46,3540,65,3695,77,3812,91,3832,95,3831,100,3811,96,3694,82,3540,70,3168,51,2794,38,2519,31"/>
+<area shape="rect" id="Node000047" title=" " alt="" coords="3569,189,3699,214"/>
+<area shape="poly" id="edge64_Node000001_Node000047" title=" " alt="" coords="2519,23,2727,24,2993,33,3128,41,3252,53,3357,69,3436,91,3453,100,3463,110,3488,131,3540,159,3591,181,3589,186,3538,164,3484,136,3460,114,3450,104,3434,96,3356,75,3251,58,3127,46,2993,38,2727,30,2519,29"/>
+<area shape="rect" id="Node000048" title=" " alt="" coords="4013,101,4119,126"/>
+<area shape="poly" id="edge65_Node000001_Node000048" title=" " alt="" coords="2519,25,2827,31,3253,44,3681,63,3860,76,3994,91,4015,95,4014,100,3994,96,3859,81,3681,68,3253,49,2827,37,2519,31"/>
+<area shape="rect" id="Node000049" title=" " alt="" coords="4143,101,4261,126"/>
+<area shape="poly" id="edge66_Node000001_Node000049" title=" " alt="" coords="2519,25,2851,30,3318,41,3788,61,3984,74,4132,91,4152,95,4151,100,4131,96,3983,80,3787,66,3318,47,2851,35,2519,30"/>
+<area shape="rect" id="Node000050" title=" " alt="" coords="4285,101,4420,126"/>
+<area shape="poly" id="edge67_Node000001_Node000050" title=" " alt="" coords="2519,25,2876,30,3384,41,3898,61,4112,75,4274,91,4299,95,4298,100,4274,96,4112,80,3897,66,3383,47,2876,35,2519,30"/>
+<area shape="rect" id="Node000051" title=" " alt="" coords="4445,101,4607,126"/>
+<area shape="poly" id="edge68_Node000001_Node000051" title=" " alt="" coords="2519,25,2904,31,3457,43,4020,62,4255,75,4433,91,4464,95,4463,101,4432,96,4255,81,4020,68,3457,48,2904,36,2519,30"/>
+<area shape="rect" id="Node000052" title=" " alt="" coords="4631,101,4805,126"/>
+<area shape="poly" id="edge69_Node000001_Node000052" title=" " alt="" coords="2519,25,2935,30,3543,42,4164,62,4423,75,4620,91,4653,96,4652,101,4619,96,4423,80,4164,67,3543,47,2935,36,2519,30"/>
+<area shape="rect" id="Node000053" title=" " alt="" coords="4829,101,4943,126"/>
+<area shape="poly" id="edge70_Node000001_Node000053" title=" " alt="" coords="2519,24,2969,24,3635,32,3986,40,4317,52,4602,69,4817,91,4837,95,4836,100,4816,96,4602,74,4316,57,3986,45,3634,37,2969,30,2519,29"/>
+<area shape="rect" id="Node000054" title=" " alt="" coords="4967,101,5101,126"/>
+<area shape="poly" id="edge71_Node000001_Node000054" title=" " alt="" coords="2519,24,2992,25,3697,33,4071,42,4423,53,4727,70,4956,91,4980,95,4979,100,4955,96,4726,75,4423,59,4071,47,3697,39,2992,31,2519,29"/>
+<area shape="rect" id="Node000055" title=" " alt="" coords="5126,101,5305,126"/>
+<area shape="poly" id="edge72_Node000001_Node000055" title=" " alt="" coords="2519,24,3017,28,3769,38,4544,58,4869,72,5114,91,5149,96,5149,101,5114,96,4869,78,4544,63,3769,43,3017,33,2519,30"/>
+<area shape="rect" id="Node000056" title=" " alt="" coords="5329,101,5555,126"/>
+<area shape="poly" id="edge73_Node000001_Node000056" title=" " alt="" coords="2519,25,3051,29,3861,41,4699,60,5051,74,5317,91,5362,96,5362,101,5316,96,5051,79,4699,66,3861,46,3050,35,2519,30"/>
+<area shape="rect" id="Node000057" href="$usbradioplus__channel__private_8h.html" title="Select the adapter state shared with linked channel implementation objects." alt="" coords="2603,181,2766,221"/>
+<area shape="poly" id="edge74_Node000001_Node000057" title=" " alt="" coords="2448,44,2477,87,2497,111,2520,131,2560,156,2603,174,2601,179,2557,161,2516,135,2493,114,2473,91,2443,47"/>
+<area shape="rect" id="Node000060" href="$usbradioplus__channel__common_8h.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="2574,93,2737,133"/>
+<area shape="poly" id="edge81_Node000001_Node000060" title=" " alt="" coords="2485,43,2596,86,2594,91,2483,48"/>
+<area shape="rect" id="Node000022" title=" " alt="" coords="1923,445,1993,471"/>
+<area shape="poly" id="edge21_Node000021_Node000022" title=" " alt="" coords="2166,305,2126,312,2043,317,1935,318,1882,322,1833,329,1793,341,1767,359,1758,376,1760,391,1773,404,1794,416,1851,435,1910,447,1908,452,1849,440,1792,421,1770,408,1756,393,1752,375,1763,356,1791,336,1832,323,1881,316,1935,313,2043,311,2126,307,2165,299"/>
+<area shape="rect" id="Node000023" title=" " alt="" coords="2147,365,2345,390"/>
+<area shape="poly" id="edge22_Node000021_Node000023" title=" " alt="" coords="2224,301,2240,350,2235,352,2219,303"/>
+<area shape="rect" id="Node000024" href="$usbradioplus__dcs_8h.html" title="Native 48 kHz DCS (DPL/CDCSS) encoder and Golay decoder." alt="" coords="1977,365,2123,390"/>
+<area shape="poly" id="edge23_Node000021_Node000024" title=" " alt="" coords="2197,305,2086,361,2084,356,2194,300"/>
+<area shape="rect" id="Node000026" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="1777,365,1952,390"/>
+<area shape="poly" id="edge26_Node000021_Node000026" title=" " alt="" coords="2171,305,1926,364,1924,359,2170,299"/>
+<area shape="poly" id="edge25_Node000024_Node000022" title=" " alt="" coords="2038,392,1984,438,1980,434,2035,388"/>
+<area shape="rect" id="Node000025" title=" " alt="" coords="2791,445,2866,471"/>
+<area shape="poly" id="edge24_Node000024_Node000025" title=" " alt="" coords="2097,387,2136,395,2321,418,2503,435,2778,452,2778,457,2503,440,2320,423,2135,400,2096,393"/>
+<area shape="poly" id="edge27_Node000026_Node000022" title=" " alt="" coords="1880,388,1935,434,1932,438,1877,392"/>
+<area shape="poly" id="edge30_Node000027_Node000022" title=" " alt="" coords="2393,393,2357,400,2164,431,2008,453,2007,448,2163,426,2356,395,2392,387"/>
+<area shape="poly" id="edge29_Node000027_Node000025" title=" " alt="" coords="2499,387,2778,444,2777,449,2498,393"/>
+<area shape="poly" id="edge32_Node000028_Node000025" title=" " alt="" coords="2511,213,2575,296,2624,349,2681,395,2730,422,2779,440,2777,445,2727,427,2678,400,2621,352,2571,300,2506,216"/>
+<area shape="poly" id="edge34_Node000029_Node000022" title=" " alt="" coords="1962,305,1812,335,1750,350,1722,359,1713,380,1718,398,1736,413,1764,425,1837,442,1909,451,1909,456,1836,447,1762,430,1733,417,1714,401,1707,380,1719,355,1749,344,1811,330,1961,299"/>
+<area shape="poly" id="edge36_Node000030_Node000025" title=" " alt="" coords="3238,393,3201,400,2880,452,2879,447,3200,395,3237,387"/>
+<area shape="poly" id="edge38_Node000031_Node000025" title=" " alt="" coords="2956,301,2970,320,2982,345,2988,372,2986,386,2980,399,2960,420,2935,436,2907,447,2880,454,2879,448,2905,442,2932,431,2956,416,2976,396,2981,385,2983,373,2977,347,2965,323,2952,304"/>
+<area shape="poly" id="edge40_Node000031_Node000030" title=" " alt="" coords="2992,299,3232,359,3230,364,2990,305"/>
+<area shape="rect" id="Node000032" title=" " alt="" coords="2691,365,2790,390"/>
+<area shape="poly" id="edge39_Node000031_Node000032" title=" " alt="" coords="2918,305,2782,362,2780,357,2916,300"/>
+<area shape="poly" id="edge43_Node000033_Node000022" title=" " alt="" coords="1612,387,1910,445,1909,450,1611,393"/>
+<area shape="poly" id="edge42_Node000033_Node000025" title=" " alt="" coords="1653,385,1765,395,2360,431,2778,452,2777,457,2359,436,1764,400,1652,391"/>
+<area shape="rect" id="Node000034" title=" " alt="" coords="1451,445,1534,471"/>
+<area shape="poly" id="edge44_Node000033_Node000034" title=" " alt="" coords="1546,392,1512,436,1508,432,1542,389"/>
+<area shape="rect" id="Node000035" title=" " alt="" coords="1559,445,1667,471"/>
+<area shape="poly" id="edge45_Node000033_Node000035" title=" " alt="" coords="1564,389,1597,432,1593,436,1559,392"/>
+<area shape="poly" id="edge47_Node000036_Node000025" title=" " alt="" coords="3277,304,3208,359,3151,400,3080,425,3006,442,2937,452,2880,457,2880,452,2937,447,3005,437,3078,420,3149,395,3204,355,3274,300"/>
+<area shape="poly" id="edge48_Node000036_Node000030" title=" " alt="" coords="3293,302,3293,350,3287,350,3287,302"/>
+<area shape="poly" id="edge50_Node000037_Node000025" title=" " alt="" coords="5708,216,5672,264,5644,291,5611,312,5541,333,5434,352,5293,369,5125,384,4727,409,4283,428,3833,442,3421,451,2880,459,2880,454,3421,446,3833,437,4282,423,4727,404,5125,379,5293,364,5433,347,5540,328,5609,307,5641,287,5668,261,5704,212"/>
+<area shape="poly" id="edge53_Node000038_Node000022" title=" " alt="" coords="2483,307,2507,327,2528,350,2538,374,2536,387,2529,399,2501,413,2450,425,2304,442,2139,452,2007,458,2007,453,2139,447,2303,436,2450,419,2500,408,2526,395,2531,385,2533,375,2523,352,2503,330,2480,311"/>
+<area shape="poly" id="edge52_Node000038_Node000025" title=" " alt="" coords="2489,307,2573,355,2604,376,2636,395,2710,423,2779,442,2777,448,2708,428,2634,400,2601,381,2570,360,2486,312"/>
+<area shape="poly" id="edge55_Node000038_Node000027" title=" " alt="" coords="2453,310,2448,351,2443,350,2448,309"/>
+<area shape="poly" id="edge54_Node000038_Node000032" title=" " alt="" coords="2517,307,2690,358,2689,363,2515,312"/>
+<area shape="poly" id="edge77_Node000057_Node000021" title=" " alt="" coords="2604,222,2592,224,2298,277,2297,272,2591,219,2603,216"/>
+<area shape="poly" id="edge76_Node000057_Node000031" title=" " alt="" coords="2743,219,2898,270,2896,275,2741,224"/>
+<area shape="poly" id="edge75_Node000057_Node000032" title=" " alt="" coords="2671,223,2659,242,2649,263,2645,286,2650,308,2673,336,2702,356,2699,361,2669,340,2645,311,2639,286,2644,262,2654,239,2667,220"/>
+<area shape="rect" id="Node000058" href="$usbradioplus__channel__legacy__private_8h.html" title="Per&#45;channel state for the OSS and libusb radio adapter." alt="" coords="2659,269,2822,309"/>
+<area shape="poly" id="edge78_Node000057_Node000058" title=" " alt="" coords="2699,220,2723,256,2719,259,2695,223"/>
+<area shape="poly" id="edge79_Node000058_Node000032" title=" " alt="" coords="2743,310,2743,351,2738,351,2738,310"/>
+<area shape="rect" id="Node000059" title=" " alt="" coords="2815,357,2965,397"/>
+<area shape="poly" id="edge80_Node000058_Node000059" title=" " alt="" coords="2775,307,2847,348,2844,353,2772,312"/>
+<area shape="poly" id="edge83_Node000060_Node000022" title=" " alt="" coords="2733,131,2823,156,2920,188,3005,226,3037,247,3058,268,3067,292,3064,315,3052,337,3035,357,2999,387,2979,400,2919,415,2816,427,2532,444,2227,454,2007,459,2007,453,2227,449,2531,439,2816,422,2918,409,2977,395,2996,383,3032,353,3048,334,3059,314,3061,292,3053,271,3033,251,3003,231,2918,193,2821,161,2732,136"/>
+<area shape="poly" id="edge82_Node000060_Node000025" title=" " alt="" coords="2737,130,2744,131,2825,135,2931,137,2985,141,3033,148,3073,160,3101,179,3122,207,3137,234,3146,261,3148,288,3145,316,3136,343,3121,371,3101,399,3086,411,3064,422,3006,438,2940,449,2880,456,2879,450,2939,444,3005,433,3063,417,3084,407,3097,396,3117,368,3131,341,3140,315,3143,288,3140,262,3132,236,3118,210,3097,183,3071,165,3032,153,2984,146,2931,143,2825,141,2743,136,2736,135"/>
+<area shape="poly" id="edge84_Node000060_Node000043" title=" " alt="" coords="2737,128,2756,131,2934,148,3074,153,3214,158,3393,179,3417,183,3416,188,3392,184,3214,164,3074,158,2934,153,2755,136,2737,133"/>
+<area shape="poly" id="edge85_Node000060_Node000047" title=" " alt="" coords="2737,124,2800,131,3013,145,3179,148,3345,154,3442,163,3557,179,3580,183,3579,188,3556,184,3442,169,3345,160,3179,153,3012,150,2799,136,2736,129"/>
+<area shape="poly" id="edge86_Node000060_Node000057" title=" " alt="" coords="2664,133,2676,167,2671,169,2659,134"/>
+<area shape="rect" id="Node000061" href="$usbradioplus__rpt__advanced_8h.html" title="Separate Asterisk interface for the hardware&#45;clocked rpt_advanced controller." alt="" coords="3168,189,3380,214"/>
+<area shape="poly" id="edge87_Node000060_Node000061" title=" " alt="" coords="2738,128,2756,131,2953,156,3150,179,3188,184,3187,189,3150,184,2952,161,2755,136,2737,133"/>
+</map>

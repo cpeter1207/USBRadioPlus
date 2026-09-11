@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__dcs__receive__phase" kind="struct" language="C++" prot="public">
+    <compoundname>urp_dcs_receive_phase</compoundname>
+    <includes refid="usbradioplus__dcs_8h" local="no">usbradioplus_dcs.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1ab52499ffced50c5f28edf6e812128d4d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_receive_phase::word</definition>
+        <argsstring></argsstring>
+        <name>word</name>
+        <qualifiedname>urp_dcs_receive_phase::word</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sliding received 23-bit Golay word. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="23" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="23" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1abda45461ef0d494345d64f6a8e4ea680" compoundref="usbradioplus__dcs_8c" startline="321" endline="351">dcs_process_received_symbol</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1a6de9abee03482c17fec2605733957827" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_receive_phase::bit_accumulator</definition>
+        <argsstring></argsstring>
+        <name>bit_accumulator</name>
+        <qualifiedname>urp_dcs_receive_phase::bit_accumulator</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fractional receive symbol accumulator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="25" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="25" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aebfd1bea48ad1ec068a0f33aba1e573a" compoundref="usbradioplus__dcs_8c" startline="172" endline="185">dcs_reset_receive_phase_bank</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1aacf06df6ddc89de73b2ee806dc71a933" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_receive_phase::hold</definition>
+        <argsstring></argsstring>
+        <name>hold</name>
+        <qualifiedname>urp_dcs_receive_phase::hold</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Remaining one-word loss hold after qualification. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="27" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="27" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abda45461ef0d494345d64f6a8e4ea680" compoundref="usbradioplus__dcs_8c" startline="321" endline="351">dcs_process_received_symbol</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1aed8ec9cee094794332377f14c19413d9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_receive_phase::symbols_since_match</definition>
+        <argsstring></argsstring>
+        <name>symbols_since_match</name>
+        <qualifiedname>urp_dcs_receive_phase::symbols_since_match</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of emitted symbols since the last matching codeword. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="29" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="29" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abda45461ef0d494345d64f6a8e4ea680" compoundref="usbradioplus__dcs_8c" startline="321" endline="351">dcs_process_received_symbol</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1a7410bf603967d6547fd44d55dcc40af0" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t urp_dcs_receive_phase::match_count</definition>
+        <argsstring></argsstring>
+        <name>match_count</name>
+        <qualifiedname>urp_dcs_receive_phase::match_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Consecutive correctly spaced matching codewords, saturated at two. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="31" column="9" bodyfile="src/usbradioplus_dcs.h" bodystart="31" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abda45461ef0d494345d64f6a8e4ea680" compoundref="usbradioplus__dcs_8c" startline="321" endline="351">dcs_process_received_symbol</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1ab3d432358b103ff6977f9a27e650cc58" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t urp_dcs_receive_phase::qualified</definition>
+        <argsstring></argsstring>
+        <name>qualified</name>
+        <qualifiedname>urp_dcs_receive_phase::qualified</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero after two correctly spaced matching codewords. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="33" column="9" bodyfile="src/usbradioplus_dcs.h" bodystart="33" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af2be4adcc0ec5dc058f2f1bfd819558e" compoundref="usbradioplus__dcs_8c" startline="278" endline="286">dcs_phase_bank_valid</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abda45461ef0d494345d64f6a8e4ea680" compoundref="usbradioplus__dcs_8c" startline="321" endline="351">dcs_process_received_symbol</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__receive__phase_1a00de024489affce38cbaa37be9974c43" prot="public" static="no" mutable="no">
+        <type>int64_t</type>
+        <definition>int64_t urp_dcs_receive_phase::sample_accumulator</definition>
+        <argsstring></argsstring>
+        <name>sample_accumulator</name>
+        <qualifiedname>urp_dcs_receive_phase::sample_accumulator</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sum of discriminator samples within this hypothesis&apos;s symbol. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="35" column="9" bodyfile="src/usbradioplus_dcs.h" bodystart="35" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>State for one fixed DCS receive-symbol timing hypothesis. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/usbradioplus_dcs.h" line="21" column="1" bodyfile="src/usbradioplus_dcs.h" bodystart="21" bodyend="36"/>
+    <listofallmembers>
+      <member refid="structurp__dcs__receive__phase_1a6de9abee03482c17fec2605733957827" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>bit_accumulator</name></member>
+      <member refid="structurp__dcs__receive__phase_1aacf06df6ddc89de73b2ee806dc71a933" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>hold</name></member>
+      <member refid="structurp__dcs__receive__phase_1a7410bf603967d6547fd44d55dcc40af0" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>match_count</name></member>
+      <member refid="structurp__dcs__receive__phase_1ab3d432358b103ff6977f9a27e650cc58" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>qualified</name></member>
+      <member refid="structurp__dcs__receive__phase_1a00de024489affce38cbaa37be9974c43" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>sample_accumulator</name></member>
+      <member refid="structurp__dcs__receive__phase_1aed8ec9cee094794332377f14c19413d9" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>symbols_since_match</name></member>
+      <member refid="structurp__dcs__receive__phase_1ab52499ffced50c5f28edf6e812128d4d" prot="public" virt="non-virtual"><scope>urp_dcs_receive_phase</scope><name>word</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

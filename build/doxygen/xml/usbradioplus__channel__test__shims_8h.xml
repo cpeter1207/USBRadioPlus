@@ -1,0 +1,162 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__channel__test__shims_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_channel_test_shims.h</compoundname>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="usbradioplus__channel__test__shims_8h_1a403dcbb02665207244f68301b9594417" prot="public" static="no">
+        <name>ast_debug</name>
+        <initializer><ref refid="usbradioplus__channel__test__shims_8h_1abc7334c85492bbe17aa58b9d1474b572" kindref="member">test_ast_debug</ref></initializer>
+        <briefdescription>
+<para>Redirect Asterisk debug logging to the test host shim. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_shims.h" line="24" column="9" bodyfile="src/usbradioplus_channel_test_shims.h" bodystart="24" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" prot="public" static="no">
+        <name>ast_log</name>
+        <initializer><ref refid="usbradioplus__channel__test__shims_8h_1ab191e1dbc52cced7139e1829d322687d" kindref="member">test_ast_log</ref></initializer>
+        <briefdescription>
+<para>Redirect Asterisk logging to the test host shim. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_shims.h" line="27" column="9" bodyfile="src/usbradioplus_channel_test_shims.h" bodystart="27" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__channel__test__shims_8h_1abc7334c85492bbe17aa58b9d1474b572" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void test_ast_debug</definition>
+        <argsstring>(int level, const char *format,...)</argsstring>
+        <name>test_ast_debug</name>
+        <param>
+          <type>int</type>
+          <declname>level</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>format</declname>
+        </param>
+        <param>
+          <type>...</type>
+        </param>
+        <briefdescription>
+<para>Accept debug logging through the channel test&apos;s host-operation shim. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>level</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk log severity or debug verbosity. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>format</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>printf-style message format. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>...</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Values for the preceding format string. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_shims.h" line="13" column="6" declfile="src/usbradioplus_channel_test_shims.h" declline="13" declcolumn="6"/>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__shims_8h_1ab191e1dbc52cced7139e1829d322687d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void test_ast_log</definition>
+        <argsstring>(int level, const char *format,...)</argsstring>
+        <name>test_ast_log</name>
+        <param>
+          <type>int</type>
+          <declname>level</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>format</declname>
+        </param>
+        <param>
+          <type>...</type>
+        </param>
+        <briefdescription>
+<para>Accept Asterisk logging through the channel test&apos;s host-operation shim. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>level</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk log severity or debug verbosity. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>format</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>printf-style message format. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>...</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Values for the preceding format string. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_shims.h" line="19" column="6" declfile="src/usbradioplus_channel_test_shims.h" declline="19" declcolumn="6"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Injectable host operations used by the channel integration harness. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_CHANNEL_TEST_SHIMS_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_CHANNEL_TEST_SHIMS_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="13" refid="usbradioplus__channel__test__shims_8h_1abc7334c85492bbe17aa58b9d1474b572" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__shims_8h_1abc7334c85492bbe17aa58b9d1474b572" kindref="member">test_ast_debug</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>level,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*format,<sp/>...);</highlight></codeline>
+<codeline lineno="19" refid="usbradioplus__channel__test__shims_8h_1ab191e1dbc52cced7139e1829d322687d" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__shims_8h_1ab191e1dbc52cced7139e1829d322687d" kindref="member">test_ast_log</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>level,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*format,<sp/>...);</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>Redirect<sp/>operating-system<sp/>and<sp/>library<sp/>boundaries<sp/>for<sp/>the<sp/>linked<sp/>channel<sp/>test.<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight><highlight class="preprocessor">#undef<sp/>ast_debug</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight></codeline>
+<codeline lineno="24" refid="usbradioplus__channel__test__shims_8h_1a403dcbb02665207244f68301b9594417" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>ast_debug<sp/>test_ast_debug</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight><highlight class="preprocessor">#undef<sp/>ast_log</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight></codeline>
+<codeline lineno="27" refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>ast_log<sp/>test_ast_log</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="28"><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_channel_test_shims.h"/>
+  </compounddef>
+</doxygen>

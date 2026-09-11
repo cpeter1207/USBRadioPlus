@@ -1,0 +1,58 @@
+<map id="parse_named_value" name="parse_named_value">
+<area shape="rect" id="Node000001" title="Resolve a symbolic option through a bounded name/value table." alt="" coords="1268,137,1421,162"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a738bb34e2b9a7c9c8f25acf7070dc25e" title="Parse a carrier&#45;detection source." alt="" coords="1031,58,1216,83"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1301,134,1219,101,1171,86,1172,81,1221,96,1303,129"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__core_8c.html#a4de720cbfaa6e9bb3d1f01b1e8b6aceb" title="Parse a CTCSS&#45;detection source, including accepted symbolic aliases." alt="" coords="1035,210,1211,235"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1303,170,1221,201,1181,213,1180,207,1219,196,1301,165"/>
+<area shape="rect" id="Node000022" href="$usbradioplus__channel__core_8c.html#a9dfb5310b67689f7f9b3fd8a8e5e7291" title="Parse a receive audio source." alt="" coords="1027,161,1220,186"/>
+<area shape="poly" id="edge24_Node000001_Node000022" title=" " alt="" coords="1254,162,1220,166,1220,160,1254,156"/>
+<area shape="rect" id="Node000024" href="$usbradioplus__channel__core_8c.html#a21db3a33438c60c2c4bae2aa63d75195" title="Parse a transmitter CTCSS turn&#45;off mode, including symbolic aliases." alt="" coords="1028,111,1219,137"/>
+<area shape="poly" id="edge28_Node000001_Node000024" title=" " alt="" coords="1254,142,1219,138,1219,132,1254,136"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a02b9c49d218db997d6b5ae859d19096a" title="Resolve and validate live&#45;safe clean&#45;slate signaling controls." alt="" coords="832,48,979,88"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="1017,72,979,72,979,66,1017,67"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#ab18f6356930ff7516867a190fd5578ef" title="Resolve only clean&#45;slate signaling controls without touching parser state." alt="" coords="583,5,784,45"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="818,54,784,47,785,42,819,49"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a1f8f4ad6383fd154cf808321ece65eef" title="Apply validated signaling selections to live radio states." alt="" coords="589,69,777,109"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="818,79,778,83,777,78,818,74"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="352,69,535,109"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="576,92,535,92,535,87,576,87"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="207,91,293,117"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="338,100,293,103,293,98,338,95"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="17,91,136,117"/>
+<area shape="poly" id="edge7_Node000006_Node000008" title=" " alt="" coords="338,81,268,78,196,81,126,94,125,89,196,76,268,73,339,75"/>
+<area shape="poly" id="edge9_Node000009_Node000003" title=" " alt="" coords="1032,206,1025,201,1013,189,1006,176,999,151,993,126,977,102,961,90,964,86,981,98,998,124,1004,150,1011,174,1017,185,1028,197,1035,201"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a36c954cd8dfb330c23efb58d2d8503bb" title="Write current radio calibration values to the unified configuration." alt="" coords="832,261,979,286"/>
+<area shape="poly" id="edge10_Node000009_Node000010" title=" " alt="" coords="1055,241,961,263,960,258,1054,236"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__channel__common_8c.html#a2b68d7c46e6bf88fa64e3bfd2d2632e3" title="Parse the configured CTCSS indication source." alt="" coords="846,211,965,237"/>
+<area shape="poly" id="edge16_Node000009_Node000015" title=" " alt="" coords="1022,226,965,226,965,221,1022,221"/>
+<area shape="rect" id="Node000011" href="$chan__usbradioplus_8c.html#aba2ef44197e2e1293978c039a00c374d" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="638,261,729,286"/>
+<area shape="poly" id="edge11_Node000010_Node000011" title=" " alt="" coords="818,276,729,276,729,271,818,271"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="205,279,295,305"/>
+<area shape="poly" id="edge12_Node000011_Node000012" title=" " alt="" coords="624,279,296,293,296,287,624,273"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="371,305,515,330"/>
+<area shape="poly" id="edge14_Node000011_Node000014" title=" " alt="" coords="625,287,514,307,513,302,624,281"/>
+<area shape="rect" id="Node000013" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,279,148,305"/>
+<area shape="poly" id="edge13_Node000012_Node000013" title=" " alt="" coords="191,295,149,295,149,289,191,289"/>
+<area shape="poly" id="edge15_Node000014_Node000012" title=" " alt="" coords="357,309,295,301,296,295,358,303"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__channel__common_8c.html#a28e17300ff924415d51dc9cd81bcb803" title="Resolve a named channel&#39;s unified hardware and radio options." alt="" coords="593,155,774,195"/>
+<area shape="poly" id="edge17_Node000015_Node000016" title=" " alt="" coords="834,211,773,197,774,192,835,206"/>
+<area shape="rect" id="Node000017" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="401,141,485,166"/>
+<area shape="poly" id="edge18_Node000016_Node000017" title=" " alt="" coords="579,168,485,160,486,154,579,163"/>
+<area shape="rect" id="Node000019" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="393,190,494,215"/>
+<area shape="poly" id="edge20_Node000016_Node000019" title=" " alt="" coords="579,189,494,199,494,194,579,184"/>
+<area shape="rect" id="Node000018" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="196,141,304,166"/>
+<area shape="poly" id="edge19_Node000017_Node000018" title=" " alt="" coords="388,156,304,156,304,151,388,151"/>
+<area shape="rect" id="Node000020" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="202,190,298,215"/>
+<area shape="poly" id="edge21_Node000019_Node000020" title=" " alt="" coords="379,205,298,205,298,200,379,200"/>
+<area shape="poly" id="edge23_Node000020_Node000008" title=" " alt="" coords="205,186,195,181,95,119,98,114,197,176,208,182"/>
+<area shape="rect" id="Node000021" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="23,190,130,215"/>
+<area shape="poly" id="edge22_Node000020_Node000021" title=" " alt="" coords="188,205,130,205,130,200,188,200"/>
+<area shape="poly" id="edge25_Node000022_Node000003" title=" " alt="" coords="1038,158,1025,152,1010,140,1000,127,991,115,977,102,957,90,960,86,980,98,995,111,1004,124,1013,136,1028,147,1041,153"/>
+<area shape="rect" id="Node000023" href="$usbradioplus__channel__common_8c.html#a1fc26271019e339ec6c26fd081716884" title="Parse the configured receiver audio&#45;source assignment." alt="" coords="845,162,965,187"/>
+<area shape="poly" id="edge26_Node000022_Node000023" title=" " alt="" coords="1013,177,966,177,966,172,1013,171"/>
+<area shape="poly" id="edge27_Node000023_Node000016" title=" " alt="" coords="832,177,774,177,774,172,832,172"/>
+<area shape="poly" id="edge29_Node000024_Node000003" title=" " alt="" coords="1059,110,978,89,980,84,1061,105"/>
+<area shape="rect" id="Node000025" href="$usbradioplus__channel__common_8c.html#a394f2072d8be25535dca1eecc95129cf" title="Parse the transmitter CTCSS turn&#45;off assignment." alt="" coords="843,113,967,138"/>
+<area shape="poly" id="edge30_Node000024_Node000025" title=" " alt="" coords="1014,127,968,128,968,122,1014,122"/>
+<area shape="poly" id="edge31_Node000025_Node000016" title=" " alt="" coords="835,144,774,157,773,152,834,138"/>
+</map>

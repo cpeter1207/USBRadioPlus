@@ -1,0 +1,7 @@
+<map id="usbradioplus_native_renderer_stop" name="usbradioplus_native_renderer_stop">
+<area shape="rect" id="Node000001" title="Stop and destroy a channel&#39;s native renderer after callback quiescence." alt="" coords="5,23,159,63"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="207,5,376,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="159,31,193,27,194,33,159,37"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="229,55,354,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="159,49,215,56,215,61,159,55"/>
+</map>

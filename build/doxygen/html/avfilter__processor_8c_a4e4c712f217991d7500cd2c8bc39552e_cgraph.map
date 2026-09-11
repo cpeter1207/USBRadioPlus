@@ -1,0 +1,28 @@
+<map id="build_description" name="build_description">
+<area shape="rect" id="Node000001" title="Build the ordered optional graph between the fixed receive and transmitter stages." alt="" coords="5,144,139,169"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6726e04f461e857fd24a853c4be7ae8f" title="Append the shared FFT band&#45;pass filter between two graph labels." alt="" coords="394,36,575,61"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="100,141,186,109,292,81,391,61,392,66,293,86,187,114,102,146"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#afe828306c440726065dbaabf1541ecef" title="Append formatted filter syntax without writing beyond the graph buffer." alt="" coords="631,112,745,137"/>
+<area shape="poly" id="edge17_Node000001_Node000003" title=" " alt="" coords="86,141,129,107,185,73,239,50,283,36,386,21,487,4,531,5,584,21,612,36,636,57,673,99,669,102,633,60,609,41,582,26,530,10,487,9,387,26,284,41,241,55,188,78,132,112,89,146"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a942db83871c8928c414177847157082d" title="Append one selected equalizer, expander, AGC, de&#45;esser, compressor, or limiter." alt="" coords="187,218,339,244"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="107,167,218,211,216,216,105,172"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a93e3ce398ff9e76406d79e1b9db65897" title="Bound a floating&#45;point value to the inclusive interval." alt="" coords="657,288,719,313"/>
+<area shape="poly" id="edge15_Node000001_Node000007" title=" " alt="" coords="86,168,128,211,156,234,188,254,247,279,310,297,374,307,438,313,555,313,643,305,643,310,555,318,438,318,374,313,309,302,245,284,185,259,153,239,124,215,82,171"/>
+<area shape="rect" id="Node000008" href="$avfilter__processor_8c.html#a47e5dd431c6dd9adf011e1a7af2111f4" title="Convert a decibel amplitude gain to a linear multiplier." alt="" coords="637,338,739,364"/>
+<area shape="poly" id="edge16_Node000001_Node000008" title=" " alt="" coords="81,168,95,198,118,236,149,275,188,306,242,331,300,349,360,360,420,366,532,367,623,359,623,364,532,372,420,372,359,365,299,354,241,336,185,311,145,279,113,240,90,200,76,170"/>
+<area shape="rect" id="Node000009" href="$avfilter__processor_8c.html#a53d91b1af5f22881f4f869695fb680e1" title="Append FFmpeg emphasis normalized at the configured reference frequency." alt="" coords="205,124,321,149"/>
+<area shape="poly" id="edge13_Node000001_Node000009" title=" " alt="" coords="139,147,190,141,191,147,139,152"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="528,59,584,78,647,104,645,109,582,83,526,64"/>
+<area shape="poly" id="edge12_Node000004_Node000003" title=" " alt="" coords="286,216,331,194,386,173,446,157,507,144,617,128,617,134,508,149,447,162,387,178,334,199,288,221"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a1fbfa190c6e570dbb69c96347c0fc8e3" title="Append a dynamics stage with a separately filtered detector input." alt="" coords="405,188,564,213"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="338,218,391,211,392,216,339,223"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a137fd1cc3d50967049b18c3746154400" title="Split, independently compress, and recombine three complementary bands." alt="" coords="387,237,583,262"/>
+<area shape="poly" id="edge6_Node000004_Node000006" title=" " alt="" coords="339,235,373,238,373,243,339,240"/>
+<area shape="poly" id="edge10_Node000004_Node000007" title=" " alt="" coords="294,241,337,258,387,273,457,285,527,292,643,298,643,303,526,297,456,290,386,278,336,263,292,246"/>
+<area shape="poly" id="edge11_Node000004_Node000008" title=" " alt="" coords="282,242,328,272,388,301,449,319,511,332,623,345,623,350,511,337,447,324,386,306,326,276,279,246"/>
+<area shape="poly" id="edge5_Node000005_Node000003" title=" " alt="" coords="526,185,582,166,645,140,647,145,584,171,528,190"/>
+<area shape="poly" id="edge9_Node000006_Node000003" title=" " alt="" coords="555,235,581,223,607,207,630,186,667,146,671,150,634,190,610,211,584,228,557,239"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="537,260,644,287,643,292,536,265"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="511,260,632,323,646,330,644,335,629,328,508,265"/>
+<area shape="poly" id="edge14_Node000009_Node000003" title=" " alt="" coords="321,131,387,128,617,123,617,128,387,134,321,136"/>
+</map>

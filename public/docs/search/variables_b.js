@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['makeup_5fgain_5fdb_0',['makeup_gain_db',['../structdynamics__band.html#a5bb139cc128f3e471f9bd787d84732d9',1,'dynamics_band']]],
+  ['match_5fcount_1',['match_count',['../structurp__dcs__receive__phase.html#a7410bf603967d6547fd44d55dcc40af0',1,'urp_dcs_receive_phase']]],
+  ['matches_2',['matches',['../structurp__echo__replacer.html#a892bbd9cbaf01364cdb876f23e4fa873',1,'urp_echo_replacer']]],
+  ['max_5fattenuation_5fdb_3',['max_attenuation_db',['../structtxagc__config.html#ae2f56545217a5798c1e7fb69285e2482',1,'txagc_config']]],
+  ['max_5fgain_5fdb_4',['max_gain_db',['../structtxagc__config.html#a9b5c1a79da7af041263216f63f2aa36d',1,'txagc_config']]],
+  ['maximum_5',['maximum',['../structcontrol__spec.html#acd7f170544f7091790ef6eaaeeb5c72e',1,'control_spec']]],
+  ['mdcrxenable_6',['mdcRxEnable',['../structurp__radio__state.html#a663a5bbc3c6973fc7e35d7f30ca520be',1,'urp_radio_state']]],
+  ['mdctxenable_7',['mdcTxEnable',['../structurp__radio__state.html#a4b9097382b8266a4c6f82a36d48aab66',1,'urp_radio_state']]],
+  ['measpeak_8',['measPeak',['../structurp__radio__stage.html#a4192a308dd14384e96d83197d0e56e9c',1,'urp_radio_stage']]],
+  ['meter_5fsink_9',['meter_sink',['../structtxagc__avfilter.html#a125804417bc1b7262151e2dd5547542e',1,'txagc_avfilter']]],
+  ['micmax_10',['micmax',['../structchan__usbradio__pvt.html#adad0904eb9c8d7ac9c395eb1c2cb0b15',1,'chan_usbradio_pvt']]],
+  ['micor_5fsquelch_11',['micor_squelch',['../structurp__radio__stage.html#a48b98a48cf0ca4c065cb871bccc79dc8',1,'urp_radio_stage']]],
+  ['micplaymax_12',['micplaymax',['../structchan__usbradio__pvt.html#a05d74d07667006cdb7c59b4d7b66f970',1,'chan_usbradio_pvt']]],
+  ['mid_5flimiter_5fattack_5fms_13',['mid_limiter_attack_ms',['../structtxagc__config.html#aef46179f87f784b8c2895761598477bd',1,'txagc_config']]],
+  ['mid_5flimiter_5fknee_5fdb_14',['mid_limiter_knee_db',['../structtxagc__config.html#a1a2d57ed282b5b3afcaa55e27dd14f25',1,'txagc_config']]],
+  ['mid_5flimiter_5fratio_15',['mid_limiter_ratio',['../structtxagc__config.html#aa2fa598ce7dc7d6ffa48a320912e4784',1,'txagc_config']]],
+  ['mid_5flimiter_5frelease_5fms_16',['mid_limiter_release_ms',['../structtxagc__config.html#a6d09ccc5e0579805902b2f375d8239d0',1,'txagc_config']]],
+  ['mid_5flimiter_5fthreshold_5fdbfs_17',['mid_limiter_threshold_dbfs',['../structtxagc__config.html#a4a0a5126c49a944a6ad96794899676b7',1,'txagc_config']]],
+  ['minimum_18',['minimum',['../structcontrol__spec.html#abaed0c939ae9eb54c5b2ef41836bb811',1,'control_spec']]],
+  ['misses_19',['misses',['../structurp__echo__replacer.html#ab99b4054bf31bbb8b30fa5a7610520b0',1,'urp_echo_replacer']]],
+  ['mixout_20',['mixOut',['../structurp__radio__stage.html#a3da06e68a526768b63883292b39a59ba',1,'urp_radio_stage']]],
+  ['mode_21',['mode',['../structt__sdbg.html#a473661f2d3cb070af8cfff48fcdf73a6',1,'t_sdbg']]],
+  ['monoout_22',['monoOut',['../structurp__radio__stage.html#a4b4792bc06f0780b9f25bf798de1433b',1,'urp_radio_stage']]],
+  ['multifreq_23',['multiFreq',['../structurp__ctcss__decoder.html#a496653afa1c8306fedca6a3082bdb174',1,'urp_ctcss_decoder']]],
+  ['mute_24',['mute',['../structurp__radio__stage.html#acb4870e6db8f82b16baf7a16f0faedf1',1,'urp_radio_stage']]]
+];

@@ -1,0 +1,9 @@
+<map id="handle_radio_active" name="handle_radio_active">
+<area shape="rect" id="Node000001" title="Register, complete, or select the active radio for tuning." alt="" coords="5,31,159,56"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a6eed0efdda85d675e4ce499d544b3f13" title="Show or select the radio used by interactive calibration commands." alt="" coords="207,5,309,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,30,193,25,193,30,159,35"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#ab63fe5b59f7ecd7ce13701b61aa533f6" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="225,55,291,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="159,51,212,58,211,64,158,56"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="357,5,440,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="310,15,344,15,344,21,310,21"/>
+</map>

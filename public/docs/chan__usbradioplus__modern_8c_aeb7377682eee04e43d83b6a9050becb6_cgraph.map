@@ -1,0 +1,23 @@
+<map id="handle_radioplus_native_stats" name="handle_radioplus_native_stats">
+<area shape="rect" id="Node000001" title="Register, complete, or report native audio and FIFO statistics." alt="" coords="5,182,187,222"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="239,33,395,59"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="111,180,162,125,196,95,233,69,249,61,251,66,236,74,199,99,166,129,115,184"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="276,83,359,108"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="125,180,175,149,234,118,262,107,264,112,236,123,178,153,128,184"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__core_8c.html#a93a6afc55640158707a1de37361d28ce" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="235,132,400,157"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="173,179,254,158,255,163,174,185"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#acbba5ce3e655ca48f62f2afd28d2c50d" title="Acquire the native graph generation published for one channel." alt="" coords="241,182,394,222"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="187,199,227,199,227,205,187,205"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a7bd11e5ae302f31d8f08883d8e16c44e" title="Release a native graph generation acquired for one channel." alt="" coords="241,246,394,286"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="167,220,235,240,234,245,165,225"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__native__tick_8c.html#a2e84fa5329e90bed16d2692053cfb956" title="Copy the most recently published direct&#45;renderer diagnostics snapshot." alt="" coords="238,310,397,350"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="124,220,175,257,236,296,249,302,246,307,233,300,172,262,121,224"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__native__tick_8c.html#a6fcea4dcb837aa62bc3355c5edd7257c" title="Request a callback&#45;boundary reset of native diagnostic measurements." alt="" coords="236,374,399,414"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="112,221,162,288,197,326,236,360,245,365,242,370,233,364,193,330,158,292,108,224"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="457,5,622,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="395,34,443,27,444,33,396,39"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#aa7e50df1c123aa5da2d2783f11a489a6" title="Copy hardware settings from the immutable audio&#45;thread snapshot. This operation neither allocates nor..." alt="" coords="448,55,631,95"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="396,54,435,59,434,64,395,59"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="679,63,815,88"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="631,73,665,73,665,78,631,78"/>
+</map>

@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__sample__queue" kind="struct" language="C++" prot="public">
+    <compoundname>urp_sample_queue</compoundname>
+    <includes refid="usbradioplus__channel__core_8h" local="no">usbradioplus_channel_core.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__sample__queue_1a34640033ec7c2f4b082d208df112bd05" prot="public" static="no" mutable="no">
+        <type>short *</type>
+        <definition>short* urp_sample_queue::samples</definition>
+        <argsstring></argsstring>
+        <name>samples</name>
+        <qualifiedname>urp_sample_queue::samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Caller-owned PCM storage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="98" column="7" bodyfile="src/usbradioplus_channel_core.h" bodystart="98" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a60b7e090f8b88322a9b80b942d0c1cc7" compoundref="usbradioplus__channel__core_8c" startline="44" endline="51">urp_sample_queue_init</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a558436cfcd954da2206e31d25582c728" compoundref="usbradioplus__channel__core_8c" startline="105" endline="117">urp_sample_queue_pop_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a5d6a209d1d4f98072b390b3daeb05f36" compoundref="usbradioplus__channel__core_8c" startline="90" endline="103">urp_sample_queue_push_sample</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__sample__queue_1a0cd005a3ac8e1069a303387afab9068b" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_sample_queue::capacity</definition>
+        <argsstring></argsstring>
+        <name>capacity</name>
+        <qualifiedname>urp_sample_queue::capacity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of samples available in the caller-owned storage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="100" column="14" bodyfile="src/usbradioplus_channel_core.h" bodystart="100" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a60b7e090f8b88322a9b80b942d0c1cc7" compoundref="usbradioplus__channel__core_8c" startline="44" endline="51">urp_sample_queue_init</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a558436cfcd954da2206e31d25582c728" compoundref="usbradioplus__channel__core_8c" startline="105" endline="117">urp_sample_queue_pop_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a5d6a209d1d4f98072b390b3daeb05f36" compoundref="usbradioplus__channel__core_8c" startline="90" endline="103">urp_sample_queue_push_sample</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__sample__queue_1aeb4c54343322d4ecab2e02f09c824f63" prot="public" static="no" mutable="no">
+        <type>atomic_uint</type>
+        <definition>atomic_uint urp_sample_queue::read</definition>
+        <argsstring></argsstring>
+        <name>read</name>
+        <qualifiedname>urp_sample_queue::read</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next sample cursor owned by the consumer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="102" column="13" bodyfile="src/usbradioplus_channel_core.h" bodystart="102" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a4b85a831b29ef014cfb7014b59e863b0" compoundref="usbradioplus__channel__core_8c" startline="60" endline="67">urp_sample_queue_discard</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a60b7e090f8b88322a9b80b942d0c1cc7" compoundref="usbradioplus__channel__core_8c" startline="44" endline="51">urp_sample_queue_init</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a558436cfcd954da2206e31d25582c728" compoundref="usbradioplus__channel__core_8c" startline="105" endline="117">urp_sample_queue_pop_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a5d6a209d1d4f98072b390b3daeb05f36" compoundref="usbradioplus__channel__core_8c" startline="90" endline="103">urp_sample_queue_push_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a31ee1864b14cadb7cfab4235ca9c05df" compoundref="usbradioplus__channel__core_8c" startline="53" endline="58">urp_sample_queue_reset</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ab7205161c9c7d576ac070d1993e15d21" compoundref="usbradioplus__channel__core_8c" startline="69" endline="75">urp_sample_queue_samples</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__sample__queue_1af2ad561cbf8af6881fced0c8697a3434" prot="public" static="no" mutable="no">
+        <type>atomic_uint</type>
+        <definition>atomic_uint urp_sample_queue::write</definition>
+        <argsstring></argsstring>
+        <name>write</name>
+        <qualifiedname>urp_sample_queue::write</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Next sample cursor owned by the producer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="104" column="13" bodyfile="src/usbradioplus_channel_core.h" bodystart="104" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a4b85a831b29ef014cfb7014b59e863b0" compoundref="usbradioplus__channel__core_8c" startline="60" endline="67">urp_sample_queue_discard</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a60b7e090f8b88322a9b80b942d0c1cc7" compoundref="usbradioplus__channel__core_8c" startline="44" endline="51">urp_sample_queue_init</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a558436cfcd954da2206e31d25582c728" compoundref="usbradioplus__channel__core_8c" startline="105" endline="117">urp_sample_queue_pop_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a5d6a209d1d4f98072b390b3daeb05f36" compoundref="usbradioplus__channel__core_8c" startline="90" endline="103">urp_sample_queue_push_sample</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a31ee1864b14cadb7cfab4235ca9c05df" compoundref="usbradioplus__channel__core_8c" startline="53" endline="58">urp_sample_queue_reset</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1ab7205161c9c7d576ac070d1993e15d21" compoundref="usbradioplus__channel__core_8c" startline="69" endline="75">urp_sample_queue_samples</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__sample__queue_1a6883d4c06bf834ab265b5d38ce1d2904" prot="public" static="no" mutable="no">
+        <type>atomic_uint</type>
+        <definition>atomic_uint urp_sample_queue::high_water</definition>
+        <argsstring></argsstring>
+        <name>high_water</name>
+        <qualifiedname>urp_sample_queue::high_water</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest observed occupancy, in samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="106" column="13" bodyfile="src/usbradioplus_channel_core.h" bodystart="106" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a946ffeca5e511c1aa435916e72c18690" compoundref="usbradioplus__channel__core_8c" startline="119" endline="122">urp_sample_queue_high_water</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a60b7e090f8b88322a9b80b942d0c1cc7" compoundref="usbradioplus__channel__core_8c" startline="44" endline="51">urp_sample_queue_init</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1aa277ccbd21cd4c775e88632a0e19340f" compoundref="usbradioplus__channel__core_8c" startline="81" endline="88">urp_sample_queue_note_high_water</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a31ee1864b14cadb7cfab4235ca9c05df" compoundref="usbradioplus__channel__core_8c" startline="53" endline="58">urp_sample_queue_reset</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a0d07fca268ef5965a40f6aeb8ab75924" compoundref="usbradioplus__channel__core_8c" startline="124" endline="128">urp_sample_queue_reset_high_water</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Lock-free single-producer/single-consumer PCM queue for legacy echo audio.</para>
+<para>Its producer and consumer are fixed for each use. App_rpt program audio uses the shared rate-adjusting PCM ring; this fixed-storage queue is retained for the hardware worker&apos;s legacy echo source. The cursors deliberately are not reduced modulo the ring capacity; modulo arithmetic is used only for indexing. That lets each side determine occupancy without a mutex and publish samples with acquire/release ordering. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_core.h" line="96" column="1" bodyfile="src/usbradioplus_channel_core.h" bodystart="96" bodyend="107"/>
+    <listofallmembers>
+      <member refid="structurp__sample__queue_1a0cd005a3ac8e1069a303387afab9068b" prot="public" virt="non-virtual"><scope>urp_sample_queue</scope><name>capacity</name></member>
+      <member refid="structurp__sample__queue_1a6883d4c06bf834ab265b5d38ce1d2904" prot="public" virt="non-virtual"><scope>urp_sample_queue</scope><name>high_water</name></member>
+      <member refid="structurp__sample__queue_1aeb4c54343322d4ecab2e02f09c824f63" prot="public" virt="non-virtual"><scope>urp_sample_queue</scope><name>read</name></member>
+      <member refid="structurp__sample__queue_1a34640033ec7c2f4b082d208df112bd05" prot="public" virt="non-virtual"><scope>urp_sample_queue</scope><name>samples</name></member>
+      <member refid="structurp__sample__queue_1af2ad561cbf8af6881fced0c8697a3434" prot="public" virt="non-virtual"><scope>urp_sample_queue</scope><name>write</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

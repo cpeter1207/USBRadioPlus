@@ -1,0 +1,157 @@
+Package: librate-adjusting-pcm-ring-dev
+Source: rate-adjusting-pcm-ring
+Version: 1.0.1-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 27
+Depends: librate-adjusting-pcm-ring1 (= 1.0.1-1.deb13), libsamplerate0-dev
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring-dev_1.0.1-1.deb13_arm64.deb
+Size: 7132
+SHA256: ece3a8d6e332f909f99c9648607b4e24e45e09d730b90325207f4469348d2198
+SHA1: dfb1e5e82bc32b3e85147c4e5707a53b005e09c8
+MD5sum: 1ccd3bdbf4c4cae23d630aaaa1a2264b
+Description: development files for the rate-adjusting PCM playout ring
+ Header and pkg-config metadata for applications that link dynamically against
+ the ABI-major 1 rate-adjusting PCM playout ring.
+
+Package: librate-adjusting-pcm-ring1
+Source: rate-adjusting-pcm-ring
+Version: 1.0.1-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 80
+Depends: libc6 (>= 2.17), libsamplerate0 (>= 0.1.7)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring1_1.0.1-1.deb13_arm64.deb
+Size: 6760
+SHA256: 6a99a173844d495c7f9d9a71211e7c055042ac86e72f22d342a98e34bfa37cc2
+SHA1: f29293a8e2b0fd41cf03d6e1a5c8cb0e526e13e7
+MD5sum: c050e3fc64a7ec21a265cae49b9c3e6e
+Description: lock-free rate-adjusting PCM playout ring
+ Shared library for a single-producer/single-consumer signed PCM ring with
+ persistent libsamplerate clock recovery and bounded packet-loss concealment.
+
+Package: librnnoise-dev
+Source: rnnoise
+Version: 0.2-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1468
+Depends: librnnoise0 (= 0.2-1.deb13)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libdevel
+Filename: pool/main/r/rnnoise/librnnoise-dev_0.2-1.deb13_arm64.deb
+Size: 1196200
+SHA256: f82295707cee93db47f244b9035262bd5a05438c002477758cdb3f027b1f251a
+SHA1: be7eb4bcb2039bb7dad17cb718af8edd8177d800
+MD5sum: f54a89645522927f76dcfa352a04ddac
+Description: development files for the RNNoise audio library
+ This package provides the header, shared-library link, and pkg-config metadata
+ required to build applications using RNNoise.
+
+Package: librnnoise0
+Source: rnnoise
+Version: 0.2-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1489
+Depends: libc6 (>= 2.17)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libs
+Filename: pool/main/r/rnnoise/librnnoise0_0.2-1.deb13_arm64.deb
+Size: 1191620
+SHA256: 922d19928187860d2aa0270db5cf585e231cafa350b16add055053ee2e5a3f56
+SHA1: 4a951d2291aaf21caf69cb0ecbf536866e2879c0
+MD5sum: a3c7e7de2cd6a0bcc643d92bb528be55
+Description: recurrent neural network audio noise suppression library
+ RNNoise combines signal processing and recurrent neural networks to suppress
+ background noise in speech audio.
+
+Package: usbradioplus
+Version: 0.1.0~alpha16-1.deb13+legacy.asl393
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 980
+Depends: libavfilter10 (>= 7:7.1.5), libavutil59 (>= 7:7.1.5), libc6 (>= 2.38), librate-adjusting-pcm-ring1 (>= 1.0.1), librnnoise0 (>= 0.2), libsamplerate0 (>= 0.1.7), libusb-0.1-4 (>= 2:0.1.12), asl3-asterisk (= 2:22.9.0+asl3-3.9.3-1.deb13), python3
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: hamradio
+Filename: pool/main/u/usbradioplus/usbradioplus_0.1.0~alpha16-1.deb13+legacy.asl393_arm64.deb
+Size: 170316
+SHA256: c8e70e3668250cc46f32b755be49dded8f8cb63c95cae522b550a45b543f964e
+SHA1: 285deacda8010fb9a8bbcae6f47d3a56537aad69
+MD5sum: ebcb618921b9f158961819d75eec8e85
+Description: enhanced USB radio channel driver for AllStarLink
+ USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
+ filtering and dynamics processing for amateur-radio and land-mobile interfaces
+ using CM119-class USB audio devices.
+
+Package: usbradioplus-asl3105
+Source: usbradioplus
+Version: 0.1.0~alpha16-1.deb13+modern.asl3105
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1002
+Depends: libavfilter10 (>= 7:7.1.5), libavutil59 (>= 7:7.1.5), libc6 (>= 2.38), libportaudio2 (>= 19+svn20101113), librate-adjusting-pcm-ring1 (>= 1.0.1), librnnoise0 (>= 0.2), libsamplerate0 (>= 0.1.7), libusb-1.0-0 (>= 2:1.0.8), asl3-asterisk (= 2:22.10.1+asl3-3.10.5-1.deb13), python3
+Conflicts: usbradioplus
+Replaces: usbradioplus
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: hamradio
+Filename: pool/main/u/usbradioplus/usbradioplus-asl3105_0.1.0~alpha16-1.deb13+modern.asl3105_arm64.deb
+Size: 172176
+SHA256: 674b9be1b5e68d3f9f334db0b120fe3b37b95043c67c1907abd282bcf10d0092
+SHA1: 9ac814ef3065915dfd6cf56c169cbdc58061d0af
+MD5sum: 9dbf9b5da104579df155694c0637857a
+Description: enhanced USB radio channel driver for AllStarLink
+ USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
+ filtering and dynamics processing for amateur-radio and land-mobile interfaces
+ using CM119-class USB audio devices.
+
+Package: usbradioplus-asl3105-dbgsym
+Source: usbradioplus
+Version: 0.1.0~alpha16-1.deb13+modern.asl3105
+Auto-Built-Package: debug-symbols
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 338
+Depends: usbradioplus-asl3105 (= 0.1.0~alpha16-1.deb13+modern.asl3105)
+Priority: optional
+Section: debug
+Filename: pool/main/u/usbradioplus/usbradioplus-asl3105-dbgsym_0.1.0~alpha16-1.deb13+modern.asl3105_arm64.deb
+Size: 291852
+SHA256: 3965c639b4fd1e39bfc03917b4f47a0588faf05c9a44520db0601048741cfd24
+SHA1: 8eb85ef1d314b469003dbb9bf02dd688f091c557
+MD5sum: fdbfefe7aabe40206da932d1a80f9a4c
+Description: debug symbols for usbradioplus-asl3105
+Build-Ids: 04cce88c42db0565aabf39ddf866167556453b48 85eaca0c37879e1831880fdbff834d852b39883d
+
+Package: usbradioplus-dbgsym
+Source: usbradioplus
+Version: 0.1.0~alpha16-1.deb13+legacy.asl393
+Auto-Built-Package: debug-symbols
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 332
+Depends: usbradioplus (= 0.1.0~alpha16-1.deb13+legacy.asl393)
+Priority: optional
+Section: debug
+Filename: pool/main/u/usbradioplus/usbradioplus-dbgsym_0.1.0~alpha16-1.deb13+legacy.asl393_arm64.deb
+Size: 286780
+SHA256: b8407625496c256c98a6ed66ca0edc29e1a29f7b705705a7a57fb5328263fe74
+SHA1: 42d0c22b2f51e4e095cfcc7187b1ab843422ba0b
+MD5sum: c0920c89c9d93035f117bc593cb51be3
+Description: debug symbols for usbradioplus
+Build-Ids: 85eaca0c37879e1831880fdbff834d852b39883d fe1462d5486180900fed618fe27ca81ea1f2b4aa
+

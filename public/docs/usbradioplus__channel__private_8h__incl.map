@@ -1,0 +1,31 @@
+<map id="src/usbradioplus_channel_private.h" name="src/usbradioplus_channel_private.h">
+<area shape="rect" id="Node000001" title="Select the adapter state shared with linked channel implementation objects." alt="" coords="218,5,405,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="173,189,271,214"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="304,47,237,177,232,175,299,44"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8h.html" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="26,101,215,126"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="271,48,160,98,157,93,268,43"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__radio_8h.html" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="662,101,819,126"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="406,43,670,95,669,101,405,48"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__legacy__private_8h.html" title="Per&#45;channel state for the OSS and libusb radio adapter." alt="" coords="290,93,453,133"/>
+<area shape="poly" id="edge15_Node000001_Node000011" title=" " alt="" coords="327,44,352,81,348,84,322,47"/>
+<area shape="poly" id="edge4_Node000003_Node000002" title=" " alt="" coords="136,124,199,177,195,181,133,128"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="98,269,173,295"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="124,126,136,255,130,256,119,126"/>
+<area shape="rect" id="Node000005" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="5,189,97,214"/>
+<area shape="poly" id="edge5_Node000003_Node000005" title=" " alt="" coords="113,128,72,179,67,176,109,124"/>
+<area shape="poly" id="edge6_Node000005_Node000004" title=" " alt="" coords="66,212,115,258,111,262,62,216"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="841,269,912,295"/>
+<area shape="poly" id="edge8_Node000006_Node000007" title=" " alt="" coords="774,124,815,145,836,161,853,180,864,198,871,218,878,255,873,256,866,219,859,200,849,183,832,165,812,150,771,128"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="642,189,839,214"/>
+<area shape="poly" id="edge9_Node000006_Node000008" title=" " alt="" coords="743,126,743,174,738,174,738,126"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dcs_8h.html" title="Native 48 kHz DCS (DPL/CDCSS) encoder and Golay decoder." alt="" coords="471,189,618,214"/>
+<area shape="poly" id="edge10_Node000006_Node000009" title=" " alt="" coords="715,129,585,185,583,181,713,124"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="915,189,1089,214"/>
+<area shape="poly" id="edge13_Node000006_Node000010" title=" " alt="" coords="777,124,955,182,953,187,775,129"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="495,217,460,224,187,275,186,269,459,219,494,211"/>
+<area shape="poly" id="edge12_Node000009_Node000007" title=" " alt="" coords="594,211,829,267,827,272,592,217"/>
+<area shape="poly" id="edge14_Node000010_Node000007" title=" " alt="" coords="985,216,908,264,905,260,982,212"/>
+<area shape="poly" id="edge16_Node000011_Node000002" title=" " alt="" coords="340,136,255,184,252,180,337,131"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="296,181,447,221"/>
+<area shape="poly" id="edge17_Node000011_Node000012" title=" " alt="" coords="374,134,374,167,369,167,369,134"/>
+</map>

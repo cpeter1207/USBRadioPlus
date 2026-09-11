@@ -1,0 +1,7 @@
+<map id="usbradio_start_parallel_pulser" name="usbradio_start_parallel_pulser">
+<area shape="rect" id="Node000001" title="Start the pulse worker when a parallel&#45;port output is configured." alt="" coords="5,27,176,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a001f37f0a8c7990e37ef0970c9336cf8" title="Drive timed pulses on configured parallel&#45;port outputs." alt="" coords="245,5,349,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,33,231,25,232,30,177,38"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#a285bcd11443a9f6d47e351c5b261a8d8" title="Return nonzero when configured parallel outputs require the pulse worker." alt="" coords="224,55,371,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="177,56,211,61,210,66,176,62"/>
+</map>

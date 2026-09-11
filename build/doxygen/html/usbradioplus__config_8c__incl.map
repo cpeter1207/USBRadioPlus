@@ -1,0 +1,13 @@
+<map id="src/usbradioplus_config.c" name="src/usbradioplus_config.c">
+<area shape="rect" id="Node000001" title="Update Asterisk configuration variables while preserving their category context." alt="" coords="183,5,368,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,79,92,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="240,33,99,77,98,72,238,28"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="116,79,187,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="257,33,185,74,182,69,254,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="211,79,340,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="278,31,278,65,273,65,273,31"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="364,79,483,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="300,28,388,70,386,75,298,33"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__config_8h.html" title="Update Asterisk configuration variables while preserving their category context." alt="" coords="507,79,670,104"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="326,28,525,73,524,78,325,33"/>
+</map>

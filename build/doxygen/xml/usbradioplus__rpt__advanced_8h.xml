@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__rpt__advanced_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_rpt_advanced.h</compoundname>
+    <includedby refid="usbradioplus__channel__common_8h" local="yes">src/usbradioplus_channel_common.h</includedby>
+    <includedby refid="usbradioplus__rpt__advanced_8c" local="yes">src/usbradioplus_rpt_advanced.c</includedby>
+    <invincdepgraph>
+      <node id="3">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="4">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="2">
+        <label>src/usbradioplus_channel_common.h</label>
+        <link refid="usbradioplus__channel__common_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_channel_test_api.h</label>
+        <link refid="usbradioplus__channel__test__api_8h"/>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="9">
+        <label>src/usbradioplus_rpt_advanced.c</label>
+        <link refid="usbradioplus__rpt__advanced_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_rpt_advanced.h</label>
+        <link refid="usbradioplus__rpt__advanced_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__rpt__advanced_8h_1a5fc103ad1b76903664dc0a7f83f0f388" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_advanced_register</definition>
+        <argsstring>(const struct ast_channel_tech *backend, unsigned int native_rate, void(*configure)(struct ast_channel *channel))</argsstring>
+        <name>usbradioplus_advanced_register</name>
+        <param>
+          <type>const struct ast_channel_tech *</type>
+          <declname>backend</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>native_rate</declname>
+        </param>
+        <param>
+          <type>void(*)(struct ast_channel *channel)</type>
+          <declname>configure</declname>
+        </param>
+        <briefdescription>
+<para>Register the native-rate interface using the selected hardware backend. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>backend</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Existing app_rpt technology providing hardware lifecycle callbacks. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>native_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Hardware engine&apos;s native PCM rate. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>configure</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Select native controller mode on an exclusively owned, unstarted channel. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, minus one on allocation or registration failure. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_rpt_advanced.h" line="16" column="5" bodyfile="src/usbradioplus_rpt_advanced.c" bodystart="122" bodyend="140" declfile="src/usbradioplus_rpt_advanced.h" declline="16" declcolumn="5"/>
+        <references refid="usbradioplus__rpt__advanced_8c_1ac8293e64687b002c451e28abb97504c9" compoundref="usbradioplus__rpt__advanced_8c" startline="73" endline="82">advanced</references>
+        <references refid="avfilter__processor_8c_1a9e7cb869fcd27b93df8369ab599480af" compoundref="avfilter__processor_8c" startline="857" endline="992">configure</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1a58b1059afb69ff16699f355a49a6ab53" compoundref="usbradioplus__rpt__advanced_8c" startline="86">configure_native</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" compoundref="usbradioplus__rpt__advanced_8c" startline="14">hardware</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1a09b3714410b4f461c4ef55e9b814c9ec" compoundref="usbradioplus__rpt__advanced_8c" startline="84">native_format</references>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__rpt__advanced_8h_1aac5cf3f287e2fce030edc0c1764c8a35" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void usbradioplus_advanced_unregister</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_advanced_unregister</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Unregister and release the advanced interface after its channels stop. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_rpt_advanced.h" line="20" column="6" bodyfile="src/usbradioplus_rpt_advanced.c" bodystart="142" bodyend="149" declfile="src/usbradioplus_rpt_advanced.h" declline="20" declcolumn="6"/>
+        <references refid="usbradioplus__rpt__advanced_8c_1ac8293e64687b002c451e28abb97504c9" compoundref="usbradioplus__rpt__advanced_8c" startline="73" endline="82">advanced</references>
+        <referencedby refid="chan__usbradioplus_8c_1a60da13aa72c23fe28a2dcbddaa6abe99" compoundref="chan__usbradioplus_8c" startline="3200" endline="3243">unload_module</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Separate Asterisk interface for the hardware-clocked rpt_advanced controller. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_RPT_ADVANCED_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_RPT_ADVANCED_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_channel;</highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_channel_tech;</highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__rpt__advanced_8h_1a5fc103ad1b76903664dc0a7f83f0f388" kindref="member">usbradioplus_advanced_register</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel_tech<sp/>*backend,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>native_rate,</highlight></codeline>
+<codeline lineno="17"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>(*<ref refid="avfilter__processor_8c_1a9e7cb869fcd27b93df8369ab599480af" kindref="member">configure</ref>)(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*channel));</highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__rpt__advanced_8h_1aac5cf3f287e2fce030edc0c1764c8a35" kindref="member">usbradioplus_advanced_unregister</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_rpt_advanced.h"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,23 @@
+<map id="usbradioplus_dsp_destroy" name="usbradioplus_dsp_destroy">
+<area shape="rect" id="Node000001" title="Release native processing, rate&#45;conversion, and echo buffers." alt="" coords="5,153,196,179"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#aa5a275d2423e010c2123cf45f44c7778" title="Destroy active and retired graph generations after the native callback stops." alt="" coords="244,76,439,101"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,151,287,103,288,108,142,156"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__native__tick_8c.html#a7d96da245f0f133fdf0fcc04eac7ea6d" title="Stop and destroy a channel&#39;s native renderer after callback quiescence." alt="" coords="265,146,418,186"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="196,163,251,163,251,169,196,169"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#aa02e1a9727b22c30cecdfebaf9cd1311" title="Reset a DAC&#45;drain hold after the underlying audio device is reset." alt="" coords="251,210,432,250"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="150,176,253,204,252,209,149,181"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#abb428c410fe9a839477f7f0073ba9da2" title="Destroy a complete native graph generation outside the audio callback." alt="" coords="487,5,677,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="379,73,486,39,515,32,516,37,487,45,381,78"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#ade32697904e8a972626f046c2127fc1f" title="Acquire one control&#45;plane writer token for a native graph slot." alt="" coords="496,55,668,80"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="439,77,482,74,482,79,439,83"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a7f66d547898668cd1d4cabac8d7e4682" title="Release a native graph&#45;slot control&#45;plane writer token." alt="" coords="488,104,676,129"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="439,97,475,102,474,107,438,103"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="725,5,892,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="678,15,712,15,712,21,678,21"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="940,5,1032,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="892,15,926,15,926,21,892,21"/>
+<area shape="rect" id="Node000009" href="$rnnoise__processor_8c.html#a079b845edf67fa05e50144d95c8049a3" title="Release RNNoise and sample&#45;rate&#45;converter resources." alt="" coords="497,153,667,179"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="419,163,484,163,484,169,419,169"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__dsp_8c.html#a01c3c33847014294b74858700455d9c8" title="Release a converter and its input and output buffers." alt="" coords="519,203,645,228"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="419,179,507,197,505,202,418,184"/>
+</map>

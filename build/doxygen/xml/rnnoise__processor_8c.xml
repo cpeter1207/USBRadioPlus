@@ -1,0 +1,906 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="rnnoise__processor_8c" kind="file" language="C++">
+    <compoundname>rnnoise_processor.c</compoundname>
+    <includes refid="rnnoise__processor_8h" local="yes">rnnoise_processor.h</includes>
+    <includes local="no">math.h</includes>
+    <includes local="no">string.h</includes>
+    <incdepgraph>
+      <node id="1">
+        <label>src/txagc/rnnoise_processor.c</label>
+        <link refid="rnnoise__processor_8c"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>rnnoise_processor.h</label>
+        <link refid="rnnoise__processor_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>math.h</label>
+      </node>
+      <node id="5">
+        <label>rnnoise.h</label>
+      </node>
+      <node id="6">
+        <label>samplerate.h</label>
+      </node>
+      <node id="3">
+        <label>stddef.h</label>
+      </node>
+      <node id="4">
+        <label>stdint.h</label>
+      </node>
+      <node id="8">
+        <label>string.h</label>
+      </node>
+    </incdepgraph>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" prot="public" static="no">
+        <name>RNNOISE_PRIVATE</name>
+        <initializer>static</initializer>
+        <briefdescription>
+<para>Expose denoiser internals only to the linked test harness. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="15" column="9" bodyfile="src/txagc/rnnoise_processor.c" bodystart="15" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref> void</type>
+        <definition>RNNOISE_PRIVATE void reset_stream</definition>
+        <argsstring>(struct txagc_rnnoise *state)</argsstring>
+        <name>reset_stream</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Discard bounded stream history without allocating or replacing the denoiser. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller.</para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+This function is used by the native render callback after a processing error or bypass transition. Keeping the prepared denoiser object intact is what prevents a receiver-signal transition from allocating in real time. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="25" column="22" bodyfile="src/txagc/rnnoise_processor.c" bodystart="25" bodyend="37"/>
+        <references refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" compoundref="rnnoise__processor_8h" startline="51">txagc_rnnoise::active</references>
+        <references refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" compoundref="rnnoise__processor_8h" startline="37">txagc_rnnoise::down_count</references>
+        <references refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" compoundref="rnnoise__processor_8h" startline="27">txagc_rnnoise::downsampler</references>
+        <references refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" compoundref="rnnoise__processor_8h" startline="55">txagc_rnnoise::primed</references>
+        <references refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" compoundref="rnnoise__processor_8h" startline="33">txagc_rnnoise::up_count</references>
+        <references refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" compoundref="rnnoise__processor_8h" startline="25">txagc_rnnoise::upsampler</references>
+        <referencedby refid="rnnoise__processor_8c_1a38854c9b8a0fc008feca99996f54457d" compoundref="rnnoise__processor_8c" startline="58" endline="64">txagc_rnnoise_bypass</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a5969f86a6b2fcdf6effd3cc255d0eaf0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_rnnoise_init</definition>
+        <argsstring>(struct txagc_rnnoise *state)</argsstring>
+        <name>txagc_rnnoise_init</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Initialize an empty local-receiver denoiser. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="39" column="6" bodyfile="src/txagc/rnnoise_processor.c" bodystart="39" bodyend="42"/>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_rnnoise_destroy</definition>
+        <argsstring>(struct txagc_rnnoise *state)</argsstring>
+        <name>txagc_rnnoise_destroy</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Release RNNoise and sample-rate-converter resources. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="44" column="6" bodyfile="src/txagc/rnnoise_processor.c" bodystart="44" bodyend="56"/>
+        <references refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" compoundref="rnnoise__processor_8h" startline="23">txagc_rnnoise::denoise</references>
+        <references refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" compoundref="rnnoise__processor_8h" startline="27">txagc_rnnoise::downsampler</references>
+        <references refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" compoundref="rnnoise__processor_8h" startline="25">txagc_rnnoise::upsampler</references>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a7d96da245f0f133fdf0fcc04eac7ea6d" compoundref="usbradioplus__native__tick_8c" startline="804" endline="819">usbradioplus_native_renderer_stop</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a38854c9b8a0fc008feca99996f54457d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_rnnoise_bypass</definition>
+        <argsstring>(struct txagc_rnnoise *state)</argsstring>
+        <name>txagc_rnnoise_bypass</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Reset denoiser history when the local chain bypasses RNNoise. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="58" column="6" bodyfile="src/txagc/rnnoise_processor.c" bodystart="58" bodyend="64"/>
+        <references refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" compoundref="rnnoise__processor_8h" startline="51">txagc_rnnoise::active</references>
+        <references refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref> int</type>
+        <definition>RNNOISE_PRIVATE int configure_rate</definition>
+        <argsstring>(struct txagc_rnnoise *state, unsigned int sample_rate)</argsstring>
+        <name>configure_rate</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Create or reconfigure the RNNoise converters for the source sample rate. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="71" column="21" bodyfile="src/txagc/rnnoise_processor.c" bodystart="71" bodyend="101"/>
+        <references refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" compoundref="rnnoise__processor_8h" startline="23">txagc_rnnoise::denoise</references>
+        <references refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" compoundref="rnnoise__processor_8h" startline="27">txagc_rnnoise::downsampler</references>
+        <references refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" compoundref="rnnoise__processor_8h" startline="49">txagc_rnnoise::errors</references>
+        <references refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" compoundref="rnnoise__processor_8h" startline="29">txagc_rnnoise::input_rate</references>
+        <references refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" compoundref="rnnoise__processor_8h" startline="53">txagc_rnnoise::prepared</references>
+        <references refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" compoundref="rnnoise__processor_8c" startline="44" endline="56">txagc_rnnoise_destroy</references>
+        <references refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" compoundref="rnnoise__processor_8h" startline="25">txagc_rnnoise::upsampler</references>
+        <referencedby refid="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" compoundref="rnnoise__processor_8c" startline="103" endline="108">txagc_rnnoise_prepare</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_rnnoise_prepare</definition>
+        <argsstring>(struct txagc_rnnoise *state, unsigned int sample_rate)</argsstring>
+        <name>txagc_rnnoise_prepare</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Allocate or reconfigure RNNoise state before native callback processing. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor state owned by the radio channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Native input sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero when a reusable denoiser and converters are ready, otherwise nonzero.</para>
+</simplesect>
+A successful call makes <ref refid="rnnoise__processor_8h_1ab8a749b5a958c5193704ea45cecc6e8a" kindref="member">txagc_rnnoise_process_prepared()</ref> allocation-free. The native receiver uses a fixed 48 kHz rate and prepares this state before its first native callback render. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="103" column="5" bodyfile="src/txagc/rnnoise_processor.c" bodystart="103" bodyend="108"/>
+        <references refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</references>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1aba263ce8c2039f07a1f323664a87224b" compoundref="usbradioplus__native__tick_8c" startline="762" endline="802">usbradioplus_native_renderer_start</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref> int</type>
+        <definition>RNNOISE_PRIVATE int append</definition>
+        <argsstring>(float *fifo, size_t *fifo_count, const float *data, size_t count)</argsstring>
+        <name>append</name>
+        <param>
+          <type>float *</type>
+          <declname>fifo</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>fifo_count</declname>
+        </param>
+        <param>
+          <type>const float *</type>
+          <declname>data</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Append a block to a bounded RNNoise FIFO. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>fifo</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Bounded audio FIFO. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>fifo_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Current FIFO occupancy, updated by the operation. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>data</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples to copy into the FIFO. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="117" column="21" bodyfile="src/txagc/rnnoise_processor.c" bodystart="117" bodyend="125"/>
+        <references refid="rnnoise__processor_8h_1a1f02622d33aa0e60153a464821fcb442" compoundref="rnnoise__processor_8h" startline="18">TXAGC_RNNOISE_FIFO</references>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref> void</type>
+        <definition>RNNOISE_PRIVATE void consume</definition>
+        <argsstring>(float *fifo, size_t *fifo_count, size_t count)</argsstring>
+        <name>consume</name>
+        <param>
+          <type>float *</type>
+          <declname>fifo</declname>
+        </param>
+        <param>
+          <type>size_t *</type>
+          <declname>fifo_count</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Remove samples from the front of an RNNoise FIFO. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>fifo</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Bounded audio FIFO. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>fifo_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Current FIFO occupancy, updated by the operation. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="132" column="22" bodyfile="src/txagc/rnnoise_processor.c" bodystart="132" bodyend="136"/>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref> int16_t</type>
+        <definition>RNNOISE_PRIVATE int16_t pcm_from_double</definition>
+        <argsstring>(double sample)</argsstring>
+        <name>pcm_from_double</name>
+        <param>
+          <type>double</type>
+          <declname>sample</declname>
+        </param>
+        <briefdescription>
+<para>Quantize a floating-point sample without signed PCM overflow. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>sample</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>One sample in signed PCM amplitude units. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Bounded signed 16-bit PCM sample. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="142" column="25" bodyfile="src/txagc/rnnoise_processor.c" bodystart="142" bodyend="149"/>
+        <referencedby refid="rnnoise__processor_8c_1ab590b8c5ed7056dbc0e521acb0598874" compoundref="rnnoise__processor_8c" startline="243" endline="263">txagc_rnnoise_process</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_rnnoise_process_prepared</definition>
+        <argsstring>(struct txagc_rnnoise *state, double *samples, size_t count)</argsstring>
+        <name>txagc_rnnoise_process_prepared</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Process an already prepared RNNoise stream without allocating or reconfiguring. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Prepared processor state. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in samples. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status when the prepared state cannot process. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="151" column="5" bodyfile="src/txagc/rnnoise_processor.c" bodystart="151" bodyend="228"/>
+        <references refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" compoundref="rnnoise__processor_8h" startline="51">txagc_rnnoise::active</references>
+        <references refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" compoundref="rnnoise__processor_8c" startline="117" endline="125">append</references>
+        <references refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" compoundref="rnnoise__processor_8c" startline="132" endline="136">consume</references>
+        <references refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" compoundref="rnnoise__processor_8h" startline="23">txagc_rnnoise::denoise</references>
+        <references refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" compoundref="rnnoise__processor_8h" startline="37">txagc_rnnoise::down_count</references>
+        <references refid="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" compoundref="rnnoise__processor_8h" startline="35">txagc_rnnoise::down_fifo</references>
+        <references refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" compoundref="rnnoise__processor_8h" startline="27">txagc_rnnoise::downsampler</references>
+        <references refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" compoundref="rnnoise__processor_8h" startline="49">txagc_rnnoise::errors</references>
+        <references refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" compoundref="rnnoise__processor_8h" startline="29">txagc_rnnoise::input_rate</references>
+        <references refid="structtxagc__rnnoise_1ae147b58e5d209103be0f1aa92203416d" compoundref="rnnoise__processor_8h" startline="45">txagc_rnnoise::output_samples</references>
+        <references refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" compoundref="rnnoise__processor_8h" startline="53">txagc_rnnoise::prepared</references>
+        <references refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" compoundref="rnnoise__processor_8h" startline="55">txagc_rnnoise::primed</references>
+        <references refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</references>
+        <references refid="structtxagc__rnnoise_1a9761fa74c946892bdda59e0e5e3d5e02" compoundref="rnnoise__processor_8h" startline="43">txagc_rnnoise::rnnoise_frames</references>
+        <references refid="structtxagc__rnnoise_1a2a4107359bda0a5ace5473cdd2355abf" compoundref="rnnoise__processor_8h" startline="47">txagc_rnnoise::startup_samples</references>
+        <references refid="rnnoise__processor_8h_1a90c38197acefe4ebeb1bb0ddaf29f63b" compoundref="rnnoise__processor_8h" startline="16">TXAGC_RNNOISE_FRAME</references>
+        <references refid="rnnoise__processor_8h_1a2ada1286568d61d7133c1318bd92838e" compoundref="rnnoise__processor_8h" startline="14">TXAGC_RNNOISE_RATE</references>
+        <references refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" compoundref="rnnoise__processor_8h" startline="33">txagc_rnnoise::up_count</references>
+        <references refid="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" compoundref="rnnoise__processor_8h" startline="31">txagc_rnnoise::up_fifo</references>
+        <references refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" compoundref="rnnoise__processor_8h" startline="25">txagc_rnnoise::upsampler</references>
+        <references refid="structtxagc__rnnoise_1a44cbaedbe1abb620e86f68588a937aef" compoundref="rnnoise__processor_8h" startline="39">txagc_rnnoise::vad_probability</references>
+        <references refid="structtxagc__rnnoise_1a38aaf128d78429dc1bd3b86b16969de9" compoundref="rnnoise__processor_8h" startline="41">txagc_rnnoise::vad_sum</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_rnnoise_process_double</definition>
+        <argsstring>(struct txagc_rnnoise *state, double *samples, size_t count, unsigned int sample_rate)</argsstring>
+        <name>txagc_rnnoise_process_double</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Denoise floating-point receiver audio using 480-sample RNNoise frames. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="230" column="5" bodyfile="src/txagc/rnnoise_processor.c" bodystart="230" bodyend="241"/>
+        <references refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" compoundref="rnnoise__processor_8h" startline="23">txagc_rnnoise::denoise</references>
+        <references refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" compoundref="rnnoise__processor_8h" startline="27">txagc_rnnoise::downsampler</references>
+        <references refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" compoundref="rnnoise__processor_8h" startline="29">txagc_rnnoise::input_rate</references>
+        <references refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" compoundref="rnnoise__processor_8h" startline="53">txagc_rnnoise::prepared</references>
+        <references refid="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" compoundref="rnnoise__processor_8c" startline="103" endline="108">txagc_rnnoise_prepare</references>
+        <references refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</references>
+        <references refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" compoundref="rnnoise__processor_8h" startline="25">txagc_rnnoise::upsampler</references>
+        <referencedby refid="rnnoise__processor_8c_1ab590b8c5ed7056dbc0e521acb0598874" compoundref="rnnoise__processor_8c" startline="243" endline="263">txagc_rnnoise_process</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="rnnoise__processor_8c_1ab590b8c5ed7056dbc0e521acb0598874" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_rnnoise_process</definition>
+        <argsstring>(struct txagc_rnnoise *state, int16_t *samples, size_t count, unsigned int sample_rate)</argsstring>
+        <name>txagc_rnnoise_process</name>
+        <param>
+          <type>struct <ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>int16_t *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Denoise signed 16-bit receiver audio through the RNNoise stream adapter. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.c" line="243" column="5" bodyfile="src/txagc/rnnoise_processor.c" bodystart="243" bodyend="263"/>
+        <references refid="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" compoundref="rnnoise__processor_8c" startline="142" endline="149">pcm_from_double</references>
+        <references refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</references>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>RNNoise frame buffering and rate adaptation for local receiver denoising. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="rnnoise__processor_8h" kindref="compound">rnnoise_processor.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;math.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;string.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>URP_RNNOISE_TESTING</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="rnnoise__processor__internal_8h" kindref="compound">rnnoise_processor_internal.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>RNNOISE_PRIVATE</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="preprocessor">#else</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight></codeline>
+<codeline lineno="15" refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>RNNOISE_PRIVATE<sp/>static</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight></codeline>
+<codeline lineno="25" refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" refkind="member"><highlight class="normal"><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="26"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="27"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="28"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>src_reset(state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>);</highlight></codeline>
+<codeline lineno="29"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>src_reset(state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>);</highlight></codeline>
+<codeline lineno="32"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" kindref="member">up_count</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" kindref="member">down_count</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" kindref="member">active</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" kindref="member">primed</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="37"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"></highlight></codeline>
+<codeline lineno="39" refid="rnnoise__processor_8c_1a5969f86a6b2fcdf6effd3cc255d0eaf0" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a5969f86a6b2fcdf6effd3cc255d0eaf0" kindref="member">txagc_rnnoise_init</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="40"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/>memset(state,<sp/>0,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(*state));</highlight></codeline>
+<codeline lineno="42"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="43"><highlight class="normal"></highlight></codeline>
+<codeline lineno="44" refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" kindref="member">txagc_rnnoise_destroy</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="45"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>rnnoise_destroy(state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref>);</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="49"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>src_delete(state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>);</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="53"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>src_delete(state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>);</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"><sp/><sp/><sp/><sp/>memset(state,<sp/>0,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(*state));</highlight></codeline>
+<codeline lineno="56"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"></highlight></codeline>
+<codeline lineno="58" refid="rnnoise__processor_8c_1a38854c9b8a0fc008feca99996f54457d" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a38854c9b8a0fc008feca99996f54457d" kindref="member">txagc_rnnoise_bypass</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state)</highlight></codeline>
+<codeline lineno="59"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" kindref="member">active</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(state);</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" kindref="member">active</ref><sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="64"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="65"><highlight class="normal"></highlight></codeline>
+<codeline lineno="71" refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" refkind="member"><highlight class="normal"><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" kindref="member">configure_rate</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate)</highlight></codeline>
+<codeline lineno="72"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="73"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>error;</highlight></codeline>
+<codeline lineno="74"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/>errors;</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"></highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" kindref="member">prepared</ref><sp/>&amp;&amp;<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref><sp/>==<sp/>sample_rate<sp/>&amp;&amp;<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref><sp/>&amp;&amp;</highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref><sp/>&amp;&amp;<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/>errors<sp/>=<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>;</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" kindref="member">txagc_rnnoise_destroy</ref>(state);</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref><sp/>=<sp/>errors;</highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref><sp/>=<sp/>rnnoise_create(NULL);</highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref><sp/>=<sp/>src_new(SRC_SINC_FASTEST,<sp/>1,<sp/>&amp;error);</highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>++;</highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" kindref="member">txagc_rnnoise_destroy</ref>(state);</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref><sp/>=<sp/>errors<sp/>+<sp/>1;</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref><sp/>=<sp/>src_new(SRC_SINC_FASTEST,<sp/>1,<sp/>&amp;error);</highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref><sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>++;</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" kindref="member">txagc_rnnoise_destroy</ref>(state);</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref><sp/>=<sp/>errors<sp/>+<sp/>1;</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref><sp/>=<sp/>sample_rate;</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" kindref="member">prepared</ref><sp/>=<sp/>1;</highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="101"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"></highlight></codeline>
+<codeline lineno="103" refid="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" kindref="member">txagc_rnnoise_prepare</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate)</highlight></codeline>
+<codeline lineno="104"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state<sp/>||<sp/>!sample_rate)</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" kindref="member">configure_rate</ref>(state,<sp/>sample_rate);</highlight></codeline>
+<codeline lineno="108"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="109"><highlight class="normal"></highlight></codeline>
+<codeline lineno="117" refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" refkind="member"><highlight class="normal"><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" kindref="member">append</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*fifo,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*fifo_count,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*data,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count)</highlight></codeline>
+<codeline lineno="118"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(*fifo_count<sp/>+<sp/>count<sp/>&gt;<sp/><ref refid="rnnoise__processor_8h_1a1f02622d33aa0e60153a464821fcb442" kindref="member">TXAGC_RNNOISE_FIFO</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/>memcpy(fifo<sp/>+<sp/>*fifo_count,<sp/>data,<sp/>count<sp/>*<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(*data));</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/>*fifo_count<sp/>+=<sp/>count;</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="125"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"></highlight></codeline>
+<codeline lineno="132" refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" refkind="member"><highlight class="normal"><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" kindref="member">consume</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*fifo,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>*fifo_count,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count)</highlight></codeline>
+<codeline lineno="133"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><sp/><sp/>memmove(fifo,<sp/>fifo<sp/>+<sp/>count,<sp/>(*fifo_count<sp/>-<sp/>count)<sp/>*<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(*fifo));</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/>*fifo_count<sp/>-=<sp/>count;</highlight></codeline>
+<codeline lineno="136"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"></highlight></codeline>
+<codeline lineno="142" refid="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" refkind="member"><highlight class="normal"><ref refid="rnnoise__processor_8c_1adab488046bc9a1d2af0bffa138f07f5b" kindref="member">RNNOISE_PRIVATE</ref><sp/>int16_t<sp/><ref refid="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" kindref="member">pcm_from_double</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>sample)</highlight></codeline>
+<codeline lineno="143"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(sample<sp/>&gt;<sp/>32767.0)</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>32767;</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(sample<sp/>&lt;<sp/>-32768.0)</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-32768;</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>(int16_t)lround(sample);</highlight></codeline>
+<codeline lineno="149"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"></highlight></codeline>
+<codeline lineno="151" refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" kindref="member">txagc_rnnoise_process_prepared</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*samples,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count)</highlight></codeline>
+<codeline lineno="152"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>input[2048];</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>converted[4096];</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>clean[<ref refid="rnnoise__processor_8h_1a90c38197acefe4ebeb1bb0ddaf29f63b" kindref="member">TXAGC_RNNOISE_FRAME</ref>];</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>down[1024];</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/><sp/><sp/>SRC_DATA<sp/>data;</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i;</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"></highlight></codeline>
+<codeline lineno="160"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state<sp/>||<sp/>!samples<sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" kindref="member">prepared</ref><sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref><sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref><sp/>||</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref><sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref><sp/>||<sp/>count<sp/>&gt;<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(input)<sp/>/<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(input[0]))<sp/>{</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" kindref="member">active</ref><sp/>=<sp/>1;</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(i<sp/>=<sp/>0;<sp/>i<sp/>&lt;<sp/>count;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>input[i]<sp/>=<sp/>samples[i];</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="168"><highlight class="normal"><sp/><sp/><sp/><sp/>memset(&amp;data,<sp/>0,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(data));</highlight></codeline>
+<codeline lineno="169"><highlight class="normal"><sp/><sp/><sp/><sp/>data.data_in<sp/>=<sp/>input;</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"><sp/><sp/><sp/><sp/>data.input_frames<sp/>=<sp/>count;</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"><sp/><sp/><sp/><sp/>data.data_out<sp/>=<sp/>converted;</highlight></codeline>
+<codeline lineno="172"><highlight class="normal"><sp/><sp/><sp/><sp/>data.output_frames<sp/>=<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(converted)<sp/>/<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(converted[0]);</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"><sp/><sp/><sp/><sp/>data.src_ratio<sp/>=<sp/>(double)<ref refid="rnnoise__processor_8h_1a2ada1286568d61d7133c1318bd92838e" kindref="member">TXAGC_RNNOISE_RATE</ref><sp/>/<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref>;</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(src_process(state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref>,<sp/>&amp;data)<sp/>||<sp/>data.input_frames_used<sp/>!=<sp/>(</highlight><highlight class="keywordtype">long</highlight><highlight class="normal">)count<sp/>||</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" kindref="member">append</ref>(state-&gt;<ref refid="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" kindref="member">up_fifo</ref>,<sp/>&amp;state-&gt;<ref refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" kindref="member">up_count</ref>,<sp/>converted,<sp/>data.output_frames_gen))<sp/>{</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>++;</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(state);</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"></highlight></codeline>
+<codeline lineno="181"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">while</highlight><highlight class="normal"><sp/>(state-&gt;<ref refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" kindref="member">up_count</ref><sp/>&gt;=<sp/><ref refid="rnnoise__processor_8h_1a90c38197acefe4ebeb1bb0ddaf29f63b" kindref="member">TXAGC_RNNOISE_FRAME</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>generated;</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a44cbaedbe1abb620e86f68588a937aef" kindref="member">vad_probability</ref><sp/>=</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>rnnoise_process_frame(state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref>,<sp/>clean,<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" kindref="member">up_fifo</ref>);</highlight></codeline>
+<codeline lineno="185"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a38aaf128d78429dc1bd3b86b16969de9" kindref="member">vad_sum</ref><sp/>+=<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a44cbaedbe1abb620e86f68588a937aef" kindref="member">vad_probability</ref>;</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a9761fa74c946892bdda59e0e5e3d5e02" kindref="member">rnnoise_frames</ref>++;</highlight></codeline>
+<codeline lineno="187"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" kindref="member">consume</ref>(state-&gt;<ref refid="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" kindref="member">up_fifo</ref>,<sp/>&amp;state-&gt;<ref refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" kindref="member">up_count</ref>,<sp/><ref refid="rnnoise__processor_8h_1a90c38197acefe4ebeb1bb0ddaf29f63b" kindref="member">TXAGC_RNNOISE_FRAME</ref>);</highlight></codeline>
+<codeline lineno="188"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state-&gt;<ref refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" kindref="member">primed</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" kindref="member">primed</ref><sp/>=<sp/>1;</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">continue</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="192"><highlight class="normal"></highlight></codeline>
+<codeline lineno="193"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>memset(&amp;data,<sp/>0,<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(data));</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>data.data_in<sp/>=<sp/>clean;</highlight></codeline>
+<codeline lineno="195"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>data.input_frames<sp/>=<sp/><ref refid="rnnoise__processor_8h_1a90c38197acefe4ebeb1bb0ddaf29f63b" kindref="member">TXAGC_RNNOISE_FRAME</ref>;</highlight></codeline>
+<codeline lineno="196"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>data.data_out<sp/>=<sp/>down;</highlight></codeline>
+<codeline lineno="197"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>data.output_frames<sp/>=<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(down)<sp/>/<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(down[0]);</highlight></codeline>
+<codeline lineno="198"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>data.src_ratio<sp/>=<sp/>(double)state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref><sp/>/<sp/><ref refid="rnnoise__processor_8h_1a2ada1286568d61d7133c1318bd92838e" kindref="member">TXAGC_RNNOISE_RATE</ref>;</highlight></codeline>
+<codeline lineno="199"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(src_process(state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>,<sp/>&amp;data))<sp/>{</highlight></codeline>
+<codeline lineno="200"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>++;</highlight></codeline>
+<codeline lineno="201"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(state);</highlight></codeline>
+<codeline lineno="202"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="203"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="204"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>generated<sp/>=<sp/>data.output_frames_gen;</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(<ref refid="rnnoise__processor_8c_1af410170b51f2686eb5e50f1fa83bef6e" kindref="member">append</ref>(state-&gt;<ref refid="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" kindref="member">down_fifo</ref>,<sp/>&amp;state-&gt;<ref refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" kindref="member">down_count</ref>,<sp/>down,<sp/>generated))<sp/>{</highlight></codeline>
+<codeline lineno="206"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" kindref="member">errors</ref>++;</highlight></codeline>
+<codeline lineno="207"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" kindref="member">reset_stream</ref>(state);</highlight></codeline>
+<codeline lineno="208"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="209"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="210"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="211"><highlight class="normal"></highlight></codeline>
+<codeline lineno="212"><highlight class="normal"><sp/><sp/><sp/><sp/>{</highlight></codeline>
+<codeline lineno="213"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>available<sp/>=<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" kindref="member">down_count</ref>;</highlight></codeline>
+<codeline lineno="214"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(available<sp/>&gt;<sp/>count)<sp/>{</highlight></codeline>
+<codeline lineno="215"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>available<sp/>=<sp/>count;</highlight></codeline>
+<codeline lineno="216"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="217"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(i<sp/>=<sp/>0;<sp/>i<sp/>&lt;<sp/>available;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="218"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>samples[i]<sp/>=<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" kindref="member">down_fifo</ref>[i];</highlight></codeline>
+<codeline lineno="219"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1ae147b58e5d209103be0f1aa92203416d" kindref="member">output_samples</ref>++;</highlight></codeline>
+<codeline lineno="220"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="221"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="rnnoise__processor_8c_1a37195b7be97f2b6d3d2ca3ff8aa8c32b" kindref="member">consume</ref>(state-&gt;<ref refid="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" kindref="member">down_fifo</ref>,<sp/>&amp;state-&gt;<ref refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" kindref="member">down_count</ref>,<sp/>available);</highlight></codeline>
+<codeline lineno="222"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(;<sp/>i<sp/>&lt;<sp/>count;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="223"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>samples[i]<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="224"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a2a4107359bda0a5ace5473cdd2355abf" kindref="member">startup_samples</ref>++;</highlight></codeline>
+<codeline lineno="225"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="226"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="227"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="228"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="229"><highlight class="normal"></highlight></codeline>
+<codeline lineno="230" refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" kindref="member">txagc_rnnoise_process_double</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*samples,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count,</highlight></codeline>
+<codeline lineno="231"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate)</highlight></codeline>
+<codeline lineno="232"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="233"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state<sp/>||<sp/>!samples<sp/>||<sp/>!sample_rate<sp/>||<sp/>count<sp/>&gt;<sp/>2048U)</highlight></codeline>
+<codeline lineno="234"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="235"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!state-&gt;<ref refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" kindref="member">prepared</ref><sp/>||<sp/>state-&gt;<ref refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" kindref="member">input_rate</ref><sp/>!=<sp/>sample_rate<sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" kindref="member">denoise</ref><sp/>||</highlight></codeline>
+<codeline lineno="236"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" kindref="member">upsampler</ref><sp/>||<sp/>!state-&gt;<ref refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" kindref="member">downsampler</ref>)<sp/>{</highlight></codeline>
+<codeline lineno="237"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(<ref refid="rnnoise__processor_8c_1ae1892106063053daaade436873564e22" kindref="member">txagc_rnnoise_prepare</ref>(state,<sp/>sample_rate))</highlight></codeline>
+<codeline lineno="238"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="239"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="240"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" kindref="member">txagc_rnnoise_process_prepared</ref>(state,<sp/>samples,<sp/>count);</highlight></codeline>
+<codeline lineno="241"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="242"><highlight class="normal"></highlight></codeline>
+<codeline lineno="243" refid="rnnoise__processor_8c_1ab590b8c5ed7056dbc0e521acb0598874" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="rnnoise__processor_8c_1ab590b8c5ed7056dbc0e521acb0598874" kindref="member">txagc_rnnoise_process</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__rnnoise" kindref="compound">txagc_rnnoise</ref><sp/>*state,<sp/>int16_t<sp/>*samples,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count,</highlight></codeline>
+<codeline lineno="244"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate)</highlight></codeline>
+<codeline lineno="245"><highlight class="normal">{</highlight></codeline>
+<codeline lineno="246"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>work[2048];</highlight></codeline>
+<codeline lineno="247"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>i;</highlight></codeline>
+<codeline lineno="248"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>result;</highlight></codeline>
+<codeline lineno="249"><highlight class="normal"></highlight></codeline>
+<codeline lineno="250"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(!samples<sp/>||<sp/>count<sp/>&gt;<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(work)<sp/>/<sp/></highlight><highlight class="keyword">sizeof</highlight><highlight class="normal">(work[0]))<sp/>{</highlight></codeline>
+<codeline lineno="251"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>-1;</highlight></codeline>
+<codeline lineno="252"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="253"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(i<sp/>=<sp/>0;<sp/>i<sp/>&lt;<sp/>count;<sp/>++i)<sp/>{</highlight></codeline>
+<codeline lineno="254"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>work[i]<sp/>=<sp/>samples[i];</highlight></codeline>
+<codeline lineno="255"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="256"><highlight class="normal"><sp/><sp/><sp/><sp/>result<sp/>=<sp/><ref refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" kindref="member">txagc_rnnoise_process_double</ref>(state,<sp/>work,<sp/>count,<sp/>sample_rate);</highlight></codeline>
+<codeline lineno="257"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(result)<sp/>{</highlight></codeline>
+<codeline lineno="258"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>result;</highlight></codeline>
+<codeline lineno="259"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="260"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(i<sp/>=<sp/>0;<sp/>i<sp/>&lt;<sp/>count;<sp/>++i)</highlight></codeline>
+<codeline lineno="261"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>samples[i]<sp/>=<sp/><ref refid="rnnoise__processor_8c_1a3b2d598f77051b707b0064b1515f13ca" kindref="member">pcm_from_double</ref>(work[i]);</highlight></codeline>
+<codeline lineno="262"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>0;</highlight></codeline>
+<codeline lineno="263"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="264"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/rnnoise_processor.c"/>
+  </compounddef>
+</doxygen>

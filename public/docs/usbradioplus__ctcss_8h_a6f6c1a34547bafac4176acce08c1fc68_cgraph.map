@@ -1,0 +1,7 @@
+<map id="urp_ctcss_generate" name="urp_ctcss_generate">
+<area shape="rect" id="Node000001" title="Render a phase&#45;continuous CTCSS block at 48 kHz, including a turn&#45;off phase shift." alt="" coords="5,31,153,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__ctcss_8c.html#afadf7c326a81ac71570f6ef2c8aa45b6" title="Render a sine&#45;wave signaling block from persistent phase state." alt="" coords="264,5,344,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="153,32,250,21,250,27,154,38"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__ctcss_8c.html#a0f230aa8b64276d51aaa60e14c155605" title="Map a requested CTCSS tone to its compatibility oscillator frequency." alt="" coords="201,55,407,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="154,49,188,52,188,58,153,54"/>
+</map>

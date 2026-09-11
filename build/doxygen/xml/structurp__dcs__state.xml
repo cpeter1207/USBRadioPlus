@@ -1,0 +1,486 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__dcs__state" kind="struct" language="C++" prot="public">
+    <compoundname>urp_dcs_state</compoundname>
+    <includes refid="usbradioplus__dcs_8h" local="no">usbradioplus_dcs.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__dcs__state_1a10cb58392a3d7ef97cfbd1f4e95a53ab" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structurp__dcs__receive__phase" kindref="compound">urp_dcs_receive_phase</ref></type>
+        <definition>struct urp_dcs_receive_phase urp_dcs_state::receive_phase[URP_DCS_RX_PHASE_COUNT]</definition>
+        <argsstring>[URP_DCS_RX_PHASE_COUNT]</argsstring>
+        <name>receive_phase</name>
+        <qualifiedname>urp_dcs_state::receive_phase</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed phase bank covering every possible callback-to-symbol alignment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="41" column="28" bodyfile="src/usbradioplus_dcs.h" bodystart="41" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af2be4adcc0ec5dc058f2f1bfd819558e" compoundref="usbradioplus__dcs_8c" startline="278" endline="286">dcs_phase_bank_valid</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1aebfd1bea48ad1ec068a0f33aba1e573a" compoundref="usbradioplus__dcs_8c" startline="172" endline="185">dcs_reset_receive_phase_bank</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ae478886b5ea78809a3954aa6fc10b311" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_dcs_state::receive_sample_rate</definition>
+        <argsstring></argsstring>
+        <name>receive_sample_rate</name>
+        <qualifiedname>urp_dcs_state::receive_sample_rate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sample rate used to initialize the receive phase bank. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="43" column="14" bodyfile="src/usbradioplus_dcs.h" bodystart="43" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aebfd1bea48ad1ec068a0f33aba1e573a" compoundref="usbradioplus__dcs_8c" startline="172" endline="185">dcs_reset_receive_phase_bank</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ac0eadd5aa26c9645bc9a0490a597495b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::transmit_word</definition>
+        <argsstring></argsstring>
+        <name>transmit_word</name>
+        <qualifiedname>urp_dcs_state::transmit_word</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current transmitted 23-bit Golay word. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="45" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="45" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a0d6ceb7655da8d4c95e38d499a84f7d8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::transmit_phase</definition>
+        <argsstring></argsstring>
+        <name>transmit_phase</name>
+        <qualifiedname>urp_dcs_state::transmit_phase</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current transmitted symbol phase. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="47" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="47" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a570e61dc6641cf84ab5ed8605bd54df6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::transmit_bit_accumulator</definition>
+        <argsstring></argsstring>
+        <name>transmit_bit_accumulator</name>
+        <qualifiedname>urp_dcs_state::transmit_bit_accumulator</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fractional transmit symbol accumulator. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="49" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="49" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a3dbf0c090e18ff2602baaf43491f246e" prot="public" static="no" mutable="no">
+        <type>int64_t</type>
+        <definition>int64_t urp_dcs_state::dc_estimate_q15</definition>
+        <argsstring></argsstring>
+        <name>dc_estimate_q15</name>
+        <qualifiedname>urp_dcs_state::dc_estimate_q15</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Slow discriminator DC estimate in Q15 PCM-code units. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="51" column="9" bodyfile="src/usbradioplus_dcs.h" bodystart="51" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a5cec0916669b33878394d6a65846ecac" compoundref="usbradioplus__dcs_8c" startline="364" endline="370">dcs_remove_dc</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1aebfd1bea48ad1ec068a0f33aba1e573a" compoundref="usbradioplus__dcs_8c" startline="172" endline="185">dcs_reset_receive_phase_bank</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a7f8edd5845f64808cf590099e3c14afa" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_dcs_state::receive_turnoff_coefficient</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_coefficient</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_coefficient</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Goertzel coefficient for the native DCS turn-off detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="53" column="8" bodyfile="src/usbradioplus_dcs.h" bodystart="53" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1aeeef5ed245dd7675b3957942a1bf3a87" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_dcs_state::receive_turnoff_one</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_one</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_one</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous first-order Goertzel state for the DCS turn-off detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="55" column="8" bodyfile="src/usbradioplus_dcs.h" bodystart="55" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a683ac9230db74fe803e74ec93d7d5da7" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_dcs_state::receive_turnoff_two</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_two</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_two</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous second-order Goertzel state for the DCS turn-off detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="57" column="8" bodyfile="src/usbradioplus_dcs.h" bodystart="57" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a60711538e6988f3c6dfe14c8cdb45a50" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_dcs_state::receive_turnoff_energy</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_energy</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_energy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Windowed input energy for DCS turn-off discrimination. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="59" column="8" bodyfile="src/usbradioplus_dcs.h" bodystart="59" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1aa16cae9e9e37fce2e80bcdd1259e986b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::receive_turnoff_window_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_window_samples</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_window_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected-channel samples accumulated in the current detector window. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="61" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="61" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ae85e5818ba5766b3be6a7c8ae6c7c6d7" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::receive_turnoff_window_length</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_window_length</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_window_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed detector evaluation window in selected-channel samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="63" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="63" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ab20373f17376af18cebe96b50239676b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::receive_turnoff_consecutive_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_consecutive_samples</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_consecutive_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Consecutive coherent tail-tone samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="65" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="65" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a0f101c49b5490e57c33cf0472fef6647" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::receive_turnoff_minimum_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_minimum_samples</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_minimum_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Required coherent tail-tone samples before receive qualification clears. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="67" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="67" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ad8af78999d90c73ee241e46207ac19c4" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::receive_turnoff_active</definition>
+        <argsstring></argsstring>
+        <name>receive_turnoff_active</name>
+        <qualifiedname>urp_dcs_state::receive_turnoff_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while a qualified 134.4 Hz turn-off tail is present. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="69" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="69" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1aba80f48af60132af083d539df20fcf0b" compoundref="usbradioplus__dcs_8c" startline="121" endline="160">dcs_process_turnoff_sample</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a46aa5805b8783b27b00badf1c72450d4" compoundref="usbradioplus__dcs_8c" startline="88" endline="107">dcs_reset_turnoff_detector</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a287d79a8c3583bbb02001691d6677a97" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_dcs_state::syndrome[2048]</definition>
+        <argsstring>[2048]</argsstring>
+        <name>syndrome</name>
+        <qualifiedname>urp_dcs_state::syndrome</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Golay syndrome-to-error correction table. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="71" column="10" bodyfile="src/usbradioplus_dcs.h" bodystart="71" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a771b50289951179c8b27e1523135a35f" compoundref="usbradioplus__dcs_8c" startline="264" endline="272">decode_word</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1ac0da746029e69bcb4815d49032e75586" compoundref="usbradioplus__dcs_8c" startline="74" endline="77">install_error</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a9aeae2ab26bf2865aa9952617750ed3a" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::receive_code</definition>
+        <argsstring></argsstring>
+        <name>receive_code</name>
+        <qualifiedname>urp_dcs_state::receive_code</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured nine-bit receive code. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="73" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="73" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a771b50289951179c8b27e1523135a35f" compoundref="usbradioplus__dcs_8c" startline="264" endline="272">decode_word</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a57195c5e2413b75b130670a5403ea3ae" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::transmit_code</definition>
+        <argsstring></argsstring>
+        <name>transmit_code</name>
+        <qualifiedname>urp_dcs_state::transmit_code</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured nine-bit transmit code. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="75" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="75" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a1f4c58b7267f0700f3e0bae213a782dc" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::receive_inverted</definition>
+        <argsstring></argsstring>
+        <name>receive_inverted</name>
+        <qualifiedname>urp_dcs_state::receive_inverted</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero selects inverted receive polarity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="77" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="77" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1ac9b2d137373e04780cecf3d79bf57ba9" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::transmit_inverted</definition>
+        <argsstring></argsstring>
+        <name>transmit_inverted</name>
+        <qualifiedname>urp_dcs_state::transmit_inverted</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero selects inverted transmit polarity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="79" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="79" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a0f2aa5395ce8a59ada5bfff7bdbf9233" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::enabled_receive</definition>
+        <argsstring></argsstring>
+        <name>enabled_receive</name>
+        <qualifiedname>urp_dcs_state::enabled_receive</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables DCS reception. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="81" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="81" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" compoundref="chan__usbradioplus__modern_8c" startline="1759" endline="2223">usbradio_audio_thread</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a06e09ba1f7e2c1ddb9cae57173ce130c" compoundref="usbradioplus__channel__common_8c" startline="3479" endline="3485">usbradioplus_ctcss_detected</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a6df3fed7d63490c3f21783def9a8cf38" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::enabled_transmit</definition>
+        <argsstring></argsstring>
+        <name>enabled_transmit</name>
+        <qualifiedname>urp_dcs_state::enabled_transmit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables DCS transmission. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="83" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="83" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1a740f2ee011e7ceb35e2fa66b70cb12db" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_dcs_state::valid</definition>
+        <argsstring></argsstring>
+        <name>valid</name>
+        <qualifiedname>urp_dcs_state::valid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the configured receive code is qualified. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="85" column="5" bodyfile="src/usbradioplus_dcs.h" bodystart="85" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1add66503db5e26b809a48e3ad32a9a5c2" compoundref="usbradioplus__dcs_8c" startline="296" endline="309">dcs_clear_receive_qualification</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1aebfd1bea48ad1ec068a0f33aba1e573a" compoundref="usbradioplus__dcs_8c" startline="172" endline="185">dcs_reset_receive_phase_bank</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1abcde7dd04fefa482c787572fd25858b1" compoundref="usbradioplus__dcs_8c" startline="232" endline="257">urp_dcs_configure</referencedby>
+        <referencedby refid="usbradioplus__dcs_8c_1af320936342b40be91bb0d833a1fd8716" compoundref="usbradioplus__dcs_8c" startline="372" endline="416">urp_dcs_process</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" compoundref="chan__usbradioplus__modern_8c" startline="1759" endline="2223">usbradio_audio_thread</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a06e09ba1f7e2c1ddb9cae57173ce130c" compoundref="usbradioplus__channel__common_8c" startline="3479" endline="3485">usbradioplus_ctcss_detected</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__dcs__state_1acc33ed644a9f4beb91bf19207efd18c2" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double urp_dcs_state::tail_phase</definition>
+        <argsstring></argsstring>
+        <name>tail_phase</name>
+        <qualifiedname>urp_dcs_state::tail_phase</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tail-tone oscillator phase. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dcs.h" line="87" column="8" bodyfile="src/usbradioplus_dcs.h" bodystart="87" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dcs_8c_1a2be8022d8c923040a9ad480771241534" compoundref="usbradioplus__dcs_8c" startline="418" endline="450">urp_dcs_generate</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>DCS encoder and decoder state; it is wholly caller-owned and callback safe. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>urp_dcs_receive_phase</label>
+        <link refid="structurp__dcs__receive__phase"/>
+      </node>
+      <node id="1">
+        <label>urp_dcs_state</label>
+        <link refid="structurp__dcs__state"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>receive_phase</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_dcs.h" line="39" column="1" bodyfile="src/usbradioplus_dcs.h" bodystart="39" bodyend="88"/>
+    <listofallmembers>
+      <member refid="structurp__dcs__state_1a3dbf0c090e18ff2602baaf43491f246e" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>dc_estimate_q15</name></member>
+      <member refid="structurp__dcs__state_1a0f2aa5395ce8a59ada5bfff7bdbf9233" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>enabled_receive</name></member>
+      <member refid="structurp__dcs__state_1a6df3fed7d63490c3f21783def9a8cf38" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>enabled_transmit</name></member>
+      <member refid="structurp__dcs__state_1a9aeae2ab26bf2865aa9952617750ed3a" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_code</name></member>
+      <member refid="structurp__dcs__state_1a1f4c58b7267f0700f3e0bae213a782dc" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_inverted</name></member>
+      <member refid="structurp__dcs__state_1a10cb58392a3d7ef97cfbd1f4e95a53ab" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_phase</name></member>
+      <member refid="structurp__dcs__state_1ae478886b5ea78809a3954aa6fc10b311" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_sample_rate</name></member>
+      <member refid="structurp__dcs__state_1ad8af78999d90c73ee241e46207ac19c4" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_active</name></member>
+      <member refid="structurp__dcs__state_1a7f8edd5845f64808cf590099e3c14afa" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_coefficient</name></member>
+      <member refid="structurp__dcs__state_1ab20373f17376af18cebe96b50239676b" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_consecutive_samples</name></member>
+      <member refid="structurp__dcs__state_1a60711538e6988f3c6dfe14c8cdb45a50" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_energy</name></member>
+      <member refid="structurp__dcs__state_1a0f101c49b5490e57c33cf0472fef6647" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_minimum_samples</name></member>
+      <member refid="structurp__dcs__state_1aeeef5ed245dd7675b3957942a1bf3a87" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_one</name></member>
+      <member refid="structurp__dcs__state_1a683ac9230db74fe803e74ec93d7d5da7" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_two</name></member>
+      <member refid="structurp__dcs__state_1ae85e5818ba5766b3be6a7c8ae6c7c6d7" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_window_length</name></member>
+      <member refid="structurp__dcs__state_1aa16cae9e9e37fce2e80bcdd1259e986b" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>receive_turnoff_window_samples</name></member>
+      <member refid="structurp__dcs__state_1a287d79a8c3583bbb02001691d6677a97" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>syndrome</name></member>
+      <member refid="structurp__dcs__state_1acc33ed644a9f4beb91bf19207efd18c2" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>tail_phase</name></member>
+      <member refid="structurp__dcs__state_1a570e61dc6641cf84ab5ed8605bd54df6" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>transmit_bit_accumulator</name></member>
+      <member refid="structurp__dcs__state_1a57195c5e2413b75b130670a5403ea3ae" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>transmit_code</name></member>
+      <member refid="structurp__dcs__state_1ac9b2d137373e04780cecf3d79bf57ba9" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>transmit_inverted</name></member>
+      <member refid="structurp__dcs__state_1a0d6ceb7655da8d4c95e38d499a84f7d8" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>transmit_phase</name></member>
+      <member refid="structurp__dcs__state_1ac0eadd5aa26c9645bc9a0490a597495b" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>transmit_word</name></member>
+      <member refid="structurp__dcs__state_1a740f2ee011e7ceb35e2fa66b70cb12db" prot="public" virt="non-virtual"><scope>urp_dcs_state</scope><name>valid</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

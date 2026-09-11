@@ -1,0 +1,9 @@
+<map id="handle_set_dsp_debug" name="handle_set_dsp_debug">
+<area shape="rect" id="Node000001" title="Register, complete, or change the radio debug level." alt="" coords="5,31,176,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a6b5c8dbe41c62ab4e4b8cfe4c98b303b" title="Set the selected radio&#39;s DSP trace verbosity." alt="" coords="224,5,383,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,31,210,26,211,32,177,36"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#ab63fe5b59f7ecd7ce13701b61aa533f6" title="Translate a tuning command result into an Asterisk CLI result." alt="" coords="271,55,336,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="177,50,257,59,256,65,176,56"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="431,5,513,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="383,15,417,15,417,21,383,21"/>
+</map>

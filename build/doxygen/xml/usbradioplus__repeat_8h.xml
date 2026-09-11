@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__repeat_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_repeat.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__native__tick_8c" local="yes">src/usbradioplus_native_tick.c</includedby>
+    <includedby refid="usbradioplus__repeat_8c" local="yes">src/usbradioplus_repeat.c</includedby>
+    <includedby refid="usbradioplus__tune__menu_8c" local="yes">src/usbradioplus_tune_menu.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/usbradioplus_repeat.h</label>
+        <link refid="usbradioplus__repeat_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_repeat.c</label>
+        <link refid="usbradioplus__repeat_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_repeat.h</label>
+        <link refid="usbradioplus__repeat_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__repeat_8h_1a47837de5a9c94d3e9d175aacffd9bfd3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_native_repeat_prepare</definition>
+        <argsstring>(double *output, const double *input, size_t samples, double gain, int muted)</argsstring>
+        <name>urp_native_repeat_prepare</name>
+        <param>
+          <type>double *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>const double *</type>
+          <declname>input</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>gain</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>muted</declname>
+        </param>
+        <briefdescription>
+<para>Apply repeat level and native DTMF muting to the transmit-branch copy. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>input</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Input samples; the caller retains ownership. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>gain</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Linear amplitude multiplier. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>muted</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero replaces native repeat audio with silence. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_repeat.h" line="17" column="6" bodyfile="src/usbradioplus_repeat.c" bodystart="9" bodyend="23" declfile="src/usbradioplus_repeat.h" declline="17" declcolumn="6"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Prepare native repeat audio with repeat level and DTMF muting. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_REPEAT_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_REPEAT_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__repeat_8h_1a47837de5a9c94d3e9d175aacffd9bfd3" kindref="member">urp_native_repeat_prepare</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*output,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*input,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>samples,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>gain,</highlight></codeline>
+<codeline lineno="18"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>muted);</highlight></codeline>
+<codeline lineno="19"><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_repeat.h"/>
+  </compounddef>
+</doxygen>

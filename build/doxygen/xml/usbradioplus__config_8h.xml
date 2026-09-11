@@ -1,0 +1,141 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__config_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_config.h</compoundname>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__config_8c" local="yes">src/usbradioplus_config.c</includedby>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_config.c</label>
+        <link refid="usbradioplus__config_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_config.h</label>
+        <link refid="usbradioplus__config_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+    </invincdepgraph>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__config_8h_1a64eeff2da27607aacf81861f6345c0e2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_config_variable_update</definition>
+        <argsstring>(struct ast_config *config, const char *filename, struct ast_category *category, const char *variable, const char *value)</argsstring>
+        <name>usbradioplus_config_variable_update</name>
+        <param>
+          <type>struct ast_config *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>filename</declname>
+        </param>
+        <param>
+          <type>struct ast_category *</type>
+          <declname>category</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>variable</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>value</declname>
+        </param>
+        <briefdescription>
+<para>Update or append a category variable while preserving its Asterisk configuration context. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk configuration tree owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>filename</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configuration filename used by Asterisk&apos;s update operation. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>category</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Existing Asterisk category receiving the update. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>variable</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configuration option name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>New textual option value. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_config.h" line="19" column="5" bodyfile="src/usbradioplus_config.c" bodystart="14" bodyend="45" declfile="src/usbradioplus_config.h" declline="19" declcolumn="5"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa11d8d9df4edb892604b97d2e3df7904" compoundref="usbradioplus__processing_8c" startline="3177" endline="3215">usbradioplus_processing_save_options</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Update Asterisk configuration variables while preserving their category context. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_CONFIG_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_CONFIG_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_category;</highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_config;</highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="19"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__config_8h_1a64eeff2da27607aacf81861f6345c0e2" kindref="member">usbradioplus_config_variable_update</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*config,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*filename,</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_category<sp/>*category,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*variable,</highlight></codeline>
+<codeline lineno="21"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*value);</highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_config.h"/>
+  </compounddef>
+</doxygen>

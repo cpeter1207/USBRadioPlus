@@ -1,0 +1,22 @@
+<map id="src/usbradioplus_dsp.h" name="src/usbradioplus_dsp.h">
+<area shape="rect" id="Node000001" title="Sample&#45;rate conversion and receive&#45;echo matching." alt="" coords="275,5,446,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,174,183,199"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="332,40,114,176,111,172,329,36"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,167,373,207"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="353,44,300,167,296,165,348,42"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="398,167,585,207"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="365,44,371,81,388,117,415,144,448,164,445,169,412,148,384,120,366,82,359,45"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8h.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="398,79,585,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="393,36,461,76,458,81,390,40"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dsp_8c.html" title="Sample&#45;rate conversion and receive&#45;echo matching." alt="" coords="609,86,779,111"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="423,31,646,83,645,89,422,36"/>
+<area shape="poly" id="edge5_Node000005_Node000002" title=" " alt="" coords="392,124,147,177,146,171,390,119"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="435,127,335,169,333,164,433,122"/>
+<area shape="poly" id="edge7_Node000005_Node000004" title=" " alt="" coords="494,133,494,166,489,166,489,133"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html" title="Transport&#45;independent PCM conversion, routing, elastic queues, and echo state." alt="" coords="609,167,795,207"/>
+<area shape="poly" id="edge8_Node000005_Node000006" title=" " alt="" coords="551,121,657,164,655,169,549,126"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html" title="Direct native receive processing and transmitter rendering." alt="" coords="819,167,995,207"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="597,119,820,165,819,170,596,124"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="1020,167,1184,207"/>
+<area shape="poly" id="edge10_Node000005_Node000008" title=" " alt="" coords="599,116,715,131,806,139,895,148,1008,164,1020,166,1020,171,1007,169,894,154,805,145,714,136,598,121"/>
+</map>

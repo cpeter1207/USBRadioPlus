@@ -1,0 +1,5 @@
+<map id="urp_sample_queue_reset_high_water" name="urp_sample_queue_reset_high_water">
+<area shape="rect" id="Node000001" title="Reset the sample occupancy high&#45;water mark." alt="" coords="5,5,191,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#ab7205161c9c7d576ac070d1993e15d21" title="Return the number of queued PCM samples." alt="" coords="239,13,445,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="191,23,225,23,225,28,191,28"/>
+</map>

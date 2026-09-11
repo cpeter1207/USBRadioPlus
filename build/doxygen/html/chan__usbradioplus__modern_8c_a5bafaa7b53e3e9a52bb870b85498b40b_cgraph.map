@@ -1,0 +1,5 @@
+<map id="usbradio_log_usb_recovered" name="usbradio_log_usb_recovered">
+<area shape="rect" id="Node000001" title="Report recovery once after a previously latched USB/audio failure." alt="" coords="5,5,212,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#ac61148cf7b715227e21078f6c639a388" title="Copy the acquired USB identifier, serial number, and ALSA card number." alt="" coords="260,5,445,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="212,15,246,15,246,21,212,21"/>
+</map>

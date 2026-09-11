@@ -1,0 +1,15 @@
+<map id="usbradio_text" name="usbradio_text">
+<area shape="rect" id="Node000001" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="5,55,116,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker after a control&#45;plane output request." alt="" coords="226,5,293,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,52,212,27,213,32,113,57"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="209,55,310,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="116,65,194,65,194,70,116,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a7fd7ede6d42b48043eaa2ba896eec217" title="Select a binary channel on the configured parallel&#45;port interface." alt="" coords="164,104,355,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="113,77,195,98,194,103,112,83"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__hardware_8c.html#a79d30d28e38db06cba9169a5fa2b4f65" title="Latch a binary channel number onto the parallel&#45;port radio interface." alt="" coords="403,75,599,100"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="355,102,389,98,390,104,355,108"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a5e29c75973bbf6a2c5fb46a4252920fe" title="Write a synthesizer&#45;programming byte under the parallel&#45;port mutex." alt="" coords="420,125,581,165"/>
+<area shape="poly" id="edge6_Node000004_Node000007" title=" " alt="" coords="355,125,407,131,406,136,355,130"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__hardware_8c.html#a5ddcf0ac38b4564ff89cfa81fae59ecd" title="Write the cached parallel&#45;port byte through the caller&#39;s bus callback." alt="" coords="647,75,797,100"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="599,85,632,85,632,90,599,90"/>
+</map>

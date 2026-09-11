@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structnative__renderer__diagnostics" kind="struct" language="C++" prot="public">
+    <compoundname>native_renderer_diagnostics</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structnative__renderer__diagnostics_1abe8ef4616c16ea7a8a796d52c6246980" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__renderer__stats" kindref="compound">usbradioplus_native_renderer_stats</ref></type>
+        <definition>struct usbradioplus_native_renderer_stats native_renderer_diagnostics::statistics</definition>
+        <argsstring></argsstring>
+        <name>statistics</name>
+        <qualifiedname>native_renderer_diagnostics::statistics</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native renderer diagnostic measurements. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="72" column="41" bodyfile="src/usbradioplus_native_tick.c" bodystart="72" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a9e9fa3a41654f5e43e28fec4a1936e63" compoundref="usbradioplus__native__tick_8c" startline="199" endline="212">native_renderer_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a2e84fa5329e90bed16d2692053cfb956" compoundref="usbradioplus__native__tick_8c" startline="821" endline="852">usbradioplus_native_renderer_stats_read</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__diagnostics_1a5c02d1e0b836f2c29fa1d7eb0c37ecdf" prot="public" static="no" mutable="no">
+        <type>struct audiostatistics</type>
+        <definition>struct audiostatistics native_renderer_diagnostics::tx_audio_statistics</definition>
+        <argsstring></argsstring>
+        <name>tx_audio_statistics</name>
+        <qualifiedname>native_renderer_diagnostics::tx_audio_statistics</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Asterisk-compatible transmitter audio meter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="74" column="22" bodyfile="src/usbradioplus_native_tick.c" bodystart="74" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a9e9fa3a41654f5e43e28fec4a1936e63" compoundref="usbradioplus__native__tick_8c" startline="199" endline="212">native_renderer_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1ae147e761c595d98a1ab895bd91486d7a" compoundref="usbradioplus__native__tick_8c" startline="854" endline="885">usbradioplus_native_renderer_tx_audio_stats_read</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One immutable renderer diagnostics buffer pinned by control-plane readers. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>native_renderer_diagnostics</label>
+        <link refid="structnative__renderer__diagnostics"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>usbradioplus_native_filter_statistics</label>
+        <link refid="structusbradioplus__native__filter__statistics"/>
+      </node>
+      <node id="2">
+        <label>usbradioplus_native_renderer_stats</label>
+        <link refid="structusbradioplus__native__renderer__stats"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>final_filter</edgelabel>
+          <edgelabel>local_filter</edgelabel>
+          <edgelabel>receive_deemphasis_filter</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_native_tick.c" line="70" column="1" bodyfile="src/usbradioplus_native_tick.c" bodystart="70" bodyend="75"/>
+    <listofallmembers>
+      <member refid="structnative__renderer__diagnostics_1abe8ef4616c16ea7a8a796d52c6246980" prot="public" virt="non-virtual"><scope>native_renderer_diagnostics</scope><name>statistics</name></member>
+      <member refid="structnative__renderer__diagnostics_1a5c02d1e0b836f2c29fa1d7eb0c37ecdf" prot="public" virt="non-virtual"><scope>native_renderer_diagnostics</scope><name>tx_audio_statistics</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

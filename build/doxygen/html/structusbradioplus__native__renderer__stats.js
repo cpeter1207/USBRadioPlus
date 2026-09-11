@@ -1,0 +1,28 @@
+var structusbradioplus__native__renderer__stats =
+[
+    [ "adc_max_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a1292e7af78c7e699cf2edff119d546ad", null ],
+    [ "adc_peak_dbfs", "structusbradioplus__native__renderer__stats.html#ad112fb6ac9b399cd280a46767f67081b", null ],
+    [ "adc_rail_samples", "structusbradioplus__native__renderer__stats.html#a43f17605a357eaa12a6136c5f8cd107a", null ],
+    [ "final_filter", "structusbradioplus__native__renderer__stats.html#a729c31f30e45487543715e60c65a967f", null ],
+    [ "link_queue_underflows", "structusbradioplus__native__renderer__stats.html#a00ab9440f8317ac485f162388301d6e2", null ],
+    [ "local_filter", "structusbradioplus__native__renderer__stats.html#a8bd5b0fd2361cd8e99b707ebe790dac8", null ],
+    [ "local_tx_max_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a2ad26410e11efed7276f38d4f49e5aaf", null ],
+    [ "local_tx_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a01e46d813695fcb2efb891fcfb4c1b3b", null ],
+    [ "native_frames", "structusbradioplus__native__renderer__stats.html#a4f486e9dcffef9b6d35482fb88b85265", null ],
+    [ "parrot_playback_frames", "structusbradioplus__native__renderer__stats.html#abc501d8cc1286f2f9da3e7a6fc5c16b2", null ],
+    [ "parrot_playing", "structusbradioplus__native__renderer__stats.html#adfa6691eea81e57744f20a833100097a", null ],
+    [ "parrot_samples", "structusbradioplus__native__renderer__stats.html#ab97c0b218d03664780de089f9916e09f", null ],
+    [ "parrot_truncated", "structusbradioplus__native__renderer__stats.html#aabd0cb02509433720833415105180867", null ],
+    [ "preemphasis_input_max_peak_dbfs", "structusbradioplus__native__renderer__stats.html#addd1ed8b8c4397f8a0cd37bfd505a656", null ],
+    [ "preemphasis_input_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a548f8b1822b222fc069cbd7e3ef74890", null ],
+    [ "receive_deemphasis_filter", "structusbradioplus__native__renderer__stats.html#a38bf122c4d803467d1945d124020a665", null ],
+    [ "rnnoise_errors", "structusbradioplus__native__renderer__stats.html#a9634ed6836804b3ed5b93e345f448fa0", null ],
+    [ "rnnoise_frames", "structusbradioplus__native__renderer__stats.html#ab817fc54fdbc88aea511486434f39f87", null ],
+    [ "rnnoise_output_samples", "structusbradioplus__native__renderer__stats.html#a076c26c6bbba6fb0d45de966579cef41", null ],
+    [ "rnnoise_startup_samples", "structusbradioplus__native__renderer__stats.html#a6e5a81ea693c0b669003d31d974b3b34", null ],
+    [ "rnnoise_vad_probability", "structusbradioplus__native__renderer__stats.html#a28988c7546a55d495073e9a206c13e1b", null ],
+    [ "src_errors", "structusbradioplus__native__renderer__stats.html#a7a48817c169fd912743f3526a87de526", null ],
+    [ "tx_program_max_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a1dc17dae5eba8145f828317f61e6b0b3", null ],
+    [ "tx_program_peak_dbfs", "structusbradioplus__native__renderer__stats.html#a2c2414a44f817a3f530735bdfa156986", null ],
+    [ "tx_program_rail_samples", "structusbradioplus__native__renderer__stats.html#ae23c0c1adc09b02eb5ac4dbf7a630dec", null ]
+];

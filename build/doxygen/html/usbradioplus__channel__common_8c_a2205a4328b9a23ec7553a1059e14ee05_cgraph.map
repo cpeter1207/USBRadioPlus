@@ -1,0 +1,27 @@
+<map id="radio_config" name="radio_config">
+<area shape="rect" id="Node000001" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="5,70,107,95"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a3c58f512e1e7c3826b18d7944e654698" title="Enter the control&#45;plane exclusion window for parser&#45;owned radio state." alt="" coords="189,5,338,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="102,67,177,46,178,52,103,73"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#aa32a50ea833beee3f40b2fa85faec40a" title="Leave the parser&#45;owned radio&#45;state exclusion window." alt="" coords="155,70,372,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="107,80,141,80,141,85,107,85"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a8853fdf08ee684c808b961d3233f7f7b" title="Apply parser and runtime signaling state while the writer gate is held." alt="" coords="188,119,339,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="107,92,155,104,195,113,193,119,154,109,106,98"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a799ecbc2598edccb4b691f14af5520bd" title="Read the resolved hardware carrier&#45;detection source." alt="" coords="434,45,577,70"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="330,117,371,104,395,92,419,79,439,72,441,77,421,84,397,97,373,109,332,122"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#a065a2a4222925ecf58dbd864fb6ee530" title="Reconfigure DCS only for directions that selected DCS signaling." alt="" coords="430,94,581,119"/>
+<area shape="poly" id="edge5_Node000004_Node000006" title=" " alt="" coords="339,121,416,113,416,119,339,127"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__radio_8c.html#a6ac88139b2fcc40d646f6ed5ea779f1f" title="Resolve receive/transmit signaling lists and CTCSS tone mappings." alt="" coords="420,143,591,169"/>
+<area shape="poly" id="edge9_Node000004_Node000010" title=" " alt="" coords="339,137,406,144,406,149,339,142"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__channel__common_8c.html#af92a12ca243f8f04f87f2bd7a96a1495" title="Publish configured radio frequency and power for the HID worker." alt="" coords="422,193,589,233"/>
+<area shape="poly" id="edge12_Node000004_Node000013" title=" " alt="" coords="303,142,433,186,431,191,301,147"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__dcs_8c.html#abcde7dd04fefa482c787572fd25858b1" title="Configure DCS reception and/or transmission." alt="" coords="647,45,785,70"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="560,91,647,71,648,76,561,97"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dcs_8c.html#a35006cbd844b2d493f3f88cba1d5c511" title="Parse a three&#45;digit octal DCS code with N or I polarity suffix." alt="" coords="639,94,793,119"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="581,104,626,104,626,109,581,109"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__dcs_8c.html#a459d90828d359b032294fb0317f82fad" title="Test whether a value fits the three&#45;digit octal DCS code field." alt="" coords="841,45,1024,70"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="786,55,827,55,827,60,786,60"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__radio_8c.html#a79c18d60196892d1d1ed065d5f16681d" title="Split a comma&#45;separated signaling&#45;code list into owned strings and a pointer table." alt="" coords="665,143,767,169"/>
+<area shape="poly" id="edge10_Node000010_Node000011" title=" " alt="" coords="591,153,651,153,651,159,591,159"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__radio_8c.html#ac665674abe7bea9e08923f5bbda6eeaa" title="Find the CTCSS table index corresponding to a requested tone." alt="" coords="639,193,793,233"/>
+<area shape="poly" id="edge11_Node000010_Node000012" title=" " alt="" coords="554,166,630,187,628,192,552,171"/>
+</map>

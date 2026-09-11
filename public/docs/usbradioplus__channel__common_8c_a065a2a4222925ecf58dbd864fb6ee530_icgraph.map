@@ -1,0 +1,23 @@
+<map id="radio_configure_dcs" name="radio_configure_dcs">
+<area shape="rect" id="Node000001" title="Reconfigure DCS only for directions that selected DCS signaling." alt="" coords="837,109,988,135"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a8853fdf08ee684c808b961d3233f7f7b" title="Apply parser and runtime signaling state while the writer gate is held." alt="" coords="639,109,789,135"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="824,125,790,125,790,119,824,119"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a2205a4328b9a23ec7553a1059e14ee05" title="Apply a channel&#39;s settings to its radio detector and signaling engine." alt="" coords="446,68,547,93"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="633,109,547,93,548,88,634,104"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a1f8f4ad6383fd154cf808321ece65eef" title="Apply validated signaling selections to live radio states." alt="" coords="403,130,591,170"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="625,136,591,141,591,135,624,131"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="221,5,305,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="435,67,354,45,305,31,306,26,355,39,437,62"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="196,55,331,80"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="432,80,331,74,331,68,432,74"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a91b1301eb65d07f4f3a37051e8ae653d" title="Interpret app_rpt radio&#45;control text commands." alt="" coords="208,104,319,129"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="433,93,319,111,318,106,432,88"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="11,5,119,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="207,21,119,21,119,15,207,15"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="172,154,355,194"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="389,164,355,167,355,162,389,158"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="22,136,107,161"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="158,163,107,157,108,151,158,158"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,185,124,211"/>
+<area shape="poly" id="edge10_Node000009_Node000011" title=" " alt="" coords="158,189,125,194,124,188,158,184"/>
+</map>

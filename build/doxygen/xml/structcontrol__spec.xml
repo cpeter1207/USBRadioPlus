@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structcontrol__spec" kind="struct" language="C++" prot="public">
+    <compoundname>control_spec</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structcontrol__spec_1abaed0c939ae9eb54c5b2ef41836bb811" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double control_spec::minimum</definition>
+        <argsstring></argsstring>
+        <name>minimum</name>
+        <qualifiedname>control_spec::minimum</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Smallest accepted value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="36" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="36" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcontrol__spec_1acd7f170544f7091790ef6eaaeeb5c72e" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double control_spec::maximum</definition>
+        <argsstring></argsstring>
+        <name>maximum</name>
+        <qualifiedname>control_spec::maximum</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest accepted value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="37" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double control_spec::fallback</definition>
+        <argsstring></argsstring>
+        <name>fallback</name>
+        <qualifiedname>control_spec::fallback</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Safe value when a connected control is nonfinite. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="38" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="38" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" compoundref="rms__agc__ladspa_8c" startline="93" endline="100">read_control</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>One control&apos;s finite range and fallback for disconnected or invalid input. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/txagc/rms_agc_ladspa.c" line="35" column="1" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="35" bodyend="39"/>
+    <listofallmembers>
+      <member refid="structcontrol__spec_1a6ab091f4663385d152c895a3d79f94fb" prot="public" virt="non-virtual"><scope>control_spec</scope><name>fallback</name></member>
+      <member refid="structcontrol__spec_1acd7f170544f7091790ef6eaaeeb5c72e" prot="public" virt="non-virtual"><scope>control_spec</scope><name>maximum</name></member>
+      <member refid="structcontrol__spec_1abaed0c939ae9eb54c5b2ef41836bb811" prot="public" virt="non-virtual"><scope>control_spec</scope><name>minimum</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

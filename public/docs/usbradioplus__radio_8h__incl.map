@@ -1,0 +1,15 @@
+<map id="src/usbradioplus_radio.h" name="src/usbradioplus_radio.h">
+<area shape="rect" id="Node000001" title="Private Land Mobile Radio Channel Voice and Signaling Processor." alt="" coords="142,5,322,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="302,152,373,177"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="142,28,85,37,36,52,20,62,10,74,9,86,18,102,35,116,62,127,134,144,216,154,288,159,287,164,215,159,133,149,60,132,33,120,14,106,4,88,5,72,16,58,34,48,84,32,141,23"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="28,79,225,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="216,33,156,73,153,69,213,28"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dcs_8h.html" title="Native 48 kHz DCS (DPL/CDCSS) encoder and Golay decoder." alt="" coords="449,79,596,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="279,28,463,73,462,78,278,33"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__squelch_8h.html" title="Sample&#45;clocked equivalent of the MICOR dual&#45;time&#45;constant squelch." alt="" coords="250,79,425,104"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="250,28,310,69,307,73,247,33"/>
+<area shape="poly" id="edge5_Node000004_Node000002" title=" " alt="" coords="494,107,381,149,379,145,492,102"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="485,152,560,177"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="525,104,525,138,520,138,520,104"/>
+<area shape="poly" id="edge7_Node000006_Node000002" title=" " alt="" coords="340,104,340,138,335,138,335,104"/>
+</map>

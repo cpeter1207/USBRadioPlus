@@ -1,0 +1,7 @@
+<map id="urp_dcs_init" name="urp_dcs_init">
+<area shape="rect" id="Node000001" title="Initialize a DCS state and its fixed Golay syndrome table." alt="" coords="5,5,105,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#ac0da746029e69bcb4815d49032e75586" title="Add one correctable error pattern to a syndrome table." alt="" coords="153,5,253,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="105,15,139,15,139,21,105,21"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dcs_8c.html#ae666193ad3e27dc56dda3f151abfd078" title="Return the cyclic Golay remainder of a 23&#45;bit word." alt="" coords="301,5,433,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="254,15,288,15,288,21,254,21"/>
+</map>

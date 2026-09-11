@@ -1,0 +1,15 @@
+<map id="hook_destroy" name="hook_destroy">
+<area shape="rect" id="Node000001" title="Detach and destroy graph resources owned by a channel audiohook datastore." alt="" coords="5,80,116,105"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#af1ae11c50dd9221099d31a95424df38d" title="Destroy every graph retained by a slot after its audio reader stops." alt="" coords="164,73,307,113"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="116,90,150,90,150,95,116,95"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#a8ecd7b6343967718d3cf3c7d2c70713b" title="Acquire the control&#45;plane writer token for one published graph slot." alt="" coords="398,5,478,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="279,70,354,39,384,30,386,35,356,45,281,75"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#af3eb3a96d027952039477a2251c76173" title="Release the control&#45;plane writer token for one published graph slot." alt="" coords="390,55,486,80"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="307,81,376,72,376,78,308,86"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a08117f46f83685472606b65a70491e92" title="Wait until no worker or control&#45;plane reader can still reference a replaced graph." alt="" coords="357,104,519,129"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="307,98,343,103,343,108,307,104"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="355,153,521,179"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="284,110,356,138,381,147,379,152,354,143,282,115"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="569,153,661,179"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="522,163,556,163,556,169,522,169"/>
+</map>

@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structclean__slate__option__default" kind="struct" language="C++" prot="public">
+    <compoundname>clean_slate_option_default</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structclean__slate__option__default_1a9dd9acfb8699cd4a401d0ddfbddea63c" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* clean_slate_option_default::section</definition>
+        <argsstring></argsstring>
+        <name>section</name>
+        <qualifiedname>clean_slate_option_default::section</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration section which owns the control. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="52" column="12" bodyfile="src/usbradioplus_processing.c" bodystart="52" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a5ebc80a9c0d8e044a08546fc8bfca730" compoundref="usbradioplus__processing_8c" startline="112" endline="124">clean_slate_option_default</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structclean__slate__option__default_1a57c93543783afe4cd2c505a26189d99f" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* clean_slate_option_default::name</definition>
+        <argsstring></argsstring>
+        <name>name</name>
+        <qualifiedname>clean_slate_option_default::name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration key within the section. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="54" column="12" bodyfile="src/usbradioplus_processing.c" bodystart="54" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a5ebc80a9c0d8e044a08546fc8bfca730" compoundref="usbradioplus__processing_8c" startline="112" endline="124">clean_slate_option_default</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structclean__slate__option__default_1a489f2a469864589bfc89d1eb26496f04" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* clean_slate_option_default::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <qualifiedname>clean_slate_option_default::value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Textual value used by the parser and tuner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="56" column="12" bodyfile="src/usbradioplus_processing.c" bodystart="56" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a5ebc80a9c0d8e044a08546fc8bfca730" compoundref="usbradioplus__processing_8c" startline="112" endline="124">clean_slate_option_default</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One shipped default for a clean-slate radio-signaling control. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_processing.c" line="50" column="1" bodyfile="src/usbradioplus_processing.c" bodystart="50" bodyend="57"/>
+    <listofallmembers>
+      <member refid="structclean__slate__option__default_1a57c93543783afe4cd2c505a26189d99f" prot="public" virt="non-virtual"><scope>clean_slate_option_default</scope><name>name</name></member>
+      <member refid="structclean__slate__option__default_1a9dd9acfb8699cd4a401d0ddfbddea63c" prot="public" virt="non-virtual"><scope>clean_slate_option_default</scope><name>section</name></member>
+      <member refid="structclean__slate__option__default_1a489f2a469864589bfc89d1eb26496f04" prot="public" virt="non-virtual"><scope>clean_slate_option_default</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

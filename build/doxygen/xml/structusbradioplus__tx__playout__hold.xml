@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__tx__playout__hold" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_tx_playout_hold</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="no">usbradioplus_channel_private.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__tx__playout__hold_1a728e77649a09ac934c884fedad1e15d7" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int usbradioplus_tx_playout_hold::callbacks_remaining</definition>
+        <argsstring></argsstring>
+        <name>callbacks_remaining</name>
+        <qualifiedname>usbradioplus_tx_playout_hold::callbacks_remaining</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native callbacks remaining before the virtual PTT hold may release. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="165" column="14" bodyfile="src/usbradioplus_channel_private.h" bodystart="165" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1af4ecab96d4da8bad45fdf98df8344322" compoundref="usbradioplus__channel__common_8c" startline="284" endline="320">usbradioplus_tx_playout_hold_apply</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a358587f6a3fda42a1eab5578c355554e" compoundref="usbradioplus__channel__common_8c" startline="352" endline="369">usbradioplus_tx_playout_hold_note_output</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa02e1a9727b22c30cecdfebaf9cd1311" compoundref="usbradioplus__channel__common_8c" startline="337" endline="350">usbradioplus_tx_playout_hold_reset</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__tx__playout__hold_1a3eb9cb448002ad0385cb723bd1abbf25" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_tx_playout_hold::engine_ptt_out</definition>
+        <argsstring></argsstring>
+        <name>engine_ptt_out</name>
+        <qualifiedname>usbradioplus_tx_playout_hold::engine_ptt_out</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Last PTT output actually requested by the signaling engine. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="167" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="167" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1af4ecab96d4da8bad45fdf98df8344322" compoundref="usbradioplus__channel__common_8c" startline="284" endline="320">usbradioplus_tx_playout_hold_apply</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a4707d8a63c1499d58f43ba08bfbca922" compoundref="usbradioplus__channel__common_8c" startline="271" endline="282">usbradioplus_tx_playout_hold_prepare</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a998b7092e63fb09749ec3b4324b851d2" compoundref="usbradioplus__channel__common_8c" startline="322" endline="335">usbradioplus_tx_playout_hold_publish</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa02e1a9727b22c30cecdfebaf9cd1311" compoundref="usbradioplus__channel__common_8c" startline="337" endline="350">usbradioplus_tx_playout_hold_reset</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__tx__playout__hold_1acfb73688ea0505c6dc9fcc53bb85d77c" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_tx_playout_hold::input_keyed</definition>
+        <argsstring></argsstring>
+        <name>input_keyed</name>
+        <qualifiedname>usbradioplus_tx_playout_hold::input_keyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Previous external PTT input, used to cancel a stale drain on rekey. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="169" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="169" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1af4ecab96d4da8bad45fdf98df8344322" compoundref="usbradioplus__channel__common_8c" startline="284" endline="320">usbradioplus_tx_playout_hold_apply</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa02e1a9727b22c30cecdfebaf9cd1311" compoundref="usbradioplus__channel__common_8c" startline="337" endline="350">usbradioplus_tx_playout_hold_reset</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__tx__playout__hold_1a5ac0d225c25c9050dd5b2473b4cb4380" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_tx_playout_hold::draining</definition>
+        <argsstring></argsstring>
+        <name>draining</name>
+        <qualifiedname>usbradioplus_tx_playout_hold::draining</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while txPttOut is held only for queued DAC audio. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="171" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="171" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1af4ecab96d4da8bad45fdf98df8344322" compoundref="usbradioplus__channel__common_8c" startline="284" endline="320">usbradioplus_tx_playout_hold_apply</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1ab5ff856de89229dee85cd87fe50d0220" compoundref="usbradioplus__channel__common_8c" startline="371" endline="374">usbradioplus_tx_playout_hold_draining</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a4707d8a63c1499d58f43ba08bfbca922" compoundref="usbradioplus__channel__common_8c" startline="271" endline="282">usbradioplus_tx_playout_hold_prepare</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa02e1a9727b22c30cecdfebaf9cd1311" compoundref="usbradioplus__channel__common_8c" startline="337" endline="350">usbradioplus_tx_playout_hold_reset</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Callback-owned post-audio transmitter hold.</para>
+<para>The signaling engine has no visibility into audio already accepted by the CM119 playback queue. After its last non-silent DAC submission, this state retains its logical PTT output until the measured or estimated queue delay and one native block have elapsed. The adapter continues submitting silence while draining, so no later program PCM can extend the transmission. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_private.h" line="163" column="1" bodyfile="src/usbradioplus_channel_private.h" bodystart="163" bodyend="172"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__tx__playout__hold_1a728e77649a09ac934c884fedad1e15d7" prot="public" virt="non-virtual"><scope>usbradioplus_tx_playout_hold</scope><name>callbacks_remaining</name></member>
+      <member refid="structusbradioplus__tx__playout__hold_1a5ac0d225c25c9050dd5b2473b4cb4380" prot="public" virt="non-virtual"><scope>usbradioplus_tx_playout_hold</scope><name>draining</name></member>
+      <member refid="structusbradioplus__tx__playout__hold_1a3eb9cb448002ad0385cb723bd1abbf25" prot="public" virt="non-virtual"><scope>usbradioplus_tx_playout_hold</scope><name>engine_ptt_out</name></member>
+      <member refid="structusbradioplus__tx__playout__hold_1acfb73688ea0505c6dc9fcc53bb85d77c" prot="public" virt="non-virtual"><scope>usbradioplus_tx_playout_hold</scope><name>input_keyed</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

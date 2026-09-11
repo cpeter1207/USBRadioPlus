@@ -1,0 +1,17 @@
+<map id="src/usbradioplus_rpt_advanced.c" name="src/usbradioplus_rpt_advanced.c">
+<area shape="rect" id="Node000001" title="Thin native&#45;rate channel adapter retaining the existing hardware implementation." alt="" coords="436,5,589,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,92,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="436,41,106,96,105,91,435,36"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="117,93,255,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="436,48,247,93,246,88,435,42"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="279,93,421,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="475,48,387,90,385,85,473,43"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="445,93,580,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="515,46,515,79,510,79,510,46"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="605,93,783,119"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="557,43,656,85,654,90,555,48"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="808,93,972,119"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="590,40,822,88,821,93,589,45"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__rpt__advanced_8h.html" title="Separate Asterisk interface for the hardware&#45;clocked rpt_advanced controller." alt="" coords="996,93,1208,119"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="590,34,1003,89,1003,94,589,40"/>
+</map>

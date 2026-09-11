@@ -1,0 +1,5 @@
+<map id="soundcard_estimate_queued_bytes" name="soundcard_estimate_queued_bytes">
+<area shape="rect" id="Node000001" title="Estimate queued OSS bytes when the driver cannot report output delay." alt="" coords="5,5,160,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a461328acf7d22f0a4c22949afac1e7ae" title="Query one OSS output&#45;space snapshot and maintain its capacity cache." alt="" coords="208,13,391,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,23,194,23,194,28,160,28"/>
+</map>

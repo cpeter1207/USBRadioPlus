@@ -1,0 +1,5 @@
+<map id="urp_ctcss_legacy_scaled_levels" name="urp_ctcss_legacy_scaled_levels">
+<area shape="rect" id="Node000001" title="Calculate reference CTCSS amplitude and DC bias after Q8 gain scaling." alt="" coords="275,5,457,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__ctcss_8c.html#a34d4240fc79542f6068b6fdd998f1249" title="Calculate CTCSS peak after the reference Q8 tone and output gains." alt="" coords="5,13,227,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="261,28,227,28,227,23,261,23"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="usbradioplus_read_radio_program_request" name="usbradioplus_read_radio_program_request">
+<area shape="rect" id="Node000001" title="Read a coherent radio&#45;programming request without taking a lock." alt="" coords="5,5,187,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__rpt__advanced_8c.html#a60ba87435513bc0fae2ba4297fbe7d94" title="Request exclusive hardware ownership and expose native&#45;rate PCM." alt="" coords="235,13,305,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="187,23,221,23,221,28,187,28"/>
+</map>

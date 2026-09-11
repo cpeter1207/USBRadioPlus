@@ -1,0 +1,1829 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__channel__test__api_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_channel_test_api.h</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="yes">usbradioplus_channel_private.h</includes>
+    <includes refid="usbradioplus__channel__common_8h" local="yes">usbradioplus_channel_common.h</includes>
+    <incdepgraph>
+      <node id="6">
+        <label>agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc/avfilter_processor.h</label>
+        <link refid="avfilter__processor_8h"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+      </node>
+      <node id="14">
+        <label>usbradioplus_channel_common.h</label>
+        <link refid="usbradioplus__channel__common_8h"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+      </node>
+      <node id="12">
+        <label>usbradioplus_channel_legacy_private.h</label>
+        <link refid="usbradioplus__channel__legacy__private_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>usbradioplus_channel_private.h</label>
+        <link refid="usbradioplus__channel__private_8h"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_channel_test_api.h</label>
+        <link refid="usbradioplus__channel__test__api_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+      </node>
+      <node id="10">
+        <label>usbradioplus_dcs.h</label>
+        <link refid="usbradioplus__dcs_8h"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>usbradioplus_radio.h</label>
+        <link refid="usbradioplus__radio_8h"/>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="17">
+        <label>usbradioplus_rpt_advanced.h</label>
+        <link refid="usbradioplus__rpt__advanced_8h"/>
+      </node>
+      <node id="11">
+        <label>usbradioplus_squelch.h</label>
+        <link refid="usbradioplus__squelch_8h"/>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="15">
+        <label>asterisk/channel.h</label>
+      </node>
+      <node id="16">
+        <label>asterisk/config.h</label>
+      </node>
+      <node id="9">
+        <label>asterisk/rpt_chan_shared.h</label>
+      </node>
+      <node id="13">
+        <label>rate_adjusting_pcm_ring.h</label>
+      </node>
+      <node id="3">
+        <label>stdatomic.h</label>
+      </node>
+      <node id="5">
+        <label>stddef.h</label>
+      </node>
+      <node id="8">
+        <label>stdint.h</label>
+      </node>
+    </incdepgraph>
+    <sectiondef kind="var">
+      <memberdef kind="variable" id="usbradioplus__channel__test__api_8h_1a7e4048edc0b6e5ec2653f98236b5edbc" prot="public" static="no" extern="yes" mutable="no">
+        <type>char</type>
+        <definition>char hasout</definition>
+        <argsstring></argsstring>
+        <name>hasout</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when any parallel-port output is configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="12" column="13" bodyfile="src/chan_usbradioplus.c" bodystart="192" bodyend="-1" declfile="src/usbradioplus_channel_test_api.h" declline="12" declcolumn="13"/>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a2c59ff989efcdb7827f63ed8b8852642" compoundref="chan__usbradioplus_8c" startline="2640" endline="2845">store_config</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a018b2520aa76977d95e767948556c56b" compoundref="chan__usbradioplus_8c" startline="3132" endline="3136">usbradio_start_parallel_pulser</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__channel__test__api_8h_1a8fd93719430c782bc5c0f902de67641b" prot="public" static="no" extern="yes" mutable="no">
+        <type>const int</type>
+        <definition>const int ppinshift[]</definition>
+        <argsstring>[]</argsstring>
+        <name>ppinshift</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Parallel input-pin to register-bit mapping. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="14" column="18" bodyfile="src/chan_usbradioplus.c" bodystart="303" bodyend="303" declfile="src/usbradioplus_channel_test_api.h" declline="14" declcolumn="18"/>
+        <referencedby refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</referencedby>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a127337ad0506af77852fa1a7f25eec69" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int setformat</definition>
+        <argsstring>(struct chan_usbradio_pvt *o, int mode)</argsstring>
+        <name>setformat</name>
+        <param>
+          <type>struct <ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref> *</type>
+          <declname>o</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>mode</declname>
+        </param>
+        <briefdescription>
+<para>Open or reopen the OSS device with the required native audio format. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>o</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Private state of the selected radio channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>mode</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>OSS open mode, or CLOSE_DEV to close the stream. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="21" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="1349" bodyend="1457" declfile="src/usbradioplus_channel_test_api.h" declline="21" declcolumn="5"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="structchan__usbradio__pvt_1a48102ddd0c6c9d44a86b73f6bb1308c4" compoundref="usbradioplus__channel__legacy__private_8h" startline="51">chan_usbradio_pvt::devicenum</references>
+        <references refid="structchan__usbradio__pvt_1a2fdbe9755983eb9275ece82e3044ab81">chan_usbradio_pvt::duplex</references>
+        <references refid="structchan__usbradio__pvt_1a0f43f6842a4b51f8721c5cca342f487a" compoundref="usbradioplus__channel__legacy__private_8h" startline="39">chan_usbradio_pvt::frags</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="structchan__usbradio__pvt_1ae50c3fd918615f0e642af91aa26c885b" compoundref="usbradioplus__channel__legacy__private_8h" startline="26">chan_usbradio_pvt::sounddev</references>
+        <references refid="structchan__usbradio__pvt_1ab21f986d93bd798c0c2459843215af10" compoundref="usbradioplus__channel__legacy__private_8h" startline="24">chan_usbradio_pvt::total_blocks</references>
+        <references refid="usbradioplus__channel__common_8c_1aa02e1a9727b22c30cecdfebaf9cd1311" compoundref="usbradioplus__channel__common_8c" startline="337" endline="350">usbradioplus_tx_playout_hold_reset</references>
+        <references refid="usbradioplus__channel__legacy__private_8h_1a422b43626fc2d780dad3ca0280b79225" compoundref="usbradioplus__channel__legacy__private_8h" startline="48">WARN_frag</references>
+        <references refid="usbradioplus__channel__legacy__private_8h_1a93bf0c7c887e8b899663f17882cf5b40" compoundref="usbradioplus__channel__legacy__private_8h" startline="46">WARN_speed</references>
+        <references refid="structchan__usbradio__pvt_1a4991d0674038e72b35433b75f9ebb333" compoundref="usbradioplus__channel__legacy__private_8h" startline="42">chan_usbradio_pvt::warned</references>
+        <referencedby refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a203e878eb91787947a7b1283ae2cafa1" compoundref="chan__usbradioplus_8c" startline="1221" endline="1237">soundcard_admit_native_frame</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1afd5fb69b5da24d158a913caaaea4cd42" compoundref="chan__usbradioplus_8c" startline="1613" endline="1630">usbradio_hangup</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a34743b40e5057bb1c0478c33a9ba95eb" compoundref="chan__usbradioplus_8c" startline="2054" endline="2091">usbradio_new</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a696d801705b177fcb32309a04958a26e" compoundref="chan__usbradioplus_8c" startline="1634" endline="1661">usbradio_write</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a017de673028cdb41f5a3424e8452b41c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradio_text</definition>
+        <argsstring>(struct ast_channel *c, const char *text)</argsstring>
+        <name>usbradio_text</name>
+        <param>
+          <type>struct ast_channel *</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>text</declname>
+        </param>
+        <briefdescription>
+<para>Interpret app_rpt radio-control text commands. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk radio channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>text</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Radio-control command text. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; nonzero for an invalid command. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="22" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="1459" bodyend="1598" declfile="src/usbradioplus_channel_test_api.h" declline="22" declcolumn="5"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a403dcbb02665207244f68301b9594417" compoundref="usbradioplus__channel__test__shims_8h" startline="24">ast_debug</references>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="structurp__radio__state_1afee9e06bbcacb69e9e5473ca76567fd9">urp_radio_state::b</references>
+        <references refid="structchan__usbradio__pvt_1a093585e820c92c4872797d1f4b43fa8b" compoundref="usbradioplus__channel__legacy__private_8h" startline="460">chan_usbradio_pvt::gpio_set</references>
+        <references refid="chan__usbradioplus_8c_1a24afcf0596abbd1fd9e52eb571c12948" compoundref="chan__usbradioplus_8c" startline="182">haspp</references>
+        <references refid="structchan__usbradio__pvt_1ab865e1e366c020116c006d9e179e9685" compoundref="usbradioplus__channel__legacy__private_8h" startline="466">chan_usbradio_pvt::hid_gpio_pulsetimer</references>
+        <references refid="structchan__usbradio__pvt_1a4b66017184f2d9b45a7940546dff795f" compoundref="usbradioplus__channel__legacy__private_8h" startline="456">chan_usbradio_pvt::hid_gpio_val</references>
+        <references refid="usbradioplus__channel__common_8c_1a2d71048af252d5e7caad5e51c3472436" compoundref="usbradioplus__channel__common_8c" startline="215" endline="238">kickptt</references>
+        <references refid="chan__usbradioplus_8c_1a891a5e05d64a7c5afa85a2d4581772ee" compoundref="chan__usbradioplus_8c" startline="91">N_FMT</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="chan__usbradioplus_8c_1a792a2ffd1635b4a37192e58e1ebf75a1" compoundref="chan__usbradioplus_8c" startline="188">pbase</references>
+        <references refid="chan__usbradioplus_8c_1a56c29e9f27c8f19ede593ae3c876f45b" compoundref="chan__usbradioplus_8c" startline="170">pp_lock</references>
+        <references refid="chan__usbradioplus_8c_1ae43c0c2c64e5bdb27d04443329dc575d" compoundref="chan__usbradioplus_8c" startline="180">pp_pulsetimer</references>
+        <references refid="chan__usbradioplus_8c_1ad38fcb5a6b3ec0e09455352217a2f876" compoundref="chan__usbradioplus_8c" startline="174">pp_val</references>
+        <references refid="chan__usbradioplus_8c_1a83cb074724a29a22717ab4d347e3aa03" compoundref="chan__usbradioplus_8c" startline="184">ppfd</references>
+        <references refid="chan__usbradioplus_8c_1a2f4c2eb945ed0bcc64c0efe8efcfa200" compoundref="chan__usbradioplus_8c" startline="186">pport</references>
+        <references refid="structchan__usbradio__pvt_1a954663cc2ac90dcc819751660695c765" compoundref="usbradioplus__channel__legacy__private_8h" startline="293">chan_usbradio_pvt::radio</references>
+        <references refid="chan__usbradioplus_8c_1a2205a4328b9a23ec7553a1059e14ee05" compoundref="usbradioplus__channel__common_8c" startline="1877" endline="1889">radio_config</references>
+        <references refid="structchan__usbradio__pvt_1ac1ccf9b61399b9956b0b07f7a3bb94cf" compoundref="usbradioplus__channel__legacy__private_8h" startline="479">chan_usbradio_pvt::remoted</references>
+        <references refid="structchan__usbradio__pvt_1a77a86199f19cc2ea16f8a36070ee7659" compoundref="usbradioplus__channel__legacy__private_8h" startline="514">chan_usbradio_pvt::rxctcssoverride</references>
+        <references refid="chan__usbradioplus_8c_1a8fc82620d942825b4a5238cd0d3ad5d9" compoundref="chan__usbradioplus_8c" startline="89">S_FMT</references>
+        <references refid="structchan__usbradio__pvt_1a1e84c7c2bc373ed451f7c773c148bed3" compoundref="usbradioplus__channel__legacy__private_8h" startline="399">chan_usbradio_pvt::set_rxctcssfreqs</references>
+        <references refid="structchan__usbradio__pvt_1a9dabe9c0fac1c244794ce9b342060abf" compoundref="usbradioplus__channel__legacy__private_8h" startline="411">chan_usbradio_pvt::set_rxfreq</references>
+        <references refid="structchan__usbradio__pvt_1a16365c042072bf683aa3121377fcc5da" compoundref="usbradioplus__channel__legacy__private_8h" startline="401">chan_usbradio_pvt::set_txctcssfreqs</references>
+        <references refid="structchan__usbradio__pvt_1a3980d792fce82ae38f546414f3a92d17" compoundref="usbradioplus__channel__legacy__private_8h" startline="409">chan_usbradio_pvt::set_txfreq</references>
+        <references refid="structchan__usbradio__pvt_1a3a60cca2a4c56949eecec0d7b6652a2c" compoundref="usbradioplus__channel__legacy__private_8h" startline="413">chan_usbradio_pvt::set_txpower</references>
+        <references refid="chan__usbradioplus_8c_1a87489dc22d96c7b68a58c7edcab271fc">STR_SZ</references>
+        <references refid="structurp__radio__state_1a5af3066fcf1c2e79631c03067b655eaa" compoundref="usbradioplus__radio_8h" startline="1112">urp_radio_state::txCtcssOff</references>
+        <references refid="usbradioplus__radio_8h_1af3b86d961da0a3575b4f99c9ffaf01fd" compoundref="usbradioplus__radio_8h" startline="93">u8</references>
+        <references refid="structchan__usbradio__pvt_1a113e122598dca85814eca10e59740e57" compoundref="usbradioplus__channel__legacy__private_8h" startline="565">chan_usbradio_pvt::usblock</references>
+        <references refid="usbradioplus__channel__common_8c_1a7fd7ede6d42b48043eaa2ba896eec217" compoundref="usbradioplus__channel__common_8c" startline="1607" endline="1619">usbradioplus_set_channel</references>
+        <references refid="structchan__usbradio__pvt_1abadd9d03156c3bee0be79a0ac488bf6c" compoundref="usbradioplus__channel__legacy__private_8h" startline="458">chan_usbradio_pvt::valid_gpios</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ae6e6815e0cb75e96251516bdf7001e20" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradio_hangup</definition>
+        <argsstring>(struct ast_channel *c)</argsstring>
+        <name>usbradio_hangup</name>
+        <param>
+          <type>struct ast_channel *</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+<para>Release Asterisk ownership and reset radio call state. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="27" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="1613" bodyend="1630" declfile="src/usbradioplus_channel_test_api.h" declline="27" declcolumn="5"/>
+        <references refid="structchan__usbradio__pvt_1a61316afcd71ffff6515c5ecff3134e91" compoundref="usbradioplus__channel__modern__private_8h" startline="38">chan_usbradio_pvt::audiothread</references>
+        <references refid="structchan__usbradio__pvt_1ad35bfed7941984976dd3435421c5a0b0" compoundref="usbradioplus__channel__legacy__private_8h" startline="64">chan_usbradio_pvt::hidthread</references>
+        <references refid="structchan__usbradio__pvt_1a9cddae36e75f721e586c3d4346c1ed75" compoundref="usbradioplus__channel__legacy__private_8h" startline="35">chan_usbradio_pvt::hookstate</references>
+        <references refid="usbradioplus__channel__common_8c_1a2d71048af252d5e7caad5e51c3472436" compoundref="usbradioplus__channel__common_8c" startline="215" endline="238">kickptt</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="structchan__usbradio__pvt_1aa06d9bc98cb809342e928c7b1ef69a30" compoundref="usbradioplus__channel__modern__private_8h" startline="19">chan_usbradio_pvt::pa</references>
+        <references refid="chan__usbradioplus_8c_1a5052d853da0fc58013ced505c9c8f3ed" compoundref="chan__usbradioplus_8c" startline="1349" endline="1457">setformat</references>
+        <references refid="structchan__usbradio__pvt_1a0930daeef2260e31f39e26225013d173" compoundref="usbradioplus__channel__modern__private_8h" startline="41">chan_usbradio_pvt::stopaudiothread</references>
+        <references refid="structchan__usbradio__pvt_1a2994c2fab2f8f88d2ba0ad95e3aae246" compoundref="usbradioplus__channel__legacy__private_8h" startline="66">chan_usbradio_pvt::stophid</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ab795001b56bd7282fa75d4594f47cb91" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradio_call</definition>
+        <argsstring>(struct ast_channel *c, const char *dest, int timeout)</argsstring>
+        <name>usbradio_call</name>
+        <param>
+          <type>struct ast_channel *</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>dest</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>timeout</declname>
+        </param>
+        <briefdescription>
+<para>Connect an outbound Asterisk call to the configured radio. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dest</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk dial destination; unused by this radio callback. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>timeout</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk call timeout; unused by this radio callback. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="34" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="1600" bodyend="1611" declfile="src/usbradioplus_channel_test_api.h" declline="34" declcolumn="5"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="structchan__usbradio__pvt_1a735cb51b380b18ec446f65ade926df1d" compoundref="usbradioplus__channel__modern__private_8h" startline="45">chan_usbradio_pvt::audio_thread_ready</references>
+        <references refid="structchan__usbradio__pvt_1a61316afcd71ffff6515c5ecff3134e91" compoundref="usbradioplus__channel__modern__private_8h" startline="38">chan_usbradio_pvt::audiothread</references>
+        <references refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</references>
+        <references refid="structchan__usbradio__pvt_1ad35bfed7941984976dd3435421c5a0b0" compoundref="usbradioplus__channel__legacy__private_8h" startline="64">chan_usbradio_pvt::hidthread</references>
+        <references refid="usbradioplus__channel__common_8c_1a2d71048af252d5e7caad5e51c3472436" compoundref="usbradioplus__channel__common_8c" startline="215" endline="238">kickptt</references>
+        <references refid="structchan__usbradio__pvt_1a3ac0248534b22f3ca98fd4c3700ad9d6" compoundref="usbradioplus__channel__modern__private_8h" startline="47">chan_usbradio_pvt::lastaudiotime</references>
+        <references refid="structchan__usbradio__pvt_1a5eec1c9a2cd954c64e1eee0f68179566" compoundref="usbradioplus__channel__legacy__private_8h" startline="254">chan_usbradio_pvt::lasthidtime</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1a0930daeef2260e31f39e26225013d173" compoundref="usbradioplus__channel__modern__private_8h" startline="41">chan_usbradio_pvt::stopaudiothread</references>
+        <references refid="structchan__usbradio__pvt_1a2994c2fab2f8f88d2ba0ad95e3aae246" compoundref="usbradioplus__channel__legacy__private_8h" startline="66">chan_usbradio_pvt::stophid</references>
+        <references refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" compoundref="chan__usbradioplus__modern_8c" startline="1759" endline="2223">usbradio_audio_thread</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ac5816a5ba487a26401e14ca1e13bafd6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradio_write</definition>
+        <argsstring>(struct ast_channel *c, struct ast_frame *f)</argsstring>
+        <name>usbradio_write</name>
+        <param>
+          <type>struct ast_channel *</type>
+          <declname>c</declname>
+        </param>
+        <param>
+          <type>struct ast_frame *</type>
+          <declname>f</declname>
+        </param>
+        <briefdescription>
+<para>Queue an outbound app_rpt voice frame for native transmitter rendering. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>f</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Outbound Asterisk audio frame. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="40" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="1634" bodyend="1661" declfile="src/usbradioplus_channel_test_api.h" declline="40" declcolumn="5"/>
+        <references refid="structchan__usbradio__pvt_1a735cb51b380b18ec446f65ade926df1d" compoundref="usbradioplus__channel__modern__private_8h" startline="45">chan_usbradio_pvt::audio_thread_ready</references>
+        <references refid="structchan__usbradio__pvt_1a7c49db61d9d96e8b4a068f4fe4f36f0a" compoundref="usbradioplus__channel__legacy__private_8h" startline="429">chan_usbradio_pvt::echoing</references>
+        <references refid="structchan__usbradio__pvt_1aceac3ce0a8c9d9f2cbc2644820fd4eb6" compoundref="usbradioplus__channel__legacy__private_8h" startline="498">chan_usbradio_pvt::hasusb</references>
+        <references refid="structchan__usbradio__pvt_1aab0cb97a9c8fe580f2e3e5f6398c08ba" compoundref="usbradioplus__channel__legacy__private_8h" startline="84">chan_usbradio_pvt::plus_advanced</references>
+        <references refid="chan__usbradioplus_8c_1a5052d853da0fc58013ced505c9c8f3ed" compoundref="chan__usbradioplus_8c" startline="1349" endline="1457">setformat</references>
+        <references refid="structchan__usbradio__pvt_1ae50c3fd918615f0e642af91aa26c885b" compoundref="usbradioplus__channel__legacy__private_8h" startline="26">chan_usbradio_pvt::sounddev</references>
+        <references refid="usbradioplus__channel__common_8c_1a170c1766b71f78c020eeed0a8bb74a3b" compoundref="usbradioplus__channel__common_8c" startline="517" endline="533">usbradioplus_queue_program</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a628710910eabb4d041f3eec9547a6487" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int radio_active</definition>
+        <argsstring>(int fd, int argc, const char *const *argv)</argsstring>
+        <name>radio_active</name>
+        <param>
+          <type>int</type>
+          <declname>fd</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>argc</declname>
+        </param>
+        <param>
+          <type>const char *const *</type>
+          <declname>argv</declname>
+        </param>
+        <briefdescription>
+<para>Show or select the radio used by interactive calibration commands. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>fd</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk CLI output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>argc</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of CLI arguments. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>argv</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument vector. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk tuning-command result code. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="47" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="2135" bodyend="2167" declfile="src/usbradioplus_channel_test_api.h" declline="47" declcolumn="5"/>
+        <references refid="structchan__usbradio__pvt_1ad51e023715ddd3c89571bfdc957e9be0" compoundref="usbradioplus__channel__legacy__private_8h" startline="53">chan_usbradio_pvt::devstr</references>
+        <references refid="chan__usbradioplus_8c_1af9d651ef4306fa517e13ef5153400281" compoundref="chan__usbradioplus_8c" startline="326" endline="341">find_desc</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1a91770c035bc72297333dd8dc1ca09508" compoundref="usbradioplus__channel__legacy__private_8h" startline="15">chan_usbradio_pvt::next</references>
+        <references refid="structchan__usbradio__pvt_1a1758fb524726a6e8d7634ed7aab3fdf3" compoundref="usbradioplus__channel__legacy__private_8h" startline="491">chan_usbradio_pvt::radioactive</references>
+        <references refid="chan__usbradioplus_8c_1a9a2443d23d87fca9d02c693f650f29de" compoundref="chan__usbradioplus_8c" startline="168">usb_dev_lock</references>
+        <references refid="chan__usbradioplus_8c_1a7ca0a7a5e65744831f82c71f468385ea" compoundref="chan__usbradioplus_8c" startline="300">usbradio_active</references>
+        <references refid="chan__usbradioplus_8c_1aa37d3d44ac986c017204de5f3681ae54" compoundref="chan__usbradioplus_8c" startline="219" endline="251">usbradio_default</references>
+        <references refid="chan__usbradioplus__modern_8c_1ac61148cf7b715227e21078f6c639a388" compoundref="chan__usbradioplus__modern_8c" startline="324" endline="352">usbradio_device_identity</references>
+        <referencedby refid="chan__usbradioplus_8c_1a21884bae255b9919b2246f8727a7bf03" compoundref="chan__usbradioplus_8c" startline="2925" endline="2945">handle_radio_active</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1af75e899212ecfcce6254162c8c43bb86" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int used_blocks</definition>
+        <argsstring>(struct chan_usbradio_pvt *o)</argsstring>
+        <name>used_blocks</name>
+        <param>
+          <type>struct <ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref> *</type>
+          <declname>o</declname>
+        </param>
+        <briefdescription>
+<para>Measure queued OSS output fragments for transmitter pacing. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>o</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Private state of the selected radio channel. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Number of queued OSS output blocks. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="52" column="5" declfile="src/usbradioplus_channel_test_api.h" declline="52" declcolumn="5"/>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a6ff4730da64c0a3b0eb5aa9019f3254c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int soundcard_writeframe</definition>
+        <argsstring>(struct chan_usbradio_pvt *o, short *data)</argsstring>
+        <name>soundcard_writeframe</name>
+        <param>
+          <type>struct <ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref> *</type>
+          <declname>o</declname>
+        </param>
+        <param>
+          <type>short *</type>
+          <declname>data</declname>
+        </param>
+        <briefdescription>
+<para>Write one native stereo frame, substituting silence while transmit is idle. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>o</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Private state of the selected radio channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>data</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>One native-rate interleaved stereo PCM block, left unchanged. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Bytes written, zero if no frame was written, or a negative OSS write error. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="58" column="5" bodyfile="src/chan_usbradioplus_modern.c" bodystart="1483" bodyend="1486" declfile="src/usbradioplus_channel_test_api.h" declline="58" declcolumn="5"/>
+        <references refid="chan__usbradioplus__modern_8c_1a5106944da4644f88ded9f119082b2ab5" compoundref="chan__usbradioplus__modern_8c" startline="1430" endline="1481">soundcard_write_admitted_frame</references>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" compoundref="chan__usbradioplus__modern_8c" startline="1759" endline="2223">usbradio_audio_thread</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a5655629994fdc7d0d29a850c209b96f2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int load_module</definition>
+        <argsstring>(void)</argsstring>
+        <name>load_module</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Register the channel technology and start configured radio workers. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Asterisk module-load status. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="62" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="3138" bodyend="3198" declfile="src/usbradioplus_channel_test_api.h" declline="62" declcolumn="5"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="chan__usbradioplus_8c_1a80881fd2557d5d8ade6c66926b958cf3" compoundref="chan__usbradioplus_8c" startline="3122" endline="3129">cli_usbradio</references>
+        <references refid="chan__usbradioplus__modern_8c_1a80881fd2557d5d8ade6c66926b958cf3" compoundref="chan__usbradioplus__modern_8c" startline="3397" endline="3404">cli_usbradio</references>
+        <references refid="chan__usbradioplus_8c_1a2d8d5920e90ccbad7832926becdadb29" compoundref="chan__usbradioplus_8c" startline="153" endline="158">default_jbconf</references>
+        <references refid="chan__usbradioplus__modern_8c_1a2d8d5920e90ccbad7832926becdadb29" compoundref="chan__usbradioplus__modern_8c" startline="148" endline="153">default_jbconf</references>
+        <references refid="chan__usbradioplus_8c_1af9d651ef4306fa517e13ef5153400281" compoundref="chan__usbradioplus_8c" startline="326" endline="341">find_desc</references>
+        <references refid="chan__usbradioplus_8c_1abaabcb7f4349cc632dde3af5c6a5e1bd" compoundref="chan__usbradioplus_8c" startline="161">global_jbconf</references>
+        <references refid="chan__usbradioplus_8c_1a1f239328cc316197664a92e42bba70d2" compoundref="chan__usbradioplus_8c" startline="192">hasout</references>
+        <references refid="usbradioplus__channel__common_8c_1a44660a10955a5753a0acd58c7efed563" compoundref="usbradioplus__channel__common_8c" startline="3556" endline="3616">load_config</references>
+        <references refid="chan__usbradioplus_8c_1ad38fcb5a6b3ec0e09455352217a2f876" compoundref="chan__usbradioplus_8c" startline="174">pp_val</references>
+        <references refid="usbradioplus__dsp_8h_1a45a5721d703b608f48c4f5da3e643bec" compoundref="usbradioplus__dsp_8h" startline="15">URP_RATE_NATIVE</references>
+        <references refid="chan__usbradioplus_8c_1a7ca0a7a5e65744831f82c71f468385ea" compoundref="chan__usbradioplus_8c" startline="300">usbradio_active</references>
+        <references refid="chan__usbradioplus_8c_1a018b2520aa76977d95e767948556c56b" compoundref="chan__usbradioplus_8c" startline="3132" endline="3136">usbradio_start_parallel_pulser</references>
+        <references refid="chan__usbradioplus_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus_8c" startline="309" endline="324">usbradio_tech</references>
+        <references refid="chan__usbradioplus__modern_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus__modern_8c" startline="384" endline="399">usbradio_tech</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1a5fc103ad1b76903664dc0a7f83f0f388" compoundref="usbradioplus__rpt__advanced_8c" startline="122" endline="140">usbradioplus_advanced_register</references>
+        <references refid="usbradioplus__channel__common_8c_1aab26d31040560f7339622cbb8a218605" compoundref="usbradioplus__channel__common_8c" startline="506" endline="515">usbradioplus_configure_advanced</references>
+        <references refid="usbradioplus__processing_8c_1aae8223404088f39036d2f86bf10a63be" compoundref="usbradioplus__processing_8c" startline="3295" endline="3316">usbradioplus_processing_load</references>
+        <references refid="usbradioplus__processing_8c_1abeaeab57088b44ae99f98edcff0ff59d" compoundref="usbradioplus__processing_8c" startline="3318" endline="3323">usbradioplus_processing_prime</references>
+        <references refid="usbradioplus__processing_8c_1ae371743af71cd2fa8b7ad321151cfc1b" compoundref="usbradioplus__processing_8c" startline="3282" endline="3293">usbradioplus_processing_unload</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a926a34f3a363f5dfd4d4a734f1934698" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int unload_module</definition>
+        <argsstring>(void)</argsstring>
+        <name>unload_module</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Stop workers and release channel, hardware, and processing resources. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="66" column="5" bodyfile="src/chan_usbradioplus.c" bodystart="3200" bodyend="3243" declfile="src/usbradioplus_channel_test_api.h" declline="66" declcolumn="5"/>
+        <references refid="structchan__usbradio__pvt_1a61316afcd71ffff6515c5ecff3134e91" compoundref="usbradioplus__channel__modern__private_8h" startline="38">chan_usbradio_pvt::audiothread</references>
+        <references refid="chan__usbradioplus_8c_1a80881fd2557d5d8ade6c66926b958cf3" compoundref="chan__usbradioplus_8c" startline="3122" endline="3129">cli_usbradio</references>
+        <references refid="chan__usbradioplus__modern_8c_1a80881fd2557d5d8ade6c66926b958cf3" compoundref="chan__usbradioplus__modern_8c" startline="3397" endline="3404">cli_usbradio</references>
+        <references refid="structchan__usbradio__pvt_1acf023bf82063e0083d9b2793bdbf05c9" compoundref="usbradioplus__channel__legacy__private_8h" startline="256">chan_usbradio_pvt::dsp</references>
+        <references refid="structchan__usbradio__pvt_1a22aea3b321e59a73a95f8bfd2e2b2ba4" compoundref="usbradioplus__channel__legacy__private_8h" startline="553">chan_usbradio_pvt::gpios</references>
+        <references refid="structchan__usbradio__pvt_1ad35bfed7941984976dd3435421c5a0b0" compoundref="usbradioplus__channel__legacy__private_8h" startline="64">chan_usbradio_pvt::hidthread</references>
+        <references refid="usbradioplus__channel__common_8c_1a2d71048af252d5e7caad5e51c3472436" compoundref="usbradioplus__channel__common_8c" startline="215" endline="238">kickptt</references>
+        <references refid="structchan__usbradio__pvt_1a91770c035bc72297333dd8dc1ca09508" compoundref="usbradioplus__channel__legacy__private_8h" startline="15">chan_usbradio_pvt::next</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="structchan__usbradio__pvt_1aa06d9bc98cb809342e928c7b1ef69a30" compoundref="usbradioplus__channel__modern__private_8h" startline="19">chan_usbradio_pvt::pa</references>
+        <references refid="structchan__usbradio__pvt_1a73830103319e694b8f8d928f224068d6" compoundref="usbradioplus__channel__legacy__private_8h" startline="555">chan_usbradio_pvt::pps</references>
+        <references refid="structchan__usbradio__pvt_1a954663cc2ac90dcc819751660695c765" compoundref="usbradioplus__channel__legacy__private_8h" startline="293">chan_usbradio_pvt::radio</references>
+        <references refid="structchan__usbradio__pvt_1ae50c3fd918615f0e642af91aa26c885b" compoundref="usbradioplus__channel__legacy__private_8h" startline="26">chan_usbradio_pvt::sounddev</references>
+        <references refid="structchan__usbradio__pvt_1a0930daeef2260e31f39e26225013d173" compoundref="usbradioplus__channel__modern__private_8h" startline="41">chan_usbradio_pvt::stopaudiothread</references>
+        <references refid="structchan__usbradio__pvt_1a2994c2fab2f8f88d2ba0ad95e3aae246" compoundref="usbradioplus__channel__legacy__private_8h" startline="66">chan_usbradio_pvt::stophid</references>
+        <references refid="chan__usbradioplus_8c_1a9d55a1446a37b0ebbfdf2a541637cd75" compoundref="chan__usbradioplus_8c" startline="190">stoppulser</references>
+        <references refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</references>
+        <references refid="chan__usbradioplus_8c_1aa37d3d44ac986c017204de5f3681ae54" compoundref="chan__usbradioplus_8c" startline="219" endline="251">usbradio_default</references>
+        <references refid="chan__usbradioplus__modern_8c_1a2acfe55c947470aebec4a743ec9d54ac" compoundref="chan__usbradioplus__modern_8c" startline="482" endline="490">usbradio_release_device</references>
+        <references refid="chan__usbradioplus_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus_8c" startline="309" endline="324">usbradio_tech</references>
+        <references refid="chan__usbradioplus__modern_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus__modern_8c" startline="384" endline="399">usbradio_tech</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1aac5cf3f287e2fce030edc0c1764c8a35" compoundref="usbradioplus__rpt__advanced_8c" startline="142" endline="149">usbradioplus_advanced_unregister</references>
+        <references refid="usbradioplus__channel__common_8c_1af20a166820a4b73e80cd1e1a30470f9e" compoundref="usbradioplus__channel__common_8c" startline="3436" endline="3448">usbradioplus_dsp_destroy</references>
+        <references refid="usbradioplus__processing_8c_1ae371743af71cd2fa8b7ad321151cfc1b" compoundref="usbradioplus__processing_8c" startline="3282" endline="3293">usbradioplus_processing_unload</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a9ce528c7062dc55d87df7f183094b662" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void usbradioplus_test_set_module_info</definition>
+        <argsstring>(struct ast_module_info *info)</argsstring>
+        <name>usbradioplus_test_set_module_info</name>
+        <param>
+          <type>struct ast_module_info *</type>
+          <declname>info</declname>
+        </param>
+        <briefdescription>
+<para>Inject module metadata into the isolated channel test harness. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>info</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Test module metadata. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="70" column="6" declfile="src/usbradioplus_channel_test_api.h" declline="70" declcolumn="6"/>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a06850f038d2f953d503f5aa57875ed99" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * find_installed_usb_match</definition>
+        <argsstring>(void)</argsstring>
+        <name>find_installed_usb_match</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Match installed USB interfaces to configured channel assignments. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Borrowed configured USB identifier, or NULL if none is present. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="74" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="343" bodyend="356" declfile="src/usbradioplus_channel_test_api.h" declline="74" declcolumn="6"/>
+        <references refid="structchan__usbradio__pvt_1ad51e023715ddd3c89571bfdc957e9be0" compoundref="usbradioplus__channel__legacy__private_8h" startline="53">chan_usbradio_pvt::devstr</references>
+        <references refid="structchan__usbradio__pvt_1a91770c035bc72297333dd8dc1ca09508" compoundref="usbradioplus__channel__legacy__private_8h" startline="15">chan_usbradio_pvt::next</references>
+        <references refid="chan__usbradioplus_8c_1aa37d3d44ac986c017204de5f3681ae54" compoundref="chan__usbradioplus_8c" startline="219" endline="251">usbradio_default</references>
+        <referencedby refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a9d30daeb3044b0b1be889c421a861819" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void *</type>
+        <definition>void * hidthread</definition>
+        <argsstring>(void *arg)</argsstring>
+        <name>hidthread</name>
+        <param>
+          <type>void *</type>
+          <declname>arg</declname>
+        </param>
+        <briefdescription>
+<para>Service USB GPIO, PTT, EEPROM, device recovery, and radio status. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>arg</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Private radio state passed to the worker. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>NULL when the HID worker exits. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="79" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="474" bodyend="1172" declfile="src/usbradioplus_channel_test_api.h" declline="79" declcolumn="6"/>
+        <references refid="usbradioplus__channel__common_8c_1a28e17300ff924415d51dc9cd81bcb803" compoundref="usbradioplus__channel__common_8c" startline="2424" endline="2736">apply_processing_config_overrides</references>
+        <references refid="structchan__usbradio__pvt_1a29e188935007b0891740ad70c1a6509f" compoundref="usbradioplus__channel__legacy__private_8h" startline="266">chan_usbradio_pvt::area</references>
+        <references refid="structurp__radio__state_1affc02cd31c832ec9e5ca5af1bc43e07a" compoundref="usbradioplus__radio_8h" startline="843">urp_radio_state::area</references>
+        <references refid="usbradioplus__channel__test__shims_8h_1a403dcbb02665207244f68301b9594417" compoundref="usbradioplus__channel__test__shims_8h" startline="24">ast_debug</references>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="structurp__radio__state_1afee9e06bbcacb69e9e5473ca76567fd9">urp_radio_state::b</references>
+        <references refid="structchan__usbradio__pvt_1a7f0bef4c247dfb280cf6ba4aef6118d6" compoundref="usbradioplus__channel__legacy__private_8h" startline="543">chan_usbradio_pvt::clipledgpio</references>
+        <references refid="structchan__usbradio__pvt_1abfa38665cf595eb56358037ee5d53ee9" compoundref="usbradioplus__channel__legacy__private_8h" startline="364">chan_usbradio_pvt::ctcss_phase_shift_degrees</references>
+        <references refid="structchan__usbradio__pvt_1a0ede5fecf91d7759a67c508fabf21fd6" compoundref="usbradioplus__channel__legacy__private_8h" startline="366">chan_usbradio_pvt::ctcss_tail_duration_ms</references>
+        <references refid="structchan__usbradio__pvt_1a73c21dfb782f91e374dad4c6c23d5b2d" compoundref="usbradioplus__channel__legacy__private_8h" startline="368">chan_usbradio_pvt::ctcss_tail_frequency_hz</references>
+        <references refid="structchan__usbradio__pvt_1afeaba86d709d767d4eb80416671391cd" compoundref="usbradioplus__channel__legacy__private_8h" startline="360">chan_usbradio_pvt::dcs_level</references>
+        <references refid="structchan__usbradio__pvt_1a0e60e121fed2b2d11be3b49ff8991184" compoundref="usbradioplus__channel__legacy__private_8h" startline="348">chan_usbradio_pvt::dcs_receive_code</references>
+        <references refid="structchan__usbradio__pvt_1a9a5a339561a31c20f602a602ad9339c6" compoundref="usbradioplus__channel__legacy__private_8h" startline="354">chan_usbradio_pvt::dcs_transmit_code</references>
+        <references refid="structchan__usbradio__pvt_1ab81ce7147397c3b0d7100ca8f6ec6f9f" compoundref="usbradioplus__channel__legacy__private_8h" startline="358">chan_usbradio_pvt::dcs_turnoff_duration_ms</references>
+        <references refid="structchan__usbradio__pvt_1a788c2439558c713f53e3b1e139764619" compoundref="usbradioplus__channel__legacy__private_8h" startline="356">chan_usbradio_pvt::dcs_turnoff_enabled</references>
+        <references refid="structurp__radio__state_1ad05d377bde1eb90384a427680cacd760" compoundref="usbradioplus__radio_8h" startline="929">urp_radio_state::dcsPeak</references>
+        <references refid="structurp__radio__state_1ad928e32a2253616c991aadd0fa98cc27" compoundref="usbradioplus__radio_8h" startline="919">urp_radio_state::dcsRxCode</references>
+        <references refid="structurp__radio__state_1a5d2e6f6d916ffb4610e7038eddd56c74" compoundref="usbradioplus__radio_8h" startline="927">urp_radio_state::dcsTurnoffDuration</references>
+        <references refid="structurp__radio__state_1a5f337fdc0c1d7a5be9f683161a81f3b8" compoundref="usbradioplus__radio_8h" startline="923">urp_radio_state::dcsTurnoffEnabled</references>
+        <references refid="structurp__radio__state_1a7acfb2b22a4b18fdd5a41420b60f9b7e" compoundref="usbradioplus__radio_8h" startline="921">urp_radio_state::dcsTxCode</references>
+        <references refid="structchan__usbradio__pvt_1a9597d2d31a998481b8c1564f4843bf09" compoundref="usbradioplus__channel__legacy__private_8h" startline="493">chan_usbradio_pvt::device_error</references>
+        <references refid="structchan__usbradio__pvt_1a48102ddd0c6c9d44a86b73f6bb1308c4" compoundref="usbradioplus__channel__legacy__private_8h" startline="51">chan_usbradio_pvt::devicenum</references>
+        <references refid="structchan__usbradio__pvt_1ad51e023715ddd3c89571bfdc957e9be0" compoundref="usbradioplus__channel__legacy__private_8h" startline="53">chan_usbradio_pvt::devstr</references>
+        <references refid="structchan__usbradio__pvt_1a0c15fed010c5e3abf15fabf310b876a9" compoundref="usbradioplus__channel__legacy__private_8h" startline="20">chan_usbradio_pvt::devtype</references>
+        <references refid="structchan__usbradio__pvt_1aa7cf37afe0058c93783d4a6652b43496" compoundref="usbradioplus__channel__legacy__private_8h" startline="524">chan_usbradio_pvt::eeprom</references>
+        <references refid="structchan__usbradio__pvt_1a1981bef067bc9dbd2f947dfc7c268f91" compoundref="usbradioplus__channel__legacy__private_8h" startline="526">chan_usbradio_pvt::eepromctl</references>
+        <references refid="structchan__usbradio__pvt_1a3398d76df7d83a545cc4a3704a4b7b04" compoundref="usbradioplus__channel__legacy__private_8h" startline="528">chan_usbradio_pvt::eepromlock</references>
+        <references refid="usbradioplus__channel__common_8c_1a7129f44681013128808c46977a42bb0c" compoundref="usbradioplus__channel__common_8c" startline="996" endline="999">effective_rx_decoder_gain</references>
+        <references refid="usbradioplus__channel__common_8c_1a799ecbc2598edccb4b691f14af5520bd" compoundref="usbradioplus__channel__common_8c" startline="1057" endline="1060">effective_rxcdtype</references>
+        <references refid="usbradioplus__channel__common_8c_1aeab7db6e27d61608b8b56f697ff8c31e" compoundref="usbradioplus__channel__common_8c" startline="1022" endline="1027">effective_txmixa</references>
+        <references refid="usbradioplus__channel__common_8c_1a411be591de10fb57b21a1e352fe39346" compoundref="usbradioplus__channel__common_8c" startline="1029" endline="1034">effective_txmixb</references>
+        <references refid="structchan__usbradio__pvt_1ac770a2edec082f3c41eff3d4b4f22e20" compoundref="usbradioplus__channel__legacy__private_8h" startline="546">chan_usbradio_pvt::fever</references>
+        <references refid="structurp__radio__state_1af18a3aa44df9da36c546c327574e7dad" compoundref="usbradioplus__radio_8h" startline="1178">urp_radio_state::fever</references>
+        <references refid="chan__usbradioplus_8c_1ababb9bb9f3a563304be09e9b382d6e7a" compoundref="chan__usbradioplus_8c" startline="343" endline="356">find_installed_usb_match</references>
+        <references refid="structusbradioplus__radio__program__request_1aacd98d1f5c323ed77a1ff3e1877c881e" compoundref="usbradioplus__channel__common_8h" startline="70">usbradioplus_radio_program_request::generation</references>
+        <references refid="structchan__usbradio__pvt_1a093585e820c92c4872797d1f4b43fa8b" compoundref="usbradioplus__channel__legacy__private_8h" startline="460">chan_usbradio_pvt::gpio_set</references>
+        <references refid="structchan__usbradio__pvt_1a22aea3b321e59a73a95f8bfd2e2b2ba4" compoundref="usbradioplus__channel__legacy__private_8h" startline="553">chan_usbradio_pvt::gpios</references>
+        <references refid="structchan__usbradio__pvt_1afb656329abad57d9baa42ad08f35cb80" compoundref="usbradioplus__channel__legacy__private_8h" startline="464">chan_usbradio_pvt::had_gpios_in</references>
+        <references refid="structchan__usbradio__pvt_1a26fff3b0856c0e3a63a8eab6b4c176bc" compoundref="usbradioplus__channel__legacy__private_8h" startline="475">chan_usbradio_pvt::had_pp_in</references>
+        <references refid="chan__usbradioplus_8c_1a24afcf0596abbd1fd9e52eb571c12948" compoundref="chan__usbradioplus_8c" startline="182">haspp</references>
+        <references refid="structchan__usbradio__pvt_1aceac3ce0a8c9d9f2cbc2644820fd4eb6" compoundref="usbradioplus__channel__legacy__private_8h" startline="498">chan_usbradio_pvt::hasusb</references>
+        <references refid="structchan__usbradio__pvt_1a07cc44750affb00509360330a6b14ed2" compoundref="usbradioplus__channel__legacy__private_8h" startline="440">chan_usbradio_pvt::hid_gpio_ctl</references>
+        <references refid="structchan__usbradio__pvt_1a3e111ba13824e6592fe53fbcc25da77c" compoundref="usbradioplus__channel__legacy__private_8h" startline="442">chan_usbradio_pvt::hid_gpio_ctl_loc</references>
+        <references refid="structchan__usbradio__pvt_1a8256ea8fd16630a51669b05af42ff90f" compoundref="usbradioplus__channel__legacy__private_8h" startline="470">chan_usbradio_pvt::hid_gpio_lastmask</references>
+        <references refid="structchan__usbradio__pvt_1ac535340cc32b6be9078934dd7505784e" compoundref="usbradioplus__channel__legacy__private_8h" startline="454">chan_usbradio_pvt::hid_gpio_loc</references>
+        <references refid="structchan__usbradio__pvt_1af1f0d7cca30f654866265a2de0607f9f" compoundref="usbradioplus__channel__legacy__private_8h" startline="468">chan_usbradio_pvt::hid_gpio_pulsemask</references>
+        <references refid="structchan__usbradio__pvt_1ab865e1e366c020116c006d9e179e9685" compoundref="usbradioplus__channel__legacy__private_8h" startline="466">chan_usbradio_pvt::hid_gpio_pulsetimer</references>
+        <references refid="structchan__usbradio__pvt_1a4b66017184f2d9b45a7940546dff795f" compoundref="usbradioplus__channel__legacy__private_8h" startline="456">chan_usbradio_pvt::hid_gpio_val</references>
+        <references refid="structchan__usbradio__pvt_1ad3786376050024c78296bcf4c9294f0b" compoundref="usbradioplus__channel__legacy__private_8h" startline="444">chan_usbradio_pvt::hid_io_cor</references>
+        <references refid="structchan__usbradio__pvt_1a82b6e3d07b69e8f110f958e6d3fe0582" compoundref="usbradioplus__channel__legacy__private_8h" startline="446">chan_usbradio_pvt::hid_io_cor_loc</references>
+        <references refid="structchan__usbradio__pvt_1a9d5d4c485995f28e7f2c961a9cc1c3af" compoundref="usbradioplus__channel__legacy__private_8h" startline="448">chan_usbradio_pvt::hid_io_ctcss</references>
+        <references refid="structchan__usbradio__pvt_1a0bc5d1d5716ffc5bc43eeeef4dd01971" compoundref="usbradioplus__channel__legacy__private_8h" startline="450">chan_usbradio_pvt::hid_io_ctcss_loc</references>
+        <references refid="chan__usbradioplus__modern_8c_1a5cc99db0a934683818d67d2ba0745de4" compoundref="chan__usbradioplus__modern_8c" startline="773" endline="820">hidthread_apply_ptt</references>
+        <references refid="chan__usbradioplus_8c_1a614b2ecfbe8d0ec918f1b5b86d409520" compoundref="chan__usbradioplus_8c" startline="385" endline="431">hidthread_apply_ptt</references>
+        <references refid="chan__usbradioplus__modern_8c_1a255b0f540f5f967f135ff02e1d43f7ec" compoundref="chan__usbradioplus__modern_8c" startline="827" endline="861">hidthread_failsafe_unkey</references>
+        <references refid="chan__usbradioplus_8c_1aa702cc94003d8d9c5620bd2dc364b6af" compoundref="chan__usbradioplus_8c" startline="438" endline="472">hidthread_failsafe_unkey</references>
+        <references refid="structchan__usbradio__pvt_1a558fb0d3ee1d6f31a99bd22b85bafde9" compoundref="usbradioplus__channel__legacy__private_8h" startline="270">chan_usbradio_pvt::idleinterval</references>
+        <references refid="structurp__radio__state_1a16ac5ea3f0a94441b8e38926c5e05af7" compoundref="usbradioplus__radio_8h" startline="847">urp_radio_state::idleinterval</references>
+        <references refid="chan__usbradioplus__modern_8c_1a4ca98bb8893d5dc1b01beea29144a02e" compoundref="chan__usbradioplus__modern_8c" startline="639" endline="688">init_audio_device</references>
+        <references refid="structchan__usbradio__pvt_1a495d02b98d47d30ac35c7f11643c222d" compoundref="usbradioplus__channel__legacy__private_8h" startline="462">chan_usbradio_pvt::last_gpios_in</references>
+        <references refid="structchan__usbradio__pvt_1a2af099a44a4ba668ca1b91f4bb948379" compoundref="usbradioplus__channel__legacy__private_8h" startline="473">chan_usbradio_pvt::last_pp_in</references>
+        <references refid="structchan__usbradio__pvt_1a3ac0248534b22f3ca98fd4c3700ad9d6" compoundref="usbradioplus__channel__modern__private_8h" startline="47">chan_usbradio_pvt::lastaudiotime</references>
+        <references refid="structchan__usbradio__pvt_1a5eec1c9a2cd954c64e1eee0f68179566" compoundref="usbradioplus__channel__legacy__private_8h" startline="254">chan_usbradio_pvt::lasthidtime</references>
+        <references refid="structchan__usbradio__pvt_1a22b4c09edbf5448fe75e7af321ee3e64" compoundref="usbradioplus__channel__legacy__private_8h" startline="241">chan_usbradio_pvt::lasttx</references>
+        <references refid="structurp__radio__state_1a28e7c483048248a26be5a736e9b689ea" compoundref="usbradioplus__radio_8h" startline="1070">urp_radio_state::loopback</references>
+        <references refid="structchan__usbradio__pvt_1a90e10cf318b385ebc864cf24bedb812c" compoundref="usbradioplus__channel__legacy__private_8h" startline="487">chan_usbradio_pvt::lsdrxpolarity</references>
+        <references refid="structurp__radio__state_1ad443df81b524010d6536165de0b74299" compoundref="usbradioplus__radio_8h" startline="1076">urp_radio_state::lsdrxpolarity</references>
+        <references refid="structchan__usbradio__pvt_1a639e129b73e1cab2e8ff9a741709d236" compoundref="usbradioplus__channel__legacy__private_8h" startline="489">chan_usbradio_pvt::lsdtxpolarity</references>
+        <references refid="structurp__radio__state_1a48250075ada1bad61bd4e4f568becc0d" compoundref="usbradioplus__radio_8h" startline="1078">urp_radio_state::lsdtxpolarity</references>
+        <references refid="usbradioplus__radio_8h_1a2509b0d907ac117d9018e1dbeecf65a0" compoundref="usbradioplus__radio_8h" startline="153">M_Q8</references>
+        <references refid="structchan__usbradio__pvt_1adad0904eb9c8d7ac9c395eb1c2cb0b15" compoundref="usbradioplus__channel__legacy__private_8h" startline="59">chan_usbradio_pvt::micmax</references>
+        <references refid="chan__usbradioplus_8c_1a60ada3dffd4986bdec3ad9be1abce42b" compoundref="chan__usbradioplus_8c" startline="2474" endline="2501">mixer_write</references>
+        <references refid="usbradioplus__channel__common_8c_1a7799f4627e99fa0d32ee8b73a53cee94" compoundref="usbradioplus__channel__common_8c" startline="1568" endline="1578">mult_set</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structurp__radio__state_1ae4bfbacc164176639b1526de7786adde" compoundref="usbradioplus__radio_8h" startline="671">urp_radio_state::name</references>
+        <references refid="structchan__usbradio__pvt_1a14fab468b4fdcb82e759c5eec3d3a1c0" compoundref="usbradioplus__channel__legacy__private_8h" startline="496">chan_usbradio_pvt::newname</references>
+        <references refid="structchan__usbradio__pvt_1a91770c035bc72297333dd8dc1ca09508" compoundref="usbradioplus__channel__legacy__private_8h" startline="15">chan_usbradio_pvt::next</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="chan__usbradioplus_8c_1a792a2ffd1635b4a37192e58e1ebf75a1" compoundref="chan__usbradioplus_8c" startline="188">pbase</references>
+        <references refid="structchan__usbradio__pvt_1aab0cb97a9c8fe580f2e3e5f6398c08ba" compoundref="usbradioplus__channel__legacy__private_8h" startline="84">chan_usbradio_pvt::plus_advanced</references>
+        <references refid="structchan__usbradio__pvt_1a15c9fc230d0684116b8ef3ee85ee7cef" compoundref="usbradioplus__channel__legacy__private_8h" startline="128">chan_usbradio_pvt::plus_clip_led_request</references>
+        <references refid="structchan__usbradio__pvt_1adce395a64b2a6b3f026178843b96ae33" compoundref="usbradioplus__channel__legacy__private_8h" startline="124">chan_usbradio_pvt::plus_hardware_online</references>
+        <references refid="structchan__usbradio__pvt_1a19f79af917c3c4c653c65c03b1fdd4a3" compoundref="usbradioplus__channel__legacy__private_8h" startline="122">chan_usbradio_pvt::plus_hardware_ptt_applied</references>
+        <references refid="structchan__usbradio__pvt_1a1008df7ba93ffcbbf3a843680e53b05c" compoundref="usbradioplus__channel__legacy__private_8h" startline="120">chan_usbradio_pvt::plus_hardware_ptt_request</references>
+        <references refid="chan__usbradioplus_8c_1a56c29e9f27c8f19ede593ae3c876f45b" compoundref="chan__usbradioplus_8c" startline="170">pp_lock</references>
+        <references refid="chan__usbradioplus_8c_1a83cb074724a29a22717ab4d347e3aa03" compoundref="chan__usbradioplus_8c" startline="184">ppfd</references>
+        <references refid="chan__usbradioplus_8c_1ab49e7200e0315be3cb95c9bd3eb9db01" compoundref="chan__usbradioplus_8c" startline="303" endline="303">ppinshift</references>
+        <references refid="chan__usbradioplus_8c_1a2f4c2eb945ed0bcc64c0efe8efcfa200" compoundref="chan__usbradioplus_8c" startline="186">pport</references>
+        <references refid="structchan__usbradio__pvt_1a73830103319e694b8f8d928f224068d6" compoundref="usbradioplus__channel__legacy__private_8h" startline="555">chan_usbradio_pvt::pps</references>
+        <references refid="structurp__radio__state_1ab0fa17325a27b5e7d448c2c89cd63a8d" compoundref="usbradioplus__radio_8h" startline="782">urp_radio_state::pRxCodeSrc</references>
+        <references refid="structurp__radio__state_1a9d017961c6d69f8d7d93c4daecdc9f03" compoundref="usbradioplus__radio_8h" startline="1043">urp_radio_state::prxCtcssAdjust</references>
+        <references refid="structurp__radio__state_1a41d942d2414d4c2f149778cb593c8b4b" compoundref="usbradioplus__radio_8h" startline="1033">urp_radio_state::prxSquelchAdjust</references>
+        <references refid="structurp__radio__state_1a5a8188b1626cb5a1278b63db4b029b18" compoundref="usbradioplus__radio_8h" startline="1038">urp_radio_state::prxVoiceAdjust</references>
+        <references refid="structchan__usbradio__pvt_1a6f37210cf6581910b0ba1d8dab0a6ff8" compoundref="usbradioplus__channel__legacy__private_8h" startline="22">chan_usbradio_pvt::pttkick</references>
+        <references refid="structurp__radio__state_1a5026ee5e416f293ac341ffd0897d287e" compoundref="usbradioplus__radio_8h" startline="786">urp_radio_state::pTxCodeDefault</references>
+        <references refid="structurp__radio__state_1a8588f141bbad888a8a5574362f1107f4" compoundref="usbradioplus__radio_8h" startline="784">urp_radio_state::pTxCodeSrc</references>
+        <references refid="structchan__usbradio__pvt_1a954663cc2ac90dcc819751660695c765" compoundref="usbradioplus__channel__legacy__private_8h" startline="293">chan_usbradio_pvt::radio</references>
+        <references refid="chan__usbradioplus_8c_1a2205a4328b9a23ec7553a1059e14ee05" compoundref="usbradioplus__channel__common_8c" startline="1877" endline="1889">radio_config</references>
+        <references refid="structchan__usbradio__pvt_1a0bdf1165b50c5a7606c08e3e231fa6e5" compoundref="usbradioplus__channel__modern__private_8h" startline="65">chan_usbradio_pvt::radio_device</references>
+        <references refid="structchan__usbradio__pvt_1a1758fb524726a6e8d7634ed7aab3fdf3" compoundref="usbradioplus__channel__legacy__private_8h" startline="491">chan_usbradio_pvt::radioactive</references>
+        <references refid="structchan__usbradio__pvt_1abcf902662b8f2fae63ca5e2d1f8e17b8" compoundref="usbradioplus__channel__legacy__private_8h" startline="259">chan_usbradio_pvt::radioduplex</references>
+        <references refid="structurp__radio__state_1ad31e93c7b2b89a74868c7bba4e961bd4" compoundref="usbradioplus__radio_8h" startline="769">urp_radio_state::radioDuplex</references>
+        <references refid="usbradioplus__channel__common_8c_1a689708e18d1bdcbe3f20768ef4fc471a" compoundref="usbradioplus__channel__common_8c" startline="1062" endline="1113">refresh_processing_hardware</references>
+        <references refid="structurp__ctcss__decoder_1a623eece0f17737691144e2205103851c" compoundref="usbradioplus__radio_8h" startline="421">urp_ctcss_decoder::relax</references>
+        <references refid="structchan__usbradio__pvt_1a0084d389e3ed563451a33f481f6144db" compoundref="usbradioplus__channel__legacy__private_8h" startline="268">chan_usbradio_pvt::rptnum</references>
+        <references refid="structurp__radio__state_1a0dd18348b3380cd7d25bad7378cff0f3" compoundref="usbradioplus__radio_8h" startline="841">urp_radio_state::rptnum</references>
+        <references refid="structurp__radio__state_1ae3b0220cfc04d042d9cdfa707bebaff5" compoundref="usbradioplus__radio_8h" startline="742">urp_radio_state::rxCdType</references>
+        <references refid="structchan__usbradio__pvt_1a799052a1cb1d9ebe5438b1827648b6ed" compoundref="usbradioplus__channel__legacy__private_8h" startline="508">chan_usbradio_pvt::rxcpusaver</references>
+        <references refid="structurp__radio__state_1a6d0582a8c9b7c1fb813127fe3cb81db7" compoundref="usbradioplus__radio_8h" startline="876">urp_radio_state::rxCpuSaver</references>
+        <references refid="structurp__radio__state_1a3bedc68c59bebcdff7d701b6792b5450" compoundref="usbradioplus__radio_8h" startline="915">urp_radio_state::rxCtcss</references>
+        <references refid="structchan__usbradio__pvt_1a5fe2ae1a0c10dafcd7f305f26c7cdf95" compoundref="usbradioplus__channel__legacy__private_8h" startline="334">chan_usbradio_pvt::rxctcssadj</references>
+        <references refid="structchan__usbradio__pvt_1aac416d4b5cd824f8e3998d4ea5ed311b" compoundref="usbradioplus__channel__legacy__private_8h" startline="339">chan_usbradio_pvt::rxctcssfreqs</references>
+        <references refid="structchan__usbradio__pvt_1a9d67b1ae0bd85dab03da607a5c222e2a" compoundref="usbradioplus__channel__legacy__private_8h" startline="332">chan_usbradio_pvt::rxctcssrelax</references>
+        <references refid="structchan__usbradio__pvt_1a9627e9e143a7d121569ce1117943c705" compoundref="usbradioplus__channel__legacy__private_8h" startline="296">chan_usbradio_pvt::rxdemod</references>
+        <references refid="structurp__radio__state_1ad97c72aebf80fcef44fb3b3523b1510b" compoundref="usbradioplus__radio_8h" startline="753">urp_radio_state::rxDemod</references>
+        <references refid="structchan__usbradio__pvt_1aecb66f614a0b32904576300bdce0675b" compoundref="usbradioplus__channel__legacy__private_8h" startline="418">chan_usbradio_pvt::rxmixerset</references>
+        <references refid="structchan__usbradio__pvt_1a62a7435b96b41e30b51821356293e5f6" compoundref="usbradioplus__channel__legacy__private_8h" startline="483">chan_usbradio_pvt::rxpolarity</references>
+        <references refid="structurp__radio__state_1afcf5e7eb6838ba2c26e43140fe3b9e2c" compoundref="usbradioplus__radio_8h" startline="1072">urp_radio_state::rxpolarity</references>
+        <references refid="structchan__usbradio__pvt_1a4e68e3e9d233d20cc56186cff107e2e3" compoundref="usbradioplus__channel__legacy__private_8h" startline="304">chan_usbradio_pvt::rxsquelchadj</references>
+        <references refid="structchan__usbradio__pvt_1a7c1d36e915ab9d5637e7f1e53b4187c8" compoundref="usbradioplus__channel__legacy__private_8h" startline="308">chan_usbradio_pvt::rxsqvoxadj</references>
+        <references refid="structurp__radio__state_1a58767e6b4a9e5955e7ed86408ff3219a" compoundref="usbradioplus__radio_8h" startline="746">urp_radio_state::rxSqVoxAdj</references>
+        <references refid="structchan__usbradio__pvt_1ac3de93bc16bc01a5bdbfe3ef1d19ef82" compoundref="usbradioplus__channel__legacy__private_8h" startline="55">chan_usbradio_pvt::serial</references>
+        <references refid="usbradioplus__channel__common_8c_1a4110f1dd407ad952eeb56d77b194faac" compoundref="usbradioplus__channel__common_8c" startline="947" endline="952">set_txctcss_level</references>
+        <references refid="chan__usbradioplus_8c_1a5052d853da0fc58013ced505c9c8f3ed" compoundref="chan__usbradioplus_8c" startline="1349" endline="1457">setformat</references>
+        <references refid="structchan__usbradio__pvt_1abdaadfe23944328536a5da9e1fd171e6" compoundref="usbradioplus__channel__legacy__private_8h" startline="57">chan_usbradio_pvt::spkrmax</references>
+        <references refid="structchan__usbradio__pvt_1a2994c2fab2f8f88d2ba0ad95e3aae246" compoundref="usbradioplus__channel__legacy__private_8h" startline="66">chan_usbradio_pvt::stophid</references>
+        <references refid="structchan__usbradio__pvt_1ae2507ae206ccb81dc3d1c741d8d9fd65" compoundref="usbradioplus__channel__legacy__private_8h" startline="264">chan_usbradio_pvt::tracelevel</references>
+        <references refid="structurp__radio__state_1a313959801e086d7dbb9917906402616b" compoundref="usbradioplus__radio_8h" startline="679">urp_radio_state::tracelevel</references>
+        <references refid="structchan__usbradio__pvt_1a7825d0bb7542ef55a4bad212651e8052" compoundref="usbradioplus__channel__legacy__private_8h" startline="262">chan_usbradio_pvt::tracetype</references>
+        <references refid="structurp__radio__state_1aec30a742ea7860bcc692533f0a15b0fe" compoundref="usbradioplus__radio_8h" startline="681">urp_radio_state::tracetype</references>
+        <references refid="structchan__usbradio__pvt_1a93f093ecac090e34f3a290edf37bab65" compoundref="usbradioplus__channel__legacy__private_8h" startline="272">chan_usbradio_pvt::turnoffs</references>
+        <references refid="structurp__radio__state_1ac038327048ca078017f270d929af4816" compoundref="usbradioplus__radio_8h" startline="849">urp_radio_state::turnoffs</references>
+        <references refid="structchan__usbradio__pvt_1aa92d8df85beafed16526b8c62a78bff2" compoundref="usbradioplus__channel__legacy__private_8h" startline="510">chan_usbradio_pvt::txcpusaver</references>
+        <references refid="structurp__radio__state_1ae88a0775f26c7773f556d09b79b00ccf" compoundref="usbradioplus__radio_8h" startline="878">urp_radio_state::txCpuSaver</references>
+        <references refid="structchan__usbradio__pvt_1a46aae3759c08c3c471a44e5886bbbfed" compoundref="usbradioplus__channel__legacy__private_8h" startline="424">chan_usbradio_pvt::txctcssadj</references>
+        <references refid="structchan__usbradio__pvt_1a9cdde68594cf9132c1ce5d29d415b4fe" compoundref="usbradioplus__channel__legacy__private_8h" startline="337">chan_usbradio_pvt::txctcssdefault</references>
+        <references refid="structchan__usbradio__pvt_1a004b4b3829c7b84a0363836975ae4df9" compoundref="usbradioplus__channel__legacy__private_8h" startline="341">chan_usbradio_pvt::txctcssfreqs</references>
+        <references refid="structurp__radio__state_1a41ec2d7d5f26cb63041f3ab44653e5d0" compoundref="usbradioplus__radio_8h" startline="895">urp_radio_state::txCtcssTocShift</references>
+        <references refid="structurp__radio__state_1aa582aec019a1f38ff267ca6bffb5dc96" compoundref="usbradioplus__radio_8h" startline="897">urp_radio_state::txCtcssTocTime</references>
+        <references refid="structurp__radio__state_1a5870fd822abd8ae3d08624a59989b6f5" compoundref="usbradioplus__radio_8h" startline="899">urp_radio_state::txCtcssTocToneHz</references>
+        <references refid="structchan__usbradio__pvt_1a484fa0d4c88bb2c9421f5b9d3902c7a3" compoundref="usbradioplus__channel__legacy__private_8h" startline="319">chan_usbradio_pvt::txmixa</references>
+        <references refid="structurp__radio__state_1a45ae88bc99b56aff236534b1fbca4c40" compoundref="usbradioplus__radio_8h" startline="868">urp_radio_state::txMixA</references>
+        <references refid="structchan__usbradio__pvt_1ada2a8fffea45698da565d998a865fbea" compoundref="usbradioplus__channel__legacy__private_8h" startline="420">chan_usbradio_pvt::txmixaset</references>
+        <references refid="structchan__usbradio__pvt_1a641ee7bdc1c9384fb8b16729a5e7b09f" compoundref="usbradioplus__channel__legacy__private_8h" startline="321">chan_usbradio_pvt::txmixb</references>
+        <references refid="structurp__radio__state_1a119e2b871faa4aead93090ad5341c8d3" compoundref="usbradioplus__radio_8h" startline="870">urp_radio_state::txMixB</references>
+        <references refid="structchan__usbradio__pvt_1aff80a3a43f814b3d8c5ca9203db9e5af" compoundref="usbradioplus__channel__legacy__private_8h" startline="422">chan_usbradio_pvt::txmixbset</references>
+        <references refid="structchan__usbradio__pvt_1a4da9e61e5cbdccc3616fd0d9c7dfd5af" compoundref="usbradioplus__channel__legacy__private_8h" startline="485">chan_usbradio_pvt::txpolarity</references>
+        <references refid="structurp__radio__state_1a14579af420ce2958cff687467db75b26" compoundref="usbradioplus__radio_8h" startline="1074">urp_radio_state::txpolarity</references>
+        <references refid="structchan__usbradio__pvt_1aff1e9af3bca7d7c7b180b00ac4bbc42a" compoundref="usbradioplus__channel__legacy__private_8h" startline="276">chan_usbradio_pvt::txrxblankingtime</references>
+        <references refid="structurp__radio__state_1a497479bf00244cbbd0dc0b2461d4c60e" compoundref="usbradioplus__radio_8h" startline="725">urp_radio_state::txrxblankingtime</references>
+        <references refid="structchan__usbradio__pvt_1a2983b53f8cc1678690697a19d4cb3a52" compoundref="usbradioplus__channel__legacy__private_8h" startline="274">chan_usbradio_pvt::txsettletime</references>
+        <references refid="structurp__radio__state_1a6d5cff0cb56be14d9a41c97da409f872" compoundref="usbradioplus__radio_8h" startline="720">urp_radio_state::txsettletime</references>
+        <references refid="structchan__usbradio__pvt_1a7a1f695b85a09c17635b47dfd127113f" compoundref="usbradioplus__channel__legacy__private_8h" startline="314">chan_usbradio_pvt::txtoctype</references>
+        <references refid="structurp__radio__state_1ac103c28026a9c639c255fc106fba9353" compoundref="usbradioplus__radio_8h" startline="901">urp_radio_state::txTocType</references>
+        <references refid="structchan__usbradio__pvt_1a46b665a202ebc7c872c040fa59ae7d74" compoundref="usbradioplus__channel__legacy__private_8h" startline="278">chan_usbradio_pvt::ukey</references>
+        <references refid="structurp__radio__state_1a33f0bc3bf00afe53b3998ba8a27b9a91" compoundref="usbradioplus__radio_8h" startline="845">urp_radio_state::ukey</references>
+        <references refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</references>
+        <references refid="usbradioplus__channel__core_8c_1ad8ac60372bbf04e022d3a50a5db348dc" compoundref="usbradioplus__channel__core_8c" startline="219" endline="222">urp_tx_pair_has_tone</references>
+        <references refid="usbradioplus__channel__core_8c_1aed2bf7991e64055c5ba39ccfe3432fd2" compoundref="usbradioplus__channel__core_8c" startline="214" endline="217">urp_tx_pair_has_voice</references>
+        <references refid="chan__usbradioplus_8c_1a9a2443d23d87fca9d02c693f650f29de" compoundref="chan__usbradioplus_8c" startline="168">usb_dev_lock</references>
+        <references refid="structchan__usbradio__pvt_1a10583f6dcda90c602ca14e0b7668a11b" compoundref="usbradioplus__channel__legacy__private_8h" startline="531">chan_usbradio_pvt::usb_handle</references>
+        <references refid="structchan__usbradio__pvt_1a1752bb5eb8c0603ef3fbf52a313e8735" compoundref="usbradioplus__channel__legacy__private_8h" startline="500">chan_usbradio_pvt::usbass</references>
+        <references refid="structchan__usbradio__pvt_1a113e122598dca85814eca10e59740e57" compoundref="usbradioplus__channel__legacy__private_8h" startline="565">chan_usbradio_pvt::usblock</references>
+        <references refid="chan__usbradioplus_8c_1a7ca0a7a5e65744831f82c71f468385ea" compoundref="chan__usbradioplus_8c" startline="300">usbradio_active</references>
+        <references refid="chan__usbradioplus_8c_1aa37d3d44ac986c017204de5f3681ae54" compoundref="chan__usbradioplus_8c" startline="219" endline="251">usbradio_default</references>
+        <references refid="chan__usbradioplus__modern_8c_1ad7cb19659650b42c6323e2ea9fbe66f5" compoundref="chan__usbradioplus__modern_8c" startline="298" endline="314">usbradio_log_fault</references>
+        <references refid="chan__usbradioplus__modern_8c_1a5bafaa7b53e3e9a52bb870b85498b40b" compoundref="chan__usbradioplus__modern_8c" startline="357" endline="372">usbradio_log_usb_recovered</references>
+        <references refid="chan__usbradioplus__modern_8c_1a2acfe55c947470aebec4a743ec9d54ac" compoundref="chan__usbradioplus__modern_8c" startline="482" endline="490">usbradio_release_device</references>
+        <references refid="chan__usbradioplus__modern_8c_1a95c57506604d3aeedaff8443e3a09597" compoundref="chan__usbradioplus__modern_8c" startline="694" endline="744">usbradio_start_audio</references>
+        <references refid="chan__usbradioplus__modern_8c_1ac7ea44d6f9849f1b621856f95684f129" compoundref="chan__usbradioplus__modern_8c" startline="519" endline="543">usbradio_swap_hid_wait</references>
+        <references refid="usbradioplus__channel__common_8c_1a1a787402111526f00f42b7a303472b91" compoundref="usbradioplus__channel__common_8c" startline="394" endline="398">usbradioplus_publish_hardware_inputs</references>
+        <references refid="usbradioplus__channel__common_8c_1aff5576f8738ef09255e2a0232d011f4b" compoundref="usbradioplus__channel__common_8c" startline="404" endline="444">usbradioplus_read_radio_program_request</references>
+        <references refid="structchan__usbradio__pvt_1abadd9d03156c3bee0be79a0ac488bf6c" compoundref="usbradioplus__channel__legacy__private_8h" startline="458">chan_usbradio_pvt::valid_gpios</references>
+        <references refid="structchan__usbradio__pvt_1abc0d663ae7ab9b7911fb5fc82fd153b8" compoundref="usbradioplus__channel__legacy__private_8h" startline="300">chan_usbradio_pvt::voxhangtime</references>
+        <references refid="structurp__radio__state_1ac895871ab38d59d6ae72e121a53407d6" compoundref="usbradioplus__radio_8h" startline="744">urp_radio_state::voxHangTime</references>
+        <references refid="structchan__usbradio__pvt_1a920493ecad2971cad6e6b0e140b20bb6" compoundref="usbradioplus__channel__legacy__private_8h" startline="502">chan_usbradio_pvt::wanteeprom</references>
+        <referencedby refid="chan__usbradioplus_8c_1a3941538bff265cb1676a238a53ffbfeb" compoundref="chan__usbradioplus_8c" startline="1600" endline="1611">usbradio_call</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a8f37918f4e456e5001200c4ec0ea778e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct ast_frame *</type>
+        <definition>struct ast_frame * usbradio_read</definition>
+        <argsstring>(struct ast_channel *c)</argsstring>
+        <name>usbradio_read</name>
+        <param>
+          <type>struct ast_channel *</type>
+          <declname>c</declname>
+        </param>
+        <briefdescription>
+<para>Return received PCM or signaling events to Asterisk. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>c</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Received Asterisk frame or the adapter&apos;s null/error result. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="84" column="16" bodyfile="src/chan_usbradioplus.c" bodystart="1663" bodyend="2052" declfile="src/usbradioplus_channel_test_api.h" declline="84" declcolumn="16"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a403dcbb02665207244f68301b9594417" compoundref="usbradioplus__channel__test__shims_8h" startline="24">ast_debug</references>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="structurp__radio__state_1afee9e06bbcacb69e9e5473ca76567fd9">urp_radio_state::b</references>
+        <references refid="structchan__usbradio__pvt_1ae480e12fd2a785ab1ea77eddd2559207" compoundref="usbradioplus__channel__legacy__private_8h" startline="548">chan_usbradio_pvt::count_rssi_update</references>
+        <references refid="structchan__usbradio__pvt_1a48102ddd0c6c9d44a86b73f6bb1308c4" compoundref="usbradioplus__channel__legacy__private_8h" startline="51">chan_usbradio_pvt::devicenum</references>
+        <references refid="structchan__usbradio__pvt_1acf023bf82063e0083d9b2793bdbf05c9" compoundref="usbradioplus__channel__legacy__private_8h" startline="256">chan_usbradio_pvt::dsp</references>
+        <references refid="structchan__usbradio__pvt_1a0b8d46d4b960fe4707b99ac0570c0ad6" compoundref="usbradioplus__channel__legacy__private_8h" startline="539">chan_usbradio_pvt::duplex3</references>
+        <references refid="usbradioplus__channel__private_8h_1afc05065dfebc7e70ec7504fd71366a31a45eb08f4f625f820888891ec481c5821" compoundref="usbradioplus__channel__private_8h" startline="76">DUPLEX3_MODE_HARDWARE</references>
+        <references refid="structchan__usbradio__pvt_1a6c91513e95d1ff747647ae2a752590f9" compoundref="usbradioplus__channel__legacy__private_8h" startline="541">chan_usbradio_pvt::duplex3mode</references>
+        <references refid="structchan__usbradio__pvt_1a7c49db61d9d96e8b4a068f4fe4f36f0a" compoundref="usbradioplus__channel__legacy__private_8h" startline="429">chan_usbradio_pvt::echoing</references>
+        <references refid="structchan__usbradio__pvt_1a11426b292291c3b719f9ba20edc5d7e4" compoundref="usbradioplus__channel__legacy__private_8h" startline="427">chan_usbradio_pvt::echomode</references>
+        <references refid="usbradioplus__channel__common_8c_1a799ecbc2598edccb4b691f14af5520bd" compoundref="usbradioplus__channel__common_8c" startline="1057" endline="1060">effective_rxcdtype</references>
+        <references refid="structchan__usbradio__pvt_1aceac3ce0a8c9d9f2cbc2644820fd4eb6" compoundref="usbradioplus__channel__legacy__private_8h" startline="498">chan_usbradio_pvt::hasusb</references>
+        <references refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" compoundref="usbradioplus__radio_8h" startline="95">i16</references>
+        <references refid="structchan__usbradio__pvt_1a5eec1c9a2cd954c64e1eee0f68179566" compoundref="usbradioplus__channel__legacy__private_8h" startline="254">chan_usbradio_pvt::lasthidtime</references>
+        <references refid="structchan__usbradio__pvt_1a318dfe38dd532eb5ba5de181d5e1019c" compoundref="usbradioplus__channel__legacy__private_8h" startline="223">chan_usbradio_pvt::lastrx</references>
+        <references refid="chan__usbradioplus_8c_1a604f92993b6bdd4d21fedbc88b1293d3" compoundref="chan__usbradioplus_8c" startline="99">MS_TO_FRAMES</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="structchan__usbradio__pvt_1aab0cb97a9c8fe580f2e3e5f6398c08ba" compoundref="usbradioplus__channel__legacy__private_8h" startline="84">chan_usbradio_pvt::plus_advanced</references>
+        <references refid="structchan__usbradio__pvt_1a618f927c6e86e7bff2bc8c237c30eb50" compoundref="usbradioplus__channel__legacy__private_8h" startline="80">chan_usbradio_pvt::plus_app_rpt_rate</references>
+        <references refid="structchan__usbradio__pvt_1aeab9425cbb571e3722c558c969410a93" compoundref="usbradioplus__channel__legacy__private_8h" startline="82">chan_usbradio_pvt::plus_app_rpt_samples</references>
+        <references refid="structchan__usbradio__pvt_1af5375ac7e998cb640f77bb730c45adce" compoundref="usbradioplus__channel__legacy__private_8h" startline="118">chan_usbradio_pvt::plus_radio_tx_active</references>
+        <references refid="structchan__usbradio__pvt_1a0444588287b7dffc0495d57364bc9960" compoundref="usbradioplus__channel__legacy__private_8h" startline="200">chan_usbradio_pvt::plus_sound_dropped_frames</references>
+        <references refid="structchan__usbradio__pvt_1aac5888f402536eee01da48edb2488792" compoundref="usbradioplus__channel__legacy__private_8h" startline="102">chan_usbradio_pvt::plus_squelch_native</references>
+        <references refid="structchan__usbradio__pvt_1a954663cc2ac90dcc819751660695c765" compoundref="usbradioplus__channel__legacy__private_8h" startline="293">chan_usbradio_pvt::radio</references>
+        <references refid="structchan__usbradio__pvt_1abcf902662b8f2fae63ca5e2d1f8e17b8" compoundref="usbradioplus__channel__legacy__private_8h" startline="259">chan_usbradio_pvt::radioduplex</references>
+        <references refid="structchan__usbradio__pvt_1a37103c4cbd693637f3b2e9989bf94a0f" compoundref="usbradioplus__channel__legacy__private_8h" startline="220">chan_usbradio_pvt::read_f</references>
+        <references refid="usbradioplus__channel__private_8h_1ad4a78a85664f81bdf5fc49fb307b4e6f" compoundref="usbradioplus__channel__private_8h" startline="27">READERR_THRESHOLD</references>
+        <references refid="structchan__usbradio__pvt_1afd3af4531f13ef01ac688d4828a305a4" compoundref="usbradioplus__channel__legacy__private_8h" startline="533">chan_usbradio_pvt::readerrs</references>
+        <references refid="structchan__usbradio__pvt_1a0b8d16ba9d71def55a759a9ca972b48d" compoundref="usbradioplus__channel__legacy__private_8h" startline="218">chan_usbradio_pvt::readpos</references>
+        <references refid="structchan__usbradio__pvt_1a5c5d6ba3c223069afd43f6dd0ba0854e" compoundref="usbradioplus__channel__legacy__private_8h" startline="517">chan_usbradio_pvt::rx_cos_active</references>
+        <references refid="structchan__usbradio__pvt_1a2060e33228ac53d626ae82e0c974436f" compoundref="usbradioplus__channel__legacy__private_8h" startline="519">chan_usbradio_pvt::rx_ctcss_active</references>
+        <references refid="structchan__usbradio__pvt_1a304e3921e999c6372c98342c34f21167" compoundref="usbradioplus__channel__legacy__private_8h" startline="560">chan_usbradio_pvt::rxaudiostats</references>
+        <references refid="structchan__usbradio__pvt_1ad2ff41afcb90a84e825d2e7d5107f71a" compoundref="usbradioplus__channel__legacy__private_8h" startline="229">chan_usbradio_pvt::rxcarrierdetect</references>
+        <references refid="structchan__usbradio__pvt_1a0b9e46192278c000566108c18035e10b" compoundref="usbradioplus__channel__legacy__private_8h" startline="231">chan_usbradio_pvt::rxctcssdecode</references>
+        <references refid="structchan__usbradio__pvt_1afc0cfa71b1186a9d08f1a2b1cb6bed64" compoundref="usbradioplus__channel__legacy__private_8h" startline="346">chan_usbradio_pvt::rxctcssfreq</references>
+        <references refid="structchan__usbradio__pvt_1a77a86199f19cc2ea16f8a36070ee7659" compoundref="usbradioplus__channel__legacy__private_8h" startline="514">chan_usbradio_pvt::rxctcssoverride</references>
+        <references refid="structurp__radio__state_1a09d838dfc58fbca06d3c350d4cbf5203" compoundref="usbradioplus__radio_8h" startline="748">urp_radio_state::rxExtCarrierDetect</references>
+        <references refid="structchan__usbradio__pvt_1a6cb21562ddcbbcaea39efcf7afd349f1" compoundref="usbradioplus__channel__legacy__private_8h" startline="227">chan_usbradio_pvt::rxhidctcss</references>
+        <references refid="structchan__usbradio__pvt_1a6eab2718d1a3d403ad8ed1045d512a79" compoundref="usbradioplus__channel__legacy__private_8h" startline="225">chan_usbradio_pvt::rxhidsq</references>
+        <references refid="structchan__usbradio__pvt_1a638f968f42b6f5f427d3db4903f7c563" compoundref="usbradioplus__channel__legacy__private_8h" startline="238">chan_usbradio_pvt::rxkeyed</references>
+        <references refid="structchan__usbradio__pvt_1a8e3a26a829b8877a668e7ad1b72f462a" compoundref="usbradioplus__channel__legacy__private_8h" startline="284">chan_usbradio_pvt::rxoncnt</references>
+        <references refid="structchan__usbradio__pvt_1a6c8f9a05fdf993d13c17b2e3704ad000" compoundref="usbradioplus__channel__legacy__private_8h" startline="288">chan_usbradio_pvt::rxondelay</references>
+        <references refid="structchan__usbradio__pvt_1a1b0c05052d8ba291c04f81a301407986" compoundref="usbradioplus__channel__legacy__private_8h" startline="235">chan_usbradio_pvt::rxppctcss</references>
+        <references refid="structurp__radio__state_1ad15a22d3c83cfc75d84c8ee26fc3cb51" compoundref="usbradioplus__radio_8h" startline="736">urp_radio_state::rxRssi</references>
+        <references refid="structchan__usbradio__pvt_1a7abb441ac035ac457c2704856f714afe" compoundref="usbradioplus__channel__legacy__private_8h" startline="302">chan_usbradio_pvt::rxsdtype</references>
+        <references refid="structchan__usbradio__pvt_1a6e7f46456fa0569ca2062a659ac96f61" compoundref="usbradioplus__channel__legacy__private_8h" startline="557">chan_usbradio_pvt::sendvoter</references>
+        <references refid="chan__usbradioplus_8c_1a203e878eb91787947a7b1283ae2cafa1" compoundref="chan__usbradioplus_8c" startline="1221" endline="1237">soundcard_admit_native_frame</references>
+        <references refid="chan__usbradioplus_8c_1afab13a3006197f50ab5efe0d5bb644a8" compoundref="chan__usbradioplus_8c" startline="1304" endline="1331">soundcard_write_admitted_frame</references>
+        <references refid="structchan__usbradio__pvt_1ae50c3fd918615f0e642af91aa26c885b" compoundref="usbradioplus__channel__legacy__private_8h" startline="26">chan_usbradio_pvt::sounddev</references>
+        <references refid="structchan__usbradio__pvt_1ad16be3c59024ccfdd0e7c44d4aeaa821" compoundref="usbradioplus__channel__legacy__private_8h" startline="537">chan_usbradio_pvt::toneflag</references>
+        <references refid="structchan__usbradio__pvt_1ac180e6fb2e7c7e8e3b92c706d342698f" compoundref="usbradioplus__channel__legacy__private_8h" startline="535">chan_usbradio_pvt::tonetime</references>
+        <references refid="chan__usbradioplus_8c_1a6ae9b800b2a771a4e65bea411d38c8a8" compoundref="chan__usbradioplus_8c" startline="95">TX_OFF_DELAY_MAX</references>
+        <references refid="structurp__radio__state_1afa361bd6414a013ae6e4559a44647a07" compoundref="usbradioplus__radio_8h" startline="832">urp_radio_state::txctcssfreq</references>
+        <references refid="structurp__radio__state_1aa37c912f6e1989626c2ae04862d1aedd" compoundref="usbradioplus__radio_8h" startline="1110">urp_radio_state::txCtcssReady</references>
+        <references refid="structchan__usbradio__pvt_1a6f4c43b30f48d80a1c3f3a145f4efe78" compoundref="usbradioplus__channel__legacy__private_8h" startline="243">chan_usbradio_pvt::txkeyed</references>
+        <references refid="structchan__usbradio__pvt_1af45bfbac4e3d0734d6c39f19ad80145f" compoundref="usbradioplus__channel__legacy__private_8h" startline="286">chan_usbradio_pvt::txoffcnt</references>
+        <references refid="structchan__usbradio__pvt_1ab7209cb311bc1bc8db37f82661c55235" compoundref="usbradioplus__channel__legacy__private_8h" startline="290">chan_usbradio_pvt::txoffdelay</references>
+        <references refid="structurp__radio__state_1a0dba61e40e0badc61312bae7177f5109" compoundref="usbradioplus__radio_8h" startline="939">urp_radio_state::txPttIn</references>
+        <references refid="structurp__radio__state_1a057c961045017cad1644e3c7afa385f4" compoundref="usbradioplus__radio_8h" startline="941">urp_radio_state::txPttOut</references>
+        <references refid="structurp__radio__state_1a3c32a4da5ee4072e6997cbab4a3017ff" compoundref="usbradioplus__radio_8h" startline="727">urp_radio_state::txrxblankingtimer</references>
+        <references refid="structchan__usbradio__pvt_1a8d8d3976c262ba4d969dddc2923b3a1b" compoundref="usbradioplus__channel__legacy__private_8h" startline="245">chan_usbradio_pvt::txtestkey</references>
+        <references refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</references>
+        <references refid="structchan__usbradio__pvt_1a98c220b2754c950aa68c759f5fe07aa9" compoundref="usbradioplus__channel__legacy__private_8h" startline="213">chan_usbradio_pvt::usbradio_read_buf</references>
+        <references refid="structchan__usbradio__pvt_1ac3a886e0594598b010d7a151d2c7fd8f" compoundref="usbradioplus__channel__legacy__private_8h" startline="216">chan_usbradio_pvt::usbradio_read_buf_8k</references>
+        <references refid="structchan__usbradio__pvt_1af5f6d5c25c130f5d5103f027eac37b25" compoundref="usbradioplus__channel__legacy__private_8h" startline="74">chan_usbradio_pvt::usbradio_write_buf</references>
+        <references refid="usbradioplus__channel__common_8c_1a13f354b040f880e1c157b233d0bedf4d" compoundref="usbradioplus__channel__common_8c" startline="247" endline="262">usbradioplus_audio_load_hardware_state</references>
+        <references refid="usbradioplus__channel__common_8c_1a0fbbd09947d8890e6f7b71e2fc4a7670" compoundref="usbradioplus__channel__common_8c" startline="3459" endline="3477">usbradioplus_carrier_detected</references>
+        <references refid="usbradioplus__channel__common_8c_1a06e09ba1f7e2c1ddb9cae57173ce130c" compoundref="usbradioplus__channel__common_8c" startline="3479" endline="3485">usbradioplus_ctcss_detected</references>
+        <references refid="usbradioplus__channel__common_8c_1abcca9c65611e89724c794b23cea2537f" compoundref="usbradioplus__channel__common_8c" startline="535" endline="542">usbradioplus_echo_clear</references>
+        <references refid="usbradioplus__channel__common_8c_1a87433736d9c2e066c9ddc2e35ec47cf2" compoundref="usbradioplus__channel__common_8c" startline="552" endline="569">usbradioplus_echo_record</references>
+        <references refid="usbradioplus__channel__common_8c_1abde834e4ad6b359cf0348c3bea416000" compoundref="usbradioplus__channel__common_8c" startline="544" endline="550">usbradioplus_echo_start</references>
+        <references refid="usbradioplus__channel__private_8h_1a54f0f9e5a397ae59ace503cb0d7cf465" compoundref="usbradioplus__channel__private_8h" startline="311" endline="312">usbradioplus_native_echo</references>
+        <references refid="usbradioplus__channel__private_8h_1a0d8615532856ba67084fe58dd7229fc4" compoundref="usbradioplus__native__tick_8c" startline="994" endline="1036">usbradioplus_native_tick</references>
+        <references refid="usbradioplus__channel__common_8c_1a474fdec80d22e938eac20df8e696ea75" compoundref="usbradioplus__channel__common_8c" startline="3450" endline="3457">usbradioplus_prepare_squelch_audio</references>
+        <references refid="usbradioplus__channel__common_8c_1a23b036acdb36aac8fa93ff81bdbf9976" compoundref="usbradioplus__channel__common_8c" startline="1669" endline="1691">usbradioplus_radio_access_acquire</references>
+        <references refid="usbradioplus__channel__common_8c_1ad55a23303a21df05b8e887af47995701" compoundref="usbradioplus__channel__common_8c" startline="1693" endline="1698">usbradioplus_radio_access_release</references>
+        <references refid="usbradioplus__channel__common_8c_1a97bee0e287677c8b365dfffe6d732ea0" compoundref="usbradioplus__channel__common_8c" startline="3487" endline="3495">usbradioplus_refresh_ctcss_decode</references>
+        <references refid="usbradioplus__channel__common_8c_1ab938431406413f68cb87f262e5756a07" compoundref="usbradioplus__channel__common_8c" startline="388" endline="392">usbradioplus_request_clip_led</references>
+        <references refid="usbradioplus__channel__common_8c_1af4ecab96d4da8bad45fdf98df8344322" compoundref="usbradioplus__channel__common_8c" startline="284" endline="320">usbradioplus_tx_playout_hold_apply</references>
+        <references refid="usbradioplus__channel__common_8c_1a4707d8a63c1499d58f43ba08bfbca922" compoundref="usbradioplus__channel__common_8c" startline="271" endline="282">usbradioplus_tx_playout_hold_prepare</references>
+        <references refid="usbradioplus__channel__common_8c_1a998b7092e63fb09749ec3b4324b851d2" compoundref="usbradioplus__channel__common_8c" startline="322" endline="335">usbradioplus_tx_playout_hold_publish</references>
+        <references refid="structchan__usbradio__pvt_1acd48cc98a2c2ae9e928ae6068670d39b" compoundref="usbradioplus__channel__legacy__private_8h" startline="504">chan_usbradio_pvt::usedtmf</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ae1012f354464224033b40b6d73beb586" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct ast_channel *</type>
+        <definition>struct ast_channel * usbradio_new</definition>
+        <argsstring>(struct chan_usbradio_pvt *o, char *ext, char *ctx, int state, const struct ast_assigned_ids *assignedids, const struct ast_channel *requestor)</argsstring>
+        <name>usbradio_new</name>
+        <param>
+          <type>struct <ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref> *</type>
+          <declname>o</declname>
+        </param>
+        <param>
+          <type>char *</type>
+          <declname>ext</declname>
+        </param>
+        <param>
+          <type>char *</type>
+          <declname>ctx</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>const struct ast_assigned_ids *</type>
+          <declname>assignedids</declname>
+        </param>
+        <param>
+          <type>const struct ast_channel *</type>
+          <declname>requestor</declname>
+        </param>
+        <briefdescription>
+<para>Create an Asterisk channel and associate it with private radio state. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>o</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Private state of the selected radio channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ext</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk extension for the new channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>ctx</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk context for the new channel. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Initial Asterisk channel state. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>assignedids</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk-assigned channel identifiers. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>requestor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>New Asterisk channel reference, or NULL on failure. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="94" column="18" bodyfile="src/chan_usbradioplus.c" bodystart="2054" bodyend="2091" declfile="src/usbradioplus_channel_test_api.h" declline="94" declcolumn="18"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="chan__usbradioplus_8c_1abaabcb7f4349cc632dde3af5c6a5e1bd" compoundref="chan__usbradioplus_8c" startline="161">global_jbconf</references>
+        <references refid="structchan__usbradio__pvt_1aceac3ce0a8c9d9f2cbc2644820fd4eb6" compoundref="usbradioplus__channel__legacy__private_8h" startline="498">chan_usbradio_pvt::hasusb</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="chan__usbradioplus_8c_1a5052d853da0fc58013ced505c9c8f3ed" compoundref="chan__usbradioplus_8c" startline="1349" endline="1457">setformat</references>
+        <references refid="structchan__usbradio__pvt_1ae50c3fd918615f0e642af91aa26c885b" compoundref="usbradioplus__channel__legacy__private_8h" startline="26">chan_usbradio_pvt::sounddev</references>
+        <references refid="chan__usbradioplus_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus_8c" startline="309" endline="324">usbradio_tech</references>
+        <references refid="chan__usbradioplus__modern_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus__modern_8c" startline="384" endline="399">usbradio_tech</references>
+        <referencedby refid="chan__usbradioplus_8c_1a6f912622b5ff5222c03dbf0f308ee186" compoundref="chan__usbradioplus_8c" startline="2093" endline="2133">usbradio_request</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a00d0dae0da6d40aa251d70c6c9d6f5af" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct ast_channel *</type>
+        <definition>struct ast_channel * usbradio_request</definition>
+        <argsstring>(const char *type, struct ast_format_cap *cap, const struct ast_assigned_ids *assignedids, const struct ast_channel *requestor, const char *data, int *cause)</argsstring>
+        <name>usbradio_request</name>
+        <param>
+          <type>const char *</type>
+          <declname>type</declname>
+        </param>
+        <param>
+          <type>struct ast_format_cap *</type>
+          <declname>cap</declname>
+        </param>
+        <param>
+          <type>const struct ast_assigned_ids *</type>
+          <declname>assignedids</declname>
+        </param>
+        <param>
+          <type>const struct ast_channel *</type>
+          <declname>requestor</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>data</declname>
+        </param>
+        <param>
+          <type>int *</type>
+          <declname>cause</declname>
+        </param>
+        <briefdescription>
+<para>Allocate an Asterisk radio channel for a configured device. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>type</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Requested Asterisk channel technology. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>cap</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Requested Asterisk format capabilities. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>assignedids</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk-assigned channel identifiers. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>requestor</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Asterisk channel associated with the radio or link. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>data</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio name in the dial request. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>cause</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the Asterisk failure cause when channel creation fails. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>New Asterisk channel reference, or NULL with a failure cause. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="106" column="18" bodyfile="src/chan_usbradioplus.c" bodystart="2093" bodyend="2133" declfile="src/usbradioplus_channel_test_api.h" declline="106" declcolumn="18"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="chan__usbradioplus_8c_1af9d651ef4306fa517e13ef5153400281" compoundref="chan__usbradioplus_8c" startline="326" endline="341">find_desc</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structchan__usbradio__pvt_1adc9eeb3d772e15e28fc95127c6677786" compoundref="usbradioplus__channel__legacy__private_8h" startline="69">chan_usbradio_pvt::owner</references>
+        <references refid="chan__usbradioplus_8c_1a2205a4328b9a23ec7553a1059e14ee05" compoundref="usbradioplus__channel__common_8c" startline="1877" endline="1889">radio_config</references>
+        <references refid="structchan__usbradio__pvt_1ac1ccf9b61399b9956b0b07f7a3bb94cf" compoundref="usbradioplus__channel__legacy__private_8h" startline="479">chan_usbradio_pvt::remoted</references>
+        <references refid="chan__usbradioplus_8c_1a34743b40e5057bb1c0478c33a9ba95eb" compoundref="chan__usbradioplus_8c" startline="2054" endline="2091">usbradio_new</references>
+        <references refid="chan__usbradioplus_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus_8c" startline="309" endline="324">usbradio_tech</references>
+        <references refid="chan__usbradioplus__modern_8c_1a87d2bc4da35b7f7378f9c0ce66316f28" compoundref="chan__usbradioplus__modern_8c" startline="384" endline="399">usbradio_tech</references>
+        <references refid="usbradioplus__channel__common_8c_1a7903733fc63b0eaba7fbf0d15073f5c0" compoundref="usbradioplus__channel__common_8c" startline="482" endline="504">usbradioplus_interface_mode</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a16190fc70dbe2072aee171f297e3cc07" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * res2cli</definition>
+        <argsstring>(int result)</argsstring>
+        <name>res2cli</name>
+        <param>
+          <type>int</type>
+          <declname>result</declname>
+        </param>
+        <briefdescription>
+<para>Translate a tuning command result into an Asterisk CLI result. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>result</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Tuning command&apos;s RESULT_SUCCESS, RESULT_SHOWUSAGE, or failure status. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI_SUCCESS, CLI_SHOWUSAGE, or CLI_FAILURE sentinel. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="114" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2847" bodyend="2857" declfile="src/usbradioplus_channel_test_api.h" declline="114" declcolumn="6"/>
+        <referencedby refid="chan__usbradioplus_8c_1a710b80d634b236393ee64de5d51bbe75" compoundref="chan__usbradioplus_8c" startline="2860" endline="2874">handle_console_key</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a9a053417636415f194db2d800c15d5f5" compoundref="chan__usbradioplus_8c" startline="2877" endline="2893">handle_console_unkey</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a21884bae255b9919b2246f8727a7bf03" compoundref="chan__usbradioplus_8c" startline="2925" endline="2945">handle_radio_active</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1aec7c29e54bbbcee4c518fb33fbc7986f" compoundref="chan__usbradioplus_8c" startline="2896" endline="2922">handle_radio_tune</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1aa317bb2767e0bc7192a0c2712a48680e" compoundref="chan__usbradioplus_8c" startline="2973" endline="2990">handle_set_dsp_debug</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a69028b806eca68513b647ed43c3d4896" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_console_key</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_console_key</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or execute the radio key CLI command. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="121" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2860" bodyend="2874" declfile="src/usbradioplus_channel_test_api.h" declline="121" declcolumn="6"/>
+        <references refid="usbradioplus__channel__common_8c_1a67d7fe2730aeeed9790bf5cfadbbed3b" compoundref="usbradioplus__channel__common_8c" startline="688" endline="700">console_key</references>
+        <references refid="chan__usbradioplus_8c_1ab63fe5b59f7ecd7ce13701b61aa533f6" compoundref="chan__usbradioplus_8c" startline="2847" endline="2857">res2cli</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a9df8cf997b7419d254254625abca234d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_console_unkey</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_console_unkey</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or execute the radio unkey CLI command. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="128" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2877" bodyend="2893" declfile="src/usbradioplus_channel_test_api.h" declline="128" declcolumn="6"/>
+        <references refid="usbradioplus__channel__common_8c_1acbf160305f6b8ddcbcc747f9335d4a98" compoundref="usbradioplus__channel__common_8c" startline="702" endline="714">console_unkey</references>
+        <references refid="chan__usbradioplus_8c_1ab63fe5b59f7ecd7ce13701b61aa533f6" compoundref="chan__usbradioplus_8c" startline="2847" endline="2857">res2cli</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ae576c6cc9d7a357258ed0520d0bbd272" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_radio_tune</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_radio_tune</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or dispatch radio tuning CLI commands. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="135" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2896" bodyend="2922" declfile="src/usbradioplus_channel_test_api.h" declline="135" declcolumn="6"/>
+        <references refid="usbradioplus__channel__common_8c_1a352639417b8077cfbbc6489bb564cc9a" compoundref="usbradioplus__channel__common_8c" startline="757" endline="945">radio_tune</references>
+        <references refid="chan__usbradioplus_8c_1ab63fe5b59f7ecd7ce13701b61aa533f6" compoundref="chan__usbradioplus_8c" startline="2847" endline="2857">res2cli</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a5e76daca79c178faed6c373fc7a45a44" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_radio_active</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_radio_active</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or select the active radio for tuning. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="142" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2925" bodyend="2945" declfile="src/usbradioplus_channel_test_api.h" declline="142" declcolumn="6"/>
+        <references refid="chan__usbradioplus_8c_1a6eed0efdda85d675e4ce499d544b3f13" compoundref="chan__usbradioplus_8c" startline="2135" endline="2167">radio_active</references>
+        <references refid="chan__usbradioplus_8c_1ab63fe5b59f7ecd7ce13701b61aa533f6" compoundref="chan__usbradioplus_8c" startline="2847" endline="2857">res2cli</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a5ffdef1f51a2944a44ba97a1bd01ed1a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_show_settings</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_show_settings</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or print active radio settings. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="149" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2948" bodyend="2970" declfile="src/usbradioplus_channel_test_api.h" declline="149" declcolumn="6"/>
+        <references refid="chan__usbradioplus_8c_1a17706af59319c76f37ffb3caecfdd58e" compoundref="chan__usbradioplus_8c" startline="2397" endline="2442">_menu_print</references>
+        <references refid="chan__usbradioplus_8c_1af9d651ef4306fa517e13ef5153400281" compoundref="chan__usbradioplus_8c" startline="326" endline="341">find_desc</references>
+        <references refid="chan__usbradioplus_8c_1a7ca0a7a5e65744831f82c71f468385ea" compoundref="chan__usbradioplus_8c" startline="300">usbradio_active</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1ac5eb265352a81354693fcaaefe7c61d0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_set_dsp_debug</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_set_dsp_debug</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or change the radio debug level. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="156" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2973" bodyend="2990" declfile="src/usbradioplus_channel_test_api.h" declline="156" declcolumn="6"/>
+        <references refid="usbradioplus__channel__common_8c_1a6b5c8dbe41c62ab4e4b8cfe4c98b303b" compoundref="usbradioplus__channel__common_8c" startline="954" endline="969">radio_set_dsp_debug</references>
+        <references refid="chan__usbradioplus_8c_1ab63fe5b59f7ecd7ce13701b61aa533f6" compoundref="chan__usbradioplus_8c" startline="2847" endline="2857">res2cli</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a47fa8be63cc9391f0cbb33d4c360c7e2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>char *</type>
+        <definition>char * handle_radioplus_native_stats</definition>
+        <argsstring>(struct ast_cli_entry *entry, int command, struct ast_cli_args *args)</argsstring>
+        <name>handle_radioplus_native_stats</name>
+        <param>
+          <type>struct ast_cli_entry *</type>
+          <declname>entry</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>command</declname>
+        </param>
+        <param>
+          <type>struct ast_cli_args *</type>
+          <declname>args</declname>
+        </param>
+        <briefdescription>
+<para>Register, complete, or report native audio and FIFO statistics. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>entry</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI command registration. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>command</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI initialization, completion, or execution selector. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>args</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CLI argument and output descriptor. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Asterisk CLI result sentinel, or NULL during registration/completion. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="163" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="2992" bodyend="3119" declfile="src/usbradioplus_channel_test_api.h" declline="163" declcolumn="6"/>
+        <references refid="structusbradioplus__native__renderer__stats_1a1292e7af78c7e699cf2edff119d546ad" compoundref="usbradioplus__channel__private_8h" startline="258">usbradioplus_native_renderer_stats::adc_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1ad112fb6ac9b399cd280a46767f67081b" compoundref="usbradioplus__channel__private_8h" startline="256">usbradioplus_native_renderer_stats::adc_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a43f17605a357eaa12a6136c5f8cd107a" compoundref="usbradioplus__channel__private_8h" startline="260">usbradioplus_native_renderer_stats::adc_rail_samples</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a6c232260786fd86c2e89f74766674952" compoundref="usbradioplus__channel__private_8h" startline="183">usbradioplus_native_filter_statistics::buffered_samples</references>
+        <references refid="structusbradioplus__native__filter__statistics_1ac00334bf58915e7ecd29e24ef7442446" compoundref="usbradioplus__channel__private_8h" startline="223">usbradioplus_native_filter_statistics::cleanup_post_5_8_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1abf268077e708a032f1dd4c51b33355ac" compoundref="usbradioplus__channel__private_8h" startline="221">usbradioplus_native_filter_statistics::cleanup_post_5_8_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a3037c52fd35b3e720e428aeb3f439e40" compoundref="usbradioplus__channel__private_8h" startline="231">usbradioplus_native_filter_statistics::cleanup_post_8_plus_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a1caac0d9160ffde4e206cc1c77b59473" compoundref="usbradioplus__channel__private_8h" startline="229">usbradioplus_native_filter_statistics::cleanup_post_8_plus_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1afb46622f15b381d56580b7376c708adf" compoundref="usbradioplus__channel__private_8h" startline="219">usbradioplus_native_filter_statistics::cleanup_pre_5_8_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a0776016db6587034900de8279a745ed8" compoundref="usbradioplus__channel__private_8h" startline="217">usbradioplus_native_filter_statistics::cleanup_pre_5_8_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a56a8022e3646928df8e33daafb4a0cf7" compoundref="usbradioplus__channel__private_8h" startline="227">usbradioplus_native_filter_statistics::cleanup_pre_8_plus_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1af4a73918ebae9826ffbf20e530fbd741" compoundref="usbradioplus__channel__private_8h" startline="225">usbradioplus_native_filter_statistics::cleanup_pre_8_plus_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1acd9a724ab37a5c898f113644909f6c80" compoundref="usbradioplus__channel__private_8h" startline="211">usbradioplus_native_filter_statistics::cleanup_pre_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1ad2542d0874fea1e137f7c1804cba4ec4" compoundref="usbradioplus__channel__private_8h" startline="215">usbradioplus_native_filter_statistics::cleanup_pre_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a26ffa57f20b428028e6bb0939a00cdc5" compoundref="usbradioplus__channel__private_8h" startline="209">usbradioplus_native_filter_statistics::cleanup_pre_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a3f7a59e81cb2f009f51e6abaf8b7310d" compoundref="usbradioplus__channel__private_8h" startline="213">usbradioplus_native_filter_statistics::cleanup_pre_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a1730512322a19f089b48497c1e733e5e" compoundref="avfilter__processor_8h" startline="59">txagc_avfilter::configured</references>
+        <references refid="usbradioplus__channel__common_8c_1a70ca63957389000376704ec13c8b579a" compoundref="usbradioplus__channel__common_8c" startline="1001" endline="1006">effective_rxmixerset</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a729c31f30e45487543715e60c65a967f" compoundref="usbradioplus__channel__private_8h" startline="290">usbradioplus_native_renderer_stats::final_filter</references>
+        <references refid="chan__usbradioplus_8c_1af9d651ef4306fa517e13ef5153400281" compoundref="chan__usbradioplus_8c" startline="326" endline="341">find_desc</references>
+        <references refid="structusbradioplus__native__filter__statistics_1ac24a831d44df353804a10024224c7169" compoundref="usbradioplus__channel__private_8h" startline="195">usbradioplus_native_filter_statistics::input_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1af7832441afae1c1f525a2aada687f785" compoundref="usbradioplus__channel__private_8h" startline="199">usbradioplus_native_filter_statistics::input_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a4b65373eba5713c3d9acedd093d5b45c" compoundref="usbradioplus__channel__private_8h" startline="193">usbradioplus_native_filter_statistics::input_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a20e4b9c06debc1aca9321d46ba40dc7c" compoundref="usbradioplus__channel__private_8h" startline="197">usbradioplus_native_filter_statistics::input_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a1cf19d8a39aceb169b0a63a23fb34ba3" compoundref="usbradioplus__channel__private_8h" startline="181">usbradioplus_native_filter_statistics::latency_samples</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a00ab9440f8317ac485f162388301d6e2" compoundref="usbradioplus__channel__private_8h" startline="246">usbradioplus_native_renderer_stats::link_queue_underflows</references>
+        <references refid="structusbradioplus__native__graph__set_1a8552a0011351159299b1bb93aeb0988b" compoundref="usbradioplus__channel__private_8h" startline="113">usbradioplus_native_graph_set::local_dynamics</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a8bd5b0fd2361cd8e99b707ebe790dac8" compoundref="usbradioplus__channel__private_8h" startline="286">usbradioplus_native_renderer_stats::local_filter</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a2ad26410e11efed7276f38d4f49e5aaf" compoundref="usbradioplus__channel__private_8h" startline="268">usbradioplus_native_renderer_stats::local_tx_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a01e46d813695fcb2efb891fcfb4c1b3b" compoundref="usbradioplus__channel__private_8h" startline="266">usbradioplus_native_renderer_stats::local_tx_peak_dbfs</references>
+        <references refid="structchan__usbradio__pvt_1ab8e55f1004b863995c549a378cff0c25" compoundref="usbradioplus__channel__legacy__private_8h" startline="18">chan_usbradio_pvt::name</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a4f486e9dcffef9b6d35482fb88b85265" compoundref="usbradioplus__channel__private_8h" startline="242">usbradioplus_native_renderer_stats::native_frames</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a1cfb11e052ae5973b390b21717b173da" compoundref="usbradioplus__channel__private_8h" startline="203">usbradioplus_native_filter_statistics::output_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a6512095d85946d9e340055b7769cc159" compoundref="usbradioplus__channel__private_8h" startline="207">usbradioplus_native_filter_statistics::output_max_rms_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a3a4e42b49d753c3b001bb85b53740979" compoundref="usbradioplus__channel__private_8h" startline="201">usbradioplus_native_filter_statistics::output_peak_dbfs</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a6695afd9006100492877e0fa2f331c8b" compoundref="usbradioplus__channel__private_8h" startline="205">usbradioplus_native_filter_statistics::output_rms_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1abc501d8cc1286f2f9da3e7a6fc5c16b2" compoundref="usbradioplus__channel__private_8h" startline="248">usbradioplus_native_renderer_stats::parrot_playback_frames</references>
+        <references refid="structusbradioplus__native__renderer__stats_1adfa6691eea81e57744f20a833100097a" compoundref="usbradioplus__channel__private_8h" startline="252">usbradioplus_native_renderer_stats::parrot_playing</references>
+        <references refid="structusbradioplus__native__renderer__stats_1ab97c0b218d03664780de089f9916e09f" compoundref="usbradioplus__channel__private_8h" startline="250">usbradioplus_native_renderer_stats::parrot_samples</references>
+        <references refid="structchan__usbradio__pvt_1a618f927c6e86e7bff2bc8c237c30eb50" compoundref="usbradioplus__channel__legacy__private_8h" startline="80">chan_usbradio_pvt::plus_app_rpt_rate</references>
+        <references refid="structchan__usbradio__pvt_1aa6861922ef4d1841664a8d42acf20794" compoundref="usbradioplus__channel__legacy__private_8h" startline="94">chan_usbradio_pvt::plus_program_ring</references>
+        <references refid="structchan__usbradio__pvt_1a0444588287b7dffc0495d57364bc9960" compoundref="usbradioplus__channel__legacy__private_8h" startline="200">chan_usbradio_pvt::plus_sound_dropped_frames</references>
+        <references refid="structchan__usbradio__pvt_1ab4e8ba18b3b3c3bbb6ac53267aefea00" compoundref="usbradioplus__channel__legacy__private_8h" startline="202">chan_usbradio_pvt::plus_sound_short_writes</references>
+        <references refid="structusbradioplus__native__renderer__stats_1addd1ed8b8c4397f8a0cd37bfd505a656" compoundref="usbradioplus__channel__private_8h" startline="264">usbradioplus_native_renderer_stats::preemphasis_input_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a548f8b1822b222fc069cbd7e3ef74890" compoundref="usbradioplus__channel__private_8h" startline="262">usbradioplus_native_renderer_stats::preemphasis_input_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a38bf122c4d803467d1945d124020a665" compoundref="usbradioplus__channel__private_8h" startline="288">usbradioplus_native_renderer_stats::receive_deemphasis_filter</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a9634ed6836804b3ed5b93e345f448fa0" compoundref="usbradioplus__channel__private_8h" startline="282">usbradioplus_native_renderer_stats::rnnoise_errors</references>
+        <references refid="structusbradioplus__native__renderer__stats_1ab817fc54fdbc88aea511486434f39f87" compoundref="usbradioplus__channel__private_8h" startline="276">usbradioplus_native_renderer_stats::rnnoise_frames</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a076c26c6bbba6fb0d45de966579cef41" compoundref="usbradioplus__channel__private_8h" startline="278">usbradioplus_native_renderer_stats::rnnoise_output_samples</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a6e5a81ea693c0b669003d31d974b3b34" compoundref="usbradioplus__channel__private_8h" startline="280">usbradioplus_native_renderer_stats::rnnoise_startup_samples</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a28988c7546a55d495073e9a206c13e1b" compoundref="usbradioplus__channel__private_8h" startline="284">usbradioplus_native_renderer_stats::rnnoise_vad_probability</references>
+        <references refid="structusbradioplus__native__filter__statistics_1ab7c59f2d1b92d6b6a2faf3e8bc2fa7ea" compoundref="usbradioplus__channel__private_8h" startline="191">usbradioplus_native_filter_statistics::runtime_underrun_samples</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a7a48817c169fd912743f3526a87de526" compoundref="usbradioplus__channel__private_8h" startline="244">usbradioplus_native_renderer_stats::src_errors</references>
+        <references refid="structusbradioplus__native__filter__statistics_1a911f8fe1150a3643ff69d3446660f22a" compoundref="usbradioplus__channel__private_8h" startline="189">usbradioplus_native_filter_statistics::startup_fill_samples</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a1dc17dae5eba8145f828317f61e6b0b3" compoundref="usbradioplus__channel__private_8h" startline="272">usbradioplus_native_renderer_stats::tx_program_max_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1a2c2414a44f817a3f530735bdfa156986" compoundref="usbradioplus__channel__private_8h" startline="270">usbradioplus_native_renderer_stats::tx_program_peak_dbfs</references>
+        <references refid="structusbradioplus__native__renderer__stats_1ae23c0c1adc09b02eb5ac4dbf7a630dec" compoundref="usbradioplus__channel__private_8h" startline="274">usbradioplus_native_renderer_stats::tx_program_rail_samples</references>
+        <references refid="usbradioplus__channel__core_8c_1a93a6afc55640158707a1de37361d28ce" compoundref="usbradioplus__channel__core_8c" startline="136" endline="139">urp_mixer_to_gain_db</references>
+        <references refid="usbradioplus__dsp_8h_1a45a5721d703b608f48c4f5da3e643bec" compoundref="usbradioplus__dsp_8h" startline="15">URP_RATE_NATIVE</references>
+        <references refid="chan__usbradioplus_8c_1a7ca0a7a5e65744831f82c71f468385ea" compoundref="chan__usbradioplus_8c" startline="300">usbradio_active</references>
+        <references refid="usbradioplus__channel__common_8c_1acbba5ce3e655ca48f62f2afd28d2c50d" compoundref="usbradioplus__channel__common_8c" startline="3116" endline="3133">usbradioplus_native_graphs_acquire</references>
+        <references refid="usbradioplus__channel__common_8c_1a7bd11e5ae302f31d8f08883d8e16c44e" compoundref="usbradioplus__channel__common_8c" startline="3135" endline="3140">usbradioplus_native_graphs_release</references>
+        <references refid="usbradioplus__channel__private_8h_1a2e84fa5329e90bed16d2692053cfb956" compoundref="usbradioplus__native__tick_8c" startline="821" endline="852">usbradioplus_native_renderer_stats_read</references>
+        <references refid="usbradioplus__channel__private_8h_1a6fcea4dcb837aa62bc3355c5edd7257c" compoundref="usbradioplus__native__tick_8c" startline="887" endline="892">usbradioplus_native_renderer_stats_reset</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__channel__test__api_8h_1a0befea0de0d23672196419f53a48bfe9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void usbradio_start_parallel_pulser</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradio_start_parallel_pulser</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Start the pulse worker when a parallel-port output is configured. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Start the parallel-port pulse worker when an output is configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_test_api.h" line="166" column="6" bodyfile="src/chan_usbradioplus.c" bodystart="3132" bodyend="3136" declfile="src/usbradioplus_channel_test_api.h" declline="166" declcolumn="6"/>
+        <references refid="chan__usbradioplus_8c_1a1f239328cc316197664a92e42bba70d2" compoundref="chan__usbradioplus_8c" startline="192">hasout</references>
+        <references refid="chan__usbradioplus_8c_1a24afcf0596abbd1fd9e52eb571c12948" compoundref="chan__usbradioplus_8c" startline="182">haspp</references>
+        <references refid="chan__usbradioplus_8c_1a830034267aaa986393f658b9c74808d5" compoundref="chan__usbradioplus_8c" startline="194">pulserid</references>
+        <references refid="usbradioplus__channel__common_8c_1a001f37f0a8c7990e37ef0970c9336cf8" compoundref="usbradioplus__channel__common_8c" startline="47" endline="93">pulserthread</references>
+        <references refid="usbradioplus__channel__core_8c_1a285bcd11443a9f6d47e351c5b261a8d8" compoundref="usbradioplus__channel__core_8c" startline="230" endline="233">urp_parallel_pulser_needed</references>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Test entry points for channel adapters without attached radio hardware. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_CHANNEL_TEST_API_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_CHANNEL_TEST_API_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="usbradioplus__channel__private_8h" kindref="compound">usbradioplus_channel_private.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="usbradioplus__channel__common_8h" kindref="compound">usbradioplus_channel_common.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a7e4048edc0b6e5ec2653f98236b5edbc" kindref="member">hasout</ref>;</highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a8fd93719430c782bc5c0f902de67641b" kindref="member">ppinshift</ref>[];</highlight></codeline>
+<codeline lineno="15"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a127337ad0506af77852fa1a7f25eec69" kindref="member">setformat</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>mode);</highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a017de673028cdb41f5a3424e8452b41c" kindref="member">usbradio_text</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*c,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text);</highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1ae6e6815e0cb75e96251516bdf7001e20" kindref="member">usbradio_hangup</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*c);</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1ab795001b56bd7282fa75d4594f47cb91" kindref="member">usbradio_call</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*c,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*dest,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>timeout);</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1ac5816a5ba487a26401e14ca1e13bafd6" kindref="member">usbradio_write</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*c,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_frame<sp/>*f);</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a628710910eabb4d041f3eec9547a6487" kindref="member">radio_active</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>fd,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>argc,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>*argv);</highlight></codeline>
+<codeline lineno="52" refid="usbradioplus__channel__test__api_8h_1af75e899212ecfcce6254162c8c43bb86" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1af75e899212ecfcce6254162c8c43bb86" kindref="member">used_blocks</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a6ff4730da64c0a3b0eb5aa9019f3254c" kindref="member">soundcard_writeframe</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">short</highlight><highlight class="normal"><sp/>*data);</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a5655629994fdc7d0d29a850c209b96f2" kindref="member">load_module</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="66"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a926a34f3a363f5dfd4d4a734f1934698" kindref="member">unload_module</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="70" refid="usbradioplus__channel__test__api_8h_1a9ce528c7062dc55d87df7f183094b662" refkind="member"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a9ce528c7062dc55d87df7f183094b662" kindref="member">usbradioplus_test_set_module_info</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_module_info<sp/>*info);</highlight></codeline>
+<codeline lineno="74"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a06850f038d2f953d503f5aa57875ed99" kindref="member">find_installed_usb_match</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a9d30daeb3044b0b1be889c421a861819" kindref="member">hidthread</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*arg);</highlight></codeline>
+<codeline lineno="84"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_frame<sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a8f37918f4e456e5001200c4ec0ea778e" kindref="member">usbradio_read</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*c);</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_channel<sp/>*<ref refid="usbradioplus__channel__test__api_8h_1ae1012f354464224033b40b6d73beb586" kindref="member">usbradio_new</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*ext,<sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*ctx,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>state,</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_assigned_ids<sp/>*assignedids,</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*requestor);</highlight></codeline>
+<codeline lineno="106"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">ast_channel<sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a00d0dae0da6d40aa251d70c6c9d6f5af" kindref="member">usbradio_request</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*type,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_format_cap<sp/>*cap,</highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_assigned_ids<sp/>*assignedids,</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*requestor,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*data,</highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*cause);</highlight></codeline>
+<codeline lineno="114"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a16190fc70dbe2072aee171f297e3cc07" kindref="member">res2cli</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>result);</highlight></codeline>
+<codeline lineno="121"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a69028b806eca68513b647ed43c3d4896" kindref="member">handle_console_key</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="128"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a9df8cf997b7419d254254625abca234d" kindref="member">handle_console_unkey</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1ae576c6cc9d7a357258ed0520d0bbd272" kindref="member">handle_radio_tune</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a5e76daca79c178faed6c373fc7a45a44" kindref="member">handle_radio_active</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a5ffdef1f51a2944a44ba97a1bd01ed1a" kindref="member">handle_show_settings</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1ac5eb265352a81354693fcaaefe7c61d0" kindref="member">handle_set_dsp_debug</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__channel__test__api_8h_1a47fa8be63cc9391f0cbb33d4c360c7e2" kindref="member">handle_radioplus_native_stats</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__channel__test__api_8h_1a0befea0de0d23672196419f53a48bfe9" kindref="member">usbradio_start_parallel_pulser</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight></codeline>
+<codeline lineno="168"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>URP_CHANNEL_MODERN</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="169"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">short</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a7e297e605a169a46573a503823bd94a2" kindref="member">silence_buf</ref>[];</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1ad7cb19659650b42c6323e2ea9fbe66f5" kindref="member">usbradio_log_fault</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>already_logged,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*format,<sp/>...)</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"><sp/><sp/><sp/><sp/>__attribute__((format(printf,<sp/>3,<sp/>4)));</highlight></codeline>
+<codeline lineno="172"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1ac61148cf7b715227e21078f6c639a388" kindref="member">usbradio_device_identity</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*devstr,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>devstr_size,</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*serial,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>serial_size,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*alsa_card);</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a5bafaa7b53e3e9a52bb870b85498b40b" kindref="member">usbradio_log_usb_recovered</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a73b60fe2eea0e40cc821d3d1771d7d44" kindref="member">usbradio_adjust_txmix_for_mono</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a2acfe55c947470aebec4a743ec9d54ac" kindref="member">usbradio_release_device</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a036fdcfe9b1d935dc860a85374b27b65" kindref="member">usbradio_swap_begin</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1aef52c5db70e841637b3c8f17ab4d7729" kindref="member">usbradio_swap_audio_stopped</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1ac7ea44d6f9849f1b621856f95684f129" kindref="member">usbradio_swap_hid_wait</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a4d1de60f69a502cfc5fa3030959f9d35" kindref="member">usbradio_swap_ready</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="181"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a532985c0b5a1209e9b7ac84fd9dc8850" kindref="member">usbradio_swap_finish</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a07191939332b7ede4f7bdfc6a103743d" kindref="member">usbradio_mixer_limits</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*rx_max,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*tx_max,</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*sidetone_max);</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1af4567045477eb0323c31b46b1c80be83" kindref="member">usbradio_set_sidetone_switch</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>enabled);</highlight></codeline>
+<codeline lineno="185"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a5256be54195aa491c953390bec837638" kindref="member">usbradio_set_rx_mixer</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o,<sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>volume);</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a4ca98bb8893d5dc1b01beea29144a02e" kindref="member">init_audio_device</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="187"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a95c57506604d3aeedaff8443e3a09597" kindref="member">usbradio_start_audio</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="188"><highlight class="normal">PaError<sp/><ref refid="chan__usbradioplus__modern_8c_1ac83f44d0812497285e0003274de46af4" kindref="member">usbradio_read_pa_stereo</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="chan__usbradioplus__modern_8c_1a0cf084a2cbd54f4237f43d04648a3228" kindref="member">stream_cleanup</ref>(struct<sp/><ref refid="structchan__usbradio__pvt" kindref="compound">chan_usbradio_pvt</ref><sp/>*o);</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" kindref="member">usbradio_audio_thread</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*arg);</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="192"><highlight class="normal"></highlight></codeline>
+<codeline lineno="193"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_channel_test_api.h"/>
+  </compounddef>
+</doxygen>

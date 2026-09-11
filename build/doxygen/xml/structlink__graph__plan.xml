@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structlink__graph__plan" kind="struct" language="C++" prot="public">
+    <compoundname>link_graph_plan</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structlink__graph__plan_1a86288a5f83c16e8fb35bbd496d4c0f72" prot="public" static="no" mutable="no">
+        <type>struct ast_channel *</type>
+        <definition>struct ast_channel* link_graph_plan::channel</definition>
+        <argsstring></argsstring>
+        <name>channel</name>
+        <qualifiedname>link_graph_plan::channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Retained channel keeps the datastore and hook alive through publication. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2377" column="18" bodyfile="src/usbradioplus_processing.c" bodystart="2377" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structlink__graph__plan_1a1e959a55706217c2c31b69ba5eb54a2c" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__hook" kindref="compound">txagc_hook</ref> *</type>
+        <definition>struct txagc_hook* link_graph_plan::hook</definition>
+        <argsstring></argsstring>
+        <name>hook</name>
+        <qualifiedname>link_graph_plan::hook</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Audiohook protected by its control-plane lock while the plan is live. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2379" column="17" bodyfile="src/usbradioplus_processing.c" bodystart="2379" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structlink__graph__plan_1a48aab0560d9f5f1f1f2997da13081a1c" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref></type>
+        <definition>struct txagc_avfilter_slot_candidate link_graph_plan::candidate</definition>
+        <argsstring></argsstring>
+        <name>candidate</name>
+        <qualifiedname>link_graph_plan::candidate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Graph candidate prepared outside the audio callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2381" column="36" bodyfile="src/usbradioplus_processing.c" bodystart="2381" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structlink__graph__plan_1aba2eebc8e5504e5243e850873a7a6869" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int link_graph_plan::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>link_graph_plan::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Whether the candidate profile admits link processing after publication. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2383" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="2383" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One prepared replacement for an attached link callback. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>link_graph_plan</label>
+        <link refid="structlink__graph__plan"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>hook</edgelabel>
+        </childnode>
+        <childnode refid="8" relation="usage">
+          <edgelabel>candidate</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="5" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>txagc_avfilter_slot</label>
+        <link refid="structtxagc__avfilter__slot"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>active</edgelabel>
+        </childnode>
+        <childnode refid="6" relation="usage">
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+      <node id="8">
+        <label>txagc_avfilter_slot_candidate</label>
+        <link refid="structtxagc__avfilter__slot__candidate"/>
+        <childnode refid="6" relation="usage">
+          <edgelabel>node</edgelabel>
+        </childnode>
+      </node>
+      <node id="6">
+        <label>txagc_avfilter_slot_node</label>
+        <link refid="structtxagc__avfilter__slot__node"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>filter</edgelabel>
+        </childnode>
+      </node>
+      <node id="5">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="2">
+        <label>txagc_hook</label>
+        <link refid="structtxagc__hook"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>avfilter</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>published_statistics</edgelabel>
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="7">
+        <label>txagc_link_statistics</label>
+        <link refid="structtxagc__link__statistics"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_processing.c" line="2375" column="1" bodyfile="src/usbradioplus_processing.c" bodystart="2375" bodyend="2384"/>
+    <listofallmembers>
+      <member refid="structlink__graph__plan_1a48aab0560d9f5f1f1f2997da13081a1c" prot="public" virt="non-virtual"><scope>link_graph_plan</scope><name>candidate</name></member>
+      <member refid="structlink__graph__plan_1a86288a5f83c16e8fb35bbd496d4c0f72" prot="public" virt="non-virtual"><scope>link_graph_plan</scope><name>channel</name></member>
+      <member refid="structlink__graph__plan_1aba2eebc8e5504e5243e850873a7a6869" prot="public" virt="non-virtual"><scope>link_graph_plan</scope><name>enabled</name></member>
+      <member refid="structlink__graph__plan_1a1e959a55706217c2c31b69ba5eb54a2c" prot="public" virt="non-virtual"><scope>link_graph_plan</scope><name>hook</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

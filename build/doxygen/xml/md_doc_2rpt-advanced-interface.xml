@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="md_doc_2rpt-advanced-interface" kind="page">
+    <compoundname>md_doc_2rpt-advanced-interface</compoundname>
+    <title>rpt_advanced channel interface</title>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para><anchor id="md_doc_2rpt-advanced-interface_1autotoc_md0"/> <computeroutput>RadioPlusAdvanced/&lt;channel&gt;</computeroutput> reserves the same configured radio as <computeroutput>RadioPlus/&lt;channel&gt;</computeroutput>. The existing hardware backend owns USB access, signaling, and the shared FFmpeg processing graphs. The separate adapter exposes the hardware engine&apos;s native signed-linear format. The current CM119 engine uses 48,000 samples per second; Asterisk supplies conversions for the controller&apos;s negotiated format.</para>
+<para>Every native receive block produces a voice frame, including silence while squelched. Carrier indications are separate frames. The adapter does not run the app_rpt DTMF detector, which can replace a voice frame with a digit event. The controller responds with transmit audio using this receive cadence, without an independent periodic audio timer.</para>
+<para>Transmit frames enter the same lock-free program ring used by the legacy adapter. Its persistent conversion stream uses a one-to-one nominal ratio for the native controller format and still corrects independent controller and hardware clock drift. Scheduling stalls can still cause underruns; sharing a format does not remove that possibility. The driver&apos;s local-repeat and echo paths are bypassed so controller audio is not repeated twice. Receiver and transmitter DSP remain in the shared engine.</para>
+<para>A subsequent <computeroutput>RadioPlus</computeroutput> reservation restores 8 kHz transport and its program ring. These interfaces cannot reserve the same radio concurrently.</para>
+<para>The adapter is under development. Existing channel tests and dedicated adapter fixtures do not constitute on-air or completed rpt_advanced integration testing. </para>
+    </detaileddescription>
+    <location file="doc/rpt-advanced-interface.md"/>
+  </compounddef>
+</doxygen>

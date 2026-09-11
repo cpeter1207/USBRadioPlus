@@ -1,0 +1,7 @@
+<map id="stream_cleanup" name="stream_cleanup">
+<area shape="rect" id="Node000001" title="Stop the PortAudio stream and clear queued transmitter audio." alt="" coords="5,45,132,70"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#aef52c5db70e841637b3c8f17ab4d7729" title="Publish completion of the audio&#45;worker swap pause." alt="" coords="189,5,352,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,45,175,38,176,43,133,50"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#aa02e1a9727b22c30cecdfebaf9cd1311" title="Reset a DAC&#45;drain hold after the underlying audio device is reset." alt="" coords="180,69,361,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="133,65,167,70,166,75,132,70"/>
+</map>

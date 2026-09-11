@@ -1,0 +1,5 @@
+<map id="usbradio_start_audio" name="usbradio_start_audio">
+<area shape="rect" id="Node000001" title="Start PortAudio capture and playback for an acquired radio device." alt="" coords="5,13,164,38"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a73b60fe2eea0e40cc821d3d1771d7d44" title="Adapt transmitter routing when the acquired device has one output channel." alt="" coords="212,5,383,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="164,23,198,23,198,28,164,28"/>
+</map>

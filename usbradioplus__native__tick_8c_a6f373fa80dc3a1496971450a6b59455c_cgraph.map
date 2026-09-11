@@ -1,0 +1,16 @@
+<map id="process_receive_filter" name="process_receive_filter">
+<area shape="rect" id="Node000001" title="Apply fixed receive filtering and the selected decoded&#45;tone notch." alt="" coords="5,55,169,80"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a42f97cbbe252ab72960adc41a094d7dc" title="Process one mono block through an already prepared FFmpeg graph." alt="" coords="217,47,385,87"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="170,65,203,65,203,70,170,70"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#ac891b46547a6d98840314bd3114a6629" title="Drain available frames from one spectral measurement sink." alt="" coords="433,5,592,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="385,45,444,31,445,36,386,50"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#aa9267bbf543edad3c49a9288605c4389" title="Find a source frame that the graph no longer references." alt="" coords="444,55,581,80"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="386,65,430,65,430,70,386,70"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a8681a563c78717937cd38f3685472fb5" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="669,80,783,105"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="386,83,434,90,550,95,655,94,655,99,550,101,433,95,385,89"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="640,19,812,44"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="593,20,627,22,626,28,592,26"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="860,56,965,81"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="791,41,847,53,846,58,790,47"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="783,83,846,75,846,80,784,88"/>
+</map>

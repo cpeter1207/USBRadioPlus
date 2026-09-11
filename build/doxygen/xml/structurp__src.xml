@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__src" kind="struct" language="C++" prot="public">
+    <compoundname>urp_src</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" prot="public" static="no" mutable="no">
+        <type>SRC_STATE *</type>
+        <definition>SRC_STATE* urp_src::state</definition>
+        <argsstring></argsstring>
+        <name>state</name>
+        <qualifiedname>urp_src::state</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned libsamplerate converter handle. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="44" column="11" bodyfile="src/usbradioplus_dsp.c" bodystart="44" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1a9441082c5203081c60709487f11df580" compoundref="usbradioplus__dsp_8c" startline="70" endline="86">urp_src_create</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a01c3c33847014294b74858700455d9c8" compoundref="usbradioplus__dsp_8c" startline="88" endline="96">urp_src_destroy</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ac386bf618a23376321bd65e0be3eea46" compoundref="usbradioplus__dsp_8c" startline="98" endline="102">urp_src_reset</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_src::channels</definition>
+        <argsstring></argsstring>
+        <name>channels</name>
+        <qualifiedname>urp_src::channels</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of interleaved channels. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="46" column="14" bodyfile="src/usbradioplus_dsp.c" bodystart="46" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1a9441082c5203081c60709487f11df580" compoundref="usbradioplus__dsp_8c" startline="70" endline="86">urp_src_create</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" prot="public" static="no" mutable="no">
+        <type>float *</type>
+        <definition>float* urp_src::input</definition>
+        <argsstring></argsstring>
+        <name>input</name>
+        <qualifiedname>urp_src::input</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned floating-point input-conversion workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="48" column="7" bodyfile="src/usbradioplus_dsp.c" bodystart="48" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1aaca9104f82da02824fec2f6ff0e84e75" compoundref="usbradioplus__dsp_8c" startline="203" endline="214">urp_rate_convert</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ac3e6b80594c56efda361b49ad5b1b10b" compoundref="usbradioplus__dsp_8c" startline="178" endline="201">urp_rate_convert_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a01c3c33847014294b74858700455d9c8" compoundref="usbradioplus__dsp_8c" startline="88" endline="96">urp_src_destroy</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a1606a7bd14a1f011cade73f4c6c6d32d" compoundref="usbradioplus__dsp_8c" startline="166" endline="176">urp_src_process</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__src_1a6acea6b1056507e2596aba77995ca743" prot="public" static="no" mutable="no">
+        <type>float *</type>
+        <definition>float* urp_src::output</definition>
+        <argsstring></argsstring>
+        <name>output</name>
+        <qualifiedname>urp_src::output</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output workspace for the current conversion. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="50" column="7" bodyfile="src/usbradioplus_dsp.c" bodystart="50" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1aaca9104f82da02824fec2f6ff0e84e75" compoundref="usbradioplus__dsp_8c" startline="203" endline="214">urp_rate_convert</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ac3e6b80594c56efda361b49ad5b1b10b" compoundref="usbradioplus__dsp_8c" startline="178" endline="201">urp_rate_convert_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a01c3c33847014294b74858700455d9c8" compoundref="usbradioplus__dsp_8c" startline="88" endline="96">urp_src_destroy</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a1606a7bd14a1f011cade73f4c6c6d32d" compoundref="usbradioplus__dsp_8c" startline="166" endline="176">urp_src_process</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__src_1ad7b4f3502819d1f2cde08782b16af0f7" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t urp_src::input_capacity</definition>
+        <argsstring></argsstring>
+        <name>input_capacity</name>
+        <qualifiedname>urp_src::input_capacity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated input workspace in samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="52" column="8" bodyfile="src/usbradioplus_dsp.c" bodystart="52" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t urp_src::output_capacity</definition>
+        <argsstring></argsstring>
+        <name>output_capacity</name>
+        <qualifiedname>urp_src::output_capacity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated output workspace in samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.c" line="54" column="8" bodyfile="src/usbradioplus_dsp.c" bodystart="54" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1aaca9104f82da02824fec2f6ff0e84e75" compoundref="usbradioplus__dsp_8c" startline="203" endline="214">urp_rate_convert</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ac3e6b80594c56efda361b49ad5b1b10b" compoundref="usbradioplus__dsp_8c" startline="178" endline="201">urp_rate_convert_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a1606a7bd14a1f011cade73f4c6c6d32d" compoundref="usbradioplus__dsp_8c" startline="166" endline="176">urp_src_process</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1ae5ec641130119c7001929833a9cea583" compoundref="usbradioplus__dsp_8c" startline="130" endline="164">urp_src_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1a7e53206483e5fb5a726dc6aef5bb5e92" compoundref="usbradioplus__dsp_8c" startline="104" endline="128">urp_src_reserve</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Owned libsamplerate state and reusable floating-point conversion buffers. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_dsp.c" line="42" column="1" bodyfile="src/usbradioplus_dsp.c" bodystart="42" bodyend="55"/>
+    <listofallmembers>
+      <member refid="structurp__src_1ad696e0a0ff3862c6281cbe70ed5dbe32" prot="public" virt="non-virtual"><scope>urp_src</scope><name>channels</name></member>
+      <member refid="structurp__src_1ac62f44f2d878a0f2a006e8ee8d8989fb" prot="public" virt="non-virtual"><scope>urp_src</scope><name>input</name></member>
+      <member refid="structurp__src_1ad7b4f3502819d1f2cde08782b16af0f7" prot="public" virt="non-virtual"><scope>urp_src</scope><name>input_capacity</name></member>
+      <member refid="structurp__src_1a6acea6b1056507e2596aba77995ca743" prot="public" virt="non-virtual"><scope>urp_src</scope><name>output</name></member>
+      <member refid="structurp__src_1af1019f5bb6cb18fbce33f7d63687cd28" prot="public" virt="non-virtual"><scope>urp_src</scope><name>output_capacity</name></member>
+      <member refid="structurp__src_1a6091abe9feee26f7184058953e6cf1ec" prot="public" virt="non-virtual"><scope>urp_src</scope><name>state</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

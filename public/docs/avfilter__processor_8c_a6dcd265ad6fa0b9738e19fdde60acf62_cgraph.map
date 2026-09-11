@@ -1,0 +1,5 @@
+<map id="allocate_runtime_buffers" name="allocate_runtime_buffers">
+<area shape="rect" id="Node000001" title="Allocate the fixed storage used by the steady&#45;state graph feeder." alt="" coords="5,5,189,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a816370bd95800e4289ff53e23f0f4d6d" title="Derive a fixed source&#45;frame capacity from the stream rate." alt="" coords="237,5,412,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,15,223,15,223,21,189,21"/>
+</map>

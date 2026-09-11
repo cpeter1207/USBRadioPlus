@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__receive__block__stats" kind="struct" language="C++" prot="public">
+    <compoundname>urp_receive_block_stats</compoundname>
+    <includes refid="usbradioplus__channel__core_8h" local="no">usbradioplus_channel_core.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__receive__block__stats_1a02d865e8b4e29c3b5213a968e435dd03" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int urp_receive_block_stats::peak</definition>
+        <argsstring></argsstring>
+        <name>peak</name>
+        <qualifiedname>urp_receive_block_stats::peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest observed absolute sample magnitude. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="128" column="14" bodyfile="src/usbradioplus_channel_core.h" bodystart="128" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a6e1f5e65ad0cf22e35c527f09a9b4cbf" compoundref="usbradioplus__channel__core_8c" startline="297" endline="326">urp_prepare_receive_block</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__receive__block__stats_1a4a8451c4ce2858e9fc639d38544e2a4d" prot="public" static="no" mutable="no">
+        <type>unsigned long</type>
+        <definition>unsigned long urp_receive_block_stats::rail_samples</definition>
+        <argsstring></argsstring>
+        <name>rail_samples</name>
+        <qualifiedname>urp_receive_block_stats::rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Count of samples at a signed 16-bit PCM rail. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.h" line="130" column="15" bodyfile="src/usbradioplus_channel_core.h" bodystart="130" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__channel__core_8c_1a6e1f5e65ad0cf22e35c527f09a9b4cbf" compoundref="usbradioplus__channel__core_8c" startline="297" endline="326">urp_prepare_receive_block</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Measurements collected while preparing one native receiver block. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_core.h" line="126" column="1" bodyfile="src/usbradioplus_channel_core.h" bodystart="126" bodyend="131"/>
+    <listofallmembers>
+      <member refid="structurp__receive__block__stats_1a02d865e8b4e29c3b5213a968e435dd03" prot="public" virt="non-virtual"><scope>urp_receive_block_stats</scope><name>peak</name></member>
+      <member refid="structurp__receive__block__stats_1a4a8451c4ce2858e9fc639d38544e2a4d" prot="public" virt="non-virtual"><scope>urp_receive_block_stats</scope><name>rail_samples</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

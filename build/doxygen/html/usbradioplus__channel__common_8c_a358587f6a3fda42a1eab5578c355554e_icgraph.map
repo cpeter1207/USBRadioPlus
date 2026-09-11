@@ -1,0 +1,16 @@
+<map id="usbradioplus_tx_playout_hold_note_output" name="usbradioplus_tx_playout_hold_note_output">
+<area shape="rect" id="Node000001" title="Record one accepted native DAC block for post&#45;playout PTT timing." alt="" coords="839,37,1020,77"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#afab13a3006197f50ab5efe0d5bb644a8" title="Write one previously admitted native stereo frame without rechecking OSS." alt="" coords="596,5,791,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="825,46,791,41,791,36,826,41"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a5106944da4644f88ded9f119082b2ab5" title="Submit one native DAC block and report whether PortAudio accepted it intact." alt="" coords="596,69,791,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="826,74,791,79,791,73,825,69"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="407,13,521,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="582,28,522,28,522,23,582,23"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="380,69,548,94"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="582,88,548,87,548,82,583,83"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,94,332,119"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="582,107,548,109,435,113,332,112,332,107,435,107,548,104,582,101"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="367,95,333,99,332,94,366,90"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,94,113,119"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="147,109,114,109,114,104,147,104"/>
+</map>

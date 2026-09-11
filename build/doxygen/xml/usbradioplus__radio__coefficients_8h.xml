@@ -1,0 +1,1103 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__radio__coefficients_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_radio_coefficients.h</compoundname>
+    <includedby refid="usbradioplus__radio_8c" local="yes">src/usbradioplus_radio.c</includedby>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/usbradioplus_radio.c</label>
+        <link refid="usbradioplus__radio_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_radio_coefficients.h</label>
+        <link refid="usbradioplus__radio__coefficients_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structt__fir" prot="public">t_fir</innerclass>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a5521aff4ededbe3321f75df585e5705e" prot="public" static="no">
+        <name>CTCSS_COEF_INT</name>
+        <initializer>120</initializer>
+        <briefdescription>
+<para>Fixed-point scale used by the CTCSS reference coefficients. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="49" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a52529d8cafc4d3004cdc8dd54ed52af3" prot="public" static="no">
+        <name>CTCSS_SAMPLE_RATE</name>
+        <initializer>8000</initializer>
+        <briefdescription>
+<para>Sample rate in Hz used to derive CTCSS detector coefficients. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="51" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a5b64a59624241db9c09e9c0b4d8b5442" prot="public" static="no">
+        <name>TDIV</name>
+        <param><defname>x</defname></param>
+        <initializer>((<ref refid="usbradioplus__radio__coefficients_8h_1a52529d8cafc4d3004cdc8dd54ed52af3" kindref="member">CTCSS_SAMPLE_RATE</ref> * 1000 / (x)) + 5) / 10</initializer>
+        <briefdescription>
+<para>Reference tone-period division factor. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="53" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1aa1da079b3e30639c54e32ec9bf548d12" prot="public" static="no">
+        <name>MAX_COEFS</name>
+        <initializer>128</initializer>
+        <briefdescription>
+<para>Maximum FIR coefficient-table length. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="268" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="268" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a28aa75277785ca55043d900d9c1397d5" prot="public" static="no">
+        <name>MAX_RXLPF</name>
+        <initializer>(sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a3d58f8f31618083fcb02f2777e925a18" kindref="member">fir_rxlpf</ref>) / sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref>))</initializer>
+        <briefdescription>
+<para>Number of selectable receiver detector low-pass tables. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="408" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="408" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a224acac741e416859ed8332951b5e3ad" prot="public" static="no">
+        <name>MAX_RXHPF</name>
+        <initializer>(sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1ae84d2cd44e5600a26317591924fbd184" kindref="member">fir_rxhpf</ref>) / sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref>))</initializer>
+        <briefdescription>
+<para>Number of selectable receiver detector high-pass tables. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="410" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="410" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1aec9bf3a43538678bcb8ca067f2af1faf" prot="public" static="no">
+        <name>MAX_TXHPF</name>
+        <initializer>(sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1aebdd03701f99603de35a47da2c369088" kindref="member">fir_txhpf</ref>) / sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref>))</initializer>
+        <briefdescription>
+<para>Number of transmitter high-pass table slots. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="412" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="412" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__radio__coefficients_8h_1a265d1c0b42e1036745fc19418217ef15" prot="public" static="no">
+        <name>MAX_TXLPF</name>
+        <initializer>(sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a7c5486d88c239de96946286742c4acbf" kindref="member">fir_txlpf</ref>) / sizeof(<ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref>))</initializer>
+        <briefdescription>
+<para>Number of transmitter low-pass table slots. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="414" column="9" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="414" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="typedef">
+      <memberdef kind="typedef" id="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" prot="public" static="no">
+        <type>struct <ref refid="structt__fir" kindref="compound">t_fir</ref></type>
+        <definition>typedef struct t_fir T_FIR</definition>
+        <argsstring></argsstring>
+        <name>T_FIR</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed-point FIR coefficient table and normalization metadata for radio detectors. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="279" column="7"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="var">
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a1dd6ef63be516cdb45a98f29d087aa80" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>const u32 dtmf_row[]</definition>
+        <argsstring>[]</argsstring>
+        <name>dtmf_row</name>
+        <initializer>= {6970, 7700, 8520, 9410}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DTMF low-group reference frequencies in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="45" column="18" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="45" bodyend="45"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a081b4db0c8d9308b230dff148134c769" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>const u32 dtmf_col[]</definition>
+        <argsstring>[]</argsstring>
+        <name>dtmf_col</name>
+        <initializer>= {12090, 13360, 14770, 16330}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DTMF high-group reference frequencies in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="47" column="18" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="47" bodyend="47"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a3334f7c8d72365a42dfc433deced69f1" prot="public" static="yes" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 coef_ctcss_div[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_ctcss_div</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Per-tone fixed-point correlator period divisors. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="56" column="12" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="56" bodyend="95"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1ad49e408df0164ff224cb921d3765b4f4" prot="public" static="yes" mutable="no">
+        <type>float</type>
+        <definition>float freq_ctcss[]</definition>
+        <argsstring>[]</argsstring>
+        <name>freq_ctcss</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Supported CTCSS reference frequencies in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="98" column="14" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="98" bodyend="137"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1ac665674abe7bea9e08923f5bbda6eeaa" compoundref="usbradioplus__radio_8c" startline="479" endline="489">urp_ctcss_frequency_index</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a1463e191fbee87505280f89c9e561748" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_bpf_noise_1</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_bpf_noise_1</name>
+        <initializer>= 66</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR bpf noise 1 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="143" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="143" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a5531dd8a911dcd4c76f435cf98c0cb64" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_bpf_noise_1</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_bpf_noise_1</name>
+        <initializer>= 65536</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR bpf noise 1 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="145" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="145" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a91d81000e6b1f96f8c42551ef8efaa73" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_bpf_noise_1[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_bpf_noise_1</name>
+        <initializer>= {
+	139,   -182,   -269,   -66,   56,    59,    250,   395,	   -80,	   -775,  -557,
+	437,   779,    210,    -17,   123,   -692,  -1664, -256,   2495,   2237,  -1018,
+	-2133, -478,   -1134,  -2711, 2642,  10453, 4010,  -14385, -16488, 6954,  23030,
+	6954,  -16488, -14385, 4010,  10453, 2642,  -2711, -1134,  -478,   -2133, -1018,
+	2237,  2495,   -256,   -1664, -692,  123,   -17,   210,	   779,	   437,	  -557,
+	-775,  -80,    395,    250,   59,    56,    -66,   -269,   -182,   139,	  257}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR bpf noise 1 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="147" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="147" bodyend="153"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a0f0229d3ebb0bac65e689ab3dd16090e" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_bpf_noise_2</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_bpf_noise_2</name>
+        <initializer>= 66</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR bpf noise 2 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="156" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="156" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1aa60d518483f5c6326529bf3a665a44b9" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_bpf_noise_2</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_bpf_noise_2</name>
+        <initializer>= 65536</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR bpf noise 2 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="158" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="158" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1acf17c5ca1cbe9194b157e0b7dd5dc921" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_bpf_noise_2[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_bpf_noise_2</name>
+        <initializer>= {
+	581,   -251,   -1027,  -766,  63,   346,  148,	 459,	 1165,	 847,	-824,
+	-1994, -1147,  462,    704,   32,   651,  2277,	 1790,	 -1635,	 -4071, -2240,
+	1060,  1127,   -502,   1963,  7399, 5862, -6693, -17483, -10387, 10549, 22110,
+	10549, -10387, -17483, -6693, 5862, 7399, 1963,	 -502,	 1127,	 1060,	-2240,
+	-4071, -1635,  1790,   2277,  651,  32,	  704,	 462,	 -1147,	 -1994, -824,
+	847,   1165,   459,    148,   346,  63,	  -766,	 -1027,	 -251,	 581,	537}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR bpf noise 2 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="160" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="160" bodyend="166"/>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a9d7997a7f49451879b9e8834822a019a" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_lpf_3K_2</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_lpf_3K_2</name>
+        <initializer>= 28</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR low-pass filter 3 K 2 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="169" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="169" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1aa623f57a75e37988641601b4c05910e3" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_lpf_3K_2</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_lpf_3K_2</name>
+        <initializer>= 65536</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR low-pass filter 3 K 2 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="171" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="171" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1af2f5f0c2cd646d731bd704316fc0d337" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_lpf_3K_2[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_lpf_3K_2</name>
+        <initializer>= {545,  -329,	 -579,	369,  -843,  465,   -121,  -779,
+					    1523, -2051, 1683,	-64,  -4016, 19793, 19793, -4016,
+					    -64,  1683,	 -2051, 1523, -779,  -121,  465,   -843,
+					    369,  -579,	 -329,	545
+
+}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR low-pass filter 3 K 2 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="173" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="173" bodyend="178"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a30230e4d09c2d8cbba347947db607f37" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_lpf_250_11_64</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_lpf_250_11_64</name>
+        <initializer>= 64</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR low-pass filter 250 11 64 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="189" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="189" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1af6502cf4ee49b6cb26211640a840613c" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_lpf_250_11_64</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_lpf_250_11_64</name>
+        <initializer>= 262144</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR low-pass filter 250 11 64 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="191" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="191" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a5908694d372485c626ea7168afe862d5" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_lpf_250_11_64[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_lpf_250_11_64</name>
+        <initializer>= {
+	366,   -3,    -418,  -865,  -1328, -1788, -2223, -2609, -2922, -3138, -3232, -3181, -2967,
+	-2573, -1988, -1206, -228,  937,   2277,  3767,	 5379,	7077,  8821,  10564, 12259, 13855,
+	15305, 16563, 17588, 18346, 18812, 18968, 18812, 18346, 17588, 16563, 15305, 13855, 12259,
+	10564, 8821,  7077,  5379,  3767,  2277,  937,	 -228,	-1206, -1988, -2573, -2967, -3181,
+	-3232, -3138, -2922, -2609, -2223, -1788, -1328, -865,	-418,  -3,    366,   680}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR low-pass filter 250 11 64 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="193" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="193" bodyend="198"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1ac56c22353c46449afd26a54858c3f73d" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_int_lpf_300_1_2</definition>
+        <argsstring></argsstring>
+        <name>taps_int_lpf_300_1_2</name>
+        <initializer>= 2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps int low-pass filter 300 1 2 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="203" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="203" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a4eff5d4333039761de0d4e6632216961" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_int_lpf_300_1_2</definition>
+        <argsstring></argsstring>
+        <name>gain_int_lpf_300_1_2</name>
+        <initializer>= 8182</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain int low-pass filter 300 1 2 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="205" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="205" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a9955038c84259db74adaad42f9dce2ad" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_int_lpf_300_1_2[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_int_lpf_300_1_2</name>
+        <initializer>= {6878, 25889}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef int low-pass filter 300 1 2 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="207" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="207" bodyend="207"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1aeb65b02fa65746ee9e850c3bf583f3c0" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_int_hpf_4000_1_2</definition>
+        <argsstring></argsstring>
+        <name>taps_int_hpf_4000_1_2</name>
+        <initializer>= 2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps int high-pass filter 4000 1 2 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="212" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="212" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a9ec9d1f3efefcaa6ee1fa0c98facf431" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_int_hpf_4000_1_2</definition>
+        <argsstring></argsstring>
+        <name>gain_int_hpf_4000_1_2</name>
+        <initializer>= 13404</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>hand tweaked for unity gain at 1KHz </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="214" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="214" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1adf5099c45a3ec14d86331184aa5042e2" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_int_hpf_4000_1_2[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_int_hpf_4000_1_2</name>
+        <initializer>= {17610, -17610, 2454}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef int high-pass filter 4000 1 2 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="216" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="216" bodyend="216"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1ac1ccb21923649f1adf5899a272f91d97" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_lpf_250_9_66</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_lpf_250_9_66</name>
+        <initializer>= 66</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR low-pass filter 250 9 66 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="230" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="230" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a52e1025965489e6e24595223041ec985" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_lpf_250_9_66</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_lpf_250_9_66</name>
+        <initializer>= 262144</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR low-pass filter 250 9 66 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="232" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="232" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1abd492ef298930282f0257e3fe676b4fe" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_lpf_250_9_66[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_lpf_250_9_66</name>
+        <initializer>= {
+	676,   364,   -3,    -415,  -860,  -1320, -1777, -2209, -2593, -2904, -3119,
+	-3212, -3162, -2949, -2557, -1975, -1198, -226,	 932,	2263,  3744,  5346,
+	7034,  8767,  10499, 12184, 13770, 15211, 16462, 17480, 18234, 18696, 18852,
+	18696, 18234, 17480, 16462, 15211, 13770, 12184, 10499, 8767,  7034,  5346,
+	3744,  2263,  932,   -226,  -1198, -1975, -2557, -2949, -3162, -3212, -3119,
+	-2904, -2593, -2209, -1777, -1320, -860,  -415,	 -3,	364,   676,   927}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR low-pass filter 250 9 66 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="234" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="234" bodyend="240"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a48e74f52fddd2fbc63be633bd18e3ea1" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t taps_fir_lpf_215_9_88</definition>
+        <argsstring></argsstring>
+        <name>taps_fir_lpf_215_9_88</name>
+        <initializer>= 88</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Taps FIR low-pass filter 215 9 88 coefficient count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="250" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="250" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a6d4b6e68d0050a6ac0b02c80269e3cc3" prot="public" static="yes" mutable="no">
+        <type>const int32_t</type>
+        <definition>const int32_t gain_fir_lpf_215_9_88</definition>
+        <argsstring></argsstring>
+        <name>gain_fir_lpf_215_9_88</name>
+        <initializer>= 524288</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain FIR low-pass filter 215 9 88 normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="252" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="252" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a2a0d76bd49a6a71f9be39fb42b2e06bf" prot="public" static="yes" mutable="no">
+        <type>const int16_t</type>
+        <definition>const int16_t coef_fir_lpf_215_9_88[]</definition>
+        <argsstring>[]</argsstring>
+        <name>coef_fir_lpf_215_9_88</name>
+        <initializer>= {
+	2038,  2049,  1991,  1859,  1650,  1363,  999,	 562,	58,    -502,  -1106, -1739, -2382,
+	-3014, -3612, -4153, -4610, -4959, -5172, -5226, -5098, -4769, -4222, -3444, -2430, -1176,
+	310,   2021,  3937,  6035,  8284,  10648, 13086, 15550, 17993, 20363, 22608, 24677, 26522,
+	28099, 29369, 30299, 30867, 31058, 30867, 30299, 29369, 28099, 26522, 24677, 22608, 20363,
+	17993, 15550, 13086, 10648, 8284,  6035,  3937,	 2021,	310,   -1176, -2430, -3444, -4222,
+	-4769, -5098, -5226, -5172, -4959, -4610, -4153, -3612, -3014, -2382, -1739, -1106, -502,
+	58,    562,   999,   1363,  1650,  1859,  1991,	 2049,	2038,  1966}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Coef FIR low-pass filter 215 9 88 fixed-point coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="254" column="22" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="254" bodyend="261"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a3d58f8f31618083fcb02f2777e925a18" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref></type>
+        <definition>const T_FIR fir_rxlpf[]</definition>
+        <argsstring>[]</argsstring>
+        <name>fir_rxlpf</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FIR rxlpf coefficient-table selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="282" column="20" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="282" bodyend="318"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1ae84d2cd44e5600a26317591924fbd184" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref></type>
+        <definition>const T_FIR fir_rxhpf[]</definition>
+        <argsstring>[]</argsstring>
+        <name>fir_rxhpf</name>
+        <initializer>= {
+
+	
+	{66, 32768, {-141,  -114,  -77,	  -30,	 23,	83,    147,   210,   271,   324,   367,
+		     396,   407,   396,	  362,	 302,	216,   102,   -36,   -199,  -383,  -585,
+		     -798,  -1017, -1237, -1452, -1653, -1836, -1995, -2124, -2219, -2278, 30463,
+		     -2278, -2219, -2124, -1995, -1836, -1653, -1452, -1237, -1017, -798,  -585,
+		     -383,  -199,  -36,	  102,	 216,	302,   362,   396,   407,   396,   367,
+		     324,   271,   210,	  147,	 83,	23,    -30,   -77,   -114,  -141,  -158}},
+
+	
+	{128, 32768, {32,    39,    45,	   50,	  53,	 54,	54,    51,    45,    37,    27,
+		      15,    0,	    -15,   -32,	  -50,	 -68,	-85,   -100,  -114,  -124,  -130,
+		      -132,  -129,  -121,  -107,  -87,	 -61,	-31,   4,     43,    85,    128,
+		      171,   213,   251,   284,	  310,	 328,	334,   329,   310,   276,   228,
+		      164,   84,    -9,	   -118,  -240,	 -372,	-514,  -663,  -815,  -968,  -1119,
+		      -1265, -1403, -1529, -1641, -1737, -1813, -1869, -1904, 30856, -1904, -1869,
+		      -1813, -1737, -1641, -1529, -1403, -1265, -1119, -968,  -815,  -663,  -514,
+		      -372,  -240,  -118,  -9,	  84,	 164,	228,   276,   310,   329,   334,
+		      328,   310,   284,   251,	  213,	 171,	128,   85,    43,    4,	    -31,
+		      -61,   -87,   -107,  -121,  -129,	 -132,	-130,  -124,  -114,  -100,  -85,
+		      -68,   -50,   -32,   -15,	  0,	 15,	27,    37,    45,    51,    54,
+		      54,    53,    50,	   45,	  39,	 32,	25}}}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FIR rxhpf coefficient-table selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="321" column="20" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="321" bodyend="343"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1aebdd03701f99603de35a47da2c369088" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref></type>
+        <definition>const T_FIR fir_txhpf[]</definition>
+        <argsstring>[]</argsstring>
+        <name>fir_txhpf</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FIR txhpf coefficient-table selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="346" column="20" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="346" bodyend="379"/>
+      </memberdef>
+      <memberdef kind="variable" id="usbradioplus__radio__coefficients_8h_1a7c5486d88c239de96946286742c4acbf" prot="public" static="yes" mutable="no">
+        <type>const <ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref></type>
+        <definition>const T_FIR fir_txlpf[]</definition>
+        <argsstring>[]</argsstring>
+        <name>fir_txlpf</name>
+        <initializer>= {
+
+	
+	{66, 131072, {259,   58,    -185,  -437,  -654, -793, -815,  -696,  -434,  -48,	  414,
+		      886,   1284,  1523,  1529,  1254, 691,  -117,  -1078, -2049, -2854, -3303,
+		      -3220, -2472, -995,  1187,  3952, 7086, 10300, 13270, 15672, 17236, 17778,
+		      17236, 15672, 13270, 10300, 7086, 3952, 1187,  -995,  -2472, -3220, -3303,
+		      -2854, -2049, -1078, -117,  691,	1254, 1529,  1523,  1284,  886,	  414,
+		      -48,   -434,  -696,  -815,  -793, -654, -437,  -185,  58,	   259,	  393}},
+
+	
+	{128,
+	 131072,
+	 {47,	 83,	108,   114,   98,   61,	  5,	 -58,	-118,  -163,  -181,  -165,  -113,
+	  -32,	 66,	164,   242,   282,  269,  200,	 82,	-68,   -226,  -358,  -435,  -434,
+	  -344,	 -171,	59,    310,   531,  674,  697,	 580,	325,   -32,   -436,  -807,  -1064,
+	  -1136, -979,	-590,  -15,   655,  1296, 1767,	 1937,	1716,  1080,  83,    -1133, -2356,
+	  -3325, -3772, -3469, -2270, -151, 2776, 6267,	 9965,	13454, 16317, 18195, 18849, 18195,
+	  16317, 13454, 9965,  6267,  2776, -151, -2270, -3469, -3772, -3325, -2356, -1133, 83,
+	  1080,	 1716,	1937,  1767,  1296, 655,  -15,	 -590,	-979,  -1136, -1064, -807,  -436,
+	  -32,	 325,	580,   697,   674,  531,  310,	 59,	-171,  -344,  -434,  -435,  -358,
+	  -226,	 -68,	82,    200,   269,  282,  242,	 164,	66,    -32,   -113,  -165,  -181,
+	  -163,	 -118,	-58,   5,     61,   98,	  114,	 108,	83,    47,    6}}
+
+}</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FIR txlpf coefficient-table selection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="382" column="20" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="382" bodyend="406"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Private Land Mobile Radio Channel Voice and Signaling Processor. </para>
+    </briefdescription>
+    <detaileddescription>
+<para><simplesect kind="author"><para>Steven Henke, W9SH <ulink url="mailto:sph@xelatec.com">sph@xelatec.com</ulink> Xelatec, LLC </para>
+</simplesect>
+</para>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">/*</highlight></codeline>
+<codeline lineno="2"><highlight class="comment"><sp/>*<sp/>usbradioplus_radio_coefficients.h<sp/>-<sp/>fixed-point<sp/>detector<sp/>coefficients</highlight></codeline>
+<codeline lineno="3"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="4"><highlight class="comment"><sp/>*<sp/>All<sp/>Rights<sp/>Reserved.<sp/>Copyright<sp/>(C)2007,<sp/>Xelatec,<sp/>LLC</highlight></codeline>
+<codeline lineno="5"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="6"><highlight class="comment"><sp/>*<sp/>20070808<sp/>1235<sp/>Steven<sp/>Henke,<sp/>W9SH,<sp/>sph@xelatec.com</highlight></codeline>
+<codeline lineno="7"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="8"><highlight class="comment"><sp/>*<sp/>This<sp/>program<sp/>is<sp/>free<sp/>software;<sp/>you<sp/>can<sp/>redistribute<sp/>it<sp/>and/or<sp/>modify</highlight></codeline>
+<codeline lineno="9"><highlight class="comment"><sp/>*<sp/>it<sp/>under<sp/>the<sp/>terms<sp/>of<sp/>the<sp/>GNU<sp/>General<sp/>Public<sp/>License<sp/>as<sp/>published<sp/>by</highlight></codeline>
+<codeline lineno="10"><highlight class="comment"><sp/>*<sp/>the<sp/>Free<sp/>Software<sp/>Foundation;<sp/>either<sp/>version<sp/>2<sp/>of<sp/>the<sp/>License,<sp/>or</highlight></codeline>
+<codeline lineno="11"><highlight class="comment"><sp/>*<sp/>(at<sp/>your<sp/>option)<sp/>any<sp/>later<sp/>version.</highlight></codeline>
+<codeline lineno="12"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="13"><highlight class="comment"><sp/>*<sp/>This<sp/>program<sp/>is<sp/>distributed<sp/>in<sp/>the<sp/>hope<sp/>that<sp/>it<sp/>will<sp/>be<sp/>useful,</highlight></codeline>
+<codeline lineno="14"><highlight class="comment"><sp/>*<sp/>but<sp/>WITHOUT<sp/>ANY<sp/>WARRANTY;<sp/>without<sp/>even<sp/>the<sp/>implied<sp/>warranty<sp/>of</highlight></codeline>
+<codeline lineno="15"><highlight class="comment"><sp/>*<sp/>MERCHANTABILITY<sp/>or<sp/>FITNESS<sp/>FOR<sp/>A<sp/>PARTICULAR<sp/>PURPOSE.<sp/><sp/>See<sp/>the</highlight></codeline>
+<codeline lineno="16"><highlight class="comment"><sp/>*<sp/>GNU<sp/>General<sp/>Public<sp/>License<sp/>for<sp/>more<sp/>details.</highlight></codeline>
+<codeline lineno="17"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="18"><highlight class="comment"><sp/>*<sp/>You<sp/>should<sp/>have<sp/>received<sp/>a<sp/>copy<sp/>of<sp/>the<sp/>GNU<sp/>General<sp/>Public<sp/>License</highlight></codeline>
+<codeline lineno="19"><highlight class="comment"><sp/>*<sp/>along<sp/>with<sp/>this<sp/>program;<sp/>if<sp/>not,<sp/>write<sp/>to<sp/>the<sp/>Free<sp/>Software</highlight></codeline>
+<codeline lineno="20"><highlight class="comment"><sp/>*<sp/>Foundation,<sp/>Inc.,<sp/>59<sp/>Temple<sp/>Place,<sp/>Suite<sp/>330,<sp/>Boston,<sp/>MA<sp/><sp/>02111-1307<sp/>USA</highlight></codeline>
+<codeline lineno="21"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="22"><highlight class="comment"><sp/>*<sp/>This<sp/>version<sp/>may<sp/>be<sp/>optionally<sp/>licenced<sp/>under<sp/>the<sp/>GNU<sp/>LGPL<sp/>licence.</highlight></codeline>
+<codeline lineno="23"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="24"><highlight class="comment"><sp/>*<sp/>A<sp/>license<sp/>has<sp/>been<sp/>granted<sp/>to<sp/>Digium<sp/>(via<sp/>disclaimer)<sp/>for<sp/>the<sp/>use<sp/>of</highlight></codeline>
+<codeline lineno="25"><highlight class="comment"><sp/>*<sp/>this<sp/>code.</highlight></codeline>
+<codeline lineno="26"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="27"><highlight class="comment"><sp/>*<sp/>Some<sp/>filter<sp/>coefficients<sp/>via<sp/>&apos;WinFilter&apos;<sp/>http://www.winfilter.20m.com.</highlight></codeline>
+<codeline lineno="28"><highlight class="comment"><sp/>*</highlight></codeline>
+<codeline lineno="29"><highlight class="comment"><sp/>*<sp/>20160829<sp/><sp/><sp/><sp/><sp/><sp/>inad<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>added<sp/>rxlpf<sp/>rxhpf<sp/>txlpf<sp/>txhpf</highlight></codeline>
+<codeline lineno="30"><highlight class="comment"><sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="31"><highlight class="normal"></highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_RADIO_COEFFICIENTS_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="41"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_RADIO_COEFFICIENTS_H<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="42"><highlight class="normal"></highlight></codeline>
+<codeline lineno="43"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>frequencies<sp/>in<sp/>0.1<sp/>Hz<sp/>*/</highlight></codeline>
+<codeline lineno="45" refid="usbradioplus__radio__coefficients_8h_1a1dd6ef63be516cdb45a98f29d087aa80" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1a1dd6ef63be516cdb45a98f29d087aa80" kindref="member">dtmf_row</ref>[]<sp/>=<sp/>{6970,<sp/>7700,<sp/>8520,<sp/>9410};</highlight></codeline>
+<codeline lineno="47" refid="usbradioplus__radio__coefficients_8h_1a081b4db0c8d9308b230dff148134c769" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1a081b4db0c8d9308b230dff148134c769" kindref="member">dtmf_col</ref>[]<sp/>=<sp/>{12090,<sp/>13360,<sp/>14770,<sp/>16330};</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49" refid="usbradioplus__radio__coefficients_8h_1a5521aff4ededbe3321f75df585e5705e" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>CTCSS_COEF_INT<sp/>120</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="50"><highlight class="normal"></highlight></codeline>
+<codeline lineno="51" refid="usbradioplus__radio__coefficients_8h_1a52529d8cafc4d3004cdc8dd54ed52af3" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>CTCSS_SAMPLE_RATE<sp/>8000</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="52"><highlight class="normal"></highlight></codeline>
+<codeline lineno="53" refid="usbradioplus__radio__coefficients_8h_1a5b64a59624241db9c09e9c0b4d8b5442" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TDIV(x)<sp/>((CTCSS_SAMPLE_RATE<sp/>*<sp/>1000<sp/>/<sp/>(x))<sp/>+<sp/>5)<sp/>/<sp/>10</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="54"><highlight class="normal"></highlight></codeline>
+<codeline lineno="56" refid="usbradioplus__radio__coefficients_8h_1a3334f7c8d72365a42dfc433deced69f1" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1a3334f7c8d72365a42dfc433deced69f1" kindref="member">coef_ctcss_div</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/><sp/><sp/>2985,<sp/></highlight><highlight class="comment">/*<sp/>00<sp/><sp/><sp/>067.0<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/><sp/><sp/>2782,<sp/></highlight><highlight class="comment">/*<sp/>01<sp/><sp/><sp/>071.9<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="59"><highlight class="normal"><sp/><sp/><sp/><sp/>2688,<sp/></highlight><highlight class="comment">/*<sp/>02<sp/><sp/><sp/>074.4<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/><sp/><sp/>2597,<sp/></highlight><highlight class="comment">/*<sp/>03<sp/><sp/><sp/>077.0<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="61"><highlight class="normal"><sp/><sp/><sp/><sp/>2509,<sp/></highlight><highlight class="comment">/*<sp/>04<sp/><sp/><sp/>079.7<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/>2424,<sp/></highlight><highlight class="comment">/*<sp/>05<sp/><sp/><sp/>082.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="63"><highlight class="normal"><sp/><sp/><sp/><sp/>2342,<sp/></highlight><highlight class="comment">/*<sp/>06<sp/><sp/><sp/>085.4<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="64"><highlight class="normal"><sp/><sp/><sp/><sp/>2260,<sp/></highlight><highlight class="comment">/*<sp/>07<sp/><sp/><sp/>088.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="65"><highlight class="normal"><sp/><sp/><sp/><sp/>2186,<sp/></highlight><highlight class="comment">/*<sp/>08<sp/><sp/><sp/>091.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="66"><highlight class="normal"><sp/><sp/><sp/><sp/>2110,<sp/></highlight><highlight class="comment">/*<sp/>09<sp/><sp/><sp/>094.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/><sp/><sp/>2053,<sp/></highlight><highlight class="comment">/*<sp/>10<sp/><sp/><sp/>097.4<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/><sp/><sp/>2000,<sp/></highlight><highlight class="comment">/*<sp/>11<sp/><sp/><sp/>100.0<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/><sp/><sp/>1932,<sp/></highlight><highlight class="comment">/*<sp/>12<sp/><sp/><sp/>103.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/><sp/><sp/>1866,<sp/></highlight><highlight class="comment">/*<sp/>13<sp/><sp/><sp/>107.2<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="71"><highlight class="normal"><sp/><sp/><sp/><sp/>1803,<sp/></highlight><highlight class="comment">/*<sp/>14<sp/><sp/><sp/>110.9<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/>1742,<sp/></highlight><highlight class="comment">/*<sp/>15<sp/><sp/><sp/>114.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="73"><highlight class="normal"><sp/><sp/><sp/><sp/>1684,<sp/></highlight><highlight class="comment">/*<sp/>16<sp/><sp/><sp/>118.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="74"><highlight class="normal"><sp/><sp/><sp/><sp/>1626,<sp/></highlight><highlight class="comment">/*<sp/>17<sp/><sp/><sp/>123.0<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="75"><highlight class="normal"><sp/><sp/><sp/><sp/>1571,<sp/></highlight><highlight class="comment">/*<sp/>18<sp/><sp/><sp/>127.3<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/><sp/><sp/>1517,<sp/></highlight><highlight class="comment">/*<sp/>19<sp/><sp/><sp/>131.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/>1465,<sp/></highlight><highlight class="comment">/*<sp/>20<sp/><sp/><sp/>136.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/>1415,<sp/></highlight><highlight class="comment">/*<sp/>21<sp/><sp/><sp/>141.3<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/>1368,<sp/></highlight><highlight class="comment">/*<sp/>22<sp/><sp/><sp/>146.2<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/>1321,<sp/></highlight><highlight class="comment">/*<sp/>23<sp/><sp/><sp/>151.4<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/>1276,<sp/></highlight><highlight class="comment">/*<sp/>24<sp/><sp/><sp/>156.7<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="82"><highlight class="normal"><sp/><sp/><sp/><sp/>1233,<sp/></highlight><highlight class="comment">/*<sp/>25<sp/><sp/><sp/>162.2<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><sp/><sp/>1191,<sp/></highlight><highlight class="comment">/*<sp/>26<sp/><sp/><sp/>167.9<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="84"><highlight class="normal"><sp/><sp/><sp/><sp/>1151,<sp/></highlight><highlight class="comment">/*<sp/>27<sp/><sp/><sp/>173.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/><sp/><sp/>1112,<sp/></highlight><highlight class="comment">/*<sp/>28<sp/><sp/><sp/>179.9<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="86"><highlight class="normal"><sp/><sp/><sp/><sp/>1074,<sp/></highlight><highlight class="comment">/*<sp/>29<sp/><sp/><sp/>186.2<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/><sp/><sp/>1037,<sp/></highlight><highlight class="comment">/*<sp/>30<sp/><sp/><sp/>192.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/><sp/><sp/>983,<sp/><sp/></highlight><highlight class="comment">/*<sp/>31<sp/><sp/><sp/>203.5<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/><sp/><sp/>949,<sp/><sp/></highlight><highlight class="comment">/*<sp/>32<sp/><sp/><sp/>210.7<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/><sp/><sp/>917,<sp/><sp/></highlight><highlight class="comment">/*<sp/>33<sp/><sp/><sp/>218.1<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="91"><highlight class="normal"><sp/><sp/><sp/><sp/>886,<sp/><sp/></highlight><highlight class="comment">/*<sp/>34<sp/><sp/><sp/>225.7<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"><sp/><sp/><sp/><sp/>856,<sp/><sp/></highlight><highlight class="comment">/*<sp/>35<sp/><sp/><sp/>233.6<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/><sp/><sp/>827,<sp/><sp/></highlight><highlight class="comment">/*<sp/>36<sp/><sp/><sp/>241.8<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/><sp/><sp/>799<sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>37<sp/><sp/><sp/>250.3<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="95"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="96"><highlight class="normal"></highlight></codeline>
+<codeline lineno="98" refid="usbradioplus__radio__coefficients_8h_1ad49e408df0164ff224cb921d3765b4f4" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__radio__coefficients_8h_1ad49e408df0164ff224cb921d3765b4f4" kindref="member">freq_ctcss</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/>067.0,<sp/></highlight><highlight class="comment">/*<sp/>00<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/>071.9,<sp/></highlight><highlight class="comment">/*<sp/>01<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="101"><highlight class="normal"><sp/><sp/><sp/><sp/>074.4,<sp/></highlight><highlight class="comment">/*<sp/>02<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="102"><highlight class="normal"><sp/><sp/><sp/><sp/>077.0,<sp/></highlight><highlight class="comment">/*<sp/>03<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="103"><highlight class="normal"><sp/><sp/><sp/><sp/>079.7,<sp/></highlight><highlight class="comment">/*<sp/>04<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="104"><highlight class="normal"><sp/><sp/><sp/><sp/>082.5,<sp/></highlight><highlight class="comment">/*<sp/>05<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="105"><highlight class="normal"><sp/><sp/><sp/><sp/>085.4,<sp/></highlight><highlight class="comment">/*<sp/>06<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/>088.5,<sp/></highlight><highlight class="comment">/*<sp/>07<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/>091.5,<sp/></highlight><highlight class="comment">/*<sp/>08<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/>094.8,<sp/></highlight><highlight class="comment">/*<sp/>09<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/>097.4,<sp/></highlight><highlight class="comment">/*<sp/>10<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="110"><highlight class="normal"><sp/><sp/><sp/><sp/>100.0,<sp/></highlight><highlight class="comment">/*<sp/>11<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="111"><highlight class="normal"><sp/><sp/><sp/><sp/>103.5,<sp/></highlight><highlight class="comment">/*<sp/>12<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="112"><highlight class="normal"><sp/><sp/><sp/><sp/>107.2,<sp/></highlight><highlight class="comment">/*<sp/>13<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="113"><highlight class="normal"><sp/><sp/><sp/><sp/>110.9,<sp/></highlight><highlight class="comment">/*<sp/>14<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/><sp/><sp/>114.8,<sp/></highlight><highlight class="comment">/*<sp/>15<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="115"><highlight class="normal"><sp/><sp/><sp/><sp/>118.8,<sp/></highlight><highlight class="comment">/*<sp/>16<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/><sp/><sp/>123.0,<sp/></highlight><highlight class="comment">/*<sp/>17<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/><sp/><sp/>127.3,<sp/></highlight><highlight class="comment">/*<sp/>18<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="118"><highlight class="normal"><sp/><sp/><sp/><sp/>131.8,<sp/></highlight><highlight class="comment">/*<sp/>19<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/>136.5,<sp/></highlight><highlight class="comment">/*<sp/>20<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/>141.3,<sp/></highlight><highlight class="comment">/*<sp/>21<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/>146.2,<sp/></highlight><highlight class="comment">/*<sp/>22<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/>151.4,<sp/></highlight><highlight class="comment">/*<sp/>23<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/>156.7,<sp/></highlight><highlight class="comment">/*<sp/>24<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/>162.2,<sp/></highlight><highlight class="comment">/*<sp/>25<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/><sp/><sp/>167.9,<sp/></highlight><highlight class="comment">/*<sp/>26<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="126"><highlight class="normal"><sp/><sp/><sp/><sp/>173.8,<sp/></highlight><highlight class="comment">/*<sp/>27<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/>179.9,<sp/></highlight><highlight class="comment">/*<sp/>28<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="128"><highlight class="normal"><sp/><sp/><sp/><sp/>186.2,<sp/></highlight><highlight class="comment">/*<sp/>29<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="129"><highlight class="normal"><sp/><sp/><sp/><sp/>192.8,<sp/></highlight><highlight class="comment">/*<sp/>30<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="130"><highlight class="normal"><sp/><sp/><sp/><sp/>203.5,<sp/></highlight><highlight class="comment">/*<sp/>31<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="131"><highlight class="normal"><sp/><sp/><sp/><sp/>210.7,<sp/></highlight><highlight class="comment">/*<sp/>32<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="132"><highlight class="normal"><sp/><sp/><sp/><sp/>218.1,<sp/></highlight><highlight class="comment">/*<sp/>33<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="133"><highlight class="normal"><sp/><sp/><sp/><sp/>225.7,<sp/></highlight><highlight class="comment">/*<sp/>34<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><sp/><sp/>233.6,<sp/></highlight><highlight class="comment">/*<sp/>35<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/>241.8,<sp/></highlight><highlight class="comment">/*<sp/>36<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/>250.3<sp/><sp/></highlight><highlight class="comment">/*<sp/>37<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="137"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"></highlight></codeline>
+<codeline lineno="139"><highlight class="normal"></highlight><highlight class="comment">/*</highlight></codeline>
+<codeline lineno="140"><highlight class="comment"><sp/><sp/><sp/><sp/>noise<sp/>squelch<sp/>carrier<sp/>detect<sp/>filter</highlight></codeline>
+<codeline lineno="141"><highlight class="comment">*/</highlight></codeline>
+<codeline lineno="143" refid="usbradioplus__radio__coefficients_8h_1a1463e191fbee87505280f89c9e561748" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a1463e191fbee87505280f89c9e561748" kindref="member">taps_fir_bpf_noise_1</ref><sp/>=<sp/>66;</highlight></codeline>
+<codeline lineno="145" refid="usbradioplus__radio__coefficients_8h_1a5531dd8a911dcd4c76f435cf98c0cb64" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a5531dd8a911dcd4c76f435cf98c0cb64" kindref="member">gain_fir_bpf_noise_1</ref><sp/>=<sp/>65536;</highlight></codeline>
+<codeline lineno="147" refid="usbradioplus__radio__coefficients_8h_1a91d81000e6b1f96f8c42551ef8efaa73" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a91d81000e6b1f96f8c42551ef8efaa73" kindref="member">coef_fir_bpf_noise_1</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"><sp/><sp/><sp/><sp/>139,<sp/><sp/><sp/>-182,<sp/><sp/><sp/>-269,<sp/><sp/><sp/>-66,<sp/><sp/><sp/>56,<sp/><sp/><sp/><sp/>59,<sp/><sp/><sp/><sp/>250,<sp/><sp/><sp/>395,<sp/><sp/><sp/><sp/>-80,<sp/><sp/><sp/><sp/>-775,<sp/><sp/>-557,</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/>437,<sp/><sp/><sp/>779,<sp/><sp/><sp/><sp/>210,<sp/><sp/><sp/><sp/>-17,<sp/><sp/><sp/>123,<sp/><sp/><sp/>-692,<sp/><sp/>-1664,<sp/>-256,<sp/><sp/><sp/>2495,<sp/><sp/><sp/>2237,<sp/><sp/>-1018,</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"><sp/><sp/><sp/><sp/>-2133,<sp/>-478,<sp/><sp/><sp/>-1134,<sp/><sp/>-2711,<sp/>2642,<sp/><sp/>10453,<sp/>4010,<sp/><sp/>-14385,<sp/>-16488,<sp/>6954,<sp/><sp/>23030,</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"><sp/><sp/><sp/><sp/>6954,<sp/><sp/>-16488,<sp/>-14385,<sp/>4010,<sp/><sp/>10453,<sp/>2642,<sp/><sp/>-2711,<sp/>-1134,<sp/><sp/>-478,<sp/><sp/><sp/>-2133,<sp/>-1018,</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"><sp/><sp/><sp/><sp/>2237,<sp/><sp/>2495,<sp/><sp/><sp/>-256,<sp/><sp/><sp/>-1664,<sp/>-692,<sp/><sp/>123,<sp/><sp/><sp/>-17,<sp/><sp/><sp/>210,<sp/><sp/><sp/><sp/>779,<sp/><sp/><sp/><sp/>437,<sp/><sp/><sp/>-557,</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/>-775,<sp/><sp/>-80,<sp/><sp/><sp/><sp/>395,<sp/><sp/><sp/><sp/>250,<sp/><sp/><sp/>59,<sp/><sp/><sp/><sp/>56,<sp/><sp/><sp/><sp/>-66,<sp/><sp/><sp/>-269,<sp/><sp/><sp/>-182,<sp/><sp/><sp/>139,<sp/><sp/><sp/>257};</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"></highlight></codeline>
+<codeline lineno="156" refid="usbradioplus__radio__coefficients_8h_1a0f0229d3ebb0bac65e689ab3dd16090e" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a0f0229d3ebb0bac65e689ab3dd16090e" kindref="member">taps_fir_bpf_noise_2</ref><sp/>=<sp/>66;</highlight></codeline>
+<codeline lineno="158" refid="usbradioplus__radio__coefficients_8h_1aa60d518483f5c6326529bf3a665a44b9" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1aa60d518483f5c6326529bf3a665a44b9" kindref="member">gain_fir_bpf_noise_2</ref><sp/>=<sp/>65536;</highlight></codeline>
+<codeline lineno="160" refid="usbradioplus__radio__coefficients_8h_1acf17c5ca1cbe9194b157e0b7dd5dc921" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1acf17c5ca1cbe9194b157e0b7dd5dc921" kindref="member">coef_fir_bpf_noise_2</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/>581,<sp/><sp/><sp/>-251,<sp/><sp/><sp/>-1027,<sp/><sp/>-766,<sp/><sp/>63,<sp/><sp/><sp/>346,<sp/><sp/>148,<sp/><sp/><sp/>459,<sp/><sp/><sp/><sp/>1165,<sp/><sp/><sp/>847,<sp/><sp/><sp/>-824,</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"><sp/><sp/><sp/><sp/>-1994,<sp/>-1147,<sp/><sp/>462,<sp/><sp/><sp/><sp/>704,<sp/><sp/><sp/>32,<sp/><sp/><sp/>651,<sp/><sp/>2277,<sp/><sp/>1790,<sp/><sp/><sp/>-1635,<sp/><sp/>-4071,<sp/>-2240,</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/><sp/><sp/>1060,<sp/><sp/>1127,<sp/><sp/><sp/>-502,<sp/><sp/><sp/>1963,<sp/><sp/>7399,<sp/>5862,<sp/>-6693,<sp/>-17483,<sp/>-10387,<sp/>10549,<sp/>22110,</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/>10549,<sp/>-10387,<sp/>-17483,<sp/>-6693,<sp/>5862,<sp/>7399,<sp/>1963,<sp/><sp/>-502,<sp/><sp/><sp/>1127,<sp/><sp/><sp/>1060,<sp/><sp/>-2240,</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/>-4071,<sp/>-1635,<sp/><sp/>1790,<sp/><sp/><sp/>2277,<sp/><sp/>651,<sp/><sp/>32,<sp/><sp/><sp/>704,<sp/><sp/><sp/>462,<sp/><sp/><sp/><sp/>-1147,<sp/><sp/>-1994,<sp/>-824,</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/>847,<sp/><sp/><sp/>1165,<sp/><sp/><sp/>459,<sp/><sp/><sp/><sp/>148,<sp/><sp/><sp/>346,<sp/><sp/>63,<sp/><sp/><sp/>-766,<sp/><sp/>-1027,<sp/><sp/>-251,<sp/><sp/><sp/>581,<sp/><sp/><sp/>537};</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight></codeline>
+<codeline lineno="169" refid="usbradioplus__radio__coefficients_8h_1a9d7997a7f49451879b9e8834822a019a" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a9d7997a7f49451879b9e8834822a019a" kindref="member">taps_fir_lpf_3K_2</ref><sp/>=<sp/>28;</highlight></codeline>
+<codeline lineno="171" refid="usbradioplus__radio__coefficients_8h_1aa623f57a75e37988641601b4c05910e3" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1aa623f57a75e37988641601b4c05910e3" kindref="member">gain_fir_lpf_3K_2</ref><sp/>=<sp/>65536;</highlight></codeline>
+<codeline lineno="173" refid="usbradioplus__radio__coefficients_8h_1af2f5f0c2cd646d731bd704316fc0d337" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1af2f5f0c2cd646d731bd704316fc0d337" kindref="member">coef_fir_lpf_3K_2</ref>[]<sp/>=<sp/>{545,<sp/><sp/>-329,<sp/><sp/>-579,<sp/><sp/>369,<sp/><sp/>-843,<sp/><sp/>465,<sp/><sp/><sp/>-121,<sp/><sp/>-779,</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>1523,<sp/>-2051,<sp/>1683,<sp/><sp/>-64,<sp/><sp/>-4016,<sp/>19793,<sp/>19793,<sp/>-4016,</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-64,<sp/><sp/>1683,<sp/><sp/>-2051,<sp/>1523,<sp/>-779,<sp/><sp/>-121,<sp/><sp/>465,<sp/><sp/><sp/>-843,</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>369,<sp/><sp/>-579,<sp/><sp/>-329,<sp/><sp/>545</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"></highlight></codeline>
+<codeline lineno="178"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"></highlight></codeline>
+<codeline lineno="180"><highlight class="normal"></highlight><highlight class="comment">/**************************************************************</highlight></codeline>
+<codeline lineno="181"><highlight class="comment">Filter<sp/>type:<sp/>Low<sp/>Pass</highlight></codeline>
+<codeline lineno="182"><highlight class="comment">Filter<sp/>model:<sp/>Butterworth</highlight></codeline>
+<codeline lineno="183"><highlight class="comment">Filter<sp/>order:<sp/>9</highlight></codeline>
+<codeline lineno="184"><highlight class="comment">Sampling<sp/>Frequency:<sp/>8<sp/>KHz</highlight></codeline>
+<codeline lineno="185"><highlight class="comment">Cut<sp/>Frequency:<sp/>0.250000<sp/>KHz</highlight></codeline>
+<codeline lineno="186"><highlight class="comment">Coefficients<sp/>Quantization:<sp/>16-bit</highlight></codeline>
+<codeline lineno="187"><highlight class="comment">***************************************************************/</highlight></codeline>
+<codeline lineno="189" refid="usbradioplus__radio__coefficients_8h_1a30230e4d09c2d8cbba347947db607f37" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a30230e4d09c2d8cbba347947db607f37" kindref="member">taps_fir_lpf_250_11_64</ref><sp/>=<sp/>64;</highlight></codeline>
+<codeline lineno="191" refid="usbradioplus__radio__coefficients_8h_1af6502cf4ee49b6cb26211640a840613c" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1af6502cf4ee49b6cb26211640a840613c" kindref="member">gain_fir_lpf_250_11_64</ref><sp/>=<sp/>262144;</highlight></codeline>
+<codeline lineno="193" refid="usbradioplus__radio__coefficients_8h_1a5908694d372485c626ea7168afe862d5" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a5908694d372485c626ea7168afe862d5" kindref="member">coef_fir_lpf_250_11_64</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"><sp/><sp/><sp/><sp/>366,<sp/><sp/><sp/>-3,<sp/><sp/><sp/><sp/>-418,<sp/><sp/>-865,<sp/><sp/>-1328,<sp/>-1788,<sp/>-2223,<sp/>-2609,<sp/>-2922,<sp/>-3138,<sp/>-3232,<sp/>-3181,<sp/>-2967,</highlight></codeline>
+<codeline lineno="195"><highlight class="normal"><sp/><sp/><sp/><sp/>-2573,<sp/>-1988,<sp/>-1206,<sp/>-228,<sp/><sp/>937,<sp/><sp/><sp/>2277,<sp/><sp/>3767,<sp/><sp/>5379,<sp/><sp/>7077,<sp/><sp/>8821,<sp/><sp/>10564,<sp/>12259,<sp/>13855,</highlight></codeline>
+<codeline lineno="196"><highlight class="normal"><sp/><sp/><sp/><sp/>15305,<sp/>16563,<sp/>17588,<sp/>18346,<sp/>18812,<sp/>18968,<sp/>18812,<sp/>18346,<sp/>17588,<sp/>16563,<sp/>15305,<sp/>13855,<sp/>12259,</highlight></codeline>
+<codeline lineno="197"><highlight class="normal"><sp/><sp/><sp/><sp/>10564,<sp/>8821,<sp/><sp/>7077,<sp/><sp/>5379,<sp/><sp/>3767,<sp/><sp/>2277,<sp/><sp/>937,<sp/><sp/><sp/>-228,<sp/><sp/>-1206,<sp/>-1988,<sp/>-2573,<sp/>-2967,<sp/>-3181,</highlight></codeline>
+<codeline lineno="198"><highlight class="normal"><sp/><sp/><sp/><sp/>-3232,<sp/>-3138,<sp/>-2922,<sp/>-2609,<sp/>-2223,<sp/>-1788,<sp/>-1328,<sp/>-865,<sp/><sp/>-418,<sp/><sp/>-3,<sp/><sp/><sp/><sp/>366,<sp/><sp/><sp/>680};</highlight></codeline>
+<codeline lineno="199"><highlight class="normal"></highlight></codeline>
+<codeline lineno="200"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>de-emphasis<sp/>integrator<sp/>300<sp/>Hz<sp/>with<sp/>8KS/s<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="201"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>a0,<sp/>b1<sp/>*/</highlight></codeline>
+<codeline lineno="203" refid="usbradioplus__radio__coefficients_8h_1ac56c22353c46449afd26a54858c3f73d" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1ac56c22353c46449afd26a54858c3f73d" kindref="member">taps_int_lpf_300_1_2</ref><sp/>=<sp/>2;</highlight></codeline>
+<codeline lineno="205" refid="usbradioplus__radio__coefficients_8h_1a4eff5d4333039761de0d4e6632216961" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a4eff5d4333039761de0d4e6632216961" kindref="member">gain_int_lpf_300_1_2</ref><sp/>=<sp/>8182;</highlight></codeline>
+<codeline lineno="207" refid="usbradioplus__radio__coefficients_8h_1a9955038c84259db74adaad42f9dce2ad" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a9955038c84259db74adaad42f9dce2ad" kindref="member">coef_int_lpf_300_1_2</ref>[]<sp/>=<sp/>{6878,<sp/>25889};</highlight></codeline>
+<codeline lineno="208"><highlight class="normal"></highlight></codeline>
+<codeline lineno="209"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>pre-emphasis<sp/>differentiator<sp/>4000<sp/>Hz<sp/>with<sp/>8KS/s<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="210"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>a0,a1,b0,<sp/>*/</highlight></codeline>
+<codeline lineno="212" refid="usbradioplus__radio__coefficients_8h_1aeb65b02fa65746ee9e850c3bf583f3c0" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1aeb65b02fa65746ee9e850c3bf583f3c0" kindref="member">taps_int_hpf_4000_1_2</ref><sp/>=<sp/>2;</highlight></codeline>
+<codeline lineno="214" refid="usbradioplus__radio__coefficients_8h_1a9ec9d1f3efefcaa6ee1fa0c98facf431" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a9ec9d1f3efefcaa6ee1fa0c98facf431" kindref="member">gain_int_hpf_4000_1_2</ref><sp/>=<sp/>13404;<sp/></highlight><highlight class="comment">/*<sp/>hand<sp/>tweaked<sp/>for<sp/>unity<sp/>gain<sp/>at<sp/>1KHz<sp/>*/</highlight></codeline>
+<codeline lineno="216" refid="usbradioplus__radio__coefficients_8h_1adf5099c45a3ec14d86331184aa5042e2" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1adf5099c45a3ec14d86331184aa5042e2" kindref="member">coef_int_hpf_4000_1_2</ref>[]<sp/>=<sp/>{17610,<sp/>-17610,<sp/>2454};</highlight></codeline>
+<codeline lineno="217"><highlight class="normal"></highlight></codeline>
+<codeline lineno="218"><highlight class="normal"></highlight><highlight class="comment">/*</highlight></codeline>
+<codeline lineno="219"><highlight class="comment"><sp/><sp/><sp/><sp/>ctcss<sp/>decode<sp/>filter</highlight></codeline>
+<codeline lineno="220"><highlight class="comment">*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="221"><highlight class="normal"></highlight><highlight class="comment">/**************************************************************</highlight></codeline>
+<codeline lineno="222"><highlight class="comment">Filter<sp/>type:<sp/>Low<sp/>Pass</highlight></codeline>
+<codeline lineno="223"><highlight class="comment">Filter<sp/>model:<sp/>Butterworth</highlight></codeline>
+<codeline lineno="224"><highlight class="comment">Filter<sp/>order:<sp/>9</highlight></codeline>
+<codeline lineno="225"><highlight class="comment">Sampling<sp/>Frequency:<sp/>8<sp/>KHz</highlight></codeline>
+<codeline lineno="226"><highlight class="comment">Cut<sp/>Frequency:<sp/>0.250000<sp/>KHz</highlight></codeline>
+<codeline lineno="227"><highlight class="comment">Coefficients<sp/>Quantization:<sp/>16-bit</highlight></codeline>
+<codeline lineno="228"><highlight class="comment">***************************************************************/</highlight></codeline>
+<codeline lineno="230" refid="usbradioplus__radio__coefficients_8h_1ac1ccb21923649f1adf5899a272f91d97" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1ac1ccb21923649f1adf5899a272f91d97" kindref="member">taps_fir_lpf_250_9_66</ref><sp/>=<sp/>66;</highlight></codeline>
+<codeline lineno="232" refid="usbradioplus__radio__coefficients_8h_1a52e1025965489e6e24595223041ec985" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a52e1025965489e6e24595223041ec985" kindref="member">gain_fir_lpf_250_9_66</ref><sp/>=<sp/>262144;</highlight></codeline>
+<codeline lineno="234" refid="usbradioplus__radio__coefficients_8h_1abd492ef298930282f0257e3fe676b4fe" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1abd492ef298930282f0257e3fe676b4fe" kindref="member">coef_fir_lpf_250_9_66</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="235"><highlight class="normal"><sp/><sp/><sp/><sp/>676,<sp/><sp/><sp/>364,<sp/><sp/><sp/>-3,<sp/><sp/><sp/><sp/>-415,<sp/><sp/>-860,<sp/><sp/>-1320,<sp/>-1777,<sp/>-2209,<sp/>-2593,<sp/>-2904,<sp/>-3119,</highlight></codeline>
+<codeline lineno="236"><highlight class="normal"><sp/><sp/><sp/><sp/>-3212,<sp/>-3162,<sp/>-2949,<sp/>-2557,<sp/>-1975,<sp/>-1198,<sp/>-226,<sp/><sp/>932,<sp/><sp/><sp/>2263,<sp/><sp/>3744,<sp/><sp/>5346,</highlight></codeline>
+<codeline lineno="237"><highlight class="normal"><sp/><sp/><sp/><sp/>7034,<sp/><sp/>8767,<sp/><sp/>10499,<sp/>12184,<sp/>13770,<sp/>15211,<sp/>16462,<sp/>17480,<sp/>18234,<sp/>18696,<sp/>18852,</highlight></codeline>
+<codeline lineno="238"><highlight class="normal"><sp/><sp/><sp/><sp/>18696,<sp/>18234,<sp/>17480,<sp/>16462,<sp/>15211,<sp/>13770,<sp/>12184,<sp/>10499,<sp/>8767,<sp/><sp/>7034,<sp/><sp/>5346,</highlight></codeline>
+<codeline lineno="239"><highlight class="normal"><sp/><sp/><sp/><sp/>3744,<sp/><sp/>2263,<sp/><sp/>932,<sp/><sp/><sp/>-226,<sp/><sp/>-1198,<sp/>-1975,<sp/>-2557,<sp/>-2949,<sp/>-3162,<sp/>-3212,<sp/>-3119,</highlight></codeline>
+<codeline lineno="240"><highlight class="normal"><sp/><sp/><sp/><sp/>-2904,<sp/>-2593,<sp/>-2209,<sp/>-1777,<sp/>-1320,<sp/>-860,<sp/><sp/>-415,<sp/><sp/>-3,<sp/><sp/><sp/><sp/>364,<sp/><sp/><sp/>676,<sp/><sp/><sp/>927};</highlight></codeline>
+<codeline lineno="241"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>*************************************************************</highlight></codeline>
+<codeline lineno="242"><highlight class="comment">Filter<sp/>type:<sp/>Low<sp/>Pass</highlight></codeline>
+<codeline lineno="243"><highlight class="comment">Filter<sp/>model:<sp/>Butterworth</highlight></codeline>
+<codeline lineno="244"><highlight class="comment">Filter<sp/>order:<sp/>9</highlight></codeline>
+<codeline lineno="245"><highlight class="comment">Sampling<sp/>Frequency:<sp/>8<sp/>KHz</highlight></codeline>
+<codeline lineno="246"><highlight class="comment">Cut<sp/>Frequency:<sp/>0.215<sp/>KHz</highlight></codeline>
+<codeline lineno="247"><highlight class="comment">Coefficients<sp/>Quantization:<sp/>16-bit</highlight></codeline>
+<codeline lineno="248"><highlight class="comment">***************************************************************/</highlight></codeline>
+<codeline lineno="250" refid="usbradioplus__radio__coefficients_8h_1a48e74f52fddd2fbc63be633bd18e3ea1" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a48e74f52fddd2fbc63be633bd18e3ea1" kindref="member">taps_fir_lpf_215_9_88</ref><sp/>=<sp/>88;</highlight></codeline>
+<codeline lineno="252" refid="usbradioplus__radio__coefficients_8h_1a6d4b6e68d0050a6ac0b02c80269e3cc3" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int32_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a6d4b6e68d0050a6ac0b02c80269e3cc3" kindref="member">gain_fir_lpf_215_9_88</ref><sp/>=<sp/>524288;</highlight></codeline>
+<codeline lineno="254" refid="usbradioplus__radio__coefficients_8h_1a2a0d76bd49a6a71f9be39fb42b2e06bf" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a2a0d76bd49a6a71f9be39fb42b2e06bf" kindref="member">coef_fir_lpf_215_9_88</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="255"><highlight class="normal"><sp/><sp/><sp/><sp/>2038,<sp/><sp/>2049,<sp/><sp/>1991,<sp/><sp/>1859,<sp/><sp/>1650,<sp/><sp/>1363,<sp/><sp/>999,<sp/><sp/><sp/>562,<sp/><sp/><sp/>58,<sp/><sp/><sp/><sp/>-502,<sp/><sp/>-1106,<sp/>-1739,<sp/>-2382,</highlight></codeline>
+<codeline lineno="256"><highlight class="normal"><sp/><sp/><sp/><sp/>-3014,<sp/>-3612,<sp/>-4153,<sp/>-4610,<sp/>-4959,<sp/>-5172,<sp/>-5226,<sp/>-5098,<sp/>-4769,<sp/>-4222,<sp/>-3444,<sp/>-2430,<sp/>-1176,</highlight></codeline>
+<codeline lineno="257"><highlight class="normal"><sp/><sp/><sp/><sp/>310,<sp/><sp/><sp/>2021,<sp/><sp/>3937,<sp/><sp/>6035,<sp/><sp/>8284,<sp/><sp/>10648,<sp/>13086,<sp/>15550,<sp/>17993,<sp/>20363,<sp/>22608,<sp/>24677,<sp/>26522,</highlight></codeline>
+<codeline lineno="258"><highlight class="normal"><sp/><sp/><sp/><sp/>28099,<sp/>29369,<sp/>30299,<sp/>30867,<sp/>31058,<sp/>30867,<sp/>30299,<sp/>29369,<sp/>28099,<sp/>26522,<sp/>24677,<sp/>22608,<sp/>20363,</highlight></codeline>
+<codeline lineno="259"><highlight class="normal"><sp/><sp/><sp/><sp/>17993,<sp/>15550,<sp/>13086,<sp/>10648,<sp/>8284,<sp/><sp/>6035,<sp/><sp/>3937,<sp/><sp/>2021,<sp/><sp/>310,<sp/><sp/><sp/>-1176,<sp/>-2430,<sp/>-3444,<sp/>-4222,</highlight></codeline>
+<codeline lineno="260"><highlight class="normal"><sp/><sp/><sp/><sp/>-4769,<sp/>-5098,<sp/>-5226,<sp/>-5172,<sp/>-4959,<sp/>-4610,<sp/>-4153,<sp/>-3612,<sp/>-3014,<sp/>-2382,<sp/>-1739,<sp/>-1106,<sp/>-502,</highlight></codeline>
+<codeline lineno="261"><highlight class="normal"><sp/><sp/><sp/><sp/>58,<sp/><sp/><sp/><sp/>562,<sp/><sp/><sp/>999,<sp/><sp/><sp/>1363,<sp/><sp/>1650,<sp/><sp/>1859,<sp/><sp/>1991,<sp/><sp/>2049,<sp/><sp/>2038,<sp/><sp/>1966};</highlight></codeline>
+<codeline lineno="262"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>end<sp/>coef<sp/>fir_lpf_215_9_88<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="263"><highlight class="normal"></highlight></codeline>
+<codeline lineno="264"><highlight class="normal"></highlight><highlight class="comment">/***********************************************************************</highlight></codeline>
+<codeline lineno="265"><highlight class="comment"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Filter<sp/>Tables</highlight></codeline>
+<codeline lineno="266"><highlight class="comment">***********************************************************************/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="267"><highlight class="normal"></highlight></codeline>
+<codeline lineno="268" refid="usbradioplus__radio__coefficients_8h_1aa1da079b3e30639c54e32ec9bf548d12" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_COEFS<sp/>128</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="269"><highlight class="normal"></highlight></codeline>
+<codeline lineno="271" refid="structt__fir" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structt__fir" kindref="compound">t_fir</ref><sp/>{</highlight></codeline>
+<codeline lineno="273" refid="structt__fir_1a3570fe4938f437435347cb5a75415883" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref><sp/><ref refid="structt__fir_1a3570fe4938f437435347cb5a75415883" kindref="member">taps</ref>;</highlight></codeline>
+<codeline lineno="275" refid="structt__fir_1a2e96e5a0d1b5e36f6e212aac1e56053c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref><sp/><ref refid="structt__fir_1a2e96e5a0d1b5e36f6e212aac1e56053c" kindref="member">gain</ref>;</highlight></codeline>
+<codeline lineno="277" refid="structt__fir_1a6aeeac59a35417eed79ca5546f96a66b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref><sp/><ref refid="structt__fir_1a6aeeac59a35417eed79ca5546f96a66b" kindref="member">coefs</ref>[<ref refid="usbradioplus__radio__coefficients_8h_1aa1da079b3e30639c54e32ec9bf548d12" kindref="member">MAX_COEFS</ref>];</highlight></codeline>
+<codeline lineno="279" refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" refkind="member"><highlight class="normal">}<sp/><ref refid="usbradioplus__radio__coefficients_8h_1a5ccff0d27ea41a3d84460b2b1dd054fd" kindref="member">T_FIR</ref>;</highlight></codeline>
+<codeline lineno="280"><highlight class="normal"></highlight></codeline>
+<codeline lineno="282" refid="usbradioplus__radio__coefficients_8h_1a3d58f8f31618083fcb02f2777e925a18" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structt__fir" kindref="compound">T_FIR</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1a3d58f8f31618083fcb02f2777e925a18" kindref="member">fir_rxlpf</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="283"><highlight class="normal"></highlight></codeline>
+<codeline lineno="284"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>0<sp/>-<sp/>3<sp/>kHz<sp/>corner<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="285"><highlight class="normal"><sp/><sp/><sp/><sp/>{66,<sp/>131072,<sp/>{259,<sp/><sp/><sp/>58,<sp/><sp/><sp/><sp/>-185,<sp/><sp/>-437,<sp/><sp/>-654,<sp/>-793,<sp/>-815,<sp/><sp/>-696,<sp/><sp/>-434,<sp/><sp/>-48,<sp/><sp/><sp/>414,</highlight></codeline>
+<codeline lineno="286"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>886,<sp/><sp/><sp/>1284,<sp/><sp/>1523,<sp/><sp/>1529,<sp/><sp/>1254,<sp/>691,<sp/><sp/>-117,<sp/><sp/>-1078,<sp/>-2049,<sp/>-2854,<sp/>-3303,</highlight></codeline>
+<codeline lineno="287"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-3220,<sp/>-2472,<sp/>-995,<sp/><sp/>1187,<sp/><sp/>3952,<sp/>7086,<sp/>10300,<sp/>13270,<sp/>15672,<sp/>17236,<sp/>17778,</highlight></codeline>
+<codeline lineno="288"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>17236,<sp/>15672,<sp/>13270,<sp/>10300,<sp/>7086,<sp/>3952,<sp/>1187,<sp/><sp/>-995,<sp/><sp/>-2472,<sp/>-3220,<sp/>-3303,</highlight></codeline>
+<codeline lineno="289"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-2854,<sp/>-2049,<sp/>-1078,<sp/>-117,<sp/><sp/>691,<sp/><sp/>1254,<sp/>1529,<sp/><sp/>1523,<sp/><sp/>1284,<sp/><sp/>886,<sp/><sp/><sp/>414,</highlight></codeline>
+<codeline lineno="290"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-48,<sp/><sp/><sp/>-434,<sp/><sp/>-696,<sp/><sp/>-815,<sp/><sp/>-793,<sp/>-654,<sp/>-437,<sp/><sp/>-185,<sp/><sp/>58,<sp/><sp/><sp/><sp/>259,<sp/><sp/><sp/>393}},</highlight></codeline>
+<codeline lineno="291"><highlight class="normal"></highlight></codeline>
+<codeline lineno="292"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>1<sp/>-15th<sp/>order<sp/>Butterworth,<sp/>3.3<sp/>kHz<sp/>corner<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="293"><highlight class="normal"><sp/><sp/><sp/><sp/>{128,</highlight></codeline>
+<codeline lineno="294"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/>131072,</highlight></codeline>
+<codeline lineno="295"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/>{47,<sp/><sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>108,<sp/><sp/><sp/>114,<sp/><sp/><sp/>98,<sp/><sp/><sp/>61,<sp/><sp/><sp/>5,<sp/><sp/><sp/><sp/><sp/>-58,<sp/><sp/><sp/>-118,<sp/><sp/>-163,<sp/><sp/>-181,<sp/><sp/>-165,<sp/><sp/>-113,</highlight></codeline>
+<codeline lineno="296"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>66,<sp/><sp/><sp/><sp/>164,<sp/><sp/><sp/>242,<sp/><sp/><sp/>282,<sp/><sp/>269,<sp/><sp/>200,<sp/><sp/><sp/>82,<sp/><sp/><sp/><sp/>-68,<sp/><sp/><sp/>-226,<sp/><sp/>-358,<sp/><sp/>-435,<sp/><sp/>-434,</highlight></codeline>
+<codeline lineno="297"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-344,<sp/><sp/>-171,<sp/><sp/>59,<sp/><sp/><sp/><sp/>310,<sp/><sp/><sp/>531,<sp/><sp/>674,<sp/><sp/>697,<sp/><sp/><sp/>580,<sp/><sp/><sp/>325,<sp/><sp/><sp/>-32,<sp/><sp/><sp/>-436,<sp/><sp/>-807,<sp/><sp/>-1064,</highlight></codeline>
+<codeline lineno="298"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-1136,<sp/>-979,<sp/><sp/>-590,<sp/><sp/>-15,<sp/><sp/><sp/>655,<sp/><sp/>1296,<sp/>1767,<sp/><sp/>1937,<sp/><sp/>1716,<sp/><sp/>1080,<sp/><sp/>83,<sp/><sp/><sp/><sp/>-1133,<sp/>-2356,</highlight></codeline>
+<codeline lineno="299"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-3325,<sp/>-3772,<sp/>-3469,<sp/>-2270,<sp/>-151,<sp/>2776,<sp/>6267,<sp/><sp/>9965,<sp/><sp/>13454,<sp/>16317,<sp/>18195,<sp/>18849,<sp/>18195,</highlight></codeline>
+<codeline lineno="300"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>16317,<sp/>13454,<sp/>9965,<sp/><sp/>6267,<sp/><sp/>2776,<sp/>-151,<sp/>-2270,<sp/>-3469,<sp/>-3772,<sp/>-3325,<sp/>-2356,<sp/>-1133,<sp/>83,</highlight></codeline>
+<codeline lineno="301"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>1080,<sp/><sp/>1716,<sp/><sp/>1937,<sp/><sp/>1767,<sp/><sp/>1296,<sp/>655,<sp/><sp/>-15,<sp/><sp/><sp/>-590,<sp/><sp/>-979,<sp/><sp/>-1136,<sp/>-1064,<sp/>-807,<sp/><sp/>-436,</highlight></codeline>
+<codeline lineno="302"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>325,<sp/><sp/><sp/>580,<sp/><sp/><sp/>697,<sp/><sp/><sp/>674,<sp/><sp/>531,<sp/><sp/>310,<sp/><sp/><sp/>59,<sp/><sp/><sp/><sp/>-171,<sp/><sp/>-344,<sp/><sp/>-434,<sp/><sp/>-435,<sp/><sp/>-358,</highlight></codeline>
+<codeline lineno="303"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-226,<sp/><sp/>-68,<sp/><sp/><sp/>82,<sp/><sp/><sp/><sp/>200,<sp/><sp/><sp/>269,<sp/><sp/>282,<sp/><sp/>242,<sp/><sp/><sp/>164,<sp/><sp/><sp/>66,<sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>-113,<sp/><sp/>-165,<sp/><sp/>-181,</highlight></codeline>
+<codeline lineno="304"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-163,<sp/><sp/>-118,<sp/><sp/>-58,<sp/><sp/><sp/>5,<sp/><sp/><sp/><sp/><sp/>61,<sp/><sp/><sp/>98,<sp/><sp/><sp/>114,<sp/><sp/><sp/>108,<sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>47,<sp/><sp/><sp/><sp/>6}},</highlight></codeline>
+<codeline lineno="305"><highlight class="normal"></highlight></codeline>
+<codeline lineno="306"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>2<sp/>-<sp/>17th<sp/>order<sp/>Butterworth,<sp/>3.7<sp/>kHz<sp/>corner<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="307"><highlight class="normal"><sp/><sp/><sp/><sp/>{128,<sp/>131072,<sp/>{-43,<sp/><sp/><sp/>-100,<sp/><sp/>-140,<sp/>-149,<sp/>-122,<sp/><sp/>-62,<sp/><sp/><sp/>21,<sp/><sp/><sp/><sp/>109,<sp/><sp/><sp/>181,<sp/><sp/><sp/>216,<sp/><sp/><sp/>201,</highlight></codeline>
+<codeline lineno="308"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>135,<sp/><sp/><sp/>26,<sp/><sp/><sp/><sp/>-102,<sp/>-220,<sp/>-298,<sp/><sp/>-310,<sp/><sp/>-246,<sp/><sp/>-112,<sp/><sp/>66,<sp/><sp/><sp/><sp/>249,<sp/><sp/><sp/>392,</highlight></codeline>
+<codeline lineno="309"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>453,<sp/><sp/><sp/>408,<sp/><sp/><sp/>254,<sp/><sp/>16,<sp/><sp/><sp/>-253,<sp/><sp/>-494,<sp/><sp/>-638,<sp/><sp/>-639,<sp/><sp/>-477,<sp/><sp/>-172,<sp/><sp/>214,</highlight></codeline>
+<codeline lineno="310"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>597,<sp/><sp/><sp/>876,<sp/><sp/><sp/>967,<sp/><sp/>821,<sp/><sp/>444,<sp/><sp/><sp/>-99,<sp/><sp/><sp/>-693,<sp/><sp/>-1190,<sp/>-1448,<sp/>-1366,<sp/>-912,</highlight></codeline>
+<codeline lineno="311"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-148,<sp/><sp/>774,<sp/><sp/><sp/>1643,<sp/>2220,<sp/>2304,<sp/><sp/>1783,<sp/><sp/>678,<sp/><sp/><sp/>-834,<sp/><sp/>-2446,<sp/>-3754,<sp/>-4342,</highlight></codeline>
+<codeline lineno="312"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-3862,<sp/>-2119,<sp/>869,<sp/><sp/>4855,<sp/>9381,<sp/><sp/>13852,<sp/>17631,<sp/>20157,<sp/>21045,<sp/>20157,<sp/>17631,</highlight></codeline>
+<codeline lineno="313"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>13852,<sp/>9381,<sp/><sp/>4855,<sp/>869,<sp/><sp/>-2119,<sp/>-3862,<sp/>-4342,<sp/>-3754,<sp/>-2446,<sp/>-834,<sp/><sp/>678,</highlight></codeline>
+<codeline lineno="314"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>1783,<sp/><sp/>2304,<sp/><sp/>2220,<sp/>1643,<sp/>774,<sp/><sp/><sp/>-148,<sp/><sp/>-912,<sp/><sp/>-1366,<sp/>-1448,<sp/>-1190,<sp/>-693,</highlight></codeline>
+<codeline lineno="315"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-99,<sp/><sp/><sp/>444,<sp/><sp/><sp/>821,<sp/><sp/>967,<sp/><sp/>876,<sp/><sp/><sp/>597,<sp/><sp/><sp/>214,<sp/><sp/><sp/>-172,<sp/><sp/>-477,<sp/><sp/>-639,<sp/><sp/>-638,</highlight></codeline>
+<codeline lineno="316"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-494,<sp/><sp/>-253,<sp/><sp/>16,<sp/><sp/><sp/>254,<sp/><sp/>408,<sp/><sp/><sp/>453,<sp/><sp/><sp/>392,<sp/><sp/><sp/>249,<sp/><sp/><sp/>66,<sp/><sp/><sp/><sp/>-112,<sp/><sp/>-246,</highlight></codeline>
+<codeline lineno="317"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-310,<sp/><sp/>-298,<sp/><sp/>-220,<sp/>-102,<sp/>26,<sp/><sp/><sp/><sp/>135,<sp/><sp/><sp/>201,<sp/><sp/><sp/>216,<sp/><sp/><sp/>181,<sp/><sp/><sp/>109,<sp/><sp/><sp/>21,</highlight></codeline>
+<codeline lineno="318"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-62,<sp/><sp/><sp/>-122,<sp/><sp/>-149,<sp/>-140,<sp/>-100,<sp/><sp/>-43,<sp/><sp/><sp/>17}}};<sp/></highlight><highlight class="comment">/*<sp/>end<sp/>of<sp/>RX<sp/>LPFís<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="319"><highlight class="normal"></highlight></codeline>
+<codeline lineno="321" refid="usbradioplus__radio__coefficients_8h_1ae84d2cd44e5600a26317591924fbd184" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structt__fir" kindref="compound">T_FIR</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1ae84d2cd44e5600a26317591924fbd184" kindref="member">fir_rxhpf</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="322"><highlight class="normal"></highlight></codeline>
+<codeline lineno="323"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>0<sp/>-<sp/>300<sp/>Hz<sp/>HPF,<sp/>Butterworth,<sp/>9th<sp/>Order,<sp/>16<sp/>bit<sp/>coefs<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="324"><highlight class="normal"><sp/><sp/><sp/><sp/>{66,<sp/>32768,<sp/>{-141,<sp/><sp/>-114,<sp/><sp/>-77,<sp/><sp/><sp/>-30,<sp/><sp/><sp/>23,<sp/><sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>147,<sp/><sp/><sp/>210,<sp/><sp/><sp/>271,<sp/><sp/><sp/>324,<sp/><sp/><sp/>367,</highlight></codeline>
+<codeline lineno="325"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>396,<sp/><sp/><sp/>407,<sp/><sp/><sp/>396,<sp/><sp/><sp/>362,<sp/><sp/><sp/>302,<sp/><sp/><sp/>216,<sp/><sp/><sp/>102,<sp/><sp/><sp/>-36,<sp/><sp/><sp/>-199,<sp/><sp/>-383,<sp/><sp/>-585,</highlight></codeline>
+<codeline lineno="326"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-798,<sp/><sp/>-1017,<sp/>-1237,<sp/>-1452,<sp/>-1653,<sp/>-1836,<sp/>-1995,<sp/>-2124,<sp/>-2219,<sp/>-2278,<sp/>30463,</highlight></codeline>
+<codeline lineno="327"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-2278,<sp/>-2219,<sp/>-2124,<sp/>-1995,<sp/>-1836,<sp/>-1653,<sp/>-1452,<sp/>-1237,<sp/>-1017,<sp/>-798,<sp/><sp/>-585,</highlight></codeline>
+<codeline lineno="328"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-383,<sp/><sp/>-199,<sp/><sp/>-36,<sp/><sp/><sp/>102,<sp/><sp/><sp/>216,<sp/><sp/><sp/>302,<sp/><sp/><sp/>362,<sp/><sp/><sp/>396,<sp/><sp/><sp/>407,<sp/><sp/><sp/>396,<sp/><sp/><sp/>367,</highlight></codeline>
+<codeline lineno="329"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>324,<sp/><sp/><sp/>271,<sp/><sp/><sp/>210,<sp/><sp/><sp/>147,<sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>23,<sp/><sp/><sp/><sp/>-30,<sp/><sp/><sp/>-77,<sp/><sp/><sp/>-114,<sp/><sp/>-141,<sp/><sp/>-158}},</highlight></codeline>
+<codeline lineno="330"><highlight class="normal"></highlight></codeline>
+<codeline lineno="331"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>1<sp/>-<sp/>250<sp/>Hz<sp/>HPF,<sp/>9th<sp/>order<sp/>Butterworth<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="332"><highlight class="normal"><sp/><sp/><sp/><sp/>{128,<sp/>32768,<sp/>{32,<sp/><sp/><sp/><sp/>39,<sp/><sp/><sp/><sp/>45,<sp/><sp/><sp/><sp/>50,<sp/><sp/><sp/><sp/>53,<sp/><sp/><sp/><sp/>54,<sp/><sp/><sp/><sp/>54,<sp/><sp/><sp/><sp/>51,<sp/><sp/><sp/><sp/>45,<sp/><sp/><sp/><sp/>37,<sp/><sp/><sp/><sp/>27,</highlight></codeline>
+<codeline lineno="333"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>15,<sp/><sp/><sp/><sp/>0,<sp/><sp/><sp/><sp/><sp/>-15,<sp/><sp/><sp/>-32,<sp/><sp/><sp/>-50,<sp/><sp/><sp/>-68,<sp/><sp/><sp/>-85,<sp/><sp/><sp/>-100,<sp/><sp/>-114,<sp/><sp/>-124,<sp/><sp/>-130,</highlight></codeline>
+<codeline lineno="334"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-132,<sp/><sp/>-129,<sp/><sp/>-121,<sp/><sp/>-107,<sp/><sp/>-87,<sp/><sp/><sp/>-61,<sp/><sp/><sp/>-31,<sp/><sp/><sp/>4,<sp/><sp/><sp/><sp/><sp/>43,<sp/><sp/><sp/><sp/>85,<sp/><sp/><sp/><sp/>128,</highlight></codeline>
+<codeline lineno="335"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>171,<sp/><sp/><sp/>213,<sp/><sp/><sp/>251,<sp/><sp/><sp/>284,<sp/><sp/><sp/>310,<sp/><sp/><sp/>328,<sp/><sp/><sp/>334,<sp/><sp/><sp/>329,<sp/><sp/><sp/>310,<sp/><sp/><sp/>276,<sp/><sp/><sp/>228,</highlight></codeline>
+<codeline lineno="336"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>164,<sp/><sp/><sp/>84,<sp/><sp/><sp/><sp/>-9,<sp/><sp/><sp/><sp/>-118,<sp/><sp/>-240,<sp/><sp/>-372,<sp/><sp/>-514,<sp/><sp/>-663,<sp/><sp/>-815,<sp/><sp/>-968,<sp/><sp/>-1119,</highlight></codeline>
+<codeline lineno="337"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-1265,<sp/>-1403,<sp/>-1529,<sp/>-1641,<sp/>-1737,<sp/>-1813,<sp/>-1869,<sp/>-1904,<sp/>30856,<sp/>-1904,<sp/>-1869,</highlight></codeline>
+<codeline lineno="338"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-1813,<sp/>-1737,<sp/>-1641,<sp/>-1529,<sp/>-1403,<sp/>-1265,<sp/>-1119,<sp/>-968,<sp/><sp/>-815,<sp/><sp/>-663,<sp/><sp/>-514,</highlight></codeline>
+<codeline lineno="339"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-372,<sp/><sp/>-240,<sp/><sp/>-118,<sp/><sp/>-9,<sp/><sp/><sp/><sp/>84,<sp/><sp/><sp/><sp/>164,<sp/><sp/><sp/>228,<sp/><sp/><sp/>276,<sp/><sp/><sp/>310,<sp/><sp/><sp/>329,<sp/><sp/><sp/>334,</highlight></codeline>
+<codeline lineno="340"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>328,<sp/><sp/><sp/>310,<sp/><sp/><sp/>284,<sp/><sp/><sp/>251,<sp/><sp/><sp/>213,<sp/><sp/><sp/>171,<sp/><sp/><sp/>128,<sp/><sp/><sp/>85,<sp/><sp/><sp/><sp/>43,<sp/><sp/><sp/><sp/>4,<sp/><sp/><sp/><sp/><sp/>-31,</highlight></codeline>
+<codeline lineno="341"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-61,<sp/><sp/><sp/>-87,<sp/><sp/><sp/>-107,<sp/><sp/>-121,<sp/><sp/>-129,<sp/><sp/>-132,<sp/><sp/>-130,<sp/><sp/>-124,<sp/><sp/>-114,<sp/><sp/>-100,<sp/><sp/>-85,</highlight></codeline>
+<codeline lineno="342"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-68,<sp/><sp/><sp/>-50,<sp/><sp/><sp/>-32,<sp/><sp/><sp/>-15,<sp/><sp/><sp/>0,<sp/><sp/><sp/><sp/><sp/>15,<sp/><sp/><sp/><sp/>27,<sp/><sp/><sp/><sp/>37,<sp/><sp/><sp/><sp/>45,<sp/><sp/><sp/><sp/>51,<sp/><sp/><sp/><sp/>54,</highlight></codeline>
+<codeline lineno="343"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>54,<sp/><sp/><sp/><sp/>53,<sp/><sp/><sp/><sp/>50,<sp/><sp/><sp/><sp/>45,<sp/><sp/><sp/><sp/>39,<sp/><sp/><sp/><sp/>32,<sp/><sp/><sp/><sp/>25}}};<sp/></highlight><highlight class="comment">/*<sp/>end<sp/>of<sp/>RX<sp/>HPFís<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="344"><highlight class="normal"></highlight></codeline>
+<codeline lineno="346" refid="usbradioplus__radio__coefficients_8h_1aebdd03701f99603de35a47da2c369088" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structt__fir" kindref="compound">T_FIR</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1aebdd03701f99603de35a47da2c369088" kindref="member">fir_txhpf</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="347"><highlight class="normal"></highlight></codeline>
+<codeline lineno="348"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>0<sp/>-<sp/>300<sp/>Hz<sp/>HPF<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="349"><highlight class="normal"><sp/><sp/><sp/><sp/>{66,<sp/>32768,<sp/>{-141,<sp/><sp/>-114,<sp/><sp/>-77,<sp/><sp/><sp/>-30,<sp/><sp/><sp/>23,<sp/><sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>147,<sp/><sp/><sp/>210,<sp/><sp/><sp/>271,<sp/><sp/><sp/>324,<sp/><sp/><sp/>367,</highlight></codeline>
+<codeline lineno="350"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>396,<sp/><sp/><sp/>407,<sp/><sp/><sp/>396,<sp/><sp/><sp/>362,<sp/><sp/><sp/>302,<sp/><sp/><sp/>216,<sp/><sp/><sp/>102,<sp/><sp/><sp/>-36,<sp/><sp/><sp/>-199,<sp/><sp/>-383,<sp/><sp/>-585,</highlight></codeline>
+<codeline lineno="351"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-798,<sp/><sp/>-1017,<sp/>-1237,<sp/>-1452,<sp/>-1653,<sp/>-1836,<sp/>-1995,<sp/>-2124,<sp/>-2219,<sp/>-2278,<sp/>30463,</highlight></codeline>
+<codeline lineno="352"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-2278,<sp/>-2219,<sp/>-2124,<sp/>-1995,<sp/>-1836,<sp/>-1653,<sp/>-1452,<sp/>-1237,<sp/>-1017,<sp/>-798,<sp/><sp/>-585,</highlight></codeline>
+<codeline lineno="353"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-383,<sp/><sp/>-199,<sp/><sp/>-36,<sp/><sp/><sp/>102,<sp/><sp/><sp/>216,<sp/><sp/><sp/>302,<sp/><sp/><sp/>362,<sp/><sp/><sp/>396,<sp/><sp/><sp/>407,<sp/><sp/><sp/>396,<sp/><sp/><sp/>367,</highlight></codeline>
+<codeline lineno="354"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>324,<sp/><sp/><sp/>271,<sp/><sp/><sp/>210,<sp/><sp/><sp/>147,<sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>23,<sp/><sp/><sp/><sp/>-30,<sp/><sp/><sp/>-77,<sp/><sp/><sp/>-114,<sp/><sp/>-141,<sp/><sp/>-158}},</highlight></codeline>
+<codeline lineno="355"><highlight class="normal"></highlight></codeline>
+<codeline lineno="356"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>1<sp/>-<sp/>250<sp/>Hz<sp/>HPF,<sp/>7th<sp/>order<sp/>Butterworth<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="357"><highlight class="normal"><sp/><sp/><sp/><sp/>{96,<sp/>32768,<sp/>{-56,<sp/><sp/><sp/>-68,<sp/><sp/><sp/>-79,<sp/><sp/><sp/>-88,<sp/><sp/><sp/>-95,<sp/><sp/><sp/>-99,<sp/><sp/><sp/>-99,<sp/><sp/><sp/>-95,<sp/><sp/><sp/>-87,<sp/><sp/><sp/>-74,<sp/><sp/><sp/>-57,</highlight></codeline>
+<codeline lineno="358"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-35,<sp/><sp/><sp/>-9,<sp/><sp/><sp/><sp/>20,<sp/><sp/><sp/><sp/>53,<sp/><sp/><sp/><sp/>89,<sp/><sp/><sp/><sp/>125,<sp/><sp/><sp/>162,<sp/><sp/><sp/>197,<sp/><sp/><sp/>229,<sp/><sp/><sp/>257,<sp/><sp/><sp/>279,</highlight></codeline>
+<codeline lineno="359"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>292,<sp/><sp/><sp/>296,<sp/><sp/><sp/>289,<sp/><sp/><sp/>270,<sp/><sp/><sp/>238,<sp/><sp/><sp/>191,<sp/><sp/><sp/>130,<sp/><sp/><sp/>54,<sp/><sp/><sp/><sp/>-35,<sp/><sp/><sp/>-139,<sp/><sp/>-256,</highlight></codeline>
+<codeline lineno="360"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-383,<sp/><sp/>-519,<sp/><sp/>-662,<sp/><sp/>-810,<sp/><sp/>-958,<sp/><sp/>-1105,<sp/>-1248,<sp/>-1382,<sp/>-1505,<sp/>-1615,<sp/>-1709,</highlight></codeline>
+<codeline lineno="361"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-1784,<sp/>-1840,<sp/>-1873,<sp/>30876,<sp/>-1873,<sp/>-1840,<sp/>-1784,<sp/>-1709,<sp/>-1615,<sp/>-1505,<sp/>-1382,</highlight></codeline>
+<codeline lineno="362"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-1248,<sp/>-1105,<sp/>-958,<sp/><sp/>-810,<sp/><sp/>-662,<sp/><sp/>-519,<sp/><sp/>-383,<sp/><sp/>-256,<sp/><sp/>-139,<sp/><sp/>-35,<sp/><sp/><sp/>54,</highlight></codeline>
+<codeline lineno="363"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>130,<sp/><sp/><sp/>191,<sp/><sp/><sp/>238,<sp/><sp/><sp/>270,<sp/><sp/><sp/>289,<sp/><sp/><sp/>296,<sp/><sp/><sp/>292,<sp/><sp/><sp/>279,<sp/><sp/><sp/>257,<sp/><sp/><sp/>229,<sp/><sp/><sp/>197,</highlight></codeline>
+<codeline lineno="364"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>162,<sp/><sp/><sp/>125,<sp/><sp/><sp/>89,<sp/><sp/><sp/><sp/>53,<sp/><sp/><sp/><sp/>20,<sp/><sp/><sp/><sp/>-9,<sp/><sp/><sp/><sp/>-35,<sp/><sp/><sp/>-57,<sp/><sp/><sp/>-74,<sp/><sp/><sp/>-87,<sp/><sp/><sp/>-95,</highlight></codeline>
+<codeline lineno="365"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-99,<sp/><sp/><sp/>-99,<sp/><sp/><sp/>-95,<sp/><sp/><sp/>-88,<sp/><sp/><sp/>-79,<sp/><sp/><sp/>-68,<sp/><sp/><sp/>-56,<sp/><sp/><sp/>-44}},</highlight></codeline>
+<codeline lineno="366"><highlight class="normal"></highlight></codeline>
+<codeline lineno="367"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>2<sp/>-<sp/>120<sp/>Hz<sp/>HPF,<sp/>5th<sp/>order<sp/>Butterworth<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="368"><highlight class="normal"><sp/><sp/><sp/><sp/>{128,<sp/>32768,<sp/>{48,<sp/><sp/><sp/>53,<sp/><sp/><sp/>58,<sp/><sp/><sp/>63,<sp/><sp/><sp/>67,<sp/><sp/><sp/>72,<sp/><sp/><sp/>76,<sp/><sp/><sp/>80,<sp/><sp/><sp/>84,<sp/><sp/><sp/>87,<sp/><sp/><sp/>89,<sp/><sp/><sp/>91,<sp/><sp/><sp/><sp/>92,</highlight></codeline>
+<codeline lineno="369"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>93,<sp/><sp/><sp/>92,<sp/><sp/><sp/>91,<sp/><sp/><sp/>88,<sp/><sp/><sp/>85,<sp/><sp/><sp/>80,<sp/><sp/><sp/>74,<sp/><sp/><sp/>67,<sp/><sp/><sp/>58,<sp/><sp/><sp/>48,<sp/><sp/><sp/>37,<sp/><sp/><sp/>24,<sp/><sp/><sp/><sp/>10,</highlight></codeline>
+<codeline lineno="370"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-5,<sp/><sp/><sp/>-22,<sp/><sp/>-41,<sp/><sp/>-61,<sp/><sp/>-82,<sp/><sp/>-105,<sp/>-130,<sp/>-156,<sp/>-183,<sp/>-211,<sp/>-240,<sp/>-270,<sp/><sp/>-301,</highlight></codeline>
+<codeline lineno="371"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-332,<sp/>-365,<sp/>-397,<sp/>-430,<sp/>-463,<sp/>-496,<sp/>-528,<sp/>-561,<sp/>-592,<sp/>-623,<sp/>-653,<sp/>-681,<sp/><sp/>-709,</highlight></codeline>
+<codeline lineno="372"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-734,<sp/>-759,<sp/>-781,<sp/>-802,<sp/>-820,<sp/>-836,<sp/>-850,<sp/>-861,<sp/>-871,<sp/>-877,<sp/>-881,<sp/>31887,<sp/>-881,</highlight></codeline>
+<codeline lineno="373"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-877,<sp/>-871,<sp/>-861,<sp/>-850,<sp/>-836,<sp/>-820,<sp/>-802,<sp/>-781,<sp/>-759,<sp/>-734,<sp/>-709,<sp/>-681,<sp/><sp/>-653,</highlight></codeline>
+<codeline lineno="374"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-623,<sp/>-592,<sp/>-561,<sp/>-528,<sp/>-496,<sp/>-463,<sp/>-430,<sp/>-397,<sp/>-365,<sp/>-332,<sp/>-301,<sp/>-270,<sp/><sp/>-240,</highlight></codeline>
+<codeline lineno="375"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-211,<sp/>-183,<sp/>-156,<sp/>-130,<sp/>-105,<sp/>-82,<sp/><sp/>-61,<sp/><sp/>-41,<sp/><sp/>-22,<sp/><sp/>-5,<sp/><sp/><sp/>10,<sp/><sp/><sp/>24,<sp/><sp/><sp/><sp/>37,</highlight></codeline>
+<codeline lineno="376"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>48,<sp/><sp/><sp/>58,<sp/><sp/><sp/>67,<sp/><sp/><sp/>74,<sp/><sp/><sp/>80,<sp/><sp/><sp/>85,<sp/><sp/><sp/>88,<sp/><sp/><sp/>91,<sp/><sp/><sp/>92,<sp/><sp/><sp/>93,<sp/><sp/><sp/>92,<sp/><sp/><sp/>91,<sp/><sp/><sp/><sp/>89,</highlight></codeline>
+<codeline lineno="377"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>87,<sp/><sp/><sp/>84,<sp/><sp/><sp/>80,<sp/><sp/><sp/>76,<sp/><sp/><sp/>72,<sp/><sp/><sp/>67,<sp/><sp/><sp/>63,<sp/><sp/><sp/>58,<sp/><sp/><sp/>53,<sp/><sp/><sp/>48,<sp/><sp/><sp/>43}}</highlight></codeline>
+<codeline lineno="378"><highlight class="normal"></highlight></codeline>
+<codeline lineno="379"><highlight class="normal">};<sp/></highlight><highlight class="comment">/*<sp/>end<sp/>of<sp/>TX<sp/>HPFís<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="380"><highlight class="normal"></highlight></codeline>
+<codeline lineno="382" refid="usbradioplus__radio__coefficients_8h_1a7c5486d88c239de96946286742c4acbf" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">static</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="structt__fir" kindref="compound">T_FIR</ref><sp/><ref refid="usbradioplus__radio__coefficients_8h_1a7c5486d88c239de96946286742c4acbf" kindref="member">fir_txlpf</ref>[]<sp/>=<sp/>{</highlight></codeline>
+<codeline lineno="383"><highlight class="normal"></highlight></codeline>
+<codeline lineno="384"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>0<sp/>-<sp/>3<sp/>kHz<sp/>LPF<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="385"><highlight class="normal"><sp/><sp/><sp/><sp/>{66,<sp/>131072,<sp/>{259,<sp/><sp/><sp/>58,<sp/><sp/><sp/><sp/>-185,<sp/><sp/>-437,<sp/><sp/>-654,<sp/>-793,<sp/>-815,<sp/><sp/>-696,<sp/><sp/>-434,<sp/><sp/>-48,<sp/><sp/><sp/>414,</highlight></codeline>
+<codeline lineno="386"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>886,<sp/><sp/><sp/>1284,<sp/><sp/>1523,<sp/><sp/>1529,<sp/><sp/>1254,<sp/>691,<sp/><sp/>-117,<sp/><sp/>-1078,<sp/>-2049,<sp/>-2854,<sp/>-3303,</highlight></codeline>
+<codeline lineno="387"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-3220,<sp/>-2472,<sp/>-995,<sp/><sp/>1187,<sp/><sp/>3952,<sp/>7086,<sp/>10300,<sp/>13270,<sp/>15672,<sp/>17236,<sp/>17778,</highlight></codeline>
+<codeline lineno="388"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>17236,<sp/>15672,<sp/>13270,<sp/>10300,<sp/>7086,<sp/>3952,<sp/>1187,<sp/><sp/>-995,<sp/><sp/>-2472,<sp/>-3220,<sp/>-3303,</highlight></codeline>
+<codeline lineno="389"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-2854,<sp/>-2049,<sp/>-1078,<sp/>-117,<sp/><sp/>691,<sp/><sp/>1254,<sp/>1529,<sp/><sp/>1523,<sp/><sp/>1284,<sp/><sp/>886,<sp/><sp/><sp/>414,</highlight></codeline>
+<codeline lineno="390"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>-48,<sp/><sp/><sp/>-434,<sp/><sp/>-696,<sp/><sp/>-815,<sp/><sp/>-793,<sp/>-654,<sp/>-437,<sp/><sp/>-185,<sp/><sp/>58,<sp/><sp/><sp/><sp/>259,<sp/><sp/><sp/>393}},</highlight></codeline>
+<codeline lineno="391"><highlight class="normal"></highlight></codeline>
+<codeline lineno="392"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="comment">/*<sp/>Index<sp/>1<sp/>-<sp/>3.3<sp/>kHz<sp/>LPF,<sp/>15th<sp/>order<sp/>Butterworth<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="393"><highlight class="normal"><sp/><sp/><sp/><sp/>{128,</highlight></codeline>
+<codeline lineno="394"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/>131072,</highlight></codeline>
+<codeline lineno="395"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/>{47,<sp/><sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>108,<sp/><sp/><sp/>114,<sp/><sp/><sp/>98,<sp/><sp/><sp/>61,<sp/><sp/><sp/>5,<sp/><sp/><sp/><sp/><sp/>-58,<sp/><sp/><sp/>-118,<sp/><sp/>-163,<sp/><sp/>-181,<sp/><sp/>-165,<sp/><sp/>-113,</highlight></codeline>
+<codeline lineno="396"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>66,<sp/><sp/><sp/><sp/>164,<sp/><sp/><sp/>242,<sp/><sp/><sp/>282,<sp/><sp/>269,<sp/><sp/>200,<sp/><sp/><sp/>82,<sp/><sp/><sp/><sp/>-68,<sp/><sp/><sp/>-226,<sp/><sp/>-358,<sp/><sp/>-435,<sp/><sp/>-434,</highlight></codeline>
+<codeline lineno="397"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-344,<sp/><sp/>-171,<sp/><sp/>59,<sp/><sp/><sp/><sp/>310,<sp/><sp/><sp/>531,<sp/><sp/>674,<sp/><sp/>697,<sp/><sp/><sp/>580,<sp/><sp/><sp/>325,<sp/><sp/><sp/>-32,<sp/><sp/><sp/>-436,<sp/><sp/>-807,<sp/><sp/>-1064,</highlight></codeline>
+<codeline lineno="398"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-1136,<sp/>-979,<sp/><sp/>-590,<sp/><sp/>-15,<sp/><sp/><sp/>655,<sp/><sp/>1296,<sp/>1767,<sp/><sp/>1937,<sp/><sp/>1716,<sp/><sp/>1080,<sp/><sp/>83,<sp/><sp/><sp/><sp/>-1133,<sp/>-2356,</highlight></codeline>
+<codeline lineno="399"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-3325,<sp/>-3772,<sp/>-3469,<sp/>-2270,<sp/>-151,<sp/>2776,<sp/>6267,<sp/><sp/>9965,<sp/><sp/>13454,<sp/>16317,<sp/>18195,<sp/>18849,<sp/>18195,</highlight></codeline>
+<codeline lineno="400"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>16317,<sp/>13454,<sp/>9965,<sp/><sp/>6267,<sp/><sp/>2776,<sp/>-151,<sp/>-2270,<sp/>-3469,<sp/>-3772,<sp/>-3325,<sp/>-2356,<sp/>-1133,<sp/>83,</highlight></codeline>
+<codeline lineno="401"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>1080,<sp/><sp/>1716,<sp/><sp/>1937,<sp/><sp/>1767,<sp/><sp/>1296,<sp/>655,<sp/><sp/>-15,<sp/><sp/><sp/>-590,<sp/><sp/>-979,<sp/><sp/>-1136,<sp/>-1064,<sp/>-807,<sp/><sp/>-436,</highlight></codeline>
+<codeline lineno="402"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>325,<sp/><sp/><sp/>580,<sp/><sp/><sp/>697,<sp/><sp/><sp/>674,<sp/><sp/>531,<sp/><sp/>310,<sp/><sp/><sp/>59,<sp/><sp/><sp/><sp/>-171,<sp/><sp/>-344,<sp/><sp/>-434,<sp/><sp/>-435,<sp/><sp/>-358,</highlight></codeline>
+<codeline lineno="403"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-226,<sp/><sp/>-68,<sp/><sp/><sp/>82,<sp/><sp/><sp/><sp/>200,<sp/><sp/><sp/>269,<sp/><sp/>282,<sp/><sp/>242,<sp/><sp/><sp/>164,<sp/><sp/><sp/>66,<sp/><sp/><sp/><sp/>-32,<sp/><sp/><sp/>-113,<sp/><sp/>-165,<sp/><sp/>-181,</highlight></codeline>
+<codeline lineno="404"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>-163,<sp/><sp/>-118,<sp/><sp/>-58,<sp/><sp/><sp/>5,<sp/><sp/><sp/><sp/><sp/>61,<sp/><sp/><sp/>98,<sp/><sp/><sp/>114,<sp/><sp/><sp/>108,<sp/><sp/><sp/>83,<sp/><sp/><sp/><sp/>47,<sp/><sp/><sp/><sp/>6}}</highlight></codeline>
+<codeline lineno="405"><highlight class="normal"></highlight></codeline>
+<codeline lineno="406"><highlight class="normal">};<sp/></highlight><highlight class="comment">/*<sp/>end<sp/>of<sp/>TX<sp/>LPFís<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="407"><highlight class="normal"></highlight></codeline>
+<codeline lineno="408" refid="usbradioplus__radio__coefficients_8h_1a28aa75277785ca55043d900d9c1397d5" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_RXLPF<sp/>(sizeof(fir_rxlpf)<sp/>/<sp/>sizeof(T_FIR))</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="409"><highlight class="normal"></highlight></codeline>
+<codeline lineno="410" refid="usbradioplus__radio__coefficients_8h_1a224acac741e416859ed8332951b5e3ad" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_RXHPF<sp/>(sizeof(fir_rxhpf)<sp/>/<sp/>sizeof(T_FIR))</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="411"><highlight class="normal"></highlight></codeline>
+<codeline lineno="412" refid="usbradioplus__radio__coefficients_8h_1aec9bf3a43538678bcb8ca067f2af1faf" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_TXHPF<sp/>(sizeof(fir_txhpf)<sp/>/<sp/>sizeof(T_FIR))</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="413"><highlight class="normal"></highlight></codeline>
+<codeline lineno="414" refid="usbradioplus__radio__coefficients_8h_1a265d1c0b42e1036745fc19418217ef15" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_TXLPF<sp/>(sizeof(fir_txlpf)<sp/>/<sp/>sizeof(T_FIR))</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="415"><highlight class="normal"></highlight></codeline>
+<codeline lineno="416"><highlight class="normal"></highlight><highlight class="preprocessor">#endif<sp/></highlight><highlight class="comment">/*<sp/>USBRADIOPLUS_RADIO_COEFFICIENTS_H<sp/>*/</highlight><highlight class="preprocessor"></highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="417"><highlight class="normal"></highlight><highlight class="comment">/*<sp/>end<sp/>of<sp/>file<sp/>*/</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="418"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_radio_coefficients.h"/>
+  </compounddef>
+</doxygen>

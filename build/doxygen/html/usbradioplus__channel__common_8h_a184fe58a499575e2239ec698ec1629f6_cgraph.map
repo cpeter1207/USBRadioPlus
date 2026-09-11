@@ -1,0 +1,13 @@
+<map id="usb_device_swap" name="usb_device_swap">
+<area shape="rect" id="Node000001" title="Swap USB assignments between two configured radio channels." alt="" coords="5,104,141,129"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#af9d651ef4306fa517e13ef5153400281" title="Find a configured radio by channel name or USB&#45;device identifier." alt="" coords="229,5,312,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,102,133,71,188,40,215,29,217,34,190,44,136,76,92,106"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a2d71048af252d5e7caad5e51c3472436" title="Wake the HID worker after a control&#45;plane output request." alt="" coords="237,55,304,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="124,101,223,76,225,81,125,107"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a036fdcfe9b1d935dc860a85374b27b65" title="Request that audio and HID workers pause for a USB assignment swap." alt="" coords="189,104,352,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="142,114,176,114,176,119,142,119"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a532985c0b5a1209e9b7ac84fd9dc8850" title="Clear the swap handshake so device workers can resume." alt="" coords="190,153,351,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="125,127,207,147,205,153,124,132"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a4d1de60f69a502cfc5fa3030959f9d35" title="Test whether both workers have paused for a device swap." alt="" coords="189,203,352,228"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="93,127,136,157,190,188,210,196,208,201,188,192,133,162,90,132"/>
+</map>

@@ -1,0 +1,256 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structtxagc__link__statistics" kind="struct" language="C++" prot="public">
+    <compoundname>txagc_link_statistics</compoundname>
+    <includes refid="usbradioplus__processing__internal_8h" local="no">usbradioplus_processing_internal.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a2459c3fd5a642f296e343238b6285056" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long txagc_link_statistics::input_samples</definition>
+        <argsstring></argsstring>
+        <name>input_samples</name>
+        <qualifiedname>txagc_link_statistics::input_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Total PCM samples accepted by the callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="84" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="84" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1aaf399125f7ad5142af30d0e029513590" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long txagc_link_statistics::output_samples</definition>
+        <argsstring></argsstring>
+        <name>output_samples</name>
+        <qualifiedname>txagc_link_statistics::output_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Total processed PCM samples produced by the callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="86" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="86" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a89dd78e2037fcd78da05132af3e94096" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long txagc_link_statistics::startup_fill_samples</definition>
+        <argsstring></argsstring>
+        <name>startup_fill_samples</name>
+        <qualifiedname>txagc_link_statistics::startup_fill_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FFmpeg initial-latency fill reported by the graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="88" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="88" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a9f3883fdd7f4bf3c6c1497ec3fbaaa46" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long txagc_link_statistics::runtime_underrun_samples</definition>
+        <argsstring></argsstring>
+        <name>runtime_underrun_samples</name>
+        <qualifiedname>txagc_link_statistics::runtime_underrun_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>FFmpeg runtime shortfall reported by the graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="90" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="90" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a1a9ea6fbbc24d8c6855eddb32af8aa63" prot="public" static="no" mutable="no">
+        <type>unsigned long long</type>
+        <definition>unsigned long long txagc_link_statistics::processing_errors</definition>
+        <argsstring></argsstring>
+        <name>processing_errors</name>
+        <qualifiedname>txagc_link_statistics::processing_errors</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Link blocks passed through because the prepared graph could not run. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="92" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="92" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1ab3676acd12f5420e1af69b147f6f4c2c" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::input_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>input_peak_dbfs</name>
+        <qualifiedname>txagc_link_statistics::input_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current input level measurements from the callback-owned graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="94" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="94" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a7e075116728639d2901671302d5d5d2e" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::input_rms_dbfs</definition>
+        <argsstring></argsstring>
+        <name>input_rms_dbfs</name>
+        <qualifiedname>txagc_link_statistics::input_rms_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RMS input level for the most recently processed graph block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="96" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="96" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a2521a2fdf47c4a45e8dee581e63a84b4" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::input_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>input_max_peak_dbfs</name>
+        <qualifiedname>txagc_link_statistics::input_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum input measurements since graph preparation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="98" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="98" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a5a1ca9061e8b22e4229203296c3bae2d" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::input_max_rms_dbfs</definition>
+        <argsstring></argsstring>
+        <name>input_max_rms_dbfs</name>
+        <qualifiedname>txagc_link_statistics::input_max_rms_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest input RMS level since graph preparation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="100" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="100" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1ae1b852bdeb2f855f7b4ed032fb18a147" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::output_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>output_peak_dbfs</name>
+        <qualifiedname>txagc_link_statistics::output_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current output level measurements from the callback-owned graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="102" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="102" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1aed8f9656e159bc82522ee4c637506a98" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::output_rms_dbfs</definition>
+        <argsstring></argsstring>
+        <name>output_rms_dbfs</name>
+        <qualifiedname>txagc_link_statistics::output_rms_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RMS output level for the most recently processed graph block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="104" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="104" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1abb14c7f24c428b35e2a1596973206723" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::output_max_peak_dbfs</definition>
+        <argsstring></argsstring>
+        <name>output_max_peak_dbfs</name>
+        <qualifiedname>txagc_link_statistics::output_max_peak_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum output measurements since graph preparation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="106" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="106" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__link__statistics_1a389016db2c40cd06f95d5cbe964ac6d9" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_link_statistics::output_max_rms_dbfs</definition>
+        <argsstring></argsstring>
+        <name>output_max_rms_dbfs</name>
+        <qualifiedname>txagc_link_statistics::output_max_rms_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Largest output RMS level since graph preparation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="108" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="108" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" compoundref="usbradioplus__processing_8c" startline="2091" endline="2108">link_callback_copy_filter_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab60a5c6b66c97f8f4940e53aff53d127" compoundref="usbradioplus__processing_8c" startline="2073" endline="2084">link_callback_statistics_init</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Immutable scalar measurements published by the link audiohook callback. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_processing_internal.h" line="82" column="1" bodyfile="src/usbradioplus_processing_internal.h" bodystart="82" bodyend="109"/>
+    <listofallmembers>
+      <member refid="structtxagc__link__statistics_1a2521a2fdf47c4a45e8dee581e63a84b4" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>input_max_peak_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1a5a1ca9061e8b22e4229203296c3bae2d" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>input_max_rms_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1ab3676acd12f5420e1af69b147f6f4c2c" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>input_peak_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1a7e075116728639d2901671302d5d5d2e" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>input_rms_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1a2459c3fd5a642f296e343238b6285056" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>input_samples</name></member>
+      <member refid="structtxagc__link__statistics_1abb14c7f24c428b35e2a1596973206723" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>output_max_peak_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1a389016db2c40cd06f95d5cbe964ac6d9" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>output_max_rms_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1ae1b852bdeb2f855f7b4ed032fb18a147" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>output_peak_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1aed8f9656e159bc82522ee4c637506a98" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>output_rms_dbfs</name></member>
+      <member refid="structtxagc__link__statistics_1aaf399125f7ad5142af30d0e029513590" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>output_samples</name></member>
+      <member refid="structtxagc__link__statistics_1a1a9ea6fbbc24d8c6855eddb32af8aa63" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>processing_errors</name></member>
+      <member refid="structtxagc__link__statistics_1a9f3883fdd7f4bf3c6c1497ec3fbaaa46" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>runtime_underrun_samples</name></member>
+      <member refid="structtxagc__link__statistics_1a89dd78e2037fcd78da05132af3e94096" prot="public" virt="non-virtual"><scope>txagc_link_statistics</scope><name>startup_fill_samples</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

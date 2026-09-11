@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structtxagc__avfilter__slot" kind="struct" language="C++" prot="public">
+    <compoundname>txagc_avfilter_slot</compoundname>
+    <includes refid="avfilter__processor_8h" local="no">avfilter_processor.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+        <definition>struct txagc_avfilter* txagc_avfilter_slot::active</definition>
+        <argsstring></argsstring>
+        <name>active</name>
+        <qualifiedname>txagc_avfilter_slot::active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current prepared graph, or NULL before the first successful preparation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="132" column="24" bodyfile="src/txagc/avfilter_processor.h" bodystart="132" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1afa0a4514cae0ee7fc68c67509641e3a2" compoundref="avfilter__processor_8c" startline="1347" endline="1362">txagc_avfilter_slot_acquire</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a7e66dd098b4d60692a90a52e43400bff" compoundref="avfilter__processor_8c" startline="1340" endline="1345">txagc_avfilter_slot_active</referencedby>
+        <referencedby refid="avfilter__processor_8c_1af1ae11c50dd9221099d31a95424df38d" compoundref="avfilter__processor_8c" startline="1215" endline="1231">txagc_avfilter_slot_destroy</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a70d210ac5c3ee2edef04921b99248b75" compoundref="avfilter__processor_8c" startline="1205" endline="1213">txagc_avfilter_slot_init</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3c2e682493e4d45c45d6143910464906" compoundref="avfilter__processor_8c" startline="1265" endline="1294">txagc_avfilter_slot_publish_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" prot="public" static="no" mutable="no">
+        <type>_Atomic unsigned int</type>
+        <definition>_Atomic unsigned int txagc_avfilter_slot::readers</definition>
+        <argsstring></argsstring>
+        <name>readers</name>
+        <qualifiedname>txagc_avfilter_slot::readers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of real-time calls which may still hold the active graph pointer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="134" column="22" bodyfile="src/txagc/avfilter_processor.h" bodystart="134" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a08117f46f83685472606b65a70491e92" compoundref="avfilter__processor_8c" startline="1199" endline="1203">slot_wait_for_readers</referencedby>
+        <referencedby refid="avfilter__processor_8c_1afa0a4514cae0ee7fc68c67509641e3a2" compoundref="avfilter__processor_8c" startline="1347" endline="1362">txagc_avfilter_slot_acquire</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a70d210ac5c3ee2edef04921b99248b75" compoundref="avfilter__processor_8c" startline="1205" endline="1213">txagc_avfilter_slot_init</referencedby>
+        <referencedby refid="avfilter__processor_8c_1ae1c4865c92bb2c204de0e9710f474bf5" compoundref="avfilter__processor_8c" startline="1364" endline="1368">txagc_avfilter_slot_release</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__avfilter__slot_1a9bb39ca849b6371273ba6ee52051ee5e" prot="public" static="no" mutable="no">
+        <type>atomic_flag</type>
+        <definition>atomic_flag txagc_avfilter_slot::writer</definition>
+        <argsstring></argsstring>
+        <name>writer</name>
+        <qualifiedname>txagc_avfilter_slot::writer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Serializes control-plane replacement and teardown operations. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="136" column="13" bodyfile="src/txagc/avfilter_processor.h" bodystart="136" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a8ecd7b6343967718d3cf3c7d2c70713b" compoundref="avfilter__processor_8c" startline="1027" endline="1031">slot_lock</referencedby>
+        <referencedby refid="avfilter__processor_8c_1af3eb3a96d027952039477a2251c76173" compoundref="avfilter__processor_8c" startline="1036" endline="1039">slot_unlock</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a70d210ac5c3ee2edef04921b99248b75" compoundref="avfilter__processor_8c" startline="1205" endline="1213">txagc_avfilter_slot_init</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter__slot__node" kindref="compound">txagc_avfilter_slot_node</ref> *</type>
+        <definition>struct txagc_avfilter_slot_node* txagc_avfilter_slot::owned</definition>
+        <argsstring></argsstring>
+        <name>owned</name>
+        <qualifiedname>txagc_avfilter_slot::owned</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Control-plane owner of the graph currently published through active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="138" column="31" bodyfile="src/txagc/avfilter_processor.h" bodystart="138" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1af1ae11c50dd9221099d31a95424df38d" compoundref="avfilter__processor_8c" startline="1215" endline="1231">txagc_avfilter_slot_destroy</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a107363682a2697ec896dcdbe125bb834" compoundref="avfilter__processor_8c" startline="1296" endline="1324">txagc_avfilter_slot_prepare</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3c2e682493e4d45c45d6143910464906" compoundref="avfilter__processor_8c" startline="1265" endline="1294">txagc_avfilter_slot_publish_candidate</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Atomically published, control-plane-owned FFmpeg graph. </para>
+    </briefdescription>
+    <detaileddescription>
+<para>Reconfiguration builds a complete replacement graph before publishing it. The control plane and readers use sequentially consistent active-pointer and reader-count operations. A reader increments its count before loading the active graph; replacement publishes a new pointer before observing that count. The single order therefore either pins the old graph or makes the reader see the replacement, without a callback lock. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>txagc_avfilter_slot</label>
+        <link refid="structtxagc__avfilter__slot"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>active</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc_avfilter_slot_node</label>
+        <link refid="structtxagc__avfilter__slot__node"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>filter</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/txagc/avfilter_processor.h" line="130" column="1" bodyfile="src/txagc/avfilter_processor.h" bodystart="130" bodyend="139"/>
+    <listofallmembers>
+      <member refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" prot="public" virt="non-virtual"><scope>txagc_avfilter_slot</scope><name>active</name></member>
+      <member refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" prot="public" virt="non-virtual"><scope>txagc_avfilter_slot</scope><name>owned</name></member>
+      <member refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" prot="public" virt="non-virtual"><scope>txagc_avfilter_slot</scope><name>readers</name></member>
+      <member refid="structtxagc__avfilter__slot_1a9bb39ca849b6371273ba6ee52051ee5e" prot="public" virt="non-virtual"><scope>txagc_avfilter_slot</scope><name>writer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

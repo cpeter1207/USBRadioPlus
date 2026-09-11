@@ -1,0 +1,195 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__hardware__settings" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_hardware_settings</compoundname>
+    <includes refid="usbradioplus__processing_8h" local="no">usbradioplus_processing.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a6c54afedf06a43b54cf1b0eb6701c004" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_hardware_settings::input_gain_db</definition>
+        <argsstring></argsstring>
+        <name>input_gain_db</name>
+        <qualifiedname>usbradioplus_hardware_settings::input_gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input gain in DB. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="51" column="8" bodyfile="src/usbradioplus_processing.h" bodystart="51" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a77add100bf0d604a3d8b31f2aa13bfce" compoundref="usbradioplus__processing_8c" startline="3155" endline="3175">usbradioplus_processing_set_hardware_input_gain</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a976a8fde07404339a4ec85fdba760d91" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_hardware_settings::output_a_gain_db</definition>
+        <argsstring></argsstring>
+        <name>output_a_gain_db</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_a_gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output a gain in DB. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="53" column="8" bodyfile="src/usbradioplus_processing.h" bodystart="53" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a49b0f8318b4ce2576d00aa39276caa2d" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_hardware_settings::output_b_gain_db</definition>
+        <argsstring></argsstring>
+        <name>output_b_gain_db</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_b_gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output b gain in DB. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="55" column="8" bodyfile="src/usbradioplus_processing.h" bodystart="55" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a8ddfef79fde2b08c4eb047771189ca2f" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::input_gain_configured</definition>
+        <argsstring></argsstring>
+        <name>input_gain_configured</name>
+        <qualifiedname>usbradioplus_hardware_settings::input_gain_configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when input gain is explicitly configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="57" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="57" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a77add100bf0d604a3d8b31f2aa13bfce" compoundref="usbradioplus__processing_8c" startline="3155" endline="3175">usbradioplus_processing_set_hardware_input_gain</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a8bd10f008ed00a6750b58a7a0508fb23" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_a_gain_configured</definition>
+        <argsstring></argsstring>
+        <name>output_a_gain_configured</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_a_gain_configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when output a gain is explicitly configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="59" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="59" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a25be4dfbf6c1536e56f0259970f7a243" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_b_gain_configured</definition>
+        <argsstring></argsstring>
+        <name>output_b_gain_configured</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_b_gain_configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when output b gain is explicitly configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="61" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="61" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1ae830edd6de5f2f230a2e3aa3d96b7812" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_a_assignment</definition>
+        <argsstring></argsstring>
+        <name>output_a_assignment</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_a_assignment</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Voice/transmit-signaling routing for hardware output A. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="63" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="63" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a4f0f200345e92157984506ec0bd00786" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_b_assignment</definition>
+        <argsstring></argsstring>
+        <name>output_b_assignment</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_b_assignment</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Voice/transmit-signaling routing for hardware output B. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="65" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="65" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1a5b3664a3a71b2bb4f54c82d648e368a4" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_a_assignment_configured</definition>
+        <argsstring></argsstring>
+        <name>output_a_assignment_configured</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_a_assignment_configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when output a assignment is explicitly configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="67" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="67" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__hardware__settings_1ac6834146870e3d177826c08929fc01c0" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_hardware_settings::output_b_assignment_configured</definition>
+        <argsstring></argsstring>
+        <name>output_b_assignment_configured</name>
+        <qualifiedname>usbradioplus_hardware_settings::output_b_assignment_configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when output b assignment is explicitly configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="69" column="5" bodyfile="src/usbradioplus_processing.h" bodystart="69" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Resolved CM119 gains and playback routing. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_processing.h" line="49" column="1" bodyfile="src/usbradioplus_processing.h" bodystart="49" bodyend="70"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__hardware__settings_1a8ddfef79fde2b08c4eb047771189ca2f" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>input_gain_configured</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a6c54afedf06a43b54cf1b0eb6701c004" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>input_gain_db</name></member>
+      <member refid="structusbradioplus__hardware__settings_1ae830edd6de5f2f230a2e3aa3d96b7812" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_a_assignment</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a5b3664a3a71b2bb4f54c82d648e368a4" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_a_assignment_configured</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a8bd10f008ed00a6750b58a7a0508fb23" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_a_gain_configured</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a976a8fde07404339a4ec85fdba760d91" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_a_gain_db</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a4f0f200345e92157984506ec0bd00786" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_b_assignment</name></member>
+      <member refid="structusbradioplus__hardware__settings_1ac6834146870e3d177826c08929fc01c0" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_b_assignment_configured</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a25be4dfbf6c1536e56f0259970f7a243" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_b_gain_configured</name></member>
+      <member refid="structusbradioplus__hardware__settings_1a49b0f8318b4ce2576d00aa39276caa2d" prot="public" virt="non-virtual"><scope>usbradioplus_hardware_settings</scope><name>output_b_gain_db</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

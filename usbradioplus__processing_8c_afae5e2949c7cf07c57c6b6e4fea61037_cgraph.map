@@ -1,0 +1,24 @@
+<map id="txagc_callback" name="txagc_callback">
+<area shape="rect" id="Node000001" title="Process eligible link voice frames synchronously in the audiohook callback." alt="" coords="5,141,124,166"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a01c699c7fab1b0078e18ac64f4af0a1d" title="Refresh callback&#45;owned scalar measurements while the graph is retained." alt="" coords="183,5,329,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="75,139,115,98,171,55,181,49,184,54,173,60,119,102,79,142"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a276df92b7ec650c08dfb0f1226a78005" title="Publish a complete synchronous&#45;link statistics snapshot without a data race." alt="" coords="175,69,337,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="103,138,182,111,183,116,105,143"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a42f97cbbe252ab72960adc41a094d7dc" title="Process one mono block through an already prepared FFmpeg graph." alt="" coords="172,133,340,173"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="124,151,158,151,158,156,124,156"/>
+<area shape="rect" id="Node000010" href="$avfilter__processor_8c.html#afa0a4514cae0ee7fc68c67509641e3a2" title="Retain the graph current at the instant of acquisition for inspection." alt="" coords="185,197,327,237"/>
+<area shape="poly" id="edge10_Node000001_Node000010" title=" " alt="" coords="105,164,183,190,182,195,103,169"/>
+<area shape="rect" id="Node000011" href="$avfilter__processor_8c.html#ae1c4865c92bb2c204de0e9710f474bf5" title="Release a graph reference obtained by txagc_avfilter_slot_acquire()." alt="" coords="185,261,327,301"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="79,164,119,204,173,247,184,253,181,258,171,252,115,208,75,168"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#ac891b46547a6d98840314bd3114a6629" title="Drain available frames from one spectral measurement sink." alt="" coords="388,91,547,117"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="340,131,398,117,399,122,341,136"/>
+<area shape="rect" id="Node000008" href="$avfilter__processor_8c.html#aa9267bbf543edad3c49a9288605c4389" title="Find a source frame that the graph no longer references." alt="" coords="399,141,536,166"/>
+<area shape="poly" id="edge7_Node000004_Node000008" title=" " alt="" coords="340,151,385,151,385,156,340,156"/>
+<area shape="rect" id="Node000009" href="$avfilter__processor_8c.html#a8681a563c78717937cd38f3685472fb5" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="623,166,738,191"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="341,169,388,176,505,181,610,180,610,185,505,187,388,181,340,175"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="595,105,767,130"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="547,106,581,108,581,114,547,112"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="815,142,920,167"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="745,127,801,139,800,144,744,133"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="738,169,800,161,801,166,739,174"/>
+</map>

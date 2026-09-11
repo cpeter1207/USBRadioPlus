@@ -1,0 +1,5 @@
+<map id="usbradioplus_echo_start" name="usbradioplus_echo_start">
+<area shape="rect" id="Node000001" title="Begin legacy echo playback if captured samples are available." alt="" coords="5,5,185,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#ab7205161c9c7d576ac070d1993e15d21" title="Return the number of queued PCM samples." alt="" coords="233,5,440,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="186,15,220,15,220,21,186,21"/>
+</map>

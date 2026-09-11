@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__named__value" kind="struct" language="C++" prot="public">
+    <compoundname>urp_named_value</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__named__value_1a31b5bbe44818aa17ae4763c43da87cd8" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* urp_named_value::name</definition>
+        <argsstring></argsstring>
+        <name>name</name>
+        <qualifiedname>urp_named_value::name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Symbolic name used to identify this entry. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.c" line="16" column="12" bodyfile="src/usbradioplus_channel_core.c" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__named__value_1a628bc3e227defb09aa3c44d130d1bf1f" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int urp_named_value::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <qualifiedname>urp_named_value::value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Numeric assignment corresponding to the symbolic name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_core.c" line="18" column="5" bodyfile="src/usbradioplus_channel_core.c" bodystart="18" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__core_8c_1a3f183d84fe49d97606dba6dff09a900e" compoundref="usbradioplus__channel__core_8c" startline="28" endline="42">parse_named_value</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>A symbolic configuration value and its internal enumeration value. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_core.c" line="14" column="1" bodyfile="src/usbradioplus_channel_core.c" bodystart="14" bodyend="19"/>
+    <listofallmembers>
+      <member refid="structurp__named__value_1a31b5bbe44818aa17ae4763c43da87cd8" prot="public" virt="non-virtual"><scope>urp_named_value</scope><name>name</name></member>
+      <member refid="structurp__named__value_1a628bc3e227defb09aa3c44d130d1bf1f" prot="public" virt="non-virtual"><scope>urp_named_value</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

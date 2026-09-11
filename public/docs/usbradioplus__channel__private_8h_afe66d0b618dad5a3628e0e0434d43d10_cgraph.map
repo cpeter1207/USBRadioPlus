@@ -1,0 +1,5 @@
+<map id="_menu_rxsquelch" name="_menu_rxsquelch">
+<area shape="rect" id="Node000001" title="Display or adjust the live DSP squelch threshold." alt="" coords="5,5,141,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#aa833e3dc2b785a564be69735de34e040" title="Parse a normalized hardware tuning level in the range 0 through 999." alt="" coords="189,5,323,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="142,15,175,15,175,21,142,21"/>
+</map>

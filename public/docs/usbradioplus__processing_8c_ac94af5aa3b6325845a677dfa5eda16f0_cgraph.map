@@ -1,0 +1,13 @@
+<map id="read_chain" name="read_chain">
+<area shape="rect" id="Node000001" title="Read the configurable stages belonging to one source chain." alt="" coords="5,55,99,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#ad0e15804c47f309d5cdc7a9c77a59378" title="Read the explicitly supported one&#45;band or three&#45;band dynamics mode." alt="" coords="147,5,281,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="94,52,157,32,159,37,95,57"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="163,55,265,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="99,65,149,65,149,70,99,70"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a52dfb012da45db162cbd83c175999a8c" title="Parse a chain&#39;s optional processing order." alt="" coords="147,104,281,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="95,77,159,97,157,102,94,83"/>
+<area shape="rect" id="Node000005" href="$agc__core_8c.html#a7f491fc68e6176c73ba7248248524224" title="Parse the comma&#45;separated optional&#45;stage order; reject unknown and repeated stages." alt="" coords="329,104,515,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="281,114,316,114,316,119,281,119"/>
+<area shape="rect" id="Node000006" href="$agc__core_8c.html#a8e6b16574e1278971035a86a97373e95" title="Trim surrounding whitespace from a mutable stage&#45;order token." alt="" coords="563,104,655,129"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="515,114,549,114,549,119,515,119"/>
+</map>

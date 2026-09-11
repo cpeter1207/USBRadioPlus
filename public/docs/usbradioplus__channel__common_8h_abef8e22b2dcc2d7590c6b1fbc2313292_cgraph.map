@@ -1,0 +1,18 @@
+<map id="radio_dump" name="radio_dump">
+<area shape="rect" id="Node000001" title="Report active radio settings, hardware assignment, and detector state." alt="" coords="5,70,104,95"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#af0263ec590bec344ab0cc92f8283ca86" title="Read the resolved local&#45;receiver gain immediately after deemphasis." alt="" coords="166,5,305,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="95,67,158,47,160,52,96,72"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a70ca63957389000376704ec13c8b579a" title="Convert resolved hardware input gain to the normalized CM119 mixer scale." alt="" coords="157,70,313,95"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="104,80,144,80,144,85,104,85"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus__modern_8c.html#a07191939332b7ede4f7bdfc6a103743d" title="Read the acquired device&#39;s capture, playback, and sidetone mixer limits." alt="" coords="152,119,319,145"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="103,93,175,113,173,118,101,98"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a95124b3a47bea172607faa5d65e076b9" title="Copy a local chain from the immutable audio&#45;thread snapshot. This operation neither allocates nor loc..." alt="" coords="367,5,549,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="305,23,353,23,353,28,305,28"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a0abaa49ec73c29bc809d6d26f47a6657" title="Find a profile without modifying an immutable settings snapshot." alt="" coords="597,70,733,95"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="532,43,606,64,604,69,530,48"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__core_8c.html#a7f71cbe1b1f995f31a81e738441a81c4" title="Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale." alt="" coords="375,70,541,95"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="314,80,362,80,362,85,314,85"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#aa7e50df1c123aa5da2d2783f11a489a6" title="Copy hardware settings from the immutable audio&#45;thread snapshot. This operation neither allocates nor..." alt="" coords="367,120,549,160"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="286,93,368,114,366,119,285,98"/>
+<area shape="poly" id="edge7_Node000007_Node000004" title=" " alt="" coords="530,117,604,97,606,102,532,123"/>
+</map>

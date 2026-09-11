@@ -1,0 +1,21 @@
+<map id="txagc_avfilter_slot_init" name="txagc_avfilter_slot_init">
+<area shape="rect" id="Node000001" title="Initialize an empty atomically published graph slot." alt="" coords="972,55,1143,80"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a90897146b741433c19b3470c30f25da9" title="Attach a link&#45;processing audiohook and its datastore to an Asterisk channel." alt="" coords="821,55,924,80"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="958,70,924,70,924,65,958,65"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#af1678c5622a571de7a841c3959bffd49" title="Discover eligible link channels without holding settings_lock during Asterisk lookup." alt="" coords="656,55,773,80"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="808,70,773,70,773,65,808,65"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a9057248e08351a1a69893b6678c97ac8" title="Enable a named processing source in the live settings snapshot." alt="" coords="473,5,561,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="649,54,560,31,562,26,651,49"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a6d70fe6c81fb7923334f3d7afabb5eae" title="Periodically attach processing hooks until module shutdown is requested." alt="" coords="480,55,553,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="642,70,554,70,554,65,642,65"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#ac990152253c67eb53a57e96bfee3a83d" title="Validate and replace live processing settings." alt="" coords="425,105,608,145"/>
+<area shape="poly" id="edge7_Node000003_Node000008" title=" " alt="" coords="657,87,587,107,585,102,656,81"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#aae8223404088f39036d2f86bf10a63be" title="Load settings, register commands, and start the link&#45;hook scanner." alt="" coords="160,55,377,80"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="466,70,377,70,377,65,466,65"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="5,55,112,80"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="146,70,112,70,112,65,146,65"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__processing_8c.html#a3063adea017068fef6366a19c637bfcc" title="Reload and validate the unified configuration through the Asterisk CLI." alt="" coords="226,108,311,133"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="412,126,312,124,312,119,412,120"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="209,157,328,183"/>
+<area shape="poly" id="edge9_Node000008_Node000010" title=" " alt="" coords="412,146,329,162,328,157,411,141"/>
+</map>

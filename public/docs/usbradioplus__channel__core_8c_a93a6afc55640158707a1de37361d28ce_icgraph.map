@@ -1,0 +1,23 @@
+<map id="urp_mixer_to_gain_db" name="urp_mixer_to_gain_db">
+<area shape="rect" id="Node000001" title="Convert a 0 through 999 hardware mixer setting to dB relative to its 500 midpoint." alt="" coords="925,92,1091,117"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="527,120,648,145"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="912,114,649,131,648,126,911,108"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#aeb7377682eee04e43d83b6a9050becb6" title="Register, complete, or report native audio and FIFO statistics." alt="" coords="696,55,877,95"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="912,95,877,90,878,85,912,89"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a36c954cd8dfb330c23efb58d2d8503bb" title="Write current radio calibration values to the unified configuration." alt="" coords="713,5,860,31"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="970,88,876,46,838,33,839,28,878,41,972,83"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a790b10f1d33637669ca3ba674ab1d16c" title="Calibrate the hardware capture mixer from discriminator noise and optionally set squelch." alt="" coords="535,171,639,196"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="929,123,878,133,640,177,639,171,877,127,928,117"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,120,479,145"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="513,135,479,135,479,130,513,130"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,120,287,145"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="321,135,287,135,287,130,321,130"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,120,148,145"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="182,135,148,135,148,130,182,130"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#aba2ef44197e2e1293978c039a00c374d" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="542,69,633,95"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="726,37,697,46,623,72,621,67,695,41,724,32"/>
+<area shape="poly" id="edge9_Node000008_Node000003" title=" " alt="" coords="530,101,453,122,452,117,528,96"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="528,88,437,97,335,111,286,123,285,117,334,106,436,91,528,83"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="527,169,452,148,454,143,529,164"/>
+<area shape="poly" id="edge11_Node000009_Node000004" title=" " alt="" coords="521,182,432,175,334,161,282,148,284,143,335,155,433,169,522,177"/>
+</map>

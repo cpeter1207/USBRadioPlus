@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structlink__graph__transaction" kind="struct" language="C++" prot="public">
+    <compoundname>link_graph_transaction</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structlink__graph__transaction_1aab5174a1acdcca3fd0664937cc480f55" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structlink__graph__plan" kindref="compound">link_graph_plan</ref> *</type>
+        <definition>struct link_graph_plan* link_graph_transaction::plans</definition>
+        <argsstring></argsstring>
+        <name>plans</name>
+        <qualifiedname>link_graph_transaction::plans</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Locked and retained plans, released by publish or discard. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2389" column="22" bodyfile="src/usbradioplus_processing.c" bodystart="2389" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structlink__graph__transaction_1a6716d97adbaa3d0f2eaaab8583b30aed" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t link_graph_transaction::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <qualifiedname>link_graph_transaction::count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of prepared plans. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.c" line="2391" column="8" bodyfile="src/usbradioplus_processing.c" bodystart="2391" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>All active link candidates for one private settings generation. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>link_graph_plan</label>
+        <link refid="structlink__graph__plan"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>hook</edgelabel>
+        </childnode>
+        <childnode refid="9" relation="usage">
+          <edgelabel>candidate</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>link_graph_transaction</label>
+        <link refid="structlink__graph__transaction"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>plans</edgelabel>
+        </childnode>
+      </node>
+      <node id="5">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="6" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc_avfilter_slot</label>
+        <link refid="structtxagc__avfilter__slot"/>
+        <childnode refid="5" relation="usage">
+          <edgelabel>active</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+      <node id="9">
+        <label>txagc_avfilter_slot_candidate</label>
+        <link refid="structtxagc__avfilter__slot__candidate"/>
+        <childnode refid="7" relation="usage">
+          <edgelabel>node</edgelabel>
+        </childnode>
+      </node>
+      <node id="7">
+        <label>txagc_avfilter_slot_node</label>
+        <link refid="structtxagc__avfilter__slot__node"/>
+        <childnode refid="5" relation="usage">
+          <edgelabel>filter</edgelabel>
+        </childnode>
+      </node>
+      <node id="6">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="3">
+        <label>txagc_hook</label>
+        <link refid="structtxagc__hook"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>avfilter</edgelabel>
+        </childnode>
+        <childnode refid="8" relation="usage">
+          <edgelabel>published_statistics</edgelabel>
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="8">
+        <label>txagc_link_statistics</label>
+        <link refid="structtxagc__link__statistics"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_processing.c" line="2387" column="1" bodyfile="src/usbradioplus_processing.c" bodystart="2387" bodyend="2392"/>
+    <listofallmembers>
+      <member refid="structlink__graph__transaction_1a6716d97adbaa3d0f2eaaab8583b30aed" prot="public" virt="non-virtual"><scope>link_graph_transaction</scope><name>count</name></member>
+      <member refid="structlink__graph__transaction_1aab5174a1acdcca3fd0664937cc480f55" prot="public" virt="non-virtual"><scope>link_graph_transaction</scope><name>plans</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

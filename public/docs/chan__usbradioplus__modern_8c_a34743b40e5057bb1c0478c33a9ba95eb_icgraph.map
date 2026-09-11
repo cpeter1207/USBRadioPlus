@@ -1,0 +1,5 @@
+<map id="usbradio_new" name="usbradio_new">
+<area shape="rect" id="Node000001" title="Create an Asterisk channel and associate it with private radio state." alt="" coords="188,5,300,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="5,5,140,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="174,21,140,21,140,15,174,15"/>
+</map>

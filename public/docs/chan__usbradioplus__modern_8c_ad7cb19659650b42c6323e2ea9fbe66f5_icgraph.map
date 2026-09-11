@@ -1,0 +1,19 @@
+<map id="usbradio_log_fault" name="usbradio_log_fault">
+<area shape="rect" id="Node000001" title="Report a USB/audio fault and latch recovery state." alt="" coords="839,71,981,96"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="422,5,506,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="875,66,835,47,790,31,712,18,634,13,506,17,506,12,634,8,713,13,791,26,837,42,877,61"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4ca98bb8893d5dc1b01beea29144a02e" title="Acquire the configured ASL USB radio and initialize its audio/HID interface." alt="" coords="625,41,761,67"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="825,75,761,66,762,61,825,69"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a5106944da4644f88ded9f119082b2ab5" title="Submit one native DAC block and report whether PortAudio accepted it intact." alt="" coords="596,91,791,131"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="825,97,791,101,791,96,825,92"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,81,332,107"/>
+<area shape="poly" id="edge10_Node000001_Node000007" title=" " alt="" coords="880,106,839,128,791,146,721,158,648,162,575,161,505,154,380,132,289,109,290,104,381,127,506,149,576,155,648,157,720,153,790,141,837,123,878,101"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,56,113,81"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="409,28,114,65,113,59,408,22"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="611,44,506,27,506,22,612,39"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#ab4ba4ed9cbae098a2d1bf5e61aafd5e1" title="Write one native stereo frame, substituting silence while transmit is idle." alt="" coords="380,55,548,80"/>
+<area shape="poly" id="edge6_Node000005_Node000006" title=" " alt="" coords="582,93,530,83,531,77,583,87"/>
+<area shape="poly" id="edge9_Node000005_Node000007" title=" " alt="" coords="582,110,332,100,332,95,582,104"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="367,82,333,86,332,81,366,77"/>
+<area shape="poly" id="edge8_Node000007_Node000003" title=" " alt="" coords="147,83,113,79,114,73,148,78"/>
+</map>

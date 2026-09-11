@@ -1,0 +1,1015 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__processing_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_processing.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includes refid="agc__core_8h" local="yes">./txagc/agc_core.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <includedby refid="usbradioplus__processing__internal_8h" local="yes">src/usbradioplus_processing_internal.h</includedby>
+    <includedby refid="usbradioplus__tune__menu_8c" local="yes">src/usbradioplus_tune_menu.c</includedby>
+    <incdepgraph>
+      <node id="3">
+        <label>./txagc/agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_processing.h</label>
+        <link refid="usbradioplus__processing_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_processing.h</label>
+        <link refid="usbradioplus__processing_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_processing_internal.h</label>
+        <link refid="usbradioplus__processing__internal_8h"/>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structtxagc__chain" prot="public">txagc_chain</innerclass>
+    <innerclass refid="structusbradioplus__hardware__settings" prot="public">usbradioplus_hardware_settings</innerclass>
+    <innerclass refid="structusbradioplus__config__update" prot="public">usbradioplus_config_update</innerclass>
+    <sectiondef kind="enum">
+      <memberdef kind="enum" id="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009" prot="public" static="no" strong="no">
+        <type></type>
+        <name>txagc_source</name>
+        <enumvalue id="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" prot="public">
+          <name>TXAGC_LOCAL</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Native local-receiver processing source. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009aeaffa353f4b801e74ccd842c59c461c6" prot="public">
+          <name>TXAGC_LINK</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Incoming app_rpt link processing source. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009a9650887434b9cdc8df7f6c70e1c01700" prot="public">
+          <name>TXAGC_VOICE_TELEMETRY</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Combined transmitter voice and telemetry source. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009ab64c3efb7279981cff1299c057342201" prot="public">
+          <name>TXAGC_SOURCE_COUNT</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Number of processing sources. </para>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Source-chain indices for local, link, and voice/telemetry processing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="14" column="1" bodyfile="src/usbradioplus_processing.h" bodystart="14" bodyend="19"/>
+      </memberdef>
+      <memberdef kind="enum" id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38" prot="public" static="no" strong="no">
+        <type></type>
+        <name>usbradioplus_hardware_assignment</name>
+        <enumvalue id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a72e04bc79289cc2cbc1373d4ee739549" prot="public">
+          <name>USBRADIOPLUS_HW_OFF</name>
+          <initializer>= 0</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Silence on this hardware output. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a3ee1243839fd6282f862221364ff8214" prot="public">
+          <name>USBRADIOPLUS_HW_VOICE</name>
+          <initializer>= 1</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Processed voice without transmit signaling. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a28619486dac67f57e1b7a8c43aaef5ad" prot="public">
+          <name>USBRADIOPLUS_HW_CTCSS</name>
+          <initializer>= 2</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Transmit signaling without voice. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a6d5b6f2cefe23380470767a5be3120c8" prot="public">
+          <name>USBRADIOPLUS_HW_VOICE_CTCSS</name>
+          <initializer>= 3</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Processed voice mixed with transmit signaling. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a1a8e513a18251493f75ecc0c8c9ebad1" prot="public">
+          <name>USBRADIOPLUS_HW_AUX_VOICE</name>
+          <initializer>= 4</initializer>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Auxiliary voice routing. </para>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Hardware voice/transmit-signaling routing values shared with channel adapters.</para>
+<para>The configuration spells the signaling routes <computeroutput>ctcss</computeroutput> and <computeroutput>voice_ctcss</computeroutput>, but either route carries the selected CTCSS or DCS waveform. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="40" column="1" bodyfile="src/usbradioplus_processing.h" bodystart="40" bodyend="46"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a2142f868836deb99a034eac7389128f3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_local</definition>
+        <argsstring>(const char *channel, struct txagc_chain *chain)</argsstring>
+        <name>usbradioplus_processing_get_local</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref> *</type>
+          <declname>chain</declname>
+        </param>
+        <briefdescription>
+<para>Copy a channel&apos;s local-receiver chain under the settings mutex. An absent profile produces a zeroed, disabled chain. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chain</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processing-chain settings copied or updated by this operation. Omitted clean-slate receive, transmit, CTCSS, and DCS controls resolve to their shipped defaults when the channel profile exists. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="90" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="2985" bodyend="3010" declfile="src/usbradioplus_processing.h" declline="90" declcolumn="5"/>
+        <references refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" compoundref="usbradioplus__processing__internal_8h" startline="62">txagc_profile::chains</references>
+        <references refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" compoundref="usbradioplus__processing__internal_8h" startline="54">txagc_profile::channel</references>
+        <references refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" compoundref="usbradioplus__processing_8h" startline="24">txagc_chain::enabled</references>
+        <references refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" compoundref="usbradioplus__processing__internal_8h" startline="50">txagc_profile::enabled</references>
+        <references refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <references refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" compoundref="usbradioplus__processing_8c" startline="161">staged_settings</references>
+        <references refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" compoundref="usbradioplus__processing_8h" startline="15">TXAGC_LOCAL</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a95124b3a47bea172607faa5d65e076b9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_local_rt</definition>
+        <argsstring>(const char *channel, struct txagc_chain *chain)</argsstring>
+        <name>usbradioplus_processing_get_local_rt</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref> *</type>
+          <declname>chain</declname>
+        </param>
+        <briefdescription>
+<para>Copy a local chain from the immutable audio-thread snapshot. This operation neither allocates nor locks and is safe from an audio callback. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chain</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the resolved local chain. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="97" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3012" bodyend="3032" declfile="src/usbradioplus_processing.h" declline="97" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1a22d19cebf03394099a547b878a8ee3a1" compoundref="usbradioplus__processing_8c" startline="154">audio_settings</references>
+        <references refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" compoundref="usbradioplus__processing__internal_8h" startline="62">txagc_profile::chains</references>
+        <references refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" compoundref="usbradioplus__processing_8h" startline="24">txagc_chain::enabled</references>
+        <references refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" compoundref="usbradioplus__processing__internal_8h" startline="50">txagc_profile::enabled</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="structtxagc__audio__snapshot_1ae86131a72951b271becd89efe6dc88ee" compoundref="usbradioplus__processing_8c" startline="149">txagc_audio_snapshot::settings</references>
+        <references refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" compoundref="usbradioplus__processing_8h" startline="15">TXAGC_LOCAL</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1af0263ec590bec344ab0cc92f8283ca86" compoundref="usbradioplus__channel__common_8c" startline="989" endline="994">effective_rx_input_gain_db</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a1ec98f39aaa9de143d15bee683e35dba" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_composite</definition>
+        <argsstring>(const char *channel, struct txagc_chain *chain)</argsstring>
+        <name>usbradioplus_processing_get_composite</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref> *</type>
+          <declname>chain</declname>
+        </param>
+        <briefdescription>
+<para>Copy a channel&apos;s final voice/telemetry chain under the settings mutex. An absent profile produces a zeroed, disabled chain. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chain</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processing-chain settings copied or updated by this operation. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="104" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3234" bodyend="3258" declfile="src/usbradioplus_processing.h" declline="104" declcolumn="5"/>
+        <references refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" compoundref="usbradioplus__processing__internal_8h" startline="62">txagc_profile::chains</references>
+        <references refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" compoundref="usbradioplus__processing__internal_8h" startline="54">txagc_profile::channel</references>
+        <references refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" compoundref="usbradioplus__processing_8h" startline="24">txagc_chain::enabled</references>
+        <references refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" compoundref="usbradioplus__processing__internal_8h" startline="50">txagc_profile::enabled</references>
+        <references refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <references refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" compoundref="usbradioplus__processing_8c" startline="161">staged_settings</references>
+        <references refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009a9650887434b9cdc8df7f6c70e1c01700" compoundref="usbradioplus__processing_8h" startline="17">TXAGC_VOICE_TELEMETRY</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a9db6be6cd798f7c7f5e204928d50f114" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_composite_rt</definition>
+        <argsstring>(const char *channel, struct txagc_chain *chain)</argsstring>
+        <name>usbradioplus_processing_get_composite_rt</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref> *</type>
+          <declname>chain</declname>
+        </param>
+        <briefdescription>
+<para>Copy a final voice/telemetry chain from the immutable audio snapshot. This operation neither allocates nor locks and is safe from an audio callback. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>chain</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the resolved voice/telemetry chain. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="111" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3260" bodyend="3280" declfile="src/usbradioplus_processing.h" declline="111" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1a22d19cebf03394099a547b878a8ee3a1" compoundref="usbradioplus__processing_8c" startline="154">audio_settings</references>
+        <references refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" compoundref="usbradioplus__processing__internal_8h" startline="62">txagc_profile::chains</references>
+        <references refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" compoundref="usbradioplus__processing_8h" startline="24">txagc_chain::enabled</references>
+        <references refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" compoundref="usbradioplus__processing__internal_8h" startline="50">txagc_profile::enabled</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="structtxagc__audio__snapshot_1ae86131a72951b271becd89efe6dc88ee" compoundref="usbradioplus__processing_8c" startline="149">txagc_audio_snapshot::settings</references>
+        <references refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009a9650887434b9cdc8df7f6c70e1c01700" compoundref="usbradioplus__processing_8h" startline="17">TXAGC_VOICE_TELEMETRY</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a24a9d7f045911ae7397d9e59a88a2fb8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_hardware</definition>
+        <argsstring>(const char *channel, struct usbradioplus_hardware_settings *hardware)</argsstring>
+        <name>usbradioplus_processing_get_hardware</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref> *</type>
+          <declname>hardware</declname>
+        </param>
+        <briefdescription>
+<para>Copy a channel&apos;s hardware settings under the settings mutex. An absent profile produces zeroed settings with empty assignments and tone strings. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>hardware</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the resolved hardware settings. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="118" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3034" bodyend="3057" declfile="src/usbradioplus_processing.h" declline="118" declcolumn="5"/>
+        <references refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" compoundref="usbradioplus__processing__internal_8h" startline="54">txagc_profile::channel</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" compoundref="usbradioplus__processing__internal_8h" startline="56">txagc_profile::hardware</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" compoundref="usbradioplus__rpt__advanced_8c" startline="14">hardware</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <references refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" compoundref="usbradioplus__processing_8c" startline="161">staged_settings</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a28e17300ff924415d51dc9cd81bcb803" compoundref="usbradioplus__channel__common_8c" startline="2424" endline="2736">apply_processing_config_overrides</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1aa7e50df1c123aa5da2d2783f11a489a6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_hardware_rt</definition>
+        <argsstring>(const char *channel, struct usbradioplus_hardware_settings *hardware)</argsstring>
+        <name>usbradioplus_processing_get_hardware_rt</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref> *</type>
+          <declname>hardware</declname>
+        </param>
+        <briefdescription>
+<para>Copy hardware settings from the immutable audio-thread snapshot. This operation neither allocates nor locks and is safe from an audio callback. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>hardware</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives resolved hardware settings. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="126" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3059" bodyend="3079" declfile="src/usbradioplus_processing.h" declline="126" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1a22d19cebf03394099a547b878a8ee3a1" compoundref="usbradioplus__processing_8c" startline="154">audio_settings</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" compoundref="usbradioplus__processing__internal_8h" startline="56">txagc_profile::hardware</references>
+        <references refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" compoundref="usbradioplus__rpt__advanced_8c" startline="14">hardware</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="structtxagc__audio__snapshot_1ae86131a72951b271becd89efe6dc88ee" compoundref="usbradioplus__processing_8c" startline="149">txagc_audio_snapshot::settings</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a70ca63957389000376704ec13c8b579a" compoundref="usbradioplus__channel__common_8c" startline="1001" endline="1006">effective_rxmixerset</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aeab7db6e27d61608b8b56f697ff8c31e" compoundref="usbradioplus__channel__common_8c" startline="1022" endline="1027">effective_txmixa</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1ab658ea7ea27aea944109872bd1d92ab5" compoundref="usbradioplus__channel__common_8c" startline="1008" endline="1013">effective_txmixaset</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a411be591de10fb57b21a1e352fe39346" compoundref="usbradioplus__channel__common_8c" startline="1029" endline="1034">effective_txmixb</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a56a64663cee77a43455db316af6b0dae" compoundref="usbradioplus__channel__common_8c" startline="1015" endline="1020">effective_txmixbset</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a689708e18d1bdcbe3f20768ef4fc471a" compoundref="usbradioplus__channel__common_8c" startline="1062" endline="1113">refresh_processing_hardware</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a0c9ceb1d5f070d4cff0f785236b0223e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_get_option</definition>
+        <argsstring>(const char *channel, const char *section, const char *name, char *value, size_t value_size)</argsstring>
+        <name>usbradioplus_processing_get_option</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>section</declname>
+        </param>
+        <param>
+          <type>const char *</type>
+          <declname>name</declname>
+        </param>
+        <param>
+          <type>char *</type>
+          <declname>value</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>value_size</declname>
+        </param>
+        <briefdescription>
+<para>Copy a resolved non-audio option from a channel profile. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>section</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configuration section name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>name</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configuration option name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the NUL-terminated option value. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>value_size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output value capacity in bytes. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="136" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3081" bodyend="3130" declfile="src/usbradioplus_processing.h" declline="136" declcolumn="5"/>
+        <references refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" compoundref="usbradioplus__processing__internal_8h" startline="54">txagc_profile::channel</references>
+        <references refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</references>
+        <references refid="structsection__override_1ac55c345c265fe062b35488266ffc9887" compoundref="usbradioplus__processing__internal_8h" startline="42">section_override::name</references>
+        <references refid="structtxagc__profile_1a2ff7b53c25974f00eba40e6da458f027" compoundref="usbradioplus__processing__internal_8h" startline="52">txagc_profile::name</references>
+        <references refid="structtxagc__profile_1a35f1ae9dc6e4f1b5479ca21339921243" compoundref="usbradioplus__processing__internal_8h" startline="60">txagc_profile::override_count</references>
+        <references refid="structtxagc__profile_1af316d45ed046a6d121e937c66b0e56f6" compoundref="usbradioplus__processing__internal_8h" startline="58">txagc_profile::overrides</references>
+        <references refid="structsection__override_1afe5db4e0e49a5c6382496da3a5041ad6" compoundref="usbradioplus__processing__internal_8h" startline="40">section_override::section</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <references refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" compoundref="usbradioplus__processing_8c" startline="161">staged_settings</references>
+        <references refid="structsection__override_1a705e8d3aac18bce8bc072f7b491005a7" compoundref="usbradioplus__processing__internal_8h" startline="44">section_override::value</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a44660a10955a5753a0acd58c7efed563" compoundref="usbradioplus__channel__common_8c" startline="3556" endline="3616">load_config</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a676311420bf967b8410cb007a00cc998" compoundref="usbradioplus__channel__common_8c" startline="2097" endline="2107">processing_signaling_bool</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2afefc429dcf05c8e2f17a0a71e4977f" compoundref="usbradioplus__channel__common_8c" startline="2139" endline="2149">processing_signaling_double</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a55e17ab2abd4e90efc130bd5bbf73381" compoundref="usbradioplus__channel__common_8c" startline="2116" endline="2130">processing_signaling_int</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a02b9c49d218db997d6b5ae859d19096a" compoundref="usbradioplus__channel__common_8c" startline="2166" endline="2311">resolve_processing_signaling</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a36c954cd8dfb330c23efb58d2d8503bb" compoundref="usbradioplus__channel__common_8c" startline="2738" endline="2802">save_tuning_config</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a0764f7d26aa2f4ad51047fdba66b7e94" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_set_local_input_gain</definition>
+        <argsstring>(const char *channel, double gain_db)</argsstring>
+        <name>usbradioplus_processing_set_local_input_gain</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>gain_db</declname>
+        </param>
+        <briefdescription>
+<para>Apply a live local-receiver gain adjustment under the settings mutex. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>gain_db</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Gain in dB. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="143" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3132" bodyend="3153" declfile="src/usbradioplus_processing.h" declline="143" declcolumn="5"/>
+        <references refid="structtxagc__chain_1a9aa0b0ed3261ea90ef7bd0de8754de02" compoundref="usbradioplus__processing_8h" startline="32">txagc_chain::agc</references>
+        <references refid="structtxagc__profile_1a08db21b5858efa87ddc1eb7b65027e04" compoundref="usbradioplus__processing__internal_8h" startline="70">txagc_profile::agc</references>
+        <references refid="usbradioplus__processing_8c_1a50f51a6be22c6622dcee683a1638aa83" compoundref="usbradioplus__processing_8c" startline="206" endline="213">allocate_audio_snapshot</references>
+        <references refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" compoundref="usbradioplus__processing__internal_8h" startline="62">txagc_profile::chains</references>
+        <references refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</references>
+        <references refid="structtxagc__chain_1aff73247760691b6563113adacb9c0960" compoundref="usbradioplus__processing_8h" startline="28">txagc_chain::input_gain_configured</references>
+        <references refid="structtxagc__config_1abc98912c9bdde7eb1f89136889b59ddd" compoundref="agc__core_8h" startline="63">txagc_config::input_gain_db</references>
+        <references refid="usbradioplus__processing_8c_1a42c254f3835142b3c3a2cb97c2b77336" compoundref="usbradioplus__processing_8c" startline="232" endline="236">publish_audio_settings_locked</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <references refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" compoundref="usbradioplus__processing_8h" startline="15">TXAGC_LOCAL</references>
+        <referencedby refid="chan__usbradioplus_8c_1a00016e9456896b92939cca92cd791693" compoundref="chan__usbradioplus_8c" startline="2360" endline="2395">_menu_rxvoice</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a08915c44a5883f344e706eef6223c6df" compoundref="usbradioplus__channel__common_8c" startline="1410" endline="1485">tune_rxvoice</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a77add100bf0d604a3d8b31f2aa13bfce" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_set_hardware_input_gain</definition>
+        <argsstring>(const char *channel, double gain_db)</argsstring>
+        <name>usbradioplus_processing_set_hardware_input_gain</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>gain_db</declname>
+        </param>
+        <briefdescription>
+<para>Apply a live CM119 input-gain adjustment under the settings mutex. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>gain_db</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Gain in dB. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success, one if the channel/option is absent, or -1 for invalid arguments. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="149" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3155" bodyend="3175" declfile="src/usbradioplus_processing.h" declline="149" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1a50f51a6be22c6622dcee683a1638aa83" compoundref="usbradioplus__processing_8c" startline="206" endline="213">allocate_audio_snapshot</references>
+        <references refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</references>
+        <references refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" compoundref="usbradioplus__processing__internal_8h" startline="56">txagc_profile::hardware</references>
+        <references refid="structusbradioplus__hardware__settings_1a8ddfef79fde2b08c4eb047771189ca2f" compoundref="usbradioplus__processing_8h" startline="57">usbradioplus_hardware_settings::input_gain_configured</references>
+        <references refid="structusbradioplus__hardware__settings_1a6c54afedf06a43b54cf1b0eb6701c004" compoundref="usbradioplus__processing_8h" startline="51">usbradioplus_hardware_settings::input_gain_db</references>
+        <references refid="usbradioplus__processing_8c_1a42c254f3835142b3c3a2cb97c2b77336" compoundref="usbradioplus__processing_8c" startline="232" endline="236">publish_audio_settings_locked</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1ae32c25fff68f285420da1b1cbd895d9e" compoundref="usbradioplus__processing_8c" startline="143">settings_lock</references>
+        <referencedby refid="chan__usbradioplus_8c_1a00016e9456896b92939cca92cd791693" compoundref="chan__usbradioplus_8c" startline="2360" endline="2395">_menu_rxvoice</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a790b10f1d33637669ca3ba674ab1d16c" compoundref="chan__usbradioplus_8c" startline="2206" endline="2358">tune_rxinput</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1a65965ebc546f65ec0a23a58eb4d777b3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_save_input_gains</definition>
+        <argsstring>(const char *channel, double hardware_gain_db, double local_gain_db)</argsstring>
+        <name>usbradioplus_processing_save_input_gains</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>hardware_gain_db</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>local_gain_db</declname>
+        </param>
+        <briefdescription>
+<para>Persist the hardware and local-receiver input gains. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>hardware_gain_db</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Hardware capture gain in dB relative to mixer midpoint. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>local_gain_db</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Post-deemphasis local receive gain in dB. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="156" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3217" bodyend="3232" declfile="src/usbradioplus_processing.h" declline="156" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1aa11d8d9df4edb892604b97d2e3df7904" compoundref="usbradioplus__processing_8c" startline="3177" endline="3215">usbradioplus_processing_save_options</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1aa11d8d9df4edb892604b97d2e3df7904" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_save_options</definition>
+        <argsstring>(const char *channel, const struct usbradioplus_config_update *updates, size_t update_count)</argsstring>
+        <name>usbradioplus_processing_save_options</name>
+        <param>
+          <type>const char *</type>
+          <declname>channel</declname>
+        </param>
+        <param>
+          <type>const struct <ref refid="structusbradioplus__config__update" kindref="compound">usbradioplus_config_update</ref> *</type>
+          <declname>updates</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>update_count</declname>
+        </param>
+        <briefdescription>
+<para>Persist tuning values to the selected channel&apos;s configuration sections. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Configured radio channel name. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>updates</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Array of configuration assignments to persist. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>update_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of assignments in updates. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="164" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3177" bodyend="3215" declfile="src/usbradioplus_processing.h" declline="164" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1a42bf63540ee0039a3a23db1b5ec3202b" compoundref="usbradioplus__processing_8c" startline="35">CONFIG_FILE</references>
+        <references refid="usbradioplus__processing__internal_8h_1a2e0eb9a6dd00bed963b29e2f4b34fa85" compoundref="usbradioplus__processing__internal_8h" startline="32">MAX_CONFIG_SECTION</references>
+        <references refid="usbradioplus__processing_8c_1ab608b17eb36972ea6e363a8017411037" compoundref="usbradioplus__processing_8c" startline="1880" endline="1896">resolve_profile_section</references>
+        <references refid="usbradioplus__config_8c_1a64eeff2da27607aacf81861f6345c0e2" compoundref="usbradioplus__config_8c" startline="14" endline="45">usbradioplus_config_variable_update</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a36c954cd8dfb330c23efb58d2d8503bb" compoundref="usbradioplus__channel__common_8c" startline="2738" endline="2802">save_tuning_config</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a65965ebc546f65ec0a23a58eb4d777b3" compoundref="usbradioplus__processing_8c" startline="3217" endline="3232">usbradioplus_processing_save_input_gains</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1aae8223404088f39036d2f86bf10a63be" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_load</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_processing_load</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Load settings, register commands, and start the link-hook scanner. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Asterisk module-load success, decline, or failure status. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="170" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3295" bodyend="3316" declfile="src/usbradioplus_processing.h" declline="170" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1aa6f47039356c1d945ce188c4e2b5dde2" compoundref="usbradioplus__processing_8c" startline="256" endline="265">clear_audio_settings</references>
+        <references refid="usbradioplus__processing_8c_1aa56f9d6ac62fa0b4032ddab024230e3a" compoundref="usbradioplus__processing_8c" startline="2977" endline="2983">cli_entries</references>
+        <references refid="usbradioplus__processing_8c_1a62ee21b0d844af4ddd7d7941638c6872" compoundref="usbradioplus__processing_8c" startline="2055" endline="2068">load_settings</references>
+        <references refid="usbradioplus__processing_8c_1addbd62be08a20ff25955b6e538d5c7fb" compoundref="usbradioplus__processing_8c" startline="163">scan_thread</references>
+        <references refid="usbradioplus__processing_8c_1a6d70fe6c81fb7923334f3d7afabb5eae" compoundref="usbradioplus__processing_8c" startline="2630" endline="2638">scanner</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</references>
+        <references refid="usbradioplus__processing_8c_1a1135854f64bea509e7b012bd36f860b1" compoundref="usbradioplus__processing_8c" startline="165">stopping</references>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1abeaeab57088b44ae99f98edcff0ff59d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_prime</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_processing_prime</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Parse processing settings before radio channel creation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="174" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3318" bodyend="3323" declfile="src/usbradioplus_processing.h" declline="174" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1aa6f47039356c1d945ce188c4e2b5dde2" compoundref="usbradioplus__processing_8c" startline="256" endline="265">clear_audio_settings</references>
+        <references refid="usbradioplus__processing_8c_1a62ee21b0d844af4ddd7d7941638c6872" compoundref="usbradioplus__processing_8c" startline="2055" endline="2068">load_settings</references>
+        <references refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" compoundref="usbradioplus__processing_8c" startline="145">settings</references>
+        <references refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</references>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1ae371743af71cd2fa8b7ad321151cfc1b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_unload</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_processing_unload</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Stop the scanner, detach audiohooks, and unregister processing commands. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="178" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3282" bodyend="3293" declfile="src/usbradioplus_processing.h" declline="178" declcolumn="5"/>
+        <references refid="usbradioplus__processing_8c_1aa6f47039356c1d945ce188c4e2b5dde2" compoundref="usbradioplus__processing_8c" startline="256" endline="265">clear_audio_settings</references>
+        <references refid="usbradioplus__processing_8c_1aa56f9d6ac62fa0b4032ddab024230e3a" compoundref="usbradioplus__processing_8c" startline="2977" endline="2983">cli_entries</references>
+        <references refid="usbradioplus__processing_8c_1af1f022d6853c7b6de1915d63b8f163da" compoundref="usbradioplus__processing_8c" startline="2600" endline="2624">detach_all</references>
+        <references refid="usbradioplus__processing_8c_1addbd62be08a20ff25955b6e538d5c7fb" compoundref="usbradioplus__processing_8c" startline="163">scan_thread</references>
+        <references refid="usbradioplus__processing_8c_1a1135854f64bea509e7b012bd36f860b1" compoundref="usbradioplus__processing_8c" startline="165">stopping</references>
+        <referencedby refid="chan__usbradioplus_8c_1aac81d2240a9c6078ef3d9dccce6e5c9a" compoundref="chan__usbradioplus_8c" startline="3138" endline="3198">load_module</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a60da13aa72c23fe28a2dcbddaa6abe99" compoundref="chan__usbradioplus_8c" startline="3200" endline="3243">unload_module</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__processing_8h_1ac990152253c67eb53a57e96bfee3a83d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int usbradioplus_processing_reload</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_processing_reload</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Validate and replace live processing settings. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Zero on success; a nonzero status if the operation cannot complete. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing.h" line="182" column="5" bodyfile="src/usbradioplus_processing.c" bodystart="3325" bodyend="3365" declfile="src/usbradioplus_processing.h" declline="182" declcolumn="5"/>
+        <references refid="usbradioplus__channel__test__shims_8h_1a96a00b3a518d7f32b6d51dc28f09bf9b" compoundref="usbradioplus__channel__test__shims_8h" startline="27">ast_log</references>
+        <references refid="usbradioplus__processing_8c_1a1833632639b24672044a92718c8ce68a" compoundref="usbradioplus__processing_8c" startline="246" endline="253">commit_candidate_settings</references>
+        <references refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</references>
+        <references refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</references>
+        <references refid="structtxagc__settings_1afc853959ff4d836ee32aa05b5da120d9" compoundref="usbradioplus__processing__internal_8h" startline="78">txagc_settings::profile_count</references>
+        <references refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</references>
+        <references refid="usbradioplus__processing_8c_1af1678c5622a571de7a841c3959bffd49" compoundref="usbradioplus__processing_8c" startline="2543" endline="2597">scan_channels</references>
+        <references refid="structtxagc__audio__snapshot_1ae86131a72951b271becd89efe6dc88ee" compoundref="usbradioplus__processing_8c" startline="149">txagc_audio_snapshot::settings</references>
+        <references refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</references>
+        <references refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" compoundref="usbradioplus__processing_8c" startline="161">staged_settings</references>
+        <references refid="usbradioplus__processing_8c_1a2355f7b3a4b63db4050902b03a82cec6" compoundref="usbradioplus__channel__common_8c" startline="3282" endline="3293">usbradioplus_discard_native_processing_transaction</references>
+        <references refid="usbradioplus__processing_8c_1a5a9c0e0b5fedb6b7d591bf8a898b7c88" compoundref="usbradioplus__channel__common_8c" startline="3351" endline="3364">usbradioplus_publish_native_processing_transaction</references>
+        <references refid="usbradioplus__processing_8c_1a2ea618037e4c889855351d70449b431e" compoundref="usbradioplus__channel__common_8c" startline="1115" endline="1122">usbradioplus_refresh_all_processing_hardware</references>
+        <references refid="usbradioplus__processing_8c_1a1f8f4ad6383fd154cf808321ece65eef" compoundref="usbradioplus__channel__common_8c" startline="2389" endline="2422">usbradioplus_refresh_all_processing_signaling</references>
+        <references refid="usbradioplus__processing_8c_1add87a04dda2f671fb229e557edbf4a6d" compoundref="usbradioplus__channel__common_8c" startline="3296" endline="3345">usbradioplus_stage_all_native_processing</references>
+        <referencedby refid="usbradioplus__processing_8c_1a3063adea017068fef6366a19c637bfcc" compoundref="usbradioplus__processing_8c" startline="2951" endline="2974">cli_reload</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a0fa3a55344f08a3a2d817701519d8bd0" compoundref="usbradioplus__channel__common_8c" startline="3618" endline="3631">reload_module</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Named-channel processing configuration, audiohooks, live controls, and meters. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_PROCESSING_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_PROCESSING_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="agc__core_8h" kindref="compound">./txagc/agc_core.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref>;</highlight></codeline>
+<codeline lineno="14" refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009" kindref="member">txagc_source</ref><sp/>{</highlight></codeline>
+<codeline lineno="15" refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009abaaaeffe79100627e0e1f067c843cdb4" kindref="member">TXAGC_LOCAL</ref><sp/>,</highlight></codeline>
+<codeline lineno="16" refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009aeaffa353f4b801e74ccd842c59c461c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009aeaffa353f4b801e74ccd842c59c461c6" kindref="member">TXAGC_LINK</ref><sp/>,</highlight></codeline>
+<codeline lineno="17" refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009a9650887434b9cdc8df7f6c70e1c01700" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009a9650887434b9cdc8df7f6c70e1c01700" kindref="member">TXAGC_VOICE_TELEMETRY</ref><sp/>,</highlight></codeline>
+<codeline lineno="18"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009ab64c3efb7279981cff1299c057342201" kindref="member">TXAGC_SOURCE_COUNT</ref><sp/></highlight></codeline>
+<codeline lineno="19" refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009ab64c3efb7279981cff1299c057342201" refkind="member"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="22" refid="structtxagc__chain" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>{</highlight></codeline>
+<codeline lineno="24" refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain_1a7ea5b825464d6c4803c2c84941ac77e2" kindref="member">enabled</ref>;</highlight></codeline>
+<codeline lineno="26" refid="structtxagc__chain_1a9e469041a7289c64f097e1f368a23b53" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain_1a9e469041a7289c64f097e1f368a23b53" kindref="member">rnnoise_enabled</ref>;</highlight></codeline>
+<codeline lineno="28" refid="structtxagc__chain_1aff73247760691b6563113adacb9c0960" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain_1aff73247760691b6563113adacb9c0960" kindref="member">input_gain_configured</ref>;</highlight></codeline>
+<codeline lineno="30" refid="structtxagc__chain_1aa1ff1e1aa4d9643365c686fdc352c859" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain_1aa1ff1e1aa4d9643365c686fdc352c859" kindref="member">ctcss_filter_configured</ref>;</highlight></codeline>
+<codeline lineno="32" refid="structtxagc__chain_1a9aa0b0ed3261ea90ef7bd0de8754de02" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/><ref refid="structtxagc__chain_1a9aa0b0ed3261ea90ef7bd0de8754de02" kindref="member">agc</ref>;</highlight></codeline>
+<codeline lineno="33"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="40" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38" kindref="member">usbradioplus_hardware_assignment</ref><sp/>{</highlight></codeline>
+<codeline lineno="41" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a72e04bc79289cc2cbc1373d4ee739549" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a72e04bc79289cc2cbc1373d4ee739549" kindref="member">USBRADIOPLUS_HW_OFF</ref><sp/>=<sp/>0<sp/>,</highlight></codeline>
+<codeline lineno="42" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a3ee1243839fd6282f862221364ff8214" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a3ee1243839fd6282f862221364ff8214" kindref="member">USBRADIOPLUS_HW_VOICE</ref><sp/>=<sp/>1<sp/>,</highlight></codeline>
+<codeline lineno="43" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a28619486dac67f57e1b7a8c43aaef5ad" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a28619486dac67f57e1b7a8c43aaef5ad" kindref="member">USBRADIOPLUS_HW_CTCSS</ref><sp/>=<sp/>2<sp/>,</highlight></codeline>
+<codeline lineno="44" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a6d5b6f2cefe23380470767a5be3120c8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a6d5b6f2cefe23380470767a5be3120c8" kindref="member">USBRADIOPLUS_HW_VOICE_CTCSS</ref><sp/>=<sp/>3<sp/>,</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a1a8e513a18251493f75ecc0c8c9ebad1" kindref="member">USBRADIOPLUS_HW_AUX_VOICE</ref><sp/>=<sp/>4<sp/></highlight></codeline>
+<codeline lineno="46" refid="usbradioplus__processing_8h_1a4a7575e8dff83e324e29628244e3bf38a1a8e513a18251493f75ecc0c8c9ebad1" refkind="member"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49" refid="structusbradioplus__hardware__settings" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref><sp/>{</highlight></codeline>
+<codeline lineno="51" refid="structusbradioplus__hardware__settings_1a6c54afedf06a43b54cf1b0eb6701c004" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a6c54afedf06a43b54cf1b0eb6701c004" kindref="member">input_gain_db</ref>;</highlight></codeline>
+<codeline lineno="53" refid="structusbradioplus__hardware__settings_1a976a8fde07404339a4ec85fdba760d91" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a976a8fde07404339a4ec85fdba760d91" kindref="member">output_a_gain_db</ref>;</highlight></codeline>
+<codeline lineno="55" refid="structusbradioplus__hardware__settings_1a49b0f8318b4ce2576d00aa39276caa2d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a49b0f8318b4ce2576d00aa39276caa2d" kindref="member">output_b_gain_db</ref>;</highlight></codeline>
+<codeline lineno="57" refid="structusbradioplus__hardware__settings_1a8ddfef79fde2b08c4eb047771189ca2f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a8ddfef79fde2b08c4eb047771189ca2f" kindref="member">input_gain_configured</ref>;</highlight></codeline>
+<codeline lineno="59" refid="structusbradioplus__hardware__settings_1a8bd10f008ed00a6750b58a7a0508fb23" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a8bd10f008ed00a6750b58a7a0508fb23" kindref="member">output_a_gain_configured</ref>;</highlight></codeline>
+<codeline lineno="61" refid="structusbradioplus__hardware__settings_1a25be4dfbf6c1536e56f0259970f7a243" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a25be4dfbf6c1536e56f0259970f7a243" kindref="member">output_b_gain_configured</ref>;</highlight></codeline>
+<codeline lineno="63" refid="structusbradioplus__hardware__settings_1ae830edd6de5f2f230a2e3aa3d96b7812" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1ae830edd6de5f2f230a2e3aa3d96b7812" kindref="member">output_a_assignment</ref>;</highlight></codeline>
+<codeline lineno="65" refid="structusbradioplus__hardware__settings_1a4f0f200345e92157984506ec0bd00786" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a4f0f200345e92157984506ec0bd00786" kindref="member">output_b_assignment</ref>;</highlight></codeline>
+<codeline lineno="67" refid="structusbradioplus__hardware__settings_1a5b3664a3a71b2bb4f54c82d648e368a4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1a5b3664a3a71b2bb4f54c82d648e368a4" kindref="member">output_a_assignment_configured</ref>;</highlight></codeline>
+<codeline lineno="69" refid="structusbradioplus__hardware__settings_1ac6834146870e3d177826c08929fc01c0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings_1ac6834146870e3d177826c08929fc01c0" kindref="member">output_b_assignment_configured</ref>;</highlight></codeline>
+<codeline lineno="70"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="71"><highlight class="normal"></highlight></codeline>
+<codeline lineno="73" refid="structusbradioplus__config__update" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structusbradioplus__config__update" kindref="compound">usbradioplus_config_update</ref><sp/>{</highlight></codeline>
+<codeline lineno="75" refid="structusbradioplus__config__update_1a572c7db8b7d97e4936433de0b28d508c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structusbradioplus__config__update_1a572c7db8b7d97e4936433de0b28d508c" kindref="member">section</ref>;</highlight></codeline>
+<codeline lineno="77" refid="structusbradioplus__config__update_1a4da92891478911f4c142069fa73d4cde" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structusbradioplus__config__update_1a4da92891478911f4c142069fa73d4cde" kindref="member">name</ref>;</highlight></codeline>
+<codeline lineno="79" refid="structusbradioplus__config__update_1ad9762535e647e4bf499bebb242c2e6ec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structusbradioplus__config__update_1ad9762535e647e4bf499bebb242c2e6ec" kindref="member">value</ref>;</highlight></codeline>
+<codeline lineno="80"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"></highlight></codeline>
+<codeline lineno="90"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a2142f868836deb99a034eac7389128f3" kindref="member">usbradioplus_processing_get_local</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a95124b3a47bea172607faa5d65e076b9" kindref="member">usbradioplus_processing_get_local_rt</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="104"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a1ec98f39aaa9de143d15bee683e35dba" kindref="member">usbradioplus_processing_get_composite</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="111"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a9db6be6cd798f7c7f5e204928d50f114" kindref="member">usbradioplus_processing_get_composite_rt</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="118"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a24a9d7f045911ae7397d9e59a88a2fb8" kindref="member">usbradioplus_processing_get_hardware</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref><sp/>*<ref refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" kindref="member">hardware</ref>);</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1aa7e50df1c123aa5da2d2783f11a489a6" kindref="member">usbradioplus_processing_get_hardware_rt</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,</highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref><sp/>*<ref refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" kindref="member">hardware</ref>);</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a0c9ceb1d5f070d4cff0f785236b0223e" kindref="member">usbradioplus_processing_get_option</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name,</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*value,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>value_size);</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a0764f7d26aa2f4ad51047fdba66b7e94" kindref="member">usbradioplus_processing_set_local_input_gain</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>gain_db);</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a77add100bf0d604a3d8b31f2aa13bfce" kindref="member">usbradioplus_processing_set_hardware_input_gain</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>gain_db);</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1a65965ebc546f65ec0a23a58eb4d777b3" kindref="member">usbradioplus_processing_save_input_gains</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>hardware_gain_db,</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>local_gain_db);</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1aa11d8d9df4edb892604b97d2e3df7904" kindref="member">usbradioplus_processing_save_options</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*channel,</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__config__update" kindref="compound">usbradioplus_config_update</ref><sp/>*updates,</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>update_count);</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1aae8223404088f39036d2f86bf10a63be" kindref="member">usbradioplus_processing_load</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1abeaeab57088b44ae99f98edcff0ff59d" kindref="member">usbradioplus_processing_prime</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1ae371743af71cd2fa8b7ad321151cfc1b" kindref="member">usbradioplus_processing_unload</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8h_1ac990152253c67eb53a57e96bfee3a83d" kindref="member">usbradioplus_processing_reload</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"></highlight></codeline>
+<codeline lineno="184"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_processing.h"/>
+  </compounddef>
+</doxygen>

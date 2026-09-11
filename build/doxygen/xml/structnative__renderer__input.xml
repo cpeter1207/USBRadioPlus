@@ -1,0 +1,377 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structnative__renderer__input" kind="struct" language="C++" prot="public">
+    <compoundname>native_renderer_input</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structnative__renderer__input_1ab0fedd014fa050b5482fbbd67ec065e8" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::rxkeyed</definition>
+        <argsstring></argsstring>
+        <name>rxkeyed</name>
+        <qualifiedname>native_renderer_input::rxkeyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receiver qualification for CPU saving and local repeat. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="28" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="28" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ac4deb91ecd7236a8f5d05d46c287a4a3" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::toneflag</definition>
+        <argsstring></argsstring>
+        <name>toneflag</name>
+        <qualifiedname>native_renderer_input::toneflag</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native DTMF muting indication. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="30" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="30" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a68c9d72ea7cffe938b593dd6888f0638" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::usedtmf</definition>
+        <argsstring></argsstring>
+        <name>usedtmf</name>
+        <qualifiedname>native_renderer_input::usedtmf</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when Asterisk DTMF detection is active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="32" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="32" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a2d9470f33761c92c0f140856ef91a50b" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::has_dsp</definition>
+        <argsstring></argsstring>
+        <name>has_dsp</name>
+        <qualifiedname>native_renderer_input::has_dsp</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when a DSP detector supplies DTMF state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="34" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="34" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a485f7b53646e346a671417187c26a420" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::decoded_ctcss</definition>
+        <argsstring></argsstring>
+        <name>decoded_ctcss</name>
+        <qualifiedname>native_renderer_input::decoded_ctcss</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected receive CTCSS decoder index. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="36" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="36" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a6f373fa80dc3a1496971450a6b59455c" compoundref="usbradioplus__native__tick_8c" startline="347" endline="357">process_receive_filter</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a5aeac30e0aa8da08e0713150122b75cc" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t native_renderer_input::carrier_gate[URP_NATIVE_SAMPLES]</definition>
+        <argsstring>[URP_NATIVE_SAMPLES]</argsstring>
+        <name>carrier_gate</name>
+        <qualifiedname>native_renderer_input::carrier_gate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Per-sample carrier gate from the signaling frontend. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="38" column="9" bodyfile="src/usbradioplus_native_tick.c" bodystart="38" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ace29328ee53f1a02b1d262605b4507a9" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::tx_ptt_out</definition>
+        <argsstring></argsstring>
+        <name>tx_ptt_out</name>
+        <qualifiedname>native_renderer_input::tx_ptt_out</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Signaling-engine transmitter assertion for this frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="40" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="40" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a4d218bd5d00d39e7c1719ae6c8eab412" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::tx_state</definition>
+        <argsstring></argsstring>
+        <name>tx_state</name>
+        <qualifiedname>native_renderer_input::tx_state</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Signaling-engine transmit state-machine state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="42" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="42" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ab62260bd761f07add3335947568d6487" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::tx_ctcss_enabled</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_enabled</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while continuous transmit CTCSS is enabled. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="44" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="44" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a822f0a4bdc6d3217397b614c295231d0" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::tx_ctcss_off</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_off</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_off</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the CTCSS turn-off mode suppresses the tone. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="46" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="46" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ac09dbcf3a5d289fbb8f4f6fd6b4ea892" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double native_renderer_input::tx_ctcss_phase_shift</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_phase_shift</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_phase_shift</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured CTCSS phase-shift angle. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="48" column="8" bodyfile="src/usbradioplus_native_tick.c" bodystart="48" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a38820ae1ec5d265b87de5042851f831f" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double native_renderer_input::tx_ctcss_tail_tone_hz</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_tail_tone_hz</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_tail_tone_hz</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Replacement CTCSS tail-tone frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="50" column="8" bodyfile="src/usbradioplus_native_tick.c" bodystart="50" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ae4c3002d42da342050e683f04e59d6b0" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double native_renderer_input::tx_ctcss_frequency_hz</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_frequency_hz</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_frequency_hz</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Continuous transmit CTCSS frequency in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="52" column="8" bodyfile="src/usbradioplus_native_tick.c" bodystart="52" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ac55984e2ada0b99a7f33abc2aa98be8b" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double native_renderer_input::tx_ctcss_peak</definition>
+        <argsstring></argsstring>
+        <name>tx_ctcss_peak</name>
+        <qualifiedname>native_renderer_input::tx_ctcss_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Continuous transmit CTCSS PCM peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="54" column="8" bodyfile="src/usbradioplus_native_tick.c" bodystart="54" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a10a5ed5ab8ff2da317c353cdff522afc" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::dcs_enabled</definition>
+        <argsstring></argsstring>
+        <name>dcs_enabled</name>
+        <qualifiedname>native_renderer_input::dcs_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while transmit DCS is configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="56" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="56" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1af93c53029c589f19ec66993717770d98" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::dcs_turnoff_active</definition>
+        <argsstring></argsstring>
+        <name>dcs_turnoff_active</name>
+        <qualifiedname>native_renderer_input::dcs_turnoff_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the DCS turn-off sequence is active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="58" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="58" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1ab76004e1c504f308bfdae797dcd9322f" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::dcs_transmit_code</definition>
+        <argsstring></argsstring>
+        <name>dcs_transmit_code</name>
+        <qualifiedname>native_renderer_input::dcs_transmit_code</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured transmit DCS code. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="60" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="60" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a4a24887d58f1d4041015f6db8f50f7b6" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::dcs_transmit_inverted</definition>
+        <argsstring></argsstring>
+        <name>dcs_transmit_inverted</name>
+        <qualifiedname>native_renderer_input::dcs_transmit_inverted</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero for inverted transmit DCS polarity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="62" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="62" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a5d8e742f1b1b902f1201a953acfbf885" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double native_renderer_input::dcs_peak</definition>
+        <argsstring></argsstring>
+        <name>dcs_peak</name>
+        <qualifiedname>native_renderer_input::dcs_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit DCS PCM peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="64" column="8" bodyfile="src/usbradioplus_native_tick.c" bodystart="64" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structnative__renderer__input_1a243c5e76169a4b34330a0914abe64513" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int native_renderer_input::test_tone_enabled</definition>
+        <argsstring></argsstring>
+        <name>test_tone_enabled</name>
+        <qualifiedname>native_renderer_input::test_tone_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the calibrated test tone replaces program audio. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_native_tick.c" line="66" column="5" bodyfile="src/usbradioplus_native_tick.c" bodystart="66" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Snapshot of one hardware callback&apos;s signaling state. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_native_tick.c" line="26" column="1" bodyfile="src/usbradioplus_native_tick.c" bodystart="26" bodyend="67"/>
+    <listofallmembers>
+      <member refid="structnative__renderer__input_1a5aeac30e0aa8da08e0713150122b75cc" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>carrier_gate</name></member>
+      <member refid="structnative__renderer__input_1a10a5ed5ab8ff2da317c353cdff522afc" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>dcs_enabled</name></member>
+      <member refid="structnative__renderer__input_1a5d8e742f1b1b902f1201a953acfbf885" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>dcs_peak</name></member>
+      <member refid="structnative__renderer__input_1ab76004e1c504f308bfdae797dcd9322f" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>dcs_transmit_code</name></member>
+      <member refid="structnative__renderer__input_1a4a24887d58f1d4041015f6db8f50f7b6" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>dcs_transmit_inverted</name></member>
+      <member refid="structnative__renderer__input_1af93c53029c589f19ec66993717770d98" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>dcs_turnoff_active</name></member>
+      <member refid="structnative__renderer__input_1a485f7b53646e346a671417187c26a420" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>decoded_ctcss</name></member>
+      <member refid="structnative__renderer__input_1a2d9470f33761c92c0f140856ef91a50b" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>has_dsp</name></member>
+      <member refid="structnative__renderer__input_1ab0fedd014fa050b5482fbbd67ec065e8" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>rxkeyed</name></member>
+      <member refid="structnative__renderer__input_1a243c5e76169a4b34330a0914abe64513" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>test_tone_enabled</name></member>
+      <member refid="structnative__renderer__input_1ac4deb91ecd7236a8f5d05d46c287a4a3" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>toneflag</name></member>
+      <member refid="structnative__renderer__input_1ab62260bd761f07add3335947568d6487" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_enabled</name></member>
+      <member refid="structnative__renderer__input_1ae4c3002d42da342050e683f04e59d6b0" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_frequency_hz</name></member>
+      <member refid="structnative__renderer__input_1a822f0a4bdc6d3217397b614c295231d0" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_off</name></member>
+      <member refid="structnative__renderer__input_1ac55984e2ada0b99a7f33abc2aa98be8b" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_peak</name></member>
+      <member refid="structnative__renderer__input_1ac09dbcf3a5d289fbb8f4f6fd6b4ea892" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_phase_shift</name></member>
+      <member refid="structnative__renderer__input_1a38820ae1ec5d265b87de5042851f831f" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ctcss_tail_tone_hz</name></member>
+      <member refid="structnative__renderer__input_1ace29328ee53f1a02b1d262605b4507a9" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_ptt_out</name></member>
+      <member refid="structnative__renderer__input_1a4d218bd5d00d39e7c1719ae6c8eab412" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>tx_state</name></member>
+      <member refid="structnative__renderer__input_1a68c9d72ea7cffe938b593dd6888f0638" prot="public" virt="non-virtual"><scope>native_renderer_input</scope><name>usedtmf</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__radio__access__slot" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_radio_access_slot</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="no">usbradioplus_channel_private.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__radio__access__slot_1a40512a67ddb4d6b331b062a17cc8f7f9" prot="public" static="no" mutable="no">
+        <type>_Atomic unsigned int</type>
+        <definition>_Atomic unsigned int usbradioplus_radio_access_slot::readers</definition>
+        <argsstring></argsstring>
+        <name>readers</name>
+        <qualifiedname>usbradioplus_radio_access_slot::readers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Active native audio spans reading the signaling engine. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="148" column="22" bodyfile="src/usbradioplus_channel_private.h" bodystart="148" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a3c58f512e1e7c3826b18d7944e654698" compoundref="usbradioplus__channel__common_8c" startline="1639" endline="1654">radio_access_begin_reconfigure</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2978b9bb69b48c3934b247d5d53f51d4" compoundref="usbradioplus__channel__common_8c" startline="3376" endline="3434">usbradioplus_dsp_init</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a23b036acdb36aac8fa93ff81bdbf9976" compoundref="usbradioplus__channel__common_8c" startline="1669" endline="1691">usbradioplus_radio_access_acquire</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1ad55a23303a21df05b8e887af47995701" compoundref="usbradioplus__channel__common_8c" startline="1693" endline="1698">usbradioplus_radio_access_release</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__radio__access__slot_1ae2692e2e4820faeabd23df257d737d58" prot="public" static="no" mutable="no">
+        <type>_Atomic int</type>
+        <definition>_Atomic int usbradioplus_radio_access_slot::reconfiguring</definition>
+        <argsstring></argsstring>
+        <name>reconfiguring</name>
+        <qualifiedname>usbradioplus_radio_access_slot::reconfiguring</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the control plane is replacing parser-owned state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="150" column="13" bodyfile="src/usbradioplus_channel_private.h" bodystart="150" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a3c58f512e1e7c3826b18d7944e654698" compoundref="usbradioplus__channel__common_8c" startline="1639" endline="1654">radio_access_begin_reconfigure</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa32a50ea833beee3f40b2fa85faec40a" compoundref="usbradioplus__channel__common_8c" startline="1659" endline="1667">radio_access_end_reconfigure</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2978b9bb69b48c3934b247d5d53f51d4" compoundref="usbradioplus__channel__common_8c" startline="3376" endline="3434">usbradioplus_dsp_init</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a23b036acdb36aac8fa93ff81bdbf9976" compoundref="usbradioplus__channel__common_8c" startline="1669" endline="1691">usbradioplus_radio_access_acquire</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__radio__access__slot_1a85e7ebdc812632ca0d9f2122aaab40e8" prot="public" static="no" mutable="no">
+        <type>atomic_flag</type>
+        <definition>atomic_flag usbradioplus_radio_access_slot::writer</definition>
+        <argsstring></argsstring>
+        <name>writer</name>
+        <qualifiedname>usbradioplus_radio_access_slot::writer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Serializes rare control-plane reconfiguration requests. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="152" column="13" bodyfile="src/usbradioplus_channel_private.h" bodystart="152" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a3c58f512e1e7c3826b18d7944e654698" compoundref="usbradioplus__channel__common_8c" startline="1639" endline="1654">radio_access_begin_reconfigure</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa32a50ea833beee3f40b2fa85faec40a" compoundref="usbradioplus__channel__common_8c" startline="1659" endline="1667">radio_access_end_reconfigure</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2978b9bb69b48c3934b247d5d53f51d4" compoundref="usbradioplus__channel__common_8c" startline="3376" endline="3434">usbradioplus_dsp_init</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Lock-free reader/writer gate for mutable radio-signaling state.</para>
+<para>The legacy-compatible CTCSS parser replaces decoder-owned arrays. Native hardware callbacks therefore announce the short span in which they touch the signaling engine, while a control-plane reload temporarily excludes new readers before reparsing. The reader side uses atomics only and never waits, allocates, or takes an adapter lock. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_channel_private.h" line="146" column="1" bodyfile="src/usbradioplus_channel_private.h" bodystart="146" bodyend="153"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__radio__access__slot_1a40512a67ddb4d6b331b062a17cc8f7f9" prot="public" virt="non-virtual"><scope>usbradioplus_radio_access_slot</scope><name>readers</name></member>
+      <member refid="structusbradioplus__radio__access__slot_1ae2692e2e4820faeabd23df257d737d58" prot="public" virt="non-virtual"><scope>usbradioplus_radio_access_slot</scope><name>reconfiguring</name></member>
+      <member refid="structusbradioplus__radio__access__slot_1a85e7ebdc812632ca0d9f2122aaab40e8" prot="public" virt="non-virtual"><scope>usbradioplus_radio_access_slot</scope><name>writer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

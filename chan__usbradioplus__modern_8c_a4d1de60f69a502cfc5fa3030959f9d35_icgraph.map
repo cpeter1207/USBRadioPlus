@@ -1,0 +1,5 @@
+<map id="usbradio_swap_ready" name="usbradio_swap_ready">
+<area shape="rect" id="Node000001" title="Test whether both workers have paused for a device swap." alt="" coords="189,5,352,31"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a184fe58a499575e2239ec698ec1629f6" title="Swap USB assignments between two configured radio channels." alt="" coords="5,5,141,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="176,21,142,21,142,15,176,15"/>
+</map>

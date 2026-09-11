@@ -1,0 +1,13 @@
+<map id="txagc_avfilter_slot_destroy" name="txagc_avfilter_slot_destroy">
+<area shape="rect" id="Node000001" title="Destroy every graph retained by a slot after its audio reader stops." alt="" coords="5,73,148,113"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a8ecd7b6343967718d3cf3c7d2c70713b" title="Acquire the control&#45;plane writer token for one published graph slot." alt="" coords="239,5,319,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,70,195,39,225,30,227,35,197,45,122,75"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#af3eb3a96d027952039477a2251c76173" title="Release the control&#45;plane writer token for one published graph slot." alt="" coords="231,55,327,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="148,81,217,72,218,78,149,86"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a08117f46f83685472606b65a70491e92" title="Wait until no worker or control&#45;plane reader can still reference a replaced graph." alt="" coords="198,104,361,129"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="149,98,185,103,184,108,148,104"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#ad42481742cd3eefc6722c3ad9d524ba3" title="Release all resources owned by an FFmpeg processor." alt="" coords="196,153,363,179"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="126,110,197,138,222,147,220,152,195,143,124,115"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#a6e90b9d04b2eda72ed16bc3ce2e3c7d4" title="Release the FFmpeg graph and its preallocated runtime storage." alt="" coords="411,153,503,179"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="363,163,397,163,397,169,363,169"/>
+</map>

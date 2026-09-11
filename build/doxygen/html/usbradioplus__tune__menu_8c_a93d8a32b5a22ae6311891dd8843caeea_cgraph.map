@@ -1,0 +1,5 @@
+<map id="print_native_tx_audio_stats" name="print_native_tx_audio_stats">
+<area shape="rect" id="Node000001" title="Print a coherent transmitter meter snapshot without reading renderer state live." alt="" coords="5,5,168,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#ae147e761c595d98a1ab895bd91486d7a" title="Copy transmitter audio measurements owned by the native renderer." alt="" coords="216,5,439,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="169,23,202,23,202,28,169,28"/>
+</map>

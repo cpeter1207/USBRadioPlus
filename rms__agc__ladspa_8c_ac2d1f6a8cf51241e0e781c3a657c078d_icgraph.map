@@ -1,0 +1,5 @@
+<map id="update_gain" name="update_gain">
+<area shape="rect" id="Node000001" title="Update the gain destination at a sample&#45;derived one&#45;kilohertz cadence." alt="" coords="96,5,199,31"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#af3ba5d12d4b74078de5469eb56dde8c4" title="Process samples in place or out of place without buffering the program audio." alt="" coords="5,5,48,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="82,21,48,21,48,15,82,15"/>
+</map>

@@ -1,0 +1,479 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__ctcss__decoder" kind="struct" language="C++" prot="public">
+    <compoundname>urp_ctcss_decoder</compoundname>
+    <includes refid="usbradioplus__radio_8h" local="no">usbradioplus_radio.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a03fd57bb99a97d0e64a025aafbaeb12b" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>urp_ctcss_decoder::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables this channel, stage, or detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="389" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="389" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a94f0d10eb959c9fa2aa0e329581a734a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_ctcss_decoder::input</definition>
+        <argsstring></argsstring>
+        <name>input</name>
+        <qualifiedname>urp_ctcss_decoder::input</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed subaudible detector input samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="391" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="391" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a4337a51af80104513489232b3e969c40" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::clamplitude</definition>
+        <argsstring></argsstring>
+        <name>clamplitude</name>
+        <qualifiedname>urp_ctcss_decoder::clamplitude</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tracked subaudible signal amplitude. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="393" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="393" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a6e93c1940ad28cfc8d3f3c19bef60f12" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::center</definition>
+        <argsstring></argsstring>
+        <name>center</name>
+        <qualifiedname>urp_ctcss_decoder::center</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Tracked subaudible DC center. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="395" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="395" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1ae657409e88a31d2a4b22d24c291da2ca" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::decode</definition>
+        <argsstring></argsstring>
+        <name>decode</name>
+        <qualifiedname>urp_ctcss_decoder::decode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current decoded-tone or detector decision. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="397" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="397" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1ab14a678b07298788a51136672e163045" compoundref="usbradioplus__native__tick_8c" startline="401" endline="435">native_renderer_snapshot</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a841246da2bcaee1ce7dd0c9130f33bdb" compoundref="usbradioplus__radio_8c" startline="1907" endline="2239">urp_radio_process_timed</referencedby>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a4478173ef46747f85f8871ed0e81157f" compoundref="chan__usbradioplus__modern_8c" startline="1759" endline="2223">usbradio_audio_thread</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a06e09ba1f7e2c1ddb9cae57173ce130c" compoundref="usbradioplus__channel__common_8c" startline="3479" endline="3485">usbradioplus_ctcss_detected</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a97bee0e287677c8b365dfffe6d732ea0" compoundref="usbradioplus__channel__common_8c" startline="3487" endline="3495">usbradioplus_refresh_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a7ffa061e3a22367ca1a105984bb25ba3" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_ctcss_decoder::BlankingTimer</definition>
+        <argsstring></argsstring>
+        <name>BlankingTimer</name>
+        <qualifiedname>urp_ctcss_decoder::BlankingTimer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Remaining decoder blanking interval. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="399" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="399" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a77b0478594fcab796fcabde60048477a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a332ccd83dfe2973e6cb2b61e4f3ab7e6" kindref="member">u32</ref></type>
+        <definition>u32 urp_ctcss_decoder::TurnOffTimer</definition>
+        <argsstring></argsstring>
+        <name>TurnOffTimer</name>
+        <qualifiedname>urp_ctcss_decoder::TurnOffTimer</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Remaining CTCSS turn-off qualification interval. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="401" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="401" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a54c5d41db3a40e9c00de91c26b93c7ab" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::gain</definition>
+        <argsstring></argsstring>
+        <name>gain</name>
+        <qualifiedname>urp_ctcss_decoder::gain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Subaudible detector gain metadata. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="403" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="403" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a2edef5b32a5384a2d826a60f4ab55e2e" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::limit</definition>
+        <argsstring></argsstring>
+        <name>limit</name>
+        <qualifiedname>urp_ctcss_decoder::limit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Input amplitude bound used by the detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="405" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="405" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a578435986bef48b15aaabb0225b2bbc1" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::debugIndex</definition>
+        <argsstring></argsstring>
+        <name>debugIndex</name>
+        <qualifiedname>urp_ctcss_decoder::debugIndex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected diagnostic trace channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="407" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="407" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1abba1ca0f76620798dfee96f005c89c04" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_ctcss_decoder::pDebug0</definition>
+        <argsstring></argsstring>
+        <name>pDebug0</name>
+        <qualifiedname>urp_ctcss_decoder::pDebug0</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>P Debug0 diagnostic sample workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="409" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="409" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a0d2e42a0028e0c7f87b5baf724fa9e9b" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_ctcss_decoder::pDebug1</definition>
+        <argsstring></argsstring>
+        <name>pDebug1</name>
+        <qualifiedname>urp_ctcss_decoder::pDebug1</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>P Debug1 diagnostic sample workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="411" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="411" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1adf10c274fdb5c000171f8a2cec1a7d1b" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_ctcss_decoder::pDebug2</definition>
+        <argsstring></argsstring>
+        <name>pDebug2</name>
+        <qualifiedname>urp_ctcss_decoder::pDebug2</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>P Debug2 diagnostic sample workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="413" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="413" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1ae002ca9a91bc3823dc22e71de8f70fac" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref> *</type>
+        <definition>i16* urp_ctcss_decoder::pDebug3</definition>
+        <argsstring></argsstring>
+        <name>pDebug3</name>
+        <qualifiedname>urp_ctcss_decoder::pDebug3</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>P Debug3 diagnostic sample workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="415" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="415" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a1b27c97daa68292e7110a940d78cf4af" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::testIndex</definition>
+        <argsstring></argsstring>
+        <name>testIndex</name>
+        <qualifiedname>urp_ctcss_decoder::testIndex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Selected detector test index. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="417" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="417" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a496653afa1c8306fedca6a3082bdb174" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::multiFreq</definition>
+        <argsstring></argsstring>
+        <name>multiFreq</name>
+        <qualifiedname>urp_ctcss_decoder::multiFreq</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when multiple receive tones are configured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="419" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="419" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a623eece0f17737691144e2205103851c" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a8b1c3ba7ed71c46505556d43a9bee9e1" kindref="member">i8</ref></type>
+        <definition>i8 urp_ctcss_decoder::relax</definition>
+        <argsstring></argsstring>
+        <name>relax</name>
+        <qualifiedname>urp_ctcss_decoder::relax</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS qualification/talk-off tolerance setting. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="421" column="4" bodyfile="src/usbradioplus_radio.h" bodystart="421" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1a1352673ac9bc17292ab0f683c3a1d5c9" compoundref="chan__usbradioplus_8c" startline="474" endline="1172">hidthread</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a8853fdf08ee684c808b961d3233f7f7b" compoundref="usbradioplus__channel__common_8c" startline="1765" endline="1868">radio_config_locked</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1abef8e22b2dcc2d7590c6b1fbc2313292" compoundref="chan__usbradioplus_8c" startline="2527" endline="2633">radio_dump</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a2c59ff989efcdb7827f63ed8b8852642" compoundref="chan__usbradioplus_8c" startline="2640" endline="2845">store_config</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1ac77a8c9d4b17fab83eda2d310bec4ed2" prot="public" static="no" mutable="no">
+        <type><ref refid="structurp__ctcss__tone__detector" kindref="compound">urp_ctcss_tone_detector</ref></type>
+        <definition>urp_ctcss_tone_detector urp_ctcss_decoder::tdet[CTCSS_NUM_CODES]</definition>
+        <argsstring>[CTCSS_NUM_CODES]</argsstring>
+        <name>tdet</name>
+        <qualifiedname>urp_ctcss_decoder::tdet</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One correlator for each supported receive tone. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="423" column="25" bodyfile="src/usbradioplus_radio.h" bodystart="423" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1af30e814ead483666930ea4ac4e4b9fb0" compoundref="usbradioplus__radio_8c" startline="1067" endline="1256">urp_ctcss_decode</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1aed96fb0a625bf4b7a92d674acf416988" compoundref="usbradioplus__radio_8c" startline="1795" endline="1867">urp_radio_destroy</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a6ac88139b2fcc40d646f6ed5ea779f1f" compoundref="usbradioplus__radio_8c" startline="218" endline="474">urp_radio_parse_codes</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1ae7a4a35a7db8b8badcdc3df1d8d01d4d" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a8b1c3ba7ed71c46505556d43a9bee9e1" kindref="member">i8</ref></type>
+        <definition>i8 urp_ctcss_decoder::numrxcodes</definition>
+        <argsstring></argsstring>
+        <name>numrxcodes</name>
+        <qualifiedname>urp_ctcss_decoder::numrxcodes</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of configured receive signaling codes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="426" column="4" bodyfile="src/usbradioplus_radio.h" bodystart="426" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a899be879a59e99fff38354c76e4c608a" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 urp_ctcss_decoder::rxCtcssMap[CTCSS_NUM_CODES]</definition>
+        <argsstring>[CTCSS_NUM_CODES]</argsstring>
+        <name>rxCtcssMap</name>
+        <qualifiedname>urp_ctcss_decoder::rxCtcssMap</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Map from detected receive tones to transmit tone selections. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="428" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="428" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1ab54be70ba10424da0f40e1fe9c49ece6" prot="public" static="no" mutable="no">
+        <type>char *</type>
+        <definition>char* urp_ctcss_decoder::rxctcss[CTCSS_NUM_CODES]</definition>
+        <argsstring>[CTCSS_NUM_CODES]</argsstring>
+        <name>rxctcss</name>
+        <qualifiedname>urp_ctcss_decoder::rxctcss</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured receive CTCSS code values. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="430" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="430" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a12b08785c4d282b6b3f26103762c7ce7" prot="public" static="no" mutable="no">
+        <type>char *</type>
+        <definition>char* urp_ctcss_decoder::txctcss[CTCSS_NUM_CODES]</definition>
+        <argsstring>[CTCSS_NUM_CODES]</argsstring>
+        <name>txctcss</name>
+        <qualifiedname>urp_ctcss_decoder::txctcss</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured transmit CTCSS code values. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="432" column="6" bodyfile="src/usbradioplus_radio.h" bodystart="432" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a3e652c260949444cb7286601ee1d9136" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 urp_ctcss_decoder::txctcssdefault_index</definition>
+        <argsstring></argsstring>
+        <name>txctcssdefault_index</name>
+        <qualifiedname>urp_ctcss_decoder::txctcssdefault_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Default transmit CTCSS table index. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="435" column="5" bodyfile="src/usbradioplus_radio.h" bodystart="435" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a0e5188a8546882dc9f2ae2f0f68c8be0" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float urp_ctcss_decoder::txctcssdefault_value</definition>
+        <argsstring></argsstring>
+        <name>txctcssdefault_value</name>
+        <qualifiedname>urp_ctcss_decoder::txctcssdefault_value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Default transmit CTCSS frequency in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="437" column="7" bodyfile="src/usbradioplus_radio.h" bodystart="437" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a7a949a3b540c609f716965d266e30f3c" prot="public" static="no" mutable="no">
+        <type>unsigned</type>
+        <definition>unsigned urp_ctcss_decoder::valid</definition>
+        <argsstring></argsstring>
+        <name>valid</name>
+        <qualifiedname>urp_ctcss_decoder::valid</qualifiedname>
+        <bitfield> 1</bitfield>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when the detector configuration is usable. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="441" column="10" bodyfile="src/usbradioplus_radio.h" bodystart="441" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ctcss__decoder_1a22c46b413bb6a79f431c5c7c9e783425" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structurp__ctcss__decoder" kindref="compound">urp_ctcss_decoder</ref></type>
+        <definition>struct urp_ctcss_decoder urp_ctcss_decoder::b</definition>
+        <argsstring></argsstring>
+        <name>b</name>
+        <qualifiedname>urp_ctcss_decoder::b</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Packed radio-signaling status and enable flags. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio.h" line="443" column="9"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>CTCSS decoder bank and receive-to-transmit tone selection state. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>urp_ctcss_decoder</label>
+        <link refid="structurp__ctcss__decoder"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>tdet</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>urp_ctcss_tone_detector</label>
+        <link refid="structurp__ctcss__tone__detector"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_radio.h" line="387" column="1" bodyfile="src/usbradioplus_radio.h" bodystart="387" bodyend="444"/>
+    <listofallmembers>
+      <member refid="structurp__ctcss__decoder_1a22c46b413bb6a79f431c5c7c9e783425" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>b</name></member>
+      <member refid="structurp__ctcss__decoder_1a7ffa061e3a22367ca1a105984bb25ba3" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>BlankingTimer</name></member>
+      <member refid="structurp__ctcss__decoder_1a6e93c1940ad28cfc8d3f3c19bef60f12" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>center</name></member>
+      <member refid="structurp__ctcss__decoder_1a4337a51af80104513489232b3e969c40" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>clamplitude</name></member>
+      <member refid="structurp__ctcss__decoder_1a578435986bef48b15aaabb0225b2bbc1" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>debugIndex</name></member>
+      <member refid="structurp__ctcss__decoder_1ae657409e88a31d2a4b22d24c291da2ca" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>decode</name></member>
+      <member refid="structurp__ctcss__decoder_1a03fd57bb99a97d0e64a025aafbaeb12b" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>enabled</name></member>
+      <member refid="structurp__ctcss__decoder_1a54c5d41db3a40e9c00de91c26b93c7ab" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>gain</name></member>
+      <member refid="structurp__ctcss__decoder_1a94f0d10eb959c9fa2aa0e329581a734a" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>input</name></member>
+      <member refid="structurp__ctcss__decoder_1a2edef5b32a5384a2d826a60f4ab55e2e" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>limit</name></member>
+      <member refid="structurp__ctcss__decoder_1a496653afa1c8306fedca6a3082bdb174" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>multiFreq</name></member>
+      <member refid="structurp__ctcss__decoder_1ae7a4a35a7db8b8badcdc3df1d8d01d4d" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>numrxcodes</name></member>
+      <member refid="structurp__ctcss__decoder_1abba1ca0f76620798dfee96f005c89c04" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>pDebug0</name></member>
+      <member refid="structurp__ctcss__decoder_1a0d2e42a0028e0c7f87b5baf724fa9e9b" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>pDebug1</name></member>
+      <member refid="structurp__ctcss__decoder_1adf10c274fdb5c000171f8a2cec1a7d1b" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>pDebug2</name></member>
+      <member refid="structurp__ctcss__decoder_1ae002ca9a91bc3823dc22e71de8f70fac" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>pDebug3</name></member>
+      <member refid="structurp__ctcss__decoder_1a623eece0f17737691144e2205103851c" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>relax</name></member>
+      <member refid="structurp__ctcss__decoder_1ab54be70ba10424da0f40e1fe9c49ece6" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>rxctcss</name></member>
+      <member refid="structurp__ctcss__decoder_1a899be879a59e99fff38354c76e4c608a" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>rxCtcssMap</name></member>
+      <member refid="structurp__ctcss__decoder_1ac77a8c9d4b17fab83eda2d310bec4ed2" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>tdet</name></member>
+      <member refid="structurp__ctcss__decoder_1a1b27c97daa68292e7110a940d78cf4af" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>testIndex</name></member>
+      <member refid="structurp__ctcss__decoder_1a77b0478594fcab796fcabde60048477a" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>TurnOffTimer</name></member>
+      <member refid="structurp__ctcss__decoder_1a12b08785c4d282b6b3f26103762c7ce7" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>txctcss</name></member>
+      <member refid="structurp__ctcss__decoder_1a3e652c260949444cb7286601ee1d9136" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>txctcssdefault_index</name></member>
+      <member refid="structurp__ctcss__decoder_1a0e5188a8546882dc9f2ae2f0f68c8be0" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>txctcssdefault_value</name></member>
+      <member refid="structurp__ctcss__decoder_1a7a949a3b540c609f716965d266e30f3c" prot="public" virt="non-virtual"><scope>urp_ctcss_decoder</scope><name>valid</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

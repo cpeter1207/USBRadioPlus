@@ -1,0 +1,5 @@
+<map id="soundcard_admit_native_frame" name="soundcard_admit_native_frame">
+<area shape="rect" id="Node000001" title="Test whether OSS can accept one complete native stereo frame." alt="" coords="168,5,351,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="5,13,120,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="154,28,120,28,120,23,154,23"/>
+</map>

@@ -1,0 +1,27 @@
+var structurp__dcs__state =
+[
+    [ "dc_estimate_q15", "structurp__dcs__state.html#a3dbf0c090e18ff2602baaf43491f246e", null ],
+    [ "enabled_receive", "structurp__dcs__state.html#a0f2aa5395ce8a59ada5bfff7bdbf9233", null ],
+    [ "enabled_transmit", "structurp__dcs__state.html#a6df3fed7d63490c3f21783def9a8cf38", null ],
+    [ "receive_code", "structurp__dcs__state.html#a9aeae2ab26bf2865aa9952617750ed3a", null ],
+    [ "receive_inverted", "structurp__dcs__state.html#a1f4c58b7267f0700f3e0bae213a782dc", null ],
+    [ "receive_phase", "structurp__dcs__state.html#a10cb58392a3d7ef97cfbd1f4e95a53ab", null ],
+    [ "receive_sample_rate", "structurp__dcs__state.html#ae478886b5ea78809a3954aa6fc10b311", null ],
+    [ "receive_turnoff_active", "structurp__dcs__state.html#ad8af78999d90c73ee241e46207ac19c4", null ],
+    [ "receive_turnoff_coefficient", "structurp__dcs__state.html#a7f8edd5845f64808cf590099e3c14afa", null ],
+    [ "receive_turnoff_consecutive_samples", "structurp__dcs__state.html#ab20373f17376af18cebe96b50239676b", null ],
+    [ "receive_turnoff_energy", "structurp__dcs__state.html#a60711538e6988f3c6dfe14c8cdb45a50", null ],
+    [ "receive_turnoff_minimum_samples", "structurp__dcs__state.html#a0f101c49b5490e57c33cf0472fef6647", null ],
+    [ "receive_turnoff_one", "structurp__dcs__state.html#aeeef5ed245dd7675b3957942a1bf3a87", null ],
+    [ "receive_turnoff_two", "structurp__dcs__state.html#a683ac9230db74fe803e74ec93d7d5da7", null ],
+    [ "receive_turnoff_window_length", "structurp__dcs__state.html#ae85e5818ba5766b3be6a7c8ae6c7c6d7", null ],
+    [ "receive_turnoff_window_samples", "structurp__dcs__state.html#aa16cae9e9e37fce2e80bcdd1259e986b", null ],
+    [ "syndrome", "structurp__dcs__state.html#a287d79a8c3583bbb02001691d6677a97", null ],
+    [ "tail_phase", "structurp__dcs__state.html#acc33ed644a9f4beb91bf19207efd18c2", null ],
+    [ "transmit_bit_accumulator", "structurp__dcs__state.html#a570e61dc6641cf84ab5ed8605bd54df6", null ],
+    [ "transmit_code", "structurp__dcs__state.html#a57195c5e2413b75b130670a5403ea3ae", null ],
+    [ "transmit_inverted", "structurp__dcs__state.html#ac9b2d137373e04780cecf3d79bf57ba9", null ],
+    [ "transmit_phase", "structurp__dcs__state.html#a0d6ceb7655da8d4c95e38d499a84f7d8", null ],
+    [ "transmit_word", "structurp__dcs__state.html#ac0eadd5aa26c9645bc9a0490a597495b", null ],
+    [ "valid", "structurp__dcs__state.html#a740f2ee011e7ceb35e2fa66b70cb12db", null ]
+];

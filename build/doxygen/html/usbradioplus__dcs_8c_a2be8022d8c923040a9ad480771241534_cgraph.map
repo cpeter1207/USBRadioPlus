@@ -1,0 +1,5 @@
+<map id="urp_dcs_generate" name="urp_dcs_generate">
+<area shape="rect" id="Node000001" title="Render DCS NRZ modulation or its 134.4 Hz turn&#45;off tone into PCM&#45;domain doubles." alt="" coords="5,5,143,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#a4b73e1256bf2ca3833e4ef1b7d8beebf" title="Encode a DCS word in its TIA/ETSI least&#45;significant&#45;bit&#45;first layout." alt="" coords="191,5,273,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="143,15,177,15,177,21,143,21"/>
+</map>

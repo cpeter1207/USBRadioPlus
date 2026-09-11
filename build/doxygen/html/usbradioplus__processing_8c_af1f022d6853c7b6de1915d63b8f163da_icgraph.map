@@ -1,0 +1,11 @@
+<map id="detach_all" name="detach_all">
+<area shape="rect" id="Node000001" title="Remove processing hooks from all channels during shutdown." alt="" coords="407,35,496,60"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#abb6e27f0b1bb4881ee0871c74fd18a53" title="Disable a named processing source in the live settings snapshot." alt="" coords="222,5,313,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="393,41,313,28,313,23,394,35"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ae371743af71cd2fa8b7ad321151cfc1b" title="Stop the scanner, detach audiohooks, and unregister processing commands." alt="" coords="176,55,359,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="394,59,359,64,358,59,393,53"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="13,37,120,63"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="162,65,120,59,121,54,163,59"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="5,87,128,112"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="163,91,128,95,128,89,162,85"/>
+</map>

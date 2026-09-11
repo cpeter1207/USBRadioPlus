@@ -1,0 +1,7 @@
+<map id="usbradioplus_processing_unload" name="usbradioplus_processing_unload">
+<area shape="rect" id="Node000001" title="Stop the scanner, detach audiohooks, and unregister processing commands." alt="" coords="176,23,359,63"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="13,5,120,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="162,33,120,27,121,22,163,27"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a60da13aa72c23fe28a2dcbddaa6abe99" title="Stop workers and release channel, hardware, and processing resources." alt="" coords="5,55,128,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="163,59,128,63,128,57,162,53"/>
+</map>

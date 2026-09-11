@@ -1,0 +1,13 @@
+<map id="usbradioplus_native_graphs_acquire" name="usbradioplus_native_graphs_acquire">
+<area shape="rect" id="Node000001" title="Acquire the native graph generation published for one channel." alt="" coords="612,35,765,75"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#aeb7377682eee04e43d83b6a9050becb6" title="Register, complete, or report native audio and FIFO statistics." alt="" coords="381,5,563,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="598,45,562,40,563,35,599,40"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="380,70,564,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="599,69,565,73,564,68,598,64"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,45,332,70"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="366,73,332,70,333,64,366,68"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,94,304,119"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="366,97,305,103,304,98,365,91"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,45,113,70"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="147,60,114,60,114,55,147,55"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="radio_configure_dcs" name="radio_configure_dcs">
+<area shape="rect" id="Node000001" title="Reconfigure DCS only for directions that selected DCS signaling." alt="" coords="5,31,156,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#abcde7dd04fefa482c787572fd25858b1" title="Configure DCS reception and/or transmission." alt="" coords="211,5,350,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="156,31,197,26,198,31,156,36"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__dcs_8c.html#a35006cbd844b2d493f3f88cba1d5c511" title="Parse a three&#45;digit octal DCS code with N or I polarity suffix." alt="" coords="204,55,357,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="156,50,191,54,190,59,156,55"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__dcs_8c.html#a459d90828d359b032294fb0317f82fad" title="Test whether a value fits the three&#45;digit octal DCS code field." alt="" coords="405,5,588,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="350,15,392,15,392,21,350,21"/>
+</map>

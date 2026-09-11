@@ -1,0 +1,5 @@
+<map id="update_astats" name="update_astats">
+<area shape="rect" id="Node000001" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="5,5,120,31"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="168,5,273,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,15,154,15,154,21,120,21"/>
+</map>

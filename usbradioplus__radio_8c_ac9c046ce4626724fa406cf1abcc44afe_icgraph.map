@@ -1,0 +1,5 @@
+<map id="urp_radio_debug_atleast" name="urp_radio_debug_atleast">
+<area shape="rect" id="Node000001" title="Test whether Asterisk&#39;s current debug level enables a radio trace." alt="" coords="204,5,387,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#af179d75ad5de3bd821df99138ee787d8" title="Emit a control&#45;plane radio trace when the configured and requested levels permit it...." alt="" coords="5,5,156,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="190,21,156,21,156,15,190,15"/>
+</map>

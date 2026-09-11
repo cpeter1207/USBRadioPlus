@@ -1,0 +1,9 @@
+<map id="usbradioplus_echo_record" name="usbradioplus_echo_record">
+<area shape="rect" id="Node000001" title="Record one app_rpt&#45;rate receive block without allocating or locking." alt="" coords="5,42,196,67"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#a5d6a209d1d4f98072b390b3daeb05f36" title="Add one PCM sample to an SPSC queue." alt="" coords="256,5,439,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="196,41,242,35,243,40,197,46"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__core_8c.html#ab7205161c9c7d576ac070d1993e15d21" title="Return the number of queued PCM samples." alt="" coords="244,70,451,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="197,63,231,67,230,72,196,68"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__core_8c.html#aa277ccbd21cd4c775e88632a0e19340f" title="Record a producer&#45;owned sample&#45;ring occupancy peak." alt="" coords="499,5,680,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="439,23,485,23,485,28,439,28"/>
+</map>

@@ -1,0 +1,1059 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="avfilter__processor_8h" kind="file" language="C++">
+    <compoundname>avfilter_processor.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includes local="no">stdatomic.h</includes>
+    <includes refid="agc__core_8h" local="yes">agc_core.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="avfilter__processor_8c" local="yes">src/txagc/avfilter_processor.c</includedby>
+    <includedby refid="avfilter__processor__internal_8h" local="yes">src/txagc/avfilter_processor_internal.h</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__channel__private_8h" local="yes">src/usbradioplus_channel_private.h</includedby>
+    <includedby refid="usbradioplus__native__tick_8c" local="yes">src/usbradioplus_native_tick.c</includedby>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <includedby refid="usbradioplus__processing__internal_8h" local="yes">src/usbradioplus_processing_internal.h</includedby>
+    <includedby refid="usbradioplus__tune__menu_8c" local="yes">src/usbradioplus_tune_menu.c</includedby>
+    <incdepgraph>
+      <node id="4">
+        <label>agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/txagc/avfilter_processor.h</label>
+        <link refid="avfilter__processor_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>stdatomic.h</label>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/txagc/avfilter_processor.c</label>
+        <link refid="avfilter__processor_8c"/>
+      </node>
+      <node id="1">
+        <label>src/txagc/avfilter_processor.h</label>
+        <link refid="avfilter__processor_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>src/txagc/avfilter_processor_internal.h</label>
+        <link refid="avfilter__processor__internal_8h"/>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_channel_common.h</label>
+        <link refid="usbradioplus__channel__common_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_channel_private.h</label>
+        <link refid="usbradioplus__channel__private_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>src/usbradioplus_channel_test_api.h</label>
+        <link refid="usbradioplus__channel__test__api_8h"/>
+      </node>
+      <node id="10">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="12">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="13">
+        <label>src/usbradioplus_processing_internal.h</label>
+        <link refid="usbradioplus__processing__internal_8h"/>
+        <childnode refid="12" relation="include">
+        </childnode>
+      </node>
+      <node id="11">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structtxagc__avfilter" prot="public">txagc_avfilter</innerclass>
+    <innerclass refid="structtxagc__avfilter__slot" prot="public">txagc_avfilter_slot</innerclass>
+    <innerclass refid="structtxagc__avfilter__slot__candidate" prot="public">txagc_avfilter_slot_candidate</innerclass>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="avfilter__processor_8h_1ad5baa6e39086761392be89438050fb4b" prot="public" static="no">
+        <name>TXAGC_AVFILTER_INPUT_FRAME_COUNT</name>
+        <initializer>8</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of preallocated source frames available to the real-time graph feeder. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="20" column="9" bodyfile="src/txagc/avfilter_processor.h" bodystart="20" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="avfilter__processor_8h_1a1c76f7b09d096081aadbbe5265da11ad" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_init</definition>
+        <argsstring>(struct txagc_avfilter *state)</argsstring>
+        <name>txagc_avfilter_init</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Initialize an empty FFmpeg processor and its level statistics. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="150" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="994" bodyend="1007" declfile="src/txagc/avfilter_processor.h" declline="150" declcolumn="6"/>
+        <references refid="structtxagc__avfilter_1a6a913027fa62bd390d3d14a644e984ec" compoundref="avfilter__processor_8h" startline="113">txagc_avfilter::cleanup_post_5_8_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a76c27fc99271a79cf48e2b984b8d0a62" compoundref="avfilter__processor_8h" startline="111">txagc_avfilter::cleanup_post_5_8_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a2c20515accef1e3445b2d1df7e2f4057" compoundref="avfilter__processor_8h" startline="117">txagc_avfilter::cleanup_post_8_plus_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a8479743d2daaba6732fa01ed06aaee6e" compoundref="avfilter__processor_8h" startline="115">txagc_avfilter::cleanup_post_8_plus_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a2ea0516fed020c88266608babc6dd981" compoundref="avfilter__processor_8h" startline="105">txagc_avfilter::cleanup_pre_5_8_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a0f44538eb3831dbc8dbda1839133e567" compoundref="avfilter__processor_8h" startline="103">txagc_avfilter::cleanup_pre_5_8_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a1e22dfb2a219f1874c8b380538b1d194" compoundref="avfilter__processor_8h" startline="109">txagc_avfilter::cleanup_pre_8_plus_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a23f04bdb348e3604b5835c7d265f8180" compoundref="avfilter__processor_8h" startline="107">txagc_avfilter::cleanup_pre_8_plus_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a47819b8cc010966dedcb8de31080a544" compoundref="avfilter__processor_8h" startline="97">txagc_avfilter::cleanup_pre_max_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1a459fc289b66e28d253da3e7779ce7e6d" compoundref="avfilter__processor_8h" startline="101">txagc_avfilter::cleanup_pre_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1ad6a417cbedc78ec2588fb26c1dafc7b1" compoundref="avfilter__processor_8h" startline="95">txagc_avfilter::cleanup_pre_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1a531f10a5f58a553dd53c7f0f8446a5c6" compoundref="avfilter__processor_8h" startline="99">txagc_avfilter::cleanup_pre_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1afefa64186d980b7ff3b2e1a25839a69d" compoundref="avfilter__processor_8h" startline="81">txagc_avfilter::input_max_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1a39f088bb91e31d15b77c07dbc3dec190" compoundref="avfilter__processor_8h" startline="85">txagc_avfilter::input_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1aa3d954a1e5aed6fb8a0b70af5895c308" compoundref="avfilter__processor_8h" startline="79">txagc_avfilter::input_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1af1f56b87d12755046216d746ad50a755" compoundref="avfilter__processor_8h" startline="83">txagc_avfilter::input_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a5ab5a94b2ace22f3384a8137135d1c80" compoundref="avfilter__processor_8h" startline="89">txagc_avfilter::output_max_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1a6fff75d7b3ae35702fad6b24b5115474" compoundref="avfilter__processor_8h" startline="93">txagc_avfilter::output_max_rms_dbfs</references>
+        <references refid="structtxagc__avfilter_1a6020ac58c0fb5c18d4eb038df74f2ec1" compoundref="avfilter__processor_8h" startline="87">txagc_avfilter::output_peak_dbfs</references>
+        <references refid="structtxagc__avfilter_1ad8fbad7440ea6f6a86764bb3bd185192" compoundref="avfilter__processor_8h" startline="91">txagc_avfilter::output_rms_dbfs</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a4dd6f158adf1c2d2a77d0013cdf9000e" compoundref="avfilter__processor_8c" startline="1242" endline="1263">txagc_avfilter_slot_candidate_prepare</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1ad42481742cd3eefc6722c3ad9d524ba3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_destroy</definition>
+        <argsstring>(struct txagc_avfilter *state)</argsstring>
+        <name>txagc_avfilter_destroy</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Release all resources owned by an FFmpeg processor. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="154" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1009" bodyend="1013" declfile="src/txagc/avfilter_processor.h" declline="154" declcolumn="6"/>
+        <references refid="avfilter__processor_8c_1a6e90b9d04b2eda72ed16bc3ce2e3c7d4" compoundref="avfilter__processor_8c" startline="764" endline="786">free_graph</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="avfilter__processor_8c_1aa54c866a53389d9ff0f8c8c5af97f295" compoundref="avfilter__processor_8c" startline="1233" endline="1240">txagc_avfilter_slot_candidate_destroy</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a4dd6f158adf1c2d2a77d0013cdf9000e" compoundref="avfilter__processor_8c" startline="1242" endline="1263">txagc_avfilter_slot_candidate_prepare</referencedby>
+        <referencedby refid="avfilter__processor_8c_1af1ae11c50dd9221099d31a95424df38d" compoundref="avfilter__processor_8c" startline="1215" endline="1231">txagc_avfilter_slot_destroy</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3c2e682493e4d45c45d6143910464906" compoundref="avfilter__processor_8c" startline="1265" endline="1294">txagc_avfilter_slot_publish_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a174903e6e4f1cf7e01bbccd2547bf470" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_reset</definition>
+        <argsstring>(struct txagc_avfilter *state)</argsstring>
+        <name>txagc_avfilter_reset</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <briefdescription>
+<para>Discard buffered filter history while retaining a reusable processor state. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="158" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1015" bodyend="1018" declfile="src/txagc/avfilter_processor.h" declline="158" declcolumn="6"/>
+        <references refid="avfilter__processor_8c_1a6e90b9d04b2eda72ed16bc3ce2e3c7d4" compoundref="avfilter__processor_8c" startline="764" endline="786">free_graph</references>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a70d210ac5c3ee2edef04921b99248b75" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_slot_init</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot)</argsstring>
+        <name>txagc_avfilter_slot_init</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <briefdescription>
+<para>Initialize an empty atomically published graph slot. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot owned by a channel or audiohook. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="163" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1205" bodyend="1213" declfile="src/txagc/avfilter_processor.h" declline="163" declcolumn="6"/>
+        <references refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" compoundref="avfilter__processor_8h" startline="132">txagc_avfilter_slot::active</references>
+        <references refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" compoundref="avfilter__processor_8h" startline="134">txagc_avfilter_slot::readers</references>
+        <references refid="structtxagc__avfilter__slot_1a9bb39ca849b6371273ba6ee52051ee5e" compoundref="avfilter__processor_8h" startline="136">txagc_avfilter_slot::writer</references>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1af1ae11c50dd9221099d31a95424df38d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_slot_destroy</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot)</argsstring>
+        <name>txagc_avfilter_slot_destroy</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <briefdescription>
+<para>Destroy every graph retained by a slot after its audio reader stops. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot whose reader has already been detached or stopped. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="167" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1215" bodyend="1231" declfile="src/txagc/avfilter_processor.h" declline="167" declcolumn="6"/>
+        <references refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" compoundref="avfilter__processor_8h" startline="132">txagc_avfilter_slot::active</references>
+        <references refid="structtxagc__avfilter__slot__node_1abfbc286bdfff000485a2d8e64353fa40" compoundref="avfilter__processor_8c" startline="63">txagc_avfilter_slot_node::filter</references>
+        <references refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" compoundref="avfilter__processor_8h" startline="138">txagc_avfilter_slot::owned</references>
+        <references refid="avfilter__processor_8c_1a8ecd7b6343967718d3cf3c7d2c70713b" compoundref="avfilter__processor_8c" startline="1027" endline="1031">slot_lock</references>
+        <references refid="avfilter__processor_8c_1af3eb3a96d027952039477a2251c76173" compoundref="avfilter__processor_8c" startline="1036" endline="1039">slot_unlock</references>
+        <references refid="avfilter__processor_8c_1a08117f46f83685472606b65a70491e92" compoundref="avfilter__processor_8c" startline="1199" endline="1203">slot_wait_for_readers</references>
+        <references refid="avfilter__processor_8c_1ad42481742cd3eefc6722c3ad9d524ba3" compoundref="avfilter__processor_8c" startline="1009" endline="1013">txagc_avfilter_destroy</references>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" compoundref="usbradioplus__processing_8c" startline="2169" endline="2183">hook_destroy</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a4dd6f158adf1c2d2a77d0013cdf9000e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_slot_candidate_prepare</definition>
+        <argsstring>(struct txagc_avfilter_slot_candidate *candidate, const struct txagc_config *config, unsigned int sample_rate)</argsstring>
+        <name>txagc_avfilter_slot_candidate_prepare</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref> *</type>
+          <declname>candidate</declname>
+        </param>
+        <param>
+          <type>const struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Build an unpublished FFmpeg graph for an all-or-nothing reload. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>candidate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the prepared candidate, initially zeroed by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the candidate. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Source sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code with candidate empty on failure.</para>
+</simplesect>
+This control-plane operation deliberately does not modify any active slot. Pair it with <ref refid="avfilter__processor_8h_1a3c2e682493e4d45c45d6143910464906" kindref="member">txagc_avfilter_slot_publish_candidate()</ref> after every related candidate has built successfully, or <ref refid="avfilter__processor_8h_1aa54c866a53389d9ff0f8c8c5af97f295" kindref="member">txagc_avfilter_slot_candidate_destroy()</ref>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="178" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1242" bodyend="1263" declfile="src/txagc/avfilter_processor.h" declline="178" declcolumn="5"/>
+        <references refid="structtxagc__avfilter__slot__node_1abfbc286bdfff000485a2d8e64353fa40" compoundref="avfilter__processor_8c" startline="63">txagc_avfilter_slot_node::filter</references>
+        <references refid="structtxagc__avfilter__slot__candidate_1a5c29f8f3f9c3c689e5aa960ced46245e" compoundref="avfilter__processor_8h" startline="144">txagc_avfilter_slot_candidate::node</references>
+        <references refid="avfilter__processor_8c_1ad42481742cd3eefc6722c3ad9d524ba3" compoundref="avfilter__processor_8c" startline="1009" endline="1013">txagc_avfilter_destroy</references>
+        <references refid="avfilter__processor_8c_1a1c76f7b09d096081aadbbe5265da11ad" compoundref="avfilter__processor_8c" startline="994" endline="1007">txagc_avfilter_init</references>
+        <references refid="avfilter__processor_8c_1a49bce11019ec43d2202a54d2496b601f" compoundref="avfilter__processor_8c" startline="1370" endline="1380">txagc_avfilter_prepare</references>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a107363682a2697ec896dcdbe125bb834" compoundref="avfilter__processor_8c" startline="1296" endline="1324">txagc_avfilter_slot_prepare</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1aa54c866a53389d9ff0f8c8c5af97f295" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_slot_candidate_destroy</definition>
+        <argsstring>(struct txagc_avfilter_slot_candidate *candidate)</argsstring>
+        <name>txagc_avfilter_slot_candidate_destroy</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref> *</type>
+          <declname>candidate</declname>
+        </param>
+        <briefdescription>
+<para>Discard an unpublished candidate graph. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>candidate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Candidate prepared by <ref refid="avfilter__processor_8h_1a4dd6f158adf1c2d2a77d0013cdf9000e" kindref="member">txagc_avfilter_slot_candidate_prepare()</ref>. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="184" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1233" bodyend="1240" declfile="src/txagc/avfilter_processor.h" declline="184" declcolumn="6"/>
+        <references refid="structtxagc__avfilter__slot__node_1abfbc286bdfff000485a2d8e64353fa40" compoundref="avfilter__processor_8c" startline="63">txagc_avfilter_slot_node::filter</references>
+        <references refid="structtxagc__avfilter__slot__candidate_1a5c29f8f3f9c3c689e5aa960ced46245e" compoundref="avfilter__processor_8h" startline="144">txagc_avfilter_slot_candidate::node</references>
+        <references refid="avfilter__processor_8c_1ad42481742cd3eefc6722c3ad9d524ba3" compoundref="avfilter__processor_8c" startline="1009" endline="1013">txagc_avfilter_destroy</references>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3c2e682493e4d45c45d6143910464906" compoundref="avfilter__processor_8c" startline="1265" endline="1294">txagc_avfilter_slot_publish_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a3c2e682493e4d45c45d6143910464906" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_slot_publish_candidate</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot, struct txagc_avfilter_slot_candidate *candidate)</argsstring>
+        <name>txagc_avfilter_slot_publish_candidate</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref> *</type>
+          <declname>candidate</declname>
+        </param>
+        <briefdescription>
+<para>Atomically publish an already prepared candidate graph. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination graph slot. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>candidate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Candidate consumed on success or no-op replacement. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative error when either argument is invalid.</para>
+</simplesect>
+This control-plane operation waits only for pre-existing readers while it retires the previous graph; it never allocates and the callback never waits. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="193" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1265" bodyend="1294" declfile="src/txagc/avfilter_processor.h" declline="193" declcolumn="5"/>
+        <references refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" compoundref="avfilter__processor_8h" startline="132">txagc_avfilter_slot::active</references>
+        <references refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" compoundref="avfilter__processor_8h" startline="55">txagc_avfilter::config</references>
+        <references refid="structtxagc__avfilter__slot__node_1abfbc286bdfff000485a2d8e64353fa40" compoundref="avfilter__processor_8c" startline="63">txagc_avfilter_slot_node::filter</references>
+        <references refid="structtxagc__avfilter__slot__candidate_1a5c29f8f3f9c3c689e5aa960ced46245e" compoundref="avfilter__processor_8h" startline="144">txagc_avfilter_slot_candidate::node</references>
+        <references refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" compoundref="avfilter__processor_8h" startline="138">txagc_avfilter_slot::owned</references>
+        <references refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" compoundref="avfilter__processor_8h" startline="57">txagc_avfilter::sample_rate</references>
+        <references refid="avfilter__processor_8c_1a8ecd7b6343967718d3cf3c7d2c70713b" compoundref="avfilter__processor_8c" startline="1027" endline="1031">slot_lock</references>
+        <references refid="avfilter__processor_8c_1af3eb3a96d027952039477a2251c76173" compoundref="avfilter__processor_8c" startline="1036" endline="1039">slot_unlock</references>
+        <references refid="avfilter__processor_8c_1a08117f46f83685472606b65a70491e92" compoundref="avfilter__processor_8c" startline="1199" endline="1203">slot_wait_for_readers</references>
+        <references refid="avfilter__processor_8c_1ad42481742cd3eefc6722c3ad9d524ba3" compoundref="avfilter__processor_8c" startline="1009" endline="1013">txagc_avfilter_destroy</references>
+        <references refid="avfilter__processor_8c_1aa54c866a53389d9ff0f8c8c5af97f295" compoundref="avfilter__processor_8c" startline="1233" endline="1240">txagc_avfilter_slot_candidate_destroy</references>
+        <references refid="avfilter__processor_8c_1a11830d916b957a0e787c49631c014c9d" compoundref="avfilter__processor_8c" startline="1053" endline="1186">txagc_config_equal</references>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a107363682a2697ec896dcdbe125bb834" compoundref="avfilter__processor_8c" startline="1296" endline="1324">txagc_avfilter_slot_prepare</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a107363682a2697ec896dcdbe125bb834" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_slot_prepare</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot, const struct txagc_config *config, unsigned int sample_rate)</argsstring>
+        <name>txagc_avfilter_slot_prepare</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <param>
+          <type>const struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Build and atomically publish a replacement graph from the control plane. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot to update. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the replacement graph. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Source sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code without disturbing the active graph.</para>
+</simplesect>
+This operation may allocate. Call it only while attaching/reloading a hook or otherwise outside a real-time audio callback. A failed replacement leaves the previous prepared graph active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="205" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1296" bodyend="1324" declfile="src/txagc/avfilter_processor.h" declline="205" declcolumn="5"/>
+        <references refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" compoundref="avfilter__processor_8h" startline="55">txagc_avfilter::config</references>
+        <references refid="structtxagc__avfilter__slot__node_1abfbc286bdfff000485a2d8e64353fa40" compoundref="avfilter__processor_8c" startline="63">txagc_avfilter_slot_node::filter</references>
+        <references refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" compoundref="avfilter__processor_8h" startline="138">txagc_avfilter_slot::owned</references>
+        <references refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" compoundref="avfilter__processor_8h" startline="57">txagc_avfilter::sample_rate</references>
+        <references refid="avfilter__processor_8c_1a8ecd7b6343967718d3cf3c7d2c70713b" compoundref="avfilter__processor_8c" startline="1027" endline="1031">slot_lock</references>
+        <references refid="avfilter__processor_8c_1af3eb3a96d027952039477a2251c76173" compoundref="avfilter__processor_8c" startline="1036" endline="1039">slot_unlock</references>
+        <references refid="avfilter__processor_8c_1a4dd6f158adf1c2d2a77d0013cdf9000e" compoundref="avfilter__processor_8c" startline="1242" endline="1263">txagc_avfilter_slot_candidate_prepare</references>
+        <references refid="avfilter__processor_8c_1a3c2e682493e4d45c45d6143910464906" compoundref="avfilter__processor_8c" startline="1265" endline="1294">txagc_avfilter_slot_publish_candidate</references>
+        <references refid="avfilter__processor_8c_1a11830d916b957a0e787c49631c014c9d" compoundref="avfilter__processor_8c" startline="1053" endline="1186">txagc_config_equal</references>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a8d6018bcfd58dd7c92ac62fa7b454fab" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_slot_process_prepared</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot, double *samples, size_t count)</argsstring>
+        <name>txagc_avfilter_slot_process_prepared</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Run the currently prepared slot graph without allocation or locking. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot prepared by <ref refid="avfilter__processor_8h_1a107363682a2697ec896dcdbe125bb834" kindref="member">txagc_avfilter_slot_prepare()</ref>. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Mutable mono PCM buffer in 16-bit-code floating-point units. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of samples in samples. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code when no prepared graph is available. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="213" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1326" bodyend="1338" declfile="src/txagc/avfilter_processor.h" declline="213" declcolumn="5"/>
+        <references refid="avfilter__processor_8c_1a42f97cbbe252ab72960adc41a094d7dc" compoundref="avfilter__processor_8c" startline="1420" endline="1535">txagc_avfilter_process_prepared</references>
+        <references refid="avfilter__processor_8c_1afa0a4514cae0ee7fc68c67509641e3a2" compoundref="avfilter__processor_8c" startline="1347" endline="1362">txagc_avfilter_slot_acquire</references>
+        <references refid="avfilter__processor_8c_1ae1c4865c92bb2c204de0e9710f474bf5" compoundref="avfilter__processor_8c" startline="1364" endline="1368">txagc_avfilter_slot_release</references>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a7e66dd098b4d60692a90a52e43400bff" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+        <definition>struct txagc_avfilter * txagc_avfilter_slot_active</definition>
+        <argsstring>(const struct txagc_avfilter_slot *slot)</argsstring>
+        <name>txagc_avfilter_slot_active</name>
+        <param>
+          <type>const struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <briefdescription>
+<para>Obtain the graph currently published by a slot for non-real-time inspection. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot to inspect. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Borrowed graph pointer, or NULL when the slot has no prepared graph.</para>
+</simplesect>
+This convenience accessor is appropriate only when the caller otherwise prevents concurrent replacement. Use <ref refid="avfilter__processor_8h_1afa0a4514cae0ee7fc68c67509641e3a2" kindref="member">txagc_avfilter_slot_acquire()</ref> and <ref refid="avfilter__processor_8h_1ae1c4865c92bb2c204de0e9710f474bf5" kindref="member">txagc_avfilter_slot_release()</ref> for an asynchronous statistics reader. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="223" column="21" bodyfile="src/txagc/avfilter_processor.c" bodystart="1340" bodyend="1345" declfile="src/txagc/avfilter_processor.h" declline="223" declcolumn="21"/>
+        <references refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" compoundref="avfilter__processor_8h" startline="132">txagc_avfilter_slot::active</references>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1afa0a4514cae0ee7fc68c67509641e3a2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+        <definition>struct txagc_avfilter * txagc_avfilter_slot_acquire</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot)</argsstring>
+        <name>txagc_avfilter_slot_acquire</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <briefdescription>
+<para>Retain the graph current at the instant of acquisition for inspection. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot to inspect. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Graph pointer that remains valid until <ref refid="avfilter__processor_8h_1ae1c4865c92bb2c204de0e9710f474bf5" kindref="member">txagc_avfilter_slot_release()</ref>. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="228" column="21" bodyfile="src/txagc/avfilter_processor.c" bodystart="1347" bodyend="1362" declfile="src/txagc/avfilter_processor.h" declline="228" declcolumn="21"/>
+        <references refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" compoundref="avfilter__processor_8h" startline="132">txagc_avfilter_slot::active</references>
+        <references refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" compoundref="avfilter__processor_8h" startline="134">txagc_avfilter_slot::readers</references>
+        <referencedby refid="avfilter__processor_8c_1a8d6018bcfd58dd7c92ac62fa7b454fab" compoundref="avfilter__processor_8c" startline="1326" endline="1338">txagc_avfilter_slot_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1ae1c4865c92bb2c204de0e9710f474bf5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void txagc_avfilter_slot_release</definition>
+        <argsstring>(struct txagc_avfilter_slot *slot)</argsstring>
+        <name>txagc_avfilter_slot_release</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref> *</type>
+          <declname>slot</declname>
+        </param>
+        <briefdescription>
+<para>Release a graph reference obtained by <ref refid="avfilter__processor_8h_1afa0a4514cae0ee7fc68c67509641e3a2" kindref="member">txagc_avfilter_slot_acquire()</ref>. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>slot</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Slot whose read-side reference is being released. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="232" column="6" bodyfile="src/txagc/avfilter_processor.c" bodystart="1364" bodyend="1368" declfile="src/txagc/avfilter_processor.h" declline="232" declcolumn="6"/>
+        <references refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" compoundref="avfilter__processor_8h" startline="134">txagc_avfilter_slot::readers</references>
+        <referencedby refid="avfilter__processor_8c_1a8d6018bcfd58dd7c92ac62fa7b454fab" compoundref="avfilter__processor_8c" startline="1326" endline="1338">txagc_avfilter_slot_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a49bce11019ec43d2202a54d2496b601f" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_prepare</definition>
+        <argsstring>(struct txagc_avfilter *state, const struct txagc_config *config, unsigned int sample_rate)</argsstring>
+        <name>txagc_avfilter_prepare</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>const struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Allocate or rebuild a shared FFmpeg graph outside the audio callback. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the shared FFmpeg graph. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code on failure.</para>
+</simplesect>
+This control-plane operation creates the graph, its fixed FIFO, and a pool of reusable frames. Call it before using <ref refid="avfilter__processor_8h_1a42f97cbbe252ab72960adc41a094d7dc" kindref="member">txagc_avfilter_process_prepared()</ref> from a real-time audio callback and after each settings or rate change. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="243" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1370" bodyend="1380" declfile="src/txagc/avfilter_processor.h" declline="243" declcolumn="5"/>
+        <references refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" compoundref="avfilter__processor_8h" startline="55">txagc_avfilter::config</references>
+        <references refid="avfilter__processor_8c_1a9e7cb869fcd27b93df8369ab599480af" compoundref="avfilter__processor_8c" startline="857" endline="992">configure</references>
+        <references refid="structtxagc__avfilter_1a1730512322a19f089b48497c1e733e5e" compoundref="avfilter__processor_8h" startline="59">txagc_avfilter::configured</references>
+        <references refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" compoundref="avfilter__processor_8h" startline="57">txagc_avfilter::sample_rate</references>
+        <references refid="avfilter__processor_8c_1a11830d916b957a0e787c49631c014c9d" compoundref="avfilter__processor_8c" startline="1053" endline="1186">txagc_config_equal</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3514e05bc03695f0fd1b564986b58cad" compoundref="avfilter__processor_8c" startline="1537" endline="1543">txagc_avfilter_process</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a4dd6f158adf1c2d2a77d0013cdf9000e" compoundref="avfilter__processor_8c" startline="1242" endline="1263">txagc_avfilter_slot_candidate_prepare</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a42f97cbbe252ab72960adc41a094d7dc" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_process_prepared</definition>
+        <argsstring>(struct txagc_avfilter *state, double *samples, size_t count)</argsstring>
+        <name>txagc_avfilter_process_prepared</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <briefdescription>
+<para>Process one mono block through an already prepared FFmpeg graph. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor prepared with <ref refid="avfilter__processor_8h_1a49bce11019ec43d2202a54d2496b601f" kindref="member">txagc_avfilter_prepare()</ref>. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code on failure.</para>
+</simplesect>
+This real-time path uses only preallocated processor-owned frames and FIFO capacity. It neither rebuilds the graph nor grows a buffer. Blocks longer than the prepared frame capacity fail instead of allocating in the callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="255" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1420" bodyend="1535" declfile="src/txagc/avfilter_processor.h" declline="255" declcolumn="5"/>
+        <references refid="structtxagc__avfilter_1a7ce214ad478552b69206865c8f660d81" compoundref="avfilter__processor_8h" startline="65">txagc_avfilter::buffered_samples</references>
+        <references refid="avfilter__processor_8c_1a0770bc2ce7e43ecb65cb750658251b51a71b2c7294fbf6678bd05092b185cdfd0" compoundref="avfilter__processor_8c" startline="174">CLEANUP_POST_5_8</references>
+        <references refid="structtxagc__avfilter_1aeeddb47dad5583eafd0c5402391751c8" compoundref="avfilter__processor_8h" startline="39">txagc_avfilter::cleanup_post_5_8_sink</references>
+        <references refid="avfilter__processor_8c_1a0770bc2ce7e43ecb65cb750658251b51ada4443e19971a6253e6dd0eab9a32760" compoundref="avfilter__processor_8c" startline="175">CLEANUP_POST_8_PLUS</references>
+        <references refid="structtxagc__avfilter_1a60bddea7f67394b99fe09a273dee00e8" compoundref="avfilter__processor_8h" startline="41">txagc_avfilter::cleanup_post_8_plus_sink</references>
+        <references refid="avfilter__processor_8c_1a0770bc2ce7e43ecb65cb750658251b51ae49f7864baf3472453119bb0e2c24c7b" compoundref="avfilter__processor_8c" startline="172">CLEANUP_PRE_5_8</references>
+        <references refid="structtxagc__avfilter_1aa797e3a119ec0d83db005c33ce8af7aa" compoundref="avfilter__processor_8h" startline="35">txagc_avfilter::cleanup_pre_5_8_sink</references>
+        <references refid="avfilter__processor_8c_1a0770bc2ce7e43ecb65cb750658251b51a8c45b72e877b26936d230658dd75594b" compoundref="avfilter__processor_8c" startline="173">CLEANUP_PRE_8_PLUS</references>
+        <references refid="structtxagc__avfilter_1a418664ed64e191322cbad92bbb794684" compoundref="avfilter__processor_8h" startline="37">txagc_avfilter::cleanup_pre_8_plus_sink</references>
+        <references refid="avfilter__processor_8c_1a0770bc2ce7e43ecb65cb750658251b51adbcf3e67bd2111c3b720789cd91a1620" compoundref="avfilter__processor_8c" startline="171">CLEANUP_PRE_FULL</references>
+        <references refid="structtxagc__avfilter_1aca690e4c0ab2f39ab236986dbdfa15f0" compoundref="avfilter__processor_8h" startline="33">txagc_avfilter::cleanup_pre_sink</references>
+        <references refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" compoundref="avfilter__processor_8h" startline="55">txagc_avfilter::config</references>
+        <references refid="structtxagc__avfilter_1a1730512322a19f089b48497c1e733e5e" compoundref="avfilter__processor_8h" startline="59">txagc_avfilter::configured</references>
+        <references refid="avfilter__processor_8c_1ac891b46547a6d98840314bd3114a6629" compoundref="avfilter__processor_8c" startline="1389" endline="1399">drain_cleanup_meter</references>
+        <references refid="structtxagc__avfilter_1a341b0dfc33706faf8735a0df7e09ec40" compoundref="avfilter__processor_8h" startline="43">txagc_avfilter::fifo</references>
+        <references refid="structtxagc__avfilter_1a0c5c61969e630d8d0a470a0ed14004b4" compoundref="avfilter__processor_8h" startline="49">txagc_avfilter::input_capacity</references>
+        <references refid="structtxagc__avfilter_1a387dc0d91e3f38f97765f9c9be47a093" compoundref="avfilter__processor_8h" startline="69">txagc_avfilter::input_samples</references>
+        <references refid="structtxagc__avfilter_1a1ac48578a960fb6df0952a5681356d11" compoundref="avfilter__processor_8h" startline="63">txagc_avfilter::latency_samples</references>
+        <references refid="structtxagc__avfilter_1a125804417bc1b7262151e2dd5547542e" compoundref="avfilter__processor_8h" startline="31">txagc_avfilter::meter_sink</references>
+        <references refid="avfilter__processor_8c_1aa9267bbf543edad3c49a9288605c4389" compoundref="avfilter__processor_8c" startline="1405" endline="1418">next_input_frame</references>
+        <references refid="structtxagc__avfilter_1afc4aef0c5306a057548589d98c8bf148" compoundref="avfilter__processor_8h" startline="47">txagc_avfilter::output_frame</references>
+        <references refid="structtxagc__avfilter_1a73dd243c2ef09cc4c147719c928b814c" compoundref="avfilter__processor_8h" startline="71">txagc_avfilter::output_samples</references>
+        <references refid="structtxagc__avfilter_1a60f2a2b5dd9699918fc27dd39244fb3c" compoundref="avfilter__processor_8h" startline="67">txagc_avfilter::output_started</references>
+        <references refid="structtxagc__config_1af62e41eef48a4ebfcc3767c7ee8ea774" compoundref="agc__core_8h" startline="261">txagc_config::post_limiter_lowpass_enabled</references>
+        <references refid="structtxagc__avfilter_1a10d4b4df233e41abdb23341782898422" compoundref="avfilter__processor_8h" startline="77">txagc_avfilter::runtime_underrun_samples</references>
+        <references refid="structtxagc__avfilter_1a91868513bd61b4ea02c084e35833d801" compoundref="avfilter__processor_8h" startline="29">txagc_avfilter::sink</references>
+        <references refid="structtxagc__avfilter_1ae5d9221475e3b7d803e5684ca13f359f" compoundref="avfilter__processor_8h" startline="27">txagc_avfilter::source</references>
+        <references refid="structtxagc__avfilter_1a60a01c46c6c046342e8c49f7414a1dbd" compoundref="avfilter__processor_8h" startline="75">txagc_avfilter::startup_fill_samples</references>
+        <references refid="structtxagc__avfilter_1a155b41e53fe10a5327e3563204a5f5e8" compoundref="avfilter__processor_8h" startline="73">txagc_avfilter::underrun_samples</references>
+        <references refid="avfilter__processor_8c_1a8681a563c78717937cd38f3685472fb5" compoundref="avfilter__processor_8c" startline="139" endline="166">update_astats</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a6f373fa80dc3a1496971450a6b59455c" compoundref="usbradioplus__native__tick_8c" startline="347" endline="357">process_receive_filter</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a3514e05bc03695f0fd1b564986b58cad" compoundref="avfilter__processor_8c" startline="1537" endline="1543">txagc_avfilter_process</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a8d6018bcfd58dd7c92ac62fa7b454fab" compoundref="avfilter__processor_8c" startline="1326" endline="1338">txagc_avfilter_slot_process_prepared</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="avfilter__processor_8h_1a3514e05bc03695f0fd1b564986b58cad" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int txagc_avfilter_process</definition>
+        <argsstring>(struct txagc_avfilter *state, const struct txagc_config *config, double *samples, size_t count, unsigned int sample_rate)</argsstring>
+        <name>txagc_avfilter_process</name>
+        <param>
+          <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref> *</type>
+          <declname>state</declname>
+        </param>
+        <param>
+          <type>const struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref> *</type>
+          <declname>config</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>samples</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>unsigned int</type>
+          <declname>sample_rate</declname>
+        </param>
+        <briefdescription>
+<para>Process a mono block in place through the shared FFmpeg graph. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>state</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Processor or stream state owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>config</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Filter and dynamics settings for the shared FFmpeg graph. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>samples</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio samples; mutable buffers are updated in place. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>sample_rate</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Audio sample rate in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Zero on success; a negative FFmpeg error code on failure.</para>
+</simplesect>
+This compatibility helper prepares the graph when its configuration or rate changed, then calls <ref refid="avfilter__processor_8h_1a42f97cbbe252ab72960adc41a094d7dc" kindref="member">txagc_avfilter_process_prepared()</ref>. Use the explicit prepare/process-prepared pair in real-time callbacks so graph rebuilding and allocation remain on the control plane. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.h" line="269" column="5" bodyfile="src/txagc/avfilter_processor.c" bodystart="1537" bodyend="1543" declfile="src/txagc/avfilter_processor.h" declline="269" declcolumn="5"/>
+        <references refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" compoundref="avfilter__processor_8h" startline="55">txagc_avfilter::config</references>
+        <references refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" compoundref="avfilter__processor_8h" startline="57">txagc_avfilter::sample_rate</references>
+        <references refid="avfilter__processor_8c_1a49bce11019ec43d2202a54d2496b601f" compoundref="avfilter__processor_8c" startline="1370" endline="1380">txagc_avfilter_prepare</references>
+        <references refid="avfilter__processor_8c_1a42f97cbbe252ab72960adc41a094d7dc" compoundref="avfilter__processor_8c" startline="1420" endline="1535">txagc_avfilter_process_prepared</references>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_AVFILTER_PROCESSOR_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_AVFILTER_PROCESSOR_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdatomic.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="agc__core_8h" kindref="compound">agc_core.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">AVAudioFifo;</highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">AVFilterContext;</highlight></codeline>
+<codeline lineno="15"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">AVFilterGraph;</highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">AVFrame;</highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot__node" kindref="compound">txagc_avfilter_slot_node</ref>;</highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight></codeline>
+<codeline lineno="20" refid="avfilter__processor_8h_1ad5baa6e39086761392be89438050fb4b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>TXAGC_AVFILTER_INPUT_FRAME_COUNT<sp/>8</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight></codeline>
+<codeline lineno="23" refid="structtxagc__avfilter" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>{</highlight></codeline>
+<codeline lineno="25" refid="structtxagc__avfilter_1ac3aaf1252579b462f4db1c3cdec15cff" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterGraph</ref><sp/>*<ref refid="structtxagc__avfilter_1ac3aaf1252579b462f4db1c3cdec15cff" kindref="member">graph</ref>;</highlight></codeline>
+<codeline lineno="27" refid="structtxagc__avfilter_1ae5d9221475e3b7d803e5684ca13f359f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1ae5d9221475e3b7d803e5684ca13f359f" kindref="member">source</ref>;</highlight></codeline>
+<codeline lineno="29" refid="structtxagc__avfilter_1a91868513bd61b4ea02c084e35833d801" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1a91868513bd61b4ea02c084e35833d801" kindref="member">sink</ref>;</highlight></codeline>
+<codeline lineno="31" refid="structtxagc__avfilter_1a125804417bc1b7262151e2dd5547542e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1a125804417bc1b7262151e2dd5547542e" kindref="member">meter_sink</ref>;</highlight></codeline>
+<codeline lineno="33" refid="structtxagc__avfilter_1aca690e4c0ab2f39ab236986dbdfa15f0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1aca690e4c0ab2f39ab236986dbdfa15f0" kindref="member">cleanup_pre_sink</ref>;</highlight></codeline>
+<codeline lineno="35" refid="structtxagc__avfilter_1aa797e3a119ec0d83db005c33ce8af7aa" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1aa797e3a119ec0d83db005c33ce8af7aa" kindref="member">cleanup_pre_5_8_sink</ref>;</highlight></codeline>
+<codeline lineno="37" refid="structtxagc__avfilter_1a418664ed64e191322cbad92bbb794684" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1a418664ed64e191322cbad92bbb794684" kindref="member">cleanup_pre_8_plus_sink</ref>;</highlight></codeline>
+<codeline lineno="39" refid="structtxagc__avfilter_1aeeddb47dad5583eafd0c5402391751c8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1aeeddb47dad5583eafd0c5402391751c8" kindref="member">cleanup_post_5_8_sink</ref>;</highlight></codeline>
+<codeline lineno="41" refid="structtxagc__avfilter_1a60bddea7f67394b99fe09a273dee00e8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFilterContext</ref><sp/>*<ref refid="structtxagc__avfilter_1a60bddea7f67394b99fe09a273dee00e8" kindref="member">cleanup_post_8_plus_sink</ref>;</highlight></codeline>
+<codeline lineno="43" refid="structtxagc__avfilter_1a341b0dfc33706faf8735a0df7e09ec40" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVAudioFifo</ref><sp/>*<ref refid="structtxagc__avfilter_1a341b0dfc33706faf8735a0df7e09ec40" kindref="member">fifo</ref>;</highlight></codeline>
+<codeline lineno="45" refid="structtxagc__avfilter_1a618b00cf77a7869354e188b64c4599bf" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFrame</ref><sp/>*<ref refid="structtxagc__avfilter_1a618b00cf77a7869354e188b64c4599bf" kindref="member">input_frames</ref>[<ref refid="avfilter__processor_8h_1ad5baa6e39086761392be89438050fb4b" kindref="member">TXAGC_AVFILTER_INPUT_FRAME_COUNT</ref>];</highlight></codeline>
+<codeline lineno="47" refid="structtxagc__avfilter_1afc4aef0c5306a057548589d98c8bf148" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">AVFrame</ref><sp/>*<ref refid="structtxagc__avfilter_1afc4aef0c5306a057548589d98c8bf148" kindref="member">output_frame</ref>;</highlight></codeline>
+<codeline lineno="49" refid="structtxagc__avfilter_1a0c5c61969e630d8d0a470a0ed14004b4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a0c5c61969e630d8d0a470a0ed14004b4" kindref="member">input_capacity</ref>;</highlight></codeline>
+<codeline lineno="51" refid="structtxagc__avfilter_1a6edf046cc45c606e10aa776b60e673ef" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6edf046cc45c606e10aa776b60e673ef" kindref="member">fifo_capacity</ref>;</highlight></codeline>
+<codeline lineno="53" refid="structtxagc__avfilter_1a4af3209d6a2ff8a9c507ceeca16ccdf0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a4af3209d6a2ff8a9c507ceeca16ccdf0" kindref="member">input_frame_index</ref>;</highlight></codeline>
+<codeline lineno="55" refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/><ref refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" kindref="member">config</ref>;</highlight></codeline>
+<codeline lineno="57" refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">sample_rate</ref>;</highlight></codeline>
+<codeline lineno="59" refid="structtxagc__avfilter_1a1730512322a19f089b48497c1e733e5e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a1730512322a19f089b48497c1e733e5e" kindref="member">configured</ref>;</highlight></codeline>
+<codeline lineno="61" refid="structtxagc__avfilter_1aa20e3de68a33a87179f8c7652dd46b12" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1aa20e3de68a33a87179f8c7652dd46b12" kindref="member">failed</ref>;</highlight></codeline>
+<codeline lineno="63" refid="structtxagc__avfilter_1a1ac48578a960fb6df0952a5681356d11" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a1ac48578a960fb6df0952a5681356d11" kindref="member">latency_samples</ref>;</highlight></codeline>
+<codeline lineno="65" refid="structtxagc__avfilter_1a7ce214ad478552b69206865c8f660d81" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a7ce214ad478552b69206865c8f660d81" kindref="member">buffered_samples</ref>;</highlight></codeline>
+<codeline lineno="67" refid="structtxagc__avfilter_1a60f2a2b5dd9699918fc27dd39244fb3c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a60f2a2b5dd9699918fc27dd39244fb3c" kindref="member">output_started</ref>;</highlight></codeline>
+<codeline lineno="69" refid="structtxagc__avfilter_1a387dc0d91e3f38f97765f9c9be47a093" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a387dc0d91e3f38f97765f9c9be47a093" kindref="member">input_samples</ref>;</highlight></codeline>
+<codeline lineno="71" refid="structtxagc__avfilter_1a73dd243c2ef09cc4c147719c928b814c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a73dd243c2ef09cc4c147719c928b814c" kindref="member">output_samples</ref>;</highlight></codeline>
+<codeline lineno="73" refid="structtxagc__avfilter_1a155b41e53fe10a5327e3563204a5f5e8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a155b41e53fe10a5327e3563204a5f5e8" kindref="member">underrun_samples</ref>;</highlight></codeline>
+<codeline lineno="75" refid="structtxagc__avfilter_1a60a01c46c6c046342e8c49f7414a1dbd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a60a01c46c6c046342e8c49f7414a1dbd" kindref="member">startup_fill_samples</ref>;</highlight></codeline>
+<codeline lineno="77" refid="structtxagc__avfilter_1a10d4b4df233e41abdb23341782898422" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a10d4b4df233e41abdb23341782898422" kindref="member">runtime_underrun_samples</ref>;</highlight></codeline>
+<codeline lineno="79" refid="structtxagc__avfilter_1aa3d954a1e5aed6fb8a0b70af5895c308" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1aa3d954a1e5aed6fb8a0b70af5895c308" kindref="member">input_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="81" refid="structtxagc__avfilter_1afefa64186d980b7ff3b2e1a25839a69d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1afefa64186d980b7ff3b2e1a25839a69d" kindref="member">input_max_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="83" refid="structtxagc__avfilter_1af1f56b87d12755046216d746ad50a755" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1af1f56b87d12755046216d746ad50a755" kindref="member">input_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="85" refid="structtxagc__avfilter_1a39f088bb91e31d15b77c07dbc3dec190" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a39f088bb91e31d15b77c07dbc3dec190" kindref="member">input_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="87" refid="structtxagc__avfilter_1a6020ac58c0fb5c18d4eb038df74f2ec1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6020ac58c0fb5c18d4eb038df74f2ec1" kindref="member">output_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="89" refid="structtxagc__avfilter_1a5ab5a94b2ace22f3384a8137135d1c80" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a5ab5a94b2ace22f3384a8137135d1c80" kindref="member">output_max_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="91" refid="structtxagc__avfilter_1ad8fbad7440ea6f6a86764bb3bd185192" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1ad8fbad7440ea6f6a86764bb3bd185192" kindref="member">output_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="93" refid="structtxagc__avfilter_1a6fff75d7b3ae35702fad6b24b5115474" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6fff75d7b3ae35702fad6b24b5115474" kindref="member">output_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="95" refid="structtxagc__avfilter_1ad6a417cbedc78ec2588fb26c1dafc7b1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1ad6a417cbedc78ec2588fb26c1dafc7b1" kindref="member">cleanup_pre_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="97" refid="structtxagc__avfilter_1a47819b8cc010966dedcb8de31080a544" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a47819b8cc010966dedcb8de31080a544" kindref="member">cleanup_pre_max_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="99" refid="structtxagc__avfilter_1a531f10a5f58a553dd53c7f0f8446a5c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a531f10a5f58a553dd53c7f0f8446a5c6" kindref="member">cleanup_pre_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="101" refid="structtxagc__avfilter_1a459fc289b66e28d253da3e7779ce7e6d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a459fc289b66e28d253da3e7779ce7e6d" kindref="member">cleanup_pre_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="103" refid="structtxagc__avfilter_1a0f44538eb3831dbc8dbda1839133e567" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a0f44538eb3831dbc8dbda1839133e567" kindref="member">cleanup_pre_5_8_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="105" refid="structtxagc__avfilter_1a2ea0516fed020c88266608babc6dd981" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a2ea0516fed020c88266608babc6dd981" kindref="member">cleanup_pre_5_8_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="107" refid="structtxagc__avfilter_1a23f04bdb348e3604b5835c7d265f8180" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a23f04bdb348e3604b5835c7d265f8180" kindref="member">cleanup_pre_8_plus_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="109" refid="structtxagc__avfilter_1a1e22dfb2a219f1874c8b380538b1d194" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a1e22dfb2a219f1874c8b380538b1d194" kindref="member">cleanup_pre_8_plus_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="111" refid="structtxagc__avfilter_1a76c27fc99271a79cf48e2b984b8d0a62" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a76c27fc99271a79cf48e2b984b8d0a62" kindref="member">cleanup_post_5_8_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="113" refid="structtxagc__avfilter_1a6a913027fa62bd390d3d14a644e984ec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6a913027fa62bd390d3d14a644e984ec" kindref="member">cleanup_post_5_8_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="115" refid="structtxagc__avfilter_1a8479743d2daaba6732fa01ed06aaee6e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a8479743d2daaba6732fa01ed06aaee6e" kindref="member">cleanup_post_8_plus_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="117" refid="structtxagc__avfilter_1a2c20515accef1e3445b2d1df7e2f4057" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a2c20515accef1e3445b2d1df7e2f4057" kindref="member">cleanup_post_8_plus_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="118"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="119"><highlight class="normal"></highlight></codeline>
+<codeline lineno="130" refid="structtxagc__avfilter__slot" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>{</highlight></codeline>
+<codeline lineno="132" refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>_Atomic(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*)<sp/><ref refid="structtxagc__avfilter__slot_1ac84bab1a3c437cec2368bd088bfc320e" kindref="member">active</ref>;</highlight></codeline>
+<codeline lineno="134" refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>_Atomic<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot_1aec03de0d14006e7f1adcb9a7bf0f5c8b" kindref="member">readers</ref>;</highlight></codeline>
+<codeline lineno="136" refid="structtxagc__avfilter__slot_1a9bb39ca849b6371273ba6ee52051ee5e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>atomic_flag<sp/><ref refid="structtxagc__avfilter__slot_1a9bb39ca849b6371273ba6ee52051ee5e" kindref="member">writer</ref>;</highlight></codeline>
+<codeline lineno="138" refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot__node" kindref="compound">txagc_avfilter_slot_node</ref><sp/>*<ref refid="structtxagc__avfilter__slot_1a48ba8b46dd7b96de0aad57a7c66a1c0f" kindref="member">owned</ref>;</highlight></codeline>
+<codeline lineno="139"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="140"><highlight class="normal"></highlight></codeline>
+<codeline lineno="142" refid="structtxagc__avfilter__slot__candidate" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref><sp/>{</highlight></codeline>
+<codeline lineno="144" refid="structtxagc__avfilter__slot__candidate_1a5c29f8f3f9c3c689e5aa960ced46245e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot__node" kindref="compound">txagc_avfilter_slot_node</ref><sp/>*<ref refid="structtxagc__avfilter__slot__candidate_1a5c29f8f3f9c3c689e5aa960ced46245e" kindref="member">node</ref>;</highlight></codeline>
+<codeline lineno="145"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"></highlight></codeline>
+<codeline lineno="150"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a1c76f7b09d096081aadbbe5265da11ad" kindref="member">txagc_avfilter_init</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state);</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1ad42481742cd3eefc6722c3ad9d524ba3" kindref="member">txagc_avfilter_destroy</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state);</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a174903e6e4f1cf7e01bbccd2547bf470" kindref="member">txagc_avfilter_reset</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state);</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"></highlight></codeline>
+<codeline lineno="163"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a70d210ac5c3ee2edef04921b99248b75" kindref="member">txagc_avfilter_slot_init</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*slot);</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1af1ae11c50dd9221099d31a95424df38d" kindref="member">txagc_avfilter_slot_destroy</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*slot);</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a4dd6f158adf1c2d2a77d0013cdf9000e" kindref="member">txagc_avfilter_slot_candidate_prepare</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref><sp/>*candidate,</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*config,</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate);</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1aa54c866a53389d9ff0f8c8c5af97f295" kindref="member">txagc_avfilter_slot_candidate_destroy</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref><sp/>*candidate);</highlight></codeline>
+<codeline lineno="193"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a3c2e682493e4d45c45d6143910464906" kindref="member">txagc_avfilter_slot_publish_candidate</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*slot,</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot__candidate" kindref="compound">txagc_avfilter_slot_candidate</ref><sp/>*candidate);</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a107363682a2697ec896dcdbe125bb834" kindref="member">txagc_avfilter_slot_prepare</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*slot,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*config,</highlight></codeline>
+<codeline lineno="206"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>sample_rate);</highlight></codeline>
+<codeline lineno="213"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a8d6018bcfd58dd7c92ac62fa7b454fab" kindref="member">txagc_avfilter_slot_process_prepared</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*slot,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*samples,</highlight></codeline>
+<codeline lineno="214"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count);</highlight></codeline>
+<codeline lineno="223"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*<ref refid="avfilter__processor_8h_1a7e66dd098b4d60692a90a52e43400bff" kindref="member">txagc_avfilter_slot_active</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*<ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">slot</ref>);</highlight></codeline>
+<codeline lineno="228"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*<ref refid="avfilter__processor_8h_1afa0a4514cae0ee7fc68c67509641e3a2" kindref="member">txagc_avfilter_slot_acquire</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*<ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">slot</ref>);</highlight></codeline>
+<codeline lineno="232"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1ae1c4865c92bb2c204de0e9710f474bf5" kindref="member">txagc_avfilter_slot_release</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/>*<ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">slot</ref>);</highlight></codeline>
+<codeline lineno="243"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a49bce11019ec43d2202a54d2496b601f" kindref="member">txagc_avfilter_prepare</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*<ref refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" kindref="member">config</ref>,</highlight></codeline>
+<codeline lineno="244"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">sample_rate</ref>);</highlight></codeline>
+<codeline lineno="255"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a42f97cbbe252ab72960adc41a094d7dc" kindref="member">txagc_avfilter_process_prepared</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*samples,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count);</highlight></codeline>
+<codeline lineno="269"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="avfilter__processor_8h_1a3514e05bc03695f0fd1b564986b58cad" kindref="member">txagc_avfilter_process</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*state,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/>*<ref refid="structtxagc__avfilter_1a3318084dfb0aaee86f45a0f404dd7620" kindref="member">config</ref>,</highlight></codeline>
+<codeline lineno="270"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*samples,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count,<sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter_1a6275511b052efe71a610fca9909c79f9" kindref="member">sample_rate</ref>);</highlight></codeline>
+<codeline lineno="271"><highlight class="normal"></highlight></codeline>
+<codeline lineno="272"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/avfilter_processor.h"/>
+  </compounddef>
+</doxygen>

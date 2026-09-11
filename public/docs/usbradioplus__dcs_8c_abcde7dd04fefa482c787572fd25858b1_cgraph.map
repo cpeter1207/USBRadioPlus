@@ -1,0 +1,5 @@
+<map id="urp_dcs_configure" name="urp_dcs_configure">
+<area shape="rect" id="Node000001" title="Configure DCS reception and/or transmission." alt="" coords="5,5,144,31"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__dcs_8c.html#a459d90828d359b032294fb0317f82fad" title="Test whether a value fits the three&#45;digit octal DCS code field." alt="" coords="192,5,375,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="144,15,178,15,178,21,144,21"/>
+</map>

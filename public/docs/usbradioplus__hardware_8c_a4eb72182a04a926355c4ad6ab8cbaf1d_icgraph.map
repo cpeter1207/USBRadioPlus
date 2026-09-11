@@ -1,0 +1,19 @@
+<map id="urp_hardware_delay" name="urp_hardware_delay">
+<area shape="rect" id="Node000001" title="Wait the parallel&#45;port protocol interval required for hardware settling." alt="" coords="900,31,1055,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__hardware_8c.html#a42f41edf93b2ece7d84929cbc0359027" title="Clock a synthesizer programming word over the parallel&#45;port serial interface." alt="" coords="715,31,852,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="886,46,853,46,853,41,886,41"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__hardware_8c.html#abeee3f38f91b6c8b4697248ee607594e" title="Program RTX frequency and power using the parallel&#45;port bus." alt="" coords="493,23,667,63"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="701,46,667,46,667,41,701,41"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a5cc99db0a934683818d67d2ba0745de4" title="Apply a PTT request on every configured physical output." alt="" coords="293,5,445,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="479,34,445,30,446,24,480,29"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a614b2ecfbe8d0ec918f1b5b86d409520" title="Apply a PTT request on every configured physical output." alt="" coords="293,55,445,80"/>
+<area shape="poly" id="edge6_Node000003_Node000007" title=" " alt="" coords="480,57,446,61,445,56,479,52"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="161,5,245,31"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="280,21,246,21,246,15,280,15"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="147,21,114,21,114,15,147,15"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="161,55,245,80"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="280,70,246,70,246,65,280,65"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,55,113,80"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="147,70,114,70,114,65,147,65"/>
+</map>

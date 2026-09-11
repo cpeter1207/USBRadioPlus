@@ -1,0 +1,10 @@
+<map id="src/txagc/avfilter_processor.h" name="src/txagc/avfilter_processor.h">
+<area shape="rect" id="Node000001" title="Shared FFmpeg filtering, emphasis, equalization, dynamics, limiting, and meters." alt="" coords="6,5,136,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="50,167,124,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="46,47,29,63,16,80,9,99,12,118,29,140,52,158,49,162,25,144,7,120,4,98,11,77,25,59,42,44"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="22,93,120,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="74,46,74,79,68,79,68,46"/>
+<area shape="rect" id="Node000004" href="$agc__core_8h.html" title="Processing&#45;stage identifiers, graph parameters, and strict stage&#45;order parsing." alt="" coords="145,93,237,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="101,43,163,84,160,88,98,48"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="176,121,117,161,114,156,173,116"/>
+</map>

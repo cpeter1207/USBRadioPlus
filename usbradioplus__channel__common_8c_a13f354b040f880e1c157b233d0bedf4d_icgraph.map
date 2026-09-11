@@ -1,0 +1,9 @@
+<map id="usbradioplus_audio_load_hardware_state" name="usbradioplus_audio_load_hardware_state">
+<area shape="rect" id="Node000001" title="Copy lock&#45;free HID&#45;worker state into fields owned by the audio callback." alt="" coords="380,23,545,63"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,5,332,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="366,35,332,31,332,25,366,29"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,55,304,80"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="366,57,305,64,304,58,365,51"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,5,113,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="147,21,114,21,114,15,147,15"/>
+</map>

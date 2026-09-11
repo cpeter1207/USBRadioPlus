@@ -1,0 +1,19 @@
+<map id="urp_sample_queue_discard" name="urp_sample_queue_discard">
+<area shape="rect" id="Node000001" title="Discard samples already published to an active SPSC queue." alt="" coords="871,45,1069,70"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a2eb02cf7738a321dc5cd6effbd997882" title="Apply pending control&#45;plane requests at a callback boundary." alt="" coords="633,5,801,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="857,46,801,39,802,33,857,40"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html#a42e6b3788cba13db25a31f937a5fd2d6" title="Request that the callback renderer discard queued legacy echo PCM." alt="" coords="612,69,823,109"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="858,74,823,79,823,73,857,69"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#a0d8615532856ba67084fe58dd7229fc4" title="Process a native receiver block and render its matching transmitter block." alt="" coords="380,21,564,46"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="619,31,564,33,564,28,619,26"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html#a4478173ef46747f85f8871ed0e81157f" title="Run PortAudio capture, native processing, and transmitter rendering." alt="" coords="161,21,332,46"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="366,36,332,36,332,31,366,31"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="189,70,304,95"/>
+<area shape="poly" id="edge5_Node000003_Node000006" title=" " alt="" coords="401,52,305,73,304,68,399,46"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus__modern_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="5,21,113,46"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="147,36,114,36,114,31,147,31"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#abcca9c65611e89724c794b23cea2537f" title="Discard legacy echo audio while no echo playback is active." alt="" coords="381,70,563,95"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="598,89,563,88,564,82,598,83"/>
+<area shape="poly" id="edge8_Node000008_Node000004" title=" " alt="" coords="400,70,305,49,306,43,401,64"/>
+<area shape="poly" id="edge9_Node000008_Node000006" title=" " alt="" coords="366,85,305,85,305,80,366,80"/>
+</map>

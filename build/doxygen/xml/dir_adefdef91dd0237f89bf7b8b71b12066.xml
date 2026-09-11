@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="dir_adefdef91dd0237f89bf7b8b71b12066" kind="dir">
+    <compoundname>src/txagc</compoundname>
+    <innerfile refid="agc__core_8c">agc_core.c</innerfile>
+    <innerfile refid="agc__core_8h">agc_core.h</innerfile>
+    <innerfile refid="avfilter__processor_8c">avfilter_processor.c</innerfile>
+    <innerfile refid="avfilter__processor_8h">avfilter_processor.h</innerfile>
+    <innerfile refid="avfilter__processor__internal_8h">avfilter_processor_internal.h</innerfile>
+    <innerfile refid="rms__agc__ladspa_8c">rms_agc_ladspa.c</innerfile>
+    <innerfile refid="rms__agc__ladspa_8h">rms_agc_ladspa.h</innerfile>
+    <innerfile refid="rnnoise__processor_8c">rnnoise_processor.c</innerfile>
+    <innerfile refid="rnnoise__processor_8h">rnnoise_processor.h</innerfile>
+    <innerfile refid="rnnoise__processor__internal_8h">rnnoise_processor_internal.h</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/txagc/"/>
+  </compounddef>
+</doxygen>

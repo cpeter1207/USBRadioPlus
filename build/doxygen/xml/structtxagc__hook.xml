@@ -1,0 +1,293 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structtxagc__hook" kind="struct" language="C++" prot="public">
+    <compoundname>txagc_hook</compoundname>
+    <includes refid="usbradioplus__processing__internal_8h" local="no">usbradioplus_processing_internal.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtxagc__hook_1ab5f707daf4fa70435ed5b1cc4a58ea5b" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">struct</ref> <ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">ast_audiohook</ref></type>
+        <definition>struct ast_audiohook txagc_hook::audiohook</definition>
+        <argsstring></argsstring>
+        <name>audiohook</name>
+        <qualifiedname>txagc_hook::audiohook</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Asterisk hook registered on the incoming link channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="114" column="20" bodyfile="src/usbradioplus_processing_internal.h" bodystart="114" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" compoundref="usbradioplus__processing_8c" startline="2397" endline="2412">discard_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" compoundref="usbradioplus__processing_8c" startline="2169" endline="2183">hook_destroy</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a93f52ff17885dfbbb31a712cd341a0ce" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">struct</ref> <ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref></type>
+        <definition>struct txagc_avfilter_slot txagc_hook::avfilter</definition>
+        <argsstring></argsstring>
+        <name>avfilter</name>
+        <qualifiedname>txagc_hook::avfilter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Link graph prepared off the audio callback and atomically published. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="116" column="26" bodyfile="src/usbradioplus_processing_internal.h" bodystart="116" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" compoundref="usbradioplus__processing_8c" startline="2169" endline="2183">hook_destroy</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1ae7ec5f0944adf50eb4291f4484c1a7f7" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">double</ref> *</type>
+        <definition>double* txagc_hook::samples</definition>
+        <argsstring></argsstring>
+        <name>samples</name>
+        <qualifiedname>txagc_hook::samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Callback-owned mono conversion workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="118" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="118" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" compoundref="usbradioplus__processing_8c" startline="2169" endline="2183">hook_destroy</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a664146ff6caf823b831d9011872adbe7" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">size_t</ref></type>
+        <definition>size_t txagc_hook::samples_capacity</definition>
+        <argsstring></argsstring>
+        <name>samples_capacity</name>
+        <qualifiedname>txagc_hook::samples_capacity</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Capacity of samples in the callback conversion workspace. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="120" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="120" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a79c071d962d39da9ea84c732adac2ac7" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">struct</ref> <ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref></type>
+        <definition>struct txagc_link_statistics txagc_hook::statistics</definition>
+        <argsstring></argsstring>
+        <name>statistics</name>
+        <qualifiedname>txagc_hook::statistics</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Callback-owned scalar measurements copied from FFmpeg after each block. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="122" column="28" bodyfile="src/usbradioplus_processing_internal.h" bodystart="122" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a276df92b7ec650c08dfb0f1226a78005" compoundref="usbradioplus__processing_8c" startline="2118" endline="2127">link_callback_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a236d2b867f9bb11885e208ff752f9b11" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">struct</ref> <ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref></type>
+        <definition>struct txagc_link_statistics txagc_hook::published_statistics[2]</definition>
+        <argsstring>[2]</argsstring>
+        <name>published_statistics</name>
+        <qualifiedname>txagc_hook::published_statistics</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Double-buffered immutable diagnostics for CLI/control-plane readers. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="124" column="28" bodyfile="src/usbradioplus_processing_internal.h" bodystart="124" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a276df92b7ec650c08dfb0f1226a78005" compoundref="usbradioplus__processing_8c" startline="2118" endline="2127">link_callback_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aad4559c8bedcccda45c7afd91b6197cc" compoundref="usbradioplus__processing_8c" startline="2134" endline="2164">txagc_link_statistics_read</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a38e7bac0d69e5e7b2e91ff526b8153bd" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">atomic_uint</ref></type>
+        <definition>atomic_uint txagc_hook::statistics_index</definition>
+        <argsstring></argsstring>
+        <name>statistics_index</name>
+        <qualifiedname>txagc_hook::statistics_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Index of the currently published statistics buffer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="126" column="13" bodyfile="src/usbradioplus_processing_internal.h" bodystart="126" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a276df92b7ec650c08dfb0f1226a78005" compoundref="usbradioplus__processing_8c" startline="2118" endline="2127">link_callback_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aad4559c8bedcccda45c7afd91b6197cc" compoundref="usbradioplus__processing_8c" startline="2134" endline="2164">txagc_link_statistics_read</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1acf739acaf1e9dcacc1e502bf336dcda1" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">atomic_uint</ref></type>
+        <definition>atomic_uint txagc_hook::statistics_readers[2]</definition>
+        <argsstring>[2]</argsstring>
+        <name>statistics_readers</name>
+        <qualifiedname>txagc_hook::statistics_readers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Readers pinning each published statistics buffer during a copy. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="128" column="13" bodyfile="src/usbradioplus_processing_internal.h" bodystart="128" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a276df92b7ec650c08dfb0f1226a78005" compoundref="usbradioplus__processing_8c" startline="2118" endline="2127">link_callback_publish_statistics</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aad4559c8bedcccda45c7afd91b6197cc" compoundref="usbradioplus__processing_8c" startline="2134" endline="2164">txagc_link_statistics_read</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int txagc_hook::sample_rate</definition>
+        <argsstring></argsstring>
+        <name>sample_rate</name>
+        <qualifiedname>txagc_hook::sample_rate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Source sample rate used when preparing the link graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="130" column="14" bodyfile="src/usbradioplus_processing_internal.h" bodystart="130" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" compoundref="usbradioplus__processing_8c" startline="2169" endline="2183">hook_destroy</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a509f28389894c17b4502d7ebe29c8be8" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">_Atomic</ref> <ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">int</ref></type>
+        <definition>_Atomic int txagc_hook::link_enabled</definition>
+        <argsstring></argsstring>
+        <name>link_enabled</name>
+        <qualifiedname>txagc_hook::link_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Link-chain admission state published with the prepared graph generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="132" column="13" bodyfile="src/usbradioplus_processing_internal.h" bodystart="132" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" compoundref="usbradioplus__processing_8c" startline="2204" endline="2267">txagc_callback</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1a4ec9d64a16e30185738c0d538c790c0a" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">char</ref></type>
+        <definition>char txagc_hook::channel[AST_CHANNEL_NAME]</definition>
+        <argsstring>[AST_CHANNEL_NAME]</argsstring>
+        <name>channel</name>
+        <qualifiedname>txagc_hook::channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Associated Asterisk channel name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="134" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="134" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" compoundref="usbradioplus__processing_8c" startline="2802" endline="2861">cli_stats</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" compoundref="usbradioplus__processing_8c" startline="2511" endline="2540">publish_link_graph_transaction</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__hook_1ad67ec68833e7f7b44107e323a9fb008f" prot="public" static="no" mutable="no">
+        <type><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">char</ref></type>
+        <definition>char txagc_hook::profile[MAX_PROFILE_NAME]</definition>
+        <argsstring>[MAX_PROFILE_NAME]</argsstring>
+        <name>profile</name>
+        <qualifiedname>txagc_hook::profile</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Name of the resolved channel profile. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="136" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="136" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" compoundref="usbradioplus__processing_8c" startline="2274" endline="2372">attach_hook</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Asterisk link audiohook and synchronous graph state owned by its datastore. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>txagc_avfilter_slot</label>
+        <link refid="structtxagc__avfilter__slot"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>active</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+      <node id="5">
+        <label>txagc_avfilter_slot_node</label>
+        <link refid="structtxagc__avfilter__slot__node"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>filter</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="1">
+        <label>txagc_hook</label>
+        <link refid="structtxagc__hook"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>avfilter</edgelabel>
+        </childnode>
+        <childnode refid="6" relation="usage">
+          <edgelabel>published_statistics</edgelabel>
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="6">
+        <label>txagc_link_statistics</label>
+        <link refid="structtxagc__link__statistics"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_processing_internal.h" line="112" column="1" bodyfile="src/usbradioplus_processing_internal.h" bodystart="112" bodyend="137"/>
+    <listofallmembers>
+      <member refid="structtxagc__hook_1ab5f707daf4fa70435ed5b1cc4a58ea5b" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>audiohook</name></member>
+      <member refid="structtxagc__hook_1a93f52ff17885dfbbb31a712cd341a0ce" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>avfilter</name></member>
+      <member refid="structtxagc__hook_1a4ec9d64a16e30185738c0d538c790c0a" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>channel</name></member>
+      <member refid="structtxagc__hook_1a509f28389894c17b4502d7ebe29c8be8" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>link_enabled</name></member>
+      <member refid="structtxagc__hook_1ad67ec68833e7f7b44107e323a9fb008f" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>profile</name></member>
+      <member refid="structtxagc__hook_1a236d2b867f9bb11885e208ff752f9b11" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>published_statistics</name></member>
+      <member refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>sample_rate</name></member>
+      <member refid="structtxagc__hook_1ae7ec5f0944adf50eb4291f4484c1a7f7" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>samples</name></member>
+      <member refid="structtxagc__hook_1a664146ff6caf823b831d9011872adbe7" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>samples_capacity</name></member>
+      <member refid="structtxagc__hook_1a79c071d962d39da9ea84c732adac2ac7" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>statistics</name></member>
+      <member refid="structtxagc__hook_1a38e7bac0d69e5e7b2e91ff526b8153bd" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>statistics_index</name></member>
+      <member refid="structtxagc__hook_1acf739acaf1e9dcacc1e502bf336dcda1" prot="public" virt="non-virtual"><scope>txagc_hook</scope><name>statistics_readers</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

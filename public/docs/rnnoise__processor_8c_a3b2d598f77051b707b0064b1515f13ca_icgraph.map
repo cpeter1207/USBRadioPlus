@@ -1,0 +1,5 @@
+<map id="pcm_from_double" name="pcm_from_double">
+<area shape="rect" id="Node000001" title="Quantize a floating&#45;point sample without signed PCM overflow." alt="" coords="224,5,363,31"/>
+<area shape="rect" id="Node000002" href="$rnnoise__processor_8c.html#ab590b8c5ed7056dbc0e521acb0598874" title="Denoise signed 16&#45;bit receiver audio through the RNNoise stream adapter." alt="" coords="5,5,176,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="210,21,176,21,176,15,210,15"/>
+</map>

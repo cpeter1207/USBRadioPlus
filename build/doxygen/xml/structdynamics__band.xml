@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structdynamics__band" kind="struct" language="C++" prot="public">
+    <compoundname>dynamics_band</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structdynamics__band_1a5fb135835128722d96204bca77dd70b7" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::threshold_dbfs</definition>
+        <argsstring></argsstring>
+        <name>threshold_dbfs</name>
+        <qualifiedname>dynamics_band::threshold_dbfs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector threshold in dBFS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="323" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="323" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structdynamics__band_1adedf92b0815dc1a2107cb978622d47c4" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::ratio</definition>
+        <argsstring></argsstring>
+        <name>ratio</name>
+        <qualifiedname>dynamics_band::ratio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Downward compression ratio. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="324" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="324" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a942db83871c8928c414177847157082d" compoundref="avfilter__processor_8c" startline="389" endline="542">add_dynamic_stage</referencedby>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structdynamics__band_1a5bb139cc128f3e471f9bd787d84732d9" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::makeup_gain_db</definition>
+        <argsstring></argsstring>
+        <name>makeup_gain_db</name>
+        <qualifiedname>dynamics_band::makeup_gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain applied after compression in dB. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="325" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="325" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structdynamics__band_1a9cadfd6d6595e37dfa0e725532ef9005" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::knee_db</definition>
+        <argsstring></argsstring>
+        <name>knee_db</name>
+        <qualifiedname>dynamics_band::knee_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Soft-knee width in dB; zero selects a hard knee. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="326" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="326" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structdynamics__band_1af433075e174527e32d3d4668d24791e8" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::attack_ms</definition>
+        <argsstring></argsstring>
+        <name>attack_ms</name>
+        <qualifiedname>dynamics_band::attack_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector attack in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="327" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="327" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structdynamics__band_1a08c3d53736f4df47555dd159c46f8d82" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double dynamics_band::release_ms</definition>
+        <argsstring></argsstring>
+        <name>release_ms</name>
+        <qualifiedname>dynamics_band::release_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Detector release in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/avfilter_processor.c" line="328" column="8" bodyfile="src/txagc/avfilter_processor.c" bodystart="328" bodyend="-1"/>
+        <referencedby refid="avfilter__processor_8c_1a137fd1cc3d50967049b18c3746154400" compoundref="avfilter__processor_8c" startline="343" endline="377">add_three_band_dynamics</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Settings for one independently detected dynamics band. </para>
+    </detaileddescription>
+    <location file="src/txagc/avfilter_processor.c" line="322" column="1" bodyfile="src/txagc/avfilter_processor.c" bodystart="322" bodyend="329"/>
+    <listofallmembers>
+      <member refid="structdynamics__band_1af433075e174527e32d3d4668d24791e8" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>attack_ms</name></member>
+      <member refid="structdynamics__band_1a9cadfd6d6595e37dfa0e725532ef9005" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>knee_db</name></member>
+      <member refid="structdynamics__band_1a5bb139cc128f3e471f9bd787d84732d9" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>makeup_gain_db</name></member>
+      <member refid="structdynamics__band_1adedf92b0815dc1a2107cb978622d47c4" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>ratio</name></member>
+      <member refid="structdynamics__band_1a08c3d53736f4df47555dd159c46f8d82" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>release_ms</name></member>
+      <member refid="structdynamics__band_1a5fb135835128722d96204bca77dd70b7" prot="public" virt="non-virtual"><scope>dynamics_band</scope><name>threshold_dbfs</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

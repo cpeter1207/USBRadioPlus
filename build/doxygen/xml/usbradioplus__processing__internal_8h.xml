@@ -1,0 +1,373 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__processing__internal_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_processing_internal.h</compoundname>
+    <includes local="yes">asterisk.h</includes>
+    <includes local="no">pthread.h</includes>
+    <includes local="no">stdint.h</includes>
+    <includes local="no">stdatomic.h</includes>
+    <includes local="no">stdarg.h</includes>
+    <includes local="no">stdio.h</includes>
+    <includes local="yes">asterisk/audiohook.h</includes>
+    <includes local="yes">asterisk/channel.h</includes>
+    <includes local="yes">asterisk/cli.h</includes>
+    <includes local="yes">asterisk/config.h</includes>
+    <includes local="yes">asterisk/frame.h</includes>
+    <includes local="yes">asterisk/module.h</includes>
+    <includes refid="avfilter__processor_8h" local="yes">txagc/avfilter_processor.h</includes>
+    <includes refid="usbradioplus__processing_8h" local="yes">usbradioplus_processing.h</includes>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <incdepgraph>
+      <node id="16">
+        <label>agc_core.h</label>
+        <link refid="agc__core_8h"/>
+        <childnode refid="15" relation="include">
+        </childnode>
+      </node>
+      <node id="14">
+        <label>txagc/avfilter_processor.h</label>
+        <link refid="avfilter__processor_8h"/>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+      </node>
+      <node id="17">
+        <label>usbradioplus_processing.h</label>
+        <link refid="usbradioplus__processing_8h"/>
+        <childnode refid="15" relation="include">
+        </childnode>
+        <childnode refid="16" relation="include">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_processing_internal.h</label>
+        <link refid="usbradioplus__processing__internal_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+        <childnode refid="12" relation="include">
+        </childnode>
+        <childnode refid="13" relation="include">
+        </childnode>
+        <childnode refid="14" relation="include">
+        </childnode>
+        <childnode refid="17" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>asterisk.h</label>
+      </node>
+      <node id="8">
+        <label>asterisk/audiohook.h</label>
+      </node>
+      <node id="9">
+        <label>asterisk/channel.h</label>
+      </node>
+      <node id="10">
+        <label>asterisk/cli.h</label>
+      </node>
+      <node id="11">
+        <label>asterisk/config.h</label>
+      </node>
+      <node id="12">
+        <label>asterisk/frame.h</label>
+      </node>
+      <node id="13">
+        <label>asterisk/module.h</label>
+      </node>
+      <node id="3">
+        <label>pthread.h</label>
+      </node>
+      <node id="6">
+        <label>stdarg.h</label>
+      </node>
+      <node id="5">
+        <label>stdatomic.h</label>
+      </node>
+      <node id="15">
+        <label>stddef.h</label>
+      </node>
+      <node id="4">
+        <label>stdint.h</label>
+      </node>
+      <node id="7">
+        <label>stdio.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_processing_internal.h</label>
+        <link refid="usbradioplus__processing__internal_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structsection__override" prot="public">section_override</innerclass>
+    <innerclass refid="structtxagc__profile" prot="public">txagc_profile</innerclass>
+    <innerclass refid="structtxagc__settings" prot="public">txagc_settings</innerclass>
+    <innerclass refid="structtxagc__link__statistics" prot="public">txagc_link_statistics</innerclass>
+    <innerclass refid="structtxagc__hook" prot="public">txagc_hook</innerclass>
+    <sectiondef kind="user-defined">
+      <header>File-local and build-time constants</header>
+      <memberdef kind="define" id="usbradioplus__processing__internal_8h_1ad58efaaf87497ed835a8657e16519d08" prot="public" static="no">
+        <name>MAX_SECTION_OVERRIDES</name>
+        <initializer>128</initializer>
+        <briefdescription>
+<para>Maximum resolved non-audio options per channel. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="26" column="9" bodyfile="src/usbradioplus_processing_internal.h" bodystart="26" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__processing__internal_8h_1a688826888bd162c43703aa414e2d10ee" prot="public" static="no">
+        <name>MAX_RADIO_PROFILES</name>
+        <initializer>32</initializer>
+        <briefdescription>
+<para>Maximum configured named radio channels. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="28" column="9" bodyfile="src/usbradioplus_processing_internal.h" bodystart="28" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__processing__internal_8h_1a2c611b72e856baf46e17419b0fa34e23" prot="public" static="no">
+        <name>MAX_PROFILE_NAME</name>
+        <initializer>64</initializer>
+        <briefdescription>
+<para>Capacity of a channel/profile name in bytes. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="30" column="9" bodyfile="src/usbradioplus_processing_internal.h" bodystart="30" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__processing__internal_8h_1a2e0eb9a6dd00bed963b29e2f4b34fa85" prot="public" static="no">
+        <name>MAX_CONFIG_SECTION</name>
+        <initializer>96</initializer>
+        <briefdescription>
+<para>Capacity of a scoped section name in bytes. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="32" column="9" bodyfile="src/usbradioplus_processing_internal.h" bodystart="32" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="usbradioplus__processing__internal_8h_1a0b510f3c4a46042a61138076848b0612" prot="public" static="no">
+        <name>USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT</name>
+        <initializer>38</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of supported non-audio hardware options. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="35" column="9" bodyfile="src/usbradioplus_processing_internal.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Private channel profiles, parser state, and audiohook test interfaces. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_PROCESSING_INTERNAL_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_PROCESSING_INTERNAL_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;pthread.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdatomic.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdarg.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdio.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="15"><highlight class="normal"></highlight></codeline>
+<codeline lineno="16"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/audiohook.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/channel.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/cli.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="19"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/config.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/frame.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;asterisk/module.h&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="avfilter__processor_8h" kindref="compound">txagc/avfilter_processor.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="24"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="usbradioplus__processing_8h" kindref="compound">usbradioplus_processing.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="25"><highlight class="normal"></highlight></codeline>
+<codeline lineno="26" refid="usbradioplus__processing__internal_8h_1ad58efaaf87497ed835a8657e16519d08" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_SECTION_OVERRIDES<sp/>128</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight></codeline>
+<codeline lineno="28" refid="usbradioplus__processing__internal_8h_1a688826888bd162c43703aa414e2d10ee" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_RADIO_PROFILES<sp/>32</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="29"><highlight class="normal"></highlight></codeline>
+<codeline lineno="30" refid="usbradioplus__processing__internal_8h_1a2c611b72e856baf46e17419b0fa34e23" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_PROFILE_NAME<sp/>64</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="31"><highlight class="normal"></highlight></codeline>
+<codeline lineno="32" refid="usbradioplus__processing__internal_8h_1a2e0eb9a6dd00bed963b29e2f4b34fa85" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>MAX_CONFIG_SECTION<sp/>96</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="33"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35" refid="usbradioplus__processing__internal_8h_1a0b510f3c4a46042a61138076848b0612" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT<sp/>38</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="36"><highlight class="normal"></highlight></codeline>
+<codeline lineno="38" refid="structsection__override" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structsection__override" kindref="compound">section_override</ref><sp/>{</highlight></codeline>
+<codeline lineno="40" refid="structsection__override_1afe5db4e0e49a5c6382496da3a5041ad6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structsection__override_1afe5db4e0e49a5c6382496da3a5041ad6" kindref="member">section</ref>[<ref refid="usbradioplus__processing__internal_8h_1a2e0eb9a6dd00bed963b29e2f4b34fa85" kindref="member">MAX_CONFIG_SECTION</ref>];</highlight></codeline>
+<codeline lineno="42" refid="structsection__override_1ac55c345c265fe062b35488266ffc9887" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structsection__override_1ac55c345c265fe062b35488266ffc9887" kindref="member">name</ref>[64];</highlight></codeline>
+<codeline lineno="44" refid="structsection__override_1a705e8d3aac18bce8bc072f7b491005a7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structsection__override_1a705e8d3aac18bce8bc072f7b491005a7" kindref="member">value</ref>[512];</highlight></codeline>
+<codeline lineno="45"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"></highlight></codeline>
+<codeline lineno="48" refid="structtxagc__profile" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>{</highlight></codeline>
+<codeline lineno="50" refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" kindref="member">enabled</ref>;</highlight></codeline>
+<codeline lineno="52" refid="structtxagc__profile_1a2ff7b53c25974f00eba40e6da458f027" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1a2ff7b53c25974f00eba40e6da458f027" kindref="member">name</ref>[<ref refid="usbradioplus__processing__internal_8h_1a2c611b72e856baf46e17419b0fa34e23" kindref="member">MAX_PROFILE_NAME</ref>];</highlight></codeline>
+<codeline lineno="54" refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" kindref="member">channel</ref>[AST_CHANNEL_NAME];</highlight></codeline>
+<codeline lineno="56" refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref><sp/><ref refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" kindref="member">hardware</ref>;</highlight></codeline>
+<codeline lineno="58" refid="structtxagc__profile_1af316d45ed046a6d121e937c66b0e56f6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structsection__override" kindref="compound">section_override</ref><sp/><ref refid="structtxagc__profile_1af316d45ed046a6d121e937c66b0e56f6" kindref="member">overrides</ref>[<ref refid="usbradioplus__processing__internal_8h_1ad58efaaf87497ed835a8657e16519d08" kindref="member">MAX_SECTION_OVERRIDES</ref>];</highlight></codeline>
+<codeline lineno="60" refid="structtxagc__profile_1a35f1ae9dc6e4f1b5479ca21339921243" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1a35f1ae9dc6e4f1b5479ca21339921243" kindref="member">override_count</ref>;</highlight></codeline>
+<codeline lineno="62" refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/><ref refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" kindref="member">chains</ref>[<ref refid="usbradioplus__processing_8h_1a9aaeab2a8e4ad06ceabf96f8344e7009ab64c3efb7279981cff1299c057342201" kindref="member">TXAGC_SOURCE_COUNT</ref>];</highlight></codeline>
+<codeline lineno="64" refid="structtxagc__profile_1a523068949e00da0956b7d7dffe536674" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1a523068949e00da0956b7d7dffe536674" kindref="member">local_enabled</ref>;</highlight></codeline>
+<codeline lineno="66" refid="structtxagc__profile_1abae8522d08d9f8e7209c40b2ca9d604e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1abae8522d08d9f8e7209c40b2ca9d604e" kindref="member">link_enabled</ref>;</highlight></codeline>
+<codeline lineno="68" refid="structtxagc__profile_1a83134cb42a86ab81075be773936c840e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile_1a83134cb42a86ab81075be773936c840e" kindref="member">rnnoise_enabled</ref>;</highlight></codeline>
+<codeline lineno="70" refid="structtxagc__profile_1a08db21b5858efa87ddc1eb7b65027e04" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__config" kindref="compound">txagc_config</ref><sp/><ref refid="structtxagc__profile_1a08db21b5858efa87ddc1eb7b65027e04" kindref="member">agc</ref>;</highlight></codeline>
+<codeline lineno="71"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="72"><highlight class="normal"></highlight></codeline>
+<codeline lineno="74" refid="structtxagc__settings" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/>{</highlight></codeline>
+<codeline lineno="76" refid="structtxagc__settings_1a909f7c0e960346f6b0ef66cae4557253" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/><ref refid="structtxagc__settings_1a909f7c0e960346f6b0ef66cae4557253" kindref="member">profiles</ref>[<ref refid="usbradioplus__processing__internal_8h_1a688826888bd162c43703aa414e2d10ee" kindref="member">MAX_RADIO_PROFILES</ref>];</highlight></codeline>
+<codeline lineno="78" refid="structtxagc__settings_1afc853959ff4d836ee32aa05b5da120d9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structtxagc__settings_1afc853959ff4d836ee32aa05b5da120d9" kindref="member">profile_count</ref>;</highlight></codeline>
+<codeline lineno="79"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"></highlight></codeline>
+<codeline lineno="82" refid="structtxagc__link__statistics" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref><sp/>{</highlight></codeline>
+<codeline lineno="84" refid="structtxagc__link__statistics_1a2459c3fd5a642f296e343238b6285056" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a2459c3fd5a642f296e343238b6285056" kindref="member">input_samples</ref>;</highlight></codeline>
+<codeline lineno="86" refid="structtxagc__link__statistics_1aaf399125f7ad5142af30d0e029513590" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1aaf399125f7ad5142af30d0e029513590" kindref="member">output_samples</ref>;</highlight></codeline>
+<codeline lineno="88" refid="structtxagc__link__statistics_1a89dd78e2037fcd78da05132af3e94096" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a89dd78e2037fcd78da05132af3e94096" kindref="member">startup_fill_samples</ref>;</highlight></codeline>
+<codeline lineno="90" refid="structtxagc__link__statistics_1a9f3883fdd7f4bf3c6c1497ec3fbaaa46" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a9f3883fdd7f4bf3c6c1497ec3fbaaa46" kindref="member">runtime_underrun_samples</ref>;</highlight></codeline>
+<codeline lineno="92" refid="structtxagc__link__statistics_1a1a9ea6fbbc24d8c6855eddb32af8aa63" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a1a9ea6fbbc24d8c6855eddb32af8aa63" kindref="member">processing_errors</ref>;</highlight></codeline>
+<codeline lineno="94" refid="structtxagc__link__statistics_1ab3676acd12f5420e1af69b147f6f4c2c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1ab3676acd12f5420e1af69b147f6f4c2c" kindref="member">input_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="96" refid="structtxagc__link__statistics_1a7e075116728639d2901671302d5d5d2e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a7e075116728639d2901671302d5d5d2e" kindref="member">input_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="98" refid="structtxagc__link__statistics_1a2521a2fdf47c4a45e8dee581e63a84b4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a2521a2fdf47c4a45e8dee581e63a84b4" kindref="member">input_max_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="100" refid="structtxagc__link__statistics_1a5a1ca9061e8b22e4229203296c3bae2d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a5a1ca9061e8b22e4229203296c3bae2d" kindref="member">input_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="102" refid="structtxagc__link__statistics_1ae1b852bdeb2f855f7b4ed032fb18a147" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1ae1b852bdeb2f855f7b4ed032fb18a147" kindref="member">output_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="104" refid="structtxagc__link__statistics_1aed8f9656e159bc82522ee4c637506a98" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1aed8f9656e159bc82522ee4c637506a98" kindref="member">output_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="106" refid="structtxagc__link__statistics_1abb14c7f24c428b35e2a1596973206723" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1abb14c7f24c428b35e2a1596973206723" kindref="member">output_max_peak_dbfs</ref>;</highlight></codeline>
+<codeline lineno="108" refid="structtxagc__link__statistics_1a389016db2c40cd06f95d5cbe964ac6d9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics_1a389016db2c40cd06f95d5cbe964ac6d9" kindref="member">output_max_rms_dbfs</ref>;</highlight></codeline>
+<codeline lineno="109"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="110"><highlight class="normal"></highlight></codeline>
+<codeline lineno="112" refid="structtxagc__hook" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__hook" kindref="compound">txagc_hook</ref><sp/>{</highlight></codeline>
+<codeline lineno="114" refid="structtxagc__hook_1ab5f707daf4fa70435ed5b1cc4a58ea5b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">ast_audiohook</ref><sp/><ref refid="structtxagc__hook_1ab5f707daf4fa70435ed5b1cc4a58ea5b" kindref="member">audiohook</ref>;</highlight></codeline>
+<codeline lineno="116" refid="structtxagc__hook_1a93f52ff17885dfbbb31a712cd341a0ce" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__avfilter__slot" kindref="compound">txagc_avfilter_slot</ref><sp/><ref refid="structtxagc__hook_1a93f52ff17885dfbbb31a712cd341a0ce" kindref="member">avfilter</ref>;</highlight></codeline>
+<codeline lineno="118" refid="structtxagc__hook_1ae7ec5f0944adf50eb4291f4484c1a7f7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*<ref refid="structtxagc__hook_1ae7ec5f0944adf50eb4291f4484c1a7f7" kindref="member">samples</ref>;</highlight></codeline>
+<codeline lineno="120" refid="structtxagc__hook_1a664146ff6caf823b831d9011872adbe7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook_1a664146ff6caf823b831d9011872adbe7" kindref="member">samples_capacity</ref>;</highlight></codeline>
+<codeline lineno="122" refid="structtxagc__hook_1a79c071d962d39da9ea84c732adac2ac7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref><sp/><ref refid="structtxagc__hook_1a79c071d962d39da9ea84c732adac2ac7" kindref="member">statistics</ref>;</highlight></codeline>
+<codeline lineno="124" refid="structtxagc__hook_1a236d2b867f9bb11885e208ff752f9b11" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref><sp/><ref refid="structtxagc__hook_1a236d2b867f9bb11885e208ff752f9b11" kindref="member">published_statistics</ref>[2];</highlight></codeline>
+<codeline lineno="126" refid="structtxagc__hook_1a38e7bac0d69e5e7b2e91ff526b8153bd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">atomic_uint</ref><sp/><ref refid="structtxagc__hook_1a38e7bac0d69e5e7b2e91ff526b8153bd" kindref="member">statistics_index</ref>;</highlight></codeline>
+<codeline lineno="128" refid="structtxagc__hook_1acf739acaf1e9dcacc1e502bf336dcda1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">atomic_uint</ref><sp/><ref refid="structtxagc__hook_1acf739acaf1e9dcacc1e502bf336dcda1" kindref="member">statistics_readers</ref>[2];</highlight></codeline>
+<codeline lineno="130" refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">sample_rate</ref>;</highlight></codeline>
+<codeline lineno="132" refid="structtxagc__hook_1a509f28389894c17b4502d7ebe29c8be8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">_Atomic</ref><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook_1a509f28389894c17b4502d7ebe29c8be8" kindref="member">link_enabled</ref>;</highlight></codeline>
+<codeline lineno="134" refid="structtxagc__hook_1a4ec9d64a16e30185738c0d538c790c0a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook_1a4ec9d64a16e30185738c0d538c790c0a" kindref="member">channel</ref>[<ref refid="structtxagc__hook_1a8b6c520a117acdfc54b352ef18e34a86" kindref="member">AST_CHANNEL_NAME</ref>];</highlight></codeline>
+<codeline lineno="136" refid="structtxagc__hook_1ad67ec68833e7f7b44107e323a9fb008f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook_1ad67ec68833e7f7b44107e323a9fb008f" kindref="member">profile</ref>[<ref refid="usbradioplus__processing__internal_8h_1a2c611b72e856baf46e17419b0fa34e23" kindref="member">MAX_PROFILE_NAME</ref>];</highlight></codeline>
+<codeline lineno="137"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="138"><highlight class="normal"></highlight></codeline>
+<codeline lineno="139"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>URP_PROCESSING_TESTING</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="140"><highlight class="normal"></highlight></codeline>
+<codeline lineno="141"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/><ref refid="usbradioplus__processing_8c_1a8a3749b84d9e01a4025992064f1be67a" kindref="member">settings</ref>;</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/>pthread_t<sp/><ref refid="usbradioplus__processing_8c_1addbd62be08a20ff25955b6e538d5c7fb" kindref="member">scan_thread</ref>;</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a1135854f64bea509e7b012bd36f860b1" kindref="member">stopping</ref>;</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a42a827803592bc9ee47d71bbdbd5a14f" kindref="member">settings_parse_error</ref>;</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/>_Thread_local<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/>*<ref refid="usbradioplus__processing_8c_1a95a96dcc1ae57c9854cce81fb5d53c2e" kindref="member">staged_settings</ref>;</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>processing_test_statistics_flip_index;</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a3015a91b384afd60ce4085efa549c479" kindref="member">hardware_override_options</ref>[<ref refid="usbradioplus__processing__internal_8h_1a0b510f3c4a46042a61138076848b0612" kindref="member">USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT</ref>];</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a5597c4ba12a935bbad0b72a5be30f2e3" kindref="member">asterisk_override_options</ref>[8];</highlight></codeline>
+<codeline lineno="149"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a6ddd1557be1092f700ada203e34b104c" kindref="member">duplex_override_options</ref>[3];</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a3149b5a18731dc66d449a8bc06a33247" kindref="member">diagnostics_override_options</ref>[3];</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" kindref="member">settings_defaults</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/>*value);</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1a12a123e4642a79ac22c5646f0cb00cd5" kindref="member">ctcss_filter_name</ref>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>mode);</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ae34c50eb3ece485257b2d361db4be370" kindref="member">channel_is_eligible</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*chan,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*profile);</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a5414c92d2485210b205f79d2794be131" kindref="member">validate_chain</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*value);</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" kindref="member">validate_profile</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*value);</highlight></codeline>
+<codeline lineno="156"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a40fb6b758f658793505c2ca9ad541a5a" kindref="member">read_double</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*value);</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ad0405a1a2380f995cece09e7c6001f11" kindref="member">read_bool</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*value);</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ab70fdb7eff512149ff81a99fa06c5d5c" kindref="member">known_chain_option</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name);</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1accc0626992a3ee315023800ac4a67a80" kindref="member">option_in_list</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>*options,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count);</highlight></codeline>
+<codeline lineno="160"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ae31866a1d4fa5ce17a7aa6058bd46130" kindref="member">validate_named_option</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*category,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*kind,</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_variable<sp/>*variable);</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a1719cf5b81c13c78a2980219fba72a12" kindref="member">validate_option_names</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg);</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*<ref refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" kindref="member">find_profile_const</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/>*current,</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" kindref="member">channel</ref>);</highlight></codeline>
+<codeline lineno="165"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a5826b9dcabaec63f1644728f23235de9" kindref="member">valid_dcs_code</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text);</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a5cc70832e8dfa7e6ce9045f437f401df" kindref="member">valid_nonnegative_integer</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text,<sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>maximum);</highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structtxagc__audio__snapshot" kindref="compound">txagc_audio_snapshot</ref>;</highlight></codeline>
+<codeline lineno="168"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" kindref="member">load_settings_candidate</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__audio__snapshot" kindref="compound">txagc_audio_snapshot</ref><sp/>**snapshot);</highlight></codeline>
+<codeline lineno="169"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" kindref="member">add_override</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*updated,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name);</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ad871c189403f14c67358c042a8a1de7e" kindref="member">read_section_overrides</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*updated,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,</highlight></codeline>
+<codeline lineno="172"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*asterisk_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*hardware_section,</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*receive_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*transmit_section,</highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*ctcss_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*dcs_section,</highlight></codeline>
+<codeline lineno="175"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*duplex_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*diagnostics_section);</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a287e3a842c5ca4f5c10b6362bd24c41c" kindref="member">read_profile_overrides</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__profile" kindref="compound">txagc_profile</ref><sp/>*updated,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*radio,</highlight></codeline>
+<codeline lineno="177"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*asterisk_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*hardware_section,</highlight></codeline>
+<codeline lineno="178"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*receive_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*transmit_section,</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*ctcss_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*dcs_section,</highlight></codeline>
+<codeline lineno="180"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*duplex_section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*diagnostics_section);</highlight></codeline>
+<codeline lineno="181"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a4beacd85acfc251b7a0acb0bbd673628" kindref="member">read_assignment</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*name,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*value,</highlight></codeline>
+<codeline lineno="182"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>*configured);</highlight></codeline>
+<codeline lineno="183"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a5c781da3fe4c5f4a826fd9adb10c2e59" kindref="member">valid_frequency_list</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*text);</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a82dc5eba7b229d78ae3f73151decd869" kindref="member">read_hardware</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,</highlight></codeline>
+<codeline lineno="185"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref><sp/>*<ref refid="usbradioplus__rpt__advanced_8c_1abdda3072897265be89ea7038e4658539" kindref="member">hardware</ref>);</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a52dfb012da45db162cbd83c175999a8c" kindref="member">read_stage_order</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="187"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ac94af5aa3b6325845a677dfa5eda16f0" kindref="member">read_chain</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref><sp/>*chain);</highlight></codeline>
+<codeline lineno="188"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1ab608b17eb36972ea6e363a8017411037" kindref="member">resolve_profile_section</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_config<sp/>*cfg,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*radio,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*kind,</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*section,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>section_size);</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a62ee21b0d844af4ddd7d7941638c6872" kindref="member">load_settings</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a47bce93f60d48c4348a29e1c3d59ff43" kindref="member">hook_destroy</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*data);</highlight></codeline>
+<codeline lineno="192"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1afae5e2949c7cf07c57c6b6e4fea61037" kindref="member">txagc_callback</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_audiohook<sp/>*audiohook,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*chan,</highlight></codeline>
+<codeline lineno="193"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_frame<sp/>*frame,<sp/></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/>ast_audiohook_direction<sp/>direction);</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a90897146b741433c19b3470c30f25da9" kindref="member">attach_hook</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_channel<sp/>*chan,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*profile);</highlight></codeline>
+<codeline lineno="195"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1aad4559c8bedcccda45c7afd91b6197cc" kindref="member">txagc_link_statistics_read</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook" kindref="compound">txagc_hook</ref><sp/>*hook,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref><sp/>*statistics);</highlight></codeline>
+<codeline lineno="196"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a01c699c7fab1b0078e18ac64f4af0a1d" kindref="member">link_callback_copy_filter_statistics</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__link__statistics" kindref="compound">txagc_link_statistics</ref><sp/>*destination,</highlight></codeline>
+<codeline lineno="197"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref><sp/>*source);</highlight></codeline>
+<codeline lineno="198"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a276df92b7ec650c08dfb0f1226a78005" kindref="member">link_callback_publish_statistics</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__hook" kindref="compound">txagc_hook</ref><sp/>*hook);</highlight></codeline>
+<codeline lineno="199"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structlink__graph__transaction" kindref="compound">link_graph_transaction</ref>;</highlight></codeline>
+<codeline lineno="200"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a98b74d232597fddaaae2f2df5c8f6d36" kindref="member">discard_link_graph_transaction</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structlink__graph__transaction" kindref="compound">link_graph_transaction</ref><sp/>*transaction);</highlight></codeline>
+<codeline lineno="201"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" kindref="member">stage_active_link_hooks</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structtxagc__settings" kindref="compound">txagc_settings</ref><sp/>*candidate,</highlight></codeline>
+<codeline lineno="202"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structlink__graph__transaction" kindref="compound">link_graph_transaction</ref><sp/>**result);</highlight></codeline>
+<codeline lineno="203"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1a3afbdf807c75e8d1ab1d6548bba2a979" kindref="member">publish_link_graph_transaction</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structlink__graph__transaction" kindref="compound">link_graph_transaction</ref><sp/>*transaction);</highlight></codeline>
+<codeline lineno="204"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1af1678c5622a571de7a841c3959bffd49" kindref="member">scan_channels</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__processing_8c_1af1f022d6853c7b6de1915d63b8f163da" kindref="member">detach_all</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="206"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1a6d70fe6c81fb7923334f3d7afabb5eae" kindref="member">scanner</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*unused);</highlight></codeline>
+<codeline lineno="207"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" kindref="member">cli_show</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="208"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1a83620bcb0b9119a887fd1a14926e5de7" kindref="member">cli_stats</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="209"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1a9057248e08351a1a69893b6678c97ac8" kindref="member">cli_enable</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="210"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1abb6e27f0b1bb4881ee0871c74fd18a53" kindref="member">cli_disable</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="211"><highlight class="normal"></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="usbradioplus__processing_8c_1a3063adea017068fef6366a19c637bfcc" kindref="member">cli_reload</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_entry<sp/>*entry,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>command,<sp/></highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/>ast_cli_args<sp/>*args);</highlight></codeline>
+<codeline lineno="212"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="213"><highlight class="normal"></highlight></codeline>
+<codeline lineno="214"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="215"><highlight class="normal"></highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_processing_internal.h"/>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="rpt-advanced-interface_8md" kind="file" language="Markdown">
+    <compoundname>rpt-advanced-interface.md</compoundname>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline><highlight class="normal">#<sp/>rpt_advanced<sp/>channel<sp/>interface</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">`RadioPlusAdvanced/&lt;channel&gt;`<sp/>reserves<sp/>the<sp/>same<sp/>configured<sp/>radio<sp/>as</highlight></codeline>
+<codeline><highlight class="normal">`RadioPlus/&lt;channel&gt;`.<sp/>The<sp/>existing<sp/>hardware<sp/>backend<sp/>owns<sp/>USB<sp/>access,<sp/>signaling,</highlight></codeline>
+<codeline><highlight class="normal">and<sp/>the<sp/>shared<sp/>FFmpeg<sp/>processing<sp/>graphs.<sp/>The<sp/>separate<sp/>adapter<sp/>exposes<sp/>the</highlight></codeline>
+<codeline><highlight class="normal">hardware<sp/>engine&apos;s<sp/>native<sp/>signed-linear<sp/>format.<sp/>The<sp/>current<sp/>CM119<sp/>engine<sp/>uses</highlight></codeline>
+<codeline><highlight class="normal">48,000<sp/>samples<sp/>per<sp/>second;<sp/>Asterisk<sp/>supplies<sp/>conversions<sp/>for<sp/>the<sp/>controller&apos;s</highlight></codeline>
+<codeline><highlight class="normal">negotiated<sp/>format.</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">Every<sp/>native<sp/>receive<sp/>block<sp/>produces<sp/>a<sp/>voice<sp/>frame,<sp/>including<sp/>silence<sp/>while</highlight></codeline>
+<codeline><highlight class="normal">squelched.<sp/>Carrier<sp/>indications<sp/>are<sp/>separate<sp/>frames.<sp/>The<sp/>adapter<sp/>does<sp/>not<sp/>run</highlight></codeline>
+<codeline><highlight class="normal">the<sp/>app_rpt<sp/>DTMF<sp/>detector,<sp/>which<sp/>can<sp/>replace<sp/>a<sp/>voice<sp/>frame<sp/>with<sp/>a<sp/>digit<sp/>event.</highlight></codeline>
+<codeline><highlight class="normal">The<sp/>controller<sp/>responds<sp/>with<sp/>transmit<sp/>audio<sp/>using<sp/>this<sp/>receive<sp/>cadence,<sp/>without</highlight></codeline>
+<codeline><highlight class="normal">an<sp/>independent<sp/>periodic<sp/>audio<sp/>timer.</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">Transmit<sp/>frames<sp/>enter<sp/>the<sp/>same<sp/>lock-free<sp/>program<sp/>ring<sp/>used<sp/>by<sp/>the<sp/>legacy</highlight></codeline>
+<codeline><highlight class="normal">adapter.<sp/>Its<sp/>persistent<sp/>conversion<sp/>stream<sp/>uses<sp/>a<sp/>one-to-one<sp/>nominal<sp/>ratio<sp/>for</highlight></codeline>
+<codeline><highlight class="normal">the<sp/>native<sp/>controller<sp/>format<sp/>and<sp/>still<sp/>corrects<sp/>independent<sp/>controller<sp/>and</highlight></codeline>
+<codeline><highlight class="normal">hardware<sp/>clock<sp/>drift.<sp/>Scheduling<sp/>stalls<sp/>can<sp/>still<sp/>cause<sp/>underruns;<sp/>sharing<sp/>a</highlight></codeline>
+<codeline><highlight class="normal">format<sp/>does<sp/>not<sp/>remove<sp/>that<sp/>possibility.<sp/>The<sp/>driver&apos;s<sp/>local-repeat<sp/>and<sp/>echo</highlight></codeline>
+<codeline><highlight class="normal">paths<sp/>are<sp/>bypassed<sp/>so<sp/>controller<sp/>audio<sp/>is<sp/>not<sp/>repeated<sp/>twice.<sp/>Receiver<sp/>and</highlight></codeline>
+<codeline><highlight class="normal">transmitter<sp/>DSP<sp/>remain<sp/>in<sp/>the<sp/>shared<sp/>engine.</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">A<sp/>subsequent<sp/>`RadioPlus`<sp/>reservation<sp/>restores<sp/>8<sp/>kHz<sp/>transport<sp/>and<sp/>its<sp/>program</highlight></codeline>
+<codeline><highlight class="normal">ring.<sp/>These<sp/>interfaces<sp/>cannot<sp/>reserve<sp/>the<sp/>same<sp/>radio<sp/>concurrently.</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">The<sp/>adapter<sp/>is<sp/>under<sp/>development.<sp/>Existing<sp/>channel<sp/>tests<sp/>and<sp/>dedicated<sp/>adapter</highlight></codeline>
+<codeline><highlight class="normal">fixtures<sp/>do<sp/>not<sp/>constitute<sp/>on-air<sp/>or<sp/>completed<sp/>rpt_advanced<sp/>integration<sp/>testing.</highlight></codeline>
+    </programlisting>
+    <location file="doc/rpt-advanced-interface.md"/>
+  </compounddef>
+</doxygen>

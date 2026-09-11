@@ -1,0 +1,317 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__hardware_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_hardware.h</compoundname>
+    <includes local="no">stdint.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__hardware_8c" local="yes">src/usbradioplus_hardware.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/usbradioplus_hardware.h</label>
+        <link refid="usbradioplus__hardware_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stdint.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_hardware.c</label>
+        <link refid="usbradioplus__hardware_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_hardware.h</label>
+        <link refid="usbradioplus__hardware_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structurp__rtx__words" prot="public">urp_rtx_words</innerclass>
+    <innerclass refid="structurp__parallel__bus" prot="public">urp_parallel_bus</innerclass>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__hardware_8h_1a0758a1c7b137ded20636903be81c2c74" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>struct <ref refid="structurp__rtx__words" kindref="compound">urp_rtx_words</ref></type>
+        <definition>struct urp_rtx_words urp_hardware_rtx_words</definition>
+        <argsstring>(uint32_t rx_freq, uint32_t tx_freq, int transmitting)</argsstring>
+        <name>urp_hardware_rtx_words</name>
+        <param>
+          <type>uint32_t</type>
+          <declname>rx_freq</declname>
+        </param>
+        <param>
+          <type>uint32_t</type>
+          <declname>tx_freq</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>transmitting</declname>
+        </param>
+        <briefdescription>
+<para>Calculate RTX reference and synthesizer words for receive or transmit. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>rx_freq</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receive frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>tx_freq</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Transmit frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>transmitting</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero selects the transmit synthesizer settings. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Reference and synthesizer words for the requested operating frequency. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="34" column="20" bodyfile="src/usbradioplus_hardware.c" bodystart="80" bodyend="92" declfile="src/usbradioplus_hardware.h" declline="34" declcolumn="20"/>
+        <references refid="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" compoundref="usbradioplus__hardware_8h" startline="13">urp_rtx_words::reference</references>
+        <references refid="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" compoundref="usbradioplus__hardware_8h" startline="15">urp_rtx_words::synthesizer</references>
+        <referencedby refid="usbradioplus__hardware_8c_1abeee3f38f91b6c8b4697248ee607594e" compoundref="usbradioplus__hardware_8c" startline="108" endline="126">urp_hardware_program_radio</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__hardware_8h_1a79d30d28e38db06cba9169a5fa2b4f65" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_hardware_set_channel</definition>
+        <argsstring>(struct urp_parallel_bus *bus, uint8_t channel)</argsstring>
+        <name>urp_hardware_set_channel</name>
+        <param>
+          <type>struct <ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref> *</type>
+          <declname>bus</declname>
+        </param>
+        <param>
+          <type>uint8_t</type>
+          <declname>channel</declname>
+        </param>
+        <briefdescription>
+<para>Latch a binary channel number onto the parallel-port radio interface. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>bus</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Parallel-port value and caller-supplied write callback. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>channel</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Binary radio channel-select code. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="39" column="6" bodyfile="src/usbradioplus_hardware.c" bodystart="94" bodyend="106" declfile="src/usbradioplus_hardware.h" declline="39" declcolumn="6"/>
+        <references refid="usbradioplus__hardware_8c_1a3fcc8163e75728fdbdcec93e1ac2d247" compoundref="usbradioplus__hardware_8c" startline="22">URP_BIN_PROG_MASK</references>
+        <references refid="usbradioplus__hardware_8c_1a5ddcf0ac38b4564ff89cfa81fae59ecd" compoundref="usbradioplus__hardware_8c" startline="37" endline="40">urp_hardware_write</references>
+        <references refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" compoundref="usbradioplus__hardware_8h" startline="21">urp_parallel_bus::value</references>
+        <references refid="structurp__parallel__bus_1a18f8c5a103c098a0cf4da451300f2cd3" compoundref="usbradioplus__hardware_8h" startline="23">urp_parallel_bus::write</references>
+        <referencedby refid="usbradioplus__channel__common_8c_1a7fd7ede6d42b48043eaa2ba896eec217" compoundref="usbradioplus__channel__common_8c" startline="1607" endline="1619">usbradioplus_set_channel</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__hardware_8h_1abeee3f38f91b6c8b4697248ee607594e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_hardware_program_radio</definition>
+        <argsstring>(struct urp_parallel_bus *bus, uint32_t rx_freq, uint32_t tx_freq, int transmitting, int high_power)</argsstring>
+        <name>urp_hardware_program_radio</name>
+        <param>
+          <type>struct <ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref> *</type>
+          <declname>bus</declname>
+        </param>
+        <param>
+          <type>uint32_t</type>
+          <declname>rx_freq</declname>
+        </param>
+        <param>
+          <type>uint32_t</type>
+          <declname>tx_freq</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>transmitting</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>high_power</declname>
+        </param>
+        <briefdescription>
+<para>Program RTX frequency and power using the parallel-port bus. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>bus</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Parallel-port value and caller-supplied write callback. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>rx_freq</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receive frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>tx_freq</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Transmit frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>transmitting</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero selects the transmit synthesizer settings. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>high_power</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero requests the hardware high-power setting. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="47" column="6" bodyfile="src/usbradioplus_hardware.c" bodystart="108" bodyend="126" declfile="src/usbradioplus_hardware.h" declline="47" declcolumn="6"/>
+        <references refid="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" compoundref="usbradioplus__hardware_8h" startline="13">urp_rtx_words::reference</references>
+        <references refid="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" compoundref="usbradioplus__hardware_8h" startline="15">urp_rtx_words::synthesizer</references>
+        <references refid="usbradioplus__hardware_8c_1a47accfbc752dd612454e9df1ff3a7369" compoundref="usbradioplus__hardware_8c" startline="12">URP_DTX_CLK</references>
+        <references refid="usbradioplus__hardware_8c_1ad70e7d937b99e953fb1bd13d4de21e25" compoundref="usbradioplus__hardware_8c" startline="14">URP_DTX_DATA</references>
+        <references refid="usbradioplus__hardware_8c_1a7aba069e44848350c2cd01fc6e0b46b7" compoundref="usbradioplus__hardware_8c" startline="16">URP_DTX_ENABLE</references>
+        <references refid="usbradioplus__hardware_8c_1a802a35adbfe115883684b8b0e3554eda" compoundref="usbradioplus__hardware_8c" startline="18">URP_DTX_TX</references>
+        <references refid="usbradioplus__hardware_8c_1a418df7508da46865cd4f8df30b5522f9" compoundref="usbradioplus__hardware_8c" startline="20">URP_DTX_TXPWR</references>
+        <references refid="usbradioplus__hardware_8c_1a0758a1c7b137ded20636903be81c2c74" compoundref="usbradioplus__hardware_8c" startline="80" endline="92">urp_hardware_rtx_words</references>
+        <references refid="usbradioplus__hardware_8c_1a42f41edf93b2ece7d84929cbc0359027" compoundref="usbradioplus__hardware_8c" startline="46" endline="78">urp_hardware_spi</references>
+        <references refid="usbradioplus__hardware_8c_1a5ddcf0ac38b4564ff89cfa81fae59ecd" compoundref="usbradioplus__hardware_8c" startline="37" endline="40">urp_hardware_write</references>
+        <references refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" compoundref="usbradioplus__hardware_8h" startline="21">urp_parallel_bus::value</references>
+        <references refid="structurp__parallel__bus_1a18f8c5a103c098a0cf4da451300f2cd3" compoundref="usbradioplus__hardware_8h" startline="23">urp_parallel_bus::write</references>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a5cc99db0a934683818d67d2ba0745de4" compoundref="chan__usbradioplus__modern_8c" startline="773" endline="820">hidthread_apply_ptt</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a614b2ecfbe8d0ec918f1b5b86d409520" compoundref="chan__usbradioplus_8c" startline="385" endline="431">hidthread_apply_ptt</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__hardware_8h_1a46a10ad3db9a82903beffcc64b2a9112" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_hardware_clear_transmit</definition>
+        <argsstring>(struct urp_parallel_bus *bus)</argsstring>
+        <name>urp_hardware_clear_transmit</name>
+        <param>
+          <type>struct <ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref> *</type>
+          <declname>bus</declname>
+        </param>
+        <briefdescription>
+<para>Immediately clear the RTX transmit output without serial reprogramming. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>bus</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Parallel-port value and caller-supplied write callback.</para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+This is the hardware-worker fail-safe path. It leaves frequency-programming bits untouched so a disconnect or stop cannot delay transmitter release. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_hardware.h" line="55" column="6" bodyfile="src/usbradioplus_hardware.c" bodystart="128" bodyend="134" declfile="src/usbradioplus_hardware.h" declline="55" declcolumn="6"/>
+        <references refid="usbradioplus__hardware_8c_1a802a35adbfe115883684b8b0e3554eda" compoundref="usbradioplus__hardware_8c" startline="18">URP_DTX_TX</references>
+        <references refid="usbradioplus__hardware_8c_1a418df7508da46865cd4f8df30b5522f9" compoundref="usbradioplus__hardware_8c" startline="20">URP_DTX_TXPWR</references>
+        <references refid="usbradioplus__hardware_8c_1a5ddcf0ac38b4564ff89cfa81fae59ecd" compoundref="usbradioplus__hardware_8c" startline="37" endline="40">urp_hardware_write</references>
+        <references refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" compoundref="usbradioplus__hardware_8h" startline="21">urp_parallel_bus::value</references>
+        <references refid="structurp__parallel__bus_1a18f8c5a103c098a0cf4da451300f2cd3" compoundref="usbradioplus__hardware_8h" startline="23">urp_parallel_bus::write</references>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a5cc99db0a934683818d67d2ba0745de4" compoundref="chan__usbradioplus__modern_8c" startline="773" endline="820">hidthread_apply_ptt</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1a614b2ecfbe8d0ec918f1b5b86d409520" compoundref="chan__usbradioplus_8c" startline="385" endline="431">hidthread_apply_ptt</referencedby>
+        <referencedby refid="chan__usbradioplus__modern_8c_1a255b0f540f5f967f135ff02e1d43f7ec" compoundref="chan__usbradioplus__modern_8c" startline="827" endline="861">hidthread_failsafe_unkey</referencedby>
+        <referencedby refid="chan__usbradioplus_8c_1aa702cc94003d8d9c5620bd2dc364b6af" compoundref="chan__usbradioplus_8c" startline="438" endline="472">hidthread_failsafe_unkey</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Parallel-port channel selection and RTX synthesizer programming. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_HARDWARE_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_HARDWARE_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11" refid="structurp__rtx__words" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__rtx__words" kindref="compound">urp_rtx_words</ref><sp/>{</highlight></codeline>
+<codeline lineno="13" refid="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__rtx__words_1af3375113b4f938f6010613ac44ba258e" kindref="member">reference</ref>;</highlight></codeline>
+<codeline lineno="15" refid="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__rtx__words_1a65e147360c1878c0aa8c312b3f99327d" kindref="member">synthesizer</ref>;</highlight></codeline>
+<codeline lineno="16"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="17"><highlight class="normal"></highlight></codeline>
+<codeline lineno="19" refid="structurp__parallel__bus" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref><sp/>{</highlight></codeline>
+<codeline lineno="21" refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint8_t<sp/><ref refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" kindref="member">value</ref>;</highlight></codeline>
+<codeline lineno="23" refid="structurp__parallel__bus_1a18f8c5a103c098a0cf4da451300f2cd3" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structurp__parallel__bus_1a18f8c5a103c098a0cf4da451300f2cd3" kindref="member">write</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__parallel__bus_1ac825cb7de60e4e4fc8aad734ae2e84c6" kindref="member">opaque</ref>,<sp/>uint8_t<sp/><ref refid="structurp__parallel__bus_1a6d672bf4843823d061dac398f6f13846" kindref="member">value</ref>);</highlight></codeline>
+<codeline lineno="25" refid="structurp__parallel__bus_1ac825cb7de60e4e4fc8aad734ae2e84c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__parallel__bus_1ac825cb7de60e4e4fc8aad734ae2e84c6" kindref="member">opaque</ref>;</highlight></codeline>
+<codeline lineno="26"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="27"><highlight class="normal"></highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__rtx__words" kindref="compound">urp_rtx_words</ref><sp/><ref refid="usbradioplus__hardware_8h_1a0758a1c7b137ded20636903be81c2c74" kindref="member">urp_hardware_rtx_words</ref>(uint32_t<sp/>rx_freq,<sp/>uint32_t<sp/>tx_freq,<sp/>int<sp/>transmitting);</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__hardware_8h_1a79d30d28e38db06cba9169a5fa2b4f65" kindref="member">urp_hardware_set_channel</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref><sp/>*bus,<sp/>uint8_t<sp/>channel);</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__hardware_8h_1abeee3f38f91b6c8b4697248ee607594e" kindref="member">urp_hardware_program_radio</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref><sp/>*bus,<sp/>uint32_t<sp/>rx_freq,<sp/>uint32_t<sp/>tx_freq,</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>transmitting,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>high_power);</highlight></codeline>
+<codeline lineno="55"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__hardware_8h_1a46a10ad3db9a82903beffcc64b2a9112" kindref="member">urp_hardware_clear_transmit</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__parallel__bus" kindref="compound">urp_parallel_bus</ref><sp/>*bus);</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"></highlight></codeline>
+<codeline lineno="57"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_hardware.h"/>
+  </compounddef>
+</doxygen>

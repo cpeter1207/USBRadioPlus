@@ -1,0 +1,5 @@
+<map id="urp_sample_queue_push_sample" name="urp_sample_queue_push_sample">
+<area shape="rect" id="Node000001" title="Add one PCM sample to an SPSC queue." alt="" coords="5,5,188,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__core_8c.html#aa277ccbd21cd4c775e88632a0e19340f" title="Record a producer&#45;owned sample&#45;ring occupancy peak." alt="" coords="236,5,417,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,23,222,23,222,28,189,28"/>
+</map>

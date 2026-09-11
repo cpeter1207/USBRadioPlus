@@ -1,0 +1,7 @@
+<map id="txagc_avfilter_slot_node" name="txagc_avfilter_slot_node">
+<area shape="rect" id="Node000001" title="One heap&#45;owned graph published through a txagc_avfilter_slot." alt="" coords="5,181,187,207"/>
+<area shape="rect" id="Node000002" href="$structtxagc__avfilter.html" title=" " alt="" coords="41,93,151,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="99,133,99,181,93,181,93,133"/>
+<area shape="rect" id="Node000003" href="$structtxagc__config.html" title=" " alt="" coords="44,5,148,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="99,45,99,93,93,93,93,45"/>
+</map>

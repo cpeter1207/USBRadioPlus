@@ -1,0 +1,7 @@
+<map id="init_audio_device" name="init_audio_device">
+<area shape="rect" id="Node000001" title="Acquire the configured ASL USB radio and initialize its audio/HID interface." alt="" coords="5,31,141,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__rpt__advanced_8c.html#a60ba87435513bc0fae2ba4297fbe7d94" title="Request exclusive hardware ownership and expose native&#45;rate PCM." alt="" coords="225,5,296,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="141,32,211,22,212,27,142,37"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html#ad7cb19659650b42c6323e2ea9fbe66f5" title="Report a USB/audio fault and latch recovery state." alt="" coords="189,55,332,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="142,49,176,54,175,59,141,55"/>
+</map>

@@ -1,0 +1,20 @@
+<map id="usbradioplus_wait_for_eeprom_idle" name="usbradioplus_wait_for_eeprom_idle">
+<area shape="rect" id="Node000001" title="Wait until the HID worker completes a pending EEPROM operation." alt="" coords="704,49,869,89"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a2c59ff989efcdb7827f63ed8b8852642" title="Allocate and populate one named radio channel from configuration." alt="" coords="555,31,656,56"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="690,58,656,53,657,48,691,53"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#aba2ef44197e2e1293978c039a00c374d" title="Save current tuning to configuration and request EEPROM storage when enabled." alt="" coords="560,80,651,105"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="691,84,651,89,651,84,690,79"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__channel__common_8c.html#a44660a10955a5753a0acd58c7efed563" title="Load configured radio channels and their resolved processing profiles." alt="" coords="387,29,483,55"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="541,45,483,45,483,40,541,40"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#aac81d2240a9c6078ef3d9dccce6e5c9a" title="Register the channel technology and start configured radio workers." alt="" coords="202,5,309,31"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="373,36,308,28,309,22,373,31"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="196,55,315,80"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="374,53,316,62,315,56,373,48"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="210,105,301,131"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="546,100,301,117,301,112,546,94"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="363,131,507,156"/>
+<area shape="poly" id="edge8_Node000006_Node000009" title=" " alt="" coords="549,112,479,133,478,128,548,107"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,105,148,131"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="196,121,148,121,148,115,196,115"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="349,134,301,127,301,122,350,129"/>
+</map>

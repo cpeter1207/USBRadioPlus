@@ -1,0 +1,7 @@
+<map id="read_hardware" name="read_hardware">
+<area shape="rect" id="Node000001" title="Read hardware gains and playback routing." alt="" coords="5,31,124,56"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#a4beacd85acfc251b7a0acb0bbd673628" title="Read a hardware routing choice and record whether it was explicitly supplied." alt="" coords="172,5,307,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="124,32,158,27,159,32,125,37"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a40fb6b758f658793505c2ca9ad541a5a" title="Read a finite numeric option and flag malformed values without committing settings." alt="" coords="188,55,291,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="125,49,175,56,174,61,124,54"/>
+</map>

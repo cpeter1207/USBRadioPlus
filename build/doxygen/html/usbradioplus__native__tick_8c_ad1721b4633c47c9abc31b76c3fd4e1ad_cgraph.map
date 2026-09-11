@@ -1,0 +1,33 @@
+<map id="native_renderer_generate_signaling" name="native_renderer_generate_signaling">
+<area shape="rect" id="Node000001" title="Generate direct CTCSS and DCS sources for one DAC frame." alt="" coords="5,198,196,238"/>
+<area shape="rect" id="Node000002" href="$avfilter__processor_8c.html#a42f97cbbe252ab72960adc41a094d7dc" title="Process one mono block through an already prepared FFmpeg graph." alt="" coords="244,62,412,102"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,195,243,126,277,106,280,111,245,131,135,200"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__ctcss_8c.html#a6f6c1a34547bafac4176acce08c1fc68" title="Render a phase&#45;continuous CTCSS block at 48 kHz, including a turn&#45;off phase shift." alt="" coords="254,205,402,231"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="197,215,240,215,240,221,197,221"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__ctcss_8c.html#a9827056a28a1f02afca5df8f4a2ccac3" title="Render an exact&#45;frequency tail tone at the native sample rate." alt="" coords="254,141,402,181"/>
+<area shape="poly" id="edge11_Node000001_Node000011" title=" " alt="" coords="180,195,240,180,241,185,181,201"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__dcs_8c.html#abcde7dd04fefa482c787572fd25858b1" title="Configure DCS reception and/or transmission." alt="" coords="259,255,397,280"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="194,235,256,249,255,254,193,241"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__dcs_8c.html#a2be8022d8c923040a9ad480771241534" title="Render DCS NRZ modulation or its 134.4 Hz turn&#45;off tone into PCM&#45;domain doubles." alt="" coords="259,304,397,329"/>
+<area shape="poly" id="edge15_Node000001_Node000014" title=" " alt="" coords="137,236,187,263,245,290,265,297,263,302,243,295,185,268,134,240"/>
+<area shape="rect" id="Node000003" href="$avfilter__processor_8c.html#ac891b46547a6d98840314bd3114a6629" title="Drain available frames from one spectral measurement sink." alt="" coords="483,5,642,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="391,59,459,39,491,31,492,36,461,45,393,64"/>
+<area shape="rect" id="Node000006" href="$avfilter__processor_8c.html#aa9267bbf543edad3c49a9288605c4389" title="Find a source frame that the graph no longer references." alt="" coords="494,55,631,80"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="412,74,480,70,480,75,413,79"/>
+<area shape="rect" id="Node000007" href="$avfilter__processor_8c.html#a8681a563c78717937cd38f3685472fb5" title="Accumulate input or output peak and RMS readings from an FFmpeg frame." alt="" coords="742,80,857,105"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="412,86,460,89,728,91,728,96,460,94,412,91"/>
+<area shape="rect" id="Node000004" href="$avfilter__processor_8c.html#a181de7eafdd05d2eb4cd951133aba582" title="Update a pre&#45; or post&#45;filter spectral meter from astats metadata." alt="" coords="713,19,885,44"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="643,20,700,23,699,28,642,25"/>
+<area shape="rect" id="Node000005" href="$avfilter__processor_8c.html#a6e86b6ec36eb28a80b0d24960c5a721e" title="Read one numeric FFmpeg astats metadata value." alt="" coords="933,56,1039,81"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="864,41,920,53,919,58,863,47"/>
+<area shape="poly" id="edge7_Node000007_Node000005" title=" " alt="" coords="857,83,919,75,920,80,857,88"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__ctcss_8c.html#afadf7c326a81ac71570f6ef2c8aa45b6" title="Render a sine&#45;wave signaling block from persistent phase state." alt="" coords="523,156,603,181"/>
+<area shape="poly" id="edge9_Node000008_Node000009" title=" " alt="" coords="389,203,509,177,510,182,390,208"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__ctcss_8c.html#a0f230aa8b64276d51aaa60e14c155605" title="Map a requested CTCSS tone to its compatibility oscillator frequency." alt="" coords="460,205,665,231"/>
+<area shape="poly" id="edge10_Node000008_Node000010" title=" " alt="" coords="402,215,446,215,446,221,402,221"/>
+<area shape="poly" id="edge12_Node000011_Node000009" title=" " alt="" coords="402,161,509,164,509,170,402,166"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__dcs_8c.html#a459d90828d359b032294fb0317f82fad" title="Test whether a value fits the three&#45;digit octal DCS code field." alt="" coords="471,255,654,280"/>
+<area shape="poly" id="edge14_Node000012_Node000013" title=" " alt="" coords="398,265,457,265,457,270,398,270"/>
+<area shape="rect" id="Node000015" href="$usbradioplus__dcs_8c.html#a4b73e1256bf2ca3833e4ef1b7d8beebf" title="Encode a DCS word in its TIA/ETSI least&#45;significant&#45;bit&#45;first layout." alt="" coords="521,304,604,329"/>
+<area shape="poly" id="edge16_Node000014_Node000015" title=" " alt="" coords="397,314,508,314,508,319,397,319"/>
+</map>

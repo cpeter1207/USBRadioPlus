@@ -1,0 +1,13 @@
+<map id="run" name="run">
+<area shape="rect" id="Node000001" title="Process samples in place or out of place without buffering the program audio." alt="" coords="5,47,48,72"/>
+<area shape="rect" id="Node000002" href="$rms__agc__ladspa_8c.html#a9b0867722c1ebeeaf49a9544e4266d28" title="Cache rate&#45;dependent coefficients only when controls change." alt="" coords="96,21,179,47"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="48,52,82,44,83,49,49,57"/>
+<area shape="rect" id="Node000005" href="$rms__agc__ladspa_8c.html#ac2d1f6a8cf51241e0e781c3a657c078d" title="Update the gain destination at a sample&#45;derived one&#45;kilohertz cadence." alt="" coords="227,72,329,97"/>
+<area shape="poly" id="edge5_Node000001_Node000005" title=" " alt="" coords="49,59,214,76,213,81,48,64"/>
+<area shape="rect" id="Node000003" href="$rms__agc__ladspa_8c.html#ad2959525ff319b889cf82eb5fa7696aa" title="Restrict a finite scalar to a closed interval." alt="" coords="377,23,456,48"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="176,19,226,7,278,3,330,7,368,16,367,21,329,13,278,8,227,13,177,24"/>
+<area shape="rect" id="Node000004" href="$rms__agc__ladspa_8c.html#ac854c2cee75cfad25c2d0a319fc1c0d9" title="Read one control using the same defaults with or without host connection." alt="" coords="227,23,329,48"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="179,32,213,32,213,37,179,37"/>
+<area shape="poly" id="edge4_Node000004_Node000003" title=" " alt="" coords="330,33,364,33,364,38,330,38"/>
+<area shape="poly" id="edge6_Node000005_Node000003" title=" " alt="" coords="313,70,366,50,368,55,315,75"/>
+</map>

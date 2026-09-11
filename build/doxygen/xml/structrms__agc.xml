@@ -1,0 +1,434 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structrms__agc" kind="struct" language="C++" prot="public">
+    <compoundname>rms_agc</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" prot="public" static="no" mutable="no">
+        <type>LADSPA_Data *</type>
+        <definition>LADSPA_Data* rms_agc::ports[USBRADIOPLUS_AGC_PORT_COUNT]</definition>
+        <argsstring>[USBRADIOPLUS_AGC_PORT_COUNT]</argsstring>
+        <name>ports</name>
+        <qualifiedname>rms_agc::ports</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Host-owned connected buffers. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="50" column="13" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="50" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a05b8d0ad7104659c8207bcb5b65c8da6" compoundref="rms__agc__ladspa_8c" startline="219" endline="225">connect_port</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac854c2cee75cfad25c2d0a319fc1c0d9" compoundref="rms__agc__ladspa_8c" startline="93" endline="100">read_control</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::controls[CONTROL_COUNT]</definition>
+        <argsstring>[CONTROL_COUNT]</argsstring>
+        <name>controls</name>
+        <qualifiedname>rms_agc::controls</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sanitized controls cached between host calls. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="51" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="51" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1af890398ddbc2d7e44408759ada475cad" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::rate</definition>
+        <argsstring></argsstring>
+        <name>rate</name>
+        <qualifiedname>rms_agc::rate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples per second. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="52" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="52" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" compoundref="rms__agc__ladspa_8c" startline="199" endline="212">instantiate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::fast_coefficient</definition>
+        <argsstring></argsstring>
+        <name>fast_coefficient</name>
+        <qualifiedname>rms_agc::fast_coefficient</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Ten-millisecond activity-power smoothing coefficient. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="53" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="53" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a390d37f69873a4e6333cbb213b3dc741" compoundref="rms__agc__ladspa_8c" startline="199" endline="212">instantiate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::level_coefficient</definition>
+        <argsstring></argsstring>
+        <name>level_coefficient</name>
+        <qualifiedname>rms_agc::level_coefficient</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured level-power smoothing coefficient. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="54" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="54" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::fast_power</definition>
+        <argsstring></argsstring>
+        <name>fast_power</name>
+        <qualifiedname>rms_agc::fast_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Activity detector&apos;s continuously updated mean-square level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="55" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="55" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::level_power</definition>
+        <argsstring></argsstring>
+        <name>level_power</name>
+        <qualifiedname>rms_agc::level_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Target detector&apos;s continuously updated mean-square level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="56" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="56" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1affd623af94a501831d44891e5379c9e8" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::level_weight</definition>
+        <argsstring></argsstring>
+        <name>level_weight</name>
+        <qualifiedname>rms_agc::level_weight</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>EMA normalization removes silent history on activity acquisition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="57" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="57" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::opening_power</definition>
+        <argsstring></argsstring>
+        <name>opening_power</name>
+        <qualifiedname>rms_agc::opening_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Activity opening threshold in squared normalized samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="59" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="59" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::closing_power</definition>
+        <argsstring></argsstring>
+        <name>closing_power</name>
+        <qualifiedname>rms_agc::closing_power</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Activity closing threshold in squared normalized samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="60" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="60" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::gain</definition>
+        <argsstring></argsstring>
+        <name>gain</name>
+        <qualifiedname>rms_agc::gain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain applied to the current sample. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="61" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="61" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::destination_gain</definition>
+        <argsstring></argsstring>
+        <name>destination_gain</name>
+        <qualifiedname>rms_agc::destination_gain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain at the end of the current one-millisecond ramp. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="62" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="62" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::gain_step</definition>
+        <argsstring></argsstring>
+        <name>gain_step</name>
+        <qualifiedname>rms_agc::gain_step</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Linear-amplitude change per sample during that ramp. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="63" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="63" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::gain_db</definition>
+        <argsstring></argsstring>
+        <name>gain_db</name>
+        <qualifiedname>rms_agc::gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gain requested at the last control update. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="64" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="64" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a68388546e01122a644951b3bad90fe38" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::hold_samples</definition>
+        <argsstring></argsstring>
+        <name>hold_samples</name>
+        <qualifiedname>rms_agc::hold_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Qualified active samples continuously requesting increased gain. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="65" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="65" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::acquisition_samples</definition>
+        <argsstring></argsstring>
+        <name>acquisition_samples</name>
+        <qualifiedname>rms_agc::acquisition_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Remaining samples protected against stale low-level history. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="67" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="67" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double rms_agc::active_samples</definition>
+        <argsstring></argsstring>
+        <name>active_samples</name>
+        <qualifiedname>rms_agc::active_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Active samples since the last control calculation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="69" column="8" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="69" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" prot="public" static="no" mutable="no">
+        <type>unsigned long</type>
+        <definition>unsigned long rms_agc::phase</definition>
+        <argsstring></argsstring>
+        <name>phase</name>
+        <qualifiedname>rms_agc::phase</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fractional one-kilohertz control clock, in phase units. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="70" column="15" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="70" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" prot="public" static="no" mutable="no">
+        <type>unsigned long</type>
+        <definition>unsigned long rms_agc::elapsed</definition>
+        <argsstring></argsstring>
+        <name>elapsed</name>
+        <qualifiedname>rms_agc::elapsed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples since the last control calculation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="71" column="15" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="71" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" prot="public" static="no" mutable="no">
+        <type>unsigned long</type>
+        <definition>unsigned long rms_agc::ramp_remaining</definition>
+        <argsstring></argsstring>
+        <name>ramp_remaining</name>
+        <qualifiedname>rms_agc::ramp_remaining</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples until the ramp destination is reached. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="72" column="15" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="72" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1aac2477f8e6b579039579b37b76187518" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int rms_agc::active</definition>
+        <argsstring></argsstring>
+        <name>active</name>
+        <qualifiedname>rms_agc::active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Hysteretic activity state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="73" column="5" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="73" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1af3ba5d12d4b74078de5469eb56dde8c4" compoundref="rms__agc__ladspa_8c" startline="231" endline="289">run</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1ac2d1f6a8cf51241e0e781c3a657c078d" compoundref="rms__agc__ladspa_8c" startline="133" endline="170">update_gain</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structrms__agc_1aca30a5948e447c241876d6f67718e530" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int rms_agc::configured</definition>
+        <argsstring></argsstring>
+        <name>configured</name>
+        <qualifiedname>rms_agc::configured</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cached coefficients have been initialized. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.c" line="74" column="5" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="74" bodyend="-1"/>
+        <referencedby refid="rms__agc__ladspa_8c_1a79b5a60bc163138f530d92de62246dd2" compoundref="rms__agc__ladspa_8c" startline="175" endline="192">activate</referencedby>
+        <referencedby refid="rms__agc__ladspa_8c_1a9b0867722c1ebeeaf49a9544e4266d28" compoundref="rms__agc__ladspa_8c" startline="105" endline="128">configure</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Persistent state contains no sample queue or detector filters. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/txagc/rms_agc_ladspa.c" line="49" column="1" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="49" bodyend="75"/>
+    <listofallmembers>
+      <member refid="structrms__agc_1a891979d91b40ed5f27e62384f2461ef0" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>acquisition_samples</name></member>
+      <member refid="structrms__agc_1aac2477f8e6b579039579b37b76187518" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>active</name></member>
+      <member refid="structrms__agc_1a16a194e5913a58e6090d100138f3f1ff" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>active_samples</name></member>
+      <member refid="structrms__agc_1a99e57a7bad5a84f4a4285bbfcd0f8ff2" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>closing_power</name></member>
+      <member refid="structrms__agc_1aca30a5948e447c241876d6f67718e530" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>configured</name></member>
+      <member refid="structrms__agc_1a8807b6ddaba6b2de6881954fef753da9" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>controls</name></member>
+      <member refid="structrms__agc_1aeb4812c3d892b2fc701ba65cbe9137af" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>destination_gain</name></member>
+      <member refid="structrms__agc_1a90d1847a199b276009d20c9cf85a3cb0" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>elapsed</name></member>
+      <member refid="structrms__agc_1aeadf70b8cfd06fb7ee958e350400efeb" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>fast_coefficient</name></member>
+      <member refid="structrms__agc_1aacaf5fdb2475369e849841841a30b44c" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>fast_power</name></member>
+      <member refid="structrms__agc_1afb1d9ec0ade5f8c1ec01a50804fc79a8" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>gain</name></member>
+      <member refid="structrms__agc_1a1ea0358ba79a93cb863a673c25b92c84" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>gain_db</name></member>
+      <member refid="structrms__agc_1a99078d9f5eed9dca0cddc545406a9a09" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>gain_step</name></member>
+      <member refid="structrms__agc_1a68388546e01122a644951b3bad90fe38" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>hold_samples</name></member>
+      <member refid="structrms__agc_1ad9974fdf252aed9dc67768f1e8eaff2f" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>level_coefficient</name></member>
+      <member refid="structrms__agc_1a808c88c2ae2eca4dd5ef310486f39533" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>level_power</name></member>
+      <member refid="structrms__agc_1affd623af94a501831d44891e5379c9e8" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>level_weight</name></member>
+      <member refid="structrms__agc_1af0f8f0131b4c12266196d3e2374aa8d9" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>opening_power</name></member>
+      <member refid="structrms__agc_1a5c30dd953e163824ababd688ec824bc5" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>phase</name></member>
+      <member refid="structrms__agc_1a0670473740c2c03fc3bab3716a9db3e6" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>ports</name></member>
+      <member refid="structrms__agc_1a15dfe50e74219ba640522dc8ebae37e6" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>ramp_remaining</name></member>
+      <member refid="structrms__agc_1af890398ddbc2d7e44408759ada475cad" prot="public" virt="non-virtual"><scope>rms_agc</scope><name>rate</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

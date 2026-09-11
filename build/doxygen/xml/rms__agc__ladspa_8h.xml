@@ -1,0 +1,224 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="rms__agc__ladspa_8h" kind="file" language="C++">
+    <compoundname>rms_agc_ladspa.h</compoundname>
+    <includes local="no">ladspa.h</includes>
+    <includedby refid="rms__agc__ladspa_8c" local="yes">src/txagc/rms_agc_ladspa.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/txagc/rms_agc_ladspa.h</label>
+        <link refid="rms__agc__ladspa_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>ladspa.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/txagc/rms_agc_ladspa.c</label>
+        <link refid="rms__agc__ladspa_8c"/>
+      </node>
+      <node id="1">
+        <label>src/txagc/rms_agc_ladspa.h</label>
+        <link refid="rms__agc__ladspa_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+    </invincdepgraph>
+    <sectiondef kind="enum">
+      <memberdef kind="enum" id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3" prot="public" static="no" strong="no">
+        <type></type>
+        <name>usbradioplus_agc_port</name>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a75a76979cf58484610f96bd3e82f1dfc" prot="public">
+          <name>USBRADIOPLUS_AGC_INPUT</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Unfiltered normalized floating-point program audio. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ab96fd020d7b8897fcac5c9ee76eb883a" prot="public">
+          <name>USBRADIOPLUS_AGC_DETECTOR</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Detector audio filtered by the surrounding FFmpeg graph. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9cbd86b0a988b4192e0ec1340d54c226" prot="public">
+          <name>USBRADIOPLUS_AGC_OUTPUT</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Program audio multiplied by the continuously ramped gain. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" prot="public">
+          <name>USBRADIOPLUS_AGC_TARGET_DBFS</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Desired detector RMS level, dBFS. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3afbd744863973418c116295932ff05545" prot="public">
+          <name>USBRADIOPLUS_AGC_AVERAGING_MS</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Target-level RMS averaging time, milliseconds. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a10264d66d714fd24b1532d7d6f7204f1" prot="public">
+          <name>USBRADIOPLUS_AGC_INCREASE_DB_PER_SECOND</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Maximum upward gain rate, dB/second. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ae461a542bd02f3b0ee9638444724b542" prot="public">
+          <name>USBRADIOPLUS_AGC_DECREASE_DB_PER_SECOND</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Maximum downward gain rate, dB/second. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9115c86ba9a066d3ce64e8c854c01674" prot="public">
+          <name>USBRADIOPLUS_AGC_MAX_BOOST_DB</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Maximum positive gain, dB. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a08f7c247529f00448aa4ea6be593dabb" prot="public">
+          <name>USBRADIOPLUS_AGC_MAX_ATTENUATION_DB</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Maximum attenuation, positive dB. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a6f4c75c334097dfa9b9a13f2151c9ba4" prot="public">
+          <name>USBRADIOPLUS_AGC_ACTIVITY_DBFS</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Activity opening threshold, dBFS RMS. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a8704cf6a7ffa4b3ab95b90252c445747" prot="public">
+          <name>USBRADIOPLUS_AGC_ACTIVITY_HYSTERESIS_DB</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Difference between opening and closing thresholds. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3abc45118e7ee674b070e2d778106d25cb" prot="public">
+          <name>USBRADIOPLUS_AGC_HOLD_MS</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Continuous low-level activity required before increasing gain. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a440a0170f96c9871474066f86ac74d69" prot="public">
+          <name>USBRADIOPLUS_AGC_DEADBAND_DB</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Level error in either direction that leaves gain unchanged. </para>
+          </detaileddescription>
+        </enumvalue>
+        <enumvalue id="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" prot="public">
+          <name>USBRADIOPLUS_AGC_PORT_COUNT</name>
+          <briefdescription>
+          </briefdescription>
+          <detaileddescription>
+<para>Number of connected audio and control ports. </para>
+          </detaileddescription>
+        </enumvalue>
+        <briefdescription>
+<para>LADSPA ports; the two inputs carry program audio and detector audio separately. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.h" line="11" column="1" bodyfile="src/txagc/rms_agc_ladspa.h" bodystart="11" bodyend="29"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="rms__agc__ladspa_8h_1af8066f62a237dbd38265a01186dc72a5" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>const LADSPA_Descriptor *</type>
+        <definition>const LADSPA_Descriptor * ladspa_descriptor</definition>
+        <argsstring>(unsigned long index)</argsstring>
+        <name>ladspa_descriptor</name>
+        <param>
+          <type>unsigned long</type>
+          <declname>index</declname>
+        </param>
+        <briefdescription>
+<para>Return the plugin descriptor for index zero. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>index</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Plugin index; only zero is defined. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Static descriptor, or NULL for any other index. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rms_agc_ladspa.h" line="35" column="25" bodyfile="src/txagc/rms_agc_ladspa.c" bodystart="363" bodyend="366" declfile="src/txagc/rms_agc_ladspa.h" declline="35" declcolumn="25"/>
+        <references refid="rms__agc__ladspa_8c_1a7f60245671eb2423a3dd9daf1c442c43" compoundref="rms__agc__ladspa_8c" startline="345" endline="361">descriptor</references>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Ports for the FFmpeg-hosted USBRadioPlus RMS gain rider. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="comment">/*<sp/>SPDX-License-Identifier:<sp/>MIT<sp/>*/</highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_RMS_AGC_LADSPA_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_RMS_AGC_LADSPA_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;ladspa.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">enum</highlight><highlight class="normal"><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3" kindref="member">usbradioplus_agc_port</ref><sp/>{</highlight></codeline>
+<codeline lineno="12" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a75a76979cf58484610f96bd3e82f1dfc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a75a76979cf58484610f96bd3e82f1dfc" kindref="member">USBRADIOPLUS_AGC_INPUT</ref>,<sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="13" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ab96fd020d7b8897fcac5c9ee76eb883a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ab96fd020d7b8897fcac5c9ee76eb883a" kindref="member">USBRADIOPLUS_AGC_DETECTOR</ref>,<sp/></highlight></codeline>
+<codeline lineno="14" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9cbd86b0a988b4192e0ec1340d54c226" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9cbd86b0a988b4192e0ec1340d54c226" kindref="member">USBRADIOPLUS_AGC_OUTPUT</ref>,<sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="15" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a7021befd586d8fb998f5890e09d89af9" kindref="member">USBRADIOPLUS_AGC_TARGET_DBFS</ref>,<sp/><sp/></highlight></codeline>
+<codeline lineno="16" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3afbd744863973418c116295932ff05545" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3afbd744863973418c116295932ff05545" kindref="member">USBRADIOPLUS_AGC_AVERAGING_MS</ref>,<sp/></highlight></codeline>
+<codeline lineno="17" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a10264d66d714fd24b1532d7d6f7204f1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a10264d66d714fd24b1532d7d6f7204f1" kindref="member">USBRADIOPLUS_AGC_INCREASE_DB_PER_SECOND</ref>,<sp/></highlight></codeline>
+<codeline lineno="18" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ae461a542bd02f3b0ee9638444724b542" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3ae461a542bd02f3b0ee9638444724b542" kindref="member">USBRADIOPLUS_AGC_DECREASE_DB_PER_SECOND</ref>,<sp/></highlight></codeline>
+<codeline lineno="19" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9115c86ba9a066d3ce64e8c854c01674" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a9115c86ba9a066d3ce64e8c854c01674" kindref="member">USBRADIOPLUS_AGC_MAX_BOOST_DB</ref>,<sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="20" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a08f7c247529f00448aa4ea6be593dabb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a08f7c247529f00448aa4ea6be593dabb" kindref="member">USBRADIOPLUS_AGC_MAX_ATTENUATION_DB</ref>,<sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="21" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a6f4c75c334097dfa9b9a13f2151c9ba4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a6f4c75c334097dfa9b9a13f2151c9ba4" kindref="member">USBRADIOPLUS_AGC_ACTIVITY_DBFS</ref>,<sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a8704cf6a7ffa4b3ab95b90252c445747" kindref="member">USBRADIOPLUS_AGC_ACTIVITY_HYSTERESIS_DB</ref>,<sp/></highlight></codeline>
+<codeline lineno="24"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3abc45118e7ee674b070e2d778106d25cb" kindref="member">USBRADIOPLUS_AGC_HOLD_MS</ref>,<sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3a440a0170f96c9871474066f86ac74d69" kindref="member">USBRADIOPLUS_AGC_DEADBAND_DB</ref>,<sp/></highlight></codeline>
+<codeline lineno="28"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" kindref="member">USBRADIOPLUS_AGC_PORT_COUNT</ref><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="29" refid="rms__agc__ladspa_8h_1a6f46a6e4708ac064138d9f5b7e0889d3acf824dd75ce1708a03ad0e771e0c536c" refkind="member"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>LADSPA_Descriptor<sp/>*<ref refid="rms__agc__ladspa_8h_1af8066f62a237dbd38265a01186dc72a5" kindref="member">ladspa_descriptor</ref>(</highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">long</highlight><highlight class="normal"><sp/>index);</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"></highlight></codeline>
+<codeline lineno="37"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/txagc/rms_agc_ladspa.h"/>
+  </compounddef>
+</doxygen>

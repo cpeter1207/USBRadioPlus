@@ -1,0 +1,11 @@
+<map id="native_renderer_apply_requests" name="native_renderer_apply_requests">
+<area shape="rect" id="Node000001" title="Apply pending control&#45;plane requests at a callback boundary." alt="" coords="5,88,173,128"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__native__tick_8c.html#a5c2b1af591d60e7b76f3864cbe68f3f9" title="Reset extrema in one prepared graph at a requested measurement boundary." alt="" coords="248,5,413,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="139,85,220,55,245,47,247,52,222,60,141,90"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__native__tick_8c.html#aa6b9c25942a33fe847604a2f78097490" title="Initialize direct&#45;renderer measurement values." alt="" coords="221,70,440,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="173,97,207,93,208,98,174,102"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__rpt__advanced_8c.html#a60ba87435513bc0fae2ba4297fbe7d94" title="Request exclusive hardware ownership and expose native&#45;rate PCM." alt="" coords="295,119,366,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="174,114,282,125,281,130,173,119"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__core_8c.html#a4b85a831b29ef014cfb7014b59e863b0" title="Discard samples already published to an active SPSC queue." alt="" coords="231,169,430,194"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="142,126,222,153,257,163,255,168,221,159,140,131"/>
+</map>

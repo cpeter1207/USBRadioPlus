@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structt__fir" kind="struct" language="C++" prot="public">
+    <compoundname>t_fir</compoundname>
+    <includes refid="usbradioplus__radio__coefficients_8h" local="no">usbradioplus_radio_coefficients.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structt__fir_1a3570fe4938f437435347cb5a75415883" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_fir::taps</definition>
+        <argsstring></argsstring>
+        <name>taps</name>
+        <qualifiedname>t_fir::taps</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of FIR coefficients. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="273" column="5" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="273" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__fir_1a2e96e5a0d1b5e36f6e212aac1e56053c" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a832509ea197065489f1d60b6d7958cbf" kindref="member">i32</ref></type>
+        <definition>i32 t_fir::gain</definition>
+        <argsstring></argsstring>
+        <name>gain</name>
+        <qualifiedname>t_fir::gain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed-point FIR output normalization divisor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="275" column="5" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="275" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structt__fir_1a6aeeac59a35417eed79ca5546f96a66b" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__radio_8h_1a3e01dd59d72c4919aa21a46fa5299e23" kindref="member">i16</ref></type>
+        <definition>i16 t_fir::coefs[MAX_COEFS]</definition>
+        <argsstring>[MAX_COEFS]</argsstring>
+        <name>coefs</name>
+        <qualifiedname>t_fir::coefs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read-only fixed-point FIR coefficient array. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_radio_coefficients.h" line="277" column="5" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="277" bodyend="-1"/>
+        <referencedby refid="usbradioplus__radio_8c_1acd9dc17ab5d8bfca785969de9d6a9cee" compoundref="usbradioplus__radio_8c" startline="1279" endline="1791">urp_radio_create</referencedby>
+        <referencedby refid="usbradioplus__radio_8c_1a56c539b0f877197af6fe9cedbb550e9d" compoundref="usbradioplus__radio_8c" startline="497" endline="627">urp_radio_receive_frontend</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Fixed-point FIR coefficient table and normalization metadata for radio detectors. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_radio_coefficients.h" line="271" column="1" bodyfile="src/usbradioplus_radio_coefficients.h" bodystart="271" bodyend="279"/>
+    <listofallmembers>
+      <member refid="structt__fir_1a6aeeac59a35417eed79ca5546f96a66b" prot="public" virt="non-virtual"><scope>t_fir</scope><name>coefs</name></member>
+      <member refid="structt__fir_1a2e96e5a0d1b5e36f6e212aac1e56053c" prot="public" virt="non-virtual"><scope>t_fir</scope><name>gain</name></member>
+      <member refid="structt__fir_1a3570fe4938f437435347cb5a75415883" prot="public" virt="non-virtual"><scope>t_fir</scope><name>taps</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

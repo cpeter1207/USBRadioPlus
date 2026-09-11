@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="dir_68267d1309a1af8e8297ef4c3efbcdba" kind="dir">
+    <compoundname>src</compoundname>
+    <innerdir refid="dir_adefdef91dd0237f89bf7b8b71b12066">src/txagc</innerdir>
+    <innerfile refid="chan__usbradioplus_8c">chan_usbradioplus.c</innerfile>
+    <innerfile refid="chan__usbradioplus__modern_8c">chan_usbradioplus_modern.c</innerfile>
+    <innerfile refid="usbradioplus__channel__common_8c">usbradioplus_channel_common.c</innerfile>
+    <innerfile refid="usbradioplus__channel__common_8h">usbradioplus_channel_common.h</innerfile>
+    <innerfile refid="usbradioplus__channel__core_8c">usbradioplus_channel_core.c</innerfile>
+    <innerfile refid="usbradioplus__channel__core_8h">usbradioplus_channel_core.h</innerfile>
+    <innerfile refid="usbradioplus__channel__legacy__private_8h">usbradioplus_channel_legacy_private.h</innerfile>
+    <innerfile refid="usbradioplus__channel__modern__private_8h">usbradioplus_channel_modern_private.h</innerfile>
+    <innerfile refid="usbradioplus__channel__private_8h">usbradioplus_channel_private.h</innerfile>
+    <innerfile refid="usbradioplus__channel__test__api_8h">usbradioplus_channel_test_api.h</innerfile>
+    <innerfile refid="usbradioplus__channel__test__shims_8h">usbradioplus_channel_test_shims.h</innerfile>
+    <innerfile refid="usbradioplus__config_8c">usbradioplus_config.c</innerfile>
+    <innerfile refid="usbradioplus__config_8h">usbradioplus_config.h</innerfile>
+    <innerfile refid="usbradioplus__ctcss_8c">usbradioplus_ctcss.c</innerfile>
+    <innerfile refid="usbradioplus__ctcss_8h">usbradioplus_ctcss.h</innerfile>
+    <innerfile refid="usbradioplus__dcs_8c">usbradioplus_dcs.c</innerfile>
+    <innerfile refid="usbradioplus__dcs_8h">usbradioplus_dcs.h</innerfile>
+    <innerfile refid="usbradioplus__dsp_8c">usbradioplus_dsp.c</innerfile>
+    <innerfile refid="usbradioplus__dsp_8h">usbradioplus_dsp.h</innerfile>
+    <innerfile refid="usbradioplus__hardware_8c">usbradioplus_hardware.c</innerfile>
+    <innerfile refid="usbradioplus__hardware_8h">usbradioplus_hardware.h</innerfile>
+    <innerfile refid="usbradioplus__native__tick_8c">usbradioplus_native_tick.c</innerfile>
+    <innerfile refid="usbradioplus__processing_8c">usbradioplus_processing.c</innerfile>
+    <innerfile refid="usbradioplus__processing_8h">usbradioplus_processing.h</innerfile>
+    <innerfile refid="usbradioplus__processing__internal_8h">usbradioplus_processing_internal.h</innerfile>
+    <innerfile refid="usbradioplus__radio_8c">usbradioplus_radio.c</innerfile>
+    <innerfile refid="usbradioplus__radio_8h">usbradioplus_radio.h</innerfile>
+    <innerfile refid="usbradioplus__radio__coefficients_8h">usbradioplus_radio_coefficients.h</innerfile>
+    <innerfile refid="usbradioplus__repeat_8c">usbradioplus_repeat.c</innerfile>
+    <innerfile refid="usbradioplus__repeat_8h">usbradioplus_repeat.h</innerfile>
+    <innerfile refid="usbradioplus__rpt__advanced_8c">usbradioplus_rpt_advanced.c</innerfile>
+    <innerfile refid="usbradioplus__rpt__advanced_8h">usbradioplus_rpt_advanced.h</innerfile>
+    <innerfile refid="usbradioplus__squelch_8h">usbradioplus_squelch.h</innerfile>
+    <innerfile refid="usbradioplus__tune__internal_8h">usbradioplus_tune_internal.h</innerfile>
+    <innerfile refid="usbradioplus__tune__menu_8c">usbradioplus_tune_menu.c</innerfile>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="src/"/>
+  </compounddef>
+</doxygen>

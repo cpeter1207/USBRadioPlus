@@ -1,0 +1,22 @@
+<map id="src/usbradioplus_channel_private.h" name="src/usbradioplus_channel_private.h">
+<area shape="rect" id="Node000001" title="Select the adapter state shared with linked channel implementation objects." alt="" coords="543,5,730,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,189,183,214"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="549,51,392,96,241,148,124,191,122,186,239,143,391,91,548,46"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,181,373,221"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="570,52,467,96,386,141,319,183,316,179,383,137,465,91,568,48"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8h.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="478,93,665,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="616,58,588,95,584,91,612,55"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__test__api_8h.html" title="Test entry points for channel adapters without attached radio hardware." alt="" coords="609,181,795,221"/>
+<area shape="poly" id="edge10_Node000001_Node000006" title=" " alt="" coords="660,56,679,92,694,139,702,180,697,181,689,141,674,94,655,58"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html" title="Direct native receive processing and transmitter rendering." alt="" coords="819,181,995,221"/>
+<area shape="poly" id="edge11_Node000001_Node000007" title=" " alt="" coords="679,51,879,179,876,183,676,55"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="1020,181,1184,221"/>
+<area shape="poly" id="edge12_Node000001_Node000008" title=" " alt="" coords="700,48,1053,179,1051,184,699,53"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="465,136,194,184,155,191,154,186,194,179,464,131"/>
+<area shape="poly" id="edge5_Node000004_Node000003" title=" " alt="" coords="497,140,352,184,351,179,496,135"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="398,181,585,221"/>
+<area shape="poly" id="edge6_Node000004_Node000005" title=" " alt="" coords="546,145,511,183,507,179,542,142"/>
+<area shape="poly" id="edge7_Node000004_Node000006" title=" " alt="" coords="613,139,675,179,672,183,610,143"/>
+<area shape="poly" id="edge8_Node000004_Node000007" title=" " alt="" coords="659,134,834,179,833,184,658,139"/>
+<area shape="poly" id="edge9_Node000004_Node000008" title=" " alt="" coords="679,127,1008,179,1020,181,1019,186,1007,184,678,132"/>
+</map>

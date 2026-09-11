@@ -1,0 +1,572 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__ctcss_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_ctcss.h</compoundname>
+    <includes local="no">stddef.h</includes>
+    <includedby refid="chan__usbradioplus_8c" local="yes">src/chan_usbradioplus.c</includedby>
+    <includedby refid="chan__usbradioplus__modern_8c" local="yes">src/chan_usbradioplus_modern.c</includedby>
+    <includedby refid="usbradioplus__channel__common_8c" local="yes">src/usbradioplus_channel_common.c</includedby>
+    <includedby refid="usbradioplus__ctcss_8c" local="yes">src/usbradioplus_ctcss.c</includedby>
+    <includedby refid="usbradioplus__native__tick_8c" local="yes">src/usbradioplus_native_tick.c</includedby>
+    <includedby refid="usbradioplus__processing_8c" local="yes">src/usbradioplus_processing.c</includedby>
+    <includedby refid="usbradioplus__tune__menu_8c" local="yes">src/usbradioplus_tune_menu.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>src/usbradioplus_ctcss.h</label>
+        <link refid="usbradioplus__ctcss_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stddef.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="2">
+        <label>src/chan_usbradioplus.c</label>
+        <link refid="chan__usbradioplus_8c"/>
+      </node>
+      <node id="3">
+        <label>src/chan_usbradioplus_modern.c</label>
+        <link refid="chan__usbradioplus__modern_8c"/>
+      </node>
+      <node id="4">
+        <label>src/usbradioplus_channel_common.c</label>
+        <link refid="usbradioplus__channel__common_8c"/>
+      </node>
+      <node id="5">
+        <label>src/usbradioplus_ctcss.c</label>
+        <link refid="usbradioplus__ctcss_8c"/>
+      </node>
+      <node id="1">
+        <label>src/usbradioplus_ctcss.h</label>
+        <link refid="usbradioplus__ctcss_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+      </node>
+      <node id="6">
+        <label>src/usbradioplus_native_tick.c</label>
+        <link refid="usbradioplus__native__tick_8c"/>
+      </node>
+      <node id="7">
+        <label>src/usbradioplus_processing.c</label>
+        <link refid="usbradioplus__processing_8c"/>
+      </node>
+      <node id="8">
+        <label>src/usbradioplus_tune_menu.c</label>
+        <link refid="usbradioplus__tune__menu_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structurp__ctcss__generator" prot="public">urp_ctcss_generator</innerclass>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a7611b9d3d46efc9615e290d0122a639b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>int</type>
+        <definition>int urp_ctcss_frequency_supported</definition>
+        <argsstring>(float frequency)</argsstring>
+        <name>urp_ctcss_frequency_supported</name>
+        <param>
+          <type>float</type>
+          <declname>frequency</declname>
+        </param>
+        <briefdescription>
+<para>Check whether a frequency is one of the supported CTCSS tones. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Nonzero when the frequency has an exact radio-signaling table entry. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="20" column="5" bodyfile="src/usbradioplus_ctcss.c" bodystart="22" bodyend="30" declfile="src/usbradioplus_ctcss.h" declline="20" declcolumn="5"/>
+        <references refid="usbradioplus__ctcss_8c_1a8bf2d9b34e1edc3d0966c7ad6c9de9f4" compoundref="usbradioplus__ctcss_8c" startline="17" endline="20">frequencies</references>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a336fd0d84a8a716cbdb1b764e98757d6" compoundref="usbradioplus__channel__common_8c" startline="1901" endline="1934">ctcss_frequency_list_valid</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a5c781da3fe4c5f4a826fd9adb10c2e59" compoundref="usbradioplus__processing_8c" startline="1544" endline="1567">valid_frequency_list</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a0f230aa8b64276d51aaa60e14c155605" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>double</type>
+        <definition>double urp_ctcss_legacy_frequency</definition>
+        <argsstring>(double frequency)</argsstring>
+        <name>urp_ctcss_legacy_frequency</name>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <briefdescription>
+<para>Map a requested CTCSS tone to its compatibility oscillator frequency. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Compatibility oscillator frequency in Hz. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="26" column="8" bodyfile="src/usbradioplus_ctcss.c" bodystart="69" bodyend="75" declfile="src/usbradioplus_ctcss.h" declline="26" declcolumn="8"/>
+        <referencedby refid="usbradioplus__ctcss_8c_1a6f6c1a34547bafac4176acce08c1fc68" compoundref="usbradioplus__ctcss_8c" startline="149" endline="154">urp_ctcss_generate</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1aafdb00dc607d2f65c769578506d03e5b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>double</type>
+        <definition>double urp_ctcss_legacy_peak</definition>
+        <argsstring>(double frequency, int filter_250)</argsstring>
+        <name>urp_ctcss_legacy_peak</name>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>filter_250</declname>
+        </param>
+        <briefdescription>
+<para>Read the reference CTCSS peak for the selected detector-filter calibration. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>filter_250</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero selects the 250 Hz reference; zero selects the 215 Hz reference. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Reference peak amplitude in signed PCM codes. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="32" column="8" bodyfile="src/usbradioplus_ctcss.c" bodystart="77" bodyend="81" declfile="src/usbradioplus_ctcss.h" declline="32" declcolumn="8"/>
+        <references refid="usbradioplus__ctcss_8c_1a2785a5d958fea05db97fe3018cf4b145" compoundref="usbradioplus__ctcss_8c" startline="59" endline="67">closest_frequency</references>
+        <references refid="usbradioplus__ctcss_8c_1af99adae458ded3c0136b2b862bb04649" compoundref="usbradioplus__ctcss_8c" startline="34" endline="37">peak_215</references>
+        <references refid="usbradioplus__ctcss_8c_1ad2e498c97243d5aa81077f35023d6616" compoundref="usbradioplus__ctcss_8c" startline="40" endline="43">peak_250</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a34d4240fc79542f6068b6fdd998f1249" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>double</type>
+        <definition>double urp_ctcss_legacy_scaled_peak</definition>
+        <argsstring>(double frequency, int filter_250, int tone_gain_q8, int output_gain_q8)</argsstring>
+        <name>urp_ctcss_legacy_scaled_peak</name>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>filter_250</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>tone_gain_q8</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>output_gain_q8</declname>
+        </param>
+        <briefdescription>
+<para>Calculate CTCSS peak after the reference Q8 tone and output gains. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>filter_250</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero selects the 250 Hz reference; zero selects the 215 Hz reference. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>tone_gain_q8</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Tone amplitude multiplier with eight fractional bits. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_gain_q8</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output multiplier with eight fractional bits. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>Maximum absolute reference sample level in PCM codes. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="40" column="8" bodyfile="src/usbradioplus_ctcss.c" bodystart="83" bodyend="90" declfile="src/usbradioplus_ctcss.h" declline="40" declcolumn="8"/>
+        <references refid="usbradioplus__ctcss_8c_1a20af3a7785867986f3c4eebed7be9acf" compoundref="usbradioplus__ctcss_8c" startline="92" endline="108">urp_ctcss_legacy_scaled_levels</references>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a20af3a7785867986f3c4eebed7be9acf" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_ctcss_legacy_scaled_levels</definition>
+        <argsstring>(double frequency, int filter_250, int tone_gain_q8, int output_gain_q8, double *amplitude, double *bias)</argsstring>
+        <name>urp_ctcss_legacy_scaled_levels</name>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>filter_250</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>tone_gain_q8</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>output_gain_q8</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>amplitude</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>bias</declname>
+        </param>
+        <briefdescription>
+<para>Calculate reference CTCSS amplitude and DC bias after Q8 gain scaling. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>filter_250</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero selects the 250 Hz reference; zero selects the 215 Hz reference. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>tone_gain_q8</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Tone amplitude multiplier with eight fractional bits. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output_gain_q8</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Output multiplier with eight fractional bits. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>amplitude</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the oscillator amplitude in PCM codes. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>bias</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Receives the reference DC bias in PCM codes. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="50" column="6" bodyfile="src/usbradioplus_ctcss.c" bodystart="92" bodyend="108" declfile="src/usbradioplus_ctcss.h" declline="50" declcolumn="6"/>
+        <references refid="usbradioplus__ctcss_8c_1a9fd523cf09fb68105e5b4eab17b26c50" compoundref="usbradioplus__ctcss_8c" startline="47" endline="49">bias_215</references>
+        <references refid="usbradioplus__ctcss_8c_1a8b99da851dba8ad4da69c19b073971e4" compoundref="usbradioplus__ctcss_8c" startline="52" endline="53">bias_250</references>
+        <references refid="usbradioplus__ctcss_8c_1a2785a5d958fea05db97fe3018cf4b145" compoundref="usbradioplus__ctcss_8c" startline="59" endline="67">closest_frequency</references>
+        <references refid="usbradioplus__ctcss_8c_1af99adae458ded3c0136b2b862bb04649" compoundref="usbradioplus__ctcss_8c" startline="34" endline="37">peak_215</references>
+        <references refid="usbradioplus__ctcss_8c_1ad2e498c97243d5aa81077f35023d6616" compoundref="usbradioplus__ctcss_8c" startline="40" endline="43">peak_250</references>
+        <referencedby refid="usbradioplus__ctcss_8c_1a34d4240fc79542f6068b6fdd998f1249" compoundref="usbradioplus__ctcss_8c" startline="83" endline="90">urp_ctcss_legacy_scaled_peak</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a6f6c1a34547bafac4176acce08c1fc68" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_ctcss_generate</definition>
+        <argsstring>(struct urp_ctcss_generator *generator, double *output, size_t count, double frequency, double peak, int enabled, double phase_shift_degrees)</argsstring>
+        <name>urp_ctcss_generate</name>
+        <param>
+          <type>struct <ref refid="structurp__ctcss__generator" kindref="compound">urp_ctcss_generator</ref> *</type>
+          <declname>generator</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>peak</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>enabled</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>phase_shift_degrees</declname>
+        </param>
+        <briefdescription>
+<para>Render a phase-continuous CTCSS block at 48 kHz, including a turn-off phase shift. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>generator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Persistent oscillator phase state. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>CTCSS frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>peak</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Absolute sample peak in PCM codes. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>enabled</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero enables the operation. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>phase_shift_degrees</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Turn-off phase shift in degrees; zero preserves oscillator phase. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="61" column="6" bodyfile="src/usbradioplus_ctcss.c" bodystart="149" bodyend="154" declfile="src/usbradioplus_ctcss.h" declline="61" declcolumn="6"/>
+        <references refid="usbradioplus__ctcss_8c_1afadf7c326a81ac71570f6ef2c8aa45b6" compoundref="usbradioplus__ctcss_8c" startline="119" endline="147">generate</references>
+        <references refid="usbradioplus__ctcss_8c_1a0f230aa8b64276d51aaa60e14c155605" compoundref="usbradioplus__ctcss_8c" startline="69" endline="75">urp_ctcss_legacy_frequency</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="function" id="usbradioplus__ctcss_8h_1a9827056a28a1f02afca5df8f4a2ccac3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void urp_ctcss_generate_tail_tone</definition>
+        <argsstring>(struct urp_ctcss_generator *generator, double *output, size_t count, double frequency, double peak, int enabled)</argsstring>
+        <name>urp_ctcss_generate_tail_tone</name>
+        <param>
+          <type>struct <ref refid="structurp__ctcss__generator" kindref="compound">urp_ctcss_generator</ref> *</type>
+          <declname>generator</declname>
+        </param>
+        <param>
+          <type>double *</type>
+          <declname>output</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>frequency</declname>
+        </param>
+        <param>
+          <type>double</type>
+          <declname>peak</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>enabled</declname>
+        </param>
+        <briefdescription>
+<para>Render an exact-frequency tail tone at the native sample rate. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>generator</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Persistent oscillator phase state. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>output</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Destination sample buffer owned by the caller. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Number of elements available in the supplied block. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>frequency</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Tail-tone frequency in Hz. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>peak</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Absolute sample peak in PCM codes. </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>enabled</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>Nonzero enables the operation. </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_ctcss.h" line="71" column="6" bodyfile="src/usbradioplus_ctcss.c" bodystart="156" bodyend="160" declfile="src/usbradioplus_ctcss.h" declline="71" declcolumn="6"/>
+        <references refid="usbradioplus__ctcss_8c_1afadf7c326a81ac71570f6ef2c8aa45b6" compoundref="usbradioplus__ctcss_8c" startline="119" endline="147">generate</references>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Continuous-phase 48 kHz CTCSS generation. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_CTCSS_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_CTCSS_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stddef.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11" refid="structurp__ctcss__generator" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__ctcss__generator" kindref="compound">urp_ctcss_generator</ref><sp/>{</highlight></codeline>
+<codeline lineno="13" refid="structurp__ctcss__generator_1a3166ea1a4d6d57a3a8f82b0f16c88875" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structurp__ctcss__generator_1a3166ea1a4d6d57a3a8f82b0f16c88875" kindref="member">phase</ref>;</highlight></codeline>
+<codeline lineno="14"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="15"><highlight class="normal"></highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a7611b9d3d46efc9615e290d0122a639b" kindref="member">urp_ctcss_frequency_supported</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>frequency);</highlight></codeline>
+<codeline lineno="21"><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a0f230aa8b64276d51aaa60e14c155605" kindref="member">urp_ctcss_legacy_frequency</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency);</highlight></codeline>
+<codeline lineno="32"><highlight class="normal"></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1aafdb00dc607d2f65c769578506d03e5b" kindref="member">urp_ctcss_legacy_peak</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>filter_250);</highlight></codeline>
+<codeline lineno="40"><highlight class="normal"></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a34d4240fc79542f6068b6fdd998f1249" kindref="member">urp_ctcss_legacy_scaled_peak</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>filter_250,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>tone_gain_q8,</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>output_gain_q8);</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a20af3a7785867986f3c4eebed7be9acf" kindref="member">urp_ctcss_legacy_scaled_levels</ref>(</highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>filter_250,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>tone_gain_q8,</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>output_gain_q8,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*amplitude,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*bias);</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a6f6c1a34547bafac4176acce08c1fc68" kindref="member">urp_ctcss_generate</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__ctcss__generator" kindref="compound">urp_ctcss_generator</ref><sp/>*generator,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*output,<sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count,</highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>peak,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>enabled,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>phase_shift_degrees);</highlight></codeline>
+<codeline lineno="71"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="usbradioplus__ctcss_8h_1a9827056a28a1f02afca5df8f4a2ccac3" kindref="member">urp_ctcss_generate_tail_tone</ref>(</highlight><highlight class="keyword">struct</highlight><highlight class="normal"><sp/><ref refid="structurp__ctcss__generator" kindref="compound">urp_ctcss_generator</ref><sp/>*generator,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>*output,</highlight></codeline>
+<codeline lineno="72"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>count,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>frequency,<sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/>peak,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>enabled);</highlight></codeline>
+<codeline lineno="73"><highlight class="normal"></highlight></codeline>
+<codeline lineno="74"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="src/usbradioplus_ctcss.h"/>
+  </compounddef>
+</doxygen>

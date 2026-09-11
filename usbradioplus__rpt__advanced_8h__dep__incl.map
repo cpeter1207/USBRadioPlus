@@ -1,0 +1,19 @@
+<map id="src/usbradioplus_rpt_advanced.h" name="src/usbradioplus_rpt_advanced.h">
+<area shape="rect" id="Node000001" title="Separate Asterisk interface for the hardware&#45;clocked rpt_advanced controller." alt="" coords="617,5,771,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8h.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="503,93,690,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="664,56,620,95,616,91,661,52"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__rpt__advanced_8c.html" title="Thin native&#45;rate channel adapter retaining the existing hardware implementation." alt="" coords="715,93,868,133"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="727,52,772,91,768,95,724,56"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="5,189,183,214"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="490,134,194,184,154,191,153,186,194,179,489,129"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus__modern_8c.html" title="Channel driver for CM108 USB Cards with Radio Interface." alt="" coords="207,181,373,221"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="517,140,358,184,356,179,516,134"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__channel__common_8c.html" title="Shared Asterisk channel lifecycle, radio configuration, and tuning operations." alt="" coords="398,181,585,221"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="565,144,516,183,513,179,561,140"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__test__api_8h.html" title="Test entry points for channel adapters without attached radio hardware." alt="" coords="609,181,795,221"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="632,140,680,179,677,183,629,144"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__native__tick_8c.html" title="Direct native receive processing and transmitter rendering." alt="" coords="819,181,995,221"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="679,134,840,179,839,184,677,140"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__tune__menu_8c.html" title="Radio calibration commands, continuous meters, and tuning persistence." alt="" coords="1020,181,1184,221"/>
+<area shape="poly" id="edge7_Node000002_Node000008" title=" " alt="" coords="704,131,1008,179,1020,181,1019,186,1007,184,703,136"/>
+</map>

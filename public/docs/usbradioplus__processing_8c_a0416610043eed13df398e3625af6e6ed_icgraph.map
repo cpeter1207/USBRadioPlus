@@ -1,0 +1,5 @@
+<map id="usbradioplus_prepare_all_native_processing" name="usbradioplus_prepare_all_native_processing">
+<area shape="rect" id="Node000001" title="Rebuild native graphs for all configured channels after a valid reload." alt="" coords="172,5,343,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#a0fa3a55344f08a3a2d817701519d8bd0" title="Reload the module&#39;s channel and processing configuration." alt="" coords="5,13,124,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="158,28,124,28,124,23,158,23"/>
+</map>

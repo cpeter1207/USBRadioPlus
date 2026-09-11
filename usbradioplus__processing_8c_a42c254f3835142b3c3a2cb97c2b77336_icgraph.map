@@ -1,0 +1,28 @@
+<map id="publish_audio_settings_locked" name="publish_audio_settings_locked">
+<area shape="rect" id="Node000001" title="Publish the mutable settings copy after preparing a snapshot." alt="" coords="936,77,1107,117"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#abb6e27f0b1bb4881ee0871c74fd18a53" title="Disable a named processing source in the live settings snapshot." alt="" coords="747,5,837,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="963,74,887,45,837,30,838,25,889,39,965,69"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#a9057248e08351a1a69893b6678c97ac8" title="Enable a named processing source in the live settings snapshot." alt="" coords="748,55,836,80"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="922,87,836,76,837,70,922,81"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__processing_8c.html#a77add100bf0d604a3d8b31f2aa13bfce" title="Apply a live CM119 input&#45;gain adjustment under the settings mutex." alt="" coords="696,105,888,145"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="922,111,888,116,888,110,922,106"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__processing_8c.html#a0764f7d26aa2f4ad51047fdba66b7e94" title="Apply a live local&#45;receiver gain adjustment under the settings mutex." alt="" coords="701,169,883,209"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="967,125,889,159,857,171,855,166,887,154,965,120"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="527,144,648,169"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="683,144,649,150,648,145,682,139"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a790b10f1d33637669ca3ba674ab1d16c" title="Calibrate the hardware capture mixer from discriminator noise and optionally set squelch." alt="" coords="535,95,639,120"/>
+<area shape="poly" id="edge8_Node000004_Node000009" title=" " alt="" coords="682,118,640,114,640,109,682,113"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,144,479,169"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="513,159,479,159,479,154,513,154"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,144,287,169"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="321,159,287,159,287,154,321,154"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,144,148,169"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="182,159,148,159,148,154,182,154"/>
+<area shape="poly" id="edge10_Node000009_Node000006" title=" " alt="" coords="527,126,455,146,454,141,526,121"/>
+<area shape="poly" id="edge9_Node000009_Node000007" title=" " alt="" coords="522,114,433,122,335,135,286,147,285,141,334,130,432,116,521,108"/>
+<area shape="poly" id="edge12_Node000010_Node000005" title=" " alt="" coords="687,175,648,169,649,163,687,170"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__channel__common_8c.html#a08915c44a5883f344e706eef6223c6df" title="Calibrate receiver voice gain from a 1 kHz reference signal." alt="" coords="534,193,641,219"/>
+<area shape="poly" id="edge13_Node000010_Node000011" title=" " alt="" coords="687,200,641,204,641,199,687,195"/>
+<area shape="poly" id="edge15_Node000011_Node000006" title=" " alt="" coords="526,192,454,172,455,167,527,187"/>
+<area shape="poly" id="edge14_Node000011_Node000007" title=" " alt="" coords="520,205,431,198,334,185,282,172,284,167,335,179,432,193,520,200"/>
+</map>

@@ -1,0 +1,332 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structtxagc__rnnoise" kind="struct" language="C++" prot="public">
+    <compoundname>txagc_rnnoise</compoundname>
+    <includes refid="rnnoise__processor_8h" local="no">rnnoise_processor.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" prot="public" static="no" mutable="no">
+        <type>DenoiseState *</type>
+        <definition>DenoiseState* txagc_rnnoise::denoise</definition>
+        <argsstring></argsstring>
+        <name>denoise</name>
+        <qualifiedname>txagc_rnnoise::denoise</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned RNNoise denoiser instance. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="23" column="14" bodyfile="src/txagc/rnnoise_processor.h" bodystart="23" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" compoundref="rnnoise__processor_8c" startline="44" endline="56">txagc_rnnoise_destroy</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" prot="public" static="no" mutable="no">
+        <type>SRC_STATE *</type>
+        <definition>SRC_STATE* txagc_rnnoise::upsampler</definition>
+        <argsstring></argsstring>
+        <name>upsampler</name>
+        <qualifiedname>txagc_rnnoise::upsampler</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned converter into RNNoise&apos;s 48 kHz stream. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="25" column="11" bodyfile="src/txagc/rnnoise_processor.h" bodystart="25" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" compoundref="rnnoise__processor_8c" startline="44" endline="56">txagc_rnnoise_destroy</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" prot="public" static="no" mutable="no">
+        <type>SRC_STATE *</type>
+        <definition>SRC_STATE* txagc_rnnoise::downsampler</definition>
+        <argsstring></argsstring>
+        <name>downsampler</name>
+        <qualifiedname>txagc_rnnoise::downsampler</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned converter back to the caller&apos;s sample rate. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="27" column="11" bodyfile="src/txagc/rnnoise_processor.h" bodystart="27" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a079b845edf67fa05e50144d95c8049a3" compoundref="rnnoise__processor_8c" startline="44" endline="56">txagc_rnnoise_destroy</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int txagc_rnnoise::input_rate</definition>
+        <argsstring></argsstring>
+        <name>input_rate</name>
+        <qualifiedname>txagc_rnnoise::input_rate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Caller stream sample rate in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="29" column="14" bodyfile="src/txagc/rnnoise_processor.h" bodystart="29" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float txagc_rnnoise::up_fifo[TXAGC_RNNOISE_FIFO]</definition>
+        <argsstring>[TXAGC_RNNOISE_FIFO]</argsstring>
+        <name>up_fifo</name>
+        <qualifiedname>txagc_rnnoise::up_fifo</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples waiting for a complete 480-sample RNNoise frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="31" column="7" bodyfile="src/txagc/rnnoise_processor.h" bodystart="31" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t txagc_rnnoise::up_count</definition>
+        <argsstring></argsstring>
+        <name>up_count</name>
+        <qualifiedname>txagc_rnnoise::up_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Occupied samples in up_fifo. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="33" column="8" bodyfile="src/txagc/rnnoise_processor.h" bodystart="33" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float txagc_rnnoise::down_fifo[TXAGC_RNNOISE_FIFO]</definition>
+        <argsstring>[TXAGC_RNNOISE_FIFO]</argsstring>
+        <name>down_fifo</name>
+        <qualifiedname>txagc_rnnoise::down_fifo</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Denoised samples waiting for rate conversion or output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="35" column="7" bodyfile="src/txagc/rnnoise_processor.h" bodystart="35" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t txagc_rnnoise::down_count</definition>
+        <argsstring></argsstring>
+        <name>down_count</name>
+        <qualifiedname>txagc_rnnoise::down_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Occupied samples in down_fifo. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="37" column="8" bodyfile="src/txagc/rnnoise_processor.h" bodystart="37" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a44cbaedbe1abb620e86f68588a937aef" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_rnnoise::vad_probability</definition>
+        <argsstring></argsstring>
+        <name>vad_probability</name>
+        <qualifiedname>txagc_rnnoise::vad_probability</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Speech probability from the most recent RNNoise frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="39" column="8" bodyfile="src/txagc/rnnoise_processor.h" bodystart="39" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a38aaf128d78429dc1bd3b86b16969de9" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double txagc_rnnoise::vad_sum</definition>
+        <argsstring></argsstring>
+        <name>vad_sum</name>
+        <qualifiedname>txagc_rnnoise::vad_sum</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sum of frame speech probabilities for cumulative reporting. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="41" column="8" bodyfile="src/txagc/rnnoise_processor.h" bodystart="41" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a9761fa74c946892bdda59e0e5e3d5e02" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t txagc_rnnoise::rnnoise_frames</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_frames</name>
+        <qualifiedname>txagc_rnnoise::rnnoise_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of complete frames processed by RNNoise. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="43" column="10" bodyfile="src/txagc/rnnoise_processor.h" bodystart="43" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1ae147b58e5d209103be0f1aa92203416d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t txagc_rnnoise::output_samples</definition>
+        <argsstring></argsstring>
+        <name>output_samples</name>
+        <qualifiedname>txagc_rnnoise::output_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Total output samples delivered. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="45" column="10" bodyfile="src/txagc/rnnoise_processor.h" bodystart="45" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a2a4107359bda0a5ace5473cdd2355abf" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t txagc_rnnoise::startup_samples</definition>
+        <argsstring></argsstring>
+        <name>startup_samples</name>
+        <qualifiedname>txagc_rnnoise::startup_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Samples buffered before denoiser output was available. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="47" column="10" bodyfile="src/txagc/rnnoise_processor.h" bodystart="47" bodyend="-1"/>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t txagc_rnnoise::errors</definition>
+        <argsstring></argsstring>
+        <name>errors</name>
+        <qualifiedname>txagc_rnnoise::errors</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative denoiser or rate-conversion failures. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="49" column="10" bodyfile="src/txagc/rnnoise_processor.h" bodystart="49" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_rnnoise::active</definition>
+        <argsstring></argsstring>
+        <name>active</name>
+        <qualifiedname>txagc_rnnoise::active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while denoising is active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="51" column="5" bodyfile="src/txagc/rnnoise_processor.h" bodystart="51" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a38854c9b8a0fc008feca99996f54457d" compoundref="rnnoise__processor_8c" startline="58" endline="64">txagc_rnnoise_bypass</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_rnnoise::prepared</definition>
+        <argsstring></argsstring>
+        <name>prepared</name>
+        <qualifiedname>txagc_rnnoise::prepared</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero after the control plane allocated the denoiser and converters. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="53" column="5" bodyfile="src/txagc/rnnoise_processor.h" bodystart="53" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a6d2dea9944fec6fb2f446373fe61dbab" compoundref="rnnoise__processor_8c" startline="71" endline="101">configure_rate</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1a21c7a4e013042b5bdf65c88899891b65" compoundref="rnnoise__processor_8c" startline="230" endline="241">txagc_rnnoise_process_double</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_rnnoise::primed</definition>
+        <argsstring></argsstring>
+        <name>primed</name>
+        <qualifiedname>txagc_rnnoise::primed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero after startup buffering permits output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/txagc/rnnoise_processor.h" line="55" column="5" bodyfile="src/txagc/rnnoise_processor.h" bodystart="55" bodyend="-1"/>
+        <referencedby refid="rnnoise__processor_8c_1a70a05b2edeae5dde96d2f59fc0f0e982" compoundref="rnnoise__processor_8c" startline="25" endline="37">reset_stream</referencedby>
+        <referencedby refid="rnnoise__processor_8c_1ab8a749b5a958c5193704ea45cecc6e8a" compoundref="rnnoise__processor_8c" startline="151" endline="228">txagc_rnnoise_process_prepared</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Owned RNNoise state, sample-rate converters, stream FIFOs, and denoiser counters. </para>
+    </detaileddescription>
+    <location file="src/txagc/rnnoise_processor.h" line="21" column="1" bodyfile="src/txagc/rnnoise_processor.h" bodystart="21" bodyend="56"/>
+    <listofallmembers>
+      <member refid="structtxagc__rnnoise_1a32ce3303a57a1a8cdd732fca992f4784" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>active</name></member>
+      <member refid="structtxagc__rnnoise_1acab05c036079873fa3c7d87d4bf22b9c" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>denoise</name></member>
+      <member refid="structtxagc__rnnoise_1a257c01623dd1920c86525a67aa266bd7" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>down_count</name></member>
+      <member refid="structtxagc__rnnoise_1aba79b09bd655321b4af050cd751b4561" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>down_fifo</name></member>
+      <member refid="structtxagc__rnnoise_1a3001c14cbcb623dace4cfbace5a419bf" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>downsampler</name></member>
+      <member refid="structtxagc__rnnoise_1acbdadd89e22afc4b060b766eeb78cc83" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>errors</name></member>
+      <member refid="structtxagc__rnnoise_1a5771552e13bfb1ada20330d715973c87" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>input_rate</name></member>
+      <member refid="structtxagc__rnnoise_1ae147b58e5d209103be0f1aa92203416d" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>output_samples</name></member>
+      <member refid="structtxagc__rnnoise_1a985ee8121659c39a1a556b9d783dd903" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>prepared</name></member>
+      <member refid="structtxagc__rnnoise_1a5f4c74000b45395d62954a38fedf7a09" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>primed</name></member>
+      <member refid="structtxagc__rnnoise_1a9761fa74c946892bdda59e0e5e3d5e02" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>rnnoise_frames</name></member>
+      <member refid="structtxagc__rnnoise_1a2a4107359bda0a5ace5473cdd2355abf" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>startup_samples</name></member>
+      <member refid="structtxagc__rnnoise_1a66eecfcfb4ba3293b982747bf5e2e50b" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>up_count</name></member>
+      <member refid="structtxagc__rnnoise_1aa8e5e191237f6e0a31af2ee26dae75cf" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>up_fifo</name></member>
+      <member refid="structtxagc__rnnoise_1af41eca0aa9ded5c15b55f131f8cc2772" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>upsampler</name></member>
+      <member refid="structtxagc__rnnoise_1a44cbaedbe1abb620e86f68588a937aef" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>vad_probability</name></member>
+      <member refid="structtxagc__rnnoise_1a38aaf128d78429dc1bd3b86b16969de9" prot="public" virt="non-virtual"><scope>txagc_rnnoise</scope><name>vad_sum</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

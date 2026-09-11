@@ -1,0 +1,427 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__native__graph__set" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_native_graph_set</compoundname>
+    <includes refid="usbradioplus__channel__private_8h" local="no">usbradioplus_channel_private.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a31963bc70a6e68be1f0353d97e7355fc" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int usbradioplus_native_graph_set::app_rpt_rate</definition>
+        <argsstring></argsstring>
+        <name>app_rpt_rate</name>
+        <qualifiedname>usbradioplus_native_graph_set::app_rpt_rate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>App-facing sample rate selected when this generation was prepared. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="83" column="14" bodyfile="src/usbradioplus_channel_private.h" bodystart="83" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a226dc5e80476e9853adbcf741982ae2b" compoundref="usbradioplus__native__tick_8c" startline="442" endline="470">native_renderer_copy_receive_to_app</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+        <referencedby refid="usbradioplus__channel__private_8h_1a0d8615532856ba67084fe58dd7229fc4" compoundref="usbradioplus__native__tick_8c" startline="994" endline="1036">usbradioplus_native_tick</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1af99b385707c998b51be1925053d13bb5" prot="public" static="no" mutable="no">
+        <type>unsigned int</type>
+        <definition>unsigned int usbradioplus_native_graph_set::app_rpt_samples</definition>
+        <argsstring></argsstring>
+        <name>app_rpt_samples</name>
+        <qualifiedname>usbradioplus_native_graph_set::app_rpt_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>App-facing samples per native hardware tick. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="85" column="14" bodyfile="src/usbradioplus_channel_private.h" bodystart="85" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a226dc5e80476e9853adbcf741982ae2b" compoundref="usbradioplus__native__tick_8c" startline="442" endline="470">native_renderer_copy_receive_to_app</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a8ab1933696930b98daf0793fc159b08d" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t usbradioplus_native_graph_set::program_target_samples</definition>
+        <argsstring></argsstring>
+        <name>program_target_samples</name>
+        <qualifiedname>usbradioplus_native_graph_set::program_target_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program-ring clock-recovery target in source-rate samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="87" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="87" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1aae3c00103ebc6ecb88b077e6955dc19b" compoundref="usbradioplus__native__tick_8c" startline="327" endline="340">read_native_program</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a9cb7bfb5395bf947a0a1818db544182d" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::legacy_interface</definition>
+        <argsstring></argsstring>
+        <name>legacy_interface</name>
+        <qualifiedname>usbradioplus_native_graph_set::legacy_interface</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when this generation serves the legacy app_rpt-rate interface. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="89" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="89" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1ad15fae43cf23aa7fbb809456dbf929d5" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::receive_cpu_saver</definition>
+        <argsstring></argsstring>
+        <name>receive_cpu_saver</name>
+        <qualifiedname>usbradioplus_native_graph_set::receive_cpu_saver</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero allows optional dynamics to idle while receiver qualification is absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="91" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="91" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1ab535b6022befbc21e61858ac9c7d9a3b" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::noise_squelch_gate</definition>
+        <argsstring></argsstring>
+        <name>noise_squelch_gate</name>
+        <qualifiedname>usbradioplus_native_graph_set::noise_squelch_gate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero applies the native DSP noise-squelch sample gate. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="93" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="93" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1aae14ae6b7fd5d6990c2826146a746b69" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t usbradioplus_native_graph_set::receive_squelch_delay_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_squelch_delay_samples</name>
+        <qualifiedname>usbradioplus_native_graph_set::receive_squelch_delay_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receiver delay expressed in immutable native-rate samples. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="95" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="95" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a367a0ea9475811a45c1e43924a737e48" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::echo_mode</definition>
+        <argsstring></argsstring>
+        <name>echo_mode</name>
+        <qualifiedname>usbradioplus_native_graph_set::echo_mode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Echo-mode state selected by the control plane. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="97" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="97" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a0d7d946d777251c436889a95ad648717" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::software_repeat_enabled</definition>
+        <argsstring></argsstring>
+        <name>software_repeat_enabled</name>
+        <qualifiedname>usbradioplus_native_graph_set::software_repeat_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero mixes local receive into transmit program PCM in this generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="99" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="99" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a7f8f5e09a62b8b378f35d05dc02c15b6" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_graph_set::software_repeat_gain</definition>
+        <argsstring></argsstring>
+        <name>software_repeat_gain</name>
+        <qualifiedname>usbradioplus_native_graph_set::software_repeat_gain</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Local-repeat gain resolved from the configured 0<ndash/>999 control. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="101" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="101" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a8973a0f18cb975346c08ce584930922c" compoundref="usbradioplus__native__tick_8c" startline="583" endline="701">native_renderer_render_transmit</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a724fcf279316474a1d2bb31b228f1578" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::local_chain_enabled</definition>
+        <argsstring></argsstring>
+        <name>local_chain_enabled</name>
+        <qualifiedname>usbradioplus_native_graph_set::local_chain_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Whether the optional local receiver chain is enabled for this generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="103" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="103" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a962094c767ea73f547be650984bdc848" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int usbradioplus_native_graph_set::local_rnnoise_enabled</definition>
+        <argsstring></argsstring>
+        <name>local_rnnoise_enabled</name>
+        <qualifiedname>usbradioplus_native_graph_set::local_rnnoise_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Whether this generation runs its prepared RNNoise stage before dynamics. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="105" column="5" bodyfile="src/usbradioplus_channel_private.h" bodystart="105" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1ab33dddc16f7dc311bf76b5519159ef5e" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double usbradioplus_native_graph_set::local_input_gain_linear</definition>
+        <argsstring></argsstring>
+        <name>local_input_gain_linear</name>
+        <qualifiedname>usbradioplus_native_graph_set::local_input_gain_linear</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Linear gain immediately after deemphasis, resolved off the audio thread. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="107" column="8" bodyfile="src/usbradioplus_channel_private.h" bodystart="107" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1add1b719534e43950ef6a3b61a451a0b1" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::receive_deemphasis</definition>
+        <argsstring></argsstring>
+        <name>receive_deemphasis</name>
+        <qualifiedname>usbradioplus_native_graph_set::receive_deemphasis</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed deemphasis stage immediately after ADC conversion. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="109" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="109" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a186c53c9b0db3de6d034885cabf6e44c" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::receive_filter</definition>
+        <argsstring></argsstring>
+        <name>receive_filter</name>
+        <qualifiedname>usbradioplus_native_graph_set::receive_filter</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed receiver band-pass and selected PL mode. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="111" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="111" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a6f373fa80dc3a1496971450a6b59455c" compoundref="usbradioplus__native__tick_8c" startline="347" endline="357">process_receive_filter</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a8552a0011351159299b1bb93aeb0988b" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::local_dynamics</definition>
+        <argsstring></argsstring>
+        <name>local_dynamics</name>
+        <qualifiedname>usbradioplus_native_graph_set::local_dynamics</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional local dynamics stages following receive filtering. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="113" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="113" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus_8c_1aeb7377682eee04e43d83b6a9050becb6" compoundref="chan__usbradioplus_8c" startline="2992" endline="3119">handle_radioplus_native_stats</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a2eb02cf7738a321dc5cd6effbd997882" compoundref="usbradioplus__native__tick_8c" startline="287" endline="316">native_renderer_apply_requests</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1abe52e94221f93d6a76c0d44df662d8c7" compoundref="usbradioplus__native__tick_8c" startline="707" endline="750">native_renderer_finish_block</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a76fa0d5f9c4c66538b330595ec5ce16a" compoundref="usbradioplus__native__tick_8c" startline="483" endline="531">native_renderer_render_receive</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a5d8bc4b69b3e095198959d75ac5ba302" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::dcs</definition>
+        <argsstring></argsstring>
+        <name>dcs</name>
+        <qualifiedname>usbradioplus_native_graph_set::dcs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DCS spectrum-shaping stage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="117" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="117" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a6d2c6cff65b5debd09e713935be837dd" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::dcs_turnoff</definition>
+        <argsstring></argsstring>
+        <name>dcs_turnoff</name>
+        <qualifiedname>usbradioplus_native_graph_set::dcs_turnoff</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>DCS 134.4-Hz turn-off-tone spectrum-shaping stage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="119" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="119" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1ad1721b4633c47c9abc31b76c3fd4e1ad" compoundref="usbradioplus__native__tick_8c" startline="538" endline="571">native_renderer_generate_signaling</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a9f78068d8458cd85b3a449a998b6f38a" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__avfilter" kindref="compound">txagc_avfilter</ref></type>
+        <definition>struct txagc_avfilter usbradioplus_native_graph_set::ctcss_notch[CTCSS_NUM_CODES]</definition>
+        <argsstring>[CTCSS_NUM_CODES]</argsstring>
+        <name>ctcss_notch</name>
+        <qualifiedname>usbradioplus_native_graph_set::ctcss_notch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One prepared CTCSS notch graph per selectable decode code. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="121" column="21" bodyfile="src/usbradioplus_channel_private.h" bodystart="121" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a9286db1cd54dbcaa624555b663b9ec52" compoundref="usbradioplus__channel__common_8c" startline="3147" endline="3237">native_graph_set_build</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1abb428c410fe9a839477f7f0073ba9da2" compoundref="usbradioplus__channel__common_8c" startline="2943" endline="2958">native_graph_set_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa1d95ff17522dcccc7f1f281abd0e0b9" compoundref="usbradioplus__channel__common_8c" startline="2963" endline="2975">native_graph_set_init</referencedby>
+        <referencedby refid="usbradioplus__native__tick_8c_1a6f373fa80dc3a1496971450a6b59455c" compoundref="usbradioplus__native__tick_8c" startline="347" endline="357">process_receive_filter</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__set_1a39ffb34f52e375624b83b370a4de5a5c" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__native__graph__set" kindref="compound">usbradioplus_native_graph_set</ref> *</type>
+        <definition>struct usbradioplus_native_graph_set* usbradioplus_native_graph_set::next_retired</definition>
+        <argsstring></argsstring>
+        <name>next_retired</name>
+        <qualifiedname>usbradioplus_native_graph_set::next_retired</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Older generation retained until a quiescent control-plane reclaim. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_private.h" line="123" column="36" bodyfile="src/usbradioplus_channel_private.h" bodystart="123" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa5a275d2423e010c2123cf45f44c7778" compoundref="usbradioplus__channel__common_8c" startline="3012" endline="3032">native_graph_slot_destroy</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a5dd4f391e5f5e592a00c6f821b191155" compoundref="usbradioplus__channel__common_8c" startline="3059" endline="3079">native_graph_slot_preflight</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1aa4944961dbdba9e4004eef95ed907722" compoundref="usbradioplus__channel__common_8c" startline="3094" endline="3113">native_graph_slot_publish</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Complete native-rate graph generation published as one callback snapshot. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="1">
+        <label>usbradioplus_native_graph_set</label>
+        <link refid="structusbradioplus__native__graph__set"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>ctcss_notch</edgelabel>
+          <edgelabel>dcs</edgelabel>
+          <edgelabel>dcs_turnoff</edgelabel>
+          <edgelabel>local_dynamics</edgelabel>
+          <edgelabel>receive_deemphasis</edgelabel>
+          <edgelabel>receive_filter</edgelabel>
+        </childnode>
+        <childnode refid="1" relation="usage">
+          <edgelabel>next_retired</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_channel_private.h" line="81" column="1" bodyfile="src/usbradioplus_channel_private.h" bodystart="81" bodyend="124"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__native__graph__set_1a31963bc70a6e68be1f0353d97e7355fc" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>app_rpt_rate</name></member>
+      <member refid="structusbradioplus__native__graph__set_1af99b385707c998b51be1925053d13bb5" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>app_rpt_samples</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a9f78068d8458cd85b3a449a998b6f38a" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>ctcss_notch</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a5d8bc4b69b3e095198959d75ac5ba302" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>dcs</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a6d2c6cff65b5debd09e713935be837dd" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>dcs_turnoff</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a367a0ea9475811a45c1e43924a737e48" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>echo_mode</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a9cb7bfb5395bf947a0a1818db544182d" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>legacy_interface</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a724fcf279316474a1d2bb31b228f1578" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>local_chain_enabled</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a8552a0011351159299b1bb93aeb0988b" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>local_dynamics</name></member>
+      <member refid="structusbradioplus__native__graph__set_1ab33dddc16f7dc311bf76b5519159ef5e" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>local_input_gain_linear</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a962094c767ea73f547be650984bdc848" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>local_rnnoise_enabled</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a39ffb34f52e375624b83b370a4de5a5c" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>next_retired</name></member>
+      <member refid="structusbradioplus__native__graph__set_1ab535b6022befbc21e61858ac9c7d9a3b" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>noise_squelch_gate</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a8ab1933696930b98daf0793fc159b08d" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>program_target_samples</name></member>
+      <member refid="structusbradioplus__native__graph__set_1ad15fae43cf23aa7fbb809456dbf929d5" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>receive_cpu_saver</name></member>
+      <member refid="structusbradioplus__native__graph__set_1add1b719534e43950ef6a3b61a451a0b1" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>receive_deemphasis</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a186c53c9b0db3de6d034885cabf6e44c" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>receive_filter</name></member>
+      <member refid="structusbradioplus__native__graph__set_1aae14ae6b7fd5d6990c2826146a746b69" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>receive_squelch_delay_samples</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a0d7d946d777251c436889a95ad648717" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>software_repeat_enabled</name></member>
+      <member refid="structusbradioplus__native__graph__set_1a7f8f5e09a62b8b378f35d05dc02c15b6" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_set</scope><name>software_repeat_gain</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

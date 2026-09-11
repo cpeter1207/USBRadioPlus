@@ -1,0 +1,290 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structtxagc__profile" kind="struct" language="C++" prot="public">
+    <compoundname>txagc_profile</compoundname>
+    <includes refid="usbradioplus__processing__internal_8h" local="no">usbradioplus_processing_internal.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_profile::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>txagc_profile::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables this channel, stage, or detector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="50" column="5" bodyfile="src/usbradioplus_processing_internal.h" bodystart="50" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1abb6e27f0b1bb4881ee0871c74fd18a53" compoundref="usbradioplus__processing_8c" startline="2910" endline="2943">cli_disable</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a9057248e08351a1a69893b6678c97ac8" compoundref="usbradioplus__processing_8c" startline="2869" endline="2902">cli_enable</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1af1678c5622a571de7a841c3959bffd49" compoundref="usbradioplus__processing_8c" startline="2543" endline="2597">scan_channels</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a1ec98f39aaa9de143d15bee683e35dba" compoundref="usbradioplus__processing_8c" startline="3234" endline="3258">usbradioplus_processing_get_composite</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a9db6be6cd798f7c7f5e204928d50f114" compoundref="usbradioplus__processing_8c" startline="3260" endline="3280">usbradioplus_processing_get_composite_rt</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a2142f868836deb99a034eac7389128f3" compoundref="usbradioplus__processing_8c" startline="2985" endline="3010">usbradioplus_processing_get_local</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a95124b3a47bea172607faa5d65e076b9" compoundref="usbradioplus__processing_8c" startline="3012" endline="3032">usbradioplus_processing_get_local_rt</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a2ff7b53c25974f00eba40e6da458f027" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char txagc_profile::name[MAX_PROFILE_NAME]</definition>
+        <argsstring>[MAX_PROFILE_NAME]</argsstring>
+        <name>name</name>
+        <qualifiedname>txagc_profile::name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Symbolic name used to identify this entry. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="52" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="52" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ae34c50eb3ece485257b2d361db4be370" compoundref="usbradioplus__processing_8c" startline="289" endline="301">channel_is_eligible</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1af1678c5622a571de7a841c3959bffd49" compoundref="usbradioplus__processing_8c" startline="2543" endline="2597">scan_channels</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" prot="public" static="no" mutable="no">
+        <type>char</type>
+        <definition>char txagc_profile::channel[AST_CHANNEL_NAME]</definition>
+        <argsstring>[AST_CHANNEL_NAME]</argsstring>
+        <name>channel</name>
+        <qualifiedname>txagc_profile::channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Associated Asterisk channel name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="54" column="6" bodyfile="src/usbradioplus_processing_internal.h" bodystart="54" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa9d7512772749a397b13bb9bc2af4c5f" compoundref="usbradioplus__processing_8c" startline="272" endline="282">find_profile</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0abaa49ec73c29bc809d6d26f47a6657" compoundref="usbradioplus__processing_8c" startline="190" endline="201">find_profile_const</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1af1678c5622a571de7a841c3959bffd49" compoundref="usbradioplus__processing_8c" startline="2543" endline="2597">scan_channels</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a1ec98f39aaa9de143d15bee683e35dba" compoundref="usbradioplus__processing_8c" startline="3234" endline="3258">usbradioplus_processing_get_composite</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a24a9d7f045911ae7397d9e59a88a2fb8" compoundref="usbradioplus__processing_8c" startline="3034" endline="3057">usbradioplus_processing_get_hardware</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a2142f868836deb99a034eac7389128f3" compoundref="usbradioplus__processing_8c" startline="2985" endline="3010">usbradioplus_processing_get_local</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structusbradioplus__hardware__settings" kindref="compound">usbradioplus_hardware_settings</ref></type>
+        <definition>struct usbradioplus_hardware_settings txagc_profile::hardware</definition>
+        <argsstring></argsstring>
+        <name>hardware</name>
+        <qualifiedname>txagc_profile::hardware</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved CM119 gain and assignment settings. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="56" column="37" bodyfile="src/usbradioplus_processing_internal.h" bodystart="56" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a24a9d7f045911ae7397d9e59a88a2fb8" compoundref="usbradioplus__processing_8c" startline="3034" endline="3057">usbradioplus_processing_get_hardware</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa7e50df1c123aa5da2d2783f11a489a6" compoundref="usbradioplus__processing_8c" startline="3059" endline="3079">usbradioplus_processing_get_hardware_rt</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a77add100bf0d604a3d8b31f2aa13bfce" compoundref="usbradioplus__processing_8c" startline="3155" endline="3175">usbradioplus_processing_set_hardware_input_gain</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1af316d45ed046a6d121e937c66b0e56f6" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structsection__override" kindref="compound">section_override</ref></type>
+        <definition>struct section_override txagc_profile::overrides[MAX_SECTION_OVERRIDES]</definition>
+        <argsstring>[MAX_SECTION_OVERRIDES]</argsstring>
+        <name>overrides</name>
+        <qualifiedname>txagc_profile::overrides</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Bounded list of resolved non-audio configuration options. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="58" column="23" bodyfile="src/usbradioplus_processing_internal.h" bodystart="58" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a35f1ae9dc6e4f1b5479ca21339921243" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t txagc_profile::override_count</definition>
+        <argsstring></argsstring>
+        <name>override_count</name>
+        <qualifiedname>txagc_profile::override_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of resolved entries in overrides. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="60" column="8" bodyfile="src/usbradioplus_processing_internal.h" bodystart="60" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1acc4f8182dcf9967fb392bdc2074d5381" compoundref="usbradioplus__processing_8c" startline="1292" endline="1429">add_override</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0c9ceb1d5f070d4cff0f785236b0223e" compoundref="usbradioplus__processing_8c" startline="3081" endline="3130">usbradioplus_processing_get_option</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__chain" kindref="compound">txagc_chain</ref></type>
+        <definition>struct txagc_chain txagc_profile::chains[TXAGC_SOURCE_COUNT]</definition>
+        <argsstring>[TXAGC_SOURCE_COUNT]</argsstring>
+        <name>chains</name>
+        <qualifiedname>txagc_profile::chains</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Local, link, and voice/telemetry processing chains. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="62" column="18" bodyfile="src/usbradioplus_processing_internal.h" bodystart="62" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ae34c50eb3ece485257b2d361db4be370" compoundref="usbradioplus__processing_8c" startline="289" endline="301">channel_is_eligible</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0f0e5fe0c78cfc4f55790c054ab2b2b" compoundref="usbradioplus__processing_8c" startline="306" endline="481">settings_defaults</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa0be1ac4262be6b967c1ba0b6ddd6bd8" compoundref="usbradioplus__processing_8c" startline="2419" endline="2502">stage_active_link_hooks</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a1ec98f39aaa9de143d15bee683e35dba" compoundref="usbradioplus__processing_8c" startline="3234" endline="3258">usbradioplus_processing_get_composite</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a9db6be6cd798f7c7f5e204928d50f114" compoundref="usbradioplus__processing_8c" startline="3260" endline="3280">usbradioplus_processing_get_composite_rt</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a2142f868836deb99a034eac7389128f3" compoundref="usbradioplus__processing_8c" startline="2985" endline="3010">usbradioplus_processing_get_local</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a95124b3a47bea172607faa5d65e076b9" compoundref="usbradioplus__processing_8c" startline="3012" endline="3032">usbradioplus_processing_get_local_rt</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0764f7d26aa2f4ad51047fdba66b7e94" compoundref="usbradioplus__processing_8c" startline="3132" endline="3153">usbradioplus_processing_set_local_input_gain</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aa09fbf26e5737ba3d9ca992b453e2ef7" compoundref="usbradioplus__processing_8c" startline="761" endline="813">validate_profile</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a523068949e00da0956b7d7dffe536674" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_profile::local_enabled</definition>
+        <argsstring></argsstring>
+        <name>local_enabled</name>
+        <qualifiedname>txagc_profile::local_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables local. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="64" column="5" bodyfile="src/usbradioplus_processing_internal.h" bodystart="64" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1abae8522d08d9f8e7209c40b2ca9d604e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_profile::link_enabled</definition>
+        <argsstring></argsstring>
+        <name>link_enabled</name>
+        <qualifiedname>txagc_profile::link_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables link. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="66" column="5" bodyfile="src/usbradioplus_processing_internal.h" bodystart="66" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a83134cb42a86ab81075be773936c840e" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int txagc_profile::rnnoise_enabled</definition>
+        <argsstring></argsstring>
+        <name>rnnoise_enabled</name>
+        <qualifiedname>txagc_profile::rnnoise_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables rnnoise. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="68" column="5" bodyfile="src/usbradioplus_processing_internal.h" bodystart="68" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structtxagc__profile_1a08db21b5858efa87ddc1eb7b65027e04" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structtxagc__config" kindref="compound">txagc_config</ref></type>
+        <definition>struct txagc_config txagc_profile::agc</definition>
+        <argsstring></argsstring>
+        <name>agc</name>
+        <qualifiedname>txagc_profile::agc</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Settings for all optional stages and the fixed FFmpeg filtering stages. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_processing_internal.h" line="70" column="19" bodyfile="src/usbradioplus_processing_internal.h" bodystart="70" bodyend="-1"/>
+        <referencedby refid="usbradioplus__processing_8c_1ab402cd91190c6993b7801a712f7e1a4f" compoundref="usbradioplus__processing_8c" startline="2646" endline="2794">cli_show</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1aca33a8ff73286060ee1a57288d8dbac3" compoundref="usbradioplus__processing_8c" startline="1907" endline="2050">load_settings_candidate</referencedby>
+        <referencedby refid="usbradioplus__processing_8c_1a0764f7d26aa2f4ad51047fdba66b7e94" compoundref="usbradioplus__processing_8c" startline="3132" endline="3153">usbradioplus_processing_set_local_input_gain</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Resolved hardware and processing settings for one named RadioPlus channel. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>section_override</label>
+        <link refid="structsection__override"/>
+      </node>
+      <node id="4">
+        <label>txagc_chain</label>
+        <link refid="structtxagc__chain"/>
+        <childnode refid="5" relation="usage">
+          <edgelabel>agc</edgelabel>
+        </childnode>
+      </node>
+      <node id="5">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="1">
+        <label>txagc_profile</label>
+        <link refid="structtxagc__profile"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>hardware</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>overrides</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>chains</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>agc</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>usbradioplus_hardware_settings</label>
+        <link refid="structusbradioplus__hardware__settings"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_processing_internal.h" line="48" column="1" bodyfile="src/usbradioplus_processing_internal.h" bodystart="48" bodyend="71"/>
+    <listofallmembers>
+      <member refid="structtxagc__profile_1a08db21b5858efa87ddc1eb7b65027e04" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>agc</name></member>
+      <member refid="structtxagc__profile_1a84b1a78131a8aa1f103ea9c6e45e5be9" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>chains</name></member>
+      <member refid="structtxagc__profile_1ac3d134b01e23f7dffc81265d88e5bdab" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>channel</name></member>
+      <member refid="structtxagc__profile_1af5f522ba62712c219c542f18571b1d2e" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>enabled</name></member>
+      <member refid="structtxagc__profile_1a10bc9de5aa486677828ee15e19636a6c" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>hardware</name></member>
+      <member refid="structtxagc__profile_1abae8522d08d9f8e7209c40b2ca9d604e" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>link_enabled</name></member>
+      <member refid="structtxagc__profile_1a523068949e00da0956b7d7dffe536674" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>local_enabled</name></member>
+      <member refid="structtxagc__profile_1a2ff7b53c25974f00eba40e6da458f027" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>name</name></member>
+      <member refid="structtxagc__profile_1a35f1ae9dc6e4f1b5479ca21339921243" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>override_count</name></member>
+      <member refid="structtxagc__profile_1af316d45ed046a6d121e937c66b0e56f6" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>overrides</name></member>
+      <member refid="structtxagc__profile_1a83134cb42a86ab81075be773936c840e" prot="public" virt="non-virtual"><scope>txagc_profile</scope><name>rnnoise_enabled</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

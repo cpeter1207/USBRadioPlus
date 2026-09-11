@@ -1,0 +1,19 @@
+<map id="setformat" name="setformat">
+<area shape="rect" id="Node000001" title="Open or reopen the OSS device with the required native audio format." alt="" coords="419,120,505,145"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus_8c.html#a1352673ac9bc17292ab0f683c3a1d5c9" title="Service USB GPIO, PTT, EEPROM, device recovery, and radio status." alt="" coords="237,5,321,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="441,111,409,77,369,46,346,35,321,27,322,22,347,30,372,41,413,73,444,107"/>
+<area shape="rect" id="Node000004" href="$chan__usbradioplus_8c.html#a203e878eb91787947a7b1283ae2cafa1" title="Test whether OSS can accept one complete native stereo frame." alt="" coords="188,55,371,95"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="407,118,343,98,344,93,409,113"/>
+<area shape="rect" id="Node000006" href="$chan__usbradioplus_8c.html#afd5fb69b5da24d158a913caaaea4cd42" title="Release Asterisk ownership and reset radio call state." alt="" coords="213,120,346,145"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="405,135,346,135,346,130,405,130"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a34743b40e5057bb1c0478c33a9ba95eb" title="Create an Asterisk channel and associate it with private radio state." alt="" coords="223,169,335,195"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="406,151,371,161,330,172,328,167,370,155,405,146"/>
+<area shape="rect" id="Node000009" href="$chan__usbradioplus_8c.html#a696d801705b177fcb32309a04958a26e" title="Queue an outbound app_rpt voice frame for native transmitter rendering." alt="" coords="220,219,339,244"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="441,157,410,185,372,210,340,222,338,217,369,205,407,180,437,153"/>
+<area shape="rect" id="Node000003" href="$chan__usbradioplus_8c.html#a3941538bff265cb1676a238a53ffbfeb" title="Connect an outbound Asterisk call to the configured radio." alt="" coords="19,5,127,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="224,21,127,21,127,15,224,15"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#a15492b910230a74e22a915ae82116358" title="Return received PCM or signaling events to Asterisk." alt="" coords="15,63,130,88"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="175,78,130,78,130,73,175,73"/>
+<area shape="rect" id="Node000008" href="$chan__usbradioplus_8c.html#a6f912622b5ff5222c03dbf0f308ee186" title="Allocate an Asterisk radio channel for a configured device." alt="" coords="5,169,140,195"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="210,185,140,185,140,179,210,179"/>
+</map>

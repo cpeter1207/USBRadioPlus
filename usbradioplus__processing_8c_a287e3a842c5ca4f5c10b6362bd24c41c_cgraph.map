@@ -1,0 +1,19 @@
+<map id="read_profile_overrides" name="read_profile_overrides">
+<area shape="rect" id="Node000001" title="Apply shared flat defaults followed by a channel&#39;s resolved overrides." alt="" coords="5,121,172,146"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__processing_8c.html#acc4f8182dcf9967fb392bdc2074d5381" title="Read, validate, and retain one resolved non&#45;audio option." alt="" coords="441,121,548,146"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,131,427,131,427,136,172,136"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__processing_8c.html#ad871c189403f14c67358c042a8a1de7e" title="Read non&#45;audio options from resolved per&#45;channel section names." alt="" coords="220,146,393,171"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="172,140,207,144,206,150,172,146"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__processing_8c.html#ae2c06c0fa7a196ac27326466e123cebe" title="Return an exact upper limit for an integer clean&#45;slate control." alt="" coords="619,5,768,45"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="510,118,548,91,595,62,622,48,625,53,597,66,551,95,513,123"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__ctcss_8c.html#a7611b9d3d46efc9615e290d0122a639b" title="Check whether a frequency is one of the supported CTCSS tones." alt="" coords="839,113,993,153"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="536,118,596,105,693,98,791,105,825,110,825,115,790,111,693,103,596,111,537,123"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__processing_8c.html#a5826b9dcabaec63f1644728f23235de9" title="Check the configured spelling of one DCS code." alt="" coords="633,121,754,146"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="548,131,619,131,619,136,548,136"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__processing_8c.html#a5c781da3fe4c5f4a826fd9adb10c2e59" title="Check a comma&#45;separated CTCSS frequency list against the tone table." alt="" coords="617,170,770,195"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="547,144,597,156,629,164,627,169,595,161,546,149"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__processing_8c.html#a5cc70832e8dfa7e6ce9045f437f401df" title="Validate one nonnegative integer that is stored in a channel field." alt="" coords="596,219,791,245"/>
+<area shape="poly" id="edge7_Node000002_Node000007" title=" " alt="" coords="511,144,548,175,597,206,614,213,612,218,595,210,545,180,508,148"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="751,167,824,151,826,156,752,173"/>
+<area shape="poly" id="edge9_Node000008_Node000002" title=" " alt="" coords="393,144,427,140,428,145,394,150"/>
+</map>

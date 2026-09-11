@@ -1,0 +1,281 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structusbradioplus__native__graph__transaction" kind="struct" language="C++" prot="public">
+    <compoundname>usbradioplus_native_graph_transaction</compoundname>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structusbradioplus__native__graph__transaction_1aee6aaf7e3c3e5c1b1a3ca09931de2408" prot="public" static="no" mutable="no">
+        <type>struct <ref refid="structnative__graph__plan" kindref="compound">native_graph_plan</ref> *</type>
+        <definition>struct native_graph_plan* usbradioplus_native_graph_transaction::plans</definition>
+        <argsstring></argsstring>
+        <name>plans</name>
+        <qualifiedname>usbradioplus_native_graph_transaction::plans</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Candidate graph generation for every initialized native channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="3275" column="24" bodyfile="src/usbradioplus_channel_common.c" bodystart="3275" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2355f7b3a4b63db4050902b03a82cec6" compoundref="usbradioplus__channel__common_8c" startline="3282" endline="3293">usbradioplus_discard_native_processing_transaction</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a5a9c0e0b5fedb6b7d591bf8a898b7c88" compoundref="usbradioplus__channel__common_8c" startline="3351" endline="3364">usbradioplus_publish_native_processing_transaction</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1add87a04dda2f671fb229e557edbf4a6d" compoundref="usbradioplus__channel__common_8c" startline="3296" endline="3345">usbradioplus_stage_all_native_processing</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structusbradioplus__native__graph__transaction_1a1aa1d16bdb18a0cf644605339deed164" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t usbradioplus_native_graph_transaction::count</definition>
+        <argsstring></argsstring>
+        <name>count</name>
+        <qualifiedname>usbradioplus_native_graph_transaction::count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Number of populated plans. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_channel_common.c" line="3277" column="8" bodyfile="src/usbradioplus_channel_common.c" bodystart="3277" bodyend="-1"/>
+        <referencedby refid="usbradioplus__channel__common_8c_1a2355f7b3a4b63db4050902b03a82cec6" compoundref="usbradioplus__channel__common_8c" startline="3282" endline="3293">usbradioplus_discard_native_processing_transaction</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1a5a9c0e0b5fedb6b7d591bf8a898b7c88" compoundref="usbradioplus__channel__common_8c" startline="3351" endline="3364">usbradioplus_publish_native_processing_transaction</referencedby>
+        <referencedby refid="usbradioplus__channel__common_8c_1add87a04dda2f671fb229e557edbf4a6d" compoundref="usbradioplus__channel__common_8c" startline="3296" endline="3345">usbradioplus_stage_all_native_processing</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Opaque all-channel native graph transaction owned by the control plane. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>chan_usbradio_pvt</label>
+        <link refid="structchan__usbradio__pvt"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>next</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>plus_native_renderer</edgelabel>
+        </childnode>
+        <childnode refid="14" relation="usage">
+          <edgelabel>plus_native_graphs</edgelabel>
+        </childnode>
+        <childnode refid="18" relation="usage">
+          <edgelabel>plus_radio_access</edgelabel>
+        </childnode>
+        <childnode refid="19" relation="usage">
+          <edgelabel>plus_tx_playout_hold</edgelabel>
+        </childnode>
+        <childnode refid="10" relation="usage">
+          <edgelabel>plus_parrot_state</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>plus_ctcss_generator</edgelabel>
+        </childnode>
+        <childnode refid="20" relation="usage">
+          <edgelabel>radio</edgelabel>
+        </childnode>
+        <childnode refid="26" relation="usage">
+          <edgelabel>echo_queue</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>native_graph_plan</label>
+        <link refid="structnative__graph__plan"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>channel</edgelabel>
+        </childnode>
+        <childnode refid="15" relation="usage">
+          <edgelabel>graphs</edgelabel>
+        </childnode>
+      </node>
+      <node id="13">
+        <label>native_renderer_diagnostics</label>
+        <link refid="structnative__renderer__diagnostics"/>
+        <childnode refid="11" relation="usage">
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="25">
+        <label>t_sdbg</label>
+        <link refid="structt__sdbg"/>
+      </node>
+      <node id="16">
+        <label>txagc_avfilter</label>
+        <link refid="structtxagc__avfilter"/>
+        <childnode refid="17" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+      </node>
+      <node id="17">
+        <label>txagc_config</label>
+        <link refid="structtxagc__config"/>
+      </node>
+      <node id="9">
+        <label>txagc_rnnoise</label>
+        <link refid="structtxagc__rnnoise"/>
+      </node>
+      <node id="21">
+        <label>urp_ctcss_decoder</label>
+        <link refid="structurp__ctcss__decoder"/>
+        <childnode refid="22" relation="usage">
+          <edgelabel>tdet</edgelabel>
+        </childnode>
+      </node>
+      <node id="7">
+        <label>urp_ctcss_generator</label>
+        <link refid="structurp__ctcss__generator"/>
+      </node>
+      <node id="22">
+        <label>urp_ctcss_tone_detector</label>
+        <link refid="structurp__ctcss__tone__detector"/>
+      </node>
+      <node id="6">
+        <label>urp_dcs_receive_phase</label>
+        <link refid="structurp__dcs__receive__phase"/>
+      </node>
+      <node id="5">
+        <label>urp_dcs_state</label>
+        <link refid="structurp__dcs__state"/>
+        <childnode refid="6" relation="usage">
+          <edgelabel>receive_phase</edgelabel>
+        </childnode>
+      </node>
+      <node id="24">
+        <label>urp_micor_squelch</label>
+        <link refid="structurp__micor__squelch"/>
+      </node>
+      <node id="10">
+        <label>urp_parrot_state</label>
+        <link refid="structurp__parrot__state"/>
+      </node>
+      <node id="23">
+        <label>urp_radio_stage</label>
+        <link refid="structurp__radio__stage"/>
+        <childnode refid="20" relation="usage">
+          <edgelabel>parentChan</edgelabel>
+        </childnode>
+        <childnode refid="24" relation="usage">
+          <edgelabel>micor_squelch</edgelabel>
+        </childnode>
+      </node>
+      <node id="20">
+        <label>urp_radio_state</label>
+        <link refid="structurp__radio__state"/>
+        <childnode refid="21" relation="usage">
+          <edgelabel>rxCtcss</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>dcs</edgelabel>
+        </childnode>
+        <childnode refid="23" relation="usage">
+          <edgelabel>spsDelayLine</edgelabel>
+          <edgelabel>spsMeasure</edgelabel>
+          <edgelabel>spsRx</edgelabel>
+          <edgelabel>spsRxDeEmp</edgelabel>
+          <edgelabel>spsRxHpf</edgelabel>
+          <edgelabel>spsRxLsd</edgelabel>
+          <edgelabel>spsRxLsdNrz</edgelabel>
+          <edgelabel>spsRxOut</edgelabel>
+          <edgelabel>spsRxSquelchDelay</edgelabel>
+          <edgelabel>spsRxVox</edgelabel>
+          <edgelabel>...</edgelabel>
+        </childnode>
+        <childnode refid="25" relation="usage">
+          <edgelabel>sdbg</edgelabel>
+        </childnode>
+      </node>
+      <node id="26">
+        <label>urp_sample_queue</label>
+        <link refid="structurp__sample__queue"/>
+      </node>
+      <node id="8">
+        <label>urp_src</label>
+        <link refid="structurp__src"/>
+      </node>
+      <node id="12">
+        <label>usbradioplus_native_filter_statistics</label>
+        <link refid="structusbradioplus__native__filter__statistics"/>
+      </node>
+      <node id="15">
+        <label>usbradioplus_native_graph_set</label>
+        <link refid="structusbradioplus__native__graph__set"/>
+        <childnode refid="16" relation="usage">
+          <edgelabel>ctcss_notch</edgelabel>
+          <edgelabel>dcs</edgelabel>
+          <edgelabel>dcs_turnoff</edgelabel>
+          <edgelabel>local_dynamics</edgelabel>
+          <edgelabel>receive_deemphasis</edgelabel>
+          <edgelabel>receive_filter</edgelabel>
+        </childnode>
+        <childnode refid="15" relation="usage">
+          <edgelabel>next_retired</edgelabel>
+        </childnode>
+      </node>
+      <node id="14">
+        <label>usbradioplus_native_graph_slot</label>
+        <link refid="structusbradioplus__native__graph__slot"/>
+        <childnode refid="15" relation="usage">
+          <edgelabel>active</edgelabel>
+          <edgelabel>owned</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>usbradioplus_native_graph_transaction</label>
+        <link refid="structusbradioplus__native__graph__transaction"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>plans</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>usbradioplus_native_renderer</label>
+        <link refid="structusbradioplus__native__renderer"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>channel</edgelabel>
+        </childnode>
+        <childnode refid="5" relation="usage">
+          <edgelabel>dcs</edgelabel>
+        </childnode>
+        <childnode refid="7" relation="usage">
+          <edgelabel>ctcss_generator</edgelabel>
+        </childnode>
+        <childnode refid="8" relation="usage">
+          <edgelabel>down</edgelabel>
+          <edgelabel>echo_up</edgelabel>
+        </childnode>
+        <childnode refid="9" relation="usage">
+          <edgelabel>local_rnnoise</edgelabel>
+        </childnode>
+        <childnode refid="10" relation="usage">
+          <edgelabel>parrot</edgelabel>
+        </childnode>
+        <childnode refid="11" relation="usage">
+          <edgelabel>statistics</edgelabel>
+        </childnode>
+        <childnode refid="13" relation="usage">
+          <edgelabel>published_statistics</edgelabel>
+        </childnode>
+      </node>
+      <node id="11">
+        <label>usbradioplus_native_renderer_stats</label>
+        <link refid="structusbradioplus__native__renderer__stats"/>
+        <childnode refid="12" relation="usage">
+          <edgelabel>final_filter</edgelabel>
+          <edgelabel>local_filter</edgelabel>
+          <edgelabel>receive_deemphasis_filter</edgelabel>
+        </childnode>
+      </node>
+      <node id="18">
+        <label>usbradioplus_radio_access_slot</label>
+        <link refid="structusbradioplus__radio__access__slot"/>
+      </node>
+      <node id="19">
+        <label>usbradioplus_tx_playout_hold</label>
+        <link refid="structusbradioplus__tx__playout__hold"/>
+      </node>
+    </collaborationgraph>
+    <location file="src/usbradioplus_channel_common.c" line="3273" column="1" bodyfile="src/usbradioplus_channel_common.c" bodystart="3273" bodyend="3278"/>
+    <listofallmembers>
+      <member refid="structusbradioplus__native__graph__transaction_1a1aa1d16bdb18a0cf644605339deed164" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_transaction</scope><name>count</name></member>
+      <member refid="structusbradioplus__native__graph__transaction_1aee6aaf7e3c3e5c1b1a3ca09931de2408" prot="public" virt="non-virtual"><scope>usbradioplus_native_graph_transaction</scope><name>plans</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

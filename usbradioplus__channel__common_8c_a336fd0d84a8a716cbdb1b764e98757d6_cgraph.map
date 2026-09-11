@@ -1,0 +1,5 @@
+<map id="ctcss_frequency_list_valid" name="ctcss_frequency_list_valid">
+<area shape="rect" id="Node000001" title="Validate a comma&#45;separated CTCSS list against the radio tone table." alt="" coords="5,5,160,45"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__ctcss_8c.html#a7611b9d3d46efc9615e290d0122a639b" title="Check whether a frequency is one of the supported CTCSS tones." alt="" coords="208,5,363,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="160,23,194,23,194,28,160,28"/>
+</map>

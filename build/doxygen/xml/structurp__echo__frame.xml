@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__echo__frame" kind="struct" language="C++" prot="public">
+    <compoundname>urp_echo_frame</compoundname>
+    <includes refid="usbradioplus__dsp_8h" local="no">usbradioplus_dsp.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" prot="public" static="no" mutable="no">
+        <type>int16_t</type>
+        <definition>int16_t urp_echo_frame::link[URP_LINK_SAMPLES]</definition>
+        <argsstring>[URP_LINK_SAMPLES]</argsstring>
+        <name>link</name>
+        <qualifiedname>urp_echo_frame::link</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>App_rpt-rate receiver PCM for this history frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="28" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="28" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1a4aad6e4e2dbcea39843c1ca4b95100fc" compoundref="usbradioplus__dsp_8c" startline="242" endline="252">urp_echo_push</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1aa29cbbd973e425bc86a0378bd71a65be" compoundref="usbradioplus__dsp_8c" startline="254" endline="304">urp_echo_remove</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" prot="public" static="no" mutable="no">
+        <type>int16_t</type>
+        <definition>int16_t urp_echo_frame::native[URP_NATIVE_SAMPLES]</definition>
+        <argsstring>[URP_NATIVE_SAMPLES]</argsstring>
+        <name>native</name>
+        <qualifiedname>urp_echo_frame::native</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Corresponding native-rate receiver PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="30" column="9" bodyfile="src/usbradioplus_dsp.h" bodystart="30" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1a4aad6e4e2dbcea39843c1ca4b95100fc" compoundref="usbradioplus__dsp_8c" startline="242" endline="252">urp_echo_push</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1aa29cbbd973e425bc86a0378bd71a65be" compoundref="usbradioplus__dsp_8c" startline="254" endline="304">urp_echo_remove</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t urp_echo_frame::sequence</definition>
+        <argsstring></argsstring>
+        <name>sequence</name>
+        <qualifiedname>urp_echo_frame::sequence</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Monotonic receive-frame sequence number. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="src/usbradioplus_dsp.h" line="32" column="10" bodyfile="src/usbradioplus_dsp.h" bodystart="32" bodyend="-1"/>
+        <referencedby refid="usbradioplus__dsp_8c_1a4aad6e4e2dbcea39843c1ca4b95100fc" compoundref="usbradioplus__dsp_8c" startline="242" endline="252">urp_echo_push</referencedby>
+        <referencedby refid="usbradioplus__dsp_8c_1aa29cbbd973e425bc86a0378bd71a65be" compoundref="usbradioplus__dsp_8c" startline="254" endline="304">urp_echo_remove</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Paired app_rpt-rate and native-rate receive blocks for echo correlation. </para>
+    </detaileddescription>
+    <location file="src/usbradioplus_dsp.h" line="26" column="1" bodyfile="src/usbradioplus_dsp.h" bodystart="26" bodyend="33"/>
+    <listofallmembers>
+      <member refid="structurp__echo__frame_1ab1837a2a220ad3eebd67cce8ca27827d" prot="public" virt="non-virtual"><scope>urp_echo_frame</scope><name>link</name></member>
+      <member refid="structurp__echo__frame_1a5d7ef9035d8129820076c69248c44fb4" prot="public" virt="non-virtual"><scope>urp_echo_frame</scope><name>native</name></member>
+      <member refid="structurp__echo__frame_1a123f91df3181efd6330a7eddeb0c1a60" prot="public" virt="non-virtual"><scope>urp_echo_frame</scope><name>sequence</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

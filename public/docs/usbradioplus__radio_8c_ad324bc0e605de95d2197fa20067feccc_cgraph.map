@@ -1,0 +1,29 @@
+<map id="urp_radio_process" name="urp_radio_process">
+<area shape="rect" id="Node000001" title="Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block...." alt="" coords="5,95,145,120"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__radio_8c.html#a841246da2bcaee1ce7dd0c9130f33bdb" title="Advance a radio&#45;signaling block while optionally freezing TX time." alt="" coords="193,95,379,120"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="145,105,179,105,179,110,145,110"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__radio_8c.html#a16b22836a4c264c4f8d2b3680c114507" title="Collect the configured radio trace channels into the debug buffer." alt="" coords="460,45,531,71"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="340,92,446,67,447,72,341,97"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__radio_8c.html#af30e814ead483666930ea4ac4e4b9fb0" title="Update the enabled CTCSS tone detectors and decoded&#45;tone state. This runs from the native audio callb..." alt="" coords="427,95,564,120"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="379,105,413,105,413,110,379,110"/>
+<area shape="rect" id="Node000005" href="$usbradioplus__dcs_8c.html#af320936342b40be91bb0d833a1fd8716" title="Process native&#45;rate discriminator samples and update the qualified receive result." alt="" coords="431,144,560,169"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="341,117,428,138,427,143,340,123"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__dcs_8c.html#add66503db5e26b809a48e3ad32a9a5c2" title="Clear every receive qualification after a valid DCS turn&#45;off tail." alt="" coords="612,5,837,31"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="543,142,562,129,578,107,585,85,592,62,610,40,618,35,621,39,614,44,596,64,590,86,583,110,566,133,545,146"/>
+<area shape="rect" id="Node000007" href="$usbradioplus__dcs_8c.html#af2be4adcc0ec5dc058f2f1bfd819558e" title="Return whether any timing hypothesis currently qualifies the configured code." alt="" coords="641,55,809,80"/>
+<area shape="poly" id="edge6_Node000005_Node000007" title=" " alt="" coords="536,142,563,129,586,109,596,100,611,90,632,82,634,87,613,95,599,104,589,113,565,134,538,146"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__dcs_8c.html#abda45461ef0d494345d64f6a8e4ea680" title="Qualify one symbol decision in one timing hypothesis." alt="" coords="643,105,807,145"/>
+<area shape="poly" id="edge7_Node000005_Node000008" title=" " alt="" coords="560,145,628,135,629,141,561,150"/>
+<area shape="rect" id="Node000011" href="$usbradioplus__dcs_8c.html#aba80f48af60132af083d539df20fcf0b" title="Accumulate one discriminator sample into the DCS turn&#45;off detector." alt="" coords="649,169,800,209"/>
+<area shape="poly" id="edge10_Node000005_Node000011" title=" " alt="" coords="561,163,636,174,636,179,560,168"/>
+<area shape="rect" id="Node000012" href="$usbradioplus__dcs_8c.html#a5cec0916669b33878394d6a65846ecac" title="Remove slow discriminator DC bias without losing fractional updates." alt="" coords="663,233,786,259"/>
+<area shape="poly" id="edge11_Node000005_Node000012" title=" " alt="" coords="517,167,560,193,613,218,651,230,649,235,611,223,558,198,514,172"/>
+<area shape="rect" id="Node000013" href="$usbradioplus__dcs_8c.html#aebfd1bea48ad1ec068a0f33aba1e573a" title="Reset the bounded receive phase bank for an input sample rate." alt="" coords="613,283,837,308"/>
+<area shape="poly" id="edge12_Node000005_Node000013" title=" " alt="" coords="508,168,549,218,579,246,613,269,627,275,625,280,611,274,576,250,545,221,503,171"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__dcs_8c.html#a771b50289951179c8b27e1523135a35f" title="Decode a sliding least&#45;significant&#45;bit&#45;first received codeword." alt="" coords="929,112,1037,137"/>
+<area shape="poly" id="edge8_Node000008_Node000009" title=" " alt="" coords="807,122,915,122,915,127,807,127"/>
+<area shape="rect" id="Node000010" href="$usbradioplus__dcs_8c.html#ae666193ad3e27dc56dda3f151abfd078" title="Return the cyclic Golay remainder of a 23&#45;bit word." alt="" coords="1128,112,1260,137"/>
+<area shape="poly" id="edge9_Node000009_Node000010" title=" " alt="" coords="1037,122,1114,122,1114,127,1037,127"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__dcs_8c.html#a46aa5805b8783b27b00badf1c72450d4" title="Reset the fixed&#45;frequency DCS turn&#45;off detector for one input rate." alt="" coords="885,283,1080,308"/>
+<area shape="poly" id="edge13_Node000013_Node000014" title=" " alt="" coords="837,293,872,293,872,298,837,298"/>
+</map>

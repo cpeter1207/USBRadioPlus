@@ -1,0 +1,23 @@
+<map id="parse_tune_level" name="parse_tune_level">
+<area shape="rect" id="Node000001" title="Parse a normalized hardware tuning level in the range 0 through 999." alt="" coords="711,104,844,129"/>
+<area shape="rect" id="Node000002" href="$usbradioplus__channel__common_8c.html#ae4f8a795df76c34c41a90221e644cd7d" title="Display or adjust the auxiliary voice output level." alt="" coords="529,5,661,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="747,98,707,71,661,44,635,33,637,28,664,40,710,66,750,93"/>
+<area shape="rect" id="Node000006" href="$usbradioplus__channel__common_8c.html#ac6a7a3bba62c526e25aa11aabbdafd5b" title="Display or adjust the live DSP squelch threshold." alt="" coords="527,55,663,80"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="716,103,642,83,644,78,717,98"/>
+<area shape="rect" id="Node000007" href="$chan__usbradioplus_8c.html#a00016e9456896b92939cca92cd791693" title="Display or adjust the post&#45;deemphasis receiver voice gain." alt="" coords="534,104,655,129"/>
+<area shape="poly" id="edge7_Node000001_Node000007" title=" " alt="" coords="697,119,656,119,656,114,697,114"/>
+<area shape="rect" id="Node000008" href="$usbradioplus__channel__common_8c.html#a5bb799f8f3149132fcb19f612e1885bf" title="Display or adjust transmit CTCSS level and optional keyed tone." alt="" coords="537,153,652,179"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="717,135,644,156,642,151,716,130"/>
+<area shape="rect" id="Node000009" href="$usbradioplus__channel__common_8c.html#a2b060af9d1b3c338e74ec8d119152735" title="Display or adjust the voice output and optional calibration tone." alt="" coords="534,203,655,228"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="749,140,709,166,664,192,635,205,633,200,661,188,707,162,746,135"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__tune__menu_8c.html#a05aa6833c4f7e8fd43c260dec220e75c" title="Dispatch the calibration utility&#39;s live command protocol." alt="" coords="335,104,479,129"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="542,38,528,44,472,76,427,106,424,102,469,71,525,40,540,33"/>
+<area shape="rect" id="Node000004" href="$usbradioplus__channel__common_8c.html#a352639417b8077cfbbc6489bb564cc9a" title="Dispatch tuning commands for the selected radio channel." alt="" coords="196,104,287,129"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="321,119,287,119,287,114,321,114"/>
+<area shape="rect" id="Node000005" href="$chan__usbradioplus_8c.html#aec7c29e54bbbcee4c518fb33fbc7986f" title="Register, complete, or dispatch radio tuning CLI commands." alt="" coords="5,104,148,129"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="182,119,148,119,148,114,182,114"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="533,86,457,106,456,101,532,81"/>
+<area shape="poly" id="edge8_Node000007_Node000003" title=" " alt="" coords="520,119,479,119,479,114,520,114"/>
+<area shape="poly" id="edge10_Node000008_Node000003" title=" " alt="" coords="532,152,456,132,457,127,533,147"/>
+<area shape="poly" id="edge12_Node000009_Node000003" title=" " alt="" coords="542,200,525,192,470,161,425,132,428,127,472,156,528,188,545,195"/>
+</map>
