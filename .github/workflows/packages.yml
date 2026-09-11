@@ -19,7 +19,7 @@ on:
         required: true
         type: string
       include_debian12:
-        description: Also build and publish Debian 12 packages
+        description: Manually build aspirational Debian 12 packages without a test/install matrix
         default: false
         required: false
         type: boolean

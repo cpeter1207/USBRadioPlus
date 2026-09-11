@@ -20,8 +20,8 @@ remain manual operations described in `usbradioplus(7)`.
       changes in this release.
 - [ ] Run `make ci` on the release-candidate commit. It must pass strict
       compilation, Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy,
-      Doxygen, all tests, and 100% line and branch coverage, including the
-      rate-adjusting PCM ring package dependency.
+      Doxygen, all tests, and 100% production-code line and branch coverage on
+      Debian 13 amd64, including the rate-adjusting PCM ring package dependency.
 - [ ] Run `make distcheck`, then inspect the extracted archive's staged install.
       Confirm it contains the module, private AGC effect, unified tuner, sample,
       manuals, but no build
@@ -30,9 +30,10 @@ remain manual operations described in `usbradioplus(7)`.
       render checks. Confirm README, installation instructions, all three man
       pages, the sample, packaging notes, and native-radio notes link to files
       shipped by the archive.
-- [ ] Run the Debian 12 and Debian 13 amd64 and arm64 quality/install matrix
-      for the same commit. Record each job URL and its exact package or archive
-      artifact.
+- [ ] Run the Debian 13 amd64 and arm64 quality/install matrix for the same
+      commit. Record each job URL and its exact package or archive artifact.
+      Debian 12 packages are aspirational and may be built manually only when
+      explicitly requested.
 
 ## Clean-slate configuration and signaling
 

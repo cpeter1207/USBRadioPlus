@@ -207,8 +207,10 @@ undocumented symbols and enum values, parameter and return documentation, and
 invalid markup. Every diagnostic fails the target.
 
 The required quality workflow runs Doxygen concurrently with lint and static
-analysis. All three results must succeed before the Debian 12/13 amd64/arm64
-test matrix. Release callers depend on that same required quality workflow.
+analysis. All three results must succeed before the Debian 13 amd64/arm64 test
+matrix. Release callers depend on that same required quality workflow. Debian
+12 packages are aspirational and may be built manually only when explicitly
+requested.
 Only successful main-branch checks publish this reference to GitHub Pages.
 
 Shell documentation uses double-hash comments. The documentation filter exposes

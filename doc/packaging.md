@@ -64,8 +64,10 @@ contact the network.
 
 The `debian/` directory builds the `usbradioplus` binary package. Companion
 RNNoise packaging is under `packaging/rnnoise/`. GitHub Actions builds both
-packages natively for Debian 12 and 13 on amd64 and arm64, publishes signed APT
+packages natively for Debian 13 on amd64 and arm64, publishes signed APT
 metadata through GitHub Pages, and verifies installation from the public URL.
+Debian 12 packaging is aspirational and may be built manually only when
+explicitly requested; it has no automatic test or staged-install matrix.
 
 `src/usbradioplus_radio.c`, `src/usbradioplus_radio.h`, and `src/txagc/` are
 integrated implementation components, not convenience copies selected in

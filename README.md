@@ -15,9 +15,9 @@ and back up the prior configuration.
 
 ## Build and install
 
-Signed Debian packages for supported Intel PCs (`amd64`) and 64-bit Raspberry
-Pi systems (`arm64`) are available for Debian 12 and 13. The bootstrap installer
-detects the ASL3 version and selects the matching package. See
+Signed Debian 13 packages for supported `amd64` and `arm64` systems are
+available automatically. The bootstrap installer selects the matching ASL3
+package. Debian 12 packages are aspirational and built manually only on request. See
 [INSTALL.md](INSTALL.md) for the two installation commands and validation
 details.
 

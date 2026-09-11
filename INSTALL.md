@@ -2,7 +2,7 @@
 
 ## Signed Debian packages
 
-For a supported ASL3 node on Debian 12 or 13, download and run the bootstrap
+For a supported ASL3 node on Debian 13, download and run the bootstrap
 installer:
 
 ```text
@@ -18,6 +18,8 @@ transaction before installation. Unsupported or unknown combinations stop with
 an error; the installer never upgrades or downgrades ASL to satisfy the module.
 Use `sudo sh install-usbradioplus.sh --dry-run` to perform detection without
 changing the node. `--yes` permits an explicitly unattended installation.
+Debian 12 packaging is aspirational and is produced manually only when
+explicitly requested.
 
 The archive signing-key fingerprint is
 `A0D5 A79E 0F5C 45E9 E636 7995 0951 502B AC79 5E55`. Installation does not
