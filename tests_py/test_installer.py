@@ -339,6 +339,19 @@ def test_source_installer_configures_signed_shared_ring_dependency():
     assert "pkg-config --atleast-version=1.0.1 rate_adjusting_pcm_ring" in source
 
 
+def test_source_installer_bootstraps_the_released_debian13_shared_ring():
+    """Keep release bootstrapping dynamic, pinned, and Debian-13-only."""
+    source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
+    assert "install_released_shared_ring()" in source
+    assert 'if [ "$suite" != trixie ]; then' in source
+    assert "debian13_${architecture}.deb" in source
+    assert "releases/download/v1.0.1" in source
+    assert "6cacfc2de93523d28fc563d58b5c2b902c5c10ebb3fbe532b01cbb2b2324a2b1" in source
+    assert "06c161d6307a35eb60e7e1d1fa145b9688378cc7f8e5c98a902b7b7da6d14422" in source
+    assert "sha256sum -c -" in source
+    assert 'dpkg -i "$download_directory/$runtime_package"' in source
+
+
 def test_dist_archive_has_one_versioned_root(tmp_path):
     """Verify dist archive has one versioned root.
 
