@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.1.0~alpha17 - 2026-09-11
+
+- Split the receiver de-emphasis and transmitter pre-emphasis corners into
+  independent `hardware_deemphasis_corner_hz` and
+  `hardware_preemphasis_corner_hz` settings. Both default to 300 Hz and accept
+  exact values through 500 Hz. Replace the retired
+  `hardware_emphasis_corner_hz` setting with both settings when upgrading.
+- Separate fast push checks from the full pull-request quality gate. Releases
+  now validate artifacts from a previously validated main revision.
+
 ## 0.1.0~alpha16 - 2026-09-11
 
 - Use the released, versioned rate-adjusting PCM ring shared object.\n- Verify the modern channel package against the matching official ASL3 runtime.\n- Keep automated validation and packages on Debian 13; Debian 12 packages are manual-only.

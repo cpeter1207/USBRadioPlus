@@ -32,7 +32,7 @@
 #define MAX_CONFIG_SECTION 96
 
 /** Number of supported non-audio hardware options. */
-#define USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT 37
+#define USBRADIOPLUS_HARDWARE_OVERRIDE_OPTION_COUNT 38
 
 /** One resolved non-audio option copied into a channel profile. */
 struct section_override {

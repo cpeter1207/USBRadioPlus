@@ -226,6 +226,8 @@ def test_every_nonchain_setting_has_a_concrete_shipped_default():
     assert defaults.keys() >= expected
     assert defaults[("hardware", "hardware_input_gain_db")] == "0.0"
     assert defaults[("hardware", "hardware_gpio_1_mode")] == "in"
+    assert defaults[("hardware", "hardware_deemphasis_corner_hz")] == "300.0"
+    assert defaults[("hardware", "hardware_preemphasis_corner_hz")] == "300.0"
     assert defaults[("asterisk", "asterisk_jitter_buffer_implementation")] == "fixed"
     assert defaults[("receive", "frequency_hz")] == "0"
     assert defaults[("transmit", "frequency_hz")] == "0"
@@ -615,8 +617,21 @@ def test_tuner_covers_non_audio_sections():
         "asterisk_jitter_buffer_target_extra_ms",
         "asterisk_jitter_buffer_video_sync_enabled",
     }
-    assert "hardware_emphasis_corner_hz" in MODULE["HARDWARE_SETTINGS"]
-    assert MODULE["HARDWARE_SETTINGS"]["hardware_emphasis_corner_hz"][1] == "emphasis"
+    corners = {
+        "hardware_deemphasis_corner_hz": (
+            "Receiver de-emphasis corner frequency",
+            "corner_frequency",
+        ),
+        "hardware_preemphasis_corner_hz": (
+            "Transmitter pre-emphasis corner frequency",
+            "corner_frequency",
+        ),
+    }
+    for key, setting in corners.items():
+        assert MODULE["HARDWARE_SETTINGS"][key] == setting
+        assert key in MODULE["LIVE_RELOAD_HARDWARE_KEYS"]
+    assert "hardware_deemphasis_corner_hz" in MODULE["HARDWARE_GROUP_KEYS"]["receive"]
+    assert "hardware_preemphasis_corner_hz" in MODULE["HARDWARE_GROUP_KEYS"]["transmit"]
 
 
 def test_fixed_filters_have_a_dedicated_menu():

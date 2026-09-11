@@ -245,8 +245,10 @@ struct chan_usbradio_pvt usbradio_default = {
 	 * future native-rate app_rpt path can bypass conversion. */
 	.plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT,
 	.plus_app_rpt_samples = URP_LINK_SAMPLES,
-	/* 750 us land-mobile pre/deemphasis: fc = 1 / (2*pi*750 us). */
-	.plus_emphasis_corner_hz = 212.206590789,
+	/* Default receiver de-emphasis corner frequency in Hz. */
+	.plus_deemphasis_corner_hz = 300.0,
+	/* Default transmitter pre-emphasis corner frequency in Hz. */
+	.plus_preemphasis_corner_hz = 300.0,
 };
 
 struct chan_usbradio_pvt *usbradioplus_channel_first(void)
@@ -2970,7 +2972,8 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 				   "channel being Composite!!\n");
 	}
 
-	if (o->plus_emphasis_corner_hz <= 0.0 || o->plus_emphasis_corner_hz >= 300.0) {
+	if (o->plus_deemphasis_corner_hz <= 0.0 || o->plus_deemphasis_corner_hz > 500.0 ||
+	    o->plus_preemphasis_corner_hz <= 0.0 || o->plus_preemphasis_corner_hz > 500.0) {
 		ast_log(LOG_ERROR, "RadioPlus/%s: invalid native DSP configuration\n", o->name);
 		destroy_unlinked_channel(o);
 		return NULL;

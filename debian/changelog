@@ -1,5 +1,6 @@
 usbradioplus (0.1.0~alpha17-1) unstable; urgency=medium
 
-  * Initial Debian packaging.
+  * Split the receiver de-emphasis and transmitter pre-emphasis corners.
+  * Separate push preflight from the full pull-request quality gate.
 
- -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sun, 30 Aug 2026 21:00:00 -0500
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 11 Sep 2026 15:07:00 -0500

@@ -607,7 +607,7 @@ def test_section_options_reports_missing_defaults_without_crashing(monkeypatch):
         ("gpio", "prompt_number", "2"),
         ("address", "prompt_number", "0x378"),
         ("float", "prompt_number", "1.5"),
-        ("emphasis", "prompt_number", "300"),
+        ("corner_frequency", "prompt_number", "300"),
         ("ctcss_frequency", "prompt_number", "100.0"),
         ("ctcss_phase", "prompt_number", "120.0"),
         ("ctcss_tail_frequency", "prompt_number", "55.0"),
@@ -635,13 +635,53 @@ def test_section_options_edits_every_setting_kind(monkeypatch, kind, editor, ent
     settings = {key: ("Test value", kind)}
     monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
     monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: {("hardware", key): "0"})
-    monkeypatch.setitem(namespace, editor, lambda *_args: (0, entered))
+    monkeypatch.setitem(namespace, editor, lambda *_args, **_kwargs: (0, entered))
     monkeypatch.setitem(
         namespace, "apply_config", lambda old, new: applied.append((old, new)) or False
     )
     monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (1, "")))
     MODULE["section_options_menu"]("hardware", settings, "Test")
     assert applied and f"{key} = {entered}" in applied[0][1]
+
+
+def test_hardware_corner_frequency_editors_use_open_closed_range(monkeypatch):
+    """Keep independent hardware emphasis corners aligned with parser validation.
+
+    @param monkeypatch Pytest fixture that restores patched process and module state.
+    """
+    namespace = globals_for("section_options_menu")
+    prompts = []
+    settings = {
+        "hardware_deemphasis_corner_hz": MODULE["HARDWARE_SETTINGS"][
+            "hardware_deemphasis_corner_hz"
+        ],
+        "hardware_preemphasis_corner_hz": MODULE["HARDWARE_SETTINGS"][
+            "hardware_preemphasis_corner_hz"
+        ],
+    }
+    defaults = {
+        ("hardware", "hardware_deemphasis_corner_hz"): "300.0",
+        ("hardware", "hardware_preemphasis_corner_hz"): "300.0",
+    }
+    monkeypatch.setitem(namespace, "read_config", lambda: "[hardware]\n")
+    monkeypatch.setitem(namespace, "shipped_modern_defaults", lambda: defaults)
+    monkeypatch.setitem(
+        namespace,
+        "prompt_number",
+        lambda *args, **kwargs: prompts.append((args, kwargs)) or (1, ""),
+    )
+    monkeypatch.setitem(namespace, "dialog", sequence((0, "1"), (0, "2"), (1, "")))
+    MODULE["section_options_menu"]("hardware", settings, "Hardware")
+    assert prompts == [
+        (
+            ("Receiver de-emphasis corner frequency", "300.0", "float", 0.0, 500.0, "Hz"),
+            {"exclusive_low": True},
+        ),
+        (
+            ("Transmitter pre-emphasis corner frequency", "300.0", "float", 0.0, 500.0, "Hz"),
+            {"exclusive_low": True},
+        ),
+    ]
 
 
 def test_signaling_level_editors_use_the_parser_ranges_and_units():

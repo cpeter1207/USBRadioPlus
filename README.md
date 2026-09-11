@@ -56,7 +56,7 @@ commands.
   service-monitor, activation, and rollback evidence required for an alpha.
 - [Generated source documentation](https://cpeter1207.github.io/USBRadioPlus/docs/)
   provides the Doxygen API and call graphs.
-- [Contributing](CONTRIBUTING.md) describes the mandatory quality gate and
+- [Contributing](CONTRIBUTING.md) describes push checks, the PR gate, and
   reproducible test containers.
 
 After installation, start with `man 7 usbradioplus`.

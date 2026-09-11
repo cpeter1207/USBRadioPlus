@@ -44,8 +44,10 @@ channel_enabled = yes
 ;hardware_output_b_assignment = off
 ; Invert the physical PTT output for interfaces wired active-low.
 ;hardware_ptt_inverted = no
-; De-emphasis and pre-emphasis corner frequency.
-;hardware_emphasis_corner_hz = 212.206590789
+; Receiver de-emphasis corner frequency (>0 through 500 Hz; default 300 Hz).
+;hardware_deemphasis_corner_hz = 300.0
+; Transmitter pre-emphasis corner frequency (>0 through 500 Hz; default 300 Hz).
+;hardware_preemphasis_corner_hz = 300.0
 ; Device selection and interface layout.
 ;hardware_device_identifier = 1-1
 ;hardware_serial =

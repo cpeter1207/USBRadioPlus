@@ -2701,11 +2701,17 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 		else
 			goto invalid;
 	}
-	if (GET("hardware", "hardware_emphasis_corner_hz")) {
+	if (GET("hardware", "hardware_deemphasis_corner_hz")) {
 		double frequency = strtod(value, &end);
 		if (end == value || *end || !isfinite(frequency))
 			goto invalid;
-		o->plus_emphasis_corner_hz = frequency;
+		o->plus_deemphasis_corner_hz = frequency;
+	}
+	if (GET("hardware", "hardware_preemphasis_corner_hz")) {
+		double frequency = strtod(value, &end);
+		if (end == value || *end || !isfinite(frequency))
+			goto invalid;
+		o->plus_preemphasis_corner_hz = frequency;
 	}
 	BOOLEAN("general", "channel_enabled", radioactive);
 	INTEGER("diagnostics", "diagnostics_trace_type", tracetype);
@@ -2796,7 +2802,7 @@ int save_tuning_config(struct chan_usbradio_pvt *o)
 }
 
 /** @brief Build the fixed native de-emphasis graph configuration.
- * @param o Radio channel whose flat-discriminator and emphasis settings apply.
+ * @param o Radio channel whose flat-discriminator and de-emphasis settings apply.
  * @param config Receives a zero-initialized FFmpeg graph configuration.
  */
 static void native_receive_deemphasis_config(const struct chan_usbradio_pvt *o,
@@ -2804,7 +2810,7 @@ static void native_receive_deemphasis_config(const struct chan_usbradio_pvt *o,
 {
 	memset(config, 0, sizeof(*config));
 	config->deemphasis_enabled = o->rxdemod == RX_AUDIO_FLAT;
-	config->emphasis_corner_hz = o->plus_emphasis_corner_hz;
+	config->emphasis_corner_hz = o->plus_deemphasis_corner_hz;
 	config->emphasis_reference_hz = 1000.0;
 }
 
@@ -2907,7 +2913,7 @@ static void native_local_dynamics_config(const struct txagc_chain *chain,
 }
 
 /** @brief Build the final transmitter graph configuration.
- * @param o Radio channel supplying pre-emphasis settings.
+ * @param o Radio channel supplying transmitter pre-emphasis settings.
  * @param chain Resolved voice/telemetry processing chain.
  * @param config Receives the final composite graph configuration.
  */
@@ -2923,7 +2929,7 @@ static void native_final_config(const struct chan_usbradio_pvt *o, const struct 
 		config->limiter_enabled = 0;
 	}
 	config->preemphasis_enabled = o->txpreemphasis;
-	config->emphasis_corner_hz = o->plus_emphasis_corner_hz;
+	config->emphasis_corner_hz = o->plus_preemphasis_corner_hz;
 	config->emphasis_reference_hz = 1000.0;
 	/* Voice/telemetry spectral shaping belongs to the configured processing
 	 * graph. The DCS-only shaper is built separately below. */

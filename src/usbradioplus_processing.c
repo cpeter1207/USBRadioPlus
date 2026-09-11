@@ -1025,7 +1025,8 @@ PROCESSING_PRIVATE const char
 		"hardware_parallel_pin_12_assignment",
 		"hardware_parallel_pin_13_assignment",
 		"hardware_parallel_pin_15_assignment",
-		"hardware_emphasis_corner_hz",
+		"hardware_deemphasis_corner_hz",
+		"hardware_preemphasis_corner_hz",
 };
 /** Accepted Asterisk jitter-buffer option names. */
 PROCESSING_PRIVATE const char *const asterisk_override_options[] = {
@@ -1306,10 +1307,11 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 	} else if (clean_slate_integer_limit(name, &integer_limit)) {
 		if (!valid_nonnegative_integer(value, integer_limit))
 			goto invalid;
-	} else if (!strcasecmp(name, "hardware_emphasis_corner_hz")) {
+	} else if (!strcasecmp(name, "hardware_deemphasis_corner_hz") ||
+		   !strcasecmp(name, "hardware_preemphasis_corner_hz")) {
 		double frequency = strtod(value, &end);
 		if (end == value || *end || !isfinite(frequency) || frequency <= 0.0 ||
-		    frequency >= 300.0)
+		    frequency > 500.0)
 			goto invalid;
 	} else if (!strncasecmp(name, "hardware_gpio_", 14)) {
 		if (strcasecmp(value, "in") && strcasecmp(value, "out0") &&
