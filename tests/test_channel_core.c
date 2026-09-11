@@ -34,6 +34,7 @@
 
 struct usb_device;
 struct usb_dev_handle;
+struct usbradioplus_radio_program_request;
 
 AVFrame *test_av_frame_alloc(void);
 int test_src_process(SRC_STATE *state, SRC_DATA *data);
