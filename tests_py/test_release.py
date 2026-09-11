@@ -163,17 +163,15 @@ def test_flat_defaults_are_copied_before_named_overrides():
     assert flat < copy < scoped
 
 
-def test_link_rejects_brickwall_filter_options():
-    """Verify link rejects brickwall filter options."""
+def test_fixed_transmit_bandpass_options_are_not_supported():
+    """Verify speech filtering is owned by the configured processing graph."""
     source = text("src/usbradioplus_processing.c")
-    validator = function_definition(source, "validate_named_option")
-    assert '!strcmp(kind, "link")' in validator
     for option in (
         "splatter_filter_enabled",
         "splatter_filter_highpass_hz",
         "splatter_filter_lowpass_hz",
     ):
-        assert f'"{option}"' in validator
+        assert f'"{option}"' not in source
 
 
 def test_pl_filter_comes_only_from_unified_processing_settings():
@@ -228,16 +226,19 @@ def test_duplex_routes_are_distinct():
 
 
 def test_software_duplex3_honors_dtmf_mute_state():
-    """Verify the native worker snapshots and mutes software-duplex3 DTMF."""
+    """Verify the direct renderer snapshots and mutes software-duplex3 DTMF."""
     native_tick = text("src/usbradioplus_native_tick.c")
     assert "snapshot->toneflag = channel->toneflag;" in native_tick
     assert "snapshot->usedtmf = channel->usedtmf;" in native_tick
     assert "snapshot->has_dsp = channel->dsp != NULL;" in native_tick
-    assert "urp_native_repeat_prepare(local_program, worker->local_native" in native_tick
+    expected_repeat_prepare = (
+        "urp_native_repeat_prepare(renderer->local_program, renderer->local_native"
+    )
+    assert expected_repeat_prepare in native_tick
     assert "input->usedtmf && input->has_dsp && input->toneflag" in native_tick
     assert '#include "usbradioplus_repeat.h"' in native_tick
     assert "urp_rate_convert_prepared(" in native_tick
-    assert "worker->down" in native_tick
+    assert "renderer->down" in native_tick
     assert "graphs->app_rpt_rate == URP_RATE_NATIVE" in native_tick
     common = text("src/usbradioplus_channel_common.c")
     assert "rpcr_set_rates(&channel->plus_program_ring" in common
@@ -267,7 +268,7 @@ def test_implementation_sources_are_never_textually_included():
 
 
 def test_echo_uses_native_buffer_only_for_software_duplex3():
-    """Verify software duplex3 selects worker-owned native echo."""
+    """Verify software duplex3 selects callback-owned native echo."""
     core = text("src/usbradioplus_channel_core.c")
     private = text("src/usbradioplus_channel_private.h")
     native_tick = text("src/usbradioplus_native_tick.c")
@@ -281,11 +282,9 @@ def test_echo_uses_native_buffer_only_for_software_duplex3():
         assert "nativeparrot" not in source
         assert "parrotmaxseconds" not in source
     assert "graphs->legacy_interface && graphs->echo_mode" in native_tick
-    assert "graphs->legacy_interface && worker->parrot.playing" in native_tick
-    assert (
-        "graphs->legacy_interface && input->rxkeyed && graphs->software_repeat_enabled"
-        in native_tick
-    )
+    assert "graphs->legacy_interface && renderer->parrot.playing" in native_tick
+    assert "graphs->legacy_interface && input->rxkeyed" in native_tick
+    assert "graphs->software_repeat_enabled" in native_tick
     assert "DEFAULT_ECHO_MAX * URP_NATIVE_SAMPLES" in native_tick
 
 
@@ -344,9 +343,12 @@ def test_native_receive_uses_modern_level_and_delay():
     assert "graphs->receive_squelch_delay_samples" in native
     assert "urp_prepare_receive_block" in native
     assert "delay[*delay_index]" in core
-    detector = source.index("urp_radio_process(o->radio")
-    receiver = source.index("usbradioplus_native_tick(o)", detector)
+    detector = source.index("urp_radio_process_timed(o->radio")
+    receiver = source.index("usbradioplus_native_tick(o, tx_write_ready)", detector)
     assert detector < receiver
+    admission = source.index("soundcard_admit_native_frame(o, &tx_admission)")
+    assert admission < detector
+    assert "info.bytes < (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short))" in source
 
 
 def test_hardware_input_gain_controls_capture():
@@ -498,14 +500,14 @@ def test_native_radio_interface_is_bounded():
     source = text("src/chan_usbradioplus.c")
     direct = set(
         re.findall(
-            r"\b(urp_radio_create|urp_radio_destroy|urp_radio_process|urp_radio_parse_codes)\s*\(",
+            r"\b(urp_radio_create|urp_radio_destroy|urp_radio_process_timed|urp_radio_parse_codes)\s*\(",
             source,
         )
     )
     assert direct == {
         "urp_radio_create",
         "urp_radio_destroy",
-        "urp_radio_process",
+        "urp_radio_process_timed",
         "urp_radio_parse_codes",
     }
     assert not (ROOT / "src/xpmr").exists()
@@ -515,7 +517,7 @@ def test_native_radio_interface_is_bounded():
         "urp_ctcss_decode",
         "MeasureBlock",
         "CHAN_TXSTATE_TOC",
-        "txCtcssTocTime - (2 * MS_PER_FRAME)",
+        "txCtcssTocTime - MS_PER_FRAME",
     ):
         assert behavior in radio
     assert "src/xpmr" not in text("Makefile")
@@ -621,7 +623,6 @@ def test_tuning_menus_report_the_correct_state_and_ranges():
         assert re.search(rf"{re.escape(left)},\s*{re.escape(right)}", processing)
     assert re.search(r'"local":\s*\{\s*"ctcss_filter_mode":\s*"highpass"', processing)
     assert '"input_gain_db": "6.0"' in processing
-    assert '"splatter_filter_enabled": "yes"' in processing
     assert 'groups.remove("Filters")' in processing
     assert 'groups.remove("Final limiter")' in processing
     assert "Continuous status and RX/TX audio meters" in tune
@@ -667,13 +668,13 @@ def test_tuning_tone_uses_native_transmitter_path():
     radio = text("src/usbradioplus_radio.c") + text("src/usbradioplus_radio.h")
     assert "plus_test_tone_enabled" in module
     assert "#define URP_LEGACY_TEST_TONE_PEAK 7518.0" in private
-    assert "URP_LEGACY_TEST_TONE_PEAK * sin(worker->test_tone_phase)" in native_tick
+    assert "URP_LEGACY_TEST_TONE_PEAK" in native_tick
     assert "2.0 * M_PI * 1000.0 / URP_RATE_NATIVE" in native_tick
     assert "if (input->test_tone_enabled)" in native_tick
     assert "TxTestTone" not in module
     assert "TxTestTone" not in radio
     assert native_tick.index("txagc_avfilter_process_prepared(&graphs->final") < native_tick.index(
-        "program[i] = URP_LEGACY_TEST_TONE_PEAK * sin(worker->test_tone_phase)"
+        "URP_LEGACY_TEST_TONE_PEAK"
     )
 
 
@@ -713,7 +714,7 @@ def test_native_ctcss_has_no_duplicate_signal_rendering_after_voice_processing()
     assert "txOutputGainA" in radio_header
     assert "txOutputGainB" in radio_header
     assert "txCtcssPhaseShift = pChan->txCtcssTocShift" in radio
-    assert "txCtcssTocTime - (2 * MS_PER_FRAME)" in radio
+    assert "txCtcssTocTime - MS_PER_FRAME" in radio
     assert "pChan->txCtcssTocTime / MS_PER_FRAME" in radio
     assert "urp_ctcss_legacy_frequency" in native
     assert "peak_215" in native and "peak_250" in native
@@ -913,7 +914,6 @@ def test_processing_options_use_stage_first_names():
         "limiter_",
         "lookahead_limiter_",
         "post_limiter_",
-        "splatter_filter_",
     ):
         assert re.search(rf"(?m)^;?{prefix}[a-z0-9_]*\s*=", canonical)
 
@@ -975,8 +975,8 @@ def test_link_path_has_no_separate_highpass_filter():
         assert "linkhighpass" not in text(path).lower()
 
 
-def test_transmitter_has_only_final_brickwall_bandpass():
-    """Verify transmitter has only final brickwall bandpass."""
+def test_transmitter_has_no_fixed_speech_bandpass():
+    """Verify speech filtering is not hidden outside the processing graph."""
     for path in ("src/chan_usbradioplus.c", "src/chan_usbradioplus_modern.c"):
         source = text(path)
         assert "plus_tx_hpf" not in source
@@ -985,8 +985,12 @@ def test_transmitter_has_only_final_brickwall_bandpass():
     common = text("src/usbradioplus_channel_common.c")
     assert "static void native_final_config" in common
     assert "*config = chain->agc;" in common
+    assert "config->dcs_spectral_shaping_enabled = 0;" in common
+    assert "config->dcs_spectral_lowpass_hz = 0.0;" in common
     for path in ("examples/usbradioplus.conf.sample", "man/usbradioplus.conf.5"):
-        assert "txvoicehighpass" not in text(path).lower()
+        contents = text(path).lower()
+        assert "txvoicehighpass" not in contents
+        assert "splatter_filter" not in contents
 
 
 def test_fixed_pl_filter_precedes_local_dynamics():
@@ -994,7 +998,7 @@ def test_fixed_pl_filter_precedes_local_dynamics():
     common = text("src/usbradioplus_channel_common.c")
     config = common[
         common.index("static void native_local_dynamics_config") : common.index(
-            "/** @brief Build the fixed transmitter-tail graph configuration"
+            "/** @brief Build the final transmitter graph configuration"
         )
     ]
     assert "*config = chain->agc;" in config

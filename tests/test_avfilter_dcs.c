@@ -131,8 +131,8 @@ static void test_dcs_spectral_shaping(void)
 	unsigned int captured = 0;
 
 	memset(&config, 0, sizeof(config));
-	config.splatter_filter_enabled = 1;
-	config.output_lowpass_hz = 250.0;
+	config.dcs_spectral_shaping_enabled = 1;
+	config.dcs_spectral_lowpass_hz = 250.0;
 	/* The shaped NRZ waveform needs its calibrated -3.42 dB compensation.
 	 * The 134.4-Hz EOT sine has a separate prepared graph with unity gain. */
 	config.output_gain_db = -3.42;
@@ -196,8 +196,8 @@ static void test_dcs_turnoff_spectral_shaping(void)
 	unsigned int captured = 0;
 
 	memset(&config, 0, sizeof(config));
-	config.splatter_filter_enabled = 1;
-	config.output_lowpass_hz = 250.0;
+	config.dcs_spectral_shaping_enabled = 1;
+	config.dcs_spectral_lowpass_hz = 250.0;
 	config.output_gain_db = 0.0;
 	urp_dcs_init(&encoder);
 	urp_dcs_configure(&encoder, -1, 0, 023, 0);

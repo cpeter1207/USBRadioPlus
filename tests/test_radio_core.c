@@ -612,7 +612,14 @@ static void test_runtime_state_machine(void)
 			assert(++tail_blocks <= 16U);
 		}
 	}
-	assert(state->txState == CHAN_TXSTATE_FINISHING);
+	assert(state->txState == CHAN_TXSTATE_FINISHING && state->txBufferClear == 8);
+	for (unsigned int post_tail_frame = 0U; post_tail_frame < 8U; ++post_tail_frame) {
+		assert(state->txPttOut);
+		assert(process_once(state) == 0);
+	}
+	assert(state->txState == CHAN_TXSTATE_COMPLETE && state->txPttOut);
+	assert(process_once(state) == 0);
+	assert(state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
 
 	state->txState = CHAN_TXSTATE_IDLE;
 	state->txPttOut = 0;
@@ -755,6 +762,35 @@ static void test_runtime_state_machine(void)
 	state->txState = CHAN_TXSTATE_ACTIVE;
 	state->b.txCtcssInhibit = 1;
 	assert(process_once(state) == 0 && state->txState == CHAN_TXSTATE_FINISHING);
+	assert(!urp_radio_destroy(state));
+}
+
+/** Verify transmitter signaling cannot run ahead of an unavailable DAC frame. */
+static void test_transmit_timeline_admission(void)
+{
+	urp_radio_state template = {
+		.pRxCodeSrc = "100.0", .pTxCodeSrc = "100.0", .pTxCodeDefault = "100.0"};
+	int16_t input[SAMPLES_PER_BLOCK * 6 * 2] = {0};
+	int16_t output[SAMPLES_PER_BLOCK] = {0};
+	int16_t transmit[SAMPLES_PER_BLOCK * 6 * 2];
+	urp_radio_state *state = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+
+	assert(state);
+	state->b.ctcssRxEnable = 0;
+	memset(transmit, 0x5a, sizeof(transmit));
+	state->txPttIn = 1;
+	assert(!urp_radio_process_timed(state, input, output, transmit, 0));
+	assert(state->frameCountRx == 1 && state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
+	for (size_t sample = 0; sample < sizeof(transmit) / sizeof(transmit[0]); ++sample)
+		assert(!transmit[sample]);
+
+	assert(!urp_radio_process_timed(state, input, output, transmit, 1));
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+	state->txPttIn = 0;
+	assert(!urp_radio_process_timed(state, input, output, transmit, 0));
+	assert(state->txState == CHAN_TXSTATE_ACTIVE && state->txPttOut);
+	assert(!urp_radio_process_timed(state, input, output, transmit, 1));
+	assert(state->txState == CHAN_TXSTATE_FINISHING || state->txState == CHAN_TXSTATE_TOC);
 	assert(!urp_radio_destroy(state));
 }
 
@@ -1380,6 +1416,7 @@ int main(void)
 	RUN_TEST(test_create_process_destroy);
 	RUN_TEST(test_create_variants);
 	RUN_TEST(test_runtime_state_machine);
+	RUN_TEST(test_transmit_timeline_admission);
 	RUN_TEST(test_invalid_dcs_radio_configuration);
 	RUN_TEST(test_dcs_turnoff_duration_bounds);
 	RUN_TEST(test_dcs_radio_state_machine);

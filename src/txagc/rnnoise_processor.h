@@ -63,14 +63,14 @@ void txagc_rnnoise_init(struct txagc_rnnoise *state);
  * @param state Processor or stream state owned by the caller.
  */
 void txagc_rnnoise_destroy(struct txagc_rnnoise *state);
-/** @brief Allocate or reconfigure RNNoise state before native worker processing.
+/** @brief Allocate or reconfigure RNNoise state before native callback processing.
  * @param state Processor state owned by the radio channel.
  * @param sample_rate Native input sample rate in Hz.
  * @return Zero when a reusable denoiser and converters are ready, otherwise nonzero.
  *
  * A successful call makes txagc_rnnoise_process_prepared() allocation-free.
  * The native receiver uses a fixed 48 kHz rate and prepares this state before
- * its first native worker render.
+ * its first native callback render.
  */
 int txagc_rnnoise_prepare(struct txagc_rnnoise *state, unsigned int sample_rate);
 /** @brief Process an already prepared RNNoise stream without allocating or reconfiguring.

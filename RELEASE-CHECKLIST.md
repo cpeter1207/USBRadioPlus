@@ -64,51 +64,56 @@ following checks pass.
 
 ## Real-time audio and distribution behavior
 
-- [ ] Confirm the app_rpt-to-CM119 bridge is the sole sample-at-a-time,
-      lock-free SPSC program ring. Its 110 ms occupancy target is clock
-      recovery only; it must not delay initial playout, gate PTT, or reserve
-      source audio before output.
+- [ ] Confirm the app_rpt-to-hardware-callback bridge is the sole
+      sample-at-a-time, lock-free SPSC program ring. Its 110 ms occupancy
+      target is clock recovery only; it must not delay initial playout, gate
+      PTT, or reserve source audio before output.
 - [ ] Confirm temporary program-source shortfalls use bounded smooth
       concealment, sustained shortfalls fade to silence, and counters expose
       both shortfalls and producer overflow.
 - [ ] Confirm app_rpt input and 48 kHz device output continue while idle with
-      silence. Echo playback is the only intended exception to app_rpt program
-      admission. PTT, COS, and CTCSS/DCS decode must not alter device-write
-      cadence.
-- [ ] Confirm native carrier, CTCSS, and DCS callback paths make no Asterisk
-      logging calls, take no locks, allocate no memory, and perform no file I/O.
-      Confirm they do not execute FFmpeg, RNNoise, or sample-rate conversion.
-      Control-plane parsing and construction diagnostics remain allowed.
-- [ ] Confirm the hardware callback and native render worker use only bounded,
-      preallocated SPSC PCM queues. Exercise empty and full input/output queues,
-      worker-start failure, orderly stop, and teardown with an outstanding graph
-      reference; record the tests or failure-injection evidence for this commit.
-- [ ] Confirm a missing completed worker block produces one silent device block
-      without stopping device cadence, wedging queue metadata, changing program
-      ring accounting, or changing PTT. Exercise worker lag and a program-ring
-      shortfall separately.
-- [ ] Confirm PTT is published synchronously from the signaling engine, not from
-      rendered audio or either queue. Exercise a worker shortfall and CTCSS/DCS
-      turn-off tails; physical PTT must remain asserted until the signaling
-      engine releases it.
-- [ ] Confirm native statistics are read as coherent worker snapshots and that
-      meter reset and echo-clear requests are consumed only between complete
-      render frames. Do not accept direct control-plane reads of mutable FFmpeg,
+      silence. Native-parrot playback may be the sole external program-audio
+      producer only when it supplies native-rate samples through the lock-free
+      program ring; legacy app_rpt echo is distinct. PTT, COS, and CTCSS/DCS
+      decode must not alter device-write cadence.
+- [ ] Confirm the hardware callback directly performs local receive processing,
+      final voice/telemetry processing, CTCSS/DCS rendering, and native DAC
+      rendering from preallocated state. Confirm no native worker thread or
+      native input/output worker queues exist. No audio worker is permitted
+      other than the native-parrot producer described above.
+- [ ] Confirm native carrier, CTCSS, DCS, RNNoise, FFmpeg, and sample-rate
+      conversion callback paths make no Asterisk logging calls, take no locks,
+      allocate no memory, or perform file I/O. Prepared graph execution is
+      allowed in the callback; graph construction and reconfiguration are not.
+- [ ] Confirm a program-ring shortfall produces bounded concealment without
+      stopping device cadence, changing program-ring accounting, or changing
+      PTT. Exercise a program-ring shortfall separately from physical-device
+      short or failed writes.
+- [ ] Confirm the signaling engine remains the sole desired-PTT owner: rendered
+      audio and program-ring occupancy must never request or release PTT. After
+      a complete non-silent DAC submission, verify physical PTT remains asserted
+      through the OSS measured or PortAudio estimated playback delay plus one
+      20 ms native block, while silence drains. Exercise short, failed, and
+      underflowed writes, a rekey during drain, a program-ring shortfall, and
+      CTCSS/DCS turn-off tails.
+- [ ] Confirm native statistics are read as coherent renderer snapshots and that
+      meter reset and echo-clear requests are consumed only at complete callback
+      boundaries. Do not accept direct control-plane reads of mutable FFmpeg,
       RNNoise, SRC, or parrot state as evidence.
-- [ ] Confirm each incoming-link audiohook callback only exchanges bounded,
-      preallocated PCM through its SPSC queues. FFmpeg execution and graph-meter
-      updates must occur only in that hook's worker; the callback must not lock,
-      allocate, log, or run FFmpeg.
-- [ ] Confirm link output is snapshotted before current input is queued, so it
-      renders only a complete preceding input frame. Exercise startup, worker
-      lag, malformed metadata, and reload generation changes; each must taper
-      to silence without replaying stale audio or changing PTT. Record link
-      worker input-overflow, output-underflow, malformed-output, and graph
-      shortfall counters.
-- [ ] Confirm link meter reads use a coherent reader-pinned worker snapshot
+- [ ] Confirm each incoming-link audiohook synchronously applies its prepared
+      FFmpeg graph in place to the current eligible frame using only its
+      preallocated callback workspace. Confirm there is no deferred
+      link-rendering thread or input/output SPSC handoff queue, and that the
+      callback does not lock, allocate, or log.
+- [ ] Exercise graph startup, format or capacity mismatch, unavailable graph,
+      graph-processing failure, and reload generation changes. A bypass or
+      failure must leave the current frame unchanged, preserve audio cadence,
+      and never change PTT. Record FFmpeg startup-fill, runtime-shortfall, and
+      synchronous graph-error measurements.
+- [ ] Confirm link meter reads use a coherent reader-pinned callback snapshot
       that may be briefly stale or unavailable rather than blocking audio.
-      Confirm detach stops and joins every link worker before graph-slot,
-      queued-reference, or SPSC-storage destruction.
+      Confirm detach and destruction quiesce the callback before graph-slot or
+      callback-workspace destruction.
 - [ ] Confirm package and tarball installation neither loads the module nor
       restarts Asterisk, edits `modules.conf`, or edits `rpt.conf`.
 

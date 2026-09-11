@@ -111,7 +111,7 @@ struct usbradioplus_native_graph_set {
 	struct txagc_avfilter receive_filter;
 	/** Optional local dynamics stages following receive filtering. */
 	struct txagc_avfilter local_dynamics;
-	/** Fixed transmitter filter/limiter/filter tail. */
+	/** Final voice/telemetry graph, including pre-emphasis and final limiting. */
 	struct txagc_avfilter final;
 	/** DCS spectrum-shaping stage. */
 	struct txagc_avfilter dcs;
@@ -138,7 +138,7 @@ struct usbradioplus_native_graph_slot {
 /** Lock-free reader/writer gate for mutable radio-signaling state.
  *
  * The legacy-compatible CTCSS parser replaces decoder-owned arrays.  Native
- * audio workers therefore announce the short span in which they touch the
+ * hardware callbacks therefore announce the short span in which they touch the
  * signaling engine, while a control-plane reload temporarily excludes new
  * readers before reparsing.  The reader side uses atomics only and never
  * waits, allocates, or takes an adapter lock.
@@ -152,11 +152,30 @@ struct usbradioplus_radio_access_slot {
 	atomic_flag writer;
 };
 
-/** Opaque per-channel worker that owns non-real-time native audio processing. */
-struct usbradioplus_native_worker;
+/** Callback-owned post-audio transmitter hold.
+ *
+ * The signaling engine has no visibility into audio already accepted by the
+ * CM119 playback queue.  After its last non-silent DAC submission, this state
+ * retains its logical PTT output until the measured or estimated queue delay
+ * and one native block have elapsed.  The adapter continues submitting silence
+ * while draining, so no later program PCM can extend the transmission.
+ */
+struct usbradioplus_tx_playout_hold {
+	/** Native callbacks remaining before the virtual PTT hold may release. */
+	unsigned int callbacks_remaining;
+	/** Last PTT output actually requested by the signaling engine. */
+	int engine_ptt_out;
+	/** Previous external PTT input, used to cancel a stale drain on rekey. */
+	int input_keyed;
+	/** Nonzero while txPttOut is held only for queued DAC audio. */
+	int draining;
+};
+
+/** Opaque per-channel renderer that owns persistent native DSP state. */
+struct usbradioplus_native_renderer;
 struct audiostatistics;
 
-/** Meter values copied from one FFmpeg graph by its owning worker. */
+/** Meter values copied from one FFmpeg graph by its owning callback. */
 struct usbradioplus_native_filter_statistics {
 	/** Graph-reported latency in samples. */
 	unsigned int latency_samples;
@@ -212,25 +231,19 @@ struct usbradioplus_native_filter_statistics {
 	double cleanup_post_8_plus_max_rms_dbfs;
 };
 
-/** Lock-free snapshot of measurements owned by a native audio worker.
+/** Lock-free snapshot of measurements owned by the native callback renderer.
  *
- * The worker is the sole writer of these values.  Control-plane users obtain
- * a coherent copy through usbradioplus_native_worker_stats_read() rather than
+ * The hardware callback is the sole writer. Control-plane users obtain a
+ * coherent copy through usbradioplus_native_renderer_stats_read() rather than
  * reading live FFmpeg, RNNoise, SRC, or parrot state directly.
  */
-struct usbradioplus_native_worker_stats {
+struct usbradioplus_native_renderer_stats {
 	/** Completed native render blocks. */
 	uint64_t native_frames;
 	/** Failed native-rate/sample-rate conversions. */
 	uint64_t src_errors;
 	/** Program-source shortfalls observed while transmit was requested. */
 	uint64_t link_queue_underflows;
-	/** Complete ADC frames rejected because the worker input queue was full. */
-	uint64_t worker_input_overflows;
-	/** DAC/app frames replaced with silence because worker output was unavailable. */
-	uint64_t worker_output_underflows;
-	/** Published output records discarded because their paired PCM was malformed. */
-	uint64_t worker_output_malformed;
 	/** Native echo playback blocks emitted. */
 	uint64_t parrot_playback_frames;
 	/** Current native echo recording length in samples. */
@@ -259,9 +272,9 @@ struct usbradioplus_native_worker_stats {
 	double tx_program_max_peak_dbfs;
 	/** Cumulative final transmitter PCM-rail samples. */
 	uint64_t tx_program_rail_samples;
-	/** RNNoise frames completed by the worker. */
+	/** RNNoise frames completed on the local-receive callback branch. */
 	uint64_t rnnoise_frames;
-	/** RNNoise output samples delivered by the worker. */
+	/** RNNoise output samples delivered by the local-receive callback branch. */
 	uint64_t rnnoise_output_samples;
 	/** RNNoise startup samples withheld before output became available. */
 	uint64_t rnnoise_startup_samples;
@@ -347,109 +360,71 @@ usbradioplus_native_graphs_acquire(struct chan_usbradio_pvt *channel);
  * @param channel Native radio channel.
  */
 void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel);
-/** @brief Process a native receiver block and render the corresponding transmitter block.
+/** @brief Process a native receiver block and render its matching transmitter block.
  * @param channel Private state of the selected radio channel.
+ * @param transmit_ready Nonzero only when the physical DAC will accept this block.
  */
-void usbradioplus_native_tick(struct chan_usbradio_pvt *channel);
-/** @brief Acknowledge that the current native DAC frame was completely accepted.
+void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_ready);
+/** @brief Create the persistent direct native renderer.
  * @param channel Private state of the selected radio channel.
+ * @return Zero on success or nonzero when setup fails.
  *
- * The hardware callback calls this only after a complete sound-device write.
- * It retires only the native frame copied by that callback; a write that
- * deliberately substituted idle silence discards that exact staged frame.
- * Until then, the native TX queue retains the same frame for retry while
- * receive PCM continues toward app_rpt at its normal cadence.
+ * Setup allocates all callback workspaces. The hardware callback later owns
+ * prepared FFmpeg, local-receive RNNoise, and legacy-only SRC state directly.
  */
-void usbradioplus_native_tx_output_ack(struct chan_usbradio_pvt *channel);
-/** @brief Start the per-channel non-real-time native audio worker.
- * @param channel Private state of the selected radio channel.
- * @return Zero on success or nonzero when the worker could not start.
- *
- * The worker owns FFmpeg, RNNoise, and sample-rate conversion. The hardware
- * callback exchanges only bounded PCM frames and snapshot metadata with it
- * through SPSC queues.
- */
-int usbradioplus_native_worker_start(struct chan_usbradio_pvt *channel);
-/** @brief Stop and destroy a channel's native audio worker.
+int usbradioplus_native_renderer_start(struct chan_usbradio_pvt *channel);
+/** @brief Stop and destroy a channel's native renderer after callback quiescence.
  * @param channel Private state of the selected radio channel.
  */
-void usbradioplus_native_worker_stop(struct chan_usbradio_pvt *channel);
-/** @brief Copy the most recently published coherent native-worker diagnostics snapshot.
+void usbradioplus_native_renderer_stop(struct chan_usbradio_pvt *channel);
+/** @brief Copy the most recently published direct-renderer diagnostics snapshot.
  * @param channel Private state of the selected radio channel.
- * @param statistics Receives the current worker-owned measurements.
+ * @param statistics Receives the current callback-renderer measurements.
  * @return Zero on success, or nonzero when native processing is unavailable or a
  * bounded retry cannot pin a snapshot without waiting.
  */
-int usbradioplus_native_worker_stats_read(struct chan_usbradio_pvt *channel,
-					  struct usbradioplus_native_worker_stats *statistics);
-/** @brief Request a worker-side reset of native diagnostic measurements.
+int usbradioplus_native_renderer_stats_read(struct chan_usbradio_pvt *channel,
+					    struct usbradioplus_native_renderer_stats *statistics);
+/** @brief Request a callback-boundary reset of native diagnostic measurements.
  * @param channel Private state of the selected radio channel.
  *
- * The request is consumed between complete worker frames, so it never races
+ * The request is consumed between complete callback frames, so it never races
  * mutable FFmpeg or RNNoise measurement state.
  */
-void usbradioplus_native_worker_stats_reset(struct chan_usbradio_pvt *channel);
-/** @brief Request that the worker discard native echo recording and playback.
+void usbradioplus_native_renderer_stats_reset(struct chan_usbradio_pvt *channel);
+/** @brief Request that the callback renderer discard native echo recording and playback.
  * @param channel Private state of the selected radio channel.
  *
  * The request clears native echo playback and its admission gate at the next
  * complete render-frame boundary.
  */
-void usbradioplus_native_worker_clear_parrot(struct chan_usbradio_pvt *channel);
-/** @brief Request that the worker discard queued legacy echo PCM.
+void usbradioplus_native_renderer_clear_parrot(struct chan_usbradio_pvt *channel);
+/** @brief Request that the callback renderer discard queued legacy echo PCM.
  * @param channel Private state of the selected radio channel.
  *
- * The request is consumed between complete worker frames by advancing the
+ * The request is consumed between complete callback frames by advancing the
  * legacy echo queue's consumer cursor.  It never resets the producer cursor
  * while the audio adapter can still record echo audio.
  */
-void usbradioplus_native_worker_clear_legacy_echo(struct chan_usbradio_pvt *channel);
-/** @brief Copy transmitter audio measurements owned by the native worker.
+void usbradioplus_native_renderer_clear_legacy_echo(struct chan_usbradio_pvt *channel);
+/** @brief Copy transmitter audio measurements owned by the native renderer.
  * @param channel Private state of the selected radio channel.
  * @param statistics Receives the Asterisk-compatible transmitter meter state.
  * @return Zero on success, or nonzero when native processing is unavailable or a
  * bounded retry cannot pin a snapshot without waiting.
  */
-int usbradioplus_native_worker_tx_audio_stats_read(struct chan_usbradio_pvt *channel,
-						   struct audiostatistics *statistics);
+int usbradioplus_native_renderer_tx_audio_stats_read(struct chan_usbradio_pvt *channel,
+						     struct audiostatistics *statistics);
 #ifdef URP_PROCESSING_TESTING
-/** @brief Advance queued native graph work explicitly in the deterministic harness.
- * @param channel Channel with an already started native worker.
- *
- * This test-only operation runs outside @ref usbradioplus_native_tick.  Tests
- * call it after submitting a callback frame, then use a later callback frame
- * (or the output-consumption hook below) to consume the rendered result.
- */
-void usbradioplus_native_worker_test_process_all(struct chan_usbradio_pvt *channel);
-/** @brief Queue one synthetic native-worker output record for a deterministic regression.
- * @param channel Channel with an already started native worker.
- * @param descriptor_app_samples App-sample count written into the output descriptor.
- * @param paired_app_samples Actual app PCM words placed before the fixed DAC span.
- * @param fill Value used for every injected PCM word.
- * @return Zero on success, or nonzero if the bounded test queue cannot accept the record.
- *
- * This test-only hook deliberately permits a descriptor count different from its
- * paired app span. Production code never constructs such a record; the hook
- * verifies that corruption cannot wedge the consumer or affect signaling PTT.
- */
-int usbradioplus_native_worker_test_inject_output(struct chan_usbradio_pvt *channel,
-						  unsigned int descriptor_app_samples,
-						  unsigned int paired_app_samples, short fill);
-/** @brief Consume one synthetic native-worker result using normal callback behavior.
- * @param channel Channel with an already started native worker.
- *
- * The helper runs the ordinary output-consumption path and independently
- * republishes the signaling engine's desired physical PTT state. It exists only
- * for deterministic queue-corruption regression tests.
- */
-void usbradioplus_native_worker_test_consume(struct chan_usbradio_pvt *channel);
-/** @brief Consume a synthetic result while deliberately retaining its DAC frame.
- * @param channel Channel with an already started native worker.
- *
- * This test-only hook models a temporarily full sound-device queue.  A later
- * ordinary test consume acknowledges the retained frame.
- */
-void usbradioplus_native_worker_test_consume_unacked(struct chan_usbradio_pvt *channel);
+/** @brief Force a bounded diagnostics read to exhaust all retries. */
+int usbradioplus_native_renderer_test_statistics_retry(struct chan_usbradio_pvt *channel);
+/** @brief Force a bounded TX-meter diagnostics read to exhaust all retries. */
+int usbradioplus_native_renderer_test_tx_audio_statistics_retry(struct chan_usbradio_pvt *channel);
+/** @brief Exercise callback diagnostics publication while its inactive page is retained. */
+void usbradioplus_native_renderer_test_statistics_publish_busy(struct chan_usbradio_pvt *channel);
+/** @brief Exercise the lock-free hardware routing snapshot retry. */
+void usbradioplus_native_renderer_test_hardware_snapshot_race(
+	const struct chan_usbradio_pvt *channel);
 #endif
 /** @brief Read capture, playback, and sidetone mixer limits for calibration.
  * @param channel Private state of the selected radio channel.

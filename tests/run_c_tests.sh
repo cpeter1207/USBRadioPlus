@@ -45,7 +45,7 @@ $root/src/txagc/rnnoise_processor.c"
 channel_variant_sources="$root/src/usbradioplus_channel_common.c \
 $root/src/usbradioplus_native_tick.c $root/src/usbradioplus_tune_menu.c"
 channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process -Wl,--wrap=rpcr_init \
-	-Wl,--wrap=txagc_avfilter_prepare \
+	-Wl,--wrap=txagc_avfilter_prepare -Wl,--wrap=txagc_avfilter_process_prepared \
 	-Wl,--wrap=rpcr_set_rates \
 	-Wl,--wrap=usbradioplus_processing_get_option \
 	-Wl,--wrap=usbradioplus_processing_get_hardware \
@@ -288,7 +288,8 @@ if [ -n "${ASL_MODERN_INCLUDEDIR:-}" ]; then
 		-I"$ASL_MODERN_INCLUDEDIR" -I/usr/include -I"$root/src" \
 		-Wl,--gc-sections $channel_wrap_flags -Wl,--wrap=libusb_open \
 		-Wl,--wrap=libusb_close -Wl,--wrap=libusb_claim_interface \
-		-Wl,--wrap=libusb_detach_kernel_driver -o "$out/channel-core-modern" \
+		-Wl,--wrap=libusb_detach_kernel_driver -Wl,--wrap=Pa_GetStreamInfo \
+		-o "$out/channel-core-modern" \
 		$(pkg-config --cflags --libs rnnoise samplerate libavfilter libavutil alsa \
 			portaudio-2.0 libusb-1.0) -lm \
 		$rpcr_libs

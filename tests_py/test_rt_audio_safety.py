@@ -37,7 +37,7 @@ def _function_body(source: str, name: str) -> str:
 
 
 def test_shared_ctcss_transition_helper_is_callback_safe():
-    """Decoded-tone publication must not log from either audio worker."""
+    """Decoded-tone publication must not log from either audio callback."""
     source = (ROOT / "src/usbradioplus_channel_common.c").read_text(encoding="utf-8")
     start = source.index("void usbradioplus_refresh_ctcss_decode(")
     end = source.index("\nvoid usbradioplus_wait_for_eeprom_idle", start)
@@ -65,7 +65,7 @@ def test_native_graph_and_radio_access_lifetime_gates_use_sc_handoffs():
 
 
 def test_shared_ffmpeg_slot_uses_the_same_safe_reader_handoff():
-    """The link worker must never acquire a graph reclaimed by reload."""
+    """The synchronous link callback must not acquire a retired graph."""
     source = (ROOT / "src/txagc/avfilter_processor.c").read_text(encoding="utf-8")
     publish = _function_body(source, "txagc_avfilter_slot_publish_candidate")
     acquire = _function_body(source, "txagc_avfilter_slot_acquire")
@@ -80,10 +80,27 @@ def test_shared_ffmpeg_slot_uses_the_same_safe_reader_handoff():
     assert "atomic_store_explicit(&slot->active, NULL, memory_order_seq_cst)" in destroy
 
 
-def test_native_tick_has_no_direct_blocking_or_control_plane_operations():
-    """The shared DSP tick must remain a prepared, bounded callback path."""
+def test_direct_native_renderer_is_rt_safe():
+    """Direct rendering may use prepared DSP, but never block or allocate."""
     source = (ROOT / "src/usbradioplus_native_tick.c").read_text(encoding="utf-8")
     callback = _function_body(source, "usbradioplus_native_tick")
+    transmit = _function_body(source, "native_renderer_render_transmit")
+    direct_path = "\n".join(
+        (
+            callback,
+            _function_body(source, "native_renderer_apply_requests"),
+            _function_body(source, "read_native_program"),
+            _function_body(source, "process_receive_filter"),
+            _function_body(source, "read_hardware_snapshot"),
+            _function_body(source, "native_renderer_snapshot"),
+            _function_body(source, "native_renderer_copy_receive_to_app"),
+            _function_body(source, "native_renderer_render_receive"),
+            _function_body(source, "native_renderer_generate_signaling"),
+            transmit,
+            _function_body(source, "native_renderer_finish_block"),
+            _function_body(source, "native_renderer_silence"),
+        )
+    )
     forbidden = (
         "ast_debug(",
         "ast_log(",
@@ -98,28 +115,42 @@ def test_native_tick_has_no_direct_blocking_or_control_plane_operations():
         "free(",
         "fopen(",
         "fwrite(",
+        "open(",
+        "read(",
+        "write(",
+        "pthread_",
+        "ast_pthread_create",
+        "ast_cond_",
+        "sem_",
         "usleep(",
         "sleep(",
         "poll(",
         "select(",
-        "txagc_avfilter_",
-        "txagc_rnnoise_",
+        "ast_radio_hid_set_outputs(",
+        "ast_radio_ppwrite(",
+        "usbradioplus_parallel_program_write(",
+        "usbradioplus_program_radio(",
+        "kickptt(",
         "src_process(",
         "av_buffersrc_",
-        "native_worker_process_one(",
     )
     for operation in forbidden:
-        assert operation not in callback
+        assert operation not in direct_path, f"direct renderer must not call {operation}"
+
+    # The callback may invoke only preallocated/prepared DSP adapters. Keep
+    # these direct calls explicit so processing cannot become an async handoff.
+    assert "txagc_avfilter_process_prepared(" in direct_path
+    assert "txagc_rnnoise_process_prepared(" in direct_path
+    assert "urp_rate_convert_prepared(" in direct_path
+    assert "txagc_rnnoise_" not in transmit
 
 
-def test_link_audiohook_callback_is_queue_only():
-    """Keep synchronous Asterisk audiohook work out of FFmpeg and worker ownership."""
+def test_link_audiohook_callback_runs_prepared_graph_without_rt_unsafe_work():
+    """The link callback may process a prepared graph, never allocate or block."""
     source = (ROOT / "src/usbradioplus_processing.c").read_text(encoding="utf-8")
     callback = _function_body(source, "txagc_callback")
     forbidden = (
-        "txagc_avfilter_",
         "txagc_rnnoise_",
-        "av_",
         "src_process(",
         "ast_mutex_",
         "pthread_",
@@ -139,6 +170,9 @@ def test_link_audiohook_callback_is_queue_only():
     )
     for operation in forbidden:
         assert operation not in callback, f"txagc_callback must not call {operation}"
+    assert "txagc_avfilter_process_prepared(" in callback
+    assert "txagc_avfilter_slot_acquire(" in callback
+    assert "txagc_avfilter_slot_release(" in callback
 
 
 def test_legacy_audio_callback_publishes_ptt_without_physical_io():
@@ -149,13 +183,13 @@ def test_legacy_audio_callback_publishes_ptt_without_physical_io():
     )
     end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
     callback = source[start:end]
-    assert "usbradioplus_publish_hardware_ptt(o, o->radio->txPttOut)" in callback
+    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
     for operation in FORBIDDEN_AUDIO_OPERATIONS:
         assert operation not in callback
 
 
-def test_legacy_unload_quiesces_channel_before_native_worker_teardown():
-    """An asynchronous soft hangup must never leave a read callback with freed DSP state."""
+def test_legacy_unload_quiesces_channel_before_native_renderer_teardown():
+    """An asynchronous soft hangup must never leave a callback with freed DSP state."""
     source = (ROOT / "src/chan_usbradioplus.c").read_text(encoding="utf-8")
     hangup = _function_body(source, "usbradio_hangup")
     unload = _function_body(source, "unload_module")
@@ -170,12 +204,12 @@ def test_legacy_unload_quiesces_channel_before_native_worker_teardown():
 
 
 def test_modern_audio_callback_publishes_ptt_without_physical_io():
-    """Keep PortAudio's native worker free of hardware control and wake-pipe I/O."""
+    """Keep PortAudio's direct native callback free of control and wake-pipe I/O."""
     source = (ROOT / "src/chan_usbradioplus_modern.c").read_text(encoding="utf-8")
     start = source.index("URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)\n{")
     end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
     callback = source[start:end]
-    assert "usbradioplus_publish_hardware_ptt(o, o->radio->txPttOut)" in callback
+    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
     for operation in FORBIDDEN_AUDIO_OPERATIONS:
         assert operation not in callback
 

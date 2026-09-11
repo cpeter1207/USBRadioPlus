@@ -84,8 +84,8 @@ struct chan_usbradio_pvt {
 	int plus_advanced;
 	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
 	int plus_dsp_initialized;
-	/** Worker owning non-real-time native graph execution. */
-	struct usbradioplus_native_worker *plus_native_worker;
+	/** Callback-owned persistent native DSP renderer. */
+	struct usbradioplus_native_renderer *plus_native_renderer;
 	/** One native-rate app_rpt transmitter block. */
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	/** App_rpt-rate program input workspace. */
@@ -104,10 +104,6 @@ struct chan_usbradio_pvt {
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	/** Current receiver delay-ring position. */
 	unsigned int plus_rx_delay_index;
-	/** Echo-to-native streaming resampler owned by the hardware worker. */
-	struct urp_src *plus_echo_up;
-	/** Native-to-app_rpt streaming resampler. */
-	struct urp_src *plus_down;
 	/** Tracks emphasis selection for local native repeat audio. */
 	unsigned int plus_local_preemphasis_active;
 	/** Tracks emphasis selection for app_rpt transmitter audio. */
@@ -116,6 +112,8 @@ struct chan_usbradio_pvt {
 	struct usbradioplus_native_graph_slot plus_native_graphs;
 	/** Lock-free exclusion for rare signaling-parser reconfiguration. */
 	struct usbradioplus_radio_access_slot plus_radio_access;
+	/** Callback-owned PTT hold while the CM119 playback queue drains. */
+	struct usbradioplus_tx_playout_hold plus_tx_playout_hold;
 	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
 	_Atomic int plus_radio_tx_active;
 	/** Desired physical PTT state published synchronously from the signaling engine. */
@@ -136,8 +134,6 @@ struct chan_usbradio_pvt {
 	atomic_uint plus_radio_program_tx_frequency;
 	/** Radio-programming snapshot consumed by the HID worker. */
 	atomic_int plus_radio_program_high_power;
-	/** Local-receiver RNNoise stream state. */
-	struct txagc_rnnoise plus_local_rnnoise;
 	/** Resolved emphasis corner frequency in Hz. */
 	double plus_emphasis_corner_hz;
 	/** Nonzero after the first resolved hardware settings update. */
@@ -155,9 +151,9 @@ struct chan_usbradio_pvt {
 	_Atomic int plus_applied_txmixa;
 	/** Last applied output-B routing assignment. */
 	_Atomic int plus_applied_txmixb;
-	/** Output-A CTCSS multiplier consumed by the native render worker. */
+	/** Output-A CTCSS multiplier consumed by the direct native renderer. */
 	_Atomic int plus_applied_tx_output_gain_a;
-	/** Output-B CTCSS multiplier consumed by the native render worker. */
+	/** Output-B CTCSS multiplier consumed by the direct native renderer. */
 	_Atomic int plus_applied_tx_output_gain_b;
 	/** Even when stable; brackets the lock-free hardware audio snapshot. */
 	_Atomic unsigned int plus_hardware_generation;
@@ -431,7 +427,7 @@ struct chan_usbradio_pvt {
 	atomic_int echoing;
 	/** Lock-free app_rpt-rate echo recording. */
 	struct urp_sample_queue echo_queue;
-	/** Fixed echo storage avoids allocation from the audio worker. */
+	/** Fixed echo storage avoids allocation from the native callback. */
 	short echo_samples[URP_ECHO_QUEUE_SAMPLES];
 	/** Maximum app_rpt-rate echo frames. */
 	int echomax;

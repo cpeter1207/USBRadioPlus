@@ -1127,8 +1127,7 @@ int usbradioplus_refresh_all_processing_signaling(void)
 /** @brief Prepare a stack-owned link hook exactly as the attach control plane does.
  * @param hook Hook fixture whose callback storage is initialized.
  * @param profile Resolved processing profile name.
- * @param samples Retained compatibility workspace argument; worker storage is
- * preallocated through the production initializer instead.
+ * @param samples Callback-owned conversion workspace.
  * @param capacity Number of samples available in the test block.
  * @param sample_rate Input sample rate used to prepare the graph.
  */
@@ -1136,25 +1135,26 @@ static void prepare_test_link_hook(struct txagc_hook *hook, const char *profile,
 				   size_t capacity, unsigned int sample_rate)
 {
 	struct txagc_avfilter *filter;
-	int source;
 
 	assert(hook && profile && samples && capacity && sample_rate);
-	(void)samples;
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_init(&hook->avfilter[source]);
+	txagc_avfilter_slot_init(&hook->avfilter);
+	hook->samples = samples;
+	hook->samples_capacity = capacity;
 	atomic_init(&hook->link_enabled, 1);
-	assert(!txagc_link_worker_initialize(hook, capacity));
+	atomic_init(&hook->statistics_index, 0U);
+	atomic_init(&hook->statistics_readers[0], 0U);
+	atomic_init(&hook->statistics_readers[1], 0U);
 	hook->sample_rate = sample_rate;
 	ast_copy_string(hook->profile, profile, sizeof(hook->profile));
 	hook->audiohook.status = AST_AUDIOHOOK_STATUS_RUNNING;
-	assert(!txagc_avfilter_slot_prepare(&hook->avfilter[TXAGC_LINK],
-					    &settings.profiles[0].chains[TXAGC_LINK].agc,
-					    sample_rate));
-	filter = txagc_avfilter_slot_active(&hook->avfilter[TXAGC_LINK]);
+	assert(!txagc_avfilter_slot_prepare(
+		&hook->avfilter, &settings.profiles[0].chains[TXAGC_LINK].agc, sample_rate));
+	filter = txagc_avfilter_slot_active(&hook->avfilter);
 	/* Production attaches a full fixed frame workspace.  This stack fixture
 	 * deliberately supplies only the short block it submits, while the prepared
 	 * graph still advertises its larger no-allocation capacity. */
 	assert(filter && filter->configured && capacity <= filter->input_capacity);
+	link_callback_publish_statistics(hook);
 }
 
 /** @brief Release prepared slots belonging to a stack-owned hook fixture.
@@ -1162,27 +1162,18 @@ static void prepare_test_link_hook(struct txagc_hook *hook, const char *profile,
  */
 static void destroy_test_hook_slots(struct txagc_hook *hook)
 {
-	int source;
-
-	txagc_link_worker_destroy(hook);
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_destroy(&hook->avfilter[source]);
+	txagc_avfilter_slot_destroy(&hook->avfilter);
+	/* Stack fixtures lend their workspace to the callback; hook_destroy() owns
+	 * heap workspaces created by attach_hook(), so do not free this one. */
+	hook->samples = NULL;
+	hook->samples_capacity = 0U;
 }
 
-/** @brief Deliver one synthetic audiohook frame, then explicitly advance test worker work.
- *
- * Production callbacks never invoke FFmpeg. The validation harness has no
- * worker thread, so tests advance the queue after the callback returns.
- */
+/** @brief Deliver one synthetic frame through the synchronous prepared graph. */
 static int test_link_callback(struct ast_audiohook *audiohook, struct ast_channel *channel,
 			      struct ast_frame *frame, enum ast_audiohook_direction direction)
 {
-	int result = txagc_callback(audiohook, channel, frame, direction);
-	struct txagc_hook *hook = (struct txagc_hook *)audiohook;
-
-	while (txagc_link_worker_process_one(hook)) {
-	}
-	return result;
+	return txagc_callback(audiohook, channel, frame, direction);
 }
 
 /** @brief Host-API test double for ast_cli; effects are recorded in this harness.
@@ -1355,8 +1346,6 @@ static const struct range_case ranges[] = {
 	{RANGE(lookahead_attack_ms, 0.1, 20.0)},
 	{RANGE(lookahead_release_ms, 1.0, 5000.0)},
 	{RANGE(post_limiter_lowpass_hz, 5000.0, 20000.0)},
-	{RANGE(output_highpass_hz, 20.0, 2000.0)},
-	{RANGE(output_lowpass_hz, 20.0, 6000.0)},
 	{RANGE(output_gain_db, -30.0, 30.0)},
 };
 
@@ -1432,7 +1421,6 @@ static void test_stage_and_relationship_validation(void)
 	INVALID_RELATION(compressor_sidechain_lowpass_hz, compressor_sidechain_highpass_hz);
 	INVALID_RELATION(compressor_high_crossover_hz, compressor_low_crossover_hz);
 	INVALID_RELATION(limiter_high_crossover_hz, limiter_low_crossover_hz);
-	INVALID_RELATION(output_lowpass_hz, output_highpass_hz);
 #undef INVALID_RELATION
 }
 
@@ -1776,9 +1764,6 @@ static void test_settings_scope_and_hardware_validation(void)
 	assert(validate_profile(&value.profiles[0]) < 0);
 
 	settings_defaults(&value);
-	value.profiles[0].chains[TXAGC_LOCAL].agc.splatter_filter_enabled = 1;
-	assert(validate_profile(&value.profiles[0]) < 0);
-	settings_defaults(&value);
 	value.profiles[0].chains[TXAGC_LOCAL].agc.lookahead_limiter_enabled = 1;
 	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
@@ -1922,7 +1907,6 @@ static void test_chain_configuration_parser(void)
 		{"local", "ctcss_filter_mode", "notch"},
 		{"local", "input_gain_db", "2.5"},
 		{"local", "agc_target_dbfs", "-10"},
-		{"local", "splatter_filter_highpass_hz", "100"},
 		{"local", "stage_order", "equalizer,expander,agc,deesser,compressor,limiter"},
 	};
 
@@ -1934,7 +1918,6 @@ static void test_chain_configuration_parser(void)
 	assert(value.profiles[0].chains[TXAGC_LOCAL].enabled);
 	assert(value.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled);
 	assert(value.profiles[0].chains[TXAGC_LOCAL].input_gain_configured);
-	assert(value.profiles[0].chains[TXAGC_LOCAL].splatter_filter_configured);
 	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode ==
 	       TXAGC_CTCSS_FILTER_NOTCH);
 	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.stage_count == TXAGC_MAX_DYNAMICS_STAGES);
@@ -1961,21 +1944,6 @@ static void test_chain_configuration_parser(void)
 	settings_defaults(&value);
 	set_fake_options(&invalid_order, 1);
 	assert(read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]) < 0);
-
-	fake_option_count = 0;
-	settings_defaults(&value);
-	assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
-	const char *splatter_names[] = {"splatter_filter_enabled", "splatter_filter_highpass_hz",
-					"output_highpass_hz", "splatter_filter_lowpass_hz",
-					"output_lowpass_hz"};
-	for (size_t index = 0; index < ARRAY_LEN(splatter_names); ++index) {
-		const struct fake_option option = {"local", splatter_names[index],
-						   index ? "100" : "yes"};
-		settings_defaults(&value);
-		set_fake_options(&option, 1);
-		assert(!read_chain(config, "local", &value.profiles[0].chains[TXAGC_LOCAL]));
-		assert(value.profiles[0].chains[TXAGC_LOCAL].splatter_filter_configured);
-	}
 }
 
 /** @brief Install a single synthetic section override.
@@ -2142,18 +2110,23 @@ static void test_option_name_validation(void)
 	fake_categories[0] = "unknown";
 	fake_variables[0] = NULL;
 	assert(!validate_option_names(config));
-	static const char *const removed_agc_options[] = {
+	static const char *const removed_chain_options[] = {
 		"agc_floor_dbfs",
 		"agc_attack_ms",
 		"agc_release_ms",
 		"agc_reset_after_ms",
+		"splatter_filter_enabled",
+		"splatter_filter_highpass_hz",
+		"splatter_filter_lowpass_hz",
+		"output_highpass_hz",
+		"output_lowpass_hz",
 	};
 	static char *const agc_sections[] = {"local",	   "link",	"voice_telemetry",
 					     "local test", "link test", "voice_telemetry test"};
-	for (size_t option = 0; option < ARRAY_LEN(removed_agc_options); ++option) {
-		assert(!known_chain_option(removed_agc_options[option]));
+	for (size_t option = 0; option < ARRAY_LEN(removed_chain_options); ++option) {
+		assert(!known_chain_option(removed_chain_options[option]));
 		for (size_t section = 0; section < ARRAY_LEN(agc_sections); ++section) {
-			variable.name = removed_agc_options[option];
+			variable.name = removed_chain_options[option];
 			fake_categories[0] = agc_sections[section];
 			fake_variables[0] = &variable;
 			assert(validate_option_names(config) < 0);
@@ -2181,7 +2154,6 @@ static void test_option_name_validation(void)
 		{"duplex test", duplex_override_options[0], 1},
 		{"diagnostics test", diagnostics_override_options[0], 1},
 		{"local test", "output_gain_db", 1},
-		{"link test", "splatter_filter_enabled", 0},
 		{"voice_telemetry test", "receive_bandpass_enabled", 0},
 		{"test", "unknown", 0},
 	};
@@ -2192,15 +2164,6 @@ static void test_option_name_validation(void)
 		fake_categories[0] = cases[index].section;
 		fake_variables[0] = &variable;
 		assert((validate_option_names(config) == 0) == cases[index].valid);
-	}
-	const char *link_filters[] = {"splatter_filter_highpass_hz", "splatter_filter_lowpass_hz",
-				      "output_highpass_hz", "output_lowpass_hz"};
-	for (size_t index = 0; index < ARRAY_LEN(link_filters); ++index) {
-		memset(&variable, 0, sizeof(variable));
-		variable.name = link_filters[index];
-		fake_categories[0] = "link test";
-		fake_variables[0] = &variable;
-		assert(validate_option_names(config) < 0);
 	}
 	memset(&variable, 0, sizeof(variable));
 	variable.name = "equalizer_enabled";
@@ -3149,20 +3112,14 @@ static void test_audiohook_callback_and_destroy(void)
 	pcm[1] = -100;
 	pcm[2] = 2;
 	assert(!test_link_callback(audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	/* The callback renders the earlier worker block, not the current frame whose
-	 * graph failure is being injected here. */
+	/* A rejected prepared graph leaves this current PCM frame intact. */
 	assert(pcm[0] == 100 && pcm[1] == -100 && pcm[2] == 2);
 	fake_sample_rate = 48000;
 	fake_processor_result = 0;
 	fake_processor_saturate = 1;
 	hook.sample_rate = 48000;
-	assert(!txagc_avfilter_slot_prepare(&hook.avfilter[TXAGC_LINK],
+	assert(!txagc_avfilter_slot_prepare(&hook.avfilter,
 					    &settings.profiles[0].chains[TXAGC_LINK].agc, 48000));
-	assert(!test_link_callback(audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(pcm[0] == 100 && pcm[1] == -100 && pcm[2] == 2);
-	pcm[0] = 100;
-	pcm[1] = -100;
-	pcm[2] = 2;
 	assert(!test_link_callback(audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
 	assert(pcm[0] == 32767 && pcm[1] == -32768 && pcm[2] == 2);
 	fake_processor_saturate = 0;
@@ -3190,21 +3147,22 @@ static void test_audiohook_callback_and_destroy(void)
 	assert(fake_processor_destroy_calls == 0);
 }
 
-/** @brief Verify the link worker's callback/worker queue chronology and concealment. */
-static void test_link_worker_queue_contract(void)
+/** @brief Verify synchronous link processing replaces its current callback frame. */
+static void test_link_callback_synchronous_contract(void)
 {
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
 	struct txagc_hook hook = {0};
-	struct txagc_link_worker_statistics statistics;
+	struct txagc_link_statistics statistics;
 	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
 				  .samples = 3,
 				  .subclass.format = (struct ast_format *)(uintptr_t)1};
 	int16_t first[] = {300, -600, 900};
-	int16_t second[] = {-200, 400, -1200};
-	int16_t third[] = {50, 60, 70};
-	int16_t fourth[] = {-20, -30, -40};
+	int16_t saturated[] = {-200, 400, -1200};
+	int16_t failed[] = {50, 60, 70};
+	int16_t bypassed[] = {-20, -30, -40};
+	int16_t oversized[] = {10, 20, 30, 40};
 	double samples[ARRAY_LEN(first)];
-	unsigned int prior_generation;
+	unsigned int calls_before;
 
 	settings_defaults(&settings);
 	settings.profiles[0].enabled = 1;
@@ -3217,342 +3175,122 @@ static void test_link_worker_queue_contract(void)
 	fake_processor_result = 0;
 	fake_processor_saturate = 0;
 	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 44100);
+
+	/* The prepared graph runs on the admitted frame itself: there is no queued
+	 * previous frame, worker wakeup, or output concealment interval. */
 	frame.data.ptr = first;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(first[0] == 300 && first[1] == -600 && first[2] == 900);
+	assert(fake_processor_calls == 1U);
 
-	/* The callback only queues first input. It has no completed output yet, so
-	 * it returns tapered silence and never executes the graph itself. */
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(first[0] == 0 && first[1] == 0 && first[2] == 0);
-	assert(fake_processor_calls == 0);
-	assert(atomic_load_explicit(&hook.input_frame_write, memory_order_acquire) == 1U);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(fake_processor_calls == 1);
+	/* The callback converts the prepared graph's direct result back to PCM and
+	 * clips only the Asterisk integer representation at its rails. */
+	fake_processor_saturate = 1;
+	frame.data.ptr = saturated;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(saturated[0] == 32767 && saturated[1] == -32768 && saturated[2] == 2);
+	fake_processor_saturate = 0;
 
-	/* A later callback receives only the block completed before it began. */
-	frame.data.ptr = second;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(second[0] == 300 && second[1] == -600 && second[2] == 900);
-	assert(fake_processor_calls == 1);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	frame.data.ptr = third;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(third[0] == -200 && third[1] == 400 && third[2] == -1200);
+	/* A prepared graph failure is fail-open: keep the current link PCM intact,
+	 * publish the error, and let a later block run normally. */
+	fake_processor_result = -1;
+	frame.data.ptr = failed;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(failed[0] == 50 && failed[1] == 60 && failed[2] == 70);
+	fake_processor_result = 0;
+	assert(!txagc_link_statistics_read(&hook, &statistics));
+	assert(statistics.processing_errors == 1U);
 
-	/* With the previous block consumed and no worker result available, retain a
-	 * short tapered continuation rather than an abrupt hard-silence transition. */
-	frame.data.ptr = fourth;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(fourth[0] == -800 && fourth[1] == -400 && fourth[2] == 0);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.output_underflows == 2U);
-	assert(statistics.input_overflows == 0U);
-	assert(statistics.output_malformed == 0U);
-
-	/* A hook prepared at an arbitrary rate is accepted. A later format change
-	 * bypasses the callback without rebuilding from its real-time context. */
-	prior_generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	frame.data.ptr = fourth;
-	fourth[0] = -20;
-	fourth[1] = -30;
-	fourth[2] = -40;
+	/* Format and workspace changes bypass rather than allocating or rebuilding
+	 * from Asterisk's real-time callback. */
+	calls_before = fake_processor_calls;
 	fake_sample_rate = 48000;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(fourth[0] == -20 && fourth[1] == -30 && fourth[2] == -40);
-	assert(atomic_load_explicit(&hook.generation, memory_order_acquire) ==
-	       prior_generation + 1U);
+	frame.data.ptr = bypassed;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(bypassed[0] == -20 && bypassed[1] == -30 && bypassed[2] == -40);
+	assert(fake_processor_calls == calls_before);
+	fake_sample_rate = 44100;
+	frame.samples = ARRAY_LEN(oversized);
+	frame.data.ptr = oversized;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(oversized[0] == 10 && oversized[1] == 20 && oversized[2] == 30 &&
+	       oversized[3] == 40);
+	assert(fake_processor_calls == calls_before);
+
+	/* Only incoming link frames enter the graph. */
+	frame.samples = 3;
+	frame.data.ptr = bypassed;
+	assert(!test_link_callback(&hook.audiohook, channel, &frame,
+				   AST_AUDIOHOOK_DIRECTION_WRITE));
+	atomic_store_explicit(&hook.link_enabled, 0, memory_order_release);
+	assert(!test_link_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
+	assert(fake_processor_calls == calls_before);
 	destroy_test_hook_slots(&hook);
 	fake_sample_rate = 8000;
 }
 
-/** @brief Verify bounded link-worker queue failure handling and lifecycle. */
-static void test_link_worker_failures_and_lifecycle(void)
+/** @brief Verify bounded synchronous link-callback diagnostics and guards. */
+static void test_link_callback_statistics_and_guards(void)
 {
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
 	struct txagc_hook hook = {0};
-	struct txagc_hook partial = {0};
-	struct txagc_link_worker_statistics statistics;
+	struct txagc_link_statistics statistics = {0};
+	struct txagc_avfilter filter = {0};
 	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
 				  .samples = 3,
 				  .subclass.format = (struct ast_format *)(uintptr_t)1};
-	int16_t first[] = {101, 102, 103};
-	int16_t second[] = {201, 202, 203};
-	int16_t dropped[] = {301, 302, 303};
-	int16_t output[] = {0, 0, 0};
-	double samples[ARRAY_LEN(first)];
-	unsigned int generation;
-
-	assert(txagc_link_worker_initialize(NULL, ARRAY_LEN(first)) == -1);
-	assert(txagc_link_worker_initialize(&hook, 0) == -1);
-	assert(txagc_link_worker_initialize(
-		       &hook, (size_t)UINT_MAX / TXAGC_LINK_WORKER_QUEUE_FRAMES + 1U) == -1);
-	assert(txagc_link_worker_start(NULL) == -1);
-	txagc_link_worker_stop(NULL);
-	txagc_link_worker_destroy(NULL);
-	/* Each partial state must be safe to reclaim after a failed setup. */
-	partial.samples = calloc(1, sizeof(*partial.samples));
-	assert(partial.samples);
-	txagc_link_worker_destroy(&partial);
-	partial.source_pcm = calloc(1, sizeof(*partial.source_pcm));
-	assert(partial.source_pcm);
-	txagc_link_worker_destroy(&partial);
-	partial.input_pcm_storage = calloc(1, sizeof(*partial.input_pcm_storage));
-	assert(partial.input_pcm_storage);
-	txagc_link_worker_destroy(&partial);
-	partial.output_pcm_storage = calloc(1, sizeof(*partial.output_pcm_storage));
-	assert(partial.output_pcm_storage);
-	txagc_link_worker_destroy(&partial);
-	partial.worker_started = 1;
-	txagc_link_worker_destroy(&partial);
-	assert(txagc_link_worker_statistics_read(NULL, &statistics) == -1);
-	assert(txagc_link_worker_statistics_read(&hook, NULL) == -1);
-	assert(txagc_link_worker_start(&hook) == -1);
-	for (int call = 1; call <= 4; ++call) {
-		fake_calloc_call = 0;
-		fake_calloc_fail_call = call;
-		assert(txagc_link_worker_initialize(&hook, ARRAY_LEN(first)) == -1);
-		assert(!hook.samples && !hook.source_pcm && !hook.input_pcm_storage &&
-		       !hook.output_pcm_storage);
-		txagc_link_worker_destroy(&hook);
-	}
-	fake_calloc_fail_call = 0;
-	fake_calloc_call = 0;
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 1;
-	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
-	fake_channel_name = "IAX2/test";
-	fake_channel_application = "Rpt";
-	fake_channel_data = "Remote Rx";
-	fake_sample_rate = 8000;
-	fake_processor_calls = 0;
-	fake_processor_result = 0;
-	fake_processor_saturate = 0;
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	assert(!txagc_link_worker_start(&hook));
-	frame.data.ptr = first;
-	/* Two complete blocks fit in the fixed input queue. A third is discarded
-	 * immediately; the callback still returns concealment without waiting. */
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	frame.data.ptr = second;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	frame.data.ptr = dropped;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(atomic_load_explicit(&hook.input_overflows, memory_order_acquire) == 1U);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(txagc_link_worker_process_one(&hook) == 0);
-
-	/* Recover the two admitted blocks in order; the dropped block cannot become
-	 * output later merely because queue capacity became available. */
-	frame.data.ptr = output;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(output[0] == 101 && output[1] == 102 && output[2] == 103);
-	output[0] = output[1] = output[2] = 0;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(output[0] == 201 && output[1] == 202 && output[2] == 203);
-	while (txagc_link_worker_process_one(&hook)) {
-	}
-
-	/* A malformed descriptor has no opportunity to replay unrelated audio. */
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	hook.output_pcm.samples[0] = 77;
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 1U, memory_order_release);
-	hook.output_frames[0] = (struct txagc_link_frame){.samples = 1U, .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	output[0] = output[1] = output[2] = 99;
-	frame.data.ptr = output;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(output[0] == 135 && output[1] == 67 && output[2] == 0);
-	assert(atomic_load_explicit(&hook.output_malformed, memory_order_acquire) == 1U);
-
-	/* A correct-size block from an old graph generation is just as unsafe and
-	 * must be discarded before it reaches the current callback. */
-	hook.output_pcm.samples[0] = 71;
-	hook.output_pcm.samples[1] = 72;
-	hook.output_pcm.samples[2] = 73;
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 3U, memory_order_release);
-	hook.output_frames[0] =
-		(struct txagc_link_frame){.samples = 3U, .generation = generation - 1U};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	output[0] = output[1] = output[2] = 99;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(output[0] == 0 && output[1] == 0 && output[2] == 0);
-	assert(atomic_load_explicit(&hook.output_malformed, memory_order_acquire) == 2U);
-	while (txagc_link_worker_process_one(&hook)) {
-	}
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.input_overflows == 1U);
-	assert(statistics.output_malformed == 2U);
-	assert(statistics.output_underflows >= 3U);
-	txagc_link_worker_stop(&hook);
-	destroy_test_hook_slots(&hook);
-	assert(!hook.samples && !hook.source_pcm && !hook.input_pcm_storage &&
-	       !hook.output_pcm_storage && !hook.worker_started);
-}
-
-/** @brief Verify malformed callback-to-worker input cannot stall later link frames. */
-static void test_link_worker_malformed_input_recovery(void)
-{
-	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
-	struct txagc_hook hook = {0};
-	struct txagc_link_worker_statistics statistics;
-	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
-				  .samples = 3,
-				  .subclass.format = (struct ast_format *)(uintptr_t)1};
-	int16_t playback[] = {99, 98, 97};
-	double samples[ARRAY_LEN(playback)];
-	unsigned int generation;
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 1;
-	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
-	fake_channel_name = "IAX2/test";
-	fake_channel_application = "Rpt";
-	fake_channel_data = "Remote Rx";
-	fake_sample_rate = 8000;
-	fake_processor_calls = 0;
-	fake_processor_result = 0;
-	fake_processor_saturate = 0;
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-
-	/* An impossible empty descriptor is consumed instead of becoming a permanent
-	 * head-of-queue blocker. */
-	hook.input_frames[0] = (struct txagc_link_frame){.samples = 0U, .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(atomic_load_explicit(&hook.input_frame_read, memory_order_acquire) == 1U);
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.input_malformed == 1U);
-
-	/* The same recovery applies to a descriptor larger than fixed worker
-	 * storage; it discards only the associated available PCM. */
-	hook.input_pcm.samples[0] = 77;
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, 1U, memory_order_release);
-	hook.input_frames[0] = (struct txagc_link_frame){.samples = 4U, .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(atomic_load_explicit(&hook.input_pcm.read, memory_order_acquire) == 1U);
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.input_malformed == 2U);
-
-	/* A valid-sized descriptor with an incomplete PCM span preserves chronology
-	 * by yielding a paired silent frame rather than blocking future traffic. */
-	hook.input_pcm.samples[0] = 31;
-	hook.input_pcm.samples[1] = 32;
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, 2U, memory_order_release);
-	hook.input_frames[0] = (struct txagc_link_frame){.samples = 3U, .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.input_malformed == 3U);
-	frame.data.ptr = playback;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(playback[0] == 0 && playback[1] == 0 && playback[2] == 0);
-
-	/* A full output PCM queue leaves an otherwise valid input descriptor queued
-	 * until space is available; it neither spins nor drops its input. */
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, 3U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	hook.input_frames[0] = (struct txagc_link_frame){.samples = 3U, .generation = generation};
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, hook.queue_capacity, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook) == 0);
-	assert(atomic_load_explicit(&hook.input_frame_read, memory_order_acquire) == 0U);
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 0U, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	destroy_test_hook_slots(&hook);
-}
-
-/** @brief Verify malformed output metadata cannot wedge the callback output queue. */
-static void test_link_worker_malformed_output_progression(void)
-{
-	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
-	struct txagc_hook hook = {0};
-	struct txagc_link_worker_statistics statistics;
-	struct ast_frame frame = {.frametype = AST_FRAME_VOICE,
-				  .samples = 3,
-				  .subclass.format = (struct ast_format *)(uintptr_t)1};
-	int16_t pcm[] = {13, 14, 15};
+	int16_t pcm[] = {11, 12, 13};
 	double samples[ARRAY_LEN(pcm)];
-	unsigned int generation;
+
+	/* Copy and publication helpers stay null-safe and never block a callback
+	 * behind a concurrent diagnostics reader. */
+	link_callback_copy_filter_statistics(NULL, &filter);
+	link_callback_copy_filter_statistics(&statistics, NULL);
+	filter.input_samples = 11U;
+	filter.output_samples = 12U;
+	filter.input_peak_dbfs = -10.0;
+	filter.output_peak_dbfs = -11.0;
+	link_callback_copy_filter_statistics(&statistics, &filter);
+	assert(statistics.input_samples == 11U && statistics.output_samples == 12U);
+	assert(statistics.input_peak_dbfs == -10.0 && statistics.output_peak_dbfs == -11.0);
+	atomic_init(&hook.statistics_index, 0U);
+	atomic_init(&hook.statistics_readers[0], 0U);
+	atomic_init(&hook.statistics_readers[1], 1U);
+	hook.statistics = statistics;
+	link_callback_publish_statistics(&hook);
+	assert(atomic_load_explicit(&hook.statistics_index, memory_order_acquire) == 0U);
+	atomic_store_explicit(&hook.statistics_readers[1], 0U, memory_order_release);
+	link_callback_publish_statistics(&hook);
+	assert(atomic_load_explicit(&hook.statistics_index, memory_order_acquire) == 1U);
+	assert(!txagc_link_statistics_read(&hook, &statistics));
+	processing_test_statistics_flip_index = 1;
+	assert(!txagc_link_statistics_read(&hook, &statistics));
+	processing_test_statistics_flip_index = 3;
+	assert(txagc_link_statistics_read(&hook, &statistics) < 0);
+	processing_test_statistics_flip_index = 0;
+	assert(txagc_link_statistics_read(NULL, &statistics) < 0);
+	assert(txagc_link_statistics_read(&hook, NULL) < 0);
 
 	settings_defaults(&settings);
-	settings.profiles[0].enabled = 1;
 	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
-	fake_channel_name = "IAX2/test";
-	fake_channel_application = "Rpt";
-	fake_channel_data = "Remote Rx";
 	fake_sample_rate = 8000;
 	fake_processor_result = 0;
-	fake_processor_saturate = 0;
 	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
 	frame.data.ptr = pcm;
-
-	/* A zero-length output descriptor cannot match the positive callback frame.
-	 * It is discarded rather than preserving a head record indefinitely. */
-	hook.output_frames[0] = (struct txagc_link_frame){.samples = 0U, .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
+	/* A graph can disappear only during control-plane replacement. The callback
+	 * makes the current frame a clean bypass and records the condition. */
+	atomic_store_explicit(&hook.avfilter.active, NULL, memory_order_release);
 	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(pcm[0] == 0 && pcm[1] == 0 && pcm[2] == 0);
-	assert(atomic_load_explicit(&hook.output_frame_read, memory_order_acquire) == 1U);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-
-	/* Discard an oversized descriptor even when its impossible PCM span is absent.
-	 * This must leave room for a later valid result. */
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 0U, memory_order_release);
-	hook.output_frames[0] = (struct txagc_link_frame){.samples = hook.queue_capacity + 1U,
-							  .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	pcm[0] = 23;
-	pcm[1] = 24;
-	pcm[2] = 25;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(pcm[0] == 0 && pcm[1] == 0 && pcm[2] == 0);
-	assert(atomic_load_explicit(&hook.output_frame_read, memory_order_acquire) == 1U);
-	assert(txagc_link_worker_process_one(&hook) == 1);
-
-	/* A valid record after both rejections remains consumable. */
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 3U, memory_order_release);
-	hook.output_pcm.samples[0] = 123;
-	hook.output_pcm.samples[1] = 124;
-	hook.output_pcm.samples[2] = 125;
-	hook.output_frames[0] = (struct txagc_link_frame){.samples = 3U, .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	pcm[0] = pcm[1] = pcm[2] = 99;
-	assert(!txagc_callback(&hook.audiohook, channel, &frame, AST_AUDIOHOOK_DIRECTION_READ));
-	assert(pcm[0] == 123 && pcm[1] == 124 && pcm[2] == 125);
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	assert(statistics.output_malformed == 2U);
+	assert(pcm[0] == 11 && pcm[1] == 12 && pcm[2] == 13);
+	assert(!txagc_link_statistics_read(&hook, &statistics));
+	assert(statistics.processing_errors == 1U);
 	destroy_test_hook_slots(&hook);
 }
 
-/** @brief Exercise private control-plane and SPSC defensive paths directly.
+/** @brief Exercise private control-plane and callback diagnostics paths directly.
  *
  * Production reaches these cases only after an allocator failure, a stale
- * diagnostics reader, or corrupted queue metadata.  Keeping the assertions
+ * diagnostics reader, or unavailable graph snapshot. Keeping the assertions
  * here makes their recovery contract explicit without weakening the bounded
  * real-time paths that normally prevent them.
  */
@@ -3561,18 +3299,10 @@ static void test_processing_private_edge_paths(void)
 	struct txagc_settings candidate;
 	struct txagc_chain chain;
 	struct usbradioplus_hardware_settings hardware;
-	struct txagc_link_pcm_queue queue = {0};
-	struct txagc_link_frame frames[TXAGC_LINK_WORKER_CONTROL_FRAMES] = {0};
-	struct txagc_link_frame frame;
-	struct txagc_link_worker_statistics statistics = {0};
-	struct txagc_avfilter filter = {0};
-	struct txagc_hook hook = {0};
 	struct txagc_hook staged_hook = {0};
 	struct ast_datastore staged_datastore = {.data = &staged_hook};
 	struct ast_variable receive_unknown = {.name = "unknown"};
 	struct link_graph_transaction *transaction = NULL;
-	int16_t words[2] = {0};
-	int16_t input[] = {1, 2, 3};
 	char value[32];
 
 	/* Null inputs are rejected before any state mutation. */
@@ -3638,56 +3368,6 @@ static void test_processing_private_edge_paths(void)
 	assert(!usbradioplus_processing_get_composite_rt("usb", &chain));
 	assert(usbradioplus_processing_get_composite_rt("usb", NULL) < 0);
 
-	/* The SPSC primitive rejects a full queue without moving either cursor. */
-	queue.samples = words;
-	queue.capacity = ARRAY_LEN(words);
-	atomic_init(&queue.read, 0U);
-	atomic_init(&queue.write, 0U);
-	assert(link_worker_pcm_push(&queue, 10));
-	assert(link_worker_pcm_push(&queue, 20));
-	assert(!link_worker_pcm_push(&queue, 30));
-	assert(atomic_load_explicit(&queue.write, memory_order_acquire) == 2U);
-
-	/* A callback consumes only the output cursor observed at its entry. */
-	frames[0] = (struct txagc_link_frame){.samples = 1U, .generation = 7U};
-	atomic_init(&hook.output_frame_read, 0U);
-	atomic_init(&hook.output_frame_write, 2U);
-	assert(link_worker_frame_peek(frames, &hook.output_frame_read, &hook.output_frame_write, 1U,
-				      &frame));
-	assert(frame.samples == 1U && frame.generation == 7U);
-
-	/* Statistics copies are null-safe and an occupied inactive slot is skipped. */
-	filter.input_samples = 11U;
-	filter.output_samples = 12U;
-	filter.input_peak_dbfs = -10.0;
-	filter.output_peak_dbfs = -11.0;
-	link_worker_copy_filter_statistics(NULL, &filter);
-	link_worker_copy_filter_statistics(&statistics, NULL);
-	link_worker_copy_filter_statistics(&statistics, &filter);
-	assert(statistics.input_samples == 11U && statistics.output_samples == 12U);
-	assert(statistics.input_peak_dbfs == -10.0 && statistics.output_peak_dbfs == -11.0);
-	atomic_init(&hook.statistics_index, 0U);
-	atomic_init(&hook.statistics_readers[0], 0U);
-	atomic_init(&hook.statistics_readers[1], 1U);
-	link_worker_publish_statistics(&hook);
-	assert(atomic_load_explicit(&hook.statistics_index, memory_order_acquire) == 0U);
-	atomic_store_explicit(&hook.statistics_readers[1], 0U, memory_order_release);
-	link_worker_publish_statistics(&hook);
-	assert(atomic_load_explicit(&hook.statistics_index, memory_order_acquire) == 1U);
-
-	/* Admission rejects a whole oversized input frame before writing partial PCM. */
-	hook.queue_capacity = 2U;
-	hook.input_pcm.samples = words;
-	hook.input_pcm.capacity = ARRAY_LEN(words);
-	atomic_init(&hook.input_pcm.read, 0U);
-	atomic_init(&hook.input_pcm.write, 0U);
-	atomic_init(&hook.input_frame_read, 0U);
-	atomic_init(&hook.input_frame_write, 0U);
-	atomic_init(&hook.input_overflows, 0U);
-	assert(!link_worker_submit_input(&hook, input, ARRAY_LEN(input), 0U));
-	assert(atomic_load_explicit(&hook.input_overflows, memory_order_acquire) == 1U);
-	assert(!txagc_link_worker_process_one(NULL));
-
 	/* Staging rejects invalid inputs, handles an empty startup transaction, and
 	 * safely ignores iterator entries without a link datastore. */
 	assert(stage_active_link_hooks(NULL, &transaction) < 0);
@@ -3718,8 +3398,7 @@ static void test_processing_private_edge_paths(void)
 	assert(stage_active_link_hooks(&candidate, &transaction) < 0);
 	fake_calloc_fail_call = 0;
 	fake_calloc_call = 0;
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_init(&staged_hook.avfilter[source]);
+	txagc_avfilter_slot_init(&staged_hook.avfilter);
 	atomic_init(&staged_hook.link_enabled, 1);
 	staged_hook.sample_rate = 8000;
 	ast_copy_string(staged_hook.profile, "usb", sizeof(staged_hook.profile));
@@ -3769,169 +3448,10 @@ static void test_processing_private_edge_paths(void)
 	publish_link_graph_transaction(transaction);
 	transaction = NULL;
 	fake_slot_publish_result = 0;
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_destroy(&staged_hook.avfilter[source]);
+	txagc_avfilter_slot_destroy(&staged_hook.avfilter);
 	fake_channel_datastore = NULL;
 	fake_iterator_available = 0;
 	publish_link_graph_transaction(NULL);
-}
-
-/** @brief Verify that impossible SPSC failures preserve queue chronology.
- *
- * The production producer and consumer cursors make these paths unreachable
- * during ordinary operation.  Test-only fault counters simulate an interrupted
- * endpoint so the recovery paths remain covered and documented.
- */
-static void test_link_worker_invariant_fault_paths(void)
-{
-	struct txagc_hook hook = {0};
-	struct txagc_link_worker_statistics statistics;
-	double samples[3];
-	int16_t pcm[] = {11, 12, 13};
-	int16_t output[3] = {0};
-	unsigned int generation;
-
-	settings_defaults(&settings);
-	settings.profiles[0].chains[TXAGC_LINK].enabled = 1;
-	fake_processor_result = 0;
-	fake_processor_saturate = 0;
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-
-	/* A mid-frame callback producer failure publishes only its completed prefix. */
-	processing_test_pcm_push_fail_after = 2;
-	assert(!link_worker_submit_input(&hook, pcm, ARRAY_LEN(pcm), generation));
-	assert(hook.input_frames[0].samples == 1U);
-	assert(atomic_load_explicit(&hook.input_frame_write, memory_order_acquire) == 1U);
-	processing_test_pcm_push_fail_after = 0;
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	/* An incomplete input span becomes an explicit partial silent result. */
-	hook.input_pcm.samples[0] = 11;
-	hook.input_pcm.samples[1] = 12;
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, 2U, memory_order_release);
-	hook.input_frames[0] = (struct txagc_link_frame){.samples = 3U, .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	processing_test_pcm_push_fail_after = 2;
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(hook.output_frames[0].samples == 1U);
-	processing_test_pcm_push_fail_after = 0;
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	/* The same prefix rule applies after a graph has rendered an input block. */
-	memcpy(hook.input_pcm.samples, pcm, sizeof(pcm));
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, ARRAY_LEN(pcm), memory_order_release);
-	hook.input_frames[0] =
-		(struct txagc_link_frame){.samples = ARRAY_LEN(pcm), .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	processing_test_pcm_push_fail_after = 2;
-	assert(txagc_link_worker_process_one(&hook) == 1);
-	assert(hook.output_frames[0].samples == 1U);
-	processing_test_pcm_push_fail_after = 0;
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	/* A consumer interruption drops its descriptor and tapers the remaining PCM. */
-	memcpy(hook.output_pcm.samples, pcm, sizeof(pcm));
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, ARRAY_LEN(pcm), memory_order_release);
-	hook.output_frames[0] =
-		(struct txagc_link_frame){.samples = ARRAY_LEN(pcm), .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	processing_test_pcm_pop_fail_after = 2;
-	link_worker_consume_output(&hook, output, ARRAY_LEN(output), generation, 1U);
-	assert(output[0] == 11 && output[1] == 0 && output[2] == 0);
-	assert(atomic_load_explicit(&hook.output_frame_read, memory_order_acquire) == 1U);
-	processing_test_pcm_pop_fail_after = 0;
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	memcpy(hook.input_pcm.samples, pcm, sizeof(pcm));
-	atomic_store_explicit(&hook.input_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_pcm.write, ARRAY_LEN(pcm), memory_order_release);
-	hook.input_frames[0] =
-		(struct txagc_link_frame){.samples = ARRAY_LEN(pcm), .generation = generation};
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, 1U, memory_order_release);
-	processing_test_pcm_pop_fail_after = 1;
-	assert(!txagc_link_worker_process_one(&hook));
-	processing_test_pcm_pop_fail_after = 0;
-
-	/* A diagnostics reader retries an unstable double-buffer index and reports
-	 * failure only after all three snapshots changed beneath it. */
-	processing_test_statistics_flip_index = 1;
-	assert(!txagc_link_worker_statistics_read(&hook, &statistics));
-	processing_test_statistics_flip_index = 3;
-	assert(txagc_link_worker_statistics_read(&hook, &statistics) < 0);
-	processing_test_statistics_flip_index = 0;
-
-	/* Worker teardown always joins a previously started worker before freeing storage. */
-	hook.worker_started = 1;
-	fake_pthread_join_calls = 0;
-	txagc_link_worker_stop(&hook);
-	assert(!hook.worker_started && fake_pthread_join_calls == 1);
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	/* A full descriptor ring rejects an otherwise fitting callback block. */
-	atomic_store_explicit(&hook.input_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.input_frame_write, TXAGC_LINK_WORKER_CONTROL_FRAMES,
-			      memory_order_release);
-	assert(!link_worker_submit_input(&hook, pcm, 1U, generation));
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	/* Matching descriptor metadata with short PCM is rejected as malformed. */
-	hook.output_pcm.samples[0] = pcm[0];
-	hook.output_pcm.samples[1] = pcm[1];
-	atomic_store_explicit(&hook.output_pcm.read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_pcm.write, 2U, memory_order_release);
-	hook.output_frames[0] =
-		(struct txagc_link_frame){.samples = ARRAY_LEN(pcm), .generation = generation};
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, 1U, memory_order_release);
-	link_worker_consume_output(&hook, output, ARRAY_LEN(output), generation, 1U);
-	assert(atomic_load_explicit(&hook.output_malformed, memory_order_acquire) == 1U);
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	assert(link_worker_submit_input(&hook, pcm, ARRAY_LEN(pcm), generation));
-	/* The worker leaves valid input queued when its output descriptor ring is full. */
-	atomic_store_explicit(&hook.output_frame_read, 0U, memory_order_release);
-	atomic_store_explicit(&hook.output_frame_write, TXAGC_LINK_WORKER_CONTROL_FRAMES,
-			      memory_order_release);
-	assert(!txagc_link_worker_process_one(&hook));
-	destroy_test_hook_slots(&hook);
-
-	memset(&hook, 0, sizeof(hook));
-	prepare_test_link_hook(&hook, "usb", samples, ARRAY_LEN(samples), 8000);
-	generation = atomic_load_explicit(&hook.generation, memory_order_acquire);
-	assert(link_worker_submit_input(&hook, pcm, ARRAY_LEN(pcm), generation));
-	/* Losing a graph between admission and worker execution preserves source PCM. */
-	atomic_store_explicit(&hook.avfilter[TXAGC_LINK].active, NULL, memory_order_release);
-	assert(txagc_link_worker_process_one(&hook));
-	destroy_test_hook_slots(&hook);
 }
 
 /** @brief An established link uses current stage flags on its next incoming audio frame. */
@@ -3971,8 +3491,8 @@ static void test_link_live_stage_flags(void)
 			*flag = enabled;
 			/* Rebuilding belongs to the reload control plane, never this callback. */
 			assert(!txagc_avfilter_slot_prepare(
-				&hook.avfilter[TXAGC_LINK],
-				&settings.profiles[0].chains[TXAGC_LINK].agc, 8000));
+				&hook.avfilter, &settings.profiles[0].chains[TXAGC_LINK].agc,
+				8000));
 			assert(!test_link_callback(audiohook, channel, &frame,
 						   AST_AUDIOHOOK_DIRECTION_READ));
 			assert(*(int *)((char *)&fake_processor_config + flag_offsets[index]) ==
@@ -4152,114 +3672,6 @@ static void test_live_signaling_reload(void)
 	fake_iterator_available = 0;
 }
 
-/** @brief Running reloads reject incompatible active-link crossovers without replacing settings. */
-static void test_active_link_crossover_reload(void)
-{
-	struct txagc_hook hook = {0};
-	struct ast_datastore datastore = {.data = &hook};
-	struct txagc_avfilter *filter;
-	struct fake_option configured[] = {
-		{"usb", "channel_enabled", "yes"},
-		{"link usb", "enabled", "yes"},
-		{"link usb", "compressor_enabled", "yes"},
-		{"link usb", "limiter_enabled", "yes"},
-		{"link usb", "compressor_bands", "3"},
-		{"link usb", "limiter_bands", "3"},
-		{"link usb", "compressor_high_crossover_hz", "2000"},
-		{"link usb", "limiter_high_crossover_hz", "2000"},
-	};
-	fake_config_load_result = (struct ast_config *)(uintptr_t)1;
-	fake_category_count = 2;
-	fake_categories[0] = "usb";
-	fake_categories[1] = "link usb";
-	fake_variables[0] = fake_variables[1] = NULL;
-	fake_primary_channel_available = 0;
-	fake_iterator_available = 1;
-	fake_channel_datastore = &datastore;
-	settings_defaults(&settings);
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_init(&hook.avfilter[source]);
-	atomic_init(&hook.link_enabled, 1);
-	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
-	hook.sample_rate = 8000;
-	assert(!txagc_avfilter_slot_prepare(&hook.avfilter[TXAGC_LINK],
-					    &settings.profiles[0].chains[TXAGC_LINK].agc, 8000));
-	scan_thread = (pthread_t)1;
-	set_fake_options(configured, ARRAY_LEN(configured));
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	struct txagc_config previous = settings.profiles[0].chains[TXAGC_LINK].agc;
-	for (size_t stage = 6; stage <= 7; ++stage) {
-		configured[stage].value = "4500";
-		set_fake_options(configured, ARRAY_LEN(configured));
-		fake_iterator_channels_remaining = 1;
-		assert(usbradioplus_processing_reload() < 0);
-		assert(!memcmp(&previous, &settings.profiles[0].chains[TXAGC_LINK].agc,
-			       sizeof(previous)));
-		configured[stage].value = "2000";
-	}
-	configured[6].value = configured[7].value = "4500";
-	set_fake_options(configured, ARRAY_LEN(configured));
-	hook.sample_rate = 16000;
-	assert(!txagc_avfilter_slot_prepare(&hook.avfilter[TXAGC_LINK],
-					    &settings.profiles[0].chains[TXAGC_LINK].agc, 16000));
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	assert(settings.profiles[0].chains[TXAGC_LINK].agc.compressor_high_crossover_hz == 4500);
-	assert(settings.profiles[0].chains[TXAGC_LINK].agc.limiter_high_crossover_hz == 4500);
-	/* Unknown rates, absent hooks, disabled stages, and one-band modes do not
-	 * invent an 8 kHz limit. The first processed frame checks its actual rate. */
-	filter = txagc_avfilter_slot_active(&hook.avfilter[TXAGC_LINK]);
-	assert(filter);
-	filter->sample_rate = 0;
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	/* A detached graph carries no rate and therefore cannot reject a future rate. */
-	atomic_store_explicit(&hook.avfilter[TXAGC_LINK].active, NULL, memory_order_release);
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	hook.sample_rate = 8000;
-	assert(!txagc_avfilter_slot_prepare(&hook.avfilter[TXAGC_LINK],
-					    &settings.profiles[0].chains[TXAGC_LINK].agc, 8000));
-	fake_channel_datastore = NULL;
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	fake_channel_datastore = &datastore;
-	datastore.data = NULL;
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	datastore.data = &hook;
-	ast_copy_string(hook.profile, "missing", sizeof(hook.profile));
-	fake_iterator_channels_remaining = 1;
-	assert(!usbradioplus_processing_reload());
-	ast_copy_string(hook.profile, "usb", sizeof(hook.profile));
-	for (size_t option = 0; option <= 5; ++option) {
-		/* Both stages must be inactive when testing their individual selectors. */
-		configured[2].value = configured[3].value = "no";
-		if (option < 2)
-			configured[2].value = configured[3].value = "yes";
-		configured[option].value = option < 4 ? "no" : "1";
-		if (option >= 4)
-			configured[option - 2].value = "yes";
-		set_fake_options(configured, ARRAY_LEN(configured));
-		fake_iterator_channels_remaining = 1;
-		assert(!usbradioplus_processing_reload());
-		configured[option].value = option < 4 ? "yes" : "3";
-	}
-	fake_iterator_channels_remaining = 0;
-	assert(!usbradioplus_processing_reload());
-	previous = settings.profiles[0].chains[TXAGC_LINK].agc;
-	fake_iterator_available = 0;
-	assert(usbradioplus_processing_reload() < 0);
-	assert(!memcmp(&previous, &settings.profiles[0].chains[TXAGC_LINK].agc, sizeof(previous)));
-	scan_thread = AST_PTHREADT_NULL;
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_destroy(&hook.avfilter[source]);
-	fake_category_count = 0;
-	fake_option_count = 0;
-	fake_channel_datastore = NULL;
-}
-
 /** @brief Reset audiohook attachment and allocation stub state. */
 static void reset_attach_doubles(void)
 {
@@ -4274,7 +3686,6 @@ static void reset_attach_doubles(void)
 	fake_slot_active_null = 0;
 	fake_slot_zero_input_capacity = 0;
 	fake_rawreadformat_null = 0;
-	processing_test_worker_start_result = 0;
 	fake_datastore_free_calls = 0;
 	fake_audiohook_init_result = 0;
 	fake_audiohook_attach_result = 0;
@@ -4352,11 +3763,6 @@ static void test_audiohook_attachment(void)
 
 	reset_attach_doubles();
 	fake_calloc_fail_call = 2;
-	assert(attach_hook(channel, "usb") < 0);
-	assert(fake_datastore_free_calls == 1);
-
-	reset_attach_doubles();
-	processing_test_worker_start_result = -1;
 	assert(attach_hook(channel, "usb") < 0);
 	assert(fake_datastore_free_calls == 1);
 
@@ -4497,7 +3903,6 @@ static void test_reporting_cli(void)
 	settings.profiles[0].agc.deesser_enabled = 1;
 	settings.profiles[0].agc.compressor_enabled = 1;
 	settings.profiles[0].agc.limiter_enabled = 1;
-	settings.profiles[0].agc.splatter_filter_enabled = 1;
 	settings.profiles[0].agc.lookahead_limiter_enabled = 1;
 	for (size_t source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
 		settings.profiles[0].chains[source].enabled = 1;
@@ -4517,7 +3922,6 @@ static void test_reporting_cli(void)
 			settings.profiles[0].chains[source].rnnoise_enabled = 0;
 	settings.profiles[0].chains[TXAGC_LOCAL].agc.receive_bandpass_enabled = 0;
 	settings.profiles[0].chains[TXAGC_LOCAL].agc.equalizer_enabled = 0;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.splatter_filter_enabled = 0;
 	settings.profiles[0].chains[TXAGC_LOCAL].ctcss_filter_configured = 0;
 	assert(cli_show(&entry, 99, &arguments) == CLI_SUCCESS);
 
@@ -4535,11 +3939,10 @@ static void test_reporting_cli(void)
 	fake_iterator_channels_remaining = 1;
 	datastore.data = &hook;
 	fake_channel_datastore = &datastore;
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_init(&hook.avfilter[source]);
-	assert(!txagc_avfilter_slot_prepare(&hook.avfilter[TXAGC_LOCAL],
-					    &settings.profiles[0].chains[TXAGC_LOCAL].agc, 8000));
-	filter = txagc_avfilter_slot_active(&hook.avfilter[TXAGC_LOCAL]);
+	txagc_avfilter_slot_init(&hook.avfilter);
+	assert(!txagc_avfilter_slot_prepare(&hook.avfilter,
+					    &settings.profiles[0].chains[TXAGC_LINK].agc, 8000));
+	filter = txagc_avfilter_slot_active(&hook.avfilter);
 	assert(filter);
 	filter->input_samples = 1;
 	filter->input_peak_dbfs = -10.0;
@@ -4555,8 +3958,7 @@ static void test_reporting_cli(void)
 	fake_iterator_channels_remaining = 1;
 	assert(cli_stats(&entry, 99, &arguments) == CLI_SUCCESS);
 	fake_channel_datastore = NULL;
-	for (int source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-		txagc_avfilter_slot_destroy(&hook.avfilter[source]);
+	txagc_avfilter_slot_destroy(&hook.avfilter);
 }
 
 /** @brief Execute this harness's regression assertions and report any failures.
@@ -4595,16 +3997,12 @@ int main(void)
 	test_module_lifecycle_and_simple_cli();
 	test_channel_eligibility();
 	test_audiohook_callback_and_destroy();
-	test_link_worker_queue_contract();
-	test_link_worker_failures_and_lifecycle();
-	test_link_worker_malformed_input_recovery();
-	test_link_worker_malformed_output_progression();
+	test_link_callback_synchronous_contract();
+	test_link_callback_statistics_and_guards();
 	test_processing_private_edge_paths();
-	test_link_worker_invariant_fault_paths();
 	test_link_live_stage_flags();
 	test_link_live_band_modes();
 	test_live_signaling_reload();
-	test_active_link_crossover_reload();
 	test_audiohook_attachment();
 	test_channel_scanning_and_detachment();
 	test_reporting_cli();

@@ -40,6 +40,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
@@ -696,6 +697,7 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 	if (o->pa.active) {
 		return 0;
 	}
+	o->plus_portaudio_playout_hold_callbacks = 0U;
 
 	/* Exact PortAudio endpoints from the active device lease */
 	ast_mutex_lock(&o->device_lock);
@@ -712,6 +714,18 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 			o->name, devstr, Pa_GetErrorText(res));
 		return -1;
 	}
+	{
+		const PaStreamInfo *info = o->pa.stream ? Pa_GetStreamInfo(o->pa.stream) : NULL;
+		double callbacks = 1.0;
+
+		/* PortAudio exposes its best queue-delay estimate only while the stream
+		 * is open. Cache a callback count here; the hardware loop stays lock-free. */
+		if (info && isfinite(info->outputLatency) && info->outputLatency >= 0.0)
+			callbacks += ceil(info->outputLatency * (double)URP_RATE_NATIVE /
+					  (double)URP_NATIVE_SAMPLES);
+		o->plus_portaudio_playout_hold_callbacks =
+			callbacks > (double)UINT_MAX ? UINT_MAX : (unsigned int)callbacks;
+	}
 
 	usbradio_adjust_txmix_for_mono(o);
 
@@ -720,6 +734,7 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 		ast_log(LOG_WARNING, "Channel %s: Unable to start PortAudio stream for %s (%s)\n",
 			o->name, devstr, Pa_GetErrorText(res));
 		ast_radio_pa_stop(&o->pa);
+		o->plus_portaudio_playout_hold_callbacks = 0U;
 		return -1;
 	}
 
@@ -753,11 +768,11 @@ static uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
  * @param request Radio-programming snapshot, nonnull when @p reprogram is nonzero.
  * @param reprogram Nonzero applies the supplied radio-programming request.
  */
-static void hidthread_apply_ptt(struct chan_usbradio_pvt *o,
-				struct libusb_device_handle *usb_handle, unsigned char *buf,
-				unsigned char *bufsave, int asserted,
-				const struct usbradioplus_radio_program_request *request,
-				int reprogram)
+URP_CHANNEL_LOCAL void hidthread_apply_ptt(struct chan_usbradio_pvt *o,
+					   struct libusb_device_handle *usb_handle,
+					   unsigned char *buf, unsigned char *bufsave, int asserted,
+					   const struct usbradioplus_radio_program_request *request,
+					   int reprogram)
 {
 	const uint8_t parallel_mask = hidthread_parallel_ptt_mask(o);
 
@@ -1404,9 +1419,19 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 	return NULL;
 }
 
-URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+/** @brief Submit one native DAC block and report whether PortAudio accepted it intact.
+ * @param o Active PortAudio channel.
+ * @param data Rendered native stereo PCM.
+ * @param submitted Receives nonzero only for an accepted original block; may be NULL.
+ * @return Native frame byte count on success, or zero after a terminal error.
+ */
+static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *data, int *submitted)
 {
 	PaError res;
+	int audio_bearing;
+
+	if (submitted)
+		*submitted = 0;
 
 	if (!o->pa.active) {
 		if (usbradio_start_audio(o) < 0) {
@@ -1422,7 +1447,9 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	/* The audio worker publishes this before releasing its parser-state read
 	 * lease.  Keeping the output decision separate lets a reload emit silence
 	 * without dereferencing a radio object being reparsed by the control plane. */
-	if (!atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire)) {
+	audio_bearing = atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire) &&
+			usbradioplus_pcm_has_audio(data, AST_RADIO_PA_48K_STEREO_SAMPLES);
+	if (!audio_bearing) {
 		data = silence_buf;
 	}
 
@@ -1440,8 +1467,20 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 		ast_radio_pa_stop(&o->pa);
 		return 0;
 	}
+	if (res == paNoError) {
+		usbradioplus_tx_playout_hold_note_output(
+			o, 1, audio_bearing,
+			audio_bearing ? o->plus_portaudio_playout_hold_callbacks : 0U);
+		if (submitted)
+			*submitted = 1;
+	}
 
 	return AST_RADIO_PA_FRAMES_PER_BUFFER * AST_RADIO_PA_OUTPUT_CHANNELS * (int)sizeof(short);
+}
+
+URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+{
+	return soundcard_write_admitted_frame(o, data, NULL);
 }
 
 /** @brief Read one native-rate interleaved PortAudio receiver block.
@@ -1705,6 +1744,8 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 URP_CHANNEL_LOCAL void stream_cleanup(struct chan_usbradio_pvt *o)
 {
 	ast_radio_pa_stop(&o->pa);
+	o->plus_portaudio_playout_hold_callbacks = 0U;
+	usbradioplus_tx_playout_hold_reset(o);
 	usbradio_swap_audio_stopped(o);
 	o->audio_thread_ready = 0;
 }
@@ -1822,7 +1863,7 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			}
 			tx_write_ready = frames_available >= AST_RADIO_PA_FRAMES_PER_BUFFER;
 
-			/* Echo playback remains a distinct hardware-worker source. */
+			/* Legacy app_rpt echo remains a distinct source queue. */
 			if (!o->plus_advanced && tx_write_ready && o->echomode &&
 			    !usbradioplus_native_echo(o) && (!o->rxkeyed)) {
 				(void)usbradioplus_echo_start(o);
@@ -1867,17 +1908,22 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				o->radio->txPttIn = 0;
 			}
 			usbradioplus_prepare_squelch_audio(o);
-			urp_radio_process(o->radio, o->plus_squelch_native,
-					  (i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-					  o->usbradio_write_buf);
-			atomic_store_explicit(&o->plus_radio_tx_active,
-					      o->radio->txPttIn || o->radio->txPttOut,
-					      memory_order_release);
-			/* Never touch GPIO, parallel hardware, or a wake pipe from this
-			 * hardware-paced loop. The HID worker applies this request. */
-			usbradioplus_publish_hardware_ptt(o, o->radio->txPttOut);
+			/* A full PortAudio queue freezes TX state. Restoring raw PTT before a
+			 * non-advancing tick could release audio already queued for playout. */
+			if (tx_write_ready)
+				usbradioplus_tx_playout_hold_prepare(o);
+			urp_radio_process_timed(
+				o->radio, o->plus_squelch_native,
+				(i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
+				o->usbradio_write_buf, tx_write_ready);
+			if (tx_write_ready) {
+				usbradioplus_tx_playout_hold_apply(o);
+				/* Never touch GPIO, parallel hardware, or a wake pipe from this
+				 * hardware-paced loop. The HID worker applies this request. */
+				usbradioplus_tx_playout_hold_publish(o);
+			}
 			usbradioplus_refresh_ctcss_decode(o);
-			usbradioplus_native_tick(o);
+			usbradioplus_native_tick(o, tx_write_ready);
 
 			/*
 			 * Write one frame when PortAudio has room. When unkeyed,
@@ -1885,14 +1931,22 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			 * PortAudio room; that adds TX delay.
 			 */
 			if (tx_write_ready) {
-				if (!soundcard_writeframe(o, o->usbradio_write_buf)) {
+				int tx_write_submitted = 0;
+
+				if (!soundcard_write_admitted_frame(o, o->usbradio_write_buf,
+								    &tx_write_submitted)) {
 					usbradioplus_radio_access_release(o);
 					stream_cleanup(o);
 					break;
 				}
-				/* A ready PortAudio slot has accepted this complete native frame.
-				 * Do not advance the TX SPSC cursor while the device is full. */
-				usbradioplus_native_tx_output_ack(o);
+				if (tx_write_submitted) {
+					/* A successful hardware submission advances the DAC-drain
+					 * clock. Re-apply now so the final held callback can
+					 * release PTT. */
+					usbradioplus_tx_playout_hold_prepare(o);
+					usbradioplus_tx_playout_hold_apply(o);
+					usbradioplus_tx_playout_hold_publish(o);
+				}
 			}
 
 			{
@@ -1916,6 +1970,11 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				} else {
 					cd = 0;
 				}
+				/* This interval was re-armed at the true physical PTT release,
+				 * after the device queue drained. Do not admit hardware COR in that
+				 * boundary. */
+				if (o->radio->txrxblankingtimer > 0)
+					cd = 0;
 
 				if (cd != o->rxcarrierdetect) {
 					o->rxcarrierdetect = cd;
@@ -1978,7 +2037,7 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 			}
 
 			if (o->txoffdelay) {
-				if (atomic_load_explicit(&o->txkeyed, memory_order_acquire) == 1) {
+				if (o->radio->txPttOut) {
 					o->txoffcnt = 0;
 				} else {
 					o->txoffcnt++;
@@ -3195,7 +3254,7 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 	struct chan_usbradio_pvt *o;
 	struct rpcr_observation program_observation;
 	const struct usbradioplus_native_graph_set *graphs;
-	struct usbradioplus_native_worker_stats statistics;
+	struct usbradioplus_native_renderer_stats statistics;
 	const struct usbradioplus_native_filter_statistics *local_filter;
 	const struct usbradioplus_native_filter_statistics *final_filter;
 	switch (cmd) {
@@ -3220,8 +3279,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		return CLI_FAILURE;
 	}
 	usbradioplus_native_graphs_release(o);
-	if (usbradioplus_native_worker_stats_read(o, &statistics)) {
-		ast_cli(a->fd, "Native worker measurements are not available.\n");
+	if (usbradioplus_native_renderer_stats_read(o, &statistics)) {
+		ast_cli(a->fd, "Native renderer measurements are not available.\n");
 		return CLI_FAILURE;
 	}
 	local_filter = &statistics.local_filter;
@@ -3230,8 +3289,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		if (strcasecmp(a->argv[3], "reset")) {
 			return CLI_SHOWUSAGE;
 		}
-		usbradioplus_native_worker_stats_reset(o);
-		ast_cli(a->fd, "Native worker meter reset requested.\n");
+		usbradioplus_native_renderer_stats_reset(o);
+		ast_cli(a->fd, "Native renderer meter reset requested.\n");
 		return CLI_SUCCESS;
 	}
 	rpcr_observe(&o->plus_program_ring, &program_observation);
@@ -3269,13 +3328,11 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		1000.0 * program_observation.filtered_occupancy_samples / o->plus_app_rpt_rate,
 		program_observation.ratio_correction_ppm);
 	ast_cli(a->fd,
-		"Native worker queue: input drops %" PRIu64 ", output silences %" PRIu64
-		", malformed records %" PRIu64 "; RNNoise frames %" PRIu64 ", output %" PRIu64
-		", startup %" PRIu64 ", errors %" PRIu64 ", VAD %.2f.\n",
-		statistics.worker_input_overflows, statistics.worker_output_underflows,
-		statistics.worker_output_malformed, statistics.rnnoise_frames,
-		statistics.rnnoise_output_samples, statistics.rnnoise_startup_samples,
-		statistics.rnnoise_errors, statistics.rnnoise_vad_probability);
+		"Local RNNoise: frames %" PRIu64 ", output %" PRIu64 ", startup %" PRIu64
+		", errors %" PRIu64 ", VAD %.2f.\n",
+		statistics.rnnoise_frames, statistics.rnnoise_output_samples,
+		statistics.rnnoise_startup_samples, statistics.rnnoise_errors,
+		statistics.rnnoise_vad_probability);
 	ast_cli(a->fd,
 		"FFmpeg local: input peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
 		"output peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "

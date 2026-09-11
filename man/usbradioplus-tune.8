@@ -138,10 +138,10 @@ is complete.
 The Local receiver, Linked audio, and Voice + telemetry menus edit their
 separate processing chains. Each Stages menu enables or disables the available
 stages and edits the order of equalizer, expander, AGC, de-esser, compressor,
-and limiter. RNNoise, local receiver filters, and the fixed transmitter tail
-are not reorderable. The local chain alone offers RNNoise and CTCSS filtering;
-the voice/telemetry chain alone offers the fixed transmitter filters and final
-limiter.
+and limiter. RNNoise, local receiver filters, the final limiter, and its
+post-limiter low-pass are not reorderable. The local chain alone offers RNNoise
+and CTCSS filtering; the voice/telemetry chain alone offers the final limiter
+and post-limiter low-pass.
 .PP
 The Compressor and Limiter pages each select single-band or three-band mode.
 Three-band mode uses low, mid, and high controls around configurable
@@ -181,8 +181,8 @@ sample. Controls are grouped by source and signaling system; configure a
 signaling system before selecting it for either direction.
 The local Filters page controls the receive band-pass and one PL-removal mode:
 disabled, high-pass, or automatic decoded-tone notch. The voice/telemetry
-Filters page controls the fixed transmit band-pass and post-limiter low-pass.
-The link chain has no fixed filter page.
+Filters page controls the post-limiter low-pass. The link chain has no fixed
+filter page.
 .PP
 Compressor and Limiter pages select single-band or three-band operation.
 Single-band mode shows full-band controls. Three-band mode shows low/mid and

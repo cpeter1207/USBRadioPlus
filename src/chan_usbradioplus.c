@@ -40,6 +40,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
@@ -1168,55 +1169,137 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 	pthread_exit(0);
 }
 
-URP_CHANNEL_LOCAL int used_blocks(struct chan_usbradio_pvt *o)
+/** @brief Query one OSS output-space snapshot and maintain its capacity cache. */
+static int soundcard_output_space(struct chan_usbradio_pvt *o, struct audio_buf_info *info)
 {
-	struct audio_buf_info info;
-
-	if (ioctl(o->sounddev, SNDCTL_DSP_GETOSPACE, &info)) {
+	if (ioctl(o->sounddev, SNDCTL_DSP_GETOSPACE, info)) {
 		if (!(o->warned & WARN_used_blocks)) {
 			o->warned |= WARN_used_blocks;
 		}
-		return 1;
+		return -1;
 	}
 
 	/* Cache capacity, not the free-space snapshot: idle playback remains active. */
 	if (o->total_blocks == 0) {
-		o->total_blocks = info.fragstotal;
+		o->total_blocks = info->fragstotal;
 		/* Check the queue size, it cannot exceed the total fragments */
-		if (o->queuesize >= (unsigned int)info.fragstotal) {
-			o->queuesize = info.fragstotal - 1;
+		if (o->queuesize >= (unsigned int)info->fragstotal) {
+			o->queuesize = info->fragstotal - 1;
 			if (o->queuesize < 2) {
 				o->queuesize = QUEUE_SIZE;
 			}
 		}
 	}
+	return 0;
+}
+
+#ifdef URP_CHANNEL_UNIT_TEST
+/** @brief Expose legacy queue accounting only to the OSS unit harness. */
+int used_blocks(struct chan_usbradio_pvt *o)
+{
+	struct audio_buf_info info;
+
+	if (soundcard_output_space(o, &info))
+		return 1;
 
 	return o->total_blocks - info.fragments;
 }
+#endif
 
-URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+/** @brief Test whether OSS can accept one complete native stereo frame. */
+static int soundcard_admit_native_frame(struct chan_usbradio_pvt *o,
+					struct audio_buf_info *admission)
+{
+	struct audio_buf_info info;
+	int queued;
+
+	if (o->sounddev < 0)
+		setformat(o, O_RDWR);
+	if (o->sounddev < 0 || soundcard_output_space(o, &info))
+		return -1;
+	queued = o->total_blocks - info.fragments;
+	if ((unsigned int)queued > o->queuesize ||
+	    info.bytes < (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short)))
+		return 0;
+	if (admission)
+		*admission = info;
+	return 1;
+}
+
+/** @brief Estimate queued OSS bytes when the driver cannot report output delay.
+ * @param o Channel that owns the OSS device.
+ * @param admission Output-space snapshot made before the accepted write.
+ * @param written Complete byte count accepted by OSS.
+ * @return Estimated queued-byte count.
+ */
+static uint64_t soundcard_estimate_queued_bytes(struct chan_usbradio_pvt *o,
+						const struct audio_buf_info *admission, int written)
+{
+	struct audio_buf_info after;
+
+	/* OSS implementations without GETODELAY still expose an occupied-byte
+	 * estimate. A failed post-write query falls back to the admission snapshot. */
+	if (!soundcard_output_space(o, &after)) {
+		uint64_t capacity = (uint64_t)after.fragstotal * (uint64_t)after.fragsize;
+		uint64_t free_bytes = after.bytes > 0 ? (uint64_t)after.bytes : 0U;
+
+		return free_bytes < capacity ? capacity - free_bytes : 0U;
+	}
+	uint64_t capacity = (uint64_t)admission->fragstotal * (uint64_t)admission->fragsize;
+	uint64_t free_bytes = admission->bytes > 0 ? (uint64_t)admission->bytes : 0U;
+
+	return (free_bytes < capacity ? capacity - free_bytes : 0U) + (uint64_t)written;
+}
+
+/** @brief Convert an accepted OSS frame's remaining device delay into callback periods.
+ * @param o Channel that owns the OSS device.
+ * @param admission Output-space snapshot made before the accepted write.
+ * @param written Complete byte count accepted by OSS.
+ * @return Native callbacks through playout plus the required one-block safety hold.
+ */
+static unsigned int soundcard_playout_hold_callbacks(struct chan_usbradio_pvt *o,
+						     const struct audio_buf_info *admission,
+						     int written)
+{
+	const uint64_t frame_bytes = (uint64_t)URP_NATIVE_SAMPLES * 2U * sizeof(short);
+	uint64_t queued_bytes = 0U;
+	uint64_t callbacks;
+
+#ifdef SNDCTL_DSP_GETODELAY
+	{
+		int delay = 0;
+
+		/* Query after the write so partial accepted writes and device scheduling
+		 * are reflected in the queue estimate instead of assumed from fragments. */
+		if (!ioctl(o->sounddev, SNDCTL_DSP_GETODELAY, &delay) && delay >= 0) {
+			queued_bytes = (uint64_t)delay;
+		} else
+			queued_bytes = soundcard_estimate_queued_bytes(o, admission, written);
+	}
+#else
+	queued_bytes = soundcard_estimate_queued_bytes(o, admission, written);
+#endif
+	/* Round up the queued device time, then retain PTT for one additional native
+	 * 20 ms callback. A callback cadence is the only timing source used here. */
+	callbacks = (queued_bytes + frame_bytes - 1U) / frame_bytes + 1U;
+	return callbacks > UINT_MAX ? UINT_MAX : (unsigned int)callbacks;
+}
+
+/** @brief Write one previously admitted native stereo frame without rechecking OSS. */
+static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *data,
+					  const struct audio_buf_info *admission)
 {
 	static const short silence[URP_NATIVE_SAMPLES * 2] = {0};
 	const short *output = data;
+	int audio_bearing;
 	int res;
 
-	/* If the sound device is not open, setformat will open the device */
-	if (o->sounddev < 0) {
-		setformat(o, O_RDWR);
-	}
-	if (o->sounddev < 0) {
-		return 0; /* not fatal */
-	}
 	/* Keep the DAC fed at the capture clock's cadence, including while idle.
 	 * PTT selects audio or silence; it never starts or stops device writes. */
-	if (!atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire)) {
+	audio_bearing = atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire) &&
+			usbradioplus_pcm_has_audio(data, URP_NATIVE_SAMPLES * 2U);
+	if (!audio_bearing) {
 		output = silence;
-	}
-	/* Bound device latency without adding an extra silent block on an empty queue. */
-	res = used_blocks(o);
-	if ((unsigned int)res > o->queuesize) { /* no room to write a block */
-		o->plus_sound_dropped_frames++;
-		return 0;
 	}
 	res = write(o->sounddev, output, sizeof(silence));
 	if (res < 0) {
@@ -1224,9 +1307,29 @@ URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *d
 	} else if (res != (int)sizeof(silence)) {
 		o->plus_sound_short_writes++;
 	}
+	if (res == (int)sizeof(silence))
+		usbradioplus_tx_playout_hold_note_output(
+			o, 1, audio_bearing,
+			audio_bearing ? soundcard_playout_hold_callbacks(o, admission, res) : 0U);
 
 	return res;
 }
+
+#ifdef URP_CHANNEL_UNIT_TEST
+/** @brief Exercise OSS admission and write behavior through the unit harness. */
+int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+{
+	struct audio_buf_info admission;
+	int admitted = soundcard_admit_native_frame(o, &admission);
+
+	if (admitted != 1) {
+		if (!admitted)
+			o->plus_sound_dropped_frames++;
+		return 0;
+	}
+	return soundcard_write_admitted_frame(o, data, &admission);
+}
+#endif
 
 URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
 {
@@ -1235,6 +1338,7 @@ URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
 
 	/* A reopened device may have a different playback-buffer capacity. */
 	o->total_blocks = 0;
+	usbradioplus_tx_playout_hold_reset(o);
 	/* If the device is open, close it */
 	if (o->sounddev >= 0) {
 		ioctl(o->sounddev, SNDCTL_DSP_RESET, 0);
@@ -1504,8 +1608,8 @@ URP_CHANNEL_LOCAL int usbradio_hangup(struct ast_channel *c)
 	o->stophid = 1;
 	pthread_join(o->hidthread, NULL);
 	/* Keep ownership observable until device and callback activity has quiesced.
-	 * Module unload uses owner as its lifetime barrier before it frees the native
-	 * worker and signaling state. */
+	 * Module unload uses owner as its lifetime barrier before it frees native
+	 * renderer and signaling state. */
 	o->owner = NULL;
 	return 0;
 }
@@ -1545,6 +1649,8 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 {
 	int res;
 	int cd, sd;
+	int tx_write_ready;
+	struct audio_buf_info tx_admission;
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 	struct ast_frame *f = &o->read_f;
 	time_t now;
@@ -1643,16 +1749,24 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 				  12 * FRAME_SIZE)) {
 		usbradioplus_request_clip_led(o);
 	}
+	/* Admit the exact DAC frame before rendering it. The direct renderer drains
+	 * the program ring only after this non-mutating OSS capacity snapshot. */
+	tx_write_ready = soundcard_admit_native_frame(o, &tx_admission);
+	if (!tx_write_ready)
+		o->plus_sound_dropped_frames++;
+	tx_write_ready = tx_write_ready > 0;
 
-	/* A processing reload may briefly replace parser-owned CTCSS state.  Do not
-	 * wait in this hardware-paced worker: keep the DAC cadence with silence and
+	/* A processing reload may briefly replace parser-owned CTCSS state. Do not
+	 * wait in this hardware-paced callback: keep the DAC cadence with silence and
 	 * resume the normal signaling engine on the next native block. */
 	if (!usbradioplus_radio_access_acquire(o)) {
 		memset(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0,
 		       o->plus_app_rpt_samples * sizeof(short));
 		memset(o->usbradio_write_buf, 0, sizeof(o->usbradio_write_buf));
 		atomic_store_explicit(&o->plus_radio_tx_active, 0, memory_order_release);
-		soundcard_writeframe(o, (short *)o->usbradio_write_buf);
+		if (tx_write_ready)
+			(void)soundcard_write_admitted_frame(o, (short *)o->usbradio_write_buf,
+							     &tx_admission);
 		o->readpos = AST_FRIENDLY_OFFSET;
 		return &ast_null_frame;
 	}
@@ -1669,22 +1783,31 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 		o->radio->txPttIn = 0;
 	}
 	usbradioplus_prepare_squelch_audio(o);
-	urp_radio_process(o->radio, (i16 *)o->plus_squelch_native,
-			  (i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-			  (i16 *)(o->usbradio_write_buf));
-	atomic_store_explicit(&o->plus_radio_tx_active, o->radio->txPttIn || o->radio->txPttOut,
-			      memory_order_release);
-	/* The HID worker owns all physical output and consumes this request. */
-	usbradioplus_publish_hardware_ptt(o, o->radio->txPttOut);
+	/* A full DAC queue freezes the TX state. Restoring raw PTT before a
+	 * non-advancing tick could release audio that the device still holds. */
+	if (tx_write_ready)
+		usbradioplus_tx_playout_hold_prepare(o);
+	urp_radio_process_timed(o->radio, (i16 *)o->plus_squelch_native,
+				(i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
+				(i16 *)(o->usbradio_write_buf), tx_write_ready);
+	if (tx_write_ready) {
+		usbradioplus_tx_playout_hold_apply(o);
+		/* The HID worker owns all physical output and consumes this request. */
+		usbradioplus_tx_playout_hold_publish(o);
+	}
 	usbradioplus_refresh_ctcss_decode(o);
-	usbradioplus_native_tick(o);
+	usbradioplus_native_tick(o, tx_write_ready);
 
-	/* The native TX queue retires a frame only after OSS accepted the complete
-	 * native block. A full device queue therefore retries its existing head
-	 * instead of silently discarding program audio. */
-	if (soundcard_writeframe(o, (short *)o->usbradio_write_buf) ==
-	    (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short)))
-		usbradioplus_native_tx_output_ack(o);
+	/* The callback renders directly into this admitted hardware frame. */
+	if (tx_write_ready &&
+	    soundcard_write_admitted_frame(o, (short *)o->usbradio_write_buf, &tx_admission) ==
+		    (int)sizeof(o->usbradio_write_buf)) {
+		/* Advance the playout deadline only after the complete hardware write.
+		 * Re-applying here releases PTT on the exact final held callback. */
+		usbradioplus_tx_playout_hold_prepare(o);
+		usbradioplus_tx_playout_hold_apply(o);
+		usbradioplus_tx_playout_hold_publish(o);
+	}
 
 	/* Check for carrier detect - COR active */
 	{
@@ -1705,6 +1828,10 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 		} else {
 			cd = 0;
 		}
+		/* This interval was re-armed at the true physical PTT release, after
+		 * the device queue drained. Do not admit hardware COR in that boundary. */
+		if (o->radio->txrxblankingtimer > 0)
+			cd = 0;
 
 		if (cd != o->rxcarrierdetect) {
 			o->rxcarrierdetect = cd;
@@ -1742,7 +1869,7 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 
 	/* Timer for how long TX has been unkeyed - used with txoffdelay */
 	if (o->txoffdelay) {
-		if (atomic_load_explicit(&o->txkeyed, memory_order_acquire) == 1) {
+		if (o->radio->txPttOut) {
 			o->txoffcnt = 0; /* If keyed, set this to zero. */
 		} else {
 			o->txoffcnt++;
@@ -2852,7 +2979,7 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 	struct chan_usbradio_pvt *o;
 	struct rpcr_observation program_observation;
 	const struct usbradioplus_native_graph_set *graphs;
-	struct usbradioplus_native_worker_stats statistics;
+	struct usbradioplus_native_renderer_stats statistics;
 	const struct usbradioplus_native_filter_statistics *local_filter;
 	const struct usbradioplus_native_filter_statistics *final_filter;
 	switch (cmd) {
@@ -2879,8 +3006,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		return CLI_FAILURE;
 	}
 	usbradioplus_native_graphs_release(o);
-	if (usbradioplus_native_worker_stats_read(o, &statistics)) {
-		ast_cli(a->fd, "Native worker measurements are not available.\n");
+	if (usbradioplus_native_renderer_stats_read(o, &statistics)) {
+		ast_cli(a->fd, "Native renderer measurements are not available.\n");
 		return CLI_FAILURE;
 	}
 	local_filter = &statistics.local_filter;
@@ -2889,8 +3016,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		if (strcasecmp(a->argv[3], "reset")) {
 			return CLI_SHOWUSAGE;
 		}
-		usbradioplus_native_worker_stats_reset(o);
-		ast_cli(a->fd, "Native worker meter reset requested.\n");
+		usbradioplus_native_renderer_stats_reset(o);
+		ast_cli(a->fd, "Native renderer meter reset requested.\n");
 		return CLI_SUCCESS;
 	}
 	rpcr_observe(&o->plus_program_ring, &program_observation);
@@ -2928,13 +3055,11 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		1000.0 * program_observation.filtered_occupancy_samples / o->plus_app_rpt_rate,
 		program_observation.ratio_correction_ppm);
 	ast_cli(a->fd,
-		"Native worker queue: input drops %" PRIu64 ", output silences %" PRIu64
-		", malformed records %" PRIu64 "; RNNoise frames %" PRIu64 ", output %" PRIu64
-		", startup %" PRIu64 ", errors %" PRIu64 ", VAD %.2f.\n",
-		statistics.worker_input_overflows, statistics.worker_output_underflows,
-		statistics.worker_output_malformed, statistics.rnnoise_frames,
-		statistics.rnnoise_output_samples, statistics.rnnoise_startup_samples,
-		statistics.rnnoise_errors, statistics.rnnoise_vad_probability);
+		"Local RNNoise: frames %" PRIu64 ", output %" PRIu64 ", startup %" PRIu64
+		", errors %" PRIu64 ", VAD %.2f.\n",
+		statistics.rnnoise_frames, statistics.rnnoise_output_samples,
+		statistics.rnnoise_startup_samples, statistics.rnnoise_errors,
+		statistics.rnnoise_vad_probability);
 	ast_cli(a->fd,
 		"FFmpeg local: input peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
 		"output peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
@@ -3068,7 +3193,7 @@ URP_CHANNEL_LOCAL int unload_module(void)
 	ast_cli_unregister_multiple(cli_usbradio,
 				    sizeof(cli_usbradio) / sizeof(struct ast_cli_entry));
 
-	/* Do not free native-worker state while an Asterisk channel can still enter
+	/* Do not free native-renderer state while an Asterisk channel can still enter
 	 * the legacy read callback. A soft hangup may finish asynchronously, so keep
 	 * the previous unload failure behavior but perform no partial teardown until
 	 * every owner has completed usbradio_hangup() and joined its HID worker. */

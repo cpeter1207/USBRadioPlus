@@ -123,7 +123,7 @@ $(RPCR_ARCHIVE): $(RPCR_SOURCE_FILES)
 # checks in the top-level quality gate.  A regular check runs its focused test
 # too, so distcheck proves an extracted USBRadioPlus tree contains it.
 rpcr-ci: $(RPCR_SOURCE_FILES)
-	$(MAKE) -C $(RPCR_SOURCE) ci
+	$(MAKE) -C $(RPCR_SOURCE) clean ci
 
 rpcr-test: $(RPCR_BUILD_DEP)
 	$(MAKE) -C $(RPCR_SOURCE) test
@@ -132,7 +132,12 @@ rpcr-test: $(RPCR_BUILD_DEP)
 # Track it so the module cannot retain a stale private-plugin location.
 $(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
 	@printf '%s\n' '$(agcplugindir)/usbradioplus_agc.so' > $@.tmp
-	@if cmp -s $@.tmp $@; then rm -f $@.tmp; else mv $@.tmp $@; fi
+	@if cmp -s $@.tmp $@; then \
+		rm -f $@.tmp; \
+	else \
+		mv $@.tmp $@; \
+		rm -f $(BUILD_DIR)/txagc/avfilter_processor.o; \
+	fi
 
 $(BUILD_DIR)/txagc/avfilter_processor.o: $(BUILD_DIR)/agc-plugin-path
 

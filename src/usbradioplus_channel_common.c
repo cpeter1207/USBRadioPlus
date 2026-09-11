@@ -237,7 +237,7 @@ void kickptt(const struct chan_usbradio_pvt *o)
 	}
 }
 
-/** @brief Copy lock-free HID-worker state into fields owned by the audio worker.
+/** @brief Copy lock-free HID-worker state into fields owned by the audio callback.
  * @param o Private channel whose callback imports immutable hardware state.
  *
  * The radio signaling engine has a single writer: the native audio callback.
@@ -266,6 +266,123 @@ void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *o, int asserted
 	if (o)
 		atomic_store_explicit(&o->plus_hardware_ptt_request, !!asserted,
 				      memory_order_release);
+}
+
+void usbradioplus_tx_playout_hold_prepare(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+
+	if (!channel || !channel->radio)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	/* The previous callback may have made txPttOut high solely to drain the
+	 * audio device. Restore the engine's unmodified output before it advances. */
+	if (hold->draining)
+		channel->radio->txPttOut = hold->engine_ptt_out;
+}
+
+void usbradioplus_tx_playout_hold_apply(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+	int input_keyed;
+	int was_draining;
+
+	if (!channel || !channel->radio)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	was_draining = hold->draining;
+	input_keyed = !!channel->radio->txPttIn;
+	/* A new external key request supersedes queued audio from the previous
+	 * transmission. It must never inherit a stale post-playout release timer. */
+	if (input_keyed && !hold->input_keyed) {
+		hold->callbacks_remaining = 0U;
+		hold->draining = 0;
+	}
+	hold->input_keyed = input_keyed;
+	/* Capture the real signaling decision before applying a virtual drain PTT.
+	 * This preserves existing CTCSS/DCS tail handling and rekey semantics. */
+	hold->engine_ptt_out = !!channel->radio->txPttOut;
+	if (hold->engine_ptt_out) {
+		hold->draining = 0;
+		return;
+	}
+	if (hold->callbacks_remaining) {
+		channel->radio->txPttOut = 1;
+		hold->draining = 1;
+	} else {
+		channel->radio->txPttOut = 0;
+		hold->draining = 0;
+		/* The signaling engine started its RX blanking interval when it first
+		 * requested unkey. Start it again at the actual physical-release point. */
+		if (was_draining)
+			channel->radio->txrxblankingtimer = channel->radio->txrxblankingtime;
+	}
+}
+
+void usbradioplus_tx_playout_hold_publish(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+
+	if (!channel || !channel->radio)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	/* The virtual PTT keeps the transmitter keyed only while already accepted
+	 * PCM drains.  That interval must submit silence, not later program audio. */
+	atomic_store_explicit(&channel->plus_radio_tx_active,
+			      !!channel->radio->txPttIn || hold->engine_ptt_out,
+			      memory_order_release);
+	usbradioplus_publish_hardware_ptt(channel, channel->radio->txPttOut);
+}
+
+void usbradioplus_tx_playout_hold_reset(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+
+	if (!channel)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	if (channel->radio && hold->draining)
+		channel->radio->txPttOut = hold->engine_ptt_out;
+	hold->callbacks_remaining = 0U;
+	hold->engine_ptt_out = 0;
+	hold->input_keyed = 0;
+	hold->draining = 0;
+}
+
+void usbradioplus_tx_playout_hold_note_output(struct chan_usbradio_pvt *channel, int submitted,
+					      int audio_bearing, unsigned int callbacks)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+
+	if (!channel || !channel->radio || !submitted)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	/* The adapter already includes the requested 20 ms safety block in this
+	 * rounded native-callback count. A zero estimate still keeps one block. */
+	if (audio_bearing) {
+		hold->callbacks_remaining = callbacks ? callbacks : 1U;
+	} else if (hold->callbacks_remaining) {
+		/* Only a complete DAC submission advances the drain clock. A full
+		 * device queue therefore extends PTT instead of cutting queued PCM off. */
+		--hold->callbacks_remaining;
+	}
+}
+
+int usbradioplus_tx_playout_hold_draining(const struct chan_usbradio_pvt *channel)
+{
+	return channel && channel->plus_tx_playout_hold.draining;
+}
+
+int usbradioplus_pcm_has_audio(const short *samples, size_t count)
+{
+	size_t index;
+
+	if (!samples)
+		return 0;
+	for (index = 0U; index < count; ++index)
+		if (samples[index])
+			return 1;
+	return 0;
 }
 
 void usbradioplus_request_clip_led(struct chan_usbradio_pvt *o)
@@ -376,7 +493,7 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 			   URP_RATE_NATIVE))
 		ast_log(LOG_ERROR, "RadioPlus/%s: unable to configure program sample rates\n",
 			channel->name);
-	/* The native worker owns SRC history and resets it after it observes the
+	/* The native renderer owns SRC history and resets it after it observes the
 	 * graph generation carrying this rate. No control-plane thread touches a
 	 * live converter. */
 	if (channel->plus_dsp_initialized) {
@@ -417,11 +534,11 @@ void usbradioplus_queue_program(struct chan_usbradio_pvt *o, const short *sample
 
 void usbradioplus_echo_clear(struct chan_usbradio_pvt *o)
 {
-	/* Stop admission immediately, then let the worker discard with its owned
-	 * consumer cursor at the next complete render boundary.  Resetting both
-	 * cursors here would race an active legacy-echo worker. */
+	/* Stop admission immediately, then let the callback renderer discard with
+	 * its owned consumer cursor at the next complete render boundary. Resetting
+	 * both cursors here would race active legacy-echo recording. */
 	atomic_store_explicit(&o->echoing, 0, memory_order_release);
-	usbradioplus_native_worker_clear_legacy_echo(o);
+	usbradioplus_native_renderer_clear_legacy_echo(o);
 }
 
 int usbradioplus_echo_start(struct chan_usbradio_pvt *o)
@@ -962,7 +1079,7 @@ void refresh_processing_hardware(struct chan_usbradio_pvt *o)
 	/* A changed code map must go through radio_config().  Besides selecting the
 	 * direction-specific sources, that routine owns the parser's control-plane
 	 * quiesce protocol.  Calling urp_radio_parse_codes() here used to free a
-	 * decoder filter while the hardware worker could still be using it. */
+	 * decoder filter while the hardware callback could still be using it. */
 	if (!o->remoted && (strcmp(o->rxctcssfreqs, o->plus_applied_rxctcssfreqs) ||
 			    strcmp(o->txctcssfreqs, o->plus_applied_txctcssfreqs)))
 		(void)radio_config(o);
@@ -1510,14 +1627,14 @@ static atomic_int test_radio_access_force_reader_retry;
 /** @brief Enter the control-plane exclusion window for parser-owned radio state.
  * @param channel Radio whose CTCSS/DCS parser state will be replaced.
  *
- * The native worker never waits for this writer. It observes reconfiguring,
+ * The native callback never waits for this writer. It observes reconfiguring,
  * emits its ordinary silent frame for that tick, and resumes on the next
  * block. The sequentially consistent writer flag/store and reader-count load
  * pair with acquire's flag load, count increment, and recheck: a reader that
  * starts after the writer's zero-count observation must see the asserted flag
  * on its recheck, while a reader that increments first keeps the writer
  * waiting. This prevents urp_radio_parse_codes() from freeing decoder memory
- * while the worker is using it without a callback lock.
+ * while the callback is using it without a callback lock.
  */
 static void radio_access_begin_reconfigure(struct chan_usbradio_pvt *channel)
 {
@@ -1555,7 +1672,7 @@ int usbradioplus_radio_access_acquire(struct chan_usbradio_pvt *channel)
 
 	if (!channel || !channel->radio)
 		return 0;
-	/* Unit construction and teardown have no hardware worker. */
+	/* Unit construction and teardown have no active hardware callback. */
 	if (!channel->plus_dsp_initialized)
 		return 1;
 	slot = &channel->plus_radio_access;
@@ -2789,7 +2906,7 @@ static void native_local_dynamics_config(const struct txagc_chain *chain,
 	config->receive_bandpass_enabled = 0;
 }
 
-/** @brief Build the fixed transmitter-tail graph configuration.
+/** @brief Build the final transmitter graph configuration.
  * @param o Radio channel supplying pre-emphasis settings.
  * @param chain Resolved voice/telemetry processing chain.
  * @param config Receives the final composite graph configuration.
@@ -2798,8 +2915,7 @@ static void native_final_config(const struct chan_usbradio_pvt *o, const struct 
 				struct txagc_config *config)
 {
 	*config = chain->agc;
-	/* The source master gates only optional reorderable stages. The fixed
-	 * transmitter filter/limiter/filter tail remains individually configurable. */
+	/* The source master gates only optional reorderable stages. */
 	if (!chain->enabled) {
 		config->agc_enabled = 0;
 		config->expander_enabled = 0;
@@ -2809,6 +2925,10 @@ static void native_final_config(const struct chan_usbradio_pvt *o, const struct 
 	config->preemphasis_enabled = o->txpreemphasis;
 	config->emphasis_corner_hz = o->plus_emphasis_corner_hz;
 	config->emphasis_reference_hz = 1000.0;
+	/* Voice/telemetry spectral shaping belongs to the configured processing
+	 * graph. The DCS-only shaper is built separately below. */
+	config->dcs_spectral_shaping_enabled = 0;
+	config->dcs_spectral_lowpass_hz = 0.0;
 }
 
 /** @brief Destroy a complete native graph generation outside the audio callback.
@@ -2880,7 +3000,7 @@ static void native_graph_slot_init(struct usbradioplus_native_graph_slot *slot)
 	atomic_flag_clear_explicit(&slot->writer, memory_order_relaxed);
 }
 
-/** @brief Destroy active and retired graph generations after the native worker stops.
+/** @brief Destroy active and retired graph generations after the native callback stops.
  * @param slot Channel-owned slot with no future native callback entry.
  */
 static void native_graph_slot_destroy(struct usbradioplus_native_graph_slot *slot)
@@ -3022,16 +3142,16 @@ static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 				  struct usbradioplus_native_graph_set **graphs)
 {
 	static const struct txagc_config dcs_shaping_config = {
-		.splatter_filter_enabled = 1,
-		.output_lowpass_hz = 250.0,
+		.dcs_spectral_shaping_enabled = 1,
+		.dcs_spectral_lowpass_hz = 250.0,
 		/* The steep 250-Hz spectral filter has +3.41 dB passband gain at the
 		 * DCS/EOT fundamentals. Normalize that fixed response so dcs_peak_dbfs
 		 * remains the requested transmitter peak without a general limiter. */
 		.output_gain_db = -3.42,
 	};
 	static const struct txagc_config dcs_turnoff_shaping_config = {
-		.splatter_filter_enabled = 1,
-		.output_lowpass_hz = 250.0,
+		.dcs_spectral_shaping_enabled = 1,
+		.dcs_spectral_lowpass_hz = 250.0,
 		/* The 134.4-Hz sine does not have the NRZ waveform's +3.41 dB
 		 * shaped passband rise. Keep its independently calibrated peak at
 		 * dcs_peak_dbfs without putting a limiter in the signaling path. */
@@ -3053,12 +3173,6 @@ static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 	native_receive_filter_config(&local, &receive_filter);
 	native_local_dynamics_config(&local, &local_dynamics);
 	native_final_config(o, &composite, &final);
-	if (final.output_highpass_hz > 0.0 && final.output_lowpass_hz > 0.0 &&
-	    final.output_highpass_hz >= final.output_lowpass_hz) {
-		ast_log(LOG_ERROR, "RadioPlus/%s: txhpf cutoff must be below txlpf cutoff\n",
-			o->name);
-		return -1;
-	}
 	candidate = ast_calloc(1, sizeof(*candidate));
 	if (!candidate)
 		return -1;
@@ -3262,11 +3376,12 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 		return -1;
 	}
 	native_graph_slot_init(&o->plus_native_graphs);
-	/* A CTCSS/DCS parser reload can replace decoder-owned memory.  Initialize
-	 * this separate gate before the hardware worker can enter a native tick. */
+	/* A CTCSS/DCS parser reload can replace decoder-owned memory. Initialize
+	 * this separate gate before the hardware callback can enter a native tick. */
 	atomic_init(&o->plus_radio_access.readers, 0U);
 	atomic_init(&o->plus_radio_access.reconfiguring, 0);
 	atomic_flag_clear_explicit(&o->plus_radio_access.writer, memory_order_relaxed);
+	usbradioplus_tx_playout_hold_reset(o);
 	atomic_init(&o->plus_radio_tx_active, 0);
 	atomic_init(&o->plus_hardware_ptt_request, 0);
 	atomic_init(&o->plus_hardware_ptt_applied, 0);
@@ -3301,8 +3416,9 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 		return -1;
 	}
 	o->plus_dsp_initialized = 1;
-	if (usbradioplus_native_worker_start(o)) {
-		ast_log(LOG_ERROR, "RadioPlus/%s: unable to start native audio worker\n", o->name);
+	if (usbradioplus_native_renderer_start(o)) {
+		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native audio renderer\n",
+			o->name);
 		o->plus_dsp_initialized = 0;
 		native_graph_slot_destroy(&o->plus_native_graphs);
 		rpcr_destroy(&o->plus_program_ring);
@@ -3313,8 +3429,10 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 
 void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 {
-	/* Join before retiring graphs, SRC state, or retained graph references. */
-	usbradioplus_native_worker_stop(o);
+	/* Callers quiesce their hardware callback before retiring renderer-owned
+	 * graphs, SRC state, RNNoise state, and echo storage. */
+	usbradioplus_tx_playout_hold_reset(o);
+	usbradioplus_native_renderer_stop(o);
 	o->plus_dsp_initialized = 0;
 	rpcr_destroy(&o->plus_program_ring);
 	native_graph_slot_destroy(&o->plus_native_graphs);
@@ -3364,7 +3482,7 @@ void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o)
 {
 	if (!o->radio->b.ctcssRxEnable || o->radio->rxCtcss->decode == o->rxctcssdecode)
 		return;
-	/* This runs in the hardware-paced audio worker.  Publishing the transition
+	/* This runs in the hardware-paced audio callback. Publishing the transition
 	 * must remain a bounded copy; Asterisk logging can take locks. */
 	o->rxctcssdecode = o->radio->rxCtcss->decode;
 	ast_copy_string(o->rxctcssfreq, o->radio->rxctcssfreq, sizeof(o->rxctcssfreq));
@@ -3386,11 +3504,9 @@ int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 
 	if (!o)
 		return -1;
-	/* Native echo storage is allocated with the worker before it can accept an
-	 * audio frame.  Never reallocate it while the worker may be recording or
-	 * playing back. The fallback retains safe setup-time behavior for callers
-	 * which invoke this helper before DSP initialization. */
-	if (o->plus_native_worker)
+	/* The direct renderer preallocates native echo storage before the callback
+	 * can render. Never reallocate fallback storage while it is active. */
+	if (o->plus_native_renderer)
 		return 0;
 	if (o->plus_parrot_capacity >= capacity && o->plus_parrot)
 		return 0;
@@ -3404,10 +3520,9 @@ int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o)
 
 void usbradioplus_parrot_rx_transition(struct chan_usbradio_pvt *o, int was_keyed)
 {
-	/* Native echo transitions are detected by its worker from the immutable
-	 * per-frame receive snapshot. This retained entry point deliberately does
-	 * not mutate a worker-owned recording from an adapter callback. */
-	if (!o || o->plus_native_worker)
+	/* The direct callback detects native echo transitions from its per-frame
+	 * snapshot. This fallback must not mutate callback-owned recording state. */
+	if (!o || o->plus_native_renderer)
 		return;
 	if (urp_parrot_rx_transition(&o->plus_parrot_state, was_keyed, o->rxkeyed))
 		atomic_store_explicit(&o->echoing, 1, memory_order_release);

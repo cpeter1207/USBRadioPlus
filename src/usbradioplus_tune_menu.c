@@ -23,15 +23,15 @@
 #include "usbradioplus_channel_common.h"
 #include "usbradioplus_channel_private.h"
 
-/** @brief Print a coherent transmitter meter snapshot without reading worker state live.
+/** @brief Print a coherent transmitter meter snapshot without reading renderer state live.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Radio channel whose native worker publishes the measurements.
+ * @param channel Radio channel whose native renderer publishes the measurements.
  */
 static void print_native_tx_audio_stats(int fd, struct chan_usbradio_pvt *channel)
 {
 	struct audiostatistics statistics;
 
-	if (usbradioplus_native_worker_tx_audio_stats_read(channel, &statistics)) {
+	if (usbradioplus_native_renderer_tx_audio_stats_read(channel, &statistics)) {
 		ast_cli(fd, "Tx audio statistics are not available.\n");
 		return;
 	}
@@ -183,7 +183,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				o->echomode = 1;
 			} else {
 				o->echomode = 0;
-				usbradioplus_native_worker_clear_parrot(o);
+				usbradioplus_native_renderer_clear_parrot(o);
 			}
 			if (usbradioplus_prepare_native_processing(o)) {
 				o->echomode = previous_echo_mode;

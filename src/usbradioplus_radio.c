@@ -1904,7 +1904,8 @@ i16 urp_radio_stage_destroy(urp_radio_stage *pSps)
 /*
 	urp_radio_process handles a block of data from the usb audio device
 */
-i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)
+i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
+			    int advance_tx)
 {
 	int i, hit;
 	float f = 0;
@@ -2041,6 +2042,13 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 		pChan->smodetimer = pChan->smodetime;
 	}
 #endif
+	/* The receiver still owns this captured frame, but transmitter timing must
+	 * not advance unless the matching native DAC frame will be rendered. */
+	if (!advance_tx) {
+		if (outputtx)
+			memset(outputtx, 0, pChan->nSamplesTx * 2 * 6 * sizeof(*outputtx));
+		return 0;
+	}
 	/* handle radio transmitter ptt input */
 	hit = 0;
 	{
@@ -2134,7 +2142,9 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 					pChan->txState = CHAN_TXSTATE_FINISHING;
 				}
 			} else if (pChan->txCtcssState == 0) {
-				pChan->txBufferClear = 3;
+				/* A 55 Hz tail needs ten post-tone frames: two TOC frames
+				 * plus these eight finishing frames keep PTT high for 200 ms. */
+				pChan->txBufferClear = pChan->txTocType == 3 ? 8 : 3;
 				pChan->txState = CHAN_TXSTATE_FINISHING;
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_FINISHING) {
@@ -2187,7 +2197,7 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 	} else if (pChan->txCtcssOption == 2) {
 		pChan->txCtcssOption = 0;
 		pChan->txCtcssState = 2;
-		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - (2 * MS_PER_FRAME);
+		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - MS_PER_FRAME;
 		pChan->txCtcssPhaseShift = pChan->txCtcssTocShift;
 		pChan->txCtcssTailToneHz = pChan->txCtcssTocToneHz;
 	} else if (pChan->txCtcssOption == 3) {
@@ -2226,6 +2236,11 @@ i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *ou
 
 	strace2(pChan->sdbg);
 	return 0;
+}
+
+i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)
+{
+	return urp_radio_process_timed(pChan, input, outputrx, outputtx, 1);
 }
 
 #if GCC_VERSION > 40600

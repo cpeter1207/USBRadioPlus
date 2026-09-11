@@ -412,6 +412,73 @@ def test_stage_and_settings_menus_select_then_return(monkeypatch, capsys):
     MODULE["settings_menu"]("local", "Boolean group")
 
 
+def test_voice_filters_remove_retired_bandpass_and_migrate_stale_assignments(monkeypatch):
+    """Do not present or retain the removed fixed voice band-pass.
+
+    An earlier tuner displayed 300--3000 Hz controls and wrote them back even
+    though the module no longer accepts those settings.  The next legitimate
+    voice/telemetry edit must therefore expose only the configured FFmpeg
+    cleanup filter and remove every obsolete assignment before reload.
+
+    @param monkeypatch Pytest fixture that restores patched module state.
+    """
+    menu_namespace = globals_for("settings_menu")
+    edit_namespace = globals_for("edit_setting")
+    original = (
+        "[radio]\n"
+        "\n[voice_telemetry]\n"
+        "splatter_filter_enabled = yes\n"
+        "splatter_filter_highpass_hz = 300\n"
+        "splatter_filter_lowpass_hz = 3000\n"
+        "\n[voice_telemetry inactive]\n"
+        "splatter_filter_enabled = yes\n"
+        "splatter_filter_highpass_hz = 300\n"
+        "splatter_filter_lowpass_hz = 3000\n"
+        "\n[voice_telemetry radio]\n"
+        "splatter_filter_enabled = yes\n"
+        "splatter_filter_highpass_hz = 300\n"
+        "splatter_filter_lowpass_hz = 3000\n"
+    )
+    screens, selections, applied = [], [], []
+    replies = iter(((0, "1"), (1, "")))
+
+    monkeypatch.setitem(menu_namespace, "read_config", lambda: original)
+    monkeypatch.setitem(
+        menu_namespace,
+        "dialog",
+        lambda args: screens.append(args) or next(replies),
+    )
+    monkeypatch.setitem(
+        menu_namespace,
+        "edit_setting",
+        lambda source, key: selections.append((source, key)),
+    )
+    MODULE["settings_menu"]("voice_telemetry", "Filters")
+    screen = "\n".join(screens[0])
+    assert selections == [("voice_telemetry", "post_limiter_lowpass_enabled")]
+    assert "Post-limiter cleanup low-pass" in screen
+    assert "Transmit brick-wall band-pass" not in screen
+    assert "Receive brick-wall band-pass" not in screen
+    assert "3000" not in screen
+    for key in MODULE["RETIRED_VOICE_FILTER_KEYS"]:
+        assert key not in MODULE["SETTINGS"]
+        assert key not in MODULE["DEFAULTS"]
+        assert key not in MODULE["SOURCE_DEFAULTS"]["voice_telemetry"]
+
+    monkeypatch.setitem(edit_namespace, "read_config", lambda: original)
+    monkeypatch.setitem(edit_namespace, "prompt_boolean", lambda *_args: (0, "yes"))
+    monkeypatch.setitem(
+        edit_namespace,
+        "apply_config",
+        lambda old, new: applied.append((old, new)),
+    )
+    MODULE["edit_setting"]("voice_telemetry", "post_limiter_lowpass_enabled")
+    assert applied[0][0] == original
+    assert "post_limiter_lowpass_enabled = yes" in applied[0][1]
+    for key in MODULE["RETIRED_VOICE_FILTER_KEYS"]:
+        assert key not in applied[0][1]
+
+
 @pytest.mark.parametrize(
     ("source", "choice"), (("local", "1"), ("link", "1"), ("voice_telemetry", "2"))
 )

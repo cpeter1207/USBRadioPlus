@@ -1272,6 +1272,21 @@ i16 DelayLine(urp_radio_stage *mySps);
  */
 i16 urp_radio_process(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx);
 
+/** @brief Advance a radio-signaling block while optionally freezing TX time.
+ *
+ * Receiver processing always advances. A hardware callback passes zero for
+ * @p advance_tx when its DAC cannot accept the matching output frame so CTCSS,
+ * DCS, PTT, and transmitter-tail state cannot run ahead of rendered audio.
+ * @param PmrChan Radio-signaling engine state.
+ * @param input Input samples; the caller retains ownership.
+ * @param outputrx Base-rate receiver output buffer.
+ * @param outputtx Transmitter scratch buffer retained by the radio interface.
+ * @param advance_tx Nonzero to advance transmitter signaling for this block.
+ * @return Zero after a processed block; one when processing cannot proceed.
+ */
+i16 urp_radio_process_timed(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx,
+			    int advance_tx);
+
 /** @brief Split a comma-separated signaling-code list into owned strings and a pointer table.
  * @param src Comma-separated signaling codes; not modified.
  * @param dest Receives allocated mutable token storage; the caller frees it.

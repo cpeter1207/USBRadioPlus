@@ -34,16 +34,16 @@ struct chan_usbradio_pvt {
 	unsigned int frags;
 
 	pthread_t hidthread;
-	/** Native audio worker thread. */
+	/** PortAudio hardware audio thread. */
 	pthread_t audiothread;
 	int stophid;
-	/** Stop request observed by the audio worker. */
+	/** Stop request observed by the PortAudio audio thread. */
 	volatile sig_atomic_t stopaudiothread;
 	/** Nonzero while a USB interface is acquired. */
 	volatile sig_atomic_t hasusb; /* HID/audio liveness; not a bit-field (cross-thread) */
-	/** Nonzero after the audio worker completes initialization. */
+	/** Nonzero after the PortAudio audio thread completes initialization. */
 	char audio_thread_ready;
-	/** Most recent successful audio-worker timestamp. */
+	/** Most recent successful PortAudio audio-thread timestamp. */
 	time_t lastaudiotime;
 	enum {
 		DEVICE_SWAP_IDLE /**< DEVICE SWAP IDLE. */,
@@ -79,8 +79,8 @@ struct chan_usbradio_pvt {
 	int plus_advanced;
 	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
 	int plus_dsp_initialized;
-	/** Worker owning non-real-time native graph execution. */
-	struct usbradioplus_native_worker *plus_native_worker;
+	/** Callback-owned persistent native DSP renderer. */
+	struct usbradioplus_native_renderer *plus_native_renderer;
 	short plus_link_native[URP_NATIVE_SAMPLES];
 	short plus_link_8k[URP_NATIVE_SAMPLES];
 	/** Shared app_rpt-input program ring with native-rate clock recovery. */
@@ -92,15 +92,16 @@ struct chan_usbradio_pvt {
 	short plus_squelch_native[URP_NATIVE_SAMPLES * 2];
 	short plus_rx_delay[RXSQDELAYBUFSIZE * 6];
 	unsigned int plus_rx_delay_index;
-	/** Echo-to-native streaming resampler owned by the hardware worker. */
-	struct urp_src *plus_echo_up;
-	struct urp_src *plus_down;
 	unsigned int plus_local_preemphasis_active;
 	unsigned int plus_link_preemphasis_active;
 	/** Complete native graph generation atomically published at setup/reload. */
 	struct usbradioplus_native_graph_slot plus_native_graphs;
 	/** Lock-free exclusion for rare signaling-parser reconfiguration. */
 	struct usbradioplus_radio_access_slot plus_radio_access;
+	/** Callback-owned PTT hold while the CM119 playback queue drains. */
+	struct usbradioplus_tx_playout_hold plus_tx_playout_hold;
+	/** Cached PortAudio output-latency hold in native callback blocks. */
+	unsigned int plus_portaudio_playout_hold_callbacks;
 	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
 	_Atomic int plus_radio_tx_active;
 	/** Desired physical PTT state published synchronously from the signaling engine. */
@@ -121,12 +122,11 @@ struct chan_usbradio_pvt {
 	atomic_uint plus_radio_program_tx_frequency;
 	/** Radio-programming snapshot consumed by the HID worker. */
 	atomic_int plus_radio_program_high_power;
-	struct txagc_rnnoise plus_local_rnnoise;
 	double plus_emphasis_corner_hz;
 	int plus_hardware_applied;
 	int plus_applied_rxmixer, plus_applied_txmixaset, plus_applied_txmixbset;
 	_Atomic int plus_applied_txmixa, plus_applied_txmixb;
-	/** CTCSS output multipliers consumed by the native render worker. */
+	/** CTCSS output multipliers consumed by the direct native renderer. */
 	_Atomic int plus_applied_tx_output_gain_a, plus_applied_tx_output_gain_b;
 	/** Even when stable; brackets the lock-free hardware audio snapshot. */
 	_Atomic unsigned int plus_hardware_generation;

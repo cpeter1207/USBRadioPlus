@@ -127,22 +127,39 @@ Invert the physical PTT output.
 Set the de-emphasis and pre-emphasis corner frequency in hertz. The value must
 be greater than zero and less than 300.
 .SS Device and buffering
-The app_rpt-to-transmitter program ring is the only audio queue that bridges
-the app_rpt and 48 kHz native-rendering clock domains. It renders from its first
-available sample; it has no source-audio startup fill or playback reserve. Its
-110 ms occupancy target is used only by clock recovery, not as a fixed latency
-or keyed-transmit admission delay. These properties are separate from
-device-queue and IAX jitter-buffer settings. The ring is lock-free: its Asterisk
-producer and native rendering worker consumer never wait for one another. One
-persistent libsamplerate stream converts the active app_rpt rate to the 48 kHz
-hardware rate and gently adjusts that conversion ratio for independent clock
-drift. It does not periodically repeat or skip PCM samples. If the producer is
-temporarily short, the consumer conceals the shortfall smoothly rather than
-abruptly inserting silence.
-App_rpt program frames, including idle silence, enter the stream regardless
-of PTT, except while echo playback owns the input. PTT transitions preserve
-the program ring and resampler state. This PCM buffering does not extend PTT,
-which remains controlled by app_rpt and tuning.
+The app_rpt-to-hardware-callback program ring is the only audio queue that
+bridges the app_rpt and 48 kHz native-rendering clock domains. It renders from
+its first available sample; it has no source-audio startup fill or playback
+reserve. Its 110 ms occupancy target is used only by clock recovery, not as a
+fixed latency or keyed-transmit admission delay. These properties are separate
+from device-queue and IAX jitter-buffer settings. The ring is lock-free: its
+Asterisk producer and native hardware-callback consumer never wait for one
+another. One persistent libsamplerate stream converts the active app_rpt rate
+to the 48 kHz hardware rate and gently adjusts that conversion ratio for
+independent clock drift, including at a nominal one-to-one ratio. It does not
+periodically repeat or skip PCM samples. If the producer is temporarily short,
+the callback conceals the shortfall smoothly rather than abruptly inserting
+silence.
+.PP
+App_rpt program frames, including idle silence, enter the stream regardless of
+PTT. A native-parrot implementation may be the sole external program-audio
+producer only while it supplies native-rate samples through that same lock-free
+program ring. Legacy app_rpt echo is distinct and is not an external producer
+under this exception. PTT transitions preserve the program-ring state. This
+PCM buffering does not request or release PTT; app_rpt and tuning retain
+ownership of the desired PTT state. After a complete non-silent DAC block is
+accepted, USBRadioPlus keeps physical PTT asserted until the device's measured
+or estimated playback delay plus one 20 ms native block has elapsed. It sends
+silence while that output drains and cancels the hold for a new key request.
+This is a best-effort guard against cutting off queued audio, not a second
+transmit-control source.
+.PP
+The native hardware callback directly performs local receive processing, final
+voice/telemetry processing, CTCSS/DCS rendering, and 48 kHz DAC rendering from
+preallocated state. There is no native worker thread or native input/output
+worker queue. Prepared filtering, RNNoise, and sample-rate conversion run in
+that callback when configured; graph construction and reconfiguration do not.
+.PP
 Sound-device output runs continuously at 48 kHz, carrying silence while idle.
 PTT, carrier detection, and CTCSS decode do not stop device writes. Existing
 receive qualification and transmit muting still determine which audio is
@@ -164,8 +181,9 @@ configure the app_rpt program ring, and the PortAudio adapter ignores it.
 .TP
 .B hardware_audio_queue_size = integer
 Set the maximum queued OSS playback fragments. This bounds OSS device latency;
-it does not alter program-ring latency or PTT, and the PortAudio adapter
-ignores it.
+it does not alter program-ring latency. It can change the best-effort physical
+PTT drain time after a non-silent block because USBRadioPlus measures queued
+OSS playback before releasing PTT. The PortAudio adapter ignores it.
 .SH RECEIVE OPTIONS
 The flat or scoped \fB[receive]\fR section controls receiver behavior.
 .TP
@@ -312,6 +330,9 @@ when the tail begins. Tone removal suppresses CTCSS for
 \fBtail_duration_ms\fR before PTT release. A replacement tail tone substitutes
 \fBtail_frequency_hz\fR for CTCSS during that interval. Default is
 \fBctcss_phase_shift\fR.
+.PP
+The configured CTCSS tail ends before logical PTT release. Physical PTT can
+remain asserted briefly afterward while accepted DAC PCM drains.
 .TP
 .B phase_shift_degrees = positive degrees
 Set the phase angle applied when a \fBctcss_phase_shift\fR tail begins.
@@ -343,6 +364,9 @@ Enable the 134.4 Hz DCS end-of-transmission tail tone. It is sent before PTT
 release. A qualified DCS receiver clears after at least 100 ms of a coherent
 134.4 Hz tail; short tones, normal DCS words, and broadband noise do not clear
 the receiver. Default is \fByes\fR.
+.PP
+The DCS tail ends before logical PTT release. Physical PTT can remain asserted
+briefly afterward while accepted DAC PCM drains.
 .TP
 .B turnoff_duration_ms = 150..200
 Set the DCS end-of-transmission tail duration in milliseconds. Default is 180.
@@ -408,6 +432,10 @@ the channel, key/unkey requests, each native frame's CTCSS state and phase
 change, audio writes, and the beginning and end of the HID PTT write.
 OSS also reports queued bytes and estimated delay at 48 kHz, stereo,
 signed 16-bit. PortAudio reports submission results, not playback position.
+.PP
+For post-audio PTT holding, OSS uses its post-write queue depth; PortAudio uses
+the stream output-latency estimate obtained when the stream opens. Neither
+measurement confirms actual RF or DAC playback time.
 .PP
 Transmit a brief carrier with CTCSS, then release. A render record with
 phase_shift_degrees greater than zero marks the phase-shifted block. Add its queue delay to estimate
@@ -817,15 +845,6 @@ Set high-band release. Default is 25 ms.
 These options apply only to [voice_telemetry]. They do not belong in
 stage_order and run in a fixed transmitter-tail order.
 .TP
-.B splatter_filter_enabled = yes|no
-Enable the fixed transmit splatter-control filter. Default is yes.
-.TP
-.B splatter_filter_highpass_hz = 20..2000
-Set the fixed transmitter high-pass cutoff. Default is 300 Hz.
-.TP
-.B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..6000
-Set the fixed transmitter low-pass cutoff. Default is 3000 Hz.
-.TP
 .B lookahead_limiter_enabled = yes|no
 Enable or explicitly disable the final limiter. When omitted, the channel
 transmit limiter settings determine whether it runs and its ceiling.
@@ -855,11 +874,14 @@ source-specific brick-wall filtering is not available. RNNoise and PL removal
 are not available on link or transmitter sources.
 .PP
 Link processing retains the attached channel's negotiated sample rate and
-renders one preceding completed audio frame. At startup, when worker output is
-late, or when a reload invalidates queued output, the module tapers the output
-to silence rather than replaying stale audio or stopping audio cadence.
+synchronously processes each eligible current audio frame in place with a
+prepared FFmpeg graph and preallocated callback workspace. It uses no
+deferred link-rendering thread or input/output handoff queues. Graph
+preparation and reload occur outside the callback. A format or capacity
+mismatch, unavailable graph, or graph-processing error leaves the current
+frame unchanged rather than rebuilding the graph or replaying older audio.
 .B radioplus processing stats
-reports link-worker queue overflows, output shortfalls, malformed output, and
+reports FFmpeg startup fill, runtime shortfall, synchronous graph errors, and
 level measurements. Link processing never asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
@@ -889,8 +911,6 @@ input_gain_db = 6.0
 stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
-splatter_filter_highpass_hz = 250
-splatter_filter_lowpass_hz = 5000
 post_limiter_lowpass_enabled = yes
 post_limiter_lowpass_hz = 5000
 .fi

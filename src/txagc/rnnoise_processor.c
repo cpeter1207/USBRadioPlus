@@ -18,7 +18,7 @@
 /** @brief Discard bounded stream history without allocating or replacing the denoiser.
  * @param state Processor or stream state owned by the caller.
  *
- * This function is used by the native render worker after a processing error
+ * This function is used by the native render callback after a processing error
  * or bypass transition.  Keeping the prepared denoiser object intact is what
  * prevents a receiver-signal transition from allocating in real time.
  */

@@ -5,6 +5,7 @@
 #ifndef USBRADIOPLUS_CHANNEL_COMMON_H
 #define USBRADIOPLUS_CHANNEL_COMMON_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asterisk/channel.h"
@@ -81,6 +82,48 @@ void usbradioplus_audio_load_hardware_state(struct chan_usbradio_pvt *channel);
  * @param asserted Nonzero requests physical PTT assertion.
  */
 void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *channel, int asserted);
+
+/** @brief Restore the signaling engine's unmodified PTT output before its callback tick.
+ * @param channel Private channel whose virtual DAC-drain PTT state is restored.
+ */
+void usbradioplus_tx_playout_hold_prepare(struct chan_usbradio_pvt *channel);
+
+/** @brief Apply the post-DAC PTT hold after a signaling tick.
+ * @param channel Private channel whose signaling-engine PTT result is available.
+ */
+void usbradioplus_tx_playout_hold_apply(struct chan_usbradio_pvt *channel);
+
+/** @brief Publish effective PTT and select source PCM after applying the hold.
+ * @param channel Private channel whose post-DAC PTT state is ready.
+ */
+void usbradioplus_tx_playout_hold_publish(struct chan_usbradio_pvt *channel);
+
+/** @brief Reset a DAC-drain hold after the underlying audio device is reset.
+ * @param channel Private channel whose playback queue was discarded.
+ */
+void usbradioplus_tx_playout_hold_reset(struct chan_usbradio_pvt *channel);
+
+/** @brief Record one accepted native DAC block for post-playout PTT timing.
+ * @param channel Private channel owning the submission.
+ * @param submitted Nonzero only when one complete DAC block was accepted.
+ * @param audio_bearing Nonzero only when that accepted block contains transmitted PCM.
+ * @param callbacks Number of native callbacks through queued playout plus the safety block.
+ */
+void usbradioplus_tx_playout_hold_note_output(struct chan_usbradio_pvt *channel, int submitted,
+					      int audio_bearing, unsigned int callbacks);
+
+/** @brief Report whether PTT is currently held only to drain already queued audio.
+ * @param channel Private channel whose callback state is queried.
+ * @return Nonzero while DAC output must be replaced with silence.
+ */
+int usbradioplus_tx_playout_hold_draining(const struct chan_usbradio_pvt *channel);
+
+/** @brief Determine whether an interleaved PCM block contains any non-silent sample.
+ * @param samples PCM samples to inspect.
+ * @param count Number of samples in @p samples.
+ * @return Nonzero when at least one sample is nonzero.
+ */
+int usbradioplus_pcm_has_audio(const short *samples, size_t count);
 
 /** @brief Publish a native-audio clipping indication for the HID worker.
  * @param channel Private channel whose clip LED should pulse.
@@ -411,7 +454,7 @@ int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o);
 
 /** @brief Copy a decoded CTCSS transition for the channel frame source.
  *
- * The hardware-paced audio worker calls this helper, so it performs only a
+ * The hardware-paced audio callback calls this helper, so it performs only a
  * bounded state copy and does not log, wait, or acquire a lock.
  * @param o Private state of the selected radio channel.
  */

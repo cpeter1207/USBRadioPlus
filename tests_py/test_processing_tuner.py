@@ -135,9 +135,6 @@ def test_shipped_chains_document_every_applicable_processing_control():
         "receive_bandpass_lowpass_hz",
     }
     transmitter_only = {
-        "splatter_filter_enabled",
-        "splatter_filter_highpass_hz",
-        "splatter_filter_lowpass_hz",
         "lookahead_limiter_enabled",
         "lookahead_limiter_ceiling_dbfs",
         "lookahead_limiter_lookahead_ms",
@@ -160,9 +157,8 @@ def test_shipped_chains_document_every_applicable_processing_control():
             assert not (set(values) & transmitter_only)
     manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
     assert ".B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..6000" in manual
-    assert ".B splatter_filter_lowpass_hz = splatter_filter_highpass_hz..6000" in manual
     assert "The following OSS-device controls do not configure that program ring." in sample
-    assert "PortAudio adapter\nignores it" in manual
+    assert "The PortAudio adapter ignores it." in manual
 
 
 def test_shipped_sample_comments_each_active_setting():
@@ -338,19 +334,17 @@ def test_signaling_configuration_artifacts_have_unambiguous_sections_and_example
     assert "before PTT\nrelease" in manual
     assert "backward compatibility" not in sample.lower()
     assert "backward compatibility" not in manual.lower()
-    assert "first\navailable sample; it has no source-audio startup" in manual
-    assert "no source-audio startup fill or playback reserve" in manual
+    assert "its first available sample; it has no source-audio startup" in manual
+    assert "source-audio startup fill or playback\nreserve" in manual
     assert "110 ms occupancy target is used only by clock" in manual
     assert "shortfall smoothly" in manual
     assert "starts after 160 ms" not in manual
     assert "60 ms source-audio reserve" not in manual
     assert "renders from the first\n; queued sample" in sample
     developer = (ROOT / "doc/developer.dox").read_text(encoding="utf-8")
-    assert (
-        "first available sample; it has no source-audio startup fill or\nplayback reserve"
-        in developer
-    )
-    assert "110 ms occupancy target is a clock-recovery setpoint" in developer
+    assert "renders from its first available sample; it has no source-audio startup" in developer
+    assert "fill or playback reserve" in developer
+    assert "110 ms occupancy target is a clock-recovery\nsetpoint" in developer
     assert "starts output after 160 ms" not in developer
     assert "60 ms source-audio reserve" not in developer
     tune_manual = (ROOT / "man/usbradioplus-tune.8").read_text(encoding="utf-8")
@@ -632,9 +626,6 @@ def test_fixed_filters_have_a_dedicated_menu():
         "ctcss_filter_mode",
         "ctcss_notch_width_hz",
         "ctcss_highpass_hz",
-        "splatter_filter_enabled",
-        "splatter_filter_highpass_hz",
-        "splatter_filter_lowpass_hz",
         "receive_bandpass_enabled",
         "receive_bandpass_highpass_hz",
         "receive_bandpass_lowpass_hz",

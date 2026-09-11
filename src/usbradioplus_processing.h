@@ -28,8 +28,6 @@ struct txagc_chain {
 	int input_gain_configured;
 	/** Nonzero when the PL-filter setting is explicitly configured. */
 	int ctcss_filter_configured;
-	/** Nonzero when the transmitter band-pass is explicitly configured. */
-	int splatter_filter_configured;
 	/** Settings for all optional stages and the fixed FFmpeg filtering stages. */
 	struct txagc_config agc;
 };

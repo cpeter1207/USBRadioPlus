@@ -56,8 +56,10 @@ against a hardware MICOR before claiming identical analog performance.
 
 The transmitter state machine selects the configured or received CTCSS tone,
 controls PTT settling and receiver blanking, and implements configured CTCSS
-tail signaling. It produces control state only. The native 48 kHz transmitter
-creates and mixes the CTCSS waveform after voice processing and limiting.
+tail signaling. It produces the logical PTT and tail state only; after an
+accepted non-silent DAC submission, the adapter can keep physical PTT asserted
+while queued PCM drains. The native 48 kHz transmitter creates and mixes the
+CTCSS waveform after voice processing and limiting.
 
 ## DCS
 
@@ -74,10 +76,11 @@ CTCSS generation, transmitter pre-emphasis, and all speech dynamics. It shares
 the configured hardware output route with CTCSS but not its audio controls. The
 optional DCS turn-off code is a 134.4 Hz replacement tone.
 Once its interval begins, the normal DCS word remains suppressed until physical
-PTT release completes; a new key request cancels the tail and resumes normal
-DCS. A qualified receiver recognizes a coherent 134.4 Hz tail after 100 ms and
-clears DCS promptly; short tones, ordinary DCS words, and broadband noise do
-not satisfy the tail detector. See `usbradioplus.conf(5)` for the transmitted
+PTT release completes; the adapter's post-audio playout hold follows the
+logical tail. A new key request cancels the tail and resumes normal DCS. A
+qualified receiver recognizes a coherent 134.4 Hz tail after 100 ms and clears
+DCS promptly; short tones, ordinary DCS words, and broadband noise do not
+satisfy the tail detector. See `usbradioplus.conf(5)` for the transmitted
 tail's permitted duration.
 
 Receive and transmit audio filtering, emphasis, dynamics, rate conversion,

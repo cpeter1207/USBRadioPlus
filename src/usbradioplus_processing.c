@@ -166,15 +166,10 @@ PROCESSING_PRIVATE int stopping;
 /** Set when a candidate configuration contains a malformed value. */
 PROCESSING_PRIVATE int settings_parse_error;
 #ifdef URP_PROCESSING_TESTING
-/* Test-only fault counters make normally impossible SPSC invariant failures
- * observable. They are never compiled into the installed audio callback. */
-PROCESSING_PRIVATE int processing_test_pcm_push_fail_after;
-PROCESSING_PRIVATE int processing_test_pcm_pop_fail_after;
+/* Test-only publication fault control for the lock-free statistics reader. */
 PROCESSING_PRIVATE int processing_test_statistics_flip_index;
-PROCESSING_PRIVATE int processing_test_worker_start_result;
 #endif
 static int is_flat_section(const char *category);
-static int validate_active_crossovers(struct txagc_settings *candidate);
 struct usbradioplus_native_graph_transaction;
 int usbradioplus_prepare_all_native_processing(void);
 int usbradioplus_stage_all_native_processing(
@@ -257,7 +252,7 @@ static void commit_candidate_settings(const struct txagc_settings *candidate,
 	ast_mutex_unlock(&settings_lock);
 }
 
-/** @brief Release settings snapshots after all audio hooks and workers are stopped. */
+/** @brief Release settings snapshots after all audio callbacks are stopped. */
 static void clear_audio_settings(void)
 {
 	struct txagc_audio_snapshot *snapshot;
@@ -325,7 +320,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->rnnoise_enabled = 0;
 	base->input_gain_configured = 1;
 	base->ctcss_filter_configured = 1;
-	base->splatter_filter_configured = 1;
 	base->agc.stage_count = 6;
 	base->agc.stage_order[0] = TXAGC_STAGE_EQUALIZER;
 	base->agc.stage_order[1] = TXAGC_STAGE_EXPANDER;
@@ -415,7 +409,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.limiter_knee_db = 0.0;
 	base->agc.limiter_attack_ms = 1.0;
 	base->agc.limiter_release_ms = 50.0;
-	base->agc.splatter_filter_enabled = 0;
 	base->agc.limiter_low_crossover_hz = 500.0;
 	base->agc.limiter_high_crossover_hz = 2000.0;
 	base->agc.low_limiter_threshold_dbfs = -1.5;
@@ -440,8 +433,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.lookahead_release_ms = 100.0;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.post_limiter_lowpass_hz = 8000.0;
-	base->agc.output_highpass_hz = 300.0;
-	base->agc.output_lowpass_hz = 3000.0;
 	base->agc.output_gain_db = -6.2;
 	value->chains[TXAGC_LINK] = *base;
 	value->chains[TXAGC_VOICE_TELEMETRY] = *base;
@@ -469,8 +460,6 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.equalizer_low_gain_db = 2.0;
 	base->agc.equalizer_mid_gain_db = -0.5;
 	base->agc.equalizer_high_gain_db = -1.0;
-	base->agc.splatter_filter_enabled = 1;
-	base->splatter_filter_configured = 1;
 	base->agc.lookahead_limiter_enabled = 0;
 	base->agc.post_limiter_lowpass_enabled = 0;
 	base->agc.output_gain_db = 0.0;
@@ -599,8 +588,6 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(lookahead_attack_ms);
 	REQUIRE_FINITE(lookahead_release_ms);
 	REQUIRE_FINITE(post_limiter_lowpass_hz);
-	REQUIRE_FINITE(output_highpass_hz);
-	REQUIRE_FINITE(output_lowpass_hz);
 	REQUIRE_FINITE(output_gain_db);
 #undef REQUIRE_FINITE
 	if ((value->agc.compressor_bands != 1 && value->agc.compressor_bands != 3) ||
@@ -760,10 +747,7 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	    value->agc.lookahead_attack_ms < 0.1 || value->agc.lookahead_attack_ms > 20.0 ||
 	    value->agc.lookahead_release_ms < 1.0 || value->agc.lookahead_release_ms > 5000.0 ||
 	    value->agc.post_limiter_lowpass_hz < 5000.0 ||
-	    value->agc.post_limiter_lowpass_hz > 20000.0 || value->agc.output_highpass_hz < 20.0 ||
-	    value->agc.output_highpass_hz > 2000.0 ||
-	    value->agc.output_lowpass_hz <= value->agc.output_highpass_hz ||
-	    value->agc.output_lowpass_hz > 6000.0 || value->agc.output_gain_db < -30.0 ||
+	    value->agc.post_limiter_lowpass_hz > 20000.0 || value->agc.output_gain_db < -30.0 ||
 	    value->agc.output_gain_db > 30.0) {
 		return -1;
 	}
@@ -816,8 +800,7 @@ PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 			return -1;
 		}
 		if (source != TXAGC_VOICE_TELEMETRY &&
-		    (value->chains[source].agc.splatter_filter_enabled ||
-		     value->chains[source].agc.lookahead_limiter_enabled ||
+		    (value->chains[source].agc.lookahead_limiter_enabled ||
 		     value->chains[source].agc.post_limiter_lowpass_enabled)) {
 			ast_log(LOG_ERROR,
 				"RadioPlus [%s]: transmitter-tail stages are valid only in "
@@ -970,7 +953,6 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"limiter_knee_db",
 		"limiter_attack_ms",
 		"limiter_release_ms",
-		"splatter_filter_enabled",
 		"limiter_low_crossover_hz",
 		"limiter_high_crossover_hz",
 		"limiter_low_threshold_dbfs",
@@ -995,8 +977,6 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"lookahead_limiter_release_ms",
 		"post_limiter_lowpass_enabled",
 		"post_limiter_lowpass_hz",
-		"splatter_filter_highpass_hz",
-		"splatter_filter_lowpass_hz",
 		"output_gain_db",
 	};
 	size_t index;
@@ -1181,10 +1161,6 @@ PROCESSING_PRIVATE int validate_named_option(const char *category, const char *k
 	if (strcmp(kind, "local") && strcmp(kind, "link") && strcmp(kind, "voice_telemetry"))
 		return -1;
 	if (strcmp(kind, "local") && !strncasecmp(variable->name, "receive_bandpass_", 17))
-		return -1;
-	if (!strcmp(kind, "link") && (!strcasecmp(variable->name, "splatter_filter_enabled") ||
-				      !strcasecmp(variable->name, "splatter_filter_highpass_hz") ||
-				      !strcasecmp(variable->name, "splatter_filter_lowpass_hz")))
 		return -1;
 	(void)category;
 	return known_chain_option(variable->name) ? 0 : -1;
@@ -1805,11 +1781,6 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "limiter_knee_db", &chain->agc.limiter_knee_db);
 	read_double(cfg, section, "limiter_attack_ms", &chain->agc.limiter_attack_ms);
 	read_double(cfg, section, "limiter_release_ms", &chain->agc.limiter_release_ms);
-	if (ast_variable_retrieve(cfg, section, "splatter_filter_enabled") ||
-	    ast_variable_retrieve(cfg, section, "splatter_filter_highpass_hz") ||
-	    ast_variable_retrieve(cfg, section, "splatter_filter_lowpass_hz"))
-		chain->splatter_filter_configured = 1;
-	READ_BOOL("splatter_filter_enabled", chain->agc.splatter_filter_enabled);
 	read_double(cfg, section, "limiter_low_crossover_hz", &chain->agc.limiter_low_crossover_hz);
 	read_double(cfg, section, "limiter_high_crossover_hz",
 		    &chain->agc.limiter_high_crossover_hz);
@@ -1839,8 +1810,6 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "lookahead_limiter_release_ms", &chain->agc.lookahead_release_ms);
 	READ_BOOL("post_limiter_lowpass_enabled", chain->agc.post_limiter_lowpass_enabled);
 	read_double(cfg, section, "post_limiter_lowpass_hz", &chain->agc.post_limiter_lowpass_hz);
-	read_double(cfg, section, "splatter_filter_highpass_hz", &chain->agc.output_highpass_hz);
-	read_double(cfg, section, "splatter_filter_lowpass_hz", &chain->agc.output_lowpass_hz);
 	read_double(cfg, section, "output_gain_db", &chain->agc.output_gain_db);
 #undef READ_BOOL
 	return read_stage_order(cfg, section, chain);
@@ -2047,7 +2016,6 @@ PROCESSING_PRIVATE int load_settings_candidate(struct txagc_audio_snapshot **sna
 		    read_chain(cfg, link_section, &profile->chains[TXAGC_LINK]) ||
 		    read_chain(cfg, voice_section, &profile->chains[TXAGC_VOICE_TELEMETRY]))
 			goto invalid;
-		profile->chains[TXAGC_LINK].agc.splatter_filter_enabled = 0;
 		profile->local_enabled = profile->chains[TXAGC_LOCAL].enabled;
 		profile->link_enabled = profile->chains[TXAGC_LINK].enabled;
 		profile->rnnoise_enabled = profile->chains[TXAGC_LOCAL].rnnoise_enabled;
@@ -2060,11 +2028,6 @@ PROCESSING_PRIVATE int load_settings_candidate(struct txagc_audio_snapshot **sna
 		ast_log(LOG_ERROR, "RadioPlus: %s contains no named radio sections\n", CONFIG_FILE);
 		goto invalid;
 	}
-	/* Before the scanner starts there are no owned link hooks with known rates.
-	 * A running reload must preserve the old graph if an active link cannot use
-	 * the candidate crossovers. First frames still validate newly opened links. */
-	if (scan_thread != AST_PTHREADT_NULL && validate_active_crossovers(updated))
-		goto invalid;
 	candidate_snapshot = allocate_audio_snapshot();
 	if (!candidate_snapshot)
 		goto invalid;
@@ -2102,126 +2065,10 @@ PROCESSING_PRIVATE int load_settings(void)
 	return 0;
 }
 
-/** @brief Return the occupancy of a monotonic link-worker descriptor ring.
- * @param read Consumer cursor.
- * @param write Producer cursor.
- * @return Number of published descriptors not yet consumed.
+/** @brief Initialize callback-owned link measurements before the first graph block.
+ * @param statistics Measurement storage to reset.
  */
-static unsigned int link_worker_control_count(const atomic_uint *read, const atomic_uint *write)
-{
-	return atomic_load_explicit(write, memory_order_acquire) -
-	       atomic_load_explicit(read, memory_order_acquire);
-}
-
-/** @brief Return the occupancy of one SPSC PCM queue.
- * @param queue Queue whose monotonic cursors are sampled.
- * @return Number of queued PCM samples.
- */
-static unsigned int link_worker_pcm_count(const struct txagc_link_pcm_queue *queue)
-{
-	return atomic_load_explicit(&queue->write, memory_order_acquire) -
-	       atomic_load_explicit(&queue->read, memory_order_acquire);
-}
-
-/** @brief Initialize a fixed-storage SPSC PCM queue before either endpoint uses it.
- * @param queue Queue to initialize.
- * @param samples Caller-owned sample storage.
- * @param capacity Number of samples available in storage.
- */
-static void link_worker_pcm_init(struct txagc_link_pcm_queue *queue, int16_t *samples,
-				 unsigned int capacity)
-{
-	queue->samples = samples;
-	queue->capacity = capacity;
-	atomic_init(&queue->read, 0U);
-	atomic_init(&queue->write, 0U);
-}
-
-/** @brief Push one sample from a queue's fixed producer endpoint.
- * @param queue Queue owned by the producer.
- * @param sample PCM sample to publish.
- * @return Nonzero on success; zero when the queue is full.
- */
-PROCESSING_PRIVATE int link_worker_pcm_push(struct txagc_link_pcm_queue *queue, int16_t sample)
-{
-	unsigned int write = atomic_load_explicit(&queue->write, memory_order_relaxed);
-	unsigned int read = atomic_load_explicit(&queue->read, memory_order_acquire);
-
-#ifdef URP_PROCESSING_TESTING
-	if (processing_test_pcm_push_fail_after > 0 && --processing_test_pcm_push_fail_after == 0)
-		return 0;
-#endif
-	if (write - read >= queue->capacity)
-		return 0;
-	queue->samples[write % queue->capacity] = sample;
-	atomic_store_explicit(&queue->write, write + 1U, memory_order_release);
-	return 1;
-}
-
-/** @brief Pop one sample from a queue's fixed consumer endpoint.
- * @param queue Queue owned by the consumer.
- * @param sample Receives the next PCM sample.
- * @return Nonzero on success; zero when the queue is empty.
- */
-static int link_worker_pcm_pop(struct txagc_link_pcm_queue *queue, int16_t *sample)
-{
-	unsigned int read = atomic_load_explicit(&queue->read, memory_order_relaxed);
-	unsigned int write = atomic_load_explicit(&queue->write, memory_order_acquire);
-
-#ifdef URP_PROCESSING_TESTING
-	if (processing_test_pcm_pop_fail_after > 0 && --processing_test_pcm_pop_fail_after == 0)
-		return 0;
-#endif
-	if (read == write)
-		return 0;
-	*sample = queue->samples[read % queue->capacity];
-	atomic_store_explicit(&queue->read, read + 1U, memory_order_release);
-	return 1;
-}
-
-/** @brief Inspect the next complete SPSC descriptor without advancing its consumer cursor.
- * @param frames Descriptor ring storage.
- * @param read Consumer cursor.
- * @param write Producer cursor.
- * @param write_limit Snapshot of the latest descriptor visible to this callback.
- * @param frame Receives the next descriptor.
- * @return Nonzero when a descriptor is available before write_limit.
- */
-PROCESSING_PRIVATE int link_worker_frame_peek(const struct txagc_link_frame *frames,
-					      const atomic_uint *read, const atomic_uint *write,
-					      unsigned int write_limit,
-					      struct txagc_link_frame *frame)
-{
-	unsigned int consumed = atomic_load_explicit(read, memory_order_relaxed);
-	unsigned int produced = atomic_load_explicit(write, memory_order_acquire);
-	unsigned int available = produced - consumed;
-	unsigned int limited = write_limit - consumed;
-
-	/* Cursors are deliberately monotonic unsigned integers. Compare occupancy
-	 * rather than raw cursor values so the one-frame output snapshot remains
-	 * correct after their defined modulo wraparound. */
-	if (available > limited)
-		produced = write_limit;
-	if (consumed == produced)
-		return 0;
-	*frame = frames[consumed % TXAGC_LINK_WORKER_CONTROL_FRAMES];
-	return 1;
-}
-
-/** @brief Advance a descriptor consumer after its paired PCM span is consumed or discarded.
- * @param read Consumer cursor to advance.
- */
-static void link_worker_frame_pop(atomic_uint *read)
-{
-	unsigned int consumed = atomic_load_explicit(read, memory_order_relaxed);
-
-	atomic_store_explicit(read, consumed + 1U, memory_order_release);
-}
-
-/** @brief Initialize worker measurements before the first graph block.
- * @param statistics Worker measurement storage to reset.
- */
-static void link_worker_statistics_init(struct txagc_link_worker_statistics *statistics)
+static void link_callback_statistics_init(struct txagc_link_statistics *statistics)
 {
 	memset(statistics, 0, sizeof(*statistics));
 	statistics->input_peak_dbfs = -INFINITY;
@@ -2234,13 +2081,13 @@ static void link_worker_statistics_init(struct txagc_link_worker_statistics *sta
 	statistics->output_max_rms_dbfs = -INFINITY;
 }
 
-/** @brief Refresh worker-owned scalar measurements while the graph is still retained.
- * @param destination Worker measurement snapshot to update.
+/** @brief Refresh callback-owned scalar measurements while the graph is retained.
+ * @param destination Callback measurement snapshot to update.
  * @param source Retained FFmpeg graph providing the measurements.
  */
 PROCESSING_PRIVATE void
-link_worker_copy_filter_statistics(struct txagc_link_worker_statistics *destination,
-				   const struct txagc_avfilter *source)
+link_callback_copy_filter_statistics(struct txagc_link_statistics *destination,
+				     const struct txagc_avfilter *source)
 {
 	if (!destination || !source)
 		return;
@@ -2258,389 +2105,32 @@ link_worker_copy_filter_statistics(struct txagc_link_worker_statistics *destinat
 	destination->output_max_rms_dbfs = source->output_max_rms_dbfs;
 }
 
-/** @brief Publish a complete link-worker statistics snapshot without a data race.
- * @param hook Link audiohook owning the worker and published snapshot slots.
+/** @brief Publish a complete synchronous-link statistics snapshot without a data race.
+ * @param hook Link audiohook owning the callback and published snapshot slots.
  *
- * The worker writes the inactive buffer only after its reader count reaches
+ * The callback writes the inactive buffer only after its reader count reaches
  * zero, then release-publishes its index. Readers pin a selected buffer and
  * recheck the index before copying. A temporarily pinned inactive buffer makes
- * diagnostics one block stale instead of introducing a lock in audio work.
+ * diagnostics one block stale instead of taking a lock in audio processing.
  */
-PROCESSING_PRIVATE void link_worker_publish_statistics(struct txagc_hook *hook)
+PROCESSING_PRIVATE void link_callback_publish_statistics(struct txagc_hook *hook)
 {
 	unsigned int active = atomic_load_explicit(&hook->statistics_index, memory_order_acquire);
 	unsigned int inactive = active ^ 1U;
 
 	if (atomic_load_explicit(&hook->statistics_readers[inactive], memory_order_acquire) != 0U)
 		return;
-	hook->statistics.input_overflows =
-		atomic_load_explicit(&hook->input_overflows, memory_order_relaxed);
-	hook->statistics.output_underflows =
-		atomic_load_explicit(&hook->output_underflows, memory_order_relaxed);
-	hook->statistics.output_malformed =
-		atomic_load_explicit(&hook->output_malformed, memory_order_relaxed);
 	hook->published_statistics[inactive] = hook->statistics;
 	atomic_store_explicit(&hook->statistics_index, inactive, memory_order_release);
 }
 
-/** @brief Render a short tapered continuation instead of a hard callback-output gap.
- * @param hook Link audiohook holding the previous output endpoint.
- * @param pcm Destination PCM span.
- * @param samples Number of samples to conceal.
- */
-static void link_worker_render_concealment(struct txagc_hook *hook, int16_t *pcm,
-					   unsigned int samples)
-{
-	unsigned int index;
-	int16_t previous = hook->concealment_previous;
-
-	for (index = 0; index < samples; ++index) {
-		pcm[index] = (int16_t)(((int64_t)previous * (int64_t)(samples - index - 1U)) /
-				       (int64_t)samples);
-	}
-	hook->concealment_previous = 0;
-}
-
-/** @brief Discard a complete PCM span paired with a malformed descriptor.
- * @param queue Consumer-side PCM queue.
- * @param samples Number of samples to discard.
- */
-static void link_worker_pcm_discard(struct txagc_link_pcm_queue *queue, unsigned int samples)
-{
-	int16_t ignored;
-
-	while (samples > 0U) {
-		--samples;
-		if (!link_worker_pcm_pop(queue, &ignored))
-			break;
-	}
-}
-
-/** @brief Submit an untouched Asterisk frame to the link worker's input endpoint.
- * @param hook Link audiohook whose callback owns the producer endpoint.
- * @param pcm Source PCM samples.
- * @param samples Number of source samples.
- * @param generation Graph/admission generation paired with the frame.
- * @return Nonzero when the complete frame was queued; zero on overflow.
- */
-PROCESSING_PRIVATE int link_worker_submit_input(struct txagc_hook *hook, const int16_t *pcm,
-						unsigned int samples, unsigned int generation)
-{
-	struct txagc_link_frame frame = {.samples = samples, .generation = generation};
-	unsigned int frame_write;
-	unsigned int index;
-
-	if (samples > hook->queue_capacity - link_worker_pcm_count(&hook->input_pcm) ||
-	    link_worker_control_count(&hook->input_frame_read, &hook->input_frame_write) >=
-		    TXAGC_LINK_WORKER_CONTROL_FRAMES) {
-		atomic_fetch_add_explicit(&hook->input_overflows, 1U, memory_order_relaxed);
-		return 0;
-	}
-	frame_write = atomic_load_explicit(&hook->input_frame_write, memory_order_relaxed);
-	for (index = 0; index < samples; ++index) {
-		if (!link_worker_pcm_push(&hook->input_pcm, pcm[index])) {
-			/* Publish the exact partial span. The worker will process only those
-			 * words, so a later descriptor cannot inherit orphan PCM. The callback
-			 * rejects its short result and conceals this one frame. */
-			frame.samples = index;
-			hook->input_frames[frame_write % TXAGC_LINK_WORKER_CONTROL_FRAMES] = frame;
-			atomic_store_explicit(&hook->input_frame_write, frame_write + 1U,
-					      memory_order_release);
-			atomic_fetch_add_explicit(&hook->input_overflows, 1U, memory_order_relaxed);
-			return 0;
-		}
-	}
-	/* The capacity check reserves this sole-producer descriptor slot. Publish it
-	 * only after all PCM words are visible, preserving monotonically increasing
-	 * cursors and a transactionally paired sample span. */
-	hook->input_frames[frame_write % TXAGC_LINK_WORKER_CONTROL_FRAMES] = frame;
-	atomic_store_explicit(&hook->input_frame_write, frame_write + 1U, memory_order_release);
-	return 1;
-}
-
-/** @brief Consume only output that was complete before the current callback began.
- * @param hook Link audiohook whose callback owns the consumer endpoint.
- * @param pcm Destination PCM samples.
- * @param samples Number of destination samples.
- * @param generation Required graph/admission generation.
- * @param write_limit Producer cursor snapshot taken before current input admission.
- */
-PROCESSING_PRIVATE void link_worker_consume_output(struct txagc_hook *hook, int16_t *pcm,
-						   unsigned int samples, unsigned int generation,
-						   unsigned int write_limit)
-{
-	struct txagc_link_frame frame;
-	unsigned int index;
-
-	if (!link_worker_frame_peek(hook->output_frames, &hook->output_frame_read,
-				    &hook->output_frame_write, write_limit, &frame)) {
-		atomic_fetch_add_explicit(&hook->output_underflows, 1U, memory_order_relaxed);
-		link_worker_render_concealment(hook, pcm, samples);
-		return;
-	}
-	if (frame.samples != samples || frame.generation != generation ||
-	    link_worker_pcm_count(&hook->output_pcm) < frame.samples) {
-		link_worker_pcm_discard(&hook->output_pcm, frame.samples);
-		link_worker_frame_pop(&hook->output_frame_read);
-		atomic_fetch_add_explicit(&hook->output_malformed, 1U, memory_order_relaxed);
-		link_worker_render_concealment(hook, pcm, samples);
-		return;
-	}
-	for (index = 0; index < samples; ++index) {
-		if (!link_worker_pcm_pop(&hook->output_pcm, &pcm[index])) {
-			/* Metadata is published only after all PCM, so this represents an
-			 * internal pairing failure. Drop the descriptor rather than stalling. */
-			link_worker_pcm_discard(&hook->output_pcm, samples - index);
-			link_worker_frame_pop(&hook->output_frame_read);
-			atomic_fetch_add_explicit(&hook->output_malformed, 1U,
-						  memory_order_relaxed);
-			link_worker_render_concealment(hook, pcm + index, samples - index);
-			return;
-		}
-	}
-	link_worker_frame_pop(&hook->output_frame_read);
-	hook->concealment_previous = pcm[samples - 1U];
-}
-
-/** @brief Process one complete queued link block outside the Asterisk audiohook callback.
- * @param hook Link audiohook whose worker owns graph execution.
- * @return Nonzero when a descriptor was consumed; zero when work cannot proceed yet.
- */
-PROCESSING_PRIVATE int txagc_link_worker_process_one(struct txagc_hook *hook)
-{
-	struct txagc_link_frame frame;
-	struct txagc_avfilter *filter;
-	unsigned int input_write;
-	unsigned int output_frame_write;
-	unsigned int index;
-	int result = -1;
-
-	if (!hook)
-		return 0;
-	input_write = atomic_load_explicit(&hook->input_frame_write, memory_order_acquire);
-	if (!link_worker_frame_peek(hook->input_frames, &hook->input_frame_read,
-				    &hook->input_frame_write, input_write, &frame)) {
-		return 0;
-	}
-	if (!frame.samples || frame.samples > hook->samples_capacity) {
-		/* A descriptor is published only after every input sample. An impossible
-		 * descriptor must still be consumed so it cannot block every later block. */
-		link_worker_pcm_discard(&hook->input_pcm, frame.samples);
-		link_worker_frame_pop(&hook->input_frame_read);
-		++hook->statistics.input_malformed;
-		link_worker_publish_statistics(hook);
-		return 1;
-	}
-	if (frame.samples > hook->queue_capacity - link_worker_pcm_count(&hook->output_pcm) ||
-	    link_worker_control_count(&hook->output_frame_read, &hook->output_frame_write) >=
-		    TXAGC_LINK_WORKER_CONTROL_FRAMES) {
-		return 0;
-	}
-	if (link_worker_pcm_count(&hook->input_pcm) < frame.samples) {
-		/* The output queue has room for the same valid-sized block, so preserve
-		 * frame chronology with silence while discarding the malformed input. */
-		link_worker_pcm_discard(&hook->input_pcm, frame.samples);
-		link_worker_frame_pop(&hook->input_frame_read);
-		++hook->statistics.input_malformed;
-		output_frame_write =
-			atomic_load_explicit(&hook->output_frame_write, memory_order_relaxed);
-		for (index = 0; index < frame.samples; ++index) {
-			if (!link_worker_pcm_push(&hook->output_pcm, 0)) {
-				/* The sole producer reserved this descriptor slot before
-				 * pushing PCM. Publish the exact partial span so the callback
-				 * can discard it without leaving orphaned output words. */
-				frame.samples = index;
-				hook->output_frames[output_frame_write %
-						    TXAGC_LINK_WORKER_CONTROL_FRAMES] = frame;
-				atomic_store_explicit(&hook->output_frame_write,
-						      output_frame_write + 1U,
-						      memory_order_release);
-				link_worker_publish_statistics(hook);
-				return 1;
-			}
-		}
-		hook->output_frames[output_frame_write % TXAGC_LINK_WORKER_CONTROL_FRAMES] = frame;
-		atomic_store_explicit(&hook->output_frame_write, output_frame_write + 1U,
-				      memory_order_release);
-		link_worker_publish_statistics(hook);
-		return 1;
-	}
-	for (index = 0; index < frame.samples; ++index) {
-		if (!link_worker_pcm_pop(&hook->input_pcm, &hook->source_pcm[index]))
-			return 0;
-		hook->samples[index] = hook->source_pcm[index];
-	}
-	link_worker_frame_pop(&hook->input_frame_read);
-	filter = txagc_avfilter_slot_acquire(&hook->avfilter[TXAGC_LINK]);
-	if (filter) {
-		result = txagc_avfilter_process_prepared(filter, hook->samples, frame.samples);
-		link_worker_copy_filter_statistics(&hook->statistics, filter);
-		txagc_avfilter_slot_release(&hook->avfilter[TXAGC_LINK]);
-	}
-	output_frame_write = atomic_load_explicit(&hook->output_frame_write, memory_order_relaxed);
-	for (index = 0; index < frame.samples; ++index) {
-		double value = hook->samples[index];
-
-		if (result >= 0) {
-			if (value > 32767.0)
-				value = 32767.0;
-			else if (value < -32768.0)
-				value = -32768.0;
-			hook->source_pcm[index] = (int16_t)lrint(value);
-		}
-		if (!link_worker_pcm_push(&hook->output_pcm, hook->source_pcm[index])) {
-			/* Publish the partial span instead of rolling a monotonic PCM cursor
-			 * backward. The callback will consume exactly this descriptor and
-			 * conceal the incomplete frame before the next one can run. */
-			frame.samples = index;
-			hook->output_frames[output_frame_write % TXAGC_LINK_WORKER_CONTROL_FRAMES] =
-				frame;
-			atomic_store_explicit(&hook->output_frame_write, output_frame_write + 1U,
-					      memory_order_release);
-			link_worker_publish_statistics(hook);
-			return 1;
-		}
-	}
-	hook->output_frames[output_frame_write % TXAGC_LINK_WORKER_CONTROL_FRAMES] = frame;
-	atomic_store_explicit(&hook->output_frame_write, output_frame_write + 1U,
-			      memory_order_release);
-	link_worker_publish_statistics(hook);
-	return 1;
-}
-
-#ifndef URP_PROCESSING_TESTING
-/** @brief Run queued FFmpeg graph work away from the Asterisk audiohook lock.
- * @param opaque Link audiohook supplied to pthread_create().
- * @return NULL after the stop request is observed.
- */
-static void *link_worker_thread(void *opaque)
-{
-	struct txagc_hook *hook = opaque;
-
-	while (!atomic_load_explicit(&hook->worker_stopping, memory_order_acquire)) {
-		if (!txagc_link_worker_process_one(hook)) {
-			link_worker_publish_statistics(hook);
-			usleep(1000);
-		}
-	}
-	return NULL;
-}
-#endif
-
-/** @brief Allocate and initialize all fixed link-worker storage before hook attachment.
- * @param hook Link audiohook receiving worker storage.
- * @param samples_capacity Maximum samples in one graph block.
- * @return Zero on success; nonzero for invalid capacity or allocation failure.
- */
-PROCESSING_PRIVATE int txagc_link_worker_initialize(struct txagc_hook *hook,
-						    size_t samples_capacity)
-{
-	unsigned int queue_capacity;
-
-	if (!hook || !samples_capacity ||
-	    samples_capacity > UINT_MAX / TXAGC_LINK_WORKER_QUEUE_FRAMES)
-		return -1;
-	queue_capacity = (unsigned int)samples_capacity * TXAGC_LINK_WORKER_QUEUE_FRAMES;
-	hook->samples = ast_calloc(samples_capacity, sizeof(*hook->samples));
-	hook->source_pcm = ast_calloc(samples_capacity, sizeof(*hook->source_pcm));
-	hook->input_pcm_storage = ast_calloc(queue_capacity, sizeof(*hook->input_pcm_storage));
-	hook->output_pcm_storage = ast_calloc(queue_capacity, sizeof(*hook->output_pcm_storage));
-	if (!hook->samples || !hook->source_pcm || !hook->input_pcm_storage ||
-	    !hook->output_pcm_storage) {
-		ast_free(hook->samples);
-		ast_free(hook->source_pcm);
-		ast_free(hook->input_pcm_storage);
-		ast_free(hook->output_pcm_storage);
-		hook->samples = NULL;
-		hook->source_pcm = NULL;
-		hook->input_pcm_storage = NULL;
-		hook->output_pcm_storage = NULL;
-		return -1;
-	}
-	hook->samples_capacity = samples_capacity;
-	hook->queue_capacity = queue_capacity;
-	link_worker_pcm_init(&hook->input_pcm, hook->input_pcm_storage, queue_capacity);
-	link_worker_pcm_init(&hook->output_pcm, hook->output_pcm_storage, queue_capacity);
-	atomic_init(&hook->input_frame_read, 0U);
-	atomic_init(&hook->input_frame_write, 0U);
-	atomic_init(&hook->output_frame_read, 0U);
-	atomic_init(&hook->output_frame_write, 0U);
-	atomic_init(&hook->worker_stopping, 0);
-	atomic_init(&hook->generation, 1U);
-	atomic_init(&hook->input_overflows, 0U);
-	atomic_init(&hook->output_underflows, 0U);
-	atomic_init(&hook->output_malformed, 0U);
-	atomic_init(&hook->statistics_index, 0U);
-	atomic_init(&hook->statistics_readers[0], 0U);
-	atomic_init(&hook->statistics_readers[1], 0U);
-	link_worker_statistics_init(&hook->statistics);
-	link_worker_publish_statistics(hook);
-	return 0;
-}
-
-/** @brief Start the one worker that owns this hook's FFmpeg graph execution.
- * @param hook Initialized link audiohook.
- * @return Zero on success; nonzero when the worker cannot start.
- */
-PROCESSING_PRIVATE int txagc_link_worker_start(struct txagc_hook *hook)
-{
-	if (!hook || !hook->samples)
-		return -1;
-#ifdef URP_PROCESSING_TESTING
-	if (processing_test_worker_start_result)
-		return processing_test_worker_start_result;
-	/* The deterministic harness has no worker thread to join during teardown. */
-	hook->worker_started = 0;
-#else
-	if (pthread_create(&hook->worker_thread, NULL, link_worker_thread, hook))
-		return -1;
-	hook->worker_started = 1;
-#endif
-	return 0;
-}
-
-/** @brief Stop and join a hook worker before its graph or queue storage is destroyed.
- * @param hook Link audiohook whose worker is stopped when running.
- */
-PROCESSING_PRIVATE void txagc_link_worker_stop(struct txagc_hook *hook)
-{
-	if (!hook || !hook->worker_started)
-		return;
-	atomic_store_explicit(&hook->worker_stopping, 1, memory_order_release);
-	pthread_join(hook->worker_thread, NULL);
-	hook->worker_started = 0;
-}
-
-/** @brief Release fixed link-worker storage after the audiohook and worker have stopped.
- * @param hook Link audiohook whose worker storage is released.
- */
-PROCESSING_PRIVATE void txagc_link_worker_destroy(struct txagc_hook *hook)
-{
-	if (!hook || (!hook->samples && !hook->source_pcm && !hook->input_pcm_storage &&
-		      !hook->output_pcm_storage && !hook->worker_started)) {
-		return;
-	}
-	txagc_link_worker_stop(hook);
-	ast_free(hook->samples);
-	ast_free(hook->source_pcm);
-	ast_free(hook->input_pcm_storage);
-	ast_free(hook->output_pcm_storage);
-	hook->samples = NULL;
-	hook->source_pcm = NULL;
-	hook->input_pcm_storage = NULL;
-	hook->output_pcm_storage = NULL;
-	hook->samples_capacity = 0;
-	hook->queue_capacity = 0;
-}
-
-/** @brief Copy one coherent worker statistics snapshot without reading a live graph.
+/** @brief Copy one coherent synchronous-link statistics snapshot.
  * @param hook Link audiohook publishing double-buffered measurements.
  * @param statistics Receives a complete snapshot.
  * @return Zero on success; nonzero when no stable snapshot is available.
  */
-PROCESSING_PRIVATE int
-txagc_link_worker_statistics_read(struct txagc_hook *hook,
-				  struct txagc_link_worker_statistics *statistics)
+PROCESSING_PRIVATE int txagc_link_statistics_read(struct txagc_hook *hook,
+						  struct txagc_link_statistics *statistics)
 {
 	unsigned int attempt;
 
@@ -2677,20 +2167,16 @@ txagc_link_worker_statistics_read(struct txagc_hook *hook,
 PROCESSING_PRIVATE void hook_destroy(void *data)
 {
 	struct txagc_hook *hook = data;
-	int source;
 
 	if (!hook) {
 		return;
 	}
-	/* Detachment stops new callback queue writes. Joining next guarantees no
-	 * worker owns a graph pointer or queue storage while teardown frees it. */
+	/* Detachment and destruction quiesce the synchronous callback before its
+	 * graph or callback-owned conversion workspace is released. */
 	ast_audiohook_detach(&hook->audiohook);
-	txagc_link_worker_stop(hook);
 	ast_audiohook_destroy(&hook->audiohook);
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-		txagc_avfilter_slot_destroy(&hook->avfilter[source]);
-	}
-	txagc_link_worker_destroy(hook);
+	txagc_avfilter_slot_destroy(&hook->avfilter);
+	ast_free(hook->samples);
 	ast_free(hook);
 }
 
@@ -2700,87 +2186,29 @@ static const struct ast_datastore_info txagc_datastore = {
 	.destroy = hook_destroy,
 };
 
-/** @brief Reject crossover changes that cannot run at a known active link's sample rate.
- * @param candidate Validated candidate profiles, not yet published to audio callbacks.
- * @return Zero on success; -1 for an incompatible active link or unavailable iterator.
- */
-static int validate_active_crossovers(struct txagc_settings *candidate)
-{
-	struct ast_channel_iterator *iterator = ast_channel_iterator_all_new();
-	struct ast_channel *channel;
-	int invalid = 0;
-	if (!iterator) {
-		ast_log(LOG_ERROR,
-			"RadioPlus: cannot inspect active link rates; keeping settings\n");
-		return -1;
-	}
-	while ((channel = ast_channel_iterator_next(iterator))) {
-		const struct ast_datastore *datastore;
-		ast_channel_lock(channel);
-		datastore = ast_channel_datastore_find(channel, &txagc_datastore, NULL);
-		if (datastore && datastore->data) {
-			struct txagc_hook *hook = datastore->data;
-			struct txagc_profile *profile = find_profile(candidate, hook->profile);
-			struct txagc_avfilter *filter;
-			ast_audiohook_lock(&hook->audiohook);
-			filter = txagc_avfilter_slot_acquire(&hook->avfilter[TXAGC_LINK]);
-			unsigned int rate = filter ? filter->sample_rate : 0;
-			if (profile && profile->enabled && profile->chains[TXAGC_LINK].enabled &&
-			    rate) {
-				const struct txagc_config *cfg = &profile->chains[TXAGC_LINK].agc;
-				const char *const names[] = {"compressor", "limiter"};
-				const int enabled[] = {cfg->compressor_enabled,
-						       cfg->limiter_enabled};
-				const int bands[] = {cfg->compressor_bands, cfg->limiter_bands};
-				const double edges[] = {cfg->compressor_high_crossover_hz,
-							cfg->limiter_high_crossover_hz};
-				for (size_t stage = 0; stage < ARRAY_LEN(names); ++stage) {
-					if (enabled[stage] && bands[stage] == 3 &&
-					    edges[stage] >= rate * 0.5) {
-						ast_log(LOG_ERROR,
-							"RadioPlus [link %s]: %s_high_crossover_hz "
-							"%.9g "
-							"must be below %.9g Hz at active link rate "
-							"%u Hz\n",
-							profile->name, names[stage], edges[stage],
-							rate * 0.5, rate);
-						invalid = 1;
-					}
-				}
-			}
-			if (filter)
-				txagc_avfilter_slot_release(&hook->avfilter[TXAGC_LINK]);
-			ast_audiohook_unlock(&hook->audiohook);
-		}
-		ast_channel_unlock(channel);
-		ast_channel_unref(channel);
-	}
-	ast_channel_iterator_destroy(iterator);
-	return invalid ? -1 : 0;
-}
-
 /* The Asterisk callback ABI requires a mutable audiohook pointer. */
 // cppcheck-suppress constParameterCallback
-/** @brief Queue eligible link voice frames and render only completed worker output.
+/** @brief Process eligible link voice frames synchronously in the audiohook callback.
  * @param audiohook Attached link-processing hook.
  * @param chan Asterisk channel associated with the radio or link.
  * @param frame Asterisk voice frame replaced in place by the prior processed block.
  * @param direction Asterisk audiohook stream direction.
- * @return Zero after bounded queue movement, concealment, or bypass.
+ * @return Zero after synchronous processing or bypass.
  *
- * This callback deliberately owns no FFmpeg, graph, or worker mutable state.
- * It moves preallocated PCM samples through fixed SPSC queues. The hook worker
- * performs graph execution and publishes the next frame asynchronously.
+ * The graph and conversion workspace are prepared before attachment. This keeps
+ * the link source separate from app_rpt's mixed transmitter program while
+ * eliminating the worker handoff and its added block of scheduling latency.
  */
 PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct ast_channel *chan,
 				      struct ast_frame *frame,
 				      enum ast_audiohook_direction direction)
 {
 	struct txagc_hook *hook;
+	struct txagc_avfilter *filter;
 	unsigned int sample_rate;
 	int16_t *pcm;
-	unsigned int output_write;
-	unsigned int generation;
+	size_t index;
+	int result;
 
 	if (audiohook->status == AST_AUDIOHOOK_STATUS_DONE || frame->frametype != AST_FRAME_VOICE ||
 	    !frame->data.ptr || frame->samples <= 0) {
@@ -2799,23 +2227,40 @@ PROCESSING_PRIVATE int txagc_callback(struct ast_audiohook *audiohook, struct as
 	if (!sample_rate) {
 		sample_rate = 8000;
 	}
-	/* The graph and worker storage were prepared while attaching the hook. A
-	 * format change is intentionally bypassed rather than rebuilding from this
-	 * audiohook callback. Advancing the generation also prevents an older
-	 * processed block from being replayed after the format returns. */
+	/* The graph and workspace were prepared while attaching the hook. A format
+	 * change is intentionally bypassed rather than rebuilding from this audio
+	 * callback. Synchronous processing has no queued output to invalidate. */
 	if (sample_rate != hook->sample_rate || (size_t)frame->samples > hook->samples_capacity) {
-		atomic_fetch_add_explicit(&hook->generation, 1U, memory_order_acq_rel);
 		return 0;
 	}
 	pcm = frame->data.ptr;
-	generation = atomic_load_explicit(&hook->generation, memory_order_acquire);
-	/* Snapshot completed output before accepting this frame. The worker can run
-	 * at any point afterward, but this callback only renders an older block,
-	 * which gives link processing one fixed frame of pipeline latency. */
-	output_write = atomic_load_explicit(&hook->output_frame_write, memory_order_acquire);
-	link_worker_submit_input(hook, pcm, (unsigned int)frame->samples, generation);
-	link_worker_consume_output(hook, pcm, (unsigned int)frame->samples, generation,
-				   output_write);
+	for (index = 0; index < (size_t)frame->samples; ++index)
+		hook->samples[index] = pcm[index];
+	filter = txagc_avfilter_slot_acquire(&hook->avfilter);
+	if (!filter) {
+		++hook->statistics.processing_errors;
+		link_callback_publish_statistics(hook);
+		return 0;
+	}
+	result = txagc_avfilter_process_prepared(filter, hook->samples, (size_t)frame->samples);
+	link_callback_copy_filter_statistics(&hook->statistics, filter);
+	txagc_avfilter_slot_release(&hook->avfilter);
+	if (result < 0) {
+		/* Leave the Asterisk frame intact when a prepared graph rejects a block. */
+		++hook->statistics.processing_errors;
+		link_callback_publish_statistics(hook);
+		return 0;
+	}
+	for (index = 0; index < (size_t)frame->samples; ++index) {
+		double value = hook->samples[index];
+
+		if (value > 32767.0)
+			value = 32767.0;
+		else if (value < -32768.0)
+			value = -32768.0;
+		pcm[index] = (int16_t)lrint(value);
+	}
+	link_callback_publish_statistics(hook);
 	return 0;
 }
 
@@ -2834,7 +2279,6 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 	const struct txagc_avfilter *filter;
 	unsigned int sample_rate;
 	int profile_enabled = 0;
-	int source;
 
 	ast_channel_lock(chan);
 	datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
@@ -2864,50 +2308,41 @@ PROCESSING_PRIVATE int attach_hook(struct ast_channel *chan, const char *profile
 		ast_free(hook);
 		return -1;
 	}
-	for (source = 0; source < TXAGC_SOURCE_COUNT; ++source) {
-		txagc_avfilter_slot_init(&hook->avfilter[source]);
-	}
+	txagc_avfilter_slot_init(&hook->avfilter);
 	atomic_init(&hook->link_enabled, 1);
-	if (txagc_avfilter_slot_prepare(&hook->avfilter[TXAGC_LINK], &chain.agc, sample_rate) < 0) {
-		for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-			txagc_avfilter_slot_destroy(&hook->avfilter[source]);
+	if (txagc_avfilter_slot_prepare(&hook->avfilter, &chain.agc, sample_rate) < 0) {
+		txagc_avfilter_slot_destroy(&hook->avfilter);
 		ast_datastore_free(datastore);
 		ast_free(hook);
 		return -1;
 	}
-	filter = txagc_avfilter_slot_active(&hook->avfilter[TXAGC_LINK]);
+	filter = txagc_avfilter_slot_active(&hook->avfilter);
 	if (!filter || !filter->input_capacity) {
-		for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-			txagc_avfilter_slot_destroy(&hook->avfilter[source]);
+		txagc_avfilter_slot_destroy(&hook->avfilter);
 		ast_datastore_free(datastore);
 		ast_free(hook);
 		return -1;
 	}
-	if (txagc_link_worker_initialize(hook, filter->input_capacity)) {
-		for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-			txagc_avfilter_slot_destroy(&hook->avfilter[source]);
+	hook->samples = ast_calloc(filter->input_capacity, sizeof(*hook->samples));
+	if (!hook->samples) {
+		txagc_avfilter_slot_destroy(&hook->avfilter);
 		ast_datastore_free(datastore);
 		ast_free(hook);
 		return -1;
 	}
 	hook->samples_capacity = filter->input_capacity;
 	hook->sample_rate = sample_rate;
+	atomic_init(&hook->statistics_index, 0U);
+	atomic_init(&hook->statistics_readers[0], 0U);
+	atomic_init(&hook->statistics_readers[1], 0U);
+	link_callback_statistics_init(&hook->statistics);
+	link_callback_publish_statistics(hook);
 	ast_copy_string(hook->channel, ast_channel_name(chan), sizeof(hook->channel));
 	ast_copy_string(hook->profile, profile, sizeof(hook->profile));
 	if (ast_audiohook_init(&hook->audiohook, AST_AUDIOHOOK_TYPE_MANIPULATE, "TXAGC",
 			       AST_AUDIOHOOK_MANIPULATE_ALL_RATES)) {
-		for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-			txagc_avfilter_slot_destroy(&hook->avfilter[source]);
-		txagc_link_worker_destroy(hook);
-		ast_datastore_free(datastore);
-		ast_free(hook);
-		return -1;
-	}
-	if (txagc_link_worker_start(hook)) {
-		ast_audiohook_destroy(&hook->audiohook);
-		for (source = 0; source < TXAGC_SOURCE_COUNT; ++source)
-			txagc_avfilter_slot_destroy(&hook->avfilter[source]);
-		txagc_link_worker_destroy(hook);
+		ast_free(hook->samples);
+		txagc_avfilter_slot_destroy(&hook->avfilter);
 		ast_datastore_free(datastore);
 		ast_free(hook);
 		return -1;
@@ -3081,7 +2516,7 @@ PROCESSING_PRIVATE void publish_link_graph_transaction(struct link_graph_transac
 		struct link_graph_plan *plan = &transaction->plans[index];
 
 		if (plan->enabled) {
-			if (txagc_avfilter_slot_publish_candidate(&plan->hook->avfilter[TXAGC_LINK],
+			if (txagc_avfilter_slot_publish_candidate(&plan->hook->avfilter,
 								  &plan->candidate) < 0) {
 				/* A validated candidate is always publishable. This path protects
 				 * against an internal slot invariant failure without touching the
@@ -3093,10 +2528,9 @@ PROCESSING_PRIVATE void publish_link_graph_transaction(struct link_graph_transac
 				continue;
 			}
 		}
-		/* A worker result is paired with the generation captured at admission.
-		 * Invalidate queued output before changing admission so a disabled or
-		 * reconfigured link never replays an older graph block on its next frame. */
-		atomic_fetch_add_explicit(&plan->hook->generation, 1U, memory_order_acq_rel);
+		/* Synchronous processing has no queued output. Publishing the complete
+		 * graph before changing admission therefore makes each callback use either
+		 * the old graph, the new graph, or a clean bypass. */
 		atomic_store_explicit(&plan->hook->link_enabled, plan->enabled,
 				      memory_order_release);
 	}
@@ -3254,9 +2688,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 			chain->agc.equalizer_enabled ? "enabled" : "disabled");
 		ast_cli(args->fd, "de-esser %s, ",
 			chain->agc.deesser_enabled ? "enabled" : "disabled");
-		if (source == TXAGC_VOICE_TELEMETRY)
-			ast_cli(args->fd, "brick-wall band-pass %s, ",
-				chain->agc.splatter_filter_enabled ? "enabled" : "disabled");
 		ast_cli(args->fd, "final limiter %s, input gain %.1f dB, output gain %.1f dB\n",
 			chain->agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 			chain->agc.input_gain_db, chain->agc.output_gain_db);
@@ -3309,7 +2740,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"%.1f:1\n"
 		"Compressor make-up gain: %.1f dB\nCompressor attack: %.0f ms\n"
 		"Compressor release: %.0f ms\nCompressor sidechain band-pass: %.0f-%.0f Hz\n"
-		"Limiter: %s\nBrick-wall band-pass: %s\nThree-band limiter crossovers: %.0f/%.0f "
+		"Limiter: %s\nThree-band limiter crossovers: %.0f/%.0f "
 		"Hz\nLow-band threshold: %.1f dBFS\n"
 		"Low-band ratio: %.1f:1\nLow-band knee: %.1f dB\n"
 		"Low-band attack: %.1f ms\nLow-band release: %.0f ms\n"
@@ -3318,8 +2749,7 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		"High-band limit: %.1f dBFS\nHigh-band ratio: %.1f:1\nHigh-band knee: %.1f dB\n"
 		"High-band attack: %.1f ms\nHigh-band release: %.1f ms\n"
 		"Final limiter: %s\nFinal-limiter ceiling: %.1f dBFS\nLookahead: %.1f ms\n"
-		"Final-limiter attack: %.1f ms\nFinal-limiter release: %.0f ms\nOutput band-pass: "
-		"%.0f-%.0f Hz\n"
+		"Final-limiter attack: %.1f ms\nFinal-limiter release: %.0f ms\n"
 		"Final output gain: %.1f dB\n",
 		current.enabled ? "yes" : "no", current.local_enabled ? "enabled" : "disabled",
 		current.link_enabled ? "enabled" : "disabled", current.channel,
@@ -3345,7 +2775,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.agc.compressor_release_ms, current.agc.compressor_sidechain_highpass_hz,
 		current.agc.compressor_sidechain_lowpass_hz,
 		current.agc.limiter_enabled ? "enabled" : "disabled",
-		current.agc.splatter_filter_enabled ? "enabled" : "disabled",
 		current.agc.limiter_low_crossover_hz, current.agc.limiter_high_crossover_hz,
 		current.agc.low_limiter_threshold_dbfs, current.agc.low_limiter_ratio,
 		current.agc.low_limiter_knee_db, current.agc.low_limiter_attack_ms,
@@ -3358,7 +2787,6 @@ PROCESSING_PRIVATE char *cli_show(struct ast_cli_entry *entry, int command,
 		current.agc.lookahead_limiter_enabled ? "enabled" : "disabled",
 		current.agc.lookahead_limit_dbfs, current.agc.lookahead_ms,
 		current.agc.lookahead_attack_ms, current.agc.lookahead_release_ms,
-		current.agc.output_highpass_hz, current.agc.output_lowpass_hz,
 		current.agc.output_gain_db);
 	return CLI_SUCCESS;
 }
@@ -3402,25 +2830,21 @@ PROCESSING_PRIVATE char *cli_stats(struct ast_cli_entry *entry, int command,
 		datastore = ast_channel_datastore_find(chan, &txagc_datastore, NULL);
 		hook = datastore ? datastore->data : NULL;
 		if (hook) {
-			struct txagc_link_worker_statistics statistics;
+			struct txagc_link_statistics statistics;
 
-			if (!txagc_link_worker_statistics_read(hook, &statistics)) {
+			if (!txagc_link_statistics_read(hook, &statistics)) {
 				ast_cli(args->fd,
 					"%s/link: input peak %.1f dBFS RMS %.1f dBFS; "
 					"output peak %.1f dBFS RMS %.1f dBFS; max peak %.1f dBFS; "
 					"input %llu output %llu startup fill %llu runtime underrun "
-					"%llu samples; worker input overflow %llu malformed input "
-					"%llu "
-					"output underflow %llu "
-					"malformed output %llu blocks\n",
+					"%llu samples; synchronous graph errors %llu blocks\n",
 					hook->channel, statistics.input_peak_dbfs,
 					statistics.input_rms_dbfs, statistics.output_peak_dbfs,
 					statistics.output_rms_dbfs, statistics.output_max_peak_dbfs,
 					statistics.input_samples, statistics.output_samples,
 					statistics.startup_fill_samples,
 					statistics.runtime_underrun_samples,
-					statistics.input_overflows, statistics.input_malformed,
-					statistics.output_underflows, statistics.output_malformed);
+					statistics.processing_errors);
 			}
 			found = 1;
 		}
