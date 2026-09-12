@@ -5,9 +5,12 @@
 #ifndef USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_MODERN_PRIVATE_H
 
+#include <stddef.h>
 #include <stdatomic.h>
 
 #include <rate_adjusting_pcm_ring.h>
+
+#include "usbradioplus_channel_core.h"
 
 struct chan_usbradio_pvt {
 	struct chan_usbradio_pvt *next;
@@ -75,6 +78,8 @@ struct chan_usbradio_pvt {
 	double plus_local_native[URP_NATIVE_SAMPLES];
 	unsigned int plus_app_rpt_rate;
 	unsigned int plus_app_rpt_samples;
+	/** Maximum native PCM frames declared by this adapter at stream setup. */
+	size_t plus_native_max_frames;
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
 	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
@@ -87,6 +92,8 @@ struct chan_usbradio_pvt {
 	struct rpcr_ring plus_program_ring;
 	/** Program-ring source occupancy target for clock recovery in samples. */
 	unsigned int plus_program_target_samples;
+	/** Program-ring retained source reserve in samples. */
+	unsigned int plus_program_reserve_samples;
 	uint64_t plus_link_queue_underflows;
 	uint64_t plus_link_queue_overflows;
 	short plus_squelch_native[URP_NATIVE_SAMPLES * 2];
@@ -100,8 +107,14 @@ struct chan_usbradio_pvt {
 	struct usbradioplus_radio_access_slot plus_radio_access;
 	/** Callback-owned PTT hold while the CM119 playback queue drains. */
 	struct usbradioplus_tx_playout_hold plus_tx_playout_hold;
-	/** Cached PortAudio output-latency hold in native callback blocks. */
-	unsigned int plus_portaudio_playout_hold_callbacks;
+	/** Preallocated complete-block staging for PortAudio playback. */
+	struct urp_native_output_stage plus_native_output_stage;
+	/** Monotonic device reset request consumed only by the native audio owner. */
+	atomic_uint plus_native_output_reset_request;
+	/** Last device reset request consumed by the native audio owner. */
+	unsigned int plus_native_output_reset_seen;
+	/** Cached PortAudio output-latency hold in native PCM frames. */
+	size_t plus_portaudio_playout_hold_frames;
 	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
 	_Atomic int plus_radio_tx_active;
 	/** Desired physical PTT state published synchronously from the signaling engine. */

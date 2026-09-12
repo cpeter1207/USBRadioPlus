@@ -5,9 +5,12 @@
 #ifndef USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
 #define USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
 
+#include <stddef.h>
 #include <stdatomic.h>
 
 #include <rate_adjusting_pcm_ring.h>
+
+#include "usbradioplus_channel_core.h"
 
 /** Private per-radio state shared by channel callbacks and device workers. */
 struct chan_usbradio_pvt {
@@ -80,6 +83,8 @@ struct chan_usbradio_pvt {
 	unsigned int plus_app_rpt_rate;
 	/** Samples in one app_rpt frame at the configured rate. */
 	unsigned int plus_app_rpt_samples;
+	/** Maximum native PCM frames declared by this adapter at stream setup. */
+	size_t plus_native_max_frames;
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
 	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
@@ -94,6 +99,8 @@ struct chan_usbradio_pvt {
 	struct rpcr_ring plus_program_ring;
 	/** Program-ring source occupancy target for clock recovery in samples. */
 	unsigned int plus_program_target_samples;
+	/** Program-ring retained source reserve in samples. */
+	unsigned int plus_program_reserve_samples;
 	/** Count of empty app_rpt queue reads. */
 	uint64_t plus_link_queue_underflows;
 	/** Count of app_rpt queue overflow corrections. */
@@ -114,6 +121,12 @@ struct chan_usbradio_pvt {
 	struct usbradioplus_radio_access_slot plus_radio_access;
 	/** Callback-owned PTT hold while the CM119 playback queue drains. */
 	struct usbradioplus_tx_playout_hold plus_tx_playout_hold;
+	/** Preallocated complete-block staging for nonblocking OSS playback. */
+	struct urp_native_output_stage plus_native_output_stage;
+	/** Monotonic OSS reset request consumed only by the native audio owner. */
+	atomic_uint plus_native_output_reset_request;
+	/** Last OSS reset request consumed by the native audio owner. */
+	unsigned int plus_native_output_reset_seen;
 	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
 	_Atomic int plus_radio_tx_active;
 	/** Desired physical PTT state published synchronously from the signaling engine. */

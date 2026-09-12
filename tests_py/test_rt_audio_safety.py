@@ -175,7 +175,7 @@ def test_link_audiohook_callback_runs_prepared_graph_without_rt_unsafe_work():
     assert "txagc_avfilter_slot_release(" in callback
 
 
-def test_legacy_audio_callback_publishes_ptt_without_physical_io():
+def test_legacy_audio_callback_stages_native_output_without_physical_io():
     """Keep legacy native audio free of hardware control and wake-pipe I/O."""
     source = (ROOT / "src/chan_usbradioplus.c").read_text(encoding="utf-8")
     start = source.index(
@@ -183,7 +183,8 @@ def test_legacy_audio_callback_publishes_ptt_without_physical_io():
     )
     end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
     callback = source[start:end]
-    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
+    assert "usbradioplus_native_tick(o, URP_NATIVE_SAMPLES)" in callback
+    assert "usbradioplus_native_output_stage_enqueue(o, URP_NATIVE_SAMPLES)" in callback
     for operation in FORBIDDEN_AUDIO_OPERATIONS:
         assert operation not in callback
 
@@ -203,31 +204,30 @@ def test_legacy_unload_quiesces_channel_before_native_renderer_teardown():
     )
 
 
-def test_modern_audio_callback_publishes_ptt_without_physical_io():
+def test_modern_audio_callback_stages_native_output_without_physical_io():
     """Keep PortAudio's direct native callback free of control and wake-pipe I/O."""
     source = (ROOT / "src/chan_usbradioplus_modern.c").read_text(encoding="utf-8")
     start = source.index("URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)\n{")
     end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
     callback = source[start:end]
-    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
+    assert "usbradioplus_native_tick(o, URP_NATIVE_SAMPLES)" in callback
+    assert "usbradioplus_native_output_stage_enqueue(o, URP_NATIVE_SAMPLES)" in callback
     for operation in FORBIDDEN_AUDIO_OPERATIONS:
         assert operation not in callback
 
 
 def test_native_audio_ptt_transition_and_output_paths_do_not_log():
     """Audio-rate PTT and DAC handling must not enter Asterisk logging."""
-    adapters = (
-        ("chan_usbradioplus.c", "usbradio_read"),
-        ("chan_usbradioplus_modern.c", "usbradio_audio_thread"),
+    native_tick = _function_body(
+        (ROOT / "src/usbradioplus_native_tick.c").read_text(encoding="utf-8"),
+        "usbradioplus_native_tick",
     )
-    for source_name, callback_name in adapters:
-        source = (ROOT / "src" / source_name).read_text(encoding="utf-8")
-        callback = _function_body(source, callback_name)
-        transition_start = callback.index("/* Only app_rpt and tuning own PTT. */")
-        transition_end = callback.index("usbradioplus_prepare_squelch_audio", transition_start)
-        transition = callback[transition_start:transition_end]
-        for operation in ("ast_debug(", "ast_log("):
-            assert operation not in transition
+    transition_start = native_tick.index("usbradioplus_tx_playout_hold_prepare(channel)")
+    transition_end = native_tick.index("usbradioplus_refresh_ctcss_decode(channel)", transition_start)
+    transition = native_tick[transition_start:transition_end]
+    assert "usbradioplus_tx_playout_hold_publish(channel)" in transition
+    for operation in ("ast_debug(", "ast_log("):
+        assert operation not in transition
 
     legacy = (ROOT / "src" / "chan_usbradioplus.c").read_text(encoding="utf-8")
     for function_name in ("used_blocks", "soundcard_writeframe"):
@@ -344,4 +344,4 @@ def test_radio_uses_in_memory_traces_without_capture_toggle_state():
         assert obsolete not in source
         assert obsolete not in header
     assert "t_sdbg" in header
-    assert "strace2(pChan->sdbg)" in source
+    assert "strace2(pChan->sdbg, pChan->activeSamplesRx)" in source

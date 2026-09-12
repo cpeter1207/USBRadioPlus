@@ -59,6 +59,12 @@ static void test_config_equality(void)
 	right.output_gain_db = 2.0;
 	assert(!txagc_config_equal(&left, &right));
 	right = left;
+	right.post_limiter_bandpass_highpass_hz = 300.0;
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
+	right.post_limiter_bandpass_lowpass_hz = 5000.0;
+	assert(!txagc_config_equal(&left, &right));
+	right = left;
 	right.stage_count = TXAGC_MAX_DYNAMICS_STAGES + 1;
 	assert(!txagc_config_equal(&left, &right));
 	right = left;
@@ -151,6 +157,9 @@ static void test_graph_stage_helpers(void)
 	assert(!add_sidechain_stage(graph, sizeof(graph), "a", "b", "p", "sidechaingate", 100.0,
 				    3000.0, "threshold=0.1"));
 	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 100.0, 5000.0));
+	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 0.0, 5000.0));
+	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 100.0, 0.0));
+	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 0.0, 0.0));
 	assert(!add_emphasis(graph, sizeof(graph), "a", "b", 0, 300.0, 1000.0, 48000));
 	assert(!add_emphasis(graph, sizeof(graph), "a", "b", 1, 300.0, 1000.0, 48000));
 	graph[0] = '\0';
@@ -326,8 +335,8 @@ static void test_description_variants(void)
 	cfg.lookahead_limiter_enabled = 1;
 	expect_post_input_stage_overflow(&cfg);
 	cfg = base_config();
-	cfg.post_limiter_lowpass_enabled = 1;
-	cfg.post_limiter_lowpass_hz = 5000.0;
+	cfg.post_limiter_bandpass_enabled = 1;
+	cfg.post_limiter_bandpass_lowpass_hz = 5000.0;
 	expect_post_input_stage_overflow(&cfg);
 	cfg.deemphasis_enabled = 1;
 	cfg.receive_bandpass_enabled = 1;
@@ -343,8 +352,8 @@ static void test_description_variants(void)
 	cfg.dcs_spectral_lowpass_hz = 250.0;
 	cfg.output_gain_db = 2.0;
 	cfg.lookahead_limiter_enabled = 1;
-	cfg.post_limiter_lowpass_enabled = 1;
-	cfg.post_limiter_lowpass_hz = 5000.0;
+	cfg.post_limiter_bandpass_enabled = 1;
+	cfg.post_limiter_bandpass_lowpass_hz = 5000.0;
 	assert(!build_description(graph, sizeof(graph), &cfg, 48000));
 	cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_HIGHPASS;
 	cfg.ctcss_highpass_hz = 250.0;
@@ -378,8 +387,8 @@ static void test_graph_lifecycle_and_invalid_configuration(void)
 	assert(!state.configured && !state.graph && !state.fifo);
 	txagc_avfilter_reset(&state);
 
-	cfg.post_limiter_lowpass_enabled = 1;
-	cfg.post_limiter_lowpass_hz = 5000.0;
+	cfg.post_limiter_bandpass_enabled = 1;
+	cfg.post_limiter_bandpass_lowpass_hz = 5000.0;
 	assert(!configure(&state, &cfg, 48000));
 	assert(state.cleanup_pre_sink && state.cleanup_post_8_plus_sink);
 	assert(txagc_avfilter_process(&state, &cfg, samples, 0, 48000) < 0);

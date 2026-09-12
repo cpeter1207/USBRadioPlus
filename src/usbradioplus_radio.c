@@ -124,16 +124,22 @@ void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value)
 /*
 
 */
-void strace2(t_sdbg *sdbg)
+void strace2(t_sdbg *sdbg, i16 samples)
 {
 	int i;
+	i16 count;
 	if (!sdbg) {
 		return;
 	}
+	count = samples;
+	if (count < 0)
+		count = 0;
+	if (count > SAMPLES_PER_BLOCK)
+		count = SAMPLES_PER_BLOCK;
 	for (i = 0; i < URP_RADIO_DEBUG_CHANNELS; i++) {
 		if (sdbg->source[i]) {
 			int ii;
-			for (ii = 0; ii < SAMPLES_PER_BLOCK; ii++) {
+			for (ii = 0; ii < count; ii++) {
 				sdbg->buffer[ii * URP_RADIO_DEBUG_CHANNELS + i] =
 					sdbg->source[i][ii];
 			}
@@ -1095,7 +1101,7 @@ i16 urp_ctcss_decode(urp_radio_state *pChan)
 
 		ptdet = &(pChan->rxCtcss->tdet[tnum]);
 		indexDebug = 0;
-		points = points2do = pChan->nSamplesRx;
+		points = points2do = pChan->activeSamplesRx;
 		fudgeFactor = ptdet->fudgeFactor;
 		binFactor = ptdet->binFactor;
 
@@ -1301,6 +1307,8 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	pChan->index = radioIndex++;
 	pChan->nSamplesTx = pChan->nSamplesRx = numSamples;
+	/* A direct decoder call is valid before the first native tick. */
+	pChan->activeSamplesTx = pChan->activeSamplesRx = numSamples;
 
 	ALLOCATE_OR_FAIL(pDecCtcss, sizeof(*pDecCtcss), 1);
 	pChan->rxCtcss = pDecCtcss;
@@ -1901,26 +1909,116 @@ i16 urp_radio_stage_destroy(urp_radio_stage *pSps)
 	return 0;
 }
 
+/** @brief Set the active detector count for one native callback.
+ *
+ * Allocation occurs once for the adapter-declared maximum.  The fixed-point
+ * detector stages retain their history while this helper changes only the
+ * count consumed during the current callback.
+ */
+static void urp_radio_set_active_samples(urp_radio_state *channel, i16 samples)
+{
+	urp_radio_stage *stage;
+
+	channel->activeSamplesRx = samples;
+	channel->activeSamplesTx = samples;
+	for (stage = channel->spsRx; stage; stage = stage->nextSps)
+		stage->nSamples = samples;
+}
+
+/** @brief Convert native PCM duration to whole milliseconds without tick drift. */
+static i32 urp_radio_elapsed_ms(u32 *remainder, size_t native_frames)
+{
+	uint64_t elapsed = (uint64_t)*remainder + native_frames;
+	i32 milliseconds = (i32)(elapsed / (SAMPLE_RATE_INPUT / 1000U));
+
+	*remainder = (u32)(elapsed % (SAMPLE_RATE_INPUT / 1000U));
+	return milliseconds;
+}
+
+/** @brief Consume a timer and return PCM time remaining after it expires.
+ *
+ * A native callback can be split differently by an adapter.  Returning the
+ * residual duration lets a successor state start at the same sample time.
+ */
+static i32 urp_radio_timer_consume(i32 *timer, i32 milliseconds)
+{
+	if (*timer <= 0 || milliseconds <= 0)
+		return milliseconds;
+	if (milliseconds >= *timer) {
+		milliseconds -= *timer;
+		*timer = 0;
+		return milliseconds;
+	}
+	*timer -= milliseconds;
+	return 0;
+}
+
+/** @brief Decrement a millisecond timer by elapsed native PCM duration. */
+static void urp_radio_timer_advance(i32 *timer, i32 milliseconds)
+{
+	(void)urp_radio_timer_consume(timer, milliseconds);
+}
+
+void urp_radio_arm_txrx_blanking(urp_radio_state *pChan)
+{
+	if (!pChan)
+		return;
+	pChan->txrxblankingtimer = pChan->txrxblankingtime;
+	pChan->txrxBlankingSampleRemainder = 0U;
+}
+
+/** @brief Enter the fixed transmitter drain state at a precise native time.
+ * @return Nonzero when the supplied span also completes the drain.
+ */
+static int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
+{
+	channel->txBufferClear = 3;
+	/* The legacy frame counter held PTT through the transition callback and
+	 * three further 20 ms drain spans. Preserve that real-time dwell even when
+	 * the adapter partitions a native callback into smaller spans. */
+	channel->txFinishTimer = (channel->txBufferClear + 1) * MS_PER_FRAME;
+	channel->txState = CHAN_TXSTATE_FINISHING;
+	(void)urp_radio_timer_consume(&channel->txFinishTimer, elapsed_ms);
+	if (channel->txFinishTimer == 0) {
+		channel->txBufferClear = 0;
+		channel->txState = CHAN_TXSTATE_COMPLETE;
+		return 1;
+	}
+	return 0;
+}
+
 /*
 	urp_radio_process handles a block of data from the usb audio device
 */
-i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
-			    int advance_tx)
+i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
+				   size_t native_frame_count, int advance_tx)
 {
 	int i, hit;
+	i16 active_samples;
+	i32 rx_elapsed_ms;
+	i32 tx_elapsed_ms;
+	i32 tx_remaining_ms;
+	size_t blank_native_frames;
+	u32 blank_timer_remainder_before;
 	float f = 0;
 	urp_radio_stage *pmr_sps;
 
-	if (pChan == NULL) {
+	if (pChan == NULL || input == NULL || !native_frame_count ||
+	    native_frame_count % (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) != 0U ||
+	    native_frame_count / (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) >
+		    (size_t)pChan->nSamplesRx) {
 		return 1;
 	}
+	active_samples = (i16)(native_frame_count / (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK));
+	urp_radio_set_active_samples(pChan, active_samples);
+	rx_elapsed_ms = urp_radio_elapsed_ms(&pChan->rxTimerSampleRemainder, native_frame_count);
 
 	pChan->frameCountRx++;
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->tracetype) {
 		memset((void *)pChan->sdbg->buffer, 0,
-		       pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2);
+		       (size_t)pChan->activeSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2U);
 	}
 #endif
 
@@ -1933,14 +2031,34 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	}
 
 	if (pChan->txrxblankingtimer > 0) {
-		for (i = 0; i < pChan->nSamplesRx * 6; i++) {
-			input[i] = 0;
-		}
+		i32 blank_elapsed_ms;
 
-		pChan->txrxblankingtimer -= MS_PER_FRAME;
-		if (pChan->txrxblankingtimer <= 0) {
+		blank_timer_remainder_before = pChan->txrxBlankingSampleRemainder;
+		blank_elapsed_ms = urp_radio_elapsed_ms(&pChan->txrxBlankingSampleRemainder,
+							native_frame_count);
+		/* Blank only the protected prefix.  The frontend consumes the left
+		 * interleaved sample for every native frame, so clearing contiguous
+		 * shorts would both miss half the detector input and make the protected
+		 * duration depend on how an adapter partitions callbacks. */
+		/* The millisecond timer expires after the pre-call fractional remainder.
+		 * Subtract that remainder before clamping so adjacent sub-millisecond
+		 * callbacks blank one continuous physical interval, not one rounded
+		 * interval per callback. */
+		blank_native_frames =
+			(size_t)pChan->txrxblankingtimer * (SAMPLE_RATE_INPUT / 1000U);
+		if (blank_native_frames > (size_t)blank_timer_remainder_before)
+			blank_native_frames -= (size_t)blank_timer_remainder_before;
+		else
+			blank_native_frames = 0U;
+		if (blank_native_frames > native_frame_count)
+			blank_native_frames = native_frame_count;
+		for (i = 0; i < (int)blank_native_frames; ++i)
+			input[i * 2] = 0;
+
+		if (blank_elapsed_ms >= pChan->txrxblankingtimer)
 			pChan->txrxblankingtimer = 0;
-		}
+		else
+			pChan->txrxblankingtimer -= (i16)blank_elapsed_ms;
 	}
 
 	if (pChan->rxCpuSaver && !pChan->rxCarrierDetect && pChan->smode == SMODE_NULL &&
@@ -1972,7 +2090,7 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 			pChan->rxVoxTimer = pChan->voxHangTime; /* VOX HangTime in ms */
 		}
 		if (pChan->rxVoxTimer > 0) {
-			pChan->rxVoxTimer -= MS_PER_FRAME;
+			urp_radio_timer_advance(&pChan->rxVoxTimer, rx_elapsed_ms);
 			pChan->rxCarrierDetect = 1;
 		} else {
 			pChan->rxVoxTimer = 0;
@@ -1987,7 +2105,7 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 
 	/* DCS follows the left capture channel used by the receive frontend. */
 	if (pChan->dcs.enabled_receive)
-		(void)urp_dcs_process(&pChan->dcs, input, (size_t)pChan->nSamplesRx * 6U, 2U,
+		(void)urp_dcs_process(&pChan->dcs, input, native_frame_count, 2U,
 				      SAMPLE_RATE_INPUT);
 
 	/* stop and start these engines instead to eliminate falsing */
@@ -2001,10 +2119,9 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	}
 
 	if (pChan->smodetimer > 0 && !pChan->txPttIn) {
-		pChan->smodetimer -= MS_PER_FRAME;
+		urp_radio_timer_advance(&pChan->smodetimer, rx_elapsed_ms);
 
-		if (pChan->smodetimer <= 0) {
-			pChan->smodetimer = 0;
+		if (pChan->smodetimer == 0) {
 			pChan->smodewas = pChan->smode;
 			pChan->smode = SMODE_NULL;
 			pChan->b.smodeturnoff = 1;
@@ -2046,9 +2163,10 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	 * not advance unless the matching native DAC frame will be rendered. */
 	if (!advance_tx) {
 		if (outputtx)
-			memset(outputtx, 0, pChan->nSamplesTx * 2 * 6 * sizeof(*outputtx));
+			memset(outputtx, 0, native_frame_count * 2U * sizeof(*outputtx));
 		return 0;
 	}
+	tx_elapsed_ms = urp_radio_elapsed_ms(&pChan->txTimerSampleRemainder, native_frame_count);
 	/* handle radio transmitter ptt input */
 	hit = 0;
 	{
@@ -2092,15 +2210,26 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 				pChan->txState = CHAN_TXSTATE_TOC;
 				pChan->dcsTurnoffTimer = pChan->dcsTurnoffDuration;
 				pChan->txHangTime = 0;
+				tx_remaining_ms = urp_radio_timer_consume(&pChan->dcsTurnoffTimer,
+									  tx_elapsed_ms);
+				if (pChan->dcsTurnoffTimer == 0)
+					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
 			} else if (pChan->txCtcssEnabled && !pChan->b.txCtcssInhibit) {
 				if (pChan->txTocType == TOC_NONE || !pChan->b.ctcssTxEnable) {
 					pChan->txCtcssOption = 3;
-					pChan->txBufferClear = 3;
-					pChan->txState = CHAN_TXSTATE_FINISHING;
+					hit = urp_radio_enter_finishing(pChan, tx_elapsed_ms);
 				} else if (pChan->txTocType == TOC_NOTONE) {
 					pChan->txState = CHAN_TXSTATE_TOC;
-					pChan->txHangTime = pChan->txCtcssTocTime / MS_PER_FRAME;
+					pChan->txHangTime = pChan->txCtcssTocTime;
 					pChan->txCtcssOption = 3;
+					(void)urp_radio_timer_consume(&pChan->txHangTime,
+								      tx_elapsed_ms);
+					if (pChan->txHangTime == 0) {
+						pChan->txState = CHAN_TXSTATE_FINISHING;
+						pChan->txBufferClear = 0;
+						pChan->txFinishTimer = 0;
+						hit = 1;
+					}
 				} else {
 					pChan->txState = CHAN_TXSTATE_TOC;
 					pChan->txHangTime = 0;
@@ -2112,8 +2241,7 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 					}
 				}
 			} else {
-				pChan->txBufferClear = 3;
-				pChan->txState = CHAN_TXSTATE_FINISHING;
+				hit = urp_radio_enter_finishing(pChan, tx_elapsed_ms);
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_TOC) {
 			if (pChan->txPttIn && pChan->dcsTurnoffTimer > 0) {
@@ -2130,26 +2258,43 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 				pChan->txCtcssEnabled = 1;
 				pChan->txCtcssTurnoffTimer = 0;
 				hit = 0;
-			} else if (pChan->txHangTime) {
-				if (--pChan->txHangTime == 0) {
+			} else if (pChan->txHangTime > 0) {
+				(void)urp_radio_timer_consume(&pChan->txHangTime, tx_elapsed_ms);
+				if (pChan->txHangTime == 0) {
 					pChan->txState = CHAN_TXSTATE_FINISHING;
+					pChan->txBufferClear = 0;
+					pChan->txFinishTimer = 0;
+					hit = 1;
 				}
 			} else if (pChan->dcsTurnoffTimer > 0) {
-				pChan->dcsTurnoffTimer -= MS_PER_FRAME;
-				if (pChan->dcsTurnoffTimer <= 0) {
-					pChan->dcsTurnoffTimer = 0;
-					pChan->txBufferClear = 3;
-					pChan->txState = CHAN_TXSTATE_FINISHING;
+				tx_remaining_ms = urp_radio_timer_consume(&pChan->dcsTurnoffTimer,
+									  tx_elapsed_ms);
+				if (pChan->dcsTurnoffTimer == 0) {
+					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
 				}
 			} else if (pChan->txCtcssState == 0) {
 				/* A 55 Hz tail needs ten post-tone frames: two TOC frames
 				 * plus these eight finishing frames keep PTT high for 200 ms. */
 				pChan->txBufferClear = pChan->txTocType == 3 ? 8 : 3;
+				pChan->txFinishTimer = (pChan->txBufferClear + 1) * MS_PER_FRAME;
 				pChan->txState = CHAN_TXSTATE_FINISHING;
+				(void)urp_radio_timer_consume(&pChan->txFinishTimer, tx_elapsed_ms);
+				if (pChan->txFinishTimer == 0) {
+					pChan->txBufferClear = 0;
+					pChan->txState = CHAN_TXSTATE_COMPLETE;
+					hit = 1;
+				}
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_FINISHING) {
-			if (--pChan->txBufferClear <= 0) {
+			/* Keep externally restored legacy frame counts meaningful while all
+			 * normal transitions use the duration-based timer above. */
+			if (pChan->txFinishTimer == 0 && pChan->txBufferClear > 0)
+				pChan->txFinishTimer = pChan->txBufferClear * MS_PER_FRAME;
+			urp_radio_timer_advance(&pChan->txFinishTimer, tx_elapsed_ms);
+			if (pChan->txFinishTimer == 0) {
+				pChan->txBufferClear = 0;
 				pChan->txState = CHAN_TXSTATE_COMPLETE;
+				hit = 1;
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_COMPLETE) {
 			hit = 1;
@@ -2159,7 +2304,7 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	if (hit) {
 		pChan->txPttOut = 0;
 		pChan->txCtcssOption = 3;
-		pChan->txrxblankingtimer = pChan->txrxblankingtime;
+		urp_radio_arm_txrx_blanking(pChan);
 		pChan->txState = CHAN_TXSTATE_IDLE;
 
 		memset(pChan->txctcssfreq, 0, sizeof(pChan->txctcssfreq));
@@ -2167,10 +2312,7 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	}
 
 	if (pChan->txsettletimer && pChan->txPttHid) {
-		pChan->txsettletimer -= MS_PER_FRAME;
-		if (pChan->txsettletimer < 0) {
-			pChan->txsettletimer = 0;
-		}
+		urp_radio_timer_advance(&pChan->txsettletimer, tx_elapsed_ms);
 	}
 
 	/* enable this after we know everything else is working */
@@ -2197,7 +2339,9 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	} else if (pChan->txCtcssOption == 2) {
 		pChan->txCtcssOption = 0;
 		pChan->txCtcssState = 2;
-		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - MS_PER_FRAME;
+		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - tx_elapsed_ms;
+		if (pChan->txCtcssTurnoffTimer < 0)
+			pChan->txCtcssTurnoffTimer = 0;
 		pChan->txCtcssPhaseShift = pChan->txCtcssTocShift;
 		pChan->txCtcssTailToneHz = pChan->txCtcssTocToneHz;
 	} else if (pChan->txCtcssOption == 3) {
@@ -2206,18 +2350,18 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 		pChan->txCtcssEnabled = 0;
 		pChan->txCtcssTailToneHz = 0.0;
 	} else if (pChan->txCtcssState == 2) {
-		pChan->txCtcssTurnoffTimer -= MS_PER_FRAME;
-		if (pChan->txCtcssTurnoffTimer <= 0)
+		urp_radio_timer_advance(&pChan->txCtcssTurnoffTimer, tx_elapsed_ms);
+		if (pChan->txCtcssTurnoffTimer == 0)
 			pChan->txCtcssOption = 3;
 	}
 
 	/* This engine controls signaling and PTT only; USBRadioPlus renders audio. */
 	if (outputtx)
-		memset(outputtx, 0, pChan->nSamplesTx * 2 * 6 * sizeof(*outputtx));
+		memset(outputtx, 0, native_frame_count * 2U * sizeof(*outputtx));
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->tracetype) {
-		for (i = 0; i < pChan->nSamplesRx; i++) {
+		for (i = 0; i < pChan->activeSamplesRx; i++) {
 			pChan->pRxDemod[i] = input[i * 2 * 6];
 			TSCOPE((RX_NOISE_TRIG, pChan->sdbg, i,
 				(pChan->rxCarrierDetect * URP_RADIO_TRACE_AMP) -
@@ -2234,8 +2378,22 @@ i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i
 	}
 #endif
 
-	strace2(pChan->sdbg);
+	strace2(pChan->sdbg, pChan->activeSamplesRx);
 	return 0;
+}
+
+/* Retain the fixed-block public entry for callers that operate an 8 kHz
+ * legacy frame.  Native adapters use urp_radio_process_native_timed() so the
+ * actual hardware callback duration—not this compatibility wrapper—controls
+ * timer advancement. */
+i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
+			    int advance_tx)
+{
+	if (!pChan)
+		return 1;
+	return urp_radio_process_native_timed(
+		pChan, input, outputrx, outputtx,
+		(size_t)pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK), advance_tx);
 }
 
 i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)

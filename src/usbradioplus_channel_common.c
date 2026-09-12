@@ -268,6 +268,50 @@ void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *o, int asserted
 				      memory_order_release);
 }
 
+/** @brief Publish PTT after accounting for both the live engine and staged PCM.
+ * @param channel Private channel whose output state is reconciled.
+ *
+ * The compatibility adapters may still have a historical keyed block queued
+ * after the signaling engine has released PTT.  Publishing only the live
+ * engine state in that interval can briefly unkey the transmitter before the
+ * audio worker reasserts it.  Conversely, the final staged block must release
+ * PTT when neither source remains keyed.
+ */
+static void usbradioplus_reconcile_hardware_ptt(struct chan_usbradio_pvt *channel)
+{
+	int asserted = 0;
+
+	if (!channel)
+		return;
+	if (channel->radio)
+		asserted = !!channel->radio->txPttOut;
+	if (urp_native_output_stage_has_ptt(&channel->plus_native_output_stage))
+		asserted = 1;
+	usbradioplus_publish_hardware_ptt(channel, asserted);
+}
+
+void usbradioplus_import_external_ptt_request(struct chan_usbradio_pvt *channel)
+{
+	if (!channel || !channel->radio)
+		return;
+	channel->radio->txPttIn = atomic_load_explicit(&channel->txkeyed, memory_order_acquire) ||
+				  atomic_load_explicit(&channel->txtestkey, memory_order_acquire);
+}
+
+void usbradioplus_note_hardware_ptt_applied(struct chan_usbradio_pvt *channel)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+	int applied;
+
+	if (!channel || !channel->radio)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	applied = atomic_load_explicit(&channel->plus_hardware_ptt_applied, memory_order_acquire);
+	if (hold->hardware_ptt_applied && !applied)
+		urp_radio_arm_txrx_blanking(channel->radio);
+	hold->hardware_ptt_applied = applied;
+}
+
 void usbradioplus_tx_playout_hold_prepare(struct chan_usbradio_pvt *channel)
 {
 	const struct usbradioplus_tx_playout_hold *hold;
@@ -285,17 +329,20 @@ void usbradioplus_tx_playout_hold_apply(struct chan_usbradio_pvt *channel)
 {
 	struct usbradioplus_tx_playout_hold *hold;
 	int input_keyed;
-	int was_draining;
 
 	if (!channel || !channel->radio)
 		return;
 	hold = &channel->plus_tx_playout_hold;
-	was_draining = hold->draining;
-	input_keyed = !!channel->radio->txPttIn;
+	/* The adapter imports txPttIn before draining historical PCM.  Check the
+	 * atomics as well so a key arriving between that import and completion
+	 * cannot create a transient physical unkey. */
+	input_keyed = !!channel->radio->txPttIn ||
+		      atomic_load_explicit(&channel->txkeyed, memory_order_acquire) ||
+		      atomic_load_explicit(&channel->txtestkey, memory_order_acquire);
 	/* A new external key request supersedes queued audio from the previous
 	 * transmission. It must never inherit a stale post-playout release timer. */
 	if (input_keyed && !hold->input_keyed) {
-		hold->callbacks_remaining = 0U;
+		hold->frames_remaining = 0U;
 		hold->draining = 0;
 	}
 	hold->input_keyed = input_keyed;
@@ -306,16 +353,21 @@ void usbradioplus_tx_playout_hold_apply(struct chan_usbradio_pvt *channel)
 		hold->draining = 0;
 		return;
 	}
-	if (hold->callbacks_remaining) {
+	if (input_keyed) {
+		/* A staged block can finish in the short interval after the external
+		 * key request arrives but before the next radio tick consumes it. Keep
+		 * physical PTT asserted across that boundary; prepare() restores the
+		 * raw engine value before that next tick advances signaling. */
+		channel->radio->txPttOut = 1;
+		hold->draining = 1;
+		return;
+	}
+	if (hold->frames_remaining) {
 		channel->radio->txPttOut = 1;
 		hold->draining = 1;
 	} else {
 		channel->radio->txPttOut = 0;
 		hold->draining = 0;
-		/* The signaling engine started its RX blanking interval when it first
-		 * requested unkey. Start it again at the actual physical-release point. */
-		if (was_draining)
-			channel->radio->txrxblankingtimer = channel->radio->txrxblankingtime;
 	}
 }
 
@@ -331,7 +383,23 @@ void usbradioplus_tx_playout_hold_publish(struct chan_usbradio_pvt *channel)
 	atomic_store_explicit(&channel->plus_radio_tx_active,
 			      !!channel->radio->txPttIn || hold->engine_ptt_out,
 			      memory_order_release);
-	usbradioplus_publish_hardware_ptt(channel, channel->radio->txPttOut);
+	usbradioplus_reconcile_hardware_ptt(channel);
+}
+
+void usbradioplus_tx_playout_hold_advance(struct chan_usbradio_pvt *channel, size_t elapsed_frames)
+{
+	struct usbradioplus_tx_playout_hold *hold;
+
+	if (!channel || !elapsed_frames)
+		return;
+	hold = &channel->plus_tx_playout_hold;
+	/* Device writes can be batched, so they are not a clock.  Only the adapter's
+	 * elapsed native input span represents time in which queued PCM can reach
+	 * the DAC. */
+	if (elapsed_frames >= hold->frames_remaining)
+		hold->frames_remaining = 0U;
+	else
+		hold->frames_remaining -= elapsed_frames;
 }
 
 void usbradioplus_tx_playout_hold_reset(struct chan_usbradio_pvt *channel)
@@ -343,34 +411,151 @@ void usbradioplus_tx_playout_hold_reset(struct chan_usbradio_pvt *channel)
 	hold = &channel->plus_tx_playout_hold;
 	if (channel->radio && hold->draining)
 		channel->radio->txPttOut = hold->engine_ptt_out;
-	hold->callbacks_remaining = 0U;
+	hold->frames_remaining = 0U;
 	hold->engine_ptt_out = 0;
 	hold->input_keyed = 0;
 	hold->draining = 0;
 }
 
 void usbradioplus_tx_playout_hold_note_output(struct chan_usbradio_pvt *channel, int submitted,
-					      int audio_bearing, unsigned int callbacks)
+					      int audio_bearing, size_t held_frames,
+					      size_t submitted_frames)
 {
 	struct usbradioplus_tx_playout_hold *hold;
 
 	if (!channel || !channel->radio || !submitted)
 		return;
 	hold = &channel->plus_tx_playout_hold;
-	/* The adapter already includes the requested 20 ms safety block in this
-	 * rounded native-callback count. A zero estimate still keeps one block. */
+	/* The adapter already includes its safety span in the native-frame estimate.
+	 * This remains correct when one native hardware block is partitioned across
+	 * more than one callback or device write. */
 	if (audio_bearing) {
-		hold->callbacks_remaining = callbacks ? callbacks : 1U;
-	} else if (hold->callbacks_remaining) {
-		/* Only a complete DAC submission advances the drain clock. A full
-		 * device queue therefore extends PTT instead of cutting queued PCM off. */
-		--hold->callbacks_remaining;
+		hold->frames_remaining = held_frames ? held_frames : submitted_frames;
 	}
 }
 
 int usbradioplus_tx_playout_hold_draining(const struct chan_usbradio_pvt *channel)
 {
 	return channel && channel->plus_tx_playout_hold.draining;
+}
+
+void usbradioplus_native_output_stage_enqueue(struct chan_usbradio_pvt *channel, size_t frame_count)
+{
+	int logical_ptt;
+	int result;
+	const short *pcm;
+
+	if (!channel || !frame_count || frame_count > channel->plus_native_max_frames)
+		return;
+	pcm = (const short *)channel->usbradio_write_buf;
+	/* The post-tick atomic is the raw engine decision, excluding a virtual
+	 * device-drain PTT hold. A queued block must preserve that historical state. */
+	logical_ptt = atomic_load_explicit(&channel->plus_radio_tx_active, memory_order_acquire);
+	result = urp_native_output_stage_enqueue(
+		&channel->plus_native_output_stage, pcm, frame_count, logical_ptt,
+		logical_ptt && usbradioplus_pcm_has_audio(pcm, frame_count * 2U));
+	if (!result)
+		++channel->plus_sound_dropped_frames;
+	usbradioplus_native_output_stage_publish_ptt(channel);
+}
+
+void usbradioplus_native_output_stage_publish_ptt(struct chan_usbradio_pvt *channel)
+{
+	usbradioplus_reconcile_hardware_ptt(channel);
+}
+
+void usbradioplus_native_output_stage_complete(struct chan_usbradio_pvt *channel,
+					       const struct urp_native_output_block *block,
+					       size_t held_frames)
+{
+	if (!channel || !block)
+		return;
+	usbradioplus_tx_playout_hold_note_output(channel, 1, block->audio_bearing, held_frames,
+						 block->frame_count);
+	/* Completion is the only point at which an accepted DAC span may advance a
+	 * drain hold. A queued later block then overrides the logical release below. */
+	usbradioplus_tx_playout_hold_prepare(channel);
+	usbradioplus_tx_playout_hold_apply(channel);
+	usbradioplus_tx_playout_hold_publish(channel);
+	usbradioplus_native_output_stage_publish_ptt(channel);
+}
+
+int usbradioplus_native_output_stage_recover_stall(struct chan_usbradio_pvt *channel,
+						   size_t elapsed_frames)
+{
+	if (!channel || !urp_native_output_stage_note_unavailable(
+				&channel->plus_native_output_stage, elapsed_frames))
+		return 0;
+	/* The device accepted a prefix and then stayed unavailable for its derived
+	 * queue-depth interval.  Drop obsolete staged PCM, restore the raw radio
+	 * decision, and let the next tick refill at current rather than stale time. */
+	++channel->plus_sound_dropped_frames;
+	usbradioplus_tx_playout_hold_reset(channel);
+	urp_native_output_stage_reset(&channel->plus_native_output_stage);
+	usbradioplus_reconcile_hardware_ptt(channel);
+	return 1;
+}
+
+void usbradioplus_native_output_stage_reset(struct chan_usbradio_pvt *channel)
+{
+	if (!channel)
+		return;
+	urp_native_output_stage_reset(&channel->plus_native_output_stage);
+	/* Resetting a queued keyed tail must release PTT when the live engine is
+	 * also idle; a subsequent native tick is not guaranteed after teardown. */
+	usbradioplus_reconcile_hardware_ptt(channel);
+}
+
+void usbradioplus_native_output_stage_fail_safe_reset(struct chan_usbradio_pvt *channel)
+{
+	int hardware_ptt_applied;
+
+	if (!channel)
+		return;
+	/* Device lifecycle paths may run while a parser reload owns radio state.
+	 * Clearing the adapter-only shadow and the atomic hardware request is safe
+	 * in either ordering; the next acquired native tick republishes live PTT.
+	 * Keep the last applied physical state, though: a HID worker may acknowledge
+	 * the just-published unkey after this reset, and the audio owner needs that
+	 * falling edge to arm receiver blanking. */
+	hardware_ptt_applied = channel->plus_tx_playout_hold.hardware_ptt_applied;
+	channel->plus_tx_playout_hold = (struct usbradioplus_tx_playout_hold){0};
+	channel->plus_tx_playout_hold.hardware_ptt_applied = hardware_ptt_applied;
+	urp_native_output_stage_reset(&channel->plus_native_output_stage);
+	atomic_store_explicit(&channel->plus_radio_tx_active, 0, memory_order_release);
+	usbradioplus_publish_hardware_ptt(channel, 0);
+}
+
+void usbradioplus_native_output_stage_request_reset(struct chan_usbradio_pvt *channel)
+{
+	/* Device setup can precede DSP initialization during channel construction.
+	 * There is no callback-owned stage in that interval, so do not touch its
+	 * reset counter until dsp_init() has established it. A closing device must
+	 * still immediately release its atomic physical-PTT request: a callback may
+	 * never run again to consume the request and no control path may leave RF
+	 * keyed merely because staged PCM is awaiting its audio owner. */
+	if (channel)
+		usbradioplus_publish_hardware_ptt(channel, 0);
+	if (channel && channel->plus_dsp_initialized)
+		atomic_fetch_add_explicit(&channel->plus_native_output_reset_request, 1U,
+					  memory_order_release);
+}
+
+void usbradioplus_native_output_stage_consume_reset_request(struct chan_usbradio_pvt *channel)
+{
+	unsigned int request;
+
+	if (!channel)
+		return;
+	request = atomic_load_explicit(&channel->plus_native_output_reset_request,
+				       memory_order_acquire);
+	if (request == channel->plus_native_output_reset_seen)
+		return;
+	/* This function is called only by the native audio owner after it acquired
+	 * the signaling reader lease.  It is therefore safe to discard a device's
+	 * unplayable queued PCM and its matching staged state together. */
+	usbradioplus_native_output_stage_fail_safe_reset(channel);
+	channel->plus_native_output_reset_seen = request;
 }
 
 int usbradioplus_pcm_has_audio(const short *samples, size_t count)
@@ -485,8 +670,10 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
 	channel->plus_app_rpt_rate = advanced ? URP_RATE_NATIVE : URP_APP_RPT_RATE_DEFAULT;
 	channel->plus_app_rpt_samples = channel->plus_app_rpt_rate / 50;
 	/* The shared ring owns the one persistent app_rpt-to-native conversion and
-	 * clock correction stream.  Its source-rate target steers clock recovery;
-	 * it never delays startup or reserves a block from playout. */
+	 * clock correction stream.  The reserve is diagnostic protection and the
+	 * target steers only the slow clock correction; neither delays startup. */
+	channel->plus_program_reserve_samples =
+		(channel->plus_app_rpt_rate * URP_PROGRAM_RING_RESERVE_MS + 999U) / 1000U;
 	channel->plus_program_target_samples =
 		(channel->plus_app_rpt_rate * URP_PROGRAM_RING_TARGET_MS + 999U) / 1000U;
 	if (rpcr_set_rates(&channel->plus_program_ring, channel->plus_app_rpt_rate,
@@ -3189,6 +3376,7 @@ static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 	candidate->app_rpt_rate = o->plus_app_rpt_rate;
 	candidate->app_rpt_samples = o->plus_app_rpt_samples;
 	candidate->program_target_samples = o->plus_program_target_samples;
+	candidate->program_reserve_samples = o->plus_program_reserve_samples;
 	candidate->legacy_interface = !o->plus_advanced;
 	candidate->receive_cpu_saver = o->rxcpusaver;
 	candidate->noise_squelch_gate = o->radio && o->radio->rxCdType == CD_XPMR_NOISE;
@@ -3376,8 +3564,18 @@ int usbradioplus_prepare_all_native_processing(void)
 int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 {
 	o->plus_dsp_initialized = 0;
-	if (rpcr_init(&o->plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST) ||
-	    rpcr_set_rates(&o->plus_program_ring, URP_APP_RPT_RATE_DEFAULT, URP_RATE_NATIVE)) {
+	/* Current ASL adapters assemble native PCM into their declared 20 ms
+	 * maximum. Tests and future adapters may choose a smaller actual tick. */
+	if (!o->plus_native_max_frames)
+		o->plus_native_max_frames = URP_NATIVE_SAMPLES;
+	if (!o->plus_app_rpt_rate)
+		o->plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT;
+	o->plus_program_reserve_samples =
+		(o->plus_app_rpt_rate * URP_PROGRAM_RING_RESERVE_MS + 999U) / 1000U;
+	o->plus_program_target_samples =
+		(o->plus_app_rpt_rate * URP_PROGRAM_RING_TARGET_MS + 999U) / 1000U;
+	if (rpcr_init(&o->plus_program_ring, URP_PROGRAM_RING_MAX_SAMPLES, RPCR_SINC_BEST) ||
+	    rpcr_set_rates(&o->plus_program_ring, o->plus_app_rpt_rate, URP_RATE_NATIVE)) {
 		ast_log(LOG_ERROR, "RadioPlus/%s: unable to create native program ring\n", o->name);
 		return -1;
 	}
@@ -3387,8 +3585,13 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	atomic_init(&o->plus_radio_access.readers, 0U);
 	atomic_init(&o->plus_radio_access.reconfiguring, 0);
 	atomic_flag_clear_explicit(&o->plus_radio_access.writer, memory_order_relaxed);
+	/* Two maximum native blocks are the documented fallback when a device has
+	 * not yet reported a usable queue or latency depth. */
+	urp_native_output_stage_init(&o->plus_native_output_stage, 2U, o->plus_native_max_frames);
 	usbradioplus_tx_playout_hold_reset(o);
 	atomic_init(&o->plus_radio_tx_active, 0);
+	atomic_init(&o->plus_native_output_reset_request, 0U);
+	o->plus_native_output_reset_seen = 0U;
 	atomic_init(&o->plus_hardware_ptt_request, 0);
 	atomic_init(&o->plus_hardware_ptt_applied, 0);
 	atomic_init(&o->plus_hardware_online, 0);
@@ -3438,6 +3641,7 @@ void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 	/* Callers quiesce their hardware callback before retiring renderer-owned
 	 * graphs, SRC state, RNNoise state, and echo storage. */
 	usbradioplus_tx_playout_hold_reset(o);
+	usbradioplus_native_output_stage_reset(o);
 	usbradioplus_native_renderer_stop(o);
 	o->plus_dsp_initialized = 0;
 	rpcr_destroy(&o->plus_program_ring);
@@ -3447,11 +3651,15 @@ void usbradioplus_dsp_destroy(struct chan_usbradio_pvt *o)
 	o->plus_parrot_capacity = o->plus_parrot_count = o->plus_parrot_play = 0;
 }
 
-void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o)
+void usbradioplus_prepare_squelch_audio(struct chan_usbradio_pvt *o, size_t frame_count)
 {
-	const short *input = (short *)(o->usbradio_read_buf + AST_FRIENDLY_OFFSET);
+	const short *input;
 	size_t i;
-	for (i = 0; i < ARRAY_LEN(o->plus_squelch_native); ++i) {
+
+	if (!o || !frame_count || frame_count > o->plus_native_max_frames)
+		return;
+	input = (short *)(o->usbradio_read_buf + AST_FRIENDLY_OFFSET);
+	for (i = 0; i < frame_count * 2U; ++i) {
 		o->plus_squelch_native[i] = input[i];
 	}
 }

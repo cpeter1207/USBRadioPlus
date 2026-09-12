@@ -127,6 +127,190 @@ void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue)
 			      memory_order_relaxed);
 }
 
+/** @brief Clamp an adapter output-stage capacity to its preallocated storage. */
+static unsigned int urp_native_output_stage_capacity(unsigned int capacity)
+{
+	if (capacity < 2U)
+		return 2U;
+	if (capacity > URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS)
+		return URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+	return capacity;
+}
+
+/** @brief Return the number of complete blocks retained by an output stage. */
+static unsigned int urp_native_output_stage_count(const struct urp_native_output_stage *stage)
+{
+	return stage->pending_count + (stage->current_valid ? 1U : 0U);
+}
+
+/** @brief Promote the oldest complete pending block to the partial-write slot. */
+static void urp_native_output_stage_promote(struct urp_native_output_stage *stage)
+{
+	if (stage->current_valid || !stage->pending_count)
+		return;
+	stage->current = stage->pending[stage->pending_head];
+	stage->pending_head = (stage->pending_head + 1U) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+	--stage->pending_count;
+	stage->current_valid = 1;
+}
+
+void urp_native_output_stage_init(struct urp_native_output_stage *stage, unsigned int capacity,
+				  size_t maximum_frame_count)
+{
+	if (!stage)
+		return;
+	memset(stage, 0, sizeof(*stage));
+	stage->capacity = urp_native_output_stage_capacity(capacity);
+	if (!maximum_frame_count || maximum_frame_count > URP_NATIVE_MAX_SAMPLES)
+		maximum_frame_count = URP_NATIVE_MAX_SAMPLES;
+	stage->maximum_frame_count = maximum_frame_count;
+}
+
+void urp_native_output_stage_reset(struct urp_native_output_stage *stage)
+{
+	if (!stage)
+		return;
+	stage->pending_head = 0U;
+	stage->pending_count = 0U;
+	stage->high_water = 0U;
+	stage->dropped_complete_blocks = 0U;
+	stage->partial_writes = 0U;
+	stage->stalled_partial_frames = 0U;
+	stage->current_valid = 0;
+}
+
+int urp_native_output_stage_set_capacity(struct urp_native_output_stage *stage,
+					 unsigned int capacity)
+{
+	if (!stage || urp_native_output_stage_count(stage))
+		return 0;
+	stage->capacity = urp_native_output_stage_capacity(capacity);
+	return 1;
+}
+
+int urp_native_output_stage_enqueue(struct urp_native_output_stage *stage, const short *pcm,
+				    size_t frame_count, int logical_ptt, int audio_bearing)
+{
+	struct urp_native_output_block *block;
+	unsigned int occupancy;
+	unsigned int tail;
+	int dropped = 0;
+
+	if (!stage || !pcm || !frame_count || frame_count > stage->maximum_frame_count ||
+	    !stage->capacity)
+		return -1;
+	while (urp_native_output_stage_count(stage) >= stage->capacity) {
+		/* A partially submitted prefix is immutable. Discard the oldest complete
+		 * block behind it instead, preserving the exact remaining PCM sequence. */
+		if (stage->current_valid && !stage->current.submitted_frames) {
+			stage->current_valid = 0;
+			urp_native_output_stage_promote(stage);
+		} else if (stage->pending_count) {
+			stage->pending_head =
+				(stage->pending_head + 1U) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+			--stage->pending_count;
+		} else {
+			return -1;
+		}
+		++stage->dropped_complete_blocks;
+		dropped = 1;
+	}
+	if (!stage->current_valid) {
+		block = &stage->current;
+		stage->current_valid = 1;
+	} else {
+		tail = (stage->pending_head + stage->pending_count) %
+		       URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+		block = &stage->pending[tail];
+		++stage->pending_count;
+	}
+	memcpy(block->pcm, pcm, frame_count * 2U * sizeof(*pcm));
+	block->frame_count = frame_count;
+	block->submitted_frames = 0U;
+	block->logical_ptt = !!logical_ptt;
+	block->audio_bearing = !!audio_bearing;
+	occupancy = urp_native_output_stage_count(stage);
+	if (occupancy > stage->high_water)
+		stage->high_water = occupancy;
+	return dropped ? 0 : 1;
+}
+
+struct urp_native_output_block *urp_native_output_stage_peek(struct urp_native_output_stage *stage)
+{
+	if (!stage || !stage->current_valid)
+		return NULL;
+	return &stage->current;
+}
+
+int urp_native_output_stage_commit(struct urp_native_output_stage *stage, size_t frame_count,
+				   struct urp_native_output_block *finished)
+{
+	struct urp_native_output_block *block;
+	size_t remaining;
+
+	block = urp_native_output_stage_peek(stage);
+	if (!block || !frame_count || block->submitted_frames > block->frame_count)
+		return -1;
+	remaining = block->frame_count - block->submitted_frames;
+	if (frame_count > remaining)
+		return -1;
+	block->submitted_frames += frame_count;
+	if (block->submitted_frames != block->frame_count) {
+		++stage->partial_writes;
+		return 0;
+	}
+	if (finished)
+		*finished = *block;
+	/* Age is measured from the first partial submission until the entire block
+	 * completes.  Resetting it on a one-sample trickle would retain stale PCM
+	 * and keyed output indefinitely on a persistently congested device. */
+	stage->stalled_partial_frames = 0U;
+	stage->current_valid = 0;
+	urp_native_output_stage_promote(stage);
+	return 1;
+}
+
+int urp_native_output_stage_has_ptt(const struct urp_native_output_stage *stage)
+{
+	unsigned int index;
+	unsigned int pending;
+
+	if (!stage)
+		return 0;
+	if (stage->current_valid && stage->current.logical_ptt)
+		return 1;
+	for (pending = 0U; pending < stage->pending_count; ++pending) {
+		index = (stage->pending_head + pending) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+		if (stage->pending[index].logical_ptt)
+			return 1;
+	}
+	return 0;
+}
+
+int urp_native_output_stage_note_unavailable(struct urp_native_output_stage *stage,
+					     size_t elapsed_frames)
+{
+	uint64_t limit;
+	uint64_t elapsed;
+
+	if (!stage || !stage->current_valid || !stage->current.submitted_frames) {
+		if (stage)
+			stage->stalled_partial_frames = 0U;
+		return 0;
+	}
+	limit = (uint64_t)stage->capacity * stage->maximum_frame_count;
+	if (!limit)
+		return 0;
+	if (!elapsed_frames)
+		return stage->stalled_partial_frames >= limit;
+	elapsed = elapsed_frames;
+	if (UINT64_MAX - stage->stalled_partial_frames < elapsed)
+		stage->stalled_partial_frames = UINT64_MAX;
+	else
+		stage->stalled_partial_frames += elapsed;
+	return stage->stalled_partial_frames >= limit;
+}
+
 int urp_gain_db_to_mixer(double gain_db)
 {
 	double setting = 500.0 * pow(10.0, gain_db / 20.0);

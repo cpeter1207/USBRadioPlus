@@ -257,10 +257,12 @@ struct txagc_config {
 	double lookahead_attack_ms;
 	/** Final-limiter release in milliseconds. */
 	double lookahead_release_ms;
-	/** Nonzero enables post limiter lowpass. */
-	int post_limiter_lowpass_enabled;
-	/** Post limiter lowpass in Hz. */
-	double post_limiter_lowpass_hz;
+	/** Nonzero enables the fixed brick-wall band-pass after final limiting. */
+	int post_limiter_bandpass_enabled;
+	/** Post-limiter band-pass lower edge in Hz; zero disables the lower edge. */
+	double post_limiter_bandpass_highpass_hz;
+	/** Post-limiter band-pass upper edge in Hz. */
+	double post_limiter_bandpass_lowpass_hz;
 	/** DCS spectral low-pass cutoff in Hz. */
 	double dcs_spectral_lowpass_hz;
 	/** Output gain in DB. */

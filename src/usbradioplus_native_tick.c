@@ -20,7 +20,7 @@
 #include "usbradioplus_channel_common.h"
 
 /** Interleaved PCM words in one native CM119 hardware frame. */
-#define URP_NATIVE_STEREO_SAMPLES (URP_NATIVE_SAMPLES * 2U)
+#define URP_NATIVE_STEREO_SAMPLES (URP_NATIVE_MAX_SAMPLES * 2U)
 
 /** Snapshot of one hardware callback's signaling state. */
 struct native_renderer_input {
@@ -35,7 +35,7 @@ struct native_renderer_input {
 	/** Selected receive CTCSS decoder index. */
 	int decoded_ctcss;
 	/** Per-sample carrier gate from the signaling frontend. */
-	uint8_t carrier_gate[URP_NATIVE_SAMPLES];
+	uint8_t carrier_gate[URP_NATIVE_MAX_SAMPLES];
 	/** Signaling-engine transmitter assertion for this frame. */
 	int tx_ptt_out;
 	/** Signaling-engine transmit state-machine state. */
@@ -94,23 +94,23 @@ struct usbradioplus_native_renderer {
 	/** Calibrated one-kilohertz test-tone phase. */
 	double test_tone_phase;
 	/** Raw native-rate receiver PCM workspace. */
-	short rx_native[URP_NATIVE_SAMPLES];
+	short rx_native[URP_NATIVE_MAX_SAMPLES];
 	/** Processed native-rate local-receive workspace. */
-	double local_native[URP_NATIVE_SAMPLES];
+	double local_native[URP_NATIVE_MAX_SAMPLES];
 	/** Native-rate app_rpt program workspace. */
-	short link_native[URP_NATIVE_SAMPLES];
+	short link_native[URP_NATIVE_MAX_SAMPLES];
 	/** Source-rate legacy echo workspace. */
-	short link_app[URP_NATIVE_SAMPLES];
+	short link_app[URP_NATIVE_MAX_SAMPLES];
 	/** Native-rate receiver data before conversion to app_rpt. */
-	short receive_app_input[URP_NATIVE_SAMPLES];
+	short receive_app_input[URP_NATIVE_MAX_SAMPLES];
 	/** Mixed final-transmit PCM workspace. */
-	double program[URP_NATIVE_SAMPLES];
+	double program[URP_NATIVE_MAX_SAMPLES];
 	/** Local repeat or native-parrot PCM workspace. */
-	double local_program[URP_NATIVE_SAMPLES];
+	double local_program[URP_NATIVE_MAX_SAMPLES];
 	/** Generated CTCSS PCM workspace. */
-	double ctcss[URP_NATIVE_SAMPLES];
+	double ctcss[URP_NATIVE_MAX_SAMPLES];
 	/** Generated DCS PCM workspace. */
-	double dcs_program[URP_NATIVE_SAMPLES];
+	double dcs_program[URP_NATIVE_MAX_SAMPLES];
 	/** Interleaved DAC PCM used for transmitter measurements. */
 	short statistics_stereo[URP_NATIVE_STEREO_SAMPLES];
 	/** Receive squelch-delay storage. */
@@ -325,13 +325,20 @@ static void native_renderer_apply_requests(struct usbradioplus_native_renderer *
  * nominal one-to-one native-rate stream, and provides concealment.
  */
 static int read_native_program(struct chan_usbradio_pvt *channel,
-			       const struct usbradioplus_native_graph_set *graphs, short *output)
+			       const struct usbradioplus_native_graph_set *graphs, short *output,
+			       size_t frame_count)
 {
 	struct rpcr_ring *ring = &channel->plus_program_ring;
 	size_t index;
 	int complete = 1;
 
-	for (index = 0; index < URP_NATIVE_SAMPLES; ++index) {
+	if (!ring->capacity)
+		return 0;
+	/* Reserve is an observable protection floor; the per-sample consumer uses
+	 * target only for its persistent, slow clock-ratio controller. */
+	atomic_store_explicit(&ring->reserve_samples, graphs->program_reserve_samples,
+			      memory_order_relaxed);
+	for (index = 0U; index < frame_count; ++index) {
 		if (!rpcr_consumer_render_sample(ring, &output[index],
 						 graphs->program_target_samples))
 			complete = 0;
@@ -343,17 +350,19 @@ static int read_native_program(struct chan_usbradio_pvt *channel,
  * @param input Per-block signaling snapshot selecting the optional notch.
  * @param graphs Active native graph generation.
  * @param samples Native receive PCM updated in place.
+ * @param frame_count Number of native PCM samples in @p samples.
  */
 static void process_receive_filter(const struct native_renderer_input *input,
-				   struct usbradioplus_native_graph_set *graphs, double *samples)
+				   struct usbradioplus_native_graph_set *graphs, double *samples,
+				   size_t frame_count)
 {
 	int decoded = input->decoded_ctcss;
 
-	(void)txagc_avfilter_process_prepared(&graphs->receive_filter, samples, URP_NATIVE_SAMPLES);
+	(void)txagc_avfilter_process_prepared(&graphs->receive_filter, samples, frame_count);
 	if (decoded > CTCSS_NULL && decoded < CTCSS_NUM_CODES &&
 	    graphs->ctcss_notch[decoded].configured)
 		(void)txagc_avfilter_process_prepared(&graphs->ctcss_notch[decoded], samples,
-						      URP_NATIVE_SAMPLES);
+						      frame_count);
 }
 
 /** @brief Read a coherent routing snapshot without taking a hardware lock.
@@ -397,9 +406,10 @@ static void read_hardware_snapshot(const struct chan_usbradio_pvt *channel,
 /** @brief Copy signaling state that must remain internally consistent per block.
  * @param snapshot Receives the block's signaling snapshot.
  * @param channel Channel supplying current radio and DTMF state.
+ * @param frame_count Number of native samples represented by the snapshot.
  */
 static void native_renderer_snapshot(struct native_renderer_input *snapshot,
-				     const struct chan_usbradio_pvt *channel)
+				     const struct chan_usbradio_pvt *channel, size_t frame_count)
 {
 	const urp_radio_state *radio = channel->radio;
 
@@ -413,7 +423,7 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
 		if (radio->rxCtcss)
 			snapshot->decoded_ctcss = radio->rxCtcss->decode;
 		memcpy(snapshot->carrier_gate, radio->rxCarrierGate,
-		       sizeof(snapshot->carrier_gate));
+		       frame_count * sizeof(*snapshot->carrier_gate));
 		snapshot->tx_ptt_out = radio->txPttOut;
 		snapshot->tx_state = radio->txState;
 		snapshot->tx_ctcss_enabled = radio->txCtcssEnabled;
@@ -434,38 +444,67 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
 		atomic_load_explicit(&channel->plus_test_tone_enabled, memory_order_acquire);
 }
 
+/** @brief Convert one native callback duration to an exact app-facing duration.
+ * @param app_rate Active app-facing sample rate in Hz.
+ * @param native_frame_count Native PCM samples in the callback.
+ * @param app_frame_count Receives the matching app-facing sample count.
+ * @return Zero when the duration has an exact bounded app-facing representation.
+ *
+ * The compatibility adapters assemble Asterisk frames before entering the
+ * native tick. Therefore a legacy-rate call must end on an exact source
+ * sample boundary; native-rate calls can use any declared callback size.
+ */
+static int native_renderer_app_frame_count(unsigned int app_rate, size_t native_frame_count,
+					   size_t *app_frame_count)
+{
+	size_t scaled;
+
+	if (!app_rate || !app_frame_count || !native_frame_count)
+		return -1;
+	scaled = native_frame_count * app_rate;
+	if (scaled % URP_RATE_NATIVE)
+		return -1;
+	scaled /= URP_RATE_NATIVE;
+	if (!scaled || scaled > URP_NATIVE_MAX_SAMPLES)
+		return -1;
+	*app_frame_count = scaled;
+	return 0;
+}
+
 /** @brief Copy processed local receive to the app_rpt receive frame.
  * @param renderer Renderer that owns the local-receive workspace and converter.
  * @param graphs Active graph generation supplying app_rpt format details.
  * @param app_pcm Receives the app_rpt-format receive frame.
+ * @param native_frame_count Number of local-receive native PCM samples.
+ * @param app_frame_count Matching app_rpt PCM sample count.
  */
 static void native_renderer_copy_receive_to_app(struct usbradioplus_native_renderer *renderer,
 						const struct usbradioplus_native_graph_set *graphs,
-						short *app_pcm)
+						short *app_pcm, size_t native_frame_count,
+						size_t app_frame_count)
 {
 	size_t index;
 	size_t used = 0U;
 	size_t made = 0U;
 
-	for (index = 0; index < URP_NATIVE_SAMPLES; ++index) {
+	for (index = 0; index < native_frame_count; ++index) {
 		double sample = renderer->local_native[index];
 
 		renderer->receive_app_input[index] =
 			urp_apply_gain((short)fmax(-32768.0, fmin(32767.0, sample)), 1.0);
 	}
 	if (graphs->app_rpt_rate == URP_RATE_NATIVE) {
-		memcpy(app_pcm, renderer->receive_app_input, URP_NATIVE_SAMPLES * sizeof(*app_pcm));
+		memcpy(app_pcm, renderer->receive_app_input, app_frame_count * sizeof(*app_pcm));
 		return;
 	}
 	if (urp_rate_convert_prepared(renderer->down, renderer->receive_app_input,
-				      URP_NATIVE_SAMPLES, URP_RATE_NATIVE, app_pcm,
-				      graphs->app_rpt_samples, graphs->app_rpt_rate, &used,
-				      &made) ||
-	    used != URP_NATIVE_SAMPLES) {
+				      native_frame_count, URP_RATE_NATIVE, app_pcm, app_frame_count,
+				      graphs->app_rpt_rate, &used, &made) ||
+	    used != native_frame_count) {
 		renderer->statistics.src_errors++;
-		memset(app_pcm, 0, graphs->app_rpt_samples * sizeof(*app_pcm));
-	} else if (made < graphs->app_rpt_samples) {
-		memset(app_pcm + made, 0, (graphs->app_rpt_samples - made) * sizeof(*app_pcm));
+		memset(app_pcm, 0, app_frame_count * sizeof(*app_pcm));
+	} else if (made < app_frame_count) {
+		memset(app_pcm + made, 0, (app_frame_count - made) * sizeof(*app_pcm));
 	}
 }
 
@@ -475,6 +514,8 @@ static void native_renderer_copy_receive_to_app(struct usbradioplus_native_rende
  * @param graphs Active native graph generation.
  * @param adc_pcm Native ADC PCM for this block.
  * @param app_pcm Receives the corresponding app_rpt receive frame.
+ * @param frame_count Number of native PCM samples in this block.
+ * @param app_frame_count Matching app_rpt PCM sample count.
  *
  * RNNoise is intentionally confined here: after deemphasis, squelch gate,
  * input gain, and receive/PL filtering, and before local dynamics. It never
@@ -483,38 +524,37 @@ static void native_renderer_copy_receive_to_app(struct usbradioplus_native_rende
 static void native_renderer_render_receive(struct usbradioplus_native_renderer *renderer,
 					   const struct native_renderer_input *input,
 					   struct usbradioplus_native_graph_set *graphs,
-					   const short *adc_pcm, short *app_pcm)
+					   const short *adc_pcm, short *app_pcm, size_t frame_count,
+					   size_t app_frame_count)
 {
 	struct urp_receive_block_stats stats;
 	size_t index;
 
-	urp_prepare_receive_block(adc_pcm, renderer->rx_native, renderer->local_native,
-				  URP_NATIVE_SAMPLES, renderer->rx_delay,
-				  graphs->receive_squelch_delay_samples, &renderer->rx_delay_index,
-				  &stats);
+	urp_prepare_receive_block(adc_pcm, renderer->rx_native, renderer->local_native, frame_count,
+				  renderer->rx_delay, graphs->receive_squelch_delay_samples,
+				  &renderer->rx_delay_index, &stats);
 	renderer->statistics.adc_peak_dbfs = urp_pcm_peak_dbfs(stats.peak);
 	if (renderer->statistics.adc_peak_dbfs > renderer->statistics.adc_max_peak_dbfs)
 		renderer->statistics.adc_max_peak_dbfs = renderer->statistics.adc_peak_dbfs;
 	renderer->statistics.adc_rail_samples += stats.rail_samples;
 	(void)txagc_avfilter_process_prepared(&graphs->receive_deemphasis, renderer->local_native,
-					      URP_NATIVE_SAMPLES);
+					      frame_count);
 	if (graphs->noise_squelch_gate) {
-		for (index = 0; index < URP_NATIVE_SAMPLES; ++index)
+		for (index = 0; index < frame_count; ++index)
 			if (!input->carrier_gate[index])
 				renderer->local_native[index] = 0.0;
 	}
-	for (index = 0; index < URP_NATIVE_SAMPLES; ++index)
+	for (index = 0; index < frame_count; ++index)
 		renderer->local_native[index] *= graphs->local_input_gain_linear;
-	process_receive_filter(input, graphs, renderer->local_native);
+	process_receive_filter(input, graphs, renderer->local_native, frame_count);
 	if (graphs->local_chain_enabled && (!graphs->receive_cpu_saver || input->rxkeyed)) {
 		if (graphs->local_rnnoise_enabled)
 			(void)txagc_rnnoise_process_prepared(&renderer->local_rnnoise,
-							     renderer->local_native,
-							     URP_NATIVE_SAMPLES);
+							     renderer->local_native, frame_count);
 		else
 			txagc_rnnoise_bypass(&renderer->local_rnnoise);
 		(void)txagc_avfilter_process_prepared(&graphs->local_dynamics,
-						      renderer->local_native, URP_NATIVE_SAMPLES);
+						      renderer->local_native, frame_count);
 	} else {
 		txagc_rnnoise_bypass(&renderer->local_rnnoise);
 	}
@@ -527,26 +567,29 @@ static void native_renderer_render_receive(struct usbradioplus_native_renderer *
 	    urp_parrot_rx_transition(&renderer->parrot, renderer->previous_rxkeyed, input->rxkeyed))
 		atomic_store_explicit(&renderer->channel->echoing, 1, memory_order_release);
 	renderer->previous_rxkeyed = input->rxkeyed;
-	native_renderer_copy_receive_to_app(renderer, graphs, app_pcm);
+	native_renderer_copy_receive_to_app(renderer, graphs, app_pcm, frame_count,
+					    app_frame_count);
 }
 
 /** @brief Generate direct CTCSS and DCS sources for one DAC frame.
  * @param renderer Renderer that owns the signaling generators.
  * @param input Per-block transmit signaling snapshot.
  * @param graphs Active native graph generation supplying DCS filters.
+ * @param frame_count Number of native PCM samples to generate.
  */
 static void native_renderer_generate_signaling(struct usbradioplus_native_renderer *renderer,
 					       const struct native_renderer_input *input,
-					       struct usbradioplus_native_graph_set *graphs)
+					       struct usbradioplus_native_graph_set *graphs,
+					       size_t frame_count)
 {
 	int dcs_normal_active;
 
 	if (input->tx_ctcss_tail_tone_hz > 0.0)
 		urp_ctcss_generate_tail_tone(&renderer->ctcss_generator, renderer->ctcss,
-					     URP_NATIVE_SAMPLES, input->tx_ctcss_tail_tone_hz, 1.0,
+					     frame_count, input->tx_ctcss_tail_tone_hz, 1.0,
 					     input->tx_ctcss_enabled && !input->tx_ctcss_off);
 	else
-		urp_ctcss_generate(&renderer->ctcss_generator, renderer->ctcss, URP_NATIVE_SAMPLES,
+		urp_ctcss_generate(&renderer->ctcss_generator, renderer->ctcss, frame_count,
 				   input->tx_ctcss_frequency_hz, 1.0,
 				   input->tx_ctcss_enabled && !input->tx_ctcss_off,
 				   input->tx_ctcss_phase_shift);
@@ -559,15 +602,15 @@ static void native_renderer_generate_signaling(struct usbradioplus_native_render
 	}
 	dcs_normal_active =
 		input->dcs_enabled && input->tx_ptt_out && input->tx_state == CHAN_TXSTATE_ACTIVE;
-	urp_dcs_generate(&renderer->dcs, renderer->dcs_program, URP_NATIVE_SAMPLES, URP_RATE_NATIVE,
+	urp_dcs_generate(&renderer->dcs, renderer->dcs_program, frame_count, URP_RATE_NATIVE,
 			 input->dcs_peak, dcs_normal_active || input->dcs_turnoff_active,
 			 input->dcs_turnoff_active);
 	if (txagc_avfilter_process_prepared(input->dcs_turnoff_active ? &graphs->dcs_turnoff
 								      : &graphs->dcs,
-					    renderer->dcs_program, URP_NATIVE_SAMPLES) < 0)
-		memset(renderer->dcs_program, 0, sizeof(renderer->dcs_program));
+					    renderer->dcs_program, frame_count) < 0)
+		memset(renderer->dcs_program, 0, frame_count * sizeof(*renderer->dcs_program));
 	if (!dcs_normal_active && !input->dcs_turnoff_active)
-		memset(renderer->dcs_program, 0, sizeof(renderer->dcs_program));
+		memset(renderer->dcs_program, 0, frame_count * sizeof(*renderer->dcs_program));
 }
 
 /** @brief Render the transmitter branch directly into the hardware DAC buffer.
@@ -575,6 +618,8 @@ static void native_renderer_generate_signaling(struct usbradioplus_native_render
  * @param input Per-block signaling snapshot.
  * @param graphs Active native graph generation.
  * @param stereo Receives interleaved native DAC PCM.
+ * @param frame_count Number of native PCM samples to render.
+ * @param app_frame_count Matching app_rpt PCM sample count.
  *
  * This branch contains app_rpt program audio, local repeat/parrot audio,
  * final transmit filtering, test tone, CTCSS/DCS generation, and routing. It
@@ -583,7 +628,8 @@ static void native_renderer_generate_signaling(struct usbradioplus_native_render
 static void native_renderer_render_transmit(struct usbradioplus_native_renderer *renderer,
 					    const struct native_renderer_input *input,
 					    struct usbradioplus_native_graph_set *graphs,
-					    short *stereo)
+					    short *stereo, size_t frame_count,
+					    size_t app_frame_count)
 {
 	struct chan_usbradio_pvt *channel = renderer->channel;
 	double ctcss_peak_a = input->tx_ctcss_peak;
@@ -594,15 +640,15 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 	size_t used = 0U;
 	size_t made = 0U;
 
-	memset(stereo, 0, URP_NATIVE_STEREO_SAMPLES * sizeof(*stereo));
-	native_renderer_generate_signaling(renderer, input, graphs);
-	memset(renderer->link_native, 0, sizeof(renderer->link_native));
+	memset(stereo, 0, frame_count * 2U * sizeof(*stereo));
+	native_renderer_generate_signaling(renderer, input, graphs, frame_count);
+	memset(renderer->link_native, 0, frame_count * sizeof(*renderer->link_native));
 	if (graphs->legacy_interface &&
 	    atomic_load_explicit(&channel->echoing, memory_order_acquire)) {
 		int have_frame = 0;
 
-		if (urp_sample_queue_samples(&channel->echo_queue) >= graphs->app_rpt_samples) {
-			for (index = 0; index < graphs->app_rpt_samples; ++index)
+		if (urp_sample_queue_samples(&channel->echo_queue) >= app_frame_count) {
+			for (index = 0; index < app_frame_count; ++index)
 				(void)urp_sample_queue_pop_sample(&channel->echo_queue,
 								  &renderer->link_app[index]);
 			have_frame = 1;
@@ -613,42 +659,43 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 			urp_src_reset(renderer->echo_up);
 		} else if (graphs->app_rpt_rate == URP_RATE_NATIVE) {
 			memcpy(renderer->link_native, renderer->link_app,
-			       sizeof(renderer->link_native));
+			       frame_count * sizeof(*renderer->link_native));
 		} else if (urp_rate_convert_prepared(renderer->echo_up, renderer->link_app,
-						     graphs->app_rpt_samples, graphs->app_rpt_rate,
-						     renderer->link_native, URP_NATIVE_SAMPLES,
+						     app_frame_count, graphs->app_rpt_rate,
+						     renderer->link_native, frame_count,
 						     URP_RATE_NATIVE, &used, &made) ||
-			   used != graphs->app_rpt_samples) {
+			   used != app_frame_count) {
 			renderer->statistics.src_errors++;
-			memset(renderer->link_native, 0, sizeof(renderer->link_native));
-		} else if (made < URP_NATIVE_SAMPLES) {
+			memset(renderer->link_native, 0,
+			       frame_count * sizeof(*renderer->link_native));
+		} else if (made < frame_count) {
 			memset(renderer->link_native + made, 0,
-			       (URP_NATIVE_SAMPLES - made) * sizeof(*renderer->link_native));
+			       (frame_count - made) * sizeof(*renderer->link_native));
 		}
-	} else if (!read_native_program(channel, graphs, renderer->link_native) &&
+	} else if (!read_native_program(channel, graphs, renderer->link_native, frame_count) &&
 		   atomic_load_explicit(&channel->txkeyed, memory_order_acquire)) {
 		renderer->statistics.link_queue_underflows++;
 	}
-	for (index = 0; index < URP_NATIVE_SAMPLES; ++index)
+	for (index = 0; index < frame_count; ++index)
 		renderer->program[index] = renderer->link_native[index];
-	memset(renderer->local_program, 0, sizeof(renderer->local_program));
+	memset(renderer->local_program, 0, frame_count * sizeof(*renderer->local_program));
 	if (graphs->legacy_interface && renderer->parrot.playing) {
-		urp_parrot_play(&renderer->parrot, renderer->local_program, URP_NATIVE_SAMPLES);
+		urp_parrot_play(&renderer->parrot, renderer->local_program, frame_count);
 		renderer->statistics.parrot_playback_frames++;
 		if (!renderer->parrot.playing)
 			atomic_store_explicit(&channel->echoing, 0, memory_order_release);
 	} else if (graphs->legacy_interface && input->rxkeyed && graphs->software_repeat_enabled) {
 		urp_native_repeat_prepare(renderer->local_program, renderer->local_native,
-					  URP_NATIVE_SAMPLES, 1.0,
+					  frame_count, 1.0,
 					  input->usedtmf && input->has_dsp && input->toneflag);
 		if (graphs->echo_mode)
-			urp_parrot_record(&renderer->parrot, renderer->local_program,
-					  URP_NATIVE_SAMPLES, renderer->parrot.capacity);
-		for (index = 0; index < URP_NATIVE_SAMPLES; ++index)
+			urp_parrot_record(&renderer->parrot, renderer->local_program, frame_count,
+					  renderer->parrot.capacity);
+		for (index = 0; index < frame_count; ++index)
 			renderer->local_program[index] *= graphs->software_repeat_gain;
 	}
 	{
-		double peak = urp_double_peak(renderer->local_program, URP_NATIVE_SAMPLES);
+		double peak = urp_double_peak(renderer->local_program, frame_count);
 
 		renderer->statistics.preemphasis_input_peak_dbfs =
 			peak > 0.0 ? 20.0 * log10(peak / 32768.0) : -INFINITY;
@@ -663,15 +710,14 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 			renderer->statistics.local_tx_max_peak_dbfs =
 				renderer->statistics.local_tx_peak_dbfs;
 	}
-	for (index = 0; index < URP_NATIVE_SAMPLES; ++index)
+	for (index = 0; index < frame_count; ++index)
 		renderer->program[index] += renderer->local_program[index];
-	if (txagc_avfilter_process_prepared(&graphs->final, renderer->program, URP_NATIVE_SAMPLES) <
-	    0)
-		memset(renderer->program, 0, sizeof(renderer->program));
+	if (txagc_avfilter_process_prepared(&graphs->final, renderer->program, frame_count) < 0)
+		memset(renderer->program, 0, frame_count * sizeof(*renderer->program));
 	if (input->test_tone_enabled) {
 		const double step = 2.0 * M_PI * 1000.0 / URP_RATE_NATIVE;
 
-		for (index = 0; index < URP_NATIVE_SAMPLES; ++index) {
+		for (index = 0; index < frame_count; ++index) {
 			renderer->program[index] =
 				URP_LEGACY_TEST_TONE_PEAK * sin(renderer->test_tone_phase);
 			renderer->test_tone_phase += step;
@@ -682,7 +728,7 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 		renderer->test_tone_phase = 0.0;
 	}
 	{
-		double peak = urp_double_peak(renderer->program, URP_NATIVE_SAMPLES);
+		double peak = urp_double_peak(renderer->program, frame_count);
 
 		renderer->statistics.tx_program_peak_dbfs =
 			peak > 0.0 ? 20.0 * log10(peak / 32768.0) : -INFINITY;
@@ -693,14 +739,13 @@ static void native_renderer_render_transmit(struct usbradioplus_native_renderer 
 	}
 	read_hardware_snapshot(channel, &txmixa, &txmixb);
 	renderer->statistics.tx_program_rail_samples += urp_render_transmit_block(
-		renderer->program, renderer->ctcss, renderer->dcs_program, URP_NATIVE_SAMPLES,
+		renderer->program, renderer->ctcss, renderer->dcs_program, frame_count,
 		(enum urp_tx_output_mode)txmixa, (enum urp_tx_output_mode)txmixb, ctcss_peak_a, 0.0,
 		ctcss_peak_b, 0.0, stereo, renderer->statistics_stereo);
-	native_renderer_check_tx_audio(renderer, renderer->statistics_stereo,
-				       URP_NATIVE_STEREO_SAMPLES);
+	native_renderer_check_tx_audio(renderer, renderer->statistics_stereo, frame_count * 2U);
 }
 
-/** @brief Publish measurements and test observables after one direct block.
+/** @brief Publish measurements after one direct block.
  * @param renderer Renderer whose diagnostics are published.
  * @param graphs Active native graph generation supplying filter measurements.
  */
@@ -716,12 +761,30 @@ static void native_renderer_finish_block(struct usbradioplus_native_renderer *re
 	native_renderer_copy_filter_statistics(&renderer->statistics.receive_deemphasis_filter,
 					       &graphs->receive_deemphasis);
 	native_renderer_copy_filter_statistics(&renderer->statistics.final_filter, &graphs->final);
+	native_renderer_publish_statistics(renderer);
+}
+
 #ifdef URP_PROCESSING_TESTING
+/** @brief Copy callback-local native observables into the test channel.
+ * @param renderer Renderer that completed the native PCM span.
+ * @param frame_count Native PCM frames produced by this callback.
+ */
+static void native_renderer_publish_test_observables(struct usbradioplus_native_renderer *renderer,
+						     size_t frame_count)
+{
 	struct chan_usbradio_pvt *channel = renderer->channel;
 
-	memcpy(channel->plus_rx_native, renderer->rx_native, sizeof(renderer->rx_native));
-	memcpy(channel->plus_local_native, renderer->local_native, sizeof(renderer->local_native));
-	memcpy(channel->plus_link_native, renderer->link_native, sizeof(renderer->link_native));
+	/* The test observables represent this callback only.  Clearing the unused
+	 * tail avoids exposing a prior larger callback when the native span varies. */
+	memset(channel->plus_rx_native, 0, sizeof(channel->plus_rx_native));
+	memset(channel->plus_local_native, 0, sizeof(channel->plus_local_native));
+	memset(channel->plus_link_native, 0, sizeof(channel->plus_link_native));
+	memcpy(channel->plus_rx_native, renderer->rx_native,
+	       frame_count * sizeof(*channel->plus_rx_native));
+	memcpy(channel->plus_local_native, renderer->local_native,
+	       frame_count * sizeof(*channel->plus_local_native));
+	memcpy(channel->plus_link_native, renderer->link_native,
+	       frame_count * sizeof(*channel->plus_link_native));
 	channel->plus_native_frames = renderer->statistics.native_frames;
 	channel->plus_src_errors = renderer->statistics.src_errors;
 	channel->plus_adc_peak_dbfs = renderer->statistics.adc_peak_dbfs;
@@ -745,18 +808,21 @@ static void native_renderer_finish_block(struct usbradioplus_native_renderer *re
 	channel->plus_parrot_truncated = renderer->parrot.truncated;
 	channel->plus_ctcss_generator = renderer->ctcss_generator;
 	channel->plus_test_tone_phase = renderer->test_tone_phase;
-#endif
-	native_renderer_publish_statistics(renderer);
 }
+#endif
 
-/** @brief Fill direct app and DAC destinations with one silent block.
+/** @brief Fill direct app and DAC destinations with one silent native block.
  * @param channel Channel whose frame buffers receive silence.
+ * @param frame_count Number of native PCM samples to clear.
+ * @param app_frame_count Number of matching app_rpt PCM samples to clear.
  */
-static void native_renderer_silence(struct chan_usbradio_pvt *channel)
+static void native_renderer_silence(struct chan_usbradio_pvt *channel, size_t frame_count,
+				    size_t app_frame_count)
 {
-	memset(channel->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0,
-	       channel->plus_app_rpt_samples * sizeof(short));
-	memset(channel->usbradio_write_buf, 0, URP_NATIVE_STEREO_SAMPLES * sizeof(short));
+	if (app_frame_count)
+		memset(channel->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0,
+		       app_frame_count * sizeof(short));
+	memset(channel->usbradio_write_buf, 0, frame_count * 2U * sizeof(short));
 }
 
 int usbradioplus_native_renderer_start(struct chan_usbradio_pvt *channel)
@@ -987,35 +1053,91 @@ void usbradioplus_native_renderer_test_hardware_snapshot_race(
 
 /* Process one physical callback block and write direct app/DAC outputs.
  *
- * Receive processing always runs so app_rpt sees every ADC frame. Program PCM
- * and TX-only state advance only when the DAC will accept the matching frame;
- * a full device therefore cannot consume the program ring and make a dropout.
+ * The adapter stages the completed DAC block after this call.  Consequently
+ * the signaling engine and program ring advance once for every native input
+ * span, independent of temporary hardware-output congestion.
  */
-void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_ready)
+void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, size_t frame_count)
 {
 	struct usbradioplus_native_renderer *renderer;
 	struct usbradioplus_native_graph_set *graphs;
 	struct native_renderer_input input;
+	unsigned int app_rate;
+	size_t app_frame_count;
+	size_t maximum_frame_count;
 	short *app_pcm;
 	const short *adc_pcm;
 
-	if (!channel)
+	if (!channel || !frame_count)
 		return;
+	maximum_frame_count = channel->plus_native_max_frames;
+	if (!maximum_frame_count)
+		maximum_frame_count = URP_NATIVE_MAX_SAMPLES;
+	if (frame_count > maximum_frame_count || frame_count > URP_NATIVE_MAX_SAMPLES)
+		return;
+	if (frame_count % (URP_RATE_NATIVE / URP_APP_RPT_RATE_DEFAULT)) {
+		/* Current ASL compatibility adapters assemble PCM at the 8 kHz
+		 * boundary before entering the native tick.  Do not render an audio
+		 * span whose radio-signaling frontend cannot advance in full. */
+		native_renderer_silence(channel, frame_count, 0U);
+		usbradioplus_native_output_stage_publish_ptt(channel);
+		return;
+	}
+	app_rate = channel->plus_app_rpt_rate;
+	if (!app_rate)
+		app_rate = URP_APP_RPT_RATE_DEFAULT;
+	if (native_renderer_app_frame_count(app_rate, frame_count, &app_frame_count)) {
+		/* A compatibility adapter must assemble an integral app-facing duration
+		 * before calling the native-only tick. */
+		native_renderer_silence(channel, frame_count, 0U);
+		usbradioplus_native_output_stage_publish_ptt(channel);
+		return;
+	}
+	/* DSP initialization publishes the callback-owned atomics and workspaces.
+	 * Retain the former pre-start behavior for harmless direct calls during
+	 * setup or teardown instead of reading uninitialized hardware snapshots. */
+	if (!channel->plus_dsp_initialized) {
+		native_renderer_silence(channel, frame_count, app_frame_count);
+		usbradioplus_native_output_stage_publish_ptt(channel);
+		return;
+	}
+	app_pcm = (short *)(channel->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET);
+	adc_pcm = (const short *)(channel->usbradio_read_buf + AST_FRIENDLY_OFFSET);
+
+	/* HID sampling and physical PTT completion are independent workers. Import
+	 * their atomically published snapshot before this audio-owned state advance. */
+	usbradioplus_audio_load_hardware_state(channel);
+	usbradioplus_note_hardware_ptt_applied(channel);
+	if (channel->radio) {
+		usbradioplus_import_external_ptt_request(channel);
+		usbradioplus_prepare_squelch_audio(channel, frame_count);
+		usbradioplus_tx_playout_hold_prepare(channel);
+		(void)urp_radio_process_native_timed(
+			channel->radio, (i16 *)channel->plus_squelch_native, (i16 *)app_pcm,
+			(i16 *)channel->usbradio_write_buf, frame_count, 1);
+		usbradioplus_tx_playout_hold_apply(channel);
+		usbradioplus_tx_playout_hold_publish(channel);
+		usbradioplus_refresh_ctcss_decode(channel);
+	}
 	renderer = channel->plus_native_renderer;
 	if (!renderer) {
-		native_renderer_silence(channel);
-		usbradioplus_publish_hardware_ptt(channel,
-						  channel->radio ? channel->radio->txPttOut : 0);
+		native_renderer_silence(channel, frame_count, app_frame_count);
+		usbradioplus_native_output_stage_publish_ptt(channel);
 		return;
 	}
-	native_renderer_silence(channel);
+	native_renderer_silence(channel, frame_count, app_frame_count);
 	graphs = usbradioplus_native_graphs_acquire(channel);
 	if (!graphs) {
-		usbradioplus_publish_hardware_ptt(channel,
-						  channel->radio ? channel->radio->txPttOut : 0);
+		usbradioplus_native_output_stage_publish_ptt(channel);
 		return;
 	}
-	native_renderer_snapshot(&input, channel);
+	if (native_renderer_app_frame_count(graphs->app_rpt_rate, frame_count, &app_frame_count)) {
+		native_renderer_silence(channel, frame_count, 0U);
+		usbradioplus_native_graphs_release(channel);
+		usbradioplus_native_output_stage_publish_ptt(channel);
+		return;
+	}
+	native_renderer_snapshot(&input, channel, frame_count);
 	native_renderer_apply_requests(renderer, graphs);
 	if (renderer->app_rpt_rate != graphs->app_rpt_rate) {
 		/* Converter history is callback-owned; reload never touches it. */
@@ -1023,14 +1145,17 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_re
 		urp_src_reset(renderer->down);
 		renderer->app_rpt_rate = graphs->app_rpt_rate;
 	}
-	adc_pcm = (const short *)(channel->usbradio_read_buf + AST_FRIENDLY_OFFSET);
-	app_pcm = (short *)(channel->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET);
-	native_renderer_render_receive(renderer, &input, graphs, adc_pcm, app_pcm);
-	if (transmit_ready)
-		native_renderer_render_transmit(renderer, &input, graphs,
-						(short *)channel->usbradio_write_buf);
+	native_renderer_render_receive(renderer, &input, graphs, adc_pcm, app_pcm, frame_count,
+				       app_frame_count);
+	native_renderer_render_transmit(renderer, &input, graphs,
+					(short *)channel->usbradio_write_buf, frame_count,
+					app_frame_count);
 	native_renderer_finish_block(renderer, graphs);
+#ifdef URP_PROCESSING_TESTING
+	native_renderer_publish_test_observables(renderer, frame_count);
+#endif
 	usbradioplus_native_graphs_release(channel);
-	/* PTT remains a signaling-engine decision, independent of audio availability. */
-	usbradioplus_publish_hardware_ptt(channel, channel->radio ? channel->radio->txPttOut : 0);
+	/* The signaling engine owns logical PTT, while queued historical PCM may
+	 * briefly keep physical PTT asserted until the DAC consumes that PCM. */
+	usbradioplus_native_output_stage_publish_ptt(channel);
 }

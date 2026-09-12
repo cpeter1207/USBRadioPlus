@@ -175,7 +175,7 @@ static void test_debug_buffers(void)
 	urp_radio_trace_log(1, 1, "enabled trace\n");
 
 	strace(0, NULL, 0, 123);
-	strace2(NULL);
+	strace2(NULL, 0);
 	for (int i = 0; i < SAMPLES_PER_BLOCK; ++i) {
 		source[i] = (int16_t)i;
 	}
@@ -189,7 +189,7 @@ static void test_debug_buffers(void)
 	strace(0, &debug, 3, 123);
 	assert(debug.buffer[3 * URP_RADIO_DEBUG_CHANNELS + 2] == 123);
 	debug.source[4] = source;
-	strace2(&debug);
+	strace2(&debug, SAMPLES_PER_BLOCK);
 	assert(debug.buffer[7 * URP_RADIO_DEBUG_CHANNELS + 4] == 7);
 }
 
@@ -516,8 +516,6 @@ static void test_runtime_state_machine(void)
 	assert(process_once(state) == 0);
 	assert(process_once(state) == 0);
 	assert(process_once(state) == 0);
-	assert(state->txState == CHAN_TXSTATE_COMPLETE);
-	assert(process_once(state) == 0);
 	assert(state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
 
 	state->txPttIn = 1;
@@ -545,7 +543,7 @@ static void test_runtime_state_machine(void)
 			assert(++tail_blocks <= 12U);
 		}
 	}
-	assert(state->txState == CHAN_TXSTATE_FINISHING);
+	assert(state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
 
 	state->txState = CHAN_TXSTATE_ACTIVE;
 	state->smode = SMODE_CTCSS;
@@ -554,6 +552,7 @@ static void test_runtime_state_machine(void)
 	 * keyed transmit CTCSS state that precedes every real CTCSS tail. */
 	state->txCtcssEnabled = 1;
 	state->txCtcssState = 1;
+	state->txPttOut = 1;
 	state->txPttIn = 0;
 	assert(process_once(state) == 0);
 	assert(state->txState == CHAN_TXSTATE_TOC && state->txCtcssState == 2 && state->txPttOut &&
@@ -617,8 +616,6 @@ static void test_runtime_state_machine(void)
 		assert(state->txPttOut);
 		assert(process_once(state) == 0);
 	}
-	assert(state->txState == CHAN_TXSTATE_COMPLETE && state->txPttOut);
-	assert(process_once(state) == 0);
 	assert(state->txState == CHAN_TXSTATE_IDLE && !state->txPttOut);
 
 	state->txState = CHAN_TXSTATE_IDLE;
@@ -799,6 +796,166 @@ static void test_transmit_timeline_admission(void)
 	assert(!urp_radio_destroy(state));
 }
 
+/** @brief Verify native-frame partitioning advances equivalent signaling time. */
+static void test_native_frame_partitioning(void)
+{
+	enum { native_frames = SAMPLES_PER_BLOCK * SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK };
+	urp_radio_state template = {.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	int16_t input[native_frames * 2U] = {0};
+	int16_t output_whole[SAMPLES_PER_BLOCK] = {0};
+	int16_t output_split[SAMPLES_PER_BLOCK] = {0};
+	int16_t transmit_whole[native_frames * 2U] = {0};
+	int16_t transmit_split[native_frames * 2U] = {0};
+
+	template.dcsTurnoffDuration = 150;
+	memcpy(template.dcsTxCode, "023N", sizeof(template.dcsTxCode));
+	urp_radio_state *whole = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	urp_radio_state *split = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	assert(whole && split);
+	whole->b.ctcssRxEnable = split->b.ctcssRxEnable = 0;
+	whole->dcsTurnoffEnabled = split->dcsTurnoffEnabled = 1;
+	whole->txPttIn = split->txPttIn = 1;
+	assert(!urp_radio_process_native_timed(whole, input, output_whole, transmit_whole,
+					       native_frames, 1));
+	assert(!urp_radio_process_native_timed(split, input, output_split, transmit_split,
+					       native_frames / 2U, 1));
+	assert(!urp_radio_process_native_timed(
+		split, input + native_frames, output_split + SAMPLES_PER_BLOCK / 2U,
+		transmit_split + native_frames, native_frames / 2U, 1));
+	assert(whole->txState == split->txState && whole->txPttOut == split->txPttOut);
+	assert(whole->txsettletimer == split->txsettletimer);
+	assert(whole->txFinishTimer == split->txFinishTimer);
+	assert(whole->txHangTime == split->txHangTime);
+	assert(whole->txCtcssTurnoffTimer == split->txCtcssTurnoffTimer);
+	assert(!memcmp(output_whole, output_split, sizeof(output_whole)));
+	assert(!memcmp(transmit_whole, transmit_split, sizeof(transmit_whole)));
+	whole->txPttIn = split->txPttIn = 0;
+	assert(!urp_radio_process_native_timed(whole, input, output_whole, transmit_whole,
+					       native_frames, 1));
+	assert(!urp_radio_process_native_timed(split, input, output_split, transmit_split,
+					       native_frames / 2U, 1));
+	assert(!urp_radio_process_native_timed(
+		split, input + native_frames, output_split + SAMPLES_PER_BLOCK / 2U,
+		transmit_split + native_frames, native_frames / 2U, 1));
+	assert(whole->txState == CHAN_TXSTATE_TOC && whole->txState == split->txState);
+	assert(whole->dcsTurnoffTimer == 130 && whole->dcsTurnoffTimer == split->dcsTurnoffTimer);
+	assert(whole->frameCountRx == 2U && split->frameCountRx == 4U);
+	assert(urp_radio_process_native_timed(whole, input, output_whole, transmit_whole, 0U, 1));
+	assert(whole->frameCountRx == 2U);
+	assert(urp_radio_process_native_timed(whole, input, output_whole, transmit_whole,
+					      native_frames + 6U, 1));
+	assert(whole->frameCountRx == 2U);
+	assert(!urp_radio_destroy(whole));
+	assert(!urp_radio_destroy(split));
+}
+
+/** @brief Verify RX blanking protects the same PCM duration across callback splits. */
+static void test_rx_blanking_partitioning(void)
+{
+	enum { native_frames = SAMPLES_PER_BLOCK * SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK };
+	urp_radio_state template = {.pRxCodeSrc = "0",
+				    .pTxCodeSrc = "0",
+				    .pTxCodeDefault = "0",
+				    .rxCdType = CD_XPMR_NOISE};
+	int16_t input_whole[native_frames * 2U];
+	int16_t input_split[native_frames * 2U];
+	int16_t output_whole[SAMPLES_PER_BLOCK] = {0};
+	int16_t output_split[SAMPLES_PER_BLOCK] = {0};
+	urp_radio_state *whole = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	urp_radio_state *split = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+	size_t sample;
+
+	assert(whole && split);
+	whole->b.ctcssRxEnable = split->b.ctcssRxEnable = 0;
+	for (sample = 0U; sample < native_frames; ++sample) {
+		input_whole[sample * 2U] = 1000;
+		input_whole[sample * 2U + 1U] = -1000;
+	}
+	memcpy(input_split, input_whole, sizeof(input_split));
+	whole->txrxblankingtimer = split->txrxblankingtimer = MS_PER_FRAME / 2;
+	assert(!urp_radio_process_native_timed(whole, input_whole, output_whole, NULL,
+					       native_frames, 0));
+	assert(!urp_radio_process_native_timed(split, input_split, output_split, NULL,
+					       native_frames / 2U, 0));
+	assert(!urp_radio_process_native_timed(split, input_split + native_frames,
+					       output_split + SAMPLES_PER_BLOCK / 2U, NULL,
+					       native_frames / 2U, 0));
+	assert(!memcmp(input_whole, input_split, sizeof(input_whole)));
+	for (sample = 0U; sample < native_frames; ++sample) {
+		assert(input_whole[sample * 2U] == (sample < native_frames / 2U ? 0 : 1000));
+		assert(input_whole[sample * 2U + 1U] == -1000);
+	}
+	assert(!whole->txrxblankingtimer && !split->txrxblankingtimer);
+	assert(!urp_radio_destroy(whole));
+	assert(!urp_radio_destroy(split));
+
+	/* A timer edge can fall between millisecond boundaries.  The two 36-frame
+	 * calls must blank the same 48 physical samples as one 72-frame call. */
+	{
+		enum { sub_frames = 72U, split_frames = sub_frames / 2U };
+		int16_t whole_input[sub_frames * 2U];
+		int16_t split_input[sub_frames * 2U];
+		int16_t whole_output[sub_frames / 6U] = {0};
+		int16_t split_output[sub_frames / 6U] = {0};
+
+		whole = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		split = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		assert(whole && split);
+		whole->b.ctcssRxEnable = split->b.ctcssRxEnable = 0;
+		for (sample = 0U; sample < sub_frames; ++sample) {
+			whole_input[sample * 2U] = 1000;
+			whole_input[sample * 2U + 1U] = -1000;
+		}
+		memcpy(split_input, whole_input, sizeof(split_input));
+		whole->txrxblankingtimer = split->txrxblankingtimer = 1;
+		assert(!urp_radio_process_native_timed(whole, whole_input, whole_output, NULL,
+						       sub_frames, 0));
+		assert(!urp_radio_process_native_timed(split, split_input, split_output, NULL,
+						       split_frames, 0));
+		assert(!urp_radio_process_native_timed(split, split_input + split_frames * 2U,
+						       split_output + split_frames / 6U, NULL,
+						       split_frames, 0));
+		assert(!memcmp(whole_input, split_input, sizeof(whole_input)));
+		for (sample = 0U; sample < sub_frames; ++sample) {
+			assert(whole_input[sample * 2U] == (sample < 48U ? 0 : 1000));
+			assert(whole_input[sample * 2U + 1U] == -1000);
+		}
+		assert(!whole->txrxblankingtimer && !split->txrxblankingtimer);
+		assert(!urp_radio_destroy(whole));
+		assert(!urp_radio_destroy(split));
+	}
+
+	/* A new physical release begins a complete blanking interval even if an
+	 * earlier receiver timer ended with a fractional native-sample remainder. */
+	{
+		enum { arm_frames = 36U, blank_frames = 48U };
+		int16_t arm_input[arm_frames * 2U] = {0};
+		int16_t blank_input[blank_frames * 2U];
+		int16_t blank_output[blank_frames / 6U] = {0};
+
+		whole = urp_radio_create(&template, SAMPLES_PER_BLOCK);
+		assert(whole);
+		whole->b.ctcssRxEnable = 0;
+		assert(!urp_radio_process_native_timed(whole, arm_input, NULL, NULL, arm_frames,
+						       0));
+		assert(whole->rxTimerSampleRemainder == arm_frames);
+		for (sample = 0U; sample < blank_frames; ++sample) {
+			blank_input[sample * 2U] = 1000;
+			blank_input[sample * 2U + 1U] = -1000;
+		}
+		whole->txrxblankingtime = 1;
+		urp_radio_arm_txrx_blanking(whole);
+		assert(!urp_radio_process_native_timed(whole, blank_input, blank_output, NULL,
+						       blank_frames, 0));
+		for (sample = 0U; sample < blank_frames; ++sample) {
+			assert(blank_input[sample * 2U] == 0);
+			assert(blank_input[sample * 2U + 1U] == -1000);
+		}
+		assert(!whole->txrxblankingtimer);
+		assert(!urp_radio_destroy(whole));
+	}
+}
+
 /** @brief Reject malformed DCS receive and transmit settings independently of CTCSS setup. */
 static void test_invalid_dcs_radio_configuration(void)
 {
@@ -843,7 +1000,8 @@ static void test_dcs_turnoff_duration_bounds(void)
 		state->txPttIn = 0;
 		assert(process_once(state) == 0);
 		assert(state->txState == CHAN_TXSTATE_TOC &&
-		       state->dcsTurnoffTimer == durations[duration_index] && state->txPttOut);
+		       state->dcsTurnoffTimer == durations[duration_index] - MS_PER_FRAME &&
+		       state->txPttOut);
 		while (state->txState == CHAN_TXSTATE_TOC) {
 			assert(state->txPttOut);
 			assert(process_once(state) == 0);
@@ -911,9 +1069,9 @@ static void test_dcs_radio_state_machine(void)
 	state->txPttIn = 0;
 	assert(process_once(state) == 0);
 	assert(state->txState == CHAN_TXSTATE_TOC);
-	assert(state->dcsTurnoffTimer == 180 && state->txHangTime == 0 && state->txPttOut);
+	assert(state->dcsTurnoffTimer == 160 && state->txHangTime == 0 && state->txPttOut);
 	assert(process_once(state) == 0);
-	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 160);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 140);
 
 	/* A rapid rekey must cancel DCS tail audio rather than finish an obsolete TOC. */
 	state->txPttIn = 1;
@@ -922,7 +1080,7 @@ static void test_dcs_radio_state_machine(void)
 	       state->txPttOut && !state->txCtcssEnabled);
 	state->txPttIn = 0;
 	assert(process_once(state) == 0);
-	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 180);
+	assert(state->txState == CHAN_TXSTATE_TOC && state->dcsTurnoffTimer == 160);
 	while (state->txState == CHAN_TXSTATE_TOC) {
 		assert(state->txPttOut);
 		assert(process_once(state) == 0);
@@ -1008,6 +1166,7 @@ static void prepare_single_ctcss_detector(urp_radio_state *state, int index)
 	state->rxCtcss->BlankingTimer = 0;
 	state->rxCarrierDetect = 1;
 	state->nSamplesRx = 1;
+	state->activeSamplesRx = 1;
 	state->rxCtcss->input[0] = 0;
 	urp_ctcss_tone_detector *detector = &state->rxCtcss->tdet[index];
 	detector->counter = 0;
@@ -1046,6 +1205,7 @@ static void test_ctcss_decoder_states(void)
 
 	state->rxCtcss->BlankingTimer = 1;
 	state->nSamplesRx = 2;
+	state->activeSamplesRx = 2;
 	state->rxCtcss->enabled = 1;
 	detector->counter = 0;
 	assert(urp_ctcss_decode(state) == 0);
@@ -1127,6 +1287,7 @@ static void test_ctcss_decoder_states(void)
 	state->rxCtcss->enabled = 0;
 	assert(urp_ctcss_decode(state) == 1);
 	state->nSamplesRx = SAMPLES_PER_BLOCK;
+	state->activeSamplesRx = SAMPLES_PER_BLOCK;
 	assert(!urp_radio_destroy(state));
 }
 
@@ -1328,6 +1489,7 @@ static void test_cpu_saver_predicates(void)
 	state->txPttOut = 1;
 	state->txState = CHAN_TXSTATE_FINISHING;
 	state->txBufferClear = 2;
+	state->txFinishTimer = 0;
 	assert(process_once(state) == 0);
 
 	state->rxCpuSaver = 0;
@@ -1340,6 +1502,7 @@ static void test_cpu_saver_predicates(void)
 	state->txPttOut = 1;
 	state->txState = CHAN_TXSTATE_FINISHING;
 	state->txBufferClear = 2;
+	state->txFinishTimer = 0;
 	assert(process_once(state) == 0);
 	state->txPttOut = 0;
 	state->txState = CHAN_TXSTATE_ACTIVE;
@@ -1422,6 +1585,8 @@ int main(void)
 	RUN_TEST(test_create_variants);
 	RUN_TEST(test_runtime_state_machine);
 	RUN_TEST(test_transmit_timeline_admission);
+	RUN_TEST(test_native_frame_partitioning);
+	RUN_TEST(test_rx_blanking_partitioning);
 	RUN_TEST(test_invalid_dcs_radio_configuration);
 	RUN_TEST(test_dcs_turnoff_duration_bounds);
 	RUN_TEST(test_dcs_radio_state_machine);

@@ -1345,7 +1345,8 @@ static const struct range_case ranges[] = {
 	{RANGE(lookahead_ms, 0.1, 20.0)},
 	{RANGE(lookahead_attack_ms, 0.1, 20.0)},
 	{RANGE(lookahead_release_ms, 1.0, 5000.0)},
-	{RANGE(post_limiter_lowpass_hz, 5000.0, 20000.0)},
+	{RANGE(post_limiter_bandpass_highpass_hz, 0.0, 300.0)},
+	{RANGE(post_limiter_bandpass_lowpass_hz, 2500.0, 20000.0)},
 	{RANGE(output_gain_db, -30.0, 30.0)},
 };
 
@@ -1366,6 +1367,8 @@ static void expect_invalid_field(size_t offset, double value)
 /** @brief Verify every numeric boundary. */
 static void test_every_numeric_boundary(void)
 {
+	struct txagc_chain *chain;
+
 	for (size_t index = 0; index < sizeof(ranges) / sizeof(ranges[0]); ++index) {
 		expect_invalid_field(ranges[index].offset, NAN);
 		expect_invalid_field(ranges[index].offset, INFINITY);
@@ -1380,6 +1383,14 @@ static void test_every_numeric_boundary(void)
 	settings_defaults(&value);
 	value.profiles[0].chains[TXAGC_LOCAL].agc.low_limiter_attack_ms = NAN;
 	assert(validate_chain(&value.profiles[0].chains[TXAGC_LOCAL]) < 0);
+	settings_defaults(&value);
+	chain = &value.profiles[0].chains[TXAGC_VOICE_TELEMETRY];
+	chain->agc.post_limiter_bandpass_highpass_hz = 0.0;
+	chain->agc.post_limiter_bandpass_lowpass_hz = 2500.0;
+	assert(!validate_chain(chain));
+	chain->agc.post_limiter_bandpass_highpass_hz = 300.0;
+	chain->agc.post_limiter_bandpass_lowpass_hz = 20000.0;
+	assert(!validate_chain(chain));
 }
 
 /** @brief Verify stage and relationship validation. */
@@ -1767,7 +1778,7 @@ static void test_settings_scope_and_hardware_validation(void)
 	value.profiles[0].chains[TXAGC_LOCAL].agc.lookahead_limiter_enabled = 1;
 	assert(validate_profile(&value.profiles[0]) < 0);
 	settings_defaults(&value);
-	value.profiles[0].chains[TXAGC_LOCAL].agc.post_limiter_lowpass_enabled = 1;
+	value.profiles[0].chains[TXAGC_LOCAL].agc.post_limiter_bandpass_enabled = 1;
 	assert(validate_profile(&value.profiles[0]) < 0);
 }
 
@@ -1921,6 +1932,30 @@ static void test_chain_configuration_parser(void)
 	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode ==
 	       TXAGC_CTCSS_FILTER_NOTCH);
 	assert(value.profiles[0].chains[TXAGC_LOCAL].agc.stage_count == TXAGC_MAX_DYNAMICS_STAGES);
+	{
+		const struct fake_option post_limiter_options[] = {
+			{"voice_telemetry", "post_limiter_bandpass_enabled", "yes"},
+			{"voice_telemetry", "post_limiter_bandpass_highpass_hz", "300"},
+			{"voice_telemetry", "post_limiter_bandpass_lowpass_hz", "2500"},
+		};
+
+		settings_defaults(&value);
+		set_fake_options(post_limiter_options, ARRAY_LEN(post_limiter_options));
+		settings_parse_error = 0;
+		assert(!read_chain(config, "voice_telemetry",
+				   &value.profiles[0].chains[TXAGC_VOICE_TELEMETRY]));
+		assert(!settings_parse_error);
+		assert(value.profiles[0]
+			       .chains[TXAGC_VOICE_TELEMETRY]
+			       .agc.post_limiter_bandpass_enabled);
+		assert(value.profiles[0]
+			       .chains[TXAGC_VOICE_TELEMETRY]
+			       .agc.post_limiter_bandpass_highpass_hz == 300.0);
+		assert(value.profiles[0]
+			       .chains[TXAGC_VOICE_TELEMETRY]
+			       .agc.post_limiter_bandpass_lowpass_hz == 2500.0);
+		assert(!validate_chain(&value.profiles[0].chains[TXAGC_VOICE_TELEMETRY]));
+	}
 
 	const char *valid_modes[] = {"highpass", "disabled", "off"};
 	for (size_t index = 0; index < ARRAY_LEN(valid_modes); ++index) {
@@ -2160,6 +2195,10 @@ static void test_option_name_validation(void)
 		{"duplex test", duplex_override_options[0], 1},
 		{"diagnostics test", diagnostics_override_options[0], 1},
 		{"local test", "output_gain_db", 1},
+		{"voice_telemetry test", "post_limiter_bandpass_enabled", 1},
+		{"voice_telemetry test", "post_limiter_bandpass_highpass_hz", 1},
+		{"voice_telemetry test", "post_limiter_bandpass_lowpass_hz", 1},
+		{"voice_telemetry test", "post_limiter_lowpass_enabled", 0},
 		{"voice_telemetry test", "receive_bandpass_enabled", 0},
 		{"test", "unknown", 0},
 	};

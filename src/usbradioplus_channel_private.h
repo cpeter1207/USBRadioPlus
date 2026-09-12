@@ -85,6 +85,8 @@ struct usbradioplus_native_graph_set {
 	unsigned int app_rpt_samples;
 	/** Program-ring clock-recovery target in source-rate samples. */
 	size_t program_target_samples;
+	/** Program-ring retained source reserve in samples. */
+	size_t program_reserve_samples;
 	/** Nonzero when this generation serves the legacy app_rpt-rate interface. */
 	int legacy_interface;
 	/** Nonzero allows optional dynamics to idle while receiver qualification is absent. */
@@ -161,14 +163,16 @@ struct usbradioplus_radio_access_slot {
  * while draining, so no later program PCM can extend the transmission.
  */
 struct usbradioplus_tx_playout_hold {
-	/** Native callbacks remaining before the virtual PTT hold may release. */
-	unsigned int callbacks_remaining;
+	/** Native PCM frames remaining before the virtual PTT hold may release. */
+	size_t frames_remaining;
 	/** Last PTT output actually requested by the signaling engine. */
 	int engine_ptt_out;
 	/** Previous external PTT input, used to cancel a stale drain on rekey. */
 	int input_keyed;
-	/** Nonzero while txPttOut is held only for queued DAC audio. */
+	/** Nonzero while txPttOut temporarily bridges queued DAC audio or a pending input key. */
 	int draining;
+	/** Last physical PTT state observed from the HID worker. */
+	int hardware_ptt_applied;
 };
 
 /** Opaque per-channel renderer that owns persistent native DSP state. */
@@ -360,11 +364,16 @@ usbradioplus_native_graphs_acquire(struct chan_usbradio_pvt *channel);
  * @param channel Native radio channel.
  */
 void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel);
-/** @brief Process a native receiver block and render its matching transmitter block.
+/** @brief Process a variable native receiver block and render its matching transmitter block.
  * @param channel Private state of the selected radio channel.
- * @param transmit_ready Nonzero only when the physical DAC will accept this block.
+ * @param frame_count Native PCM frames in the already assembled callback block.
+ *
+ * Adapters assemble a whole native span before calling this routine, then
+ * retain the rendered output in their preallocated device stage.  The tick
+ * therefore always advances radio timing and program audio by exactly
+ * @p frame_count frames; device availability never gates signal processing.
  */
-void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_ready);
+void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, size_t frame_count);
 /** @brief Create the persistent direct native renderer.
  * @param channel Private state of the selected radio channel.
  * @return Zero on success or nonzero when setup fails.

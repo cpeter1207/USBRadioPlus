@@ -245,6 +245,7 @@ struct chan_usbradio_pvt usbradio_default = {
 	 * future native-rate app_rpt path can bypass conversion. */
 	.plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT,
 	.plus_app_rpt_samples = URP_LINK_SAMPLES,
+	.plus_native_max_frames = URP_NATIVE_SAMPLES,
 	/* Default receiver de-emphasis corner frequency in Hz. */
 	.plus_deemphasis_corner_hz = 300.0,
 	/* Default transmitter pre-emphasis corner frequency in Hz. */
@@ -699,7 +700,7 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 	if (o->pa.active) {
 		return 0;
 	}
-	o->plus_portaudio_playout_hold_callbacks = 0U;
+	o->plus_portaudio_playout_hold_frames = 0U;
 
 	/* Exact PortAudio endpoints from the active device lease */
 	ast_mutex_lock(&o->device_lock);
@@ -718,15 +719,25 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 	}
 	{
 		const PaStreamInfo *info = o->pa.stream ? Pa_GetStreamInfo(o->pa.stream) : NULL;
-		double callbacks = 1.0;
+		double held_frames = (double)o->plus_native_max_frames;
+		size_t stage_blocks;
+		unsigned int stage_capacity;
 
 		/* PortAudio exposes its best queue-delay estimate only while the stream
-		 * is open. Cache a callback count here; the hardware loop stays lock-free. */
+		 * is open. Cache native PCM frames here; the hardware loop stays lock-free
+		 * and remains correct if callback partitioning changes. */
 		if (info && isfinite(info->outputLatency) && info->outputLatency >= 0.0)
-			callbacks += ceil(info->outputLatency * (double)URP_RATE_NATIVE /
-					  (double)URP_NATIVE_SAMPLES);
-		o->plus_portaudio_playout_hold_callbacks =
-			callbacks > (double)UINT_MAX ? UINT_MAX : (unsigned int)callbacks;
+			held_frames += ceil(info->outputLatency * (double)URP_RATE_NATIVE);
+		o->plus_portaudio_playout_hold_frames =
+			held_frames > (double)SIZE_MAX ? SIZE_MAX : (size_t)held_frames;
+		/* The stream's reported output latency is the only useful modern-adapter
+		 * queue depth. Keep two blocks when it is unavailable or smaller. */
+		stage_blocks = o->plus_portaudio_playout_hold_frames / o->plus_native_max_frames;
+		if (o->plus_portaudio_playout_hold_frames % o->plus_native_max_frames)
+			++stage_blocks;
+		stage_capacity = stage_blocks > UINT_MAX ? UINT_MAX : (unsigned int)stage_blocks;
+		(void)urp_native_output_stage_set_capacity(&o->plus_native_output_stage,
+							   stage_capacity);
 	}
 
 	usbradio_adjust_txmix_for_mono(o);
@@ -736,7 +747,7 @@ URP_CHANNEL_LOCAL int usbradio_start_audio(struct chan_usbradio_pvt *o)
 		ast_log(LOG_WARNING, "Channel %s: Unable to start PortAudio stream for %s (%s)\n",
 			o->name, devstr, Pa_GetErrorText(res));
 		ast_radio_pa_stop(&o->pa);
-		o->plus_portaudio_playout_hold_callbacks = 0U;
+		o->plus_portaudio_playout_hold_frames = 0U;
 		return -1;
 	}
 
@@ -1421,19 +1432,23 @@ URP_CHANNEL_LOCAL void *hidthread(void *arg)
 	return NULL;
 }
 
-/** @brief Submit one native DAC block and report whether PortAudio accepted it intact.
+/** @brief Submit an admitted native PCM span and report whether PortAudio accepted it.
  * @param o Active PortAudio channel.
- * @param data Rendered native stereo PCM.
- * @param submitted Receives nonzero only for an accepted original block; may be NULL.
+ * @param data Rendered native stereo PCM beginning at the unsubmitted offset.
+ * @param frame_count Native frames in @p data, no larger than one API block.
+ * @param logical_ptt Captured PTT state associated with @p data.
+ * @param submitted Receives nonzero only when PortAudio accepted the complete span; may be NULL.
  * @return Native frame byte count on success, or zero after a terminal error.
  */
-static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *data, int *submitted)
+static int soundcard_write_admitted_frames(struct chan_usbradio_pvt *o, const short *data,
+					   size_t frame_count, int logical_ptt, int *submitted)
 {
 	PaError res;
-	int audio_bearing;
 
 	if (submitted)
 		*submitted = 0;
+	if (!frame_count || frame_count > AST_RADIO_PA_FRAMES_PER_BUFFER)
+		return 0;
 
 	if (!o->pa.active) {
 		if (usbradio_start_audio(o) < 0) {
@@ -1446,12 +1461,9 @@ static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *da
 	 * underrun (same idea as simpleusb #1161). Radio PTT is HID-gated;
 	 * when unkeyed, feed silence instead of the rendered TX buffer.
 	 */
-	/* The audio worker publishes this before releasing its parser-state read
-	 * lease.  Keeping the output decision separate lets a reload emit silence
-	 * without dereferencing a radio object being reparsed by the control plane. */
-	audio_bearing = atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire) &&
-			usbradioplus_pcm_has_audio(data, AST_RADIO_PA_48K_STEREO_SAMPLES);
-	if (!audio_bearing) {
+	/* PTT is snapshotted in the staged block. A later unkey must never replace
+	 * an older queued block with silence. */
+	if (!logical_ptt) {
 		data = silence_buf;
 	}
 
@@ -1459,7 +1471,7 @@ static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *da
 	 * ast_radio_pa_write() already primes one silence frame on
 	 * paOutputUnderflowed (#593 / #598). Treat that as success here.
 	 */
-	res = ast_radio_pa_write(&o->pa, data, AST_RADIO_PA_FRAMES_PER_BUFFER);
+	res = ast_radio_pa_write(&o->pa, data, frame_count);
 	if (res < 0 && res != paOutputUnderflowed) {
 		usbradio_log_fault(
 			o, 0, "Channel %s: PortAudio write failed (%s); restarting audio stream\n",
@@ -1469,21 +1481,89 @@ static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *da
 		ast_radio_pa_stop(&o->pa);
 		return 0;
 	}
-	if (res == paNoError) {
-		usbradioplus_tx_playout_hold_note_output(
-			o, 1, audio_bearing,
-			audio_bearing ? o->plus_portaudio_playout_hold_callbacks : 0U);
+	if (res == paNoError || res == paOutputUnderflowed) {
 		if (submitted)
 			*submitted = 1;
 	}
 
-	return AST_RADIO_PA_FRAMES_PER_BUFFER * AST_RADIO_PA_OUTPUT_CHANNELS * (int)sizeof(short);
+	return (int)(frame_count * AST_RADIO_PA_OUTPUT_CHANNELS * sizeof(short));
 }
 
-URP_CHANNEL_LOCAL int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+/** @brief Drain one complete or partial staged native output span to PortAudio.
+ * @param o Channel whose preallocated output stage is drained.
+ * @param elapsed_frames Native PCM time elapsed since the prior drain attempt.
+ * @return One after an accepted submission, zero when no PortAudio space is
+ * available, or minus one after a terminal device error.
+ */
+static int soundcard_drain_native_output(struct chan_usbradio_pvt *o, size_t elapsed_frames)
 {
-	return soundcard_write_admitted_frame(o, data, NULL);
+	struct urp_native_output_block finished;
+	struct urp_native_output_block *block;
+	long available_frames;
+	size_t remaining_frames;
+	size_t submitted_frames;
+	int submitted;
+	int committed;
+	int drained = 0;
+	int partial_at_start;
+
+	block = urp_native_output_stage_peek(&o->plus_native_output_stage);
+	partial_at_start = block && block->submitted_frames;
+
+	while (block != NULL) {
+		available_frames = ast_radio_pa_write_available(&o->pa);
+		if (available_frames < 0)
+			return -1;
+		if (!available_frames)
+			break;
+		remaining_frames = block->frame_count - block->submitted_frames;
+		submitted_frames = remaining_frames;
+		if (submitted_frames > (size_t)available_frames)
+			submitted_frames = (size_t)available_frames;
+		if (submitted_frames > AST_RADIO_PA_FRAMES_PER_BUFFER)
+			submitted_frames = AST_RADIO_PA_FRAMES_PER_BUFFER;
+		if (!soundcard_write_admitted_frames(o, block->pcm + block->submitted_frames * 2U,
+						     submitted_frames, block->logical_ptt,
+						     &submitted))
+			return -1;
+		if (!submitted)
+			break;
+		drained = 1;
+		committed = urp_native_output_stage_commit(&o->plus_native_output_stage,
+							   submitted_frames, &finished);
+		if (committed < 0)
+			return -1;
+		if (committed > 0)
+			usbradioplus_native_output_stage_complete(
+				o, &finished,
+				finished.audio_bearing ? o->plus_portaudio_playout_hold_frames
+						       : 0U);
+		block = urp_native_output_stage_peek(&o->plus_native_output_stage);
+	}
+	if (partial_at_start)
+		(void)usbradioplus_native_output_stage_recover_stall(o, elapsed_frames);
+	return drained;
 }
+
+#ifdef URP_CHANNEL_UNIT_TEST
+/** @brief Exercise one direct PortAudio write through the unit-test harness. */
+int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
+{
+	int logical_ptt = atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire);
+	int submitted = 0;
+	int result = soundcard_write_admitted_frames(o, data, AST_RADIO_PA_FRAMES_PER_BUFFER,
+						     logical_ptt, &submitted);
+
+	if (submitted)
+		usbradioplus_tx_playout_hold_note_output(
+			o, 1,
+			logical_ptt &&
+				usbradioplus_pcm_has_audio(data, AST_RADIO_PA_48K_STEREO_SAMPLES),
+			logical_ptt ? o->plus_portaudio_playout_hold_frames : 0U,
+			AST_RADIO_PA_FRAMES_PER_BUFFER);
+	return result;
+}
+#endif
 
 /** @brief Read one native-rate interleaved PortAudio receiver block.
  * @param o Private state of the selected radio channel.
@@ -1746,8 +1826,10 @@ URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 URP_CHANNEL_LOCAL void stream_cleanup(struct chan_usbradio_pvt *o)
 {
 	ast_radio_pa_stop(&o->pa);
-	o->plus_portaudio_playout_hold_callbacks = 0U;
-	usbradioplus_tx_playout_hold_reset(o);
+	o->plus_portaudio_playout_hold_frames = 0U;
+	usbradioplus_native_output_stage_fail_safe_reset(o);
+	/* The stopped stream cannot deliver any remaining staged PCM.  Fail safe
+	 * before its worker releases ownership of the physical transmitter. */
 	usbradio_swap_audio_stopped(o);
 	o->audio_thread_ready = 0;
 }
@@ -1760,7 +1842,6 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 {
 	PaError pa_res;
 	int cd, sd;
-	int tx_write_ready;
 	long frames_available;
 	struct chan_usbradio_pvt *o = arg;
 	struct ast_frame *f = &o->read_f, *f1;
@@ -1863,10 +1944,9 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				stream_cleanup(o);
 				break;
 			}
-			tx_write_ready = frames_available >= AST_RADIO_PA_FRAMES_PER_BUFFER;
-
 			/* Legacy app_rpt echo remains a distinct source queue. */
-			if (!o->plus_advanced && tx_write_ready && o->echomode &&
+			if (!o->plus_advanced &&
+			    frames_available >= AST_RADIO_PA_FRAMES_PER_BUFFER && o->echomode &&
 			    !usbradioplus_native_echo(o) && (!o->rxkeyed)) {
 				(void)usbradioplus_echo_start(o);
 			}
@@ -1879,76 +1959,39 @@ URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)
 				    &o->rxaudiostats, AST_RADIO_PA_48K_STEREO_SAMPLES, 0)) {
 				usbradioplus_request_clip_led(o);
 			}
-
 			/* CTCSS/DCS code maps own parser-allocated state.  A processing reload
-			 * never waits in this hardware-paced worker: one quiet block is safer
-			 * than dereferencing a map while the control plane replaces it. */
+			 * never waits in this hardware-paced worker. Do not drain or stage PCM
+			 * without the reader lease because staged completion owns radio state. */
 			if (!usbradioplus_radio_access_acquire(o)) {
 				memset(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0,
 				       o->plus_app_rpt_samples * sizeof(short));
 				memset(o->usbradio_write_buf, 0, sizeof(o->usbradio_write_buf));
-				atomic_store_explicit(&o->plus_radio_tx_active, 0,
-						      memory_order_release);
-				if (tx_write_ready &&
-				    !soundcard_writeframe(o, o->usbradio_write_buf)) {
-					stream_cleanup(o);
-					break;
-				}
 				o->readpos = AST_FRIENDLY_OFFSET;
 				continue;
 			}
-			/* HID sampling and physical PTT completion are independent workers.
-			 * Import their atomic snapshots before the audio-owned signaling tick. */
-			usbradioplus_audio_load_hardware_state(o);
-			/* Only app_rpt and tuning own PTT. */
-			if (atomic_load_explicit(&o->txkeyed, memory_order_acquire) ||
-			    atomic_load_explicit(&o->txtestkey, memory_order_acquire)) {
-				if (!o->radio->txPttIn) {
-					o->radio->txPttIn = 1;
-				}
-			} else if (o->radio->txPttIn) {
-				o->radio->txPttIn = 0;
+			/* A newly asserted external key must be visible before a historical silent
+			 * block completes, otherwise the HID worker can observe an unkey/rekey
+			 * pulse. */
+			usbradioplus_import_external_ptt_request(o);
+			/* One completed capture span is one native output-clock interval. Advance
+			 * playout hold once here, rather than once per batched PortAudio write. */
+			usbradioplus_tx_playout_hold_advance(o, URP_NATIVE_SAMPLES);
+			/* Drain historical staged PCM before advancing the next native span.
+			 * Output congestion therefore never suppresses program-ring consumption. */
+			if (soundcard_drain_native_output(o, URP_NATIVE_SAMPLES) < 0) {
+				usbradioplus_radio_access_release(o);
+				stream_cleanup(o);
+				break;
 			}
-			usbradioplus_prepare_squelch_audio(o);
-			/* A full PortAudio queue freezes TX state. Restoring raw PTT before a
-			 * non-advancing tick could release audio already queued for playout. */
-			if (tx_write_ready)
-				usbradioplus_tx_playout_hold_prepare(o);
-			urp_radio_process_timed(
-				o->radio, o->plus_squelch_native,
-				(i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-				o->usbradio_write_buf, tx_write_ready);
-			if (tx_write_ready) {
-				usbradioplus_tx_playout_hold_apply(o);
-				/* Never touch GPIO, parallel hardware, or a wake pipe from this
-				 * hardware-paced loop. The HID worker applies this request. */
-				usbradioplus_tx_playout_hold_publish(o);
-			}
-			usbradioplus_refresh_ctcss_decode(o);
-			usbradioplus_native_tick(o, tx_write_ready);
-
-			/*
-			 * Write one frame when PortAudio has room. When unkeyed,
-			 * soundcard_writeframe() substitutes silence. Do not fill remaining
-			 * PortAudio room; that adds TX delay.
-			 */
-			if (tx_write_ready) {
-				int tx_write_submitted = 0;
-
-				if (!soundcard_write_admitted_frame(o, o->usbradio_write_buf,
-								    &tx_write_submitted)) {
-					usbradioplus_radio_access_release(o);
-					stream_cleanup(o);
-					break;
-				}
-				if (tx_write_submitted) {
-					/* A successful hardware submission advances the DAC-drain
-					 * clock. Re-apply now so the final held callback can
-					 * release PTT. */
-					usbradioplus_tx_playout_hold_prepare(o);
-					usbradioplus_tx_playout_hold_apply(o);
-					usbradioplus_tx_playout_hold_publish(o);
-				}
+			/* The native tick imports atomic hardware snapshots and owns one complete
+			 * native-rate radio/signaling interval. Its completed PCM and logical
+			 * PTT state enter the preallocated stage before the next device write. */
+			usbradioplus_native_tick(o, URP_NATIVE_SAMPLES);
+			usbradioplus_native_output_stage_enqueue(o, URP_NATIVE_SAMPLES);
+			if (soundcard_drain_native_output(o, 0U) < 0) {
+				usbradioplus_radio_access_release(o);
+				stream_cleanup(o);
+				break;
 			}
 
 			{

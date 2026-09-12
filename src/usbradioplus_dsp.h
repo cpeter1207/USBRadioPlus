@@ -16,7 +16,16 @@
 
 #define URP_LINK_SAMPLES 160
 
-#define URP_NATIVE_SAMPLES 960
+/** Default 20 ms CM119 callback size at the fixed 48 kHz native rate. */
+#define URP_NATIVE_SAMPLES 960U
+/**
+ * Largest native callback accepted by the current ASL compatibility adapters.
+ *
+ * The adapters declare this bound when they open their stream.  The renderer
+ * never allocates from the audio path, so all callback workspaces use this
+ * bound while each tick receives its actual frame count explicitly.
+ */
+#define URP_NATIVE_MAX_SAMPLES URP_NATIVE_SAMPLES
 
 #define URP_ECHO_HISTORY_FRAMES 32
 

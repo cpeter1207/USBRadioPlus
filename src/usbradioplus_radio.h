@@ -38,6 +38,7 @@
 #ifndef USBRADIOPLUS_RADIO_H
 #define USBRADIOPLUS_RADIO_H 1
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asterisk/rpt_chan_shared.h"
@@ -682,10 +683,22 @@ typedef struct urp_radio_state {
 	/** Selected radio trace-point mask. */
 	u32 tracemask;
 
-	/** Base-rate receive samples per processing block. */
-	i16 nSamplesRx; /* max frame size */
-	/** Base-rate transmitter samples per block. */
+	/** Maximum base-rate receive samples declared at stream setup. */
+	i16 nSamplesRx;
+	/** Maximum base-rate transmitter samples declared at stream setup. */
 	i16 nSamplesTx;
+	/** Base-rate receive samples in the native block currently being processed. */
+	i16 activeSamplesRx;
+	/** Base-rate transmitter samples in the native block currently being processed. */
+	i16 activeSamplesTx;
+	/** Native sample-time remainder used to advance receiver-side legacy timers. */
+	u32 rxTimerSampleRemainder;
+	/** Native sample-time remainder owned by the current RX blanking interval. */
+	u32 txrxBlankingSampleRemainder;
+	/** Native sample-time remainder used to advance DAC-paced transmitter timers. */
+	u32 txTimerSampleRemainder;
+	/** Remaining finishing interval in milliseconds after signaling turn-off. */
+	i32 txFinishTimer;
 
 	/** ADC sample rate in Hz. */
 	i32 inputSampleRate; /* in S/s  48000 */
@@ -707,10 +720,8 @@ typedef struct urp_radio_state {
 	/** Transmitter frame synchronization state. */
 	i8 txframelock;
 
-	/** Configured transmitter hang interval. */
+	/** Remaining transmitter CTCSS turn-off hang interval in milliseconds. */
 	i32 txHangTime;
-	/** Remaining transmitter hang interval. */
-	i32 txHangTimer;
 	/** Transmitter turn-off sequence selection. */
 	i32 txTurnOff;
 	/** Nonzero requests transmitter history clearing. */
@@ -1193,7 +1204,11 @@ void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value);
 /** @brief Collect the configured radio trace channels into the debug buffer.
  * @param sdbg Radio trace configuration and sample storage.
  */
-void strace2(t_sdbg *sdbg);
+/** @brief Copy selected trace sources for the active detector sample count.
+ * @param sdbg Trace workspace to update.
+ * @param samples Active 8 kHz detector samples in this native callback.
+ */
+void strace2(t_sdbg *sdbg, i16 samples);
 /** @brief Emit a control-plane radio trace when the configured and requested levels permit it.
  * This diagnostic helper is intentionally not callable from the native audio
  * callback or its detector stages because Asterisk logging can lock and write.
@@ -1286,6 +1301,32 @@ i16 urp_radio_process(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *
  */
 i16 urp_radio_process_timed(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx,
 			    int advance_tx);
+
+/** @brief Advance native-rate signaling for an explicitly sized PCM block.
+ *
+ * The native rate is fixed for the lifetime of the radio state.  The block
+ * count must contain an integral number of 8 kHz detector samples; adapters
+ * reassemble smaller hardware transfers before calling this function.  Timing
+ * state advances by the supplied sample duration rather than by a fixed tick.
+ * @param PmrChan Radio-signaling engine state.
+ * @param input Interleaved native-rate input PCM.
+ * @param outputrx Base-rate receiver scratch output.
+ * @param outputtx Native-rate transmitter scratch output.
+ * @param native_frame_count Native PCM frames in this call.
+ * @param advance_tx Nonzero to advance transmitter signaling.
+ * @return Zero after a complete block, or one for invalid input.
+ */
+i16 urp_radio_process_native_timed(urp_radio_state *PmrChan, i16 *input, i16 *outputrx,
+				   i16 *outputtx, size_t native_frame_count, int advance_tx);
+
+/** @brief Start a fresh receive-signaling blanking interval.
+ *
+ * Blanking is armed by a physical PTT release or transmitter turn-off.  Its
+ * fractional native-sample remainder must start at zero so an earlier
+ * receiver timer cannot shorten the new protected interval.
+ * @param PmrChan Radio-signaling engine state.
+ */
+void urp_radio_arm_txrx_blanking(urp_radio_state *PmrChan);
 
 /** @brief Split a comma-separated signaling-code list into owned strings and a pointer table.
  * @param src Comma-separated signaling codes; not modified.
