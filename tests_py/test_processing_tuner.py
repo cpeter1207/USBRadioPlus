@@ -140,8 +140,9 @@ def test_shipped_chains_document_every_applicable_processing_control():
         "lookahead_limiter_lookahead_ms",
         "lookahead_limiter_attack_ms",
         "lookahead_limiter_release_ms",
-        "post_limiter_lowpass_enabled",
-        "post_limiter_lowpass_hz",
+        "post_limiter_bandpass_enabled",
+        "post_limiter_bandpass_highpass_hz",
+        "post_limiter_bandpass_lowpass_hz",
     }
     for source in ("local", "link", "voice_telemetry"):
         values = MODULE["section_values"](sample, source)
@@ -644,8 +645,9 @@ def test_fixed_filters_have_a_dedicated_menu():
         "receive_bandpass_enabled",
         "receive_bandpass_highpass_hz",
         "receive_bandpass_lowpass_hz",
-        "post_limiter_lowpass_enabled",
-        "post_limiter_lowpass_hz",
+        "post_limiter_bandpass_enabled",
+        "post_limiter_bandpass_highpass_hz",
+        "post_limiter_bandpass_lowpass_hz",
     ):
         assert settings[key][5] == "Filters"
 

@@ -203,6 +203,10 @@ extern int __real_pipe(int descriptors[2]);
 
 /** Last opt-in timing record emitted by the shared channel code. */
 static char tx_trace_message[512];
+/** Text emitted by the most recent CLI operation under test. */
+static char cli_output[4096];
+/** Number of valid bytes currently retained in cli_output. */
+static size_t cli_output_length;
 
 void test_ast_debug(int level, const char *format, ...)
 {
@@ -1605,8 +1609,24 @@ void __ast_verbose(const char *file, int line, const char *function, int level, 
  */
 void ast_cli(int descriptor, const char *format, ...)
 {
+	va_list arguments;
+	int written;
+	size_t remaining;
+
 	(void)descriptor;
-	(void)format;
+	if (cli_output_length >= sizeof(cli_output) - 1)
+		return;
+	remaining = sizeof(cli_output) - cli_output_length;
+	va_start(arguments, format);
+	written = vsnprintf(cli_output + cli_output_length, remaining, format, arguments);
+	va_end(arguments);
+	if (written < 0)
+		return;
+	if ((size_t)written >= remaining) {
+		cli_output_length = sizeof(cli_output) - 1;
+		return;
+	}
+	cli_output_length += (size_t)written;
 }
 
 /** @brief Host-API test double for ast_radio_ppwrite; observable effects are recorded in harness
@@ -5059,7 +5079,10 @@ static void test_cli_handlers(void)
 	EXERCISE_HANDLER(handle_radio_active);
 	assert(handle_radio_active(&entry, 0, args) == CLI_SUCCESS);
 	EXERCISE_HANDLER(handle_show_settings);
+	cli_output[0] = '\0';
+	cli_output_length = 0;
 	assert(handle_show_settings(&entry, 0, args) == CLI_SUCCESS);
+	assert(strstr(cli_output, "Tx Voice Level currently set to 500\n"));
 	usbradio_active = "missing";
 	assert(handle_show_settings(&entry, 0, args) == CLI_SUCCESS);
 	usbradio_active = radio.name;

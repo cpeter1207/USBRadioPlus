@@ -673,7 +673,7 @@ enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
 ; Reorder the equalizer and dynamics stages. The fixed final limiter and
-; post-limiter low-pass are not listed here. The de-esser runs immediately before
+; post-limiter brick-wall band-pass are not listed here. The de-esser runs immediately before
 ; the compressor by default.
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
@@ -731,10 +731,12 @@ lookahead_limiter_lookahead_ms = 5.0
 lookahead_limiter_attack_ms = 1.0
 ; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
-; Enable the fixed cleanup low-pass after final limiting.
-post_limiter_lowpass_enabled = no
-; Cleanup low-pass cutoff, 5000 through 20000 Hz.
-post_limiter_lowpass_hz = 5500.0
+; Enable the fixed brick-wall band-pass after final limiting.
+post_limiter_bandpass_enabled = no
+; Lower band-pass cutoff, 0 through 300 Hz; 0 disables the lower edge.
+post_limiter_bandpass_highpass_hz = 0.0
+; Upper band-pass cutoff, 2500 through 20000 Hz.
+post_limiter_bandpass_lowpass_hz = 5500.0
 ; Gain at the end of the transmitter chain, -30 through +30 dB.
 output_gain_db = 0.0
 ;
