@@ -276,6 +276,20 @@ AVFILTER_PRIVATE int add_brickwall_bandpass(char *graph, size_t size, const char
 					    const char *output, const char *prefix, double highpass,
 					    double lowpass)
 {
+	if (highpass < 0.0 || lowpass < 0.0)
+		return AVERROR(EINVAL);
+	if (highpass == 0.0 && lowpass == 0.0)
+		return graph_append(graph, size, "[%s]anull[%s];", input, output);
+	if (highpass == 0.0)
+		return graph_append(graph, size,
+				    "[%s]acrossover=split=%.9g:order=20th[%s][%shi];"
+				    "[%shi]anullsink;",
+				    input, lowpass, output, prefix, prefix);
+	if (lowpass == 0.0)
+		return graph_append(graph, size,
+				    "[%s]acrossover=split=%.9g:order=20th[%slo][%s];"
+				    "[%slo]anullsink;",
+				    input, highpass, prefix, output, prefix);
 	return graph_append(graph, size,
 			    "[%s]acrossover=split=%.9g:order=20th[%slo][%spass];"
 			    "[%slo]anullsink;"
@@ -714,10 +728,8 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 		snprintf(current, sizeof(current), "%s", next);
 	}
 
-	if (cfg->post_limiter_lowpass_enabled) {
-		char rejected[NAME_SIZE];
+	if (cfg->post_limiter_bandpass_enabled) {
 		snprintf(next, sizeof(next), "s%u", stage++);
-		snprintf(rejected, sizeof(rejected), "cln%urej", stage);
 		if (graph_append(graph, size,
 				 "[%s]asplit=3[cleanupmain][cleanuppre][cleanupspec];"
 				 "[cleanuppre]astats=metadata=1:reset=1:measure_perchannel=none:"
@@ -728,17 +740,16 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 				 "[pre5to8]astats=metadata=1:reset=1:measure_perchannel=none:"
 				 "measure_overall=RMS_level[cleanup_pre_5_8_meter];"
 				 "[preabove8]astats=metadata=1:reset=1:measure_perchannel=none:"
-				 "measure_overall=RMS_level[cleanup_pre_8_plus_meter];"
-				 "[cleanupmain]acrossover=split=%.9g:order=20th[%s][%s];"
-				 "[%s]anullsink;",
-				 current, cfg->post_limiter_lowpass_hz, next, rejected,
-				 rejected) < 0) {
+				 "measure_overall=RMS_level[cleanup_pre_8_plus_meter];",
+				 current) < 0) {
+			return AVERROR(ENOSPC);
+		}
+		if (add_brickwall_bandpass(graph, size, "cleanupmain", next, "cln",
+					   cfg->post_limiter_bandpass_highpass_hz,
+					   cfg->post_limiter_bandpass_lowpass_hz) < 0) {
 			return AVERROR(ENOSPC);
 		}
 		snprintf(current, sizeof(current), "%s", next);
-	}
-
-	if (cfg->post_limiter_lowpass_enabled) {
 		return graph_append(graph, size,
 				    "[%s]asplit=2[postmain][postspec];"
 				    "[postspec]acrossover=split=5000 8000:order=20th"
@@ -902,7 +913,7 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	if (result < 0) {
 		goto fail;
 	}
-	if (config->post_limiter_lowpass_enabled) {
+	if (config->post_limiter_bandpass_enabled) {
 		for (size_t index = 0; index < 5; ++index) {
 			AVFilterContext **sink_slot = cleanup_sink_slots[index];
 			result = avfilter_graph_create_filter(sink_slot, sink_filter,
@@ -945,7 +956,7 @@ AVFILTER_PRIVATE int configure(struct txagc_avfilter *state, const struct txagc_
 	meter_input->name = av_strdup("in_meter");
 	meter_input->filter_ctx = state->meter_sink;
 	meter_input->pad_idx = 0;
-	if (config->post_limiter_lowpass_enabled) {
+	if (config->post_limiter_bandpass_enabled) {
 		for (size_t index = 0; index < 5; ++index) {
 			cleanup_input = avfilter_inout_alloc();
 			if (!cleanup_input) {
@@ -1178,8 +1189,10 @@ AVFILTER_PRIVATE int txagc_config_equal(const struct txagc_config *left,
 	equal &= left->lookahead_ms == right->lookahead_ms;
 	equal &= left->lookahead_attack_ms == right->lookahead_attack_ms;
 	equal &= left->lookahead_release_ms == right->lookahead_release_ms;
-	equal &= left->post_limiter_lowpass_enabled == right->post_limiter_lowpass_enabled;
-	equal &= left->post_limiter_lowpass_hz == right->post_limiter_lowpass_hz;
+	equal &= left->post_limiter_bandpass_enabled == right->post_limiter_bandpass_enabled;
+	equal &=
+		left->post_limiter_bandpass_highpass_hz == right->post_limiter_bandpass_highpass_hz;
+	equal &= left->post_limiter_bandpass_lowpass_hz == right->post_limiter_bandpass_lowpass_hz;
 	equal &= left->dcs_spectral_lowpass_hz == right->dcs_spectral_lowpass_hz;
 	equal &= left->output_gain_db == right->output_gain_db;
 	return equal;
@@ -1453,7 +1466,7 @@ int txagc_avfilter_process_prepared(struct txagc_avfilter *state, double *sample
 	if (result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
 		goto done;
 	}
-	if (state->config.post_limiter_lowpass_enabled) {
+	if (state->config.post_limiter_bandpass_enabled) {
 		result = drain_cleanup_meter(state, state->cleanup_pre_sink, output,
 					     CLEANUP_PRE_FULL);
 		if (result < 0)

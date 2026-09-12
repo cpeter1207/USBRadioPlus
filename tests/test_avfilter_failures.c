@@ -353,8 +353,8 @@ static struct txagc_config configuration(int cleanup)
 	struct txagc_config config;
 	memset(&config, 0, sizeof(config));
 	if (cleanup) {
-		config.post_limiter_lowpass_enabled = 1;
-		config.post_limiter_lowpass_hz = 5000.0;
+		config.post_limiter_bandpass_enabled = 1;
+		config.post_limiter_bandpass_lowpass_hz = 5000.0;
 	}
 	return config;
 }

@@ -865,11 +865,15 @@ Set limiter attack. Default is 1 ms.
 .B lookahead_limiter_release_ms = 1..5000
 Set limiter release. Default is 100 ms.
 .TP
-.B post_limiter_lowpass_enabled = yes|no
-Enable the fixed cleanup low-pass after final limiting. Default is no.
+.B post_limiter_bandpass_enabled = yes|no
+Enable the fixed brick-wall band-pass after final limiting. Default is no.
 .TP
-.B post_limiter_lowpass_hz = 5000..20000
-Set cleanup-filter cutoff. Default is 8000 Hz.
+.B post_limiter_bandpass_highpass_hz = 0..300
+Set the post-limiter band-pass low-frequency cutoff. Zero disables the lower
+edge. Default is 0 Hz.
+.TP
+.B post_limiter_bandpass_lowpass_hz = 2500..20000
+Set the post-limiter band-pass high-frequency cutoff. Default is 8000 Hz.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, passed through the
 receive band-pass and one selected PL filter, optionally passed through RNNoise,
@@ -915,8 +919,9 @@ input_gain_db = 6.0
 stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
-post_limiter_lowpass_enabled = yes
-post_limiter_lowpass_hz = 5000
+post_limiter_bandpass_enabled = yes
+post_limiter_bandpass_highpass_hz = 0
+post_limiter_bandpass_lowpass_hz = 5000
 .fi
 .SH FILES
 .B /etc/asterisk/usbradioplus.conf

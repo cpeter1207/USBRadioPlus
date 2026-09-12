@@ -2437,7 +2437,7 @@ void _menu_print(int fd, struct chan_usbradio_pvt *o)
 		ast_cli(fd, "Rx Level currently set to %d\n", effective_rxmixerset(o));
 	}
 	ast_cli(fd, "Rx Squelch currently set to %d\n", o->rxsquelchadj);
-	ast_cli(fd, "Tx Voice Level currently set to %d\n", o->txmixaset);
+	ast_cli(fd, "Tx Voice Level currently set to %d\n", effective_txmixaset(o));
 	ast_cli(fd, "Tx Tone Level currently set to %d\n", o->txctcssadj);
 }
 
@@ -3103,7 +3103,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		final_filter->buffered_samples, final_filter->startup_fill_samples,
 		final_filter->runtime_underrun_samples);
 	ast_cli(a->fd,
-		"FFmpeg final cleanup: pre-filter peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
+		"FFmpeg final post-limiter band-pass: pre-filter peak %.1f/max %.1f dBFS, RMS "
+		"%.1f/max %.1f dBFS; "
 		"5-8 kHz pre %.1f/max %.1f, post %.1f/max %.1f dBFS; "
 		">8 kHz pre %.1f/max %.1f, post %.1f/max %.1f dBFS.\n",
 		final_filter->cleanup_pre_peak_dbfs, final_filter->cleanup_pre_max_peak_dbfs,

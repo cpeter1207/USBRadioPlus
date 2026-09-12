@@ -205,29 +205,29 @@ struct usbradioplus_native_filter_statistics {
 	double output_rms_dbfs;
 	/** Largest output RMS in dBFS. */
 	double output_max_rms_dbfs;
-	/** Peak before cleanup filtering in dBFS. */
+	/** Peak before the post-limiter band-pass in dBFS. */
 	double cleanup_pre_peak_dbfs;
-	/** Largest pre-cleanup peak in dBFS. */
+	/** Largest pre-band-pass peak in dBFS. */
 	double cleanup_pre_max_peak_dbfs;
-	/** RMS before cleanup filtering in dBFS. */
+	/** RMS before the post-limiter band-pass in dBFS. */
 	double cleanup_pre_rms_dbfs;
-	/** Largest pre-cleanup RMS in dBFS. */
+	/** Largest pre-band-pass RMS in dBFS. */
 	double cleanup_pre_max_rms_dbfs;
-	/** RMS in the 5--8 kHz band before cleanup. */
+	/** RMS in the 5--8 kHz band before the post-limiter band-pass. */
 	double cleanup_pre_5_8_rms_dbfs;
-	/** Largest 5--8 kHz pre-cleanup RMS. */
+	/** Largest 5--8 kHz pre-band-pass RMS. */
 	double cleanup_pre_5_8_max_rms_dbfs;
-	/** RMS in the 5--8 kHz band after cleanup. */
+	/** RMS in the 5--8 kHz band after the post-limiter band-pass. */
 	double cleanup_post_5_8_rms_dbfs;
-	/** Largest 5--8 kHz post-cleanup RMS. */
+	/** Largest 5--8 kHz post-band-pass RMS. */
 	double cleanup_post_5_8_max_rms_dbfs;
-	/** RMS above 8 kHz before cleanup. */
+	/** RMS above 8 kHz before the post-limiter band-pass. */
 	double cleanup_pre_8_plus_rms_dbfs;
-	/** Largest above-8-kHz pre-cleanup RMS. */
+	/** Largest above-8-kHz pre-band-pass RMS. */
 	double cleanup_pre_8_plus_max_rms_dbfs;
-	/** RMS above 8 kHz after cleanup. */
+	/** RMS above 8 kHz after the post-limiter band-pass. */
 	double cleanup_post_8_plus_rms_dbfs;
-	/** Largest above-8-kHz post-cleanup RMS. */
+	/** Largest above-8-kHz post-band-pass RMS. */
 	double cleanup_post_8_plus_max_rms_dbfs;
 };
 
