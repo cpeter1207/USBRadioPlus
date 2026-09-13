@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../src/txagc/avfilter_processor.h"
+#include "../src/usbradioplus_ffmpeg_adapter.h"
 #include "../src/usbradioplus_dcs.h"
+#include "../src/usbradioplus_radio_core_adapter.h"
 
 /** Native CM119 sample rate. */
 #define DCS_RATE 48000U
@@ -28,6 +29,7 @@
 /* Static storage keeps this numerical test independent of the process heap. */
 static double fft_real[DCS_FFT_POINTS];
 static double fft_imaginary[DCS_FFT_POINTS];
+static float dcs_source[DCS_BLOCK];
 
 /** @brief Reverse the low-order FFT index bits.
  * @param value Index to reverse.
@@ -93,17 +95,18 @@ static void fft(void)
 	}
 }
 
-/** @brief Feed one 48 kHz native DCS period through the prepared shared graph.
- * @param encoder DCS generator state.
+/** @brief Feed one portable DCS period through the prepared shared graph.
+ * @param encoder Portable transmitter state.
  * @param graph Prepared spectral-shaping graph.
  * @param output Receives shaped PCM samples.
  * @param turnoff Nonzero renders the 134.4 Hz DCS turn-off code.
  */
-static void render_block(struct urp_dcs_state *encoder, struct txagc_avfilter *graph,
-			 double *output, int turnoff)
+static void render_block(struct rptadv_radio *encoder, struct usbradioplus_ffmpeg_adapter *graph,
+			 float *output, int turnoff)
 {
-	urp_dcs_generate(encoder, output, DCS_BLOCK, DCS_RATE, DCS_REQUESTED_PEAK, 1, turnoff);
-	assert(!txagc_avfilter_process_prepared(graph, output, DCS_BLOCK));
+	assert(!urp_radio_core_generate_dcs(encoder, dcs_source, DCS_BLOCK,
+					    DCS_REQUESTED_PEAK / 32767.0, 1, turnoff));
+	assert(!usbradioplus_ffmpeg_adapter_process_block(graph, dcs_source, DCS_BLOCK, output));
 }
 
 /** @brief Assert the fixed DCS graph preserves the configured source peak. */
@@ -120,36 +123,28 @@ static void assert_shaped_peak(double peak)
 /** @brief Assert DCS retains its intended baseband signal and meets its spectral limit. */
 static void test_dcs_spectral_shaping(void)
 {
-	struct txagc_avfilter graph;
-	struct txagc_config config;
-	struct urp_dcs_state encoder;
-	double block[DCS_BLOCK];
+	struct usbradioplus_ffmpeg_adapter graph = {0};
+	struct rptadv_radio *encoder = NULL;
+	float block[DCS_BLOCK];
 	double in_band_power = 0.0;
 	double total_power = 0.0;
 	double high_power = 0.0;
 	double peak = 0.0;
 	unsigned int captured = 0;
 
-	memset(&config, 0, sizeof(config));
-	config.dcs_spectral_shaping_enabled = 1;
-	config.dcs_spectral_lowpass_hz = 250.0;
-	/* The shaped NRZ waveform needs its calibrated -3.42 dB compensation.
-	 * The 134.4-Hz EOT sine has a separate prepared graph with unity gain. */
-	config.output_gain_db = -3.42;
-	urp_dcs_init(&encoder);
-	urp_dcs_configure(&encoder, -1, 0, 023, 0);
-	txagc_avfilter_init(&graph);
-	assert(!txagc_avfilter_prepare(&graph, &config, DCS_RATE));
+	assert(!urp_radio_core_create(DCS_RATE, DCS_BLOCK, &encoder));
+	assert(!urp_radio_core_configure_dcs(encoder, 023, 0));
+	assert(!usbradioplus_ffmpeg_adapter_prepare_dcs(&graph, 0, DCS_RATE, DCS_BLOCK));
 	for (unsigned int period = 0; period < DCS_SETTLE_BLOCKS; ++period)
-		render_block(&encoder, &graph, block, 0);
+		render_block(encoder, &graph, block, 0);
 	while (captured < DCS_FFT_POINTS) {
-		render_block(&encoder, &graph, block, 0);
+		render_block(encoder, &graph, block, 0);
 		for (unsigned int sample = 0; sample < DCS_BLOCK && captured < DCS_FFT_POINTS;
 		     ++sample, ++captured) {
 			double phase = 2.0 * M_PI * (double)captured / (DCS_FFT_POINTS - 1U);
 			double window = 0.35875 - 0.48829 * cos(phase) +
 					0.14128 * cos(2.0 * phase) - 0.01168 * cos(3.0 * phase);
-			double magnitude = fabs(block[sample]);
+			double magnitude = fabs(block[sample]) * 32767.0;
 
 			if (magnitude > peak)
 				peak = magnitude;
@@ -178,16 +173,16 @@ static void test_dcs_spectral_shaping(void)
 	assert(in_band_power / total_power > 0.01);
 	assert(high_power / total_power < DCS_MAX_HIGH_FRACTION);
 	assert_shaped_peak(peak);
-	txagc_avfilter_destroy(&graph);
+	usbradioplus_ffmpeg_adapter_close(&graph);
+	urp_radio_core_destroy(encoder);
 }
 
 /** @brief Verify the shaped 134.4 Hz DCS turn-off code preserves level and spectrum. */
 static void test_dcs_turnoff_spectral_shaping(void)
 {
-	struct txagc_avfilter graph;
-	struct txagc_config config;
-	struct urp_dcs_state encoder;
-	double block[DCS_BLOCK];
+	struct usbradioplus_ffmpeg_adapter graph = {0};
+	struct rptadv_radio *encoder = NULL;
+	float block[DCS_BLOCK];
 	double total_power = 0.0;
 	double high_power = 0.0;
 	double dominant_power = 0.0;
@@ -195,24 +190,19 @@ static void test_dcs_turnoff_spectral_shaping(void)
 	double peak = 0.0;
 	unsigned int captured = 0;
 
-	memset(&config, 0, sizeof(config));
-	config.dcs_spectral_shaping_enabled = 1;
-	config.dcs_spectral_lowpass_hz = 250.0;
-	config.output_gain_db = 0.0;
-	urp_dcs_init(&encoder);
-	urp_dcs_configure(&encoder, -1, 0, 023, 0);
-	txagc_avfilter_init(&graph);
-	assert(!txagc_avfilter_prepare(&graph, &config, DCS_RATE));
+	assert(!urp_radio_core_create(DCS_RATE, DCS_BLOCK, &encoder));
+	assert(!urp_radio_core_configure_dcs(encoder, 023, 0));
+	assert(!usbradioplus_ffmpeg_adapter_prepare_dcs(&graph, 1, DCS_RATE, DCS_BLOCK));
 	for (unsigned int period = 0; period < DCS_SETTLE_BLOCKS; ++period)
-		render_block(&encoder, &graph, block, 1);
+		render_block(encoder, &graph, block, 1);
 	while (captured < DCS_FFT_POINTS) {
-		render_block(&encoder, &graph, block, 1);
+		render_block(encoder, &graph, block, 1);
 		for (unsigned int sample = 0; sample < DCS_BLOCK && captured < DCS_FFT_POINTS;
 		     ++sample, ++captured) {
 			double phase = 2.0 * M_PI * (double)captured / (DCS_FFT_POINTS - 1U);
 			double window = 0.35875 - 0.48829 * cos(phase) +
 					0.14128 * cos(2.0 * phase) - 0.01168 * cos(3.0 * phase);
-			double magnitude = fabs(block[sample]);
+			double magnitude = fabs(block[sample]) * 32767.0;
 
 			if (magnitude > peak)
 				peak = magnitude;
@@ -242,7 +232,43 @@ static void test_dcs_turnoff_spectral_shaping(void)
 	       1.5 * DCS_RATE / DCS_FFT_POINTS);
 	assert(high_power / total_power < DCS_MAX_HIGH_FRACTION);
 	assert_shaped_peak(peak);
-	txagc_avfilter_destroy(&graph);
+	usbradioplus_ffmpeg_adapter_close(&graph);
+	urp_radio_core_destroy(encoder);
+}
+
+/** @brief Callback partitioning must not change either shaper's PCM history. */
+static void test_partitioned_shaping(void)
+{
+	for (int turnoff = 0; turnoff <= 1; ++turnoff) {
+		struct usbradioplus_ffmpeg_adapter whole = {0};
+		struct usbradioplus_ffmpeg_adapter split = {0};
+		struct rptadv_radio *encoder = NULL;
+		float expected[DCS_BLOCK];
+		float actual[DCS_BLOCK];
+
+		assert(!urp_radio_core_create(DCS_RATE, DCS_BLOCK, &encoder));
+		assert(!urp_radio_core_configure_dcs(encoder, 023, 0));
+		assert(!usbradioplus_ffmpeg_adapter_prepare_dcs(&whole, turnoff, DCS_RATE,
+								DCS_BLOCK));
+		assert(!usbradioplus_ffmpeg_adapter_prepare_dcs(&split, turnoff, DCS_RATE,
+								DCS_BLOCK));
+		for (unsigned block = 0; block < DCS_SETTLE_BLOCKS; ++block) {
+			assert(!urp_radio_core_generate_dcs(encoder, dcs_source, DCS_BLOCK,
+							    DCS_REQUESTED_PEAK / 32767.0, 1,
+							    turnoff));
+			assert(!usbradioplus_ffmpeg_adapter_process_block(&whole, dcs_source,
+									  DCS_BLOCK, expected));
+			assert(!usbradioplus_ffmpeg_adapter_process_block(&split, dcs_source, 317,
+									  actual));
+			assert(!usbradioplus_ffmpeg_adapter_process_block(
+				&split, dcs_source + 317, DCS_BLOCK - 317, actual + 317));
+			for (unsigned sample = 0; sample < DCS_BLOCK; ++sample)
+				assert(fabsf(actual[sample] - expected[sample]) < 1e-7F);
+		}
+		usbradioplus_ffmpeg_adapter_close(&whole);
+		usbradioplus_ffmpeg_adapter_close(&split);
+		urp_radio_core_destroy(encoder);
+	}
 }
 
 /** @brief Execute the DCS shared-FFmpeg spectral regression test.
@@ -250,8 +276,10 @@ static void test_dcs_turnoff_spectral_shaping(void)
  */
 int main(void)
 {
+	assert(!urp_radio_core_initialize());
 	test_dcs_spectral_shaping();
 	test_dcs_turnoff_spectral_shaping();
+	test_partitioned_shaping();
 	return 0;
 }
 

@@ -19,6 +19,8 @@ on:
 
 permissions:
   contents: write
+  checks: read
+  pull-requests: read
   packages: write
   pages: write
   id-token: write
@@ -35,6 +37,7 @@ jobs:
     needs: release
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/containers.yml@main
     with:
+      source_ref: ${{ needs.release.outputs.tag_name }}
       publish: true
       release_version: ${{ inputs.release_version }}
 

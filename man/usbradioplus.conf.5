@@ -8,6 +8,10 @@ This file defines USBRadioPlus radio channels and their hardware, Asterisk,
 duplex, diagnostics, and audio-processing profiles.  Every noise-reduction and
 dynamics stage is disabled unless explicitly enabled.
 .PP
+Native radio audio and processing use 48 kHz. Higher native sample rates are
+not supported. Rate conversion is confined to Asterisk, peer-codec, and media
+boundaries; the program ring also corrects drift between independent clocks.
+.PP
 This is a clean-slate configuration interface. It does not accept
 .BR chan_usbradio
 or earlier USBRadioPlus option names. Start a new file from the shipped sample.
@@ -167,7 +171,7 @@ that callback when configured; graph construction and reconfiguration do not.
 Sound-device output runs continuously at 48 kHz, carrying silence while idle.
 PTT, carrier detection, and CTCSS decode do not stop device writes. Existing
 receive qualification and transmit muting still determine which audio is
-audible. The OSS output writer adds no extra silence block when its queue empties.
+audible. Each callback returns its complete bounded output span.
 .TP
 .B hardware_device_identifier, hardware_serial
 Select the USB audio interface by device identifier or serial number.
@@ -179,15 +183,34 @@ Select the supported interface wiring layout.
 Enable interface EEPROM tuning storage.
 .TP
 .B hardware_audio_fragment_count = integer
-Set the raw OSS \fBSNDCTL_DSP_SETFRAGMENT\fR request. Leave it at the adapter
-default unless the OSS device requires a documented override. It does not
-configure the app_rpt program ring, and the PortAudio adapter ignores it.
+Compatibility setting accepted without changing the audio adapter or program ring.
 .TP
 .B hardware_audio_queue_size = integer
-Set the maximum queued OSS playback fragments. This bounds OSS device latency;
-it does not alter program-ring latency. It can change the best-effort physical
-PTT drain time after a non-silent block because USBRadioPlus measures queued
-OSS playback before releasing PTT. The PortAudio adapter ignores it.
+Compatibility setting accepted without changing the audio adapter or program ring.
+.TP
+.B hardware_audio_backend = portaudio
+Use the mandatory released PortAudio/ALSA shared adapter for capture, playback,
+mixer control, and raw-device statistics. The earlier \fBportaudio_poc\fR name
+is accepted as an alias. One ASL3 implementation serves the 8 kHz app_rpt
+boundary and the native 48 kHz RadioPlusAdvanced boundary.
+.TP
+.B hardware_portaudio_input_device_index = integer
+.TP
+.B hardware_portaudio_output_device_index = integer
+Select explicit capture and playback indexes as a matching nonnegative pair.
+The default for both is -1, which resolves endpoints from the selected USB
+identity. Any explicit selection must match that same CM119 interface.
+.TP
+.B hardware_gpio_backend = cm119
+Use the mandatory released GPIO adapter for CM119 PTT, input snapshots,
+EEPROM, and configured parallel I/O. The earlier \fBcm119_poc\fR name is
+accepted as an alias.
+.TP
+.B hardware_gpio_usb_port_path = path
+Optionally constrain selection to a stable physical USB topology, such as
+\fB3-1\fR. Audio and GPIO must resolve to the same interface. Selection by
+device identifier or serial is supported; an ambiguous automatic selection
+fails. Device-selection changes require a channel restart.
 .SH RECEIVE OPTIONS
 The flat or scoped \fB[receive]\fR section controls receiver behavior.
 .TP
@@ -434,12 +457,10 @@ Capture a logger destination that includes debug messages. Use millisecond
 timestamps (logger.conf dateformat %F %T.%3q). URP_TXTRACE records identify
 the channel, key/unkey requests, each native frame's CTCSS state and phase
 change, audio writes, and the beginning and end of the HID PTT write.
-OSS also reports queued bytes and estimated delay at 48 kHz, stereo,
-signed 16-bit. PortAudio reports submission results, not playback position.
+PortAudio reports submission results and stream timing estimates.
 .PP
-For post-audio PTT holding, OSS uses its post-write queue depth; PortAudio uses
-the stream output-latency estimate obtained when the stream opens. Neither
-measurement confirms actual RF or DAC playback time.
+Post-audio PTT holding uses the stream output-latency estimate obtained when
+the stream opens. This estimate does not confirm actual RF or DAC playback time.
 .PP
 Transmit a brief carrier with CTCSS, then release. A render record with
 phase_shift_degrees greater than zero marks the phase-shifted block. Add its queue delay to estimate
@@ -546,7 +567,8 @@ Set how quickly attenuation ends. Default is 60 ms.
 .TP
 .B rnnoise_enabled = yes|no
 Enable RNNoise after receiver de-emphasis and squelch gating and before
-dynamics. This applies only to [local]. Default is no.
+dynamics. It consumes native 48 kHz PCM directly in 480-sample frames, without
+sample-rate conversion. This applies only to [local]. Default is no.
 .TP
 .B receive_bandpass_enabled = yes|no
 Enable the local-receiver brick-wall band-pass immediately after the squelch
@@ -865,11 +887,15 @@ Set limiter attack. Default is 1 ms.
 .B lookahead_limiter_release_ms = 1..5000
 Set limiter release. Default is 100 ms.
 .TP
-.B post_limiter_lowpass_enabled = yes|no
-Enable the fixed cleanup low-pass after final limiting. Default is no.
+.B post_limiter_bandpass_enabled = yes|no
+Enable the fixed brick-wall band-pass after final limiting. Default is no.
 .TP
-.B post_limiter_lowpass_hz = 5000..20000
-Set cleanup-filter cutoff. Default is 8000 Hz.
+.B post_limiter_bandpass_highpass_hz = 0..300
+Set the post-limiter band-pass low-frequency cutoff. Zero disables the lower
+edge. Default is 0 Hz.
+.TP
+.B post_limiter_bandpass_lowpass_hz = 2500..20000
+Set the post-limiter band-pass high-frequency cutoff. Default is 8000 Hz.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, passed through the
 receive band-pass and one selected PL filter, optionally passed through RNNoise,
@@ -915,8 +941,9 @@ input_gain_db = 6.0
 stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
-post_limiter_lowpass_enabled = yes
-post_limiter_lowpass_hz = 5000
+post_limiter_bandpass_enabled = yes
+post_limiter_bandpass_highpass_hz = 0
+post_limiter_bandpass_lowpass_hz = 5000
 .fi
 .SH FILES
 .B /etc/asterisk/usbradioplus.conf

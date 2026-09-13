@@ -13,6 +13,10 @@ FORBIDDEN_AUDIO_OPERATIONS = (
     "usbradioplus_parallel_program_write(",
     "usbradioplus_program_radio(o)",
     "kickptt(o)",
+    "usbradioplus_hardware_adapter_open_gpio(",
+    "usbradioplus_hardware_adapter_service(",
+    "usbradioplus_hardware_adapter_open_mixer(",
+    "usbradioplus_parallel_adapter_poc_service(",
 )
 
 
@@ -175,16 +179,19 @@ def test_link_audiohook_callback_runs_prepared_graph_without_rt_unsafe_work():
     assert "txagc_avfilter_slot_release(" in callback
 
 
-def test_legacy_audio_callback_publishes_ptt_without_physical_io():
-    """Keep legacy native audio free of hardware control and wake-pipe I/O."""
+def test_asl_read_callback_does_not_own_audio_or_device_io():
+    """Asterisk polls liveness while PortAudio independently owns native audio."""
     source = (ROOT / "src/chan_usbradioplus.c").read_text(encoding="utf-8")
-    start = source.index(
-        "URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)\n{"
-    )
-    end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
-    callback = source[start:end]
-    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
-    for operation in FORBIDDEN_AUDIO_OPERATIONS:
+    callback = _function_body(source, "usbradio_read")
+    assert "plus_hardware_last_service_time" in callback
+    assert "return &ast_null_frame;" in callback
+    for operation in FORBIDDEN_AUDIO_OPERATIONS + (
+        "usbradioplus_native_tick(",
+        "usbradioplus_native_tick_f32(",
+        "ast_queue_frame(",
+        "read(",
+        "write(",
+    ):
         assert operation not in callback
 
 
@@ -194,7 +201,11 @@ def test_legacy_unload_quiesces_channel_before_native_renderer_teardown():
     hangup = _function_body(source, "usbradio_hangup")
     unload = _function_body(source, "unload_module")
 
-    assert hangup.index("pthread_join(o->hidthread, NULL)") < hangup.index("o->owner = NULL")
+    stop_worker = _function_body(source, "stop_hardware_worker")
+    assert hangup.index("stop_hardware_worker(o)") < hangup.index("o->owner = NULL")
+    assert stop_worker.index("pthread_join(o->hidthread, NULL)") < stop_worker.index(
+        "hidthread_close_pttkick(o)"
+    )
     assert unload.index("ast_softhangup(o->owner, AST_SOFTHANGUP_APPUNLOAD)") < unload.index(
         "usbradioplus_dsp_destroy(o)"
     )
@@ -203,40 +214,45 @@ def test_legacy_unload_quiesces_channel_before_native_renderer_teardown():
     )
 
 
-def test_modern_audio_callback_publishes_ptt_without_physical_io():
-    """Keep PortAudio's direct native callback free of control and wake-pipe I/O."""
-    source = (ROOT / "src/chan_usbradioplus_modern.c").read_text(encoding="utf-8")
-    start = source.index("URP_CHANNEL_LOCAL void *usbradio_audio_thread(void *arg)\n{")
-    end = source.index("\nURP_CHANNEL_LOCAL struct ast_channel *usbradio_new", start)
-    callback = source[start:end]
-    assert "usbradioplus_tx_playout_hold_publish(o)" in callback
-    for operation in FORBIDDEN_AUDIO_OPERATIONS:
+def test_portaudio_callback_renders_both_interfaces_without_physical_io():
+    """One PortAudio callback renders bounded spans and publishes a fixed handoff."""
+    source = (ROOT / "src/usbradioplus_portaudio_poc.c").read_text(encoding="utf-8")
+    callback = _function_body(source, "portaudio_poc_native_tick")
+    assert "if (!channel->plus_advanced)" in callback
+    assert "usbradioplus_native_tick_f32(" in callback
+    assert "portaudio_poc_publish_legacy_receive(" in callback
+    assert "portaudio_poc_publish_receive(" in callback
+    for operation in FORBIDDEN_AUDIO_OPERATIONS + (
+        "ast_queue_frame(",
+        "ast_mutex_",
+        "ast_log(",
+        "malloc(",
+        "calloc(",
+        "usleep(",
+        "pthread_",
+    ):
         assert operation not in callback
+    worker = _function_body(source, "portaudio_poc_delivery_worker")
+    assert "portaudio_poc_native_tick(" not in worker
 
 
 def test_native_audio_ptt_transition_and_output_paths_do_not_log():
     """Audio-rate PTT and DAC handling must not enter Asterisk logging."""
-    adapters = (
-        ("chan_usbradioplus.c", "usbradio_read"),
-        ("chan_usbradioplus_modern.c", "usbradio_audio_thread"),
+    native_tick = _function_body(
+        (ROOT / "src/usbradioplus_native_tick.c").read_text(encoding="utf-8"),
+        "usbradioplus_native_tick",
     )
-    for source_name, callback_name in adapters:
-        source = (ROOT / "src" / source_name).read_text(encoding="utf-8")
-        callback = _function_body(source, callback_name)
-        transition_start = callback.index("/* Only app_rpt and tuning own PTT. */")
-        transition_end = callback.index("usbradioplus_prepare_squelch_audio", transition_start)
-        transition = callback[transition_start:transition_end]
-        for operation in ("ast_debug(", "ast_log("):
-            assert operation not in transition
+    transition_start = native_tick.index("usbradioplus_tx_playout_hold_prepare(channel)")
+    transition_end = native_tick.index(
+        "usbradioplus_refresh_ctcss_decode(channel)", transition_start
+    )
+    transition = native_tick[transition_start:transition_end]
+    assert "usbradioplus_tx_playout_hold_publish(channel)" in transition
+    for operation in ("ast_debug(", "ast_log("):
+        assert operation not in transition
 
-    legacy = (ROOT / "src" / "chan_usbradioplus.c").read_text(encoding="utf-8")
-    for function_name in ("used_blocks", "soundcard_writeframe"):
-        output_path = _function_body(legacy, function_name)
-        for operation in ("ast_debug(", "ast_log("):
-            assert operation not in output_path
-
-    modern = (ROOT / "src" / "chan_usbradioplus_modern.c").read_text(encoding="utf-8")
-    output_path = _function_body(modern, "soundcard_writeframe")
+    portaudio = (ROOT / "src/usbradioplus_portaudio_poc.c").read_text(encoding="utf-8")
+    output_path = _function_body(portaudio, "portaudio_poc_native_tick")
     for operation in ("ast_debug(", "ast_log("):
         assert operation not in output_path
 
@@ -290,7 +306,7 @@ def test_channel_adapters_have_no_direct_debug_audio_capture():
         "txtracecap",
         "fwrite(",
     )
-    for source_name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
+    for source_name in ("chan_usbradioplus.c", "usbradioplus_portaudio_poc.c"):
         source = (ROOT / "src" / source_name).read_text(encoding="utf-8")
         for operation in forbidden:
             assert operation not in source, f"{source_name} retains {operation}"
@@ -314,7 +330,7 @@ def test_native_radio_callback_and_detectors_do_not_log_or_block():
         "write(",
     )
     for name in (
-        "urp_radio_process",
+        "urp_radio_process_native_timed",
         "urp_ctcss_decode",
         "urp_radio_receive_frontend",
         "DelayLine",
@@ -344,4 +360,4 @@ def test_radio_uses_in_memory_traces_without_capture_toggle_state():
         assert obsolete not in source
         assert obsolete not in header
     assert "t_sdbg" in header
-    assert "strace2(pChan->sdbg)" in source
+    assert "strace2(pChan->sdbg, pChan->activeSamplesRx)" in source

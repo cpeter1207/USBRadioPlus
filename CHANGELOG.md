@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.1.0~alpha18 - 2026-09-13
+
+- Preserve the tested native-audio milestone with one PortAudio/ALSA and GPIO
+  hardware backend. Remove the compile-time and runtime dependency on
+  `res_usbradio` while retaining both `app_rpt` and `app_rpt_advanced` interfaces.
+- Use versioned dynamic radio-core, FFmpeg, GPIO, PortAudio, sample-rate, and
+  PCM-ring libraries. Keep the signed-16 compatibility ring and floating-point
+  capture ring on their respective published ABIs.
+- Include the tested independent capture/playback callbacks, native receive
+  qualification, calibration-preserving conversion, and post-limiter controls.
+- Consolidate the legacy and modern Debian variants into `usbradioplus`, with
+  the same artifact checked against the supported ASL runtimes. Existing radio
+  configuration is preserved on installation.
+- Expand regression tests and release checks without changing the milestone's
+  audio processing, gain settings, or callback timing policy.
+
 ## 0.1.0~alpha17 - 2026-09-11
 
 - Split the receiver de-emphasis and transmitter pre-emphasis corners into

@@ -11,7 +11,6 @@
 #include "asterisk/cli.h"
 #include "asterisk/frame.h"
 #include "asterisk/options.h"
-#include "asterisk/res_usbradio.h"
 
 #include "txagc/avfilter_processor.h"
 #include "txagc/rnnoise_processor.h"
@@ -19,9 +18,20 @@
 #include "usbradioplus_ctcss.h"
 #include "usbradioplus_processing.h"
 #include "usbradioplus_radio.h"
+#include "usbradioplus_radio_core_adapter.h"
 #include "usbradioplus_repeat.h"
 #include "usbradioplus_channel_common.h"
 #include "usbradioplus_channel_private.h"
+#include "usbradioplus_host_util.h"
+
+/** @brief Print the portable receiver meter using the established CLI text.
+ * @param fd Asterisk CLI output descriptor.
+ * @param channel Radio channel owning the receiver meter.
+ */
+static void print_native_rx_audio_stats(int fd, const struct chan_usbradio_pvt *channel)
+{
+	usbradioplus_host_print_audio_stats(fd, &channel->rxaudiostats, "Rx");
+}
 
 /** @brief Print a coherent transmitter meter snapshot without reading renderer state live.
  * @param fd Asterisk CLI output descriptor.
@@ -29,17 +39,19 @@
  */
 static void print_native_tx_audio_stats(int fd, struct chan_usbradio_pvt *channel)
 {
-	struct audiostatistics statistics;
+	struct rptadv_radio_audio_statistics statistics;
 
 	if (usbradioplus_native_renderer_tx_audio_stats_read(channel, &statistics)) {
 		ast_cli(fd, "Tx audio statistics are not available.\n");
 		return;
 	}
-	ast_radio_print_audio_stats(fd, &statistics, "Tx");
+	usbradioplus_host_print_audio_stats(fd, &statistics, "Tx");
 }
 
-void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
+void tune_menusupport(int fd, struct chan_usbradio_pvt *channel, const char *command)
 {
+	struct chan_usbradio_pvt *o = channel;
+	const char *cmd = command;
 	int x, oldverbose, flatrx, txhasctcss;
 	int micmax, spkrmax, micplaymax;
 	struct chan_usbradio_pvt *oy = NULL;
@@ -104,63 +116,63 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		ast_cli(fd, "\n");
 		break;
 	case 'a': /* receive tune */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		tune_rxinput(fd, o, 1, 1);
 		break;
 	case 'b': /* receive tune display */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		tune_rxdisplay(fd, o);
 		break;
 	case 'c': /* set receive voice level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		_menu_rxvoice(fd, o, cmd + 1);
 		break;
 	case 'd': /* set receive ctcss level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		tune_rxctcss(fd, o, 1);
 		break;
 	case 'e': /* set squelch level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		_menu_rxsquelch(fd, o, cmd + 1);
 		break;
 	case 'f': /* set voice transmit level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		_menu_txvoice(fd, o, cmd + 1);
 		break;
 	case 'g': /* set aux transmit level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		_menu_auxvoice(fd, o, cmd + 1);
 		break;
 	case 'h': /* transmit a test tone */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		_menu_txtone(fd, o, cmd + 1);
 		break;
 	case 'i': /* tune receive level */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
@@ -199,7 +211,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		}
 		break;
 	case 'l': /* transmit test tone */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
@@ -317,7 +329,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		}
 		break;
 	case 'v': /* receiver/transmitter status display */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
@@ -341,23 +353,23 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 		break;
 	case 'y': /* display receive audio statistics (interactive) */
 	case 'Y': /* display receive audio statistics (once only) */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
 		for (;;) {
-			ast_radio_print_audio_stats(fd, &o->rxaudiostats, "Rx");
+			print_native_rx_audio_stats(fd, o);
 			if (cmd[0] == 'Y') {
 				break;
 			}
-			if (ast_radio_poll_input(fd, 1000)) {
+			if (usbradioplus_host_poll_input(fd, 1000)) {
 				break;
 			}
 		}
 		break;
 	case 'z': /* display transmit audio statistics (interactive) */
 	case 'Z': /* display transmit audio statistics (once only) */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
@@ -373,13 +385,13 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 			if (cmd[0] == 'Z') {
 				break;
 			}
-			if (ast_radio_poll_input(fd, 1000)) {
+			if (usbradioplus_host_poll_input(fd, 1000)) {
 				break;
 			}
 		}
 		break;
 	case 'A': /* combined signaling status and audio statistics */
-		if (!o->hasusb) {
+		if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 			ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 			break;
 		}
@@ -390,13 +402,13 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
 				o->rxsdtype ? (o->rx_ctcss_active ? "keyed" : "clear") : "off",
 				o->rxkeyed ? "keyed" : "clear",
 				(o->txkeyed || o->txtestkey) ? "keyed" : "clear");
-			ast_radio_print_audio_stats(fd, &o->rxaudiostats, "Rx");
+			print_native_rx_audio_stats(fd, o);
 			if (o->txkeyed || o->txtestkey) {
 				print_native_tx_audio_stats(fd, o);
 			} else {
 				ast_cli(fd, "Tx not keyed\n");
 			}
-			if (ast_radio_poll_input(fd, 1000)) {
+			if (usbradioplus_host_poll_input(fd, 1000)) {
 				break;
 			}
 		}
@@ -420,7 +432,7 @@ void tune_menusupport(int fd, struct chan_usbradio_pvt *o, const char *cmd)
  * \brief Determine the receive CTCSS level.
  * \param fd			Asterisk CLI fd.
  * \param o				chan_usbradio structure.
- * \param intflag		Flag to indicate how ast_radio_wait_or_poll waits.
+ * \param intflag		Nonzero enables keyboard cancellation while waiting.
  */
 
 /*!

@@ -86,7 +86,7 @@ following checks pass.
 - [ ] Confirm the signaling engine remains the sole desired-PTT owner: rendered
       audio and program-ring occupancy must never request or release PTT. After
       a complete non-silent DAC submission, verify physical PTT remains asserted
-      through the OSS measured or PortAudio estimated playback delay plus one
+      through the PortAudio estimated playback delay plus one
       20 ms native block, while silence drains. Exercise short, failed, and
       underflowed writes, a rekey during drain, a program-ring shortfall, and
       CTCSS/DCS turn-off tails.

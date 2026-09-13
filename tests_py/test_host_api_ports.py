@@ -12,49 +12,48 @@ def source(name):
     @param name Helper, source file, or symbol name selected by this test.
     """
     body = (ROOT / "src" / name).read_text(encoding="utf-8")
-    if name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
+    if name == "chan_usbradioplus.c":
         body += source("usbradioplus_channel_common.c")
         body += source("usbradioplus_native_tick.c")
+        body += source("usbradioplus_channel_private.h")
+        body += source("usbradioplus_portaudio_poc.c")
     return body
 
 
-def test_legacy_port_keeps_the_original_host_boundary():
-    """Verify legacy port keeps the original host boundary."""
-    legacy = source("chan_usbradioplus.c")
-    assert "#include <usb.h>" in legacy
-    assert "ast_radio_hid_device_init" in legacy
-    assert "ast_radio_amixer_max" in legacy
-    assert "usbradioplus_queue_program" in legacy
-    assert "PmrRx(" not in legacy
-    assert "PmrTx(" not in legacy
-
-
-def test_modern_port_uses_shared_device_audio_and_hid_services():
-    """Verify modern port uses shared device audio and hid services."""
-    modern = source("chan_usbradioplus_modern.c")
+def test_asl_adapter_uses_the_released_hardware_boundaries():
+    """The retained ASL adapter reaches hardware only through the selected facade."""
+    adapter = source("chan_usbradioplus.c")
     for required in (
-        "ast_radio_device_acquire",
-        "ast_radio_device_release",
-        "ast_radio_pa_open_device",
-        "ast_radio_pa_read",
-        "ast_radio_pa_write",
-        "ast_radio_hid_get_inputs",
-        "ast_radio_hid_set_outputs",
+        "usbradioplus_hardware_adapter_open_gpio",
+        "usbradioplus_hardware_adapter_stream_create",
+        "usbradioplus_hardware_mixer_poc",
         "usbradioplus_queue_program",
-        "usbradioplus_native_tick",
-        "urp_radio_process",
+        "usbradioplus_native_tick_f32",
     ):
-        assert required in modern
-    assert "#include <usb.h>" not in modern
-    assert "ast_radio_amixer_max" not in modern
-    assert "PmrRx(" not in modern
-    assert "PmrTx(" not in modern
+        assert required in adapter
+    for retired in ("#include <usb.h>", "asterisk/res_usbradio.h", "PmrRx(", "PmrTx("):
+        assert retired not in adapter
 
 
-def test_ports_share_the_same_configuration_and_dsp_implementation():
-    """Verify ports share the same configuration and dsp implementation."""
+def test_asl_adapter_has_one_private_state_and_no_resource_backend():
+    """Header versions cannot select a retired resource-module backend."""
+    assert not (ROOT / "src/chan_usbradioplus_modern.c").exists()
+    assert not (ROOT / "src/usbradioplus_channel_modern_private.h").exists()
+    assert not (ROOT / "src/usbradioplus_channel_legacy_private.h").exists()
+    private = source("usbradioplus_channel_private.h")
+    assert '#include "usbradioplus_channel_state.h"' in private
+    assert "URP_CHANNEL_MODERN" not in private
+    for path in (ROOT / "src").rglob("*"):
+        if path.suffix in (".c", ".h"):
+            text = path.read_text(encoding="utf-8")
+            for retired in ("res_usbradio", "ast_radio_"):
+                assert retired not in text, f"{path}: retired dependency {retired}"
+
+
+def test_asl_adapter_retains_the_shared_configuration_and_dsp_implementation():
+    """Both controller protocols share the one configuration and DSP implementation."""
     makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
-    for name in ("chan_usbradioplus.c", "chan_usbradioplus_modern.c"):
+    for name in ("chan_usbradioplus.c",):
         text = source(name)
         assert '#define CONFIG "usbradioplus.conf"' in text
         assert '#include "usbradioplus_dsp.h"' in text

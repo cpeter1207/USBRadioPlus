@@ -11,8 +11,6 @@
 #include "asterisk.h"
 #include <fcntl.h>
 #include <search.h>
-#include <sys/soundcard.h>
-#include <usb.h>
 #include "asterisk/audiohook.h"
 #include "asterisk/causes.h"
 #include "asterisk/cli.h"
@@ -21,19 +19,16 @@
 #include "asterisk/logger.h"
 #include "asterisk/module.h"
 #include "asterisk/pbx.h"
-#include "asterisk/res_usbradio.h"
 #include <libavutil/frame.h>
 #include <rate_adjusting_pcm_ring.h>
 #include <samplerate.h>
 #include <sched.h>
-#ifdef URP_TEST_MODERN
-#include <libusb-1.0/libusb.h>
-#include <sys/soundcard.h>
-#include <usb.h>
-#endif
 
-struct usb_device;
-struct usb_dev_handle;
+#include "usbradioplus_radio_core_adapter.h"
+#include "usbradioplus_ffmpeg_adapter.h"
+#include "usbradioplus_samplerate_adapter.h"
+#include <rptadv_portaudio_alsa_adapter/rptadv_portaudio_alsa_adapter.h>
+
 struct usbradioplus_radio_program_request;
 
 AVFrame *test_av_frame_alloc(void);
@@ -78,39 +73,22 @@ int __real_rpcr_set_rates(struct rpcr_ring *ring, unsigned int input_rate,
  */
 int __real_pthread_join(pthread_t thread, void **result);
 int __wrap_usleep(unsigned int microseconds);
-int __wrap_ioctl(int descriptor, unsigned long request, ...);
-int __wrap_open(const char *path, int flags, ...);
-int __wrap_close(int descriptor);
 int __wrap_fcntl(int descriptor, int command, ...);
-ssize_t __wrap_read(int descriptor, void *buffer, size_t count);
 ssize_t __wrap_write(int descriptor, const void *buffer, size_t count);
 int test_pthread_join(pthread_t thread, void **result);
 int __wrap_poll(struct pollfd *descriptors, nfds_t count, int timeout);
 int __wrap_pipe(int descriptors[2]);
 int __wrap_pipe2(int descriptors[2], int flags);
-int __wrap_ioperm(unsigned long from, unsigned long count, int turn_on);
-struct usb_dev_handle *__wrap_usb_open(struct usb_device *device);
-int __wrap_usb_close(struct usb_dev_handle *handle);
-int __wrap_usb_claim_interface(struct usb_dev_handle *handle, int interface_number);
-int __wrap_usb_detach_kernel_driver_np(struct usb_dev_handle *handle, int interface_number);
+/** @brief Linker forwarding target for the monotonic-clock failure injection. */
+int __real_clock_gettime(clockid_t clock, struct timespec *now);
+/** @brief Fail only the explicitly scripted monotonic-clock query. */
+int __wrap_clock_gettime(clockid_t clock, struct timespec *now);
 void test_ast_debug(int level, const char *format, ...);
 void test_ast_log(int level, const char *format, ...);
-#ifdef URP_TEST_MODERN
-static struct chan_usbradio_pvt *modern_stop_hid_on_radio_time;
-#endif
-#ifdef URP_TEST_MODERN
-int __wrap_libusb_open(libusb_device *device, libusb_device_handle **handle);
-void __wrap_libusb_close(libusb_device_handle *handle);
-int __wrap_libusb_claim_interface(libusb_device_handle *handle, int interface_number);
-int __wrap_libusb_detach_kernel_driver(libusb_device_handle *handle, int interface_number);
-const PaStreamInfo *__wrap_Pa_GetStreamInfo(PaStream *stream);
-void hidthread_apply_ptt(struct chan_usbradio_pvt *o, struct libusb_device_handle *usb_handle,
-			 unsigned char *buf, unsigned char *bufsave, int asserted,
-			 const struct usbradioplus_radio_program_request *request, int reprogram);
-#endif
 #include "../src/txagc/avfilter_processor.h"
 #include "../src/txagc/rnnoise_processor.h"
 #include "../src/usbradioplus_channel_core.h"
+#include "../src/usbradioplus_host_util.h"
 #include "../src/usbradioplus_config.h"
 #include "../src/usbradioplus_ctcss.h"
 #include "../src/usbradioplus_dsp.h"
@@ -120,9 +98,12 @@ void hidthread_apply_ptt(struct chan_usbradio_pvt *o, struct libusb_device_handl
 #include "../src/usbradioplus_repeat.h"
 #include "../src/usbradioplus_channel_test_api.h"
 #include "../src/usbradioplus_processing_internal.h"
+#include "../src/usbradioplus_portaudio_poc.h"
+#include <rptadv_gpio_adapter/rptadv_gpio_adapter.h>
 
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 
 /** @brief Linker entry point for the shared FFmpeg graph preparation operation. */
 int __real_txagc_avfilter_prepare(struct txagc_avfilter *state, const struct txagc_config *config,
@@ -142,25 +123,6 @@ int __real_usbradioplus_processing_get_hardware(const char *channel,
 /** @brief Linker entry point for one resolved composite processing-chain lookup. */
 int __real_usbradioplus_processing_get_composite(const char *channel, struct txagc_chain *chain);
 
-/** @brief Linker entry point for the real ioctl operation behind the test wrapper.
- * @param descriptor Test file or CLI descriptor.
- * @param request Host I/O or locking operation.
- * @param ... Values required by the wrapped variadic API.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-extern int __real_ioctl(int descriptor, unsigned long request, ...);
-/** @brief Linker entry point for the real open operation behind the test wrapper.
- * @param path Filesystem path to inspect or update.
- * @param flags Host API option bit mask.
- * @param ... Values required by the wrapped variadic API.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-extern int __real_open(const char *path, int flags, ...);
-/** @brief Linker entry point for the real close operation behind the test wrapper.
- * @param descriptor Test file or CLI descriptor.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-extern int __real_close(int descriptor);
 /** @brief Linker entry point for the real fcntl operation behind the test wrapper.
  * @param descriptor Test file or pipe descriptor.
  * @param command Requested descriptor operation.
@@ -168,13 +130,6 @@ extern int __real_close(int descriptor);
  * @return Wrapped API result, including the failure selected by the harness.
  */
 extern int __real_fcntl(int descriptor, int command, ...);
-/** @brief Linker entry point for the real read operation behind the test wrapper.
- * @param descriptor Test file or CLI descriptor.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- * @param count Number of elements available in the supplied block.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-extern ssize_t __real_read(int descriptor, void *buffer, size_t count);
 /** @brief Linker entry point for the real write operation behind the test wrapper.
  * @param descriptor Test file or CLI descriptor.
  * @param buffer Caller-owned buffer filled or consumed by the stub.
@@ -201,8 +156,118 @@ extern int __real_poll(struct pollfd *descriptors, nfds_t count, int timeout);
  */
 extern int __real_pipe(int descriptors[2]);
 
+/** Recorded delivery result and copied stack-owned voice payload. */
+static struct ast_frame direct_delivery_frame;
+/** Stable frame identity for the most recently delivered voice block. */
+static struct ast_frame direct_delivery_voice_frame;
+static short direct_delivery_pcm[URP_NATIVE_MAX_SAMPLES];
+static int direct_delivery_capture;
+static unsigned int direct_delivery_frame_count;
+static int direct_delivered_keyed;
+static unsigned int direct_delivery_generation;
+static uint64_t direct_status_sequence;
+
+/** Inject a failed PTT wake-pipe write. */
+static int mock_write_failure;
+
+/** Retained failure-injection state used by the channel harness. */
+static int pthread_create_calls;
+/** Retained failure-injection state used by the channel harness. */
+static int fail_pthread_create_call;
+/** Retained failure-injection state used by the channel harness. */
+static int set_read_result;
+/** Retained failure-injection state used by the channel harness. */
+static int set_write_result;
+/** Retained failure-injection state used by the channel harness. */
+static int channel_unregister_calls;
+/** Retained failure-injection state used by the channel harness. */
+static int cli_register_calls;
+/** Retained failure-injection state used by the channel harness. */
+static int cli_register_result;
+/** Retained failure-injection state used by the channel harness. */
+static int cli_unregister_calls;
+/** Retained failure-injection state used by the channel harness. */
+static int mock_dsp_available;
+/** Retained failure-injection state used by the channel harness. */
+static int ast_dsp_free_calls;
+/** Retained failure-injection state used by the channel harness. */
+static int mock_poll_enabled;
+/** Retained failure-injection state used by the channel harness. */
+static int mock_poll_result;
+/** Retained failure-injection state used by the channel harness. */
+static short mock_poll_revents;
+
+/** Counts released adapter descriptor resolution attempts. */
+static unsigned int direct_audio_descriptor_queries;
+static unsigned int direct_gpio_descriptor_queries;
+/** Captured PortAudio delivery worker for deterministic threadless lifecycle tests. */
+static void *(*portaudio_test_worker_entry)(void *);
+/** Private channel passed to the captured PortAudio delivery worker. */
+static void *portaudio_test_worker_data;
+/** Stop the captured PortAudio worker at its next deterministic idle sleep. */
+static struct chan_usbradio_pvt *portaudio_stop_on_usleep;
+/** Scripted descriptors are enabled only by no-hardware lifecycle tests. */
+static int direct_adapter_fixtures_enabled;
+/** Optional descriptor overrides for ordered worker startup failures. */
+static const struct rptadv_audio_adapter_descriptor *direct_audio_descriptor_override;
+static const struct rptadv_gpio_adapter_descriptor *direct_gpio_descriptor_override;
+#include "hardware_adapter_fixture.h"
+
+/** Parallel descriptor fixture records actions without any port I/O. */
+static unsigned char direct_parallel_token;
+static struct rptadv_gpio_parallel_output_action direct_parallel_output;
+static struct rptadv_gpio_parallel_scheduled_inverting_pulse_action direct_parallel_pulse;
+static unsigned int direct_parallel_publish_calls;
+
+/** @brief Capture a persistent parallel output request. */
+static enum rptadv_gpio_result
+direct_parallel_publish(struct rptadv_gpio_parallel_device *device,
+			const struct rptadv_gpio_parallel_output_action *action)
+{
+	assert(device == (struct rptadv_gpio_parallel_device *)&direct_parallel_token);
+	direct_parallel_output = *action;
+	direct_parallel_publish_calls++;
+	return RPTADV_GPIO_OK;
+}
+
+/** @brief Capture an adapter-owned timed pulse or cancellation request. */
+static enum rptadv_gpio_result
+direct_parallel_schedule(struct rptadv_gpio_parallel_device *device,
+			 const struct rptadv_gpio_parallel_scheduled_inverting_pulse_action *action)
+{
+	assert(device == (struct rptadv_gpio_parallel_device *)&direct_parallel_token);
+	direct_parallel_pulse = *action;
+	return RPTADV_GPIO_OK;
+}
+
+/** Released GPIO descriptor fixture for control-plane publication. */
+static const struct rptadv_gpio_adapter_descriptor direct_parallel_descriptor = {
+	.struct_size = sizeof(struct rptadv_gpio_adapter_descriptor),
+	.abi_version = RPTADV_GPIO_ADAPTER_ABI_VERSION,
+	.parallel_publish_outputs = direct_parallel_publish,
+	.parallel_schedule_inverting_pulse = direct_parallel_schedule,
+};
+
+/** @brief Bind a channel to deterministic already-prepared parallel state. */
+static void direct_parallel_fixture(struct chan_usbradio_pvt *radio)
+{
+	radio->plus_cm119_gpio_poc = 1;
+	radio->plus_parallel_adapter_poc.opened = 1;
+	usbradioplus_test_set_parallel_owner(radio);
+	radio->plus_hardware_adapter.gpio = &direct_parallel_descriptor;
+	radio->plus_hardware_adapter.parallel_device =
+		(struct rptadv_gpio_parallel_device *)&direct_parallel_token;
+	direct_parallel_publish_calls = 0U;
+	memset(&direct_parallel_output, 0, sizeof(direct_parallel_output));
+	memset(&direct_parallel_pulse, 0, sizeof(direct_parallel_pulse));
+}
+
 /** Last opt-in timing record emitted by the shared channel code. */
 static char tx_trace_message[512];
+/** Text emitted by the most recent CLI operation under test. */
+static char cli_output[4096];
+/** Number of valid bytes currently retained in cli_output. */
+static size_t cli_output_length;
 
 void test_ast_debug(int level, const char *format, ...)
 {
@@ -215,6 +280,72 @@ void test_ast_log(int level, const char *format, ...)
 	(void)level;
 	(void)format;
 }
+
+/**
+ * @brief Keep the GPIO configuration gate independent of a physical HID device.
+ * @return Scripted descriptor during lifecycle tests, otherwise NULL.
+ */
+const struct rptadv_gpio_adapter_descriptor *rptadv_gpio_adapter_descriptor(void)
+{
+	direct_gpio_descriptor_queries++;
+	return direct_adapter_fixtures_enabled
+		       ? (direct_gpio_descriptor_override ? direct_gpio_descriptor_override
+							  : &fake_gpio)
+		       : NULL;
+}
+
+/**
+ * @brief Keep combined-facade resolution independent of a physical audio device.
+ * @return Scripted descriptor during lifecycle tests, otherwise NULL.
+ */
+const struct rptadv_audio_adapter_descriptor *rptadv_portaudio_alsa_adapter_descriptor(void)
+{
+	direct_audio_descriptor_queries++;
+	return direct_adapter_fixtures_enabled
+		       ? (direct_audio_descriptor_override ? direct_audio_descriptor_override
+							   : &fake_audio)
+		       : NULL;
+}
+
+/** @brief Opaque stream identity used by the combined-POC statistics fake. */
+static int combined_poc_statistics_stream_token;
+/** @brief Number of raw stream-statistics requests made by the CLI path. */
+static unsigned int combined_poc_statistics_calls;
+/** @brief Result selected for the next combined-POC stream-statistics request. */
+static enum rptadv_audio_result combined_poc_statistics_result;
+/** @brief Complete immutable raw snapshot returned by the combined-POC fake. */
+static struct rptadv_audio_stream_stats combined_poc_statistics_snapshot;
+/** @brief Optional older-library prefix size; zero returns the complete snapshot. */
+static size_t combined_poc_statistics_copy_size;
+
+/**
+ * @brief Return a deterministic raw device snapshot without opening PortAudio.
+ * @param stream Opaque stream selected by the test.
+ * @param statistics Caller-owned adapter ABI destination.
+ * @return Scripted adapter result.
+ */
+static enum rptadv_audio_result
+combined_poc_fake_stream_get_stats(const struct rptadv_audio_stream *stream,
+				   struct rptadv_audio_stream_stats *statistics)
+{
+	if (stream != (const struct rptadv_audio_stream *)&combined_poc_statistics_stream_token ||
+	    !statistics || statistics->struct_size < sizeof(*statistics))
+		return RPTADV_AUDIO_INVALID_ARGUMENT;
+	combined_poc_statistics_calls++;
+	if (combined_poc_statistics_result != RPTADV_AUDIO_OK)
+		return combined_poc_statistics_result;
+	memcpy(statistics, &combined_poc_statistics_snapshot,
+	       combined_poc_statistics_copy_size ? combined_poc_statistics_copy_size
+						 : sizeof(*statistics));
+	return RPTADV_AUDIO_OK;
+}
+
+/** @brief Complete fake descriptor carrying only the read-only statistics operation. */
+static const struct rptadv_audio_adapter_descriptor combined_poc_statistics_adapter = {
+	.struct_size = sizeof(struct rptadv_audio_adapter_descriptor),
+	.abi_version = RPTADV_AUDIO_ADAPTER_ABI_VERSION,
+	.stream_get_stats = combined_poc_fake_stream_get_stats,
+};
 
 /** @brief Verify pthread join.
  * @param thread Worker thread identifier supplied by the harness.
@@ -274,10 +405,22 @@ static int fail_avfilter_prepare_call;
 static int avfilter_prepare_calls;
 /** Prepared FFmpeg graph selected to fail during a native callback. */
 static struct txagc_avfilter *fail_avfilter_process_state;
+/** Shared-adapter graph selected for a native callback failure. */
+static struct usbradioplus_ffmpeg_adapter *fail_ffmpeg_adapter_process_state;
 /** Prepared graph whose use is counted by a native callback assertion. */
 static const struct txagc_avfilter *observed_avfilter_process_state;
 /** Calls received by the prepared graph selected for observation. */
 static unsigned int observed_avfilter_process_calls;
+/** @brief Count and validate silent control-plane graph warmup calls. */
+static int observe_native_warmup;
+/** @brief Number of voice graph calls in the selected preparation. */
+static unsigned int warmup_voice_calls;
+/** @brief Voice call index selected to reject an unpublished graph. */
+static unsigned int fail_warmup_voice_call;
+/** @brief Number of DCS graph calls in the selected preparation. */
+static unsigned int warmup_dcs_calls;
+/** @brief DCS call index selected to reject an unpublished graph. */
+static unsigned int fail_warmup_dcs_call;
 /** Injects one resolved-option lookup failure for parser transaction tests. */
 static int fail_processing_option_get_call;
 /** Counts resolved-option lookups made by a parser transaction. */
@@ -340,6 +483,10 @@ static int wait_or_poll_fail_call;
 static int poll_successes_before_exit;
 /** Recorded audio-statistics display calls for assertions. */
 static int radio_print_audio_stats_calls;
+/** Most recent ASL3 formatter input captured for boundary assertions. */
+static struct rptadv_radio_audio_statistics radio_print_audio_statistics;
+/** Prefix supplied with the most recent ASL3 formatter input. */
+static char radio_print_audio_statistics_prefix[8];
 /** Harness toggle rxkey radio used to script and verify host behavior. */
 static struct chan_usbradio_pvt *toggle_rxkey_radio;
 /** Harness scripted measure stage used to script and verify host behavior. */
@@ -367,14 +514,8 @@ static int inject_invalid_override_on_browse_call;
 /** Harness category get result used to script and verify host behavior. */
 static struct ast_category *test_category_get_result = (struct ast_category *)(uintptr_t)1;
 /** Harness config save result used to script and verify host behavior. */
-static int config_save_result;
-/** Recorded parallel write calls for assertions. */
-static int parallel_write_calls;
-/** Optional configured parallel PTT mask observed by the output test double. */
-static unsigned char mock_parallel_ptt_mask;
-/** Nonzero once the observed configured parallel PTT mask was physically asserted. */
-static int parallel_saw_ptt_asserted;
-/** Harness jitter config result used to script and verify host behavior. */
+static int config_save_result; /** Harness jitter config result used to script and verify host
+				  behavior. */
 static int jitter_config_result;
 /** Recorded ast strdup calls for assertions. */
 static int ast_strdup_calls;
@@ -385,24 +526,12 @@ static int clear_eeprom_on_usleep;
 /** Harness clear eeprom target used to script and verify host behavior. */
 static struct chan_usbradio_pvt *clear_eeprom_target;
 /** Harness stop pulser on usleep used to script and verify host behavior. */
-static int stop_pulser_on_usleep;
 /** Harness stop hid radio on usleep used to script and verify host behavior. */
 static struct chan_usbradio_pvt *stop_hid_radio_on_usleep;
 /** Harness stop hid after usleeps used to script and verify host behavior. */
 static int stop_hid_after_usleeps;
 /** Recorded stop hid usleep count for assertions. */
 static int stop_hid_usleep_count;
-#ifdef URP_TEST_MODERN
-static struct chan_usbradio_pvt *modern_swap_first;
-static struct chan_usbradio_pvt *modern_swap_second;
-static int modern_swap_wait_step;
-static int modern_swap_staggered;
-static struct chan_usbradio_pvt *modern_stop_audio_on_usleep;
-static struct chan_usbradio_pvt *modern_drop_hasusb_on_time;
-static struct chan_usbradio_pvt *modern_drop_hasusb_on_queue;
-static int modern_radio_time_calls;
-static int modern_drop_hasusb_on_time_call;
-#endif
 /** Controls injected channel alloc failure for this test. */
 static int fail_channel_alloc;
 /** Harness pbx start result used to script and verify host behavior. */
@@ -421,110 +550,10 @@ static int dsp_result_digit;
 static int frame_free_calls;
 /** Harness config category used to script and verify host behavior. */
 static char *test_config_category;
-/** Recorded parallel load calls for assertions. */
-static int parallel_load_calls;
 /** Harness module debug level used to script and verify host behavior. */
 static unsigned int module_debug_level;
 /** Harness file debug level used to script and verify host behavior. */
 static unsigned int file_debug_level;
-/** Harness installed usb device used to script and verify host behavior. */
-static const char *installed_usb_device;
-/** Harness oss io used to script and verify host behavior. */
-static int mock_oss_io;
-/** Harness open result used to script and verify host behavior. */
-static int mock_open_result = 7;
-/** Harness ioctl failure used to script and verify host behavior. */
-static unsigned long mock_ioctl_failure;
-/** Harness oss fragments used to script and verify host behavior. */
-static int mock_oss_fragments = 8;
-/** Harness oss fragment total used to script and verify host behavior. */
-static int mock_oss_fragment_total = 8;
-/** Harness OSS fragment size used to script output-space accounting. */
-static int mock_oss_fragment_size = 3840;
-/** Counts output-space queries made by the OSS test wrapper. */
-static int mock_oss_output_space_calls;
-/** Fails one numbered output-space query in the OSS test wrapper. */
-static int fail_oss_output_space_call;
-/** Makes one output-space query report a capacity that saturates callback accounting. */
-static int extreme_oss_output_space_call;
-/** Optional scripted OSS output-space byte count; negative follows fragments. */
-static int mock_oss_bytes = -1;
-/** Optional scripted OSS queued-byte delay; negative makes GETODELAY fail. */
-static int mock_oss_output_delay = -1;
-/** Harness oss speed used to script and verify host behavior. */
-static int mock_oss_speed = 48000;
-/** Harness oss caps used to script and verify host behavior. */
-static int mock_oss_caps = DSP_CAP_DUPLEX;
-/** Harness read result used to script and verify host behavior. */
-static ssize_t mock_read_result = -1;
-/** Harness read errno used to script and verify host behavior. */
-static int mock_read_errno = EAGAIN;
-/** Harness write result used to script and verify host behavior. */
-static int mock_write_result = -2;
-/** OSS audio descriptor observed separately from PTT kick-pipe writes. */
-static int mock_sound_descriptor = 7;
-/** Number of mocked sound writes, including failed and short attempts. */
-static unsigned int mock_sound_write_calls;
-/** Byte count requested by the most recent mocked sound write. */
-static size_t mock_sound_write_bytes;
-/** Copy of the most recent mocked sound write's native stereo payload. */
-static short mock_sound_write_data[FRAME_SIZE * 2 * 6];
-/** Recorded mock close calls for assertions. */
-static int mock_close_calls;
-/** Recorded pthread create calls for assertions. */
-static int pthread_create_calls;
-/** Controls injected pthread create call failure for this test. */
-static int fail_pthread_create_call;
-#ifndef URP_TEST_MODERN
-/** Harness usb device used to script and verify host behavior. */
-static struct usb_device mock_usb_device;
-/** Harness hid device available used to script and verify host behavior. */
-static int mock_hid_device_available;
-#endif
-/** Harness usb open success used to script and verify host behavior. */
-static int mock_usb_open_success;
-/** Harness usb claim result used to script and verify host behavior. */
-static int mock_usb_claim_result;
-/** Harness usb second claim result used to script and verify host behavior. */
-static int mock_usb_second_claim_result;
-/** Recorded mock usb claim calls for assertions. */
-static int mock_usb_claim_calls;
-/** Harness usb detach result used to script and verify host behavior. */
-static int mock_usb_detach_result;
-#ifndef URP_TEST_MODERN
-/** Harness stop hid on input used to script and verify host behavior. */
-static struct chan_usbradio_pvt *stop_hid_on_input;
-/**
- * Harness channel that publishes an unkey while its program snapshot is intentionally
- * unavailable.  This models a control-plane update in progress without another thread.
- */
-static struct chan_usbradio_pvt *unkey_without_program_on_input;
-/** Input-report count at which the unavailable-program unkey is published. */
-static int unkey_without_program_after_inputs;
-/**
- * Harness channel that publishes a PTT assertion while its program snapshot is intentionally
- * unavailable.  This proves signaling publication never prevents a physical key-up.
- */
-static struct chan_usbradio_pvt *key_without_program_on_input;
-/** Input-report count at which the unavailable-program key-up is published. */
-static int key_without_program_after_inputs;
-/** Harness channel that publishes a fresh program and a PTT assertion after HID setup. */
-static struct chan_usbradio_pvt *program_and_key_on_input;
-/** Input-report count at which the combined program and key-up is published. */
-static int program_and_key_after_inputs;
-/** Harness channel that publishes a PTT assertion after the current program is consumed. */
-static struct chan_usbradio_pvt *key_after_program_on_input;
-/** Input-report count at which the steady-program key-up is published. */
-static int key_after_program_after_inputs;
-/** Harness drop hid on input used to script and verify host behavior. */
-static struct chan_usbradio_pvt *drop_hid_on_input;
-/** Harness eeprom result used to script and verify host behavior. */
-static unsigned short mock_eeprom_result;
-/** Harness eeprom valid magic used to script and verify host behavior. */
-static int mock_eeprom_valid_magic;
-/** Harness eeprom write after read used to script and verify host behavior. */
-static struct chan_usbradio_pvt *eeprom_write_after_read;
-#endif
 /** Controls injected format cap alloc failure for this test. */
 static int fail_format_cap_alloc;
 /** Harness channel register result used to script and verify host behavior. */
@@ -534,88 +563,27 @@ static int advanced_register_result;
 /** Last registered advanced channel technology. */
 static const struct ast_channel_tech *advanced_technology;
 /** Inject format capability append failure. */
-static int format_append_result;
-/** Inject native receive-format selection failure. */
-static int set_read_result;
-/** Inject native transmit-format selection failure. */
-static int set_write_result;
-/** Recorded channel unregister calls for assertions. */
-static int channel_unregister_calls;
-/** Recorded cli register calls for assertions. */
-static int cli_register_calls;
-/** Harness cli register result used to script and verify host behavior. */
-static int cli_register_result;
-/** Recorded cli unregister calls for assertions. */
-static int cli_unregister_calls;
-/** Harness hid mklist result used to script and verify host behavior. */
-static int hid_mklist_result;
-/** Harness usb device number used to script and verify host behavior. */
-static int mock_usb_device_number;
-/** Harness usb serial result used to script and verify host behavior. */
-static int mock_usb_serial_result;
-/** Harness usb serial used to script and verify host behavior. */
-static const char *mock_usb_serial = "serial-test";
-/** Harness usb serial by device used to script and verify host behavior. */
-static int mock_usb_serial_by_device;
-/** Harness second usb device used to script and verify host behavior. */
-static int mock_second_usb_device;
-/** Harness no usb devices used to script and verify host behavior. */
-static int mock_no_usb_devices;
-#ifndef URP_TEST_MODERN
-/** Harness amixer max used to script and verify host behavior. */
-static int mock_amixer_max = 100;
-/** Harness new mixer name used to script and verify host behavior. */
-static int mock_new_mixer_name;
-#endif
-/** Harness dsp available used to script and verify host behavior. */
-static int mock_dsp_available;
-/** Recorded ast_dsp_free calls for lifecycle assertions. */
-static int ast_dsp_free_calls;
-/** Harness poll enabled used to script and verify host behavior. */
-static int mock_poll_enabled;
-/** Harness poll result used to script and verify host behavior. */
-static int mock_poll_result;
-/** Harness poll revents used to script and verify host behavior. */
-static short mock_poll_revents;
-#ifndef URP_TEST_MODERN
-/** Harness hid inputs used to script and verify host behavior. */
-static unsigned char mock_hid_inputs[4];
-/** Recorded mock hid input calls for assertions. */
-static int mock_hid_input_calls;
-/** Harness stop hid after inputs used to script and verify host behavior. */
-static int stop_hid_after_inputs = 1;
-/** Harness toggle hid input index used to script and verify host behavior. */
-static int toggle_hid_input_index;
-/** Harness toggle hid inputs mask used to script and verify host behavior. */
-static unsigned char toggle_hid_inputs_mask;
-#endif
-/** Harness parallel inputs used to script and verify host behavior. */
-static unsigned char mock_parallel_inputs;
-/** Harness toggle parallel inputs mask used to script and verify host behavior. */
-static unsigned char toggle_parallel_inputs_mask;
-/** Harness tvnow milliseconds used to script and verify host behavior. */
+static int format_append_result; /** Harness tvnow milliseconds used to script and verify host
+				    behavior. */
 static long mock_tvnow_milliseconds = 1000;
 /** Harness tvnow step used to script and verify host behavior. */
 static long mock_tvnow_step;
-/** Harness audio clipping used to script and verify host behavior. */
-static int mock_audio_clipping;
 /** Harness pipe failure used to script and verify host behavior. */
 static int mock_pipe_failure;
 /** Calls to the wrapped fcntl operation before the selected injected failure. */
 static int mock_fcntl_calls;
 /** Positive call number that fails the wrapped fcntl operation. */
 static int mock_fcntl_fail_call;
+/** Script monotonic clock failure while preserving ordinary timing elsewhere. */
+static int mock_monotonic_clock_failure;
 
-/** @brief Record a mocked sound write without modifying the caller's samples.
- * @param buffer Samples supplied to the output API.
- * @param count Number of bytes requested from the output API.
- */
-static void record_mock_sound_write(const void *buffer, size_t count)
+int __wrap_clock_gettime(clockid_t clock, struct timespec *now)
 {
-	mock_sound_write_calls++;
-	mock_sound_write_bytes = count;
-	memcpy(mock_sound_write_data, buffer,
-	       count < sizeof(mock_sound_write_data) ? count : sizeof(mock_sound_write_data));
+	if (mock_monotonic_clock_failure && clock == CLOCK_MONOTONIC) {
+		errno = EIO;
+		return -1;
+	}
+	return __real_clock_gettime(clock, now);
 }
 
 /** @brief Test wrapper for pipe controlled by the harness's failure-injection state.
@@ -670,20 +638,6 @@ int __wrap_fcntl(int descriptor, int command, ...)
 	return result;
 }
 
-/** @brief Test wrapper for ioperm controlled by the harness's failure-injection state.
- * @param from From supplied by the test scenario.
- * @param count Number of elements available in the supplied block.
- * @param turn_on Turn on supplied by the test scenario.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_ioperm(unsigned long from, unsigned long count, int turn_on)
-{
-	(void)from;
-	(void)count;
-	(void)turn_on;
-	return 0;
-}
-
 /** @brief Test wrapper for poll controlled by the harness's failure-injection state.
  * @param descriptors Test descriptor array.
  * @param count Number of elements available in the supplied block.
@@ -699,52 +653,6 @@ int __wrap_poll(struct pollfd *descriptors, nfds_t count, int timeout)
 		return mock_poll_result;
 	}
 	return __real_poll(descriptors, count, timeout);
-}
-
-/** @brief Test wrapper for usb_open controlled by the harness's failure-injection state.
- * @param device Channel name or USB device identifier.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-struct usb_dev_handle *__wrap_usb_open(struct usb_device *device)
-{
-	(void)device;
-	return mock_usb_open_success ? (struct usb_dev_handle *)(uintptr_t)1 : NULL;
-}
-
-/** @brief Test wrapper for usb_close controlled by the harness's failure-injection state.
- * @param handle Simulated acquired USB handle.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_usb_close(struct usb_dev_handle *handle)
-{
-	(void)handle;
-	return 0;
-}
-
-/** @brief Test wrapper for usb_claim_interface controlled by the harness's failure-injection state.
- * @param handle Simulated acquired USB handle.
- * @param interface_number Interface number supplied by the test scenario.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_usb_claim_interface(struct usb_dev_handle *handle, int interface_number)
-{
-	(void)handle;
-	(void)interface_number;
-	mock_usb_claim_calls++;
-	return mock_usb_claim_calls == 1 ? mock_usb_claim_result : mock_usb_second_claim_result;
-}
-
-/** @brief Test wrapper for usb_detach_kernel_driver_np controlled by the harness's
- * failure-injection state.
- * @param handle Simulated acquired USB handle.
- * @param interface_number Interface number supplied by the test scenario.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_usb_detach_kernel_driver_np(struct usb_dev_handle *handle, int interface_number)
-{
-	(void)handle;
-	(void)interface_number;
-	return mock_usb_detach_result;
 }
 
 /** @brief Host-API test double for __ast_format_cap_alloc; observable effects are recorded in
@@ -887,143 +795,11 @@ void __ao2_cleanup_debug(void *object, const char *tag, const char *file, int li
 	(void)function;
 }
 
-/** @brief Test wrapper for ioctl controlled by the harness's failure-injection state.
- * @param descriptor Test file or CLI descriptor.
- * @param request Host I/O or locking operation.
- * @param ... Values required by the wrapped variadic API.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_ioctl(int descriptor, unsigned long request, ...)
-{
-	va_list arguments;
-	void *argument;
-	(void)descriptor;
-	if (!mock_oss_io) {
-		va_start(arguments, request);
-		argument = va_arg(arguments, void *);
-		va_end(arguments);
-		return __real_ioctl(descriptor, request, argument);
-	}
-	if (request == mock_ioctl_failure)
-		return -1;
-	if (request == SNDCTL_DSP_RESET || request == SNDCTL_DSP_SETDUPLEX ||
-	    request == SNDCTL_DSP_SETTRIGGER)
-		return 0;
-	va_start(arguments, request);
-	argument = va_arg(arguments, void *);
-	va_end(arguments);
-	if (request == SNDCTL_DSP_GETOSPACE) {
-		struct audio_buf_info *info = argument;
-
-		mock_oss_output_space_calls++;
-		if (fail_oss_output_space_call == mock_oss_output_space_calls)
-			return -1;
-		memset(info, 0, sizeof(*info));
-		if (extreme_oss_output_space_call == mock_oss_output_space_calls) {
-			info->fragstotal = INT_MAX;
-			info->fragsize = INT_MAX;
-			return 0;
-		}
-		info->fragstotal = mock_oss_fragment_total;
-		info->fragments = mock_oss_fragments;
-		info->fragsize = mock_oss_fragment_size;
-		info->bytes =
-			mock_oss_bytes >= 0 ? mock_oss_bytes : info->fragments * info->fragsize;
-		return 0;
-	}
-#ifdef SNDCTL_DSP_GETODELAY
-	if (request == SNDCTL_DSP_GETODELAY) {
-		if (mock_oss_output_delay == INT_MIN) {
-			*(int *)argument = -1;
-			return 0;
-		}
-		if (mock_oss_output_delay < 0)
-			return -1;
-		*(int *)argument = mock_oss_output_delay;
-		return 0;
-	}
-#endif
-	if (request == SNDCTL_DSP_GETCAPS)
-		*(int *)argument = mock_oss_caps;
-	else if (request == SNDCTL_DSP_SPEED)
-		*(int *)argument = mock_oss_speed;
-	return 0;
-}
-
-/** @brief Test wrapper for open controlled by the harness's failure-injection state.
- * @param path Filesystem path to inspect or update.
- * @param flags Host API option bit mask.
- * @param ... Values required by the wrapped variadic API.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_open(const char *path, int flags, ...)
-{
-	if (mock_oss_io) {
-		(void)path;
-		(void)flags;
-		return mock_open_result;
-	}
-	return __real_open(path, flags);
-}
-
-/** @brief Test wrapper for close controlled by the harness's failure-injection state.
- * @param descriptor Test file or CLI descriptor.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-int __wrap_close(int descriptor)
-{
-	if (mock_oss_io) {
-		mock_close_calls++;
-		return 0;
-	}
-	return __real_close(descriptor);
-}
-
-/** @brief Test wrapper for read controlled by the harness's failure-injection state.
- * @param descriptor Test file or CLI descriptor.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- * @param count Number of elements available in the supplied block.
- * @return Wrapped API result, including the failure selected by the harness.
- */
-ssize_t __wrap_read(int descriptor, void *buffer, size_t count)
-{
-	ssize_t result;
-
-	if (mock_oss_io) {
-		result = mock_read_result;
-		errno = mock_read_errno;
-		if (result > 0) {
-			size_t bytes = (size_t)result;
-			memset(buffer, 0, bytes < count ? bytes : count);
-		}
-		/* The HID worker drains its nonblocking kick pipe until EAGAIN.  A
-		 * scripted readable pipe therefore supplies one byte, then becomes empty;
-		 * replaying a positive result forever would make the worker spin inside
-		 * that drain loop instead of reaching its teardown path. */
-		if (descriptor != mock_sound_descriptor && result > 0) {
-			mock_read_result = -1;
-			mock_read_errno = EAGAIN;
-		}
-		return result;
-	}
-	return __real_read(descriptor, buffer, count);
-}
-
-/** @brief Test wrapper for write controlled by the harness's failure-injection state.
- * @param descriptor Test file or CLI descriptor.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- * @param count Number of elements available in the supplied block.
- * @return Wrapped API result, including the failure selected by the harness.
- */
+/** @brief Inject a PTT wake-pipe failure without substituting audio I/O. */
 ssize_t __wrap_write(int descriptor, const void *buffer, size_t count)
 {
-	if (mock_oss_io) {
-		if (descriptor == mock_sound_descriptor)
-			record_mock_sound_write(buffer, count);
-		if (mock_write_result != -2)
-			return mock_write_result;
-		return (ssize_t)count;
-	}
+	if (mock_write_failure)
+		return -1;
 	return __real_write(descriptor, buffer, count);
 }
 
@@ -1131,6 +907,42 @@ SRC_STATE *test_src_new(int converter_type, int channels, int *error)
 	return __real_src_new(converter_type, channels, error);
 }
 
+/** @brief Real released-adapter setup behind deterministic channel failure injection. */
+enum usbradioplus_samplerate_adapter_result __real_usbradioplus_samplerate_adapter_prepare_released(
+	struct usbradioplus_samplerate_adapter *adapter, enum rptadv_samplerate_quality quality);
+/** @brief Count both selected-adapter and RNNoise converter setup in the same test order. */
+enum usbradioplus_samplerate_adapter_result __wrap_usbradioplus_samplerate_adapter_prepare_released(
+	struct usbradioplus_samplerate_adapter *adapter, enum rptadv_samplerate_quality quality)
+{
+	if (++src_new_calls == fail_src_new_call)
+		return USBRADIOPLUS_SAMPLERATE_ADAPTER_CONVERTER_ERROR;
+	return __real_usbradioplus_samplerate_adapter_prepare_released(adapter, quality);
+}
+
+/** @brief Real selected converter processing behind deterministic channel failures. */
+enum usbradioplus_samplerate_adapter_result __real_usbradioplus_samplerate_adapter_process(
+	struct usbradioplus_samplerate_adapter *adapter, const float *input, uint32_t input_frames,
+	float *output, uint32_t output_capacity, double ratio, uint32_t *used, uint32_t *made);
+/** @brief Inject failure or partial progress at the actual production converter boundary. */
+enum usbradioplus_samplerate_adapter_result __wrap_usbradioplus_samplerate_adapter_process(
+	struct usbradioplus_samplerate_adapter *adapter, const float *input, uint32_t input_frames,
+	float *output, uint32_t output_capacity, double ratio, uint32_t *used, uint32_t *made)
+{
+	enum usbradioplus_samplerate_adapter_result result;
+
+	if (++src_process_calls == fail_src_process_call)
+		return USBRADIOPLUS_SAMPLERATE_ADAPTER_CONVERTER_ERROR;
+	result = __real_usbradioplus_samplerate_adapter_process(
+		adapter, input, input_frames, output, output_capacity, ratio, used, made);
+	if (result == USBRADIOPLUS_SAMPLERATE_ADAPTER_OK) {
+		if (partial_src_process_call == src_process_calls && *used > 0)
+			--*used;
+		if (partial_src_output_call == src_process_calls && *made > 0)
+			--*made;
+	}
+	return result;
+}
+
 /** @brief Test wrapper for av_frame_alloc controlled by the harness's failure-injection state.
  * @return Wrapped API result, including the failure selected by the harness.
  */
@@ -1202,6 +1014,41 @@ int __wrap_txagc_avfilter_prepare(struct txagc_avfilter *state, const struct txa
 	return __real_txagc_avfilter_prepare(state, config, sample_rate);
 }
 
+/** @brief Real dynamically linked DCS graph preparation behind the harness wrapper. */
+enum usbradioplus_ffmpeg_adapter_result
+__real_usbradioplus_ffmpeg_adapter_prepare_dcs(struct usbradioplus_ffmpeg_adapter *adapter,
+					       int turnoff, uint32_t rate, uint32_t maximum);
+/** @brief Share graph-preparation failure ordering across both graph interfaces. */
+enum usbradioplus_ffmpeg_adapter_result
+__wrap_usbradioplus_ffmpeg_adapter_prepare_dcs(struct usbradioplus_ffmpeg_adapter *adapter,
+					       int turnoff, uint32_t rate, uint32_t maximum)
+{
+	if (++avfilter_prepare_calls == fail_avfilter_prepare_call)
+		return USBRADIOPLUS_FFMPEG_ADAPTER_GRAPH_ERROR;
+	return __real_usbradioplus_ffmpeg_adapter_prepare_dcs(adapter, turnoff, rate, maximum);
+}
+
+/** @brief Real shared-adapter callback behind the harness wrapper. */
+enum usbradioplus_ffmpeg_adapter_result
+__real_usbradioplus_ffmpeg_adapter_process_block(struct usbradioplus_ffmpeg_adapter *adapter,
+						 const float *input, uint32_t count, float *output);
+/** @brief Inject a DCS graph failure without disturbing independent voice or CTCSS. */
+enum usbradioplus_ffmpeg_adapter_result
+__wrap_usbradioplus_ffmpeg_adapter_process_block(struct usbradioplus_ffmpeg_adapter *adapter,
+						 const float *input, uint32_t count, float *output)
+{
+	if (observe_native_warmup) {
+		assert(count == URP_NATIVE_MAX_SAMPLES);
+		for (uint32_t sample = 0; sample < count; ++sample)
+			assert(input[sample] == 0.0F);
+		if (++warmup_dcs_calls == fail_warmup_dcs_call)
+			return USBRADIOPLUS_FFMPEG_ADAPTER_GRAPH_ERROR;
+	}
+	if (adapter == fail_ffmpeg_adapter_process_state)
+		return USBRADIOPLUS_FFMPEG_ADAPTER_GRAPH_ERROR;
+	return __real_usbradioplus_ffmpeg_adapter_process_block(adapter, input, count, output);
+}
+
 /** @brief Inject a selected prepared-graph processing failure in a native callback.
  * @param state Prepared graph selected by the test, or a normal graph.
  * @param samples PCM samples processed by the graph.
@@ -1211,6 +1058,13 @@ int __wrap_txagc_avfilter_prepare(struct txagc_avfilter *state, const struct txa
 int __wrap_txagc_avfilter_process_prepared(struct txagc_avfilter *state, double *samples,
 					   size_t sample_count)
 {
+	if (observe_native_warmup) {
+		assert(sample_count == URP_NATIVE_MAX_SAMPLES);
+		for (size_t sample = 0; sample < sample_count; ++sample)
+			assert(samples[sample] == 0.0);
+		if (++warmup_voice_calls == fail_warmup_voice_call)
+			return -1;
+	}
 	if (observed_avfilter_process_state && state == observed_avfilter_process_state) {
 		observed_avfilter_process_calls++;
 		return 0;
@@ -1268,42 +1122,20 @@ int __wrap_pthread_join(pthread_t thread, void **result)
  */
 int __wrap_usleep(unsigned int microseconds)
 {
+	if (portaudio_stop_on_usleep)
+		atomic_store(&portaudio_stop_on_usleep->plus_portaudio_delivery_stop, 1);
 	(void)microseconds;
 	usleep_calls++;
 	if (clear_eeprom_on_usleep && usbradio_default.next)
 		usbradio_default.next->eepromctl = 0;
 	if (clear_eeprom_target)
 		clear_eeprom_target->eepromctl = 0;
-	if (stop_pulser_on_usleep)
-		stoppulser = 1;
 	if (stop_hid_radio_on_usleep &&
-	    ++stop_hid_usleep_count >= (stop_hid_after_usleeps ? stop_hid_after_usleeps : 1))
+	    ++stop_hid_usleep_count >= (stop_hid_after_usleeps ? stop_hid_after_usleeps : 1)) {
 		stop_hid_radio_on_usleep->stophid = 1;
-#ifdef URP_TEST_MODERN
-	if (modern_stop_audio_on_usleep)
-		modern_stop_audio_on_usleep->stopaudiothread = 1;
-	if (modern_swap_first && modern_swap_second) {
-		modern_swap_wait_step++;
-		if (modern_swap_wait_step == 1) {
-			modern_swap_first->swap_audio_ready = 1;
-			if (!modern_swap_staggered)
-				modern_swap_second->swap_audio_ready = 1;
-			if (modern_swap_first != modern_swap_second) {
-				modern_swap_first->swap_state = DEVICE_SWAP_READY;
-				if (!modern_swap_staggered)
-					modern_swap_second->swap_state = DEVICE_SWAP_READY;
-			}
-		} else {
-			modern_swap_second->swap_audio_ready = 1;
-			if (modern_swap_staggered) {
-				modern_swap_second->swap_state = DEVICE_SWAP_READY;
-			} else {
-				modern_swap_first->swap_state = DEVICE_SWAP_IDLE;
-				modern_swap_second->swap_state = DEVICE_SWAP_IDLE;
-			}
-		}
+		atomic_store_explicit(&stop_hid_radio_on_usleep->plus_hardware_stop_request, 1,
+				      memory_order_release);
 	}
-#endif
 	return 0;
 }
 
@@ -1605,51 +1437,24 @@ void __ast_verbose(const char *file, int line, const char *function, int level, 
  */
 void ast_cli(int descriptor, const char *format, ...)
 {
-	(void)descriptor;
-	(void)format;
-}
+	va_list arguments;
+	int written;
+	size_t remaining;
 
-/** @brief Host-API test double for ast_radio_ppwrite; observable effects are recorded in harness
- * state.
- * @param available Whether the fake hardware is present.
- * @param descriptor Test file or CLI descriptor.
- * @param base Parallel-port I/O base address.
- * @param port Parallel-port device name.
- * @param value Input value or writable result, as declared.
- */
-void ast_radio_ppwrite(int available, unsigned int descriptor, unsigned int base, const char *port,
-		       unsigned char value)
-{
-	(void)available;
 	(void)descriptor;
-	(void)base;
-	(void)port;
-	if (mock_parallel_ptt_mask && (value & mock_parallel_ptt_mask) == mock_parallel_ptt_mask) {
-		parallel_saw_ptt_asserted = 1;
+	if (cli_output_length >= sizeof(cli_output) - 1)
+		return;
+	remaining = sizeof(cli_output) - cli_output_length;
+	va_start(arguments, format);
+	written = vsnprintf(cli_output + cli_output_length, remaining, format, arguments);
+	va_end(arguments);
+	if (written < 0)
+		return;
+	if ((size_t)written >= remaining) {
+		cli_output_length = sizeof(cli_output) - 1;
+		return;
 	}
-	parallel_write_calls++;
-}
-
-/** @brief Host-API test double for ast_radio_load_parallel_port; observable effects are recorded in
- * harness state.
- * @param available Whether the fake hardware is present.
- * @param descriptor Test file or CLI descriptor.
- * @param base Parallel-port I/O base address.
- * @param port Parallel-port device name.
- * @param reload Nonzero selects reload handling for existing channels.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_load_parallel_port(int *available, int *descriptor, int *base, const char *port,
-				 int reload)
-{
-	(void)port;
-	(void)reload;
-	parallel_load_calls++;
-	*available = 1;
-	*descriptor = 2;
-	if (!*base)
-		*base = PP_IOPORT;
-	return 0;
+	cli_output_length += (size_t)written;
 }
 
 /** @brief Host-API test double for ast_channel_name; observable effects are recorded in harness
@@ -1918,6 +1723,8 @@ int ast_audiohook_destroy(struct ast_audiohook *audiohook)
 
 /** Native-rate format identity for the advanced interface fixture. */
 static unsigned int native_format_rate = URP_RATE_NATIVE;
+/** Requested linear rate captured from the advanced-interface format lookup. */
+static unsigned int requested_native_format_rate;
 
 /** @brief Return the requested native format from the fixture cache.
  * @param rate Requested linear sample rate.
@@ -1925,6 +1732,7 @@ static unsigned int native_format_rate = URP_RATE_NATIVE;
  */
 struct ast_format *ast_format_cache_get_slin_by_rate(unsigned int rate)
 {
+	requested_native_format_rate = rate;
 	return rate == URP_RATE_NATIVE ? (struct ast_format *)&native_format_rate : ast_format_slin;
 }
 
@@ -1947,198 +1755,20 @@ struct ast_format *ast_channel_rawreadformat(struct ast_channel *channel)
 	return ast_format_slin;
 }
 
-/** @brief Host-API test double for ast_radio_time; observable effects are recorded in harness
- * state.
+/** @brief Host-API test double for __wrap_usbradioplus_host_time; observable effects are recorded
+ * in harness state.
  * @param seconds Accumulates total processing time in seconds.
  */
-void ast_radio_time(time_t *seconds)
+void __wrap_usbradioplus_host_time(time_t *seconds)
 {
 	*seconds = 1234;
-#ifdef URP_TEST_MODERN
-	if (modern_stop_hid_on_radio_time && seconds != &modern_stop_hid_on_radio_time->lasthidtime)
-		modern_stop_hid_on_radio_time->stophid = 1;
-	modern_radio_time_calls++;
-	if (modern_drop_hasusb_on_time &&
-	    modern_radio_time_calls == modern_drop_hasusb_on_time_call)
-		modern_drop_hasusb_on_time->hasusb = 0;
-#endif
 }
 
-/** @brief Host-API test double for ast_radio_hid_device_mklist; observable effects are recorded in
- * harness state.
+/** @brief Host-API test double for __wrap_usbradioplus_host_tvnow; observable effects are recorded
+ * in harness state.
  * @return Scripted host result for the current test scenario.
  */
-int ast_radio_hid_device_mklist(void)
-{
-	return hid_mklist_result;
-}
-
-/** @brief Host-API test double for ast_radio_usb_get_serial; observable effects are recorded in
- * harness state.
- * @param device Channel name or USB device identifier.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- * @param buffer_size Buffer size supplied by the test scenario.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_usb_get_serial(const char *device, char *buffer, size_t buffer_size)
-{
-	if (buffer_size) {
-		if (mock_usb_serial_result > 0)
-			ast_copy_string(buffer,
-					mock_usb_serial_by_device && !strcmp(device, "usb-test")
-						? "other-serial"
-						: mock_usb_serial,
-					buffer_size);
-		else
-			buffer[0] = '\0';
-	}
-	return mock_usb_serial_result;
-}
-
-#ifndef URP_TEST_MODERN
-/** @brief Host-API test double for ast_radio_amixer_max; observable effects are recorded in harness
- * state.
- * @param device_number Simulated ALSA card number.
- * @param parameter ALSA mixer control name.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_amixer_max(int device_number, char *parameter)
-{
-	(void)device_number;
-	if (mock_new_mixer_name && !strcmp(parameter, MIXER_PARAM_SPKR_PLAYBACK_VOL))
-		return -1;
-	return mock_amixer_max;
-}
-
-/** @brief Host-API test double for ast_radio_hid_device_init; observable effects are recorded in
- * harness state.
- * @param device Channel name or USB device identifier.
- * @return Scripted host result for the current test scenario.
- */
-struct usb_device *ast_radio_hid_device_init(const char *device)
-{
-	(void)device;
-	return mock_hid_device_available ? &mock_usb_device : NULL;
-}
-
-/** @brief Host-API test double for ast_radio_hid_set_outputs; observable effects are recorded in
- * harness state.
- * @param handle Simulated acquired USB handle.
- * @param outputs USB HID output report.
- */
-void ast_radio_hid_set_outputs(struct usb_dev_handle *handle, unsigned char *outputs)
-{
-	(void)handle;
-	(void)outputs;
-}
-
-/** @brief Host-API test double for ast_radio_hid_get_inputs; observable effects are recorded in
- * harness state.
- * @param handle Simulated acquired USB handle.
- * @param inputs USB HID input report.
- */
-void ast_radio_hid_get_inputs(struct usb_dev_handle *handle, unsigned char *inputs)
-{
-	(void)handle;
-	memcpy(inputs, mock_hid_inputs, sizeof(mock_hid_inputs));
-	mock_hid_input_calls++;
-	mock_hid_inputs[toggle_hid_input_index] ^= toggle_hid_inputs_mask;
-	if (unkey_without_program_on_input &&
-	    mock_hid_input_calls >= unkey_without_program_after_inputs) {
-		/* An odd generation deliberately makes the lock-free reader reject this
-		 * snapshot.  Physical unkey must still clear the parallel transmitter bit. */
-		atomic_store_explicit(
-			&unkey_without_program_on_input->plus_radio_program_generation, 1U,
-			memory_order_release);
-		unkey_without_program_on_input->lasttx = 1;
-		usbradioplus_publish_hardware_ptt(unkey_without_program_on_input, 0);
-		unkey_without_program_on_input = NULL;
-	}
-	if (key_without_program_on_input &&
-	    mock_hid_input_calls >= key_without_program_after_inputs) {
-		/* An odd generation deliberately makes the lock-free reader reject this
-		 * snapshot.  Physical key-up must still apply the requested PTT state. */
-		atomic_store_explicit(&key_without_program_on_input->plus_radio_program_generation,
-				      1U, memory_order_release);
-		key_without_program_on_input->lasttx = 0;
-		usbradioplus_publish_hardware_ptt(key_without_program_on_input, 1);
-		key_without_program_on_input = NULL;
-	}
-	if (program_and_key_on_input && mock_hid_input_calls >= program_and_key_after_inputs) {
-		/* Publish after hidthread setup so the same service pass observes both
-		 * the new coherent program request and its PTT transition. */
-		usbradioplus_program_radio(program_and_key_on_input);
-		usbradioplus_publish_hardware_ptt(program_and_key_on_input, 1);
-		program_and_key_on_input = NULL;
-	}
-	if (key_after_program_on_input && mock_hid_input_calls >= key_after_program_after_inputs) {
-		/* The first pass already consumed the program snapshot.  This second
-		 * request must update only physical PTT. */
-		usbradioplus_publish_hardware_ptt(key_after_program_on_input, 1);
-		key_after_program_on_input = NULL;
-	}
-	if (drop_hid_on_input && mock_hid_input_calls >= stop_hid_after_inputs) {
-		drop_hid_on_input->hasusb = 0;
-		mock_hid_device_available = 0;
-	}
-	if (stop_hid_on_input && mock_hid_input_calls >= stop_hid_after_inputs)
-		stop_hid_on_input->stophid = 1;
-}
-
-/** @brief Host-API test double for ast_radio_get_eeprom; observable effects are recorded in harness
- * state.
- * @param handle Simulated acquired USB handle.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- * @return Scripted host result for the current test scenario.
- */
-unsigned short ast_radio_get_eeprom(struct usb_dev_handle *handle, unsigned short *buffer)
-{
-	(void)handle;
-	buffer[EEPROM_USER_MAGIC_ADDR] = mock_eeprom_valid_magic ? EEPROM_MAGIC : 0;
-	if (eeprom_write_after_read)
-		eeprom_write_after_read->eepromctl = 2;
-	return mock_eeprom_result;
-}
-
-/** @brief Host-API test double for ast_radio_put_eeprom; observable effects are recorded in harness
- * state.
- * @param handle Simulated acquired USB handle.
- * @param buffer Caller-owned buffer filled or consumed by the stub.
- */
-void ast_radio_put_eeprom(struct usb_dev_handle *handle, unsigned short *buffer)
-{
-	(void)handle;
-	(void)buffer;
-}
-#endif
-
-/** @brief Host-API test double for ast_radio_ppread; observable effects are recorded in harness
- * state.
- * @param enabled Nonzero enables the operation.
- * @param descriptor Test file or CLI descriptor.
- * @param base Parallel-port I/O base address.
- * @param port Parallel-port device name.
- * @return Scripted host result for the current test scenario.
- */
-unsigned char ast_radio_ppread(int enabled, unsigned int descriptor, unsigned int base,
-			       const char *port)
-{
-	(void)enabled;
-	(void)descriptor;
-	(void)base;
-	(void)port;
-	{
-		unsigned char result = mock_parallel_inputs;
-		mock_parallel_inputs ^= toggle_parallel_inputs_mask;
-		return result;
-	}
-}
-
-/** @brief Host-API test double for ast_radio_tvnow; observable effects are recorded in harness
- * state.
- * @return Scripted host result for the current test scenario.
- */
-struct timeval ast_radio_tvnow(void)
+struct timeval __wrap_usbradioplus_host_tvnow(void)
 {
 	struct timeval now = {.tv_sec = mock_tvnow_milliseconds / 1000,
 			      .tv_usec = (mock_tvnow_milliseconds % 1000) * 1000};
@@ -2146,22 +1776,21 @@ struct timeval ast_radio_tvnow(void)
 	return now;
 }
 
-/** @brief Host-API test double for ast_queue_frame; observable effects are recorded in harness
- * state.
- * @param channel Radio channel or channel index, as declared.
- * @param frame Asterisk or FFmpeg audio frame, as declared.
- * @return Scripted host result for the current test scenario.
- */
+/** @brief Retain delivered PCM/control frames while the stack-owned source is valid. */
 int ast_queue_frame(struct ast_channel *channel, struct ast_frame *frame)
 {
 	(void)channel;
-	(void)frame;
-#ifdef URP_TEST_MODERN
-	if (modern_drop_hasusb_on_queue) {
-		modern_drop_hasusb_on_queue->hasusb = 0;
-		modern_drop_hasusb_on_queue = NULL;
+	if (direct_delivery_capture && frame->frametype != AST_FRAME_CONTROL &&
+	    frame->frametype != AST_FRAME_TEXT) {
+		direct_delivery_frame = *frame;
+		if (frame->frametype == AST_FRAME_VOICE) {
+			assert(frame->datalen >= 0 &&
+			       (size_t)frame->datalen <= sizeof(direct_delivery_pcm));
+			memcpy(direct_delivery_pcm, frame->data.ptr, frame->datalen);
+			direct_delivery_frame.data.ptr = direct_delivery_pcm;
+		}
+		direct_delivery_frame_count++;
 	}
-#endif
 	return 0;
 }
 
@@ -2448,6 +2077,10 @@ int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 	(void)caller;
 	(void)line;
 	(void)start_function;
+	if (!strcmp(start_function, "portaudio_poc_delivery_worker")) {
+		portaudio_test_worker_entry = start_routine;
+		portaudio_test_worker_data = data;
+	}
 	pthread_create_calls++;
 	if (pthread_create_calls == fail_pthread_create_call)
 		return -1;
@@ -2518,14 +2151,14 @@ int ast_dsp_set_digitmode(struct ast_dsp *dsp, int mode)
 	return 0;
 }
 
-/** @brief Host-API test double for ast_radio_wait_or_poll; observable effects are recorded in
- * harness state.
+/** @brief Host-API test double for __wrap_usbradioplus_host_wait_or_poll; observable effects are
+ * recorded in harness state.
  * @param descriptor Test file or CLI descriptor.
  * @param milliseconds Requested wait duration in milliseconds.
  * @param interactive Nonzero permits interactive cancellation.
  * @return Scripted host result for the current test scenario.
  */
-int ast_radio_wait_or_poll(int descriptor, int milliseconds, int interactive)
+int __wrap_usbradioplus_host_wait_or_poll(int descriptor, int milliseconds, int interactive)
 {
 	(void)descriptor;
 	(void)milliseconds;
@@ -2537,13 +2170,13 @@ int ast_radio_wait_or_poll(int descriptor, int milliseconds, int interactive)
 	return wait_or_poll_fail_call == wait_or_poll_calls;
 }
 
-/** @brief Host-API test double for ast_radio_poll_input; observable effects are recorded in harness
- * state.
+/** @brief Host-API test double for __wrap_usbradioplus_host_poll_input; observable effects are
+ * recorded in harness state.
  * @param descriptor Test file or CLI descriptor.
  * @param milliseconds Requested wait duration in milliseconds.
  * @return Scripted host result for the current test scenario.
  */
-int ast_radio_poll_input(int descriptor, int milliseconds)
+int __wrap_usbradioplus_host_poll_input(int descriptor, int milliseconds)
 {
 	(void)descriptor;
 	(void)milliseconds;
@@ -2556,54 +2189,39 @@ int ast_radio_poll_input(int descriptor, int milliseconds)
 	return 1;
 }
 
-/** @brief Host-API test double for ast_radio_print_audio_stats; observable effects are recorded in
- * harness state.
+/** @brief Host-API test double for __wrap_usbradioplus_host_print_audio_stats; observable effects
+ * are recorded in harness state.
  * @param descriptor Test file or CLI descriptor.
  * @param statistics Audio measurement structure updated or displayed by the stub.
  * @param prefix Unique label prefix for the appended graph fragment.
  */
-void ast_radio_print_audio_stats(int descriptor, struct audiostatistics *statistics,
-				 const char *prefix)
+void __wrap_usbradioplus_host_print_audio_stats(
+	int descriptor, const struct rptadv_radio_audio_statistics *statistics, const char *prefix)
 {
 	(void)descriptor;
-	(void)statistics;
-	(void)prefix;
+	if (statistics)
+		radio_print_audio_statistics = *statistics;
+	snprintf(radio_print_audio_statistics_prefix, sizeof(radio_print_audio_statistics_prefix),
+		 "%s", prefix ? prefix : "");
 	radio_print_audio_stats_calls++;
 }
 
-/** @brief Host-API test double for ast_radio_usb_get_usbdev; observable effects are recorded in
- * harness state.
- * @param device Channel name or USB device identifier.
- * @return Scripted host result for the current test scenario.
+/** @brief Assert that the ASL3 CLI boundary preserved every portable meter slot.
+ * @param expected Portable meter snapshot returned by the native renderer.
+ * @param prefix Expected established ASL3 CLI label.
  */
-int ast_radio_usb_get_usbdev(const char *device)
+static void assert_audio_statistics_displayed(const struct rptadv_radio_audio_statistics *expected,
+					      const char *prefix)
 {
-	(void)device;
-	return mock_usb_device_number;
-}
+	size_t index;
 
-/** @brief Host-API test double for ast_radio_usb_list_check; observable effects are recorded in
- * harness state.
- * @param device Channel name or USB device identifier.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_usb_list_check(char *device)
-{
-	return installed_usb_device && !strcmp(device, installed_usb_device);
-}
-
-/** @brief Host-API test double for ast_radio_usb_get_devstr; observable effects are recorded in
- * harness state.
- * @param index Sample position within the trace block.
- * @return Scripted host result for the current test scenario.
- */
-char *ast_radio_usb_get_devstr(int index)
-{
-	if (mock_no_usb_devices)
-		return NULL;
-	if (!index)
-		return "usb-test";
-	return index == 1 && mock_second_usb_device ? "usb-second" : NULL;
+	assert(!strcmp(radio_print_audio_statistics_prefix, prefix));
+	assert(radio_print_audio_statistics.index == (short)expected->index);
+	for (index = 0U; index < RPTADV_RADIO_AUDIO_STATS_LEN; ++index) {
+		assert(radio_print_audio_statistics.maxbuf[index] == expected->maxbuf[index]);
+		assert(radio_print_audio_statistics.clipbuf[index] == expected->clipbuf[index]);
+		assert(radio_print_audio_statistics.pwrbuf[index] == expected->pwrbuf[index]);
+	}
 }
 
 /** @brief Host-API test double for ast_debug_get_by_module; observable effects are recorded in
@@ -2745,1910 +2363,6 @@ void *__ast_calloc(size_t count, size_t size, const char *file, int line, const 
 	if (ast_calloc_calls == fail_ast_calloc_call)
 		return NULL;
 	return calloc(count, size);
-}
-
-#ifdef URP_TEST_MODERN
-static struct ast_radio_device *modern_acquire_device;
-static enum ast_radio_device_result modern_acquire_result = AST_RADIO_DEVICE_READY;
-static long modern_mixer_max = 100;
-static int modern_mixer_max_calls;
-static int modern_mixer_max_failure_call;
-static unsigned int modern_automatic_device_count;
-static PaError modern_open_result;
-static PaError modern_start_result;
-/** Simulate a host wrapper that accepts an open while exposing no stream handle. */
-static int modern_open_without_stream;
-static PaError modern_read_result;
-static PaError modern_write_result;
-static int modern_stream_info_available;
-static PaStreamInfo modern_stream_info;
-static short modern_read_sample;
-static const short *modern_last_write;
-static long modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
-static struct chan_usbradio_pvt *modern_stop_audio_target;
-static int modern_libusb_open_result;
-static int modern_libusb_claim_result;
-static int modern_libusb_claim_calls;
-static int modern_libusb_claim_first_result;
-static int modern_libusb_detach_result;
-static struct chan_usbradio_pvt *modern_stop_hid_target;
-static int modern_hid_input_calls;
-static int modern_stop_hid_after_inputs = 1;
-static int modern_toggle_hid_inputs;
-static int modern_drop_hid_after_inputs;
-static void (*modern_hid_input_hook)(struct chan_usbradio_pvt *, unsigned char *, int);
-static int modern_device_swap_result;
-static int modern_mixer_element_available;
-static unsigned char modern_hid_inputs[4];
-static unsigned short modern_eeprom_result = 1;
-static int modern_eeprom_valid_magic;
-static struct chan_usbradio_pvt *modern_eeprom_write_after_read;
-
-int __wrap_libusb_open(libusb_device *device, libusb_device_handle **handle)
-{
-	(void)device;
-	*handle = modern_libusb_open_result < 0 ? NULL : (libusb_device_handle *)(uintptr_t)1;
-	return modern_libusb_open_result;
-}
-
-void __wrap_libusb_close(libusb_device_handle *handle)
-{
-	(void)handle;
-}
-
-int __wrap_libusb_claim_interface(libusb_device_handle *handle, int interface_number)
-{
-	(void)handle;
-	(void)interface_number;
-	modern_libusb_claim_calls++;
-	if (modern_libusb_claim_calls == 1 && modern_libusb_claim_first_result)
-		return modern_libusb_claim_first_result;
-	return modern_libusb_claim_result;
-}
-
-int __wrap_libusb_detach_kernel_driver(libusb_device_handle *handle, int interface_number)
-{
-	(void)handle;
-	(void)interface_number;
-	return modern_libusb_detach_result;
-}
-
-enum ast_radio_device_result
-ast_radio_device_acquire(const struct ast_radio_device_request *request,
-			 struct ast_radio_device **device)
-{
-	(void)request;
-	*device = modern_acquire_result == AST_RADIO_DEVICE_READY ? modern_acquire_device : NULL;
-	return modern_acquire_result;
-}
-
-const char *ast_radio_device_result_str(enum ast_radio_device_result result)
-{
-	(void)result;
-	return "mock device result";
-}
-
-void ast_radio_device_release(struct ast_radio_device *device)
-{
-	(void)device;
-}
-
-unsigned int ast_radio_device_automatic_count(void)
-{
-	return modern_automatic_device_count;
-}
-
-int ast_radio_device_swap(struct ast_radio_device **first, struct ast_radio_device **second)
-{
-	if (modern_device_swap_result)
-		return modern_device_swap_result;
-	struct ast_radio_device *temporary = *first;
-	*first = *second;
-	*second = temporary;
-	return 0;
-}
-
-const struct ast_radio_mixer_element *
-ast_radio_device_mixer_element(const struct ast_radio_device *device,
-			       const struct ast_radio_mixer_path *path)
-{
-	(void)device;
-	(void)path;
-	return modern_mixer_element_available ? (const struct ast_radio_mixer_element *)(uintptr_t)1
-					      : NULL;
-}
-
-long ast_radio_device_mixer_max(const struct ast_radio_device *device,
-				const struct ast_radio_mixer_path *path, unsigned int capability)
-{
-	(void)device;
-	(void)path;
-	(void)capability;
-	modern_mixer_max_calls++;
-	return modern_mixer_max_calls == modern_mixer_max_failure_call ? 0 : modern_mixer_max;
-}
-
-PaError ast_radio_pa_open_device(struct ast_radio_pa_stream *stream,
-				 const struct ast_radio_device *device)
-{
-	(void)device;
-	stream->stream = modern_open_result == paNoError && !modern_open_without_stream
-				 ? (PaStream *)(uintptr_t)1
-				 : NULL;
-	stream->output_channels = 2;
-	return modern_open_result;
-}
-
-const PaStreamInfo *__wrap_Pa_GetStreamInfo(PaStream *stream)
-{
-	assert(stream == (PaStream *)(uintptr_t)1);
-	return modern_stream_info_available ? &modern_stream_info : NULL;
-}
-
-PaError ast_radio_pa_start(struct ast_radio_pa_stream *stream)
-{
-	if (modern_start_result == paNoError)
-		stream->active = 1;
-	return modern_start_result;
-}
-
-void ast_radio_pa_stop(struct ast_radio_pa_stream *stream)
-{
-	stream->active = 0;
-	stream->stream = NULL;
-}
-
-PaError ast_radio_pa_read(struct ast_radio_pa_stream *stream, short *buffer, unsigned long frames,
-			  int timeout_ms, volatile sig_atomic_t *stop)
-{
-	(void)timeout_ms;
-	(void)stop;
-	if (modern_read_result == paNoError) {
-		unsigned long samples = frames * stream->input_channels;
-		for (unsigned long i = 0; i < samples; ++i)
-			buffer[i] = modern_read_sample;
-	}
-	if (modern_stop_audio_target)
-		modern_stop_audio_target->stopaudiothread = 1;
-	return modern_read_result;
-}
-
-PaError ast_radio_pa_write(struct ast_radio_pa_stream *stream, const short *data,
-			   unsigned long frames)
-{
-	(void)stream;
-	record_mock_sound_write(data, frames * AST_RADIO_PA_OUTPUT_CHANNELS * sizeof(*data));
-	modern_last_write = data;
-	return modern_write_result;
-}
-
-long ast_radio_pa_write_available(struct ast_radio_pa_stream *stream)
-{
-	(void)stream;
-	return modern_write_available;
-}
-
-int ast_radio_hid_set_outputs(struct libusb_device_handle *handle, unsigned char *outputs)
-{
-	(void)handle;
-	(void)outputs;
-	return 0;
-}
-
-int ast_radio_hid_get_inputs(struct libusb_device_handle *handle, unsigned char *inputs)
-{
-	(void)handle;
-	memcpy(inputs, modern_hid_inputs, sizeof(modern_hid_inputs));
-	modern_hid_input_calls++;
-	if (modern_hid_input_hook)
-		modern_hid_input_hook(modern_stop_hid_target, inputs, modern_hid_input_calls);
-	if (modern_toggle_hid_inputs)
-		for (size_t index = 0; index < ARRAY_LEN(modern_hid_inputs); ++index)
-			modern_hid_inputs[index] ^= 0xff;
-	if (modern_stop_hid_target && modern_hid_input_calls >= modern_stop_hid_after_inputs) {
-		if (modern_drop_hid_after_inputs) {
-			modern_stop_hid_target->hasusb = 0;
-			modern_acquire_result = AST_RADIO_DEVICE_WAIT;
-		} else
-			modern_stop_hid_target->stophid = 1;
-	}
-	return 0;
-}
-
-unsigned short ast_radio_get_eeprom(struct libusb_device_handle *handle, unsigned short *buffer)
-{
-	(void)handle;
-	buffer[EEPROM_USER_MAGIC_ADDR] = modern_eeprom_valid_magic ? EEPROM_MAGIC : 0;
-	if (modern_eeprom_write_after_read)
-		modern_eeprom_write_after_read->eepromctl = 2;
-	return modern_eeprom_result;
-}
-
-void ast_radio_put_eeprom(struct libusb_device_handle *handle, unsigned short *buffer)
-{
-	(void)handle;
-	(void)buffer;
-}
-
-long ast_radio_device_mixer_scale(const struct ast_radio_device *device,
-				  const struct ast_radio_mixer_path *path, unsigned int capability,
-				  int setting)
-{
-	(void)device;
-	(void)path;
-	(void)capability;
-	return setting;
-}
-
-int ast_radio_device_set_mixer(const struct ast_radio_device *device,
-			       const struct ast_radio_mixer_path *path, unsigned int capability,
-			       long value)
-{
-	(void)device;
-	(void)path;
-	(void)capability;
-	(void)value;
-	return 0;
-}
-
-int ast_radio_device_set_mixer_paths(const struct ast_radio_device *device,
-				     const struct ast_radio_mixer_path *paths, size_t path_count,
-				     unsigned int capability, long value)
-{
-	(void)device;
-	(void)paths;
-	(void)path_count;
-	(void)capability;
-	(void)value;
-	return 0;
-}
-#else
-/** @brief Host-API test double for ast_radio_setamixer; observable effects are recorded in harness
- * state.
- * @param device Channel name or USB device identifier.
- * @param parameter ALSA mixer control name.
- * @param first First value or format capability supplied to the stub.
- * @param second Second value or format capability supplied to the stub.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_setamixer(int device, char *parameter, int first, int second)
-{
-	(void)device;
-	(void)parameter;
-	(void)first;
-	(void)second;
-	return 0;
-}
-
-/** @brief Host-API test double for ast_radio_make_spkr_playback_value; observable effects are
- * recorded in harness state.
- * @param maximum Maximum supported mixer step.
- * @param requested Requested normalized mixer setting.
- * @param device_type Simulated USB interface type.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_make_spkr_playback_value(int maximum, int requested, int device_type)
-{
-	(void)maximum;
-	(void)device_type;
-	return requested;
-}
-#endif
-
-#ifdef URP_TEST_MODERN
-static void test_modern_device_policy_helpers(void)
-{
-	struct chan_usbradio_pvt radio = {.name = "modern-test"};
-	struct ast_radio_mixer_path tx_paths[3] = {0};
-	struct ast_radio_mixer_path rx_paths[2] = {0};
-	struct ast_radio_mixer_path sidetone_paths[1] = {0};
-	struct ast_radio_mixer_path boost_paths[1] = {0};
-	struct ast_radio_device device = {
-		.devstr = "usb-modern",
-		.serial = "serial-modern",
-		.alsa_card = 7,
-		.mixer_tx_paths = tx_paths,
-		.mixer_tx_path_count = ARRAY_LEN(tx_paths),
-		.mixer_rx_paths = rx_paths,
-		.mixer_rx_path_count = ARRAY_LEN(rx_paths),
-		.mixer_sidetone_paths = sidetone_paths,
-		.mixer_sidetone_path_count = ARRAY_LEN(sidetone_paths),
-		.mixer_rx_boost_paths = boost_paths,
-		.mixer_rx_boost_path_count = ARRAY_LEN(boost_paths),
-	};
-
-	modern_stream_info_available = 1;
-	modern_stream_info.outputLatency = 0.041;
-	atomic_init(&radio.plus_radio_tx_active, 0);
-	urp_radio_state radio_state = {0};
-	char devstr[64];
-	char serial[64];
-	int card;
-
-	assert(usbradio_log_fault(&radio, 0, "first fault %d\n", 1));
-	assert(radio.usb_faulted);
-	assert(usbradio_log_fault(&radio, 1, "repeat fault\n"));
-
-	usbradio_device_identity(&radio, devstr, sizeof(devstr), serial, sizeof(serial), &card);
-	assert(!devstr[0] && !serial[0] && card == -1);
-	usbradio_device_identity(&radio, NULL, 0, NULL, 0, NULL);
-	usbradio_device_identity(&radio, devstr, 0, serial, 0, NULL);
-	radio.radio_device = &device;
-	usbradio_device_identity(&radio, devstr, sizeof(devstr), serial, sizeof(serial), &card);
-	assert(!strcmp(devstr, "usb-modern"));
-	assert(!strcmp(serial, "serial-modern"));
-	assert(card == 7);
-	usbradio_device_identity(&radio, devstr, 0, serial, sizeof(serial), &card);
-	usbradio_device_identity(&radio, devstr, sizeof(devstr), serial, 0, &card);
-	device.serial = NULL;
-	usbradio_device_identity(&radio, NULL, 0, serial, sizeof(serial), NULL);
-	assert(!serial[0]);
-	device.serial = "serial-modern";
-	usbradio_log_usb_recovered(&radio);
-	assert(!radio.usb_faulted);
-	usbradio_log_usb_recovered(&radio);
-	radio.radio_device = NULL;
-	radio.usb_faulted = 1;
-	usbradio_log_usb_recovered(&radio);
-
-	radio.radio = &radio_state;
-	radio.pa.output_channels = 2;
-	radio.txmixa = TX_OUT_VOICE;
-	radio.txmixb = TX_OUT_OFF;
-	usbradio_adjust_txmix_for_mono(&radio);
-	assert(radio.txmixb == TX_OUT_OFF);
-	for (int a = TX_OUT_OFF; a <= TX_OUT_AUX; ++a) {
-		for (int b = TX_OUT_OFF; b <= TX_OUT_AUX; ++b) {
-			radio.pa.output_channels = 1;
-			radio.txmixa = a;
-			radio.txmixb = b;
-			radio_state.txMixA = a;
-			radio_state.txMixB = b;
-			usbradio_adjust_txmix_for_mono(&radio);
-			assert(radio.txmixa == radio_state.txMixA);
-			assert(radio.txmixb == radio_state.txMixB);
-		}
-	}
-	radio.radio = NULL;
-	radio.pa.output_channels = 1;
-	radio.txmixa = TX_OUT_VOICE;
-	radio.txmixb = TX_OUT_LSD;
-	usbradio_adjust_txmix_for_mono(&radio);
-	radio.txmixa = TX_OUT_OFF;
-	radio.txmixb = TX_OUT_VOICE;
-	usbradio_adjust_txmix_for_mono(&radio);
-	radio.radio = &radio_state;
-
-	radio.radio_device = &device;
-	usbradio_release_device(&radio);
-	assert(!radio.radio_device);
-	usbradio_release_device(&radio);
-
-	radio.swap_state = DEVICE_SWAP_IDLE;
-	usbradio_swap_begin(&radio);
-	assert(radio.swap_state == DEVICE_SWAP_QUIESCING && !radio.swap_audio_ready);
-	usbradio_swap_audio_stopped(&radio);
-	assert(radio.swap_audio_ready);
-	radio.stophid = 1;
-	assert(usbradio_swap_hid_wait(&radio));
-	assert(radio.swap_state == DEVICE_SWAP_READY);
-	assert(usbradio_swap_ready(&radio));
-	usbradio_swap_finish(&radio);
-	assert(!usbradio_swap_ready(&radio));
-	assert(radio.swap_state == DEVICE_SWAP_IDLE && !radio.swap_audio_ready);
-	usbradio_swap_audio_stopped(&radio);
-	radio.swap_state = DEVICE_SWAP_QUIESCING;
-	radio.swap_audio_ready = 0;
-	assert(!usbradio_swap_hid_wait(&radio));
-	radio.stophid = 0;
-	radio.swap_state = DEVICE_SWAP_QUIESCING;
-	radio.swap_audio_ready = 0;
-	modern_swap_first = &radio;
-	modern_swap_second = &radio;
-	modern_swap_wait_step = 0;
-	assert(usbradio_swap_hid_wait(&radio));
-	assert(radio.swap_state == DEVICE_SWAP_IDLE);
-	modern_swap_first = NULL;
-	modern_swap_second = NULL;
-
-	radio.radio_device = &device;
-	{
-		int rx_max, tx_max, sidetone_max;
-		usbradio_mixer_limits(&radio, &rx_max, &tx_max, &sidetone_max);
-		assert(rx_max == 100 && tx_max == 100 && sidetone_max == 100);
-		usbradio_set_sidetone_switch(&radio, 1);
-		usbradio_set_rx_mixer(&radio, 50);
-		radio.duplex3 = 500;
-		radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-		modern_mixer_element_available = 0;
-		mixer_write(&radio);
-		modern_mixer_element_available = 1;
-		mixer_write(&radio);
-		radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
-		mixer_write(&radio);
-		modern_mixer_element_available = 0;
-		radio.radio_device = NULL;
-		usbradio_mixer_limits(&radio, &rx_max, &tx_max, &sidetone_max);
-		assert(!rx_max && !tx_max && !sidetone_max);
-		usbradio_set_sidetone_switch(&radio, 0);
-		usbradio_set_rx_mixer(&radio, 0);
-	}
-
-	radio.radio_device = NULL;
-	radio.device_error = AST_RADIO_DEVICE_READY;
-	modern_acquire_device = &device;
-	modern_acquire_result = AST_RADIO_DEVICE_WAIT;
-	assert(init_audio_device(&radio) == -1);
-	assert(radio.device_error == AST_RADIO_DEVICE_WAIT && radio.usb_faulted);
-	assert(init_audio_device(&radio) == -1);
-	modern_acquire_result = AST_RADIO_DEVICE_READY;
-	modern_mixer_max = 0;
-	modern_mixer_max_calls = 0;
-	assert(init_audio_device(&radio) == -1);
-	assert(radio.device_error == AST_RADIO_DEVICE_ERROR);
-	modern_mixer_max = 100;
-	modern_mixer_max_calls = 0;
-	modern_mixer_max_failure_call = 2;
-	assert(init_audio_device(&radio) == -1);
-	modern_mixer_max_failure_call = 0;
-	radio.devstr[0] = '\0';
-	radio.serial[0] = '\0';
-	modern_mixer_max_calls = 0;
-	assert(init_audio_device(&radio) == 0);
-	assert(radio.radio_device == &device && radio.device_error == AST_RADIO_DEVICE_READY);
-	usbradio_release_device(&radio);
-	strcpy(radio.devstr, "configured-device");
-	modern_mixer_max_calls = 0;
-	assert(init_audio_device(&radio) == 0);
-	usbradio_release_device(&radio);
-	radio.devstr[0] = '\0';
-	strcpy(radio.serial, "configured-serial");
-	modern_mixer_max_calls = 0;
-	assert(init_audio_device(&radio) == 0);
-
-	radio.pa.active = 1;
-	assert(usbradio_start_audio(&radio) == 0);
-	radio.pa.active = 0;
-	radio.radio_device = NULL;
-	assert(usbradio_start_audio(&radio) == -1);
-	radio.radio_device = &device;
-	device.pa_input_channels = 1;
-	modern_open_result = paUnanticipatedHostError;
-	assert(usbradio_start_audio(&radio) == -1);
-	modern_open_result = paNoError;
-	modern_start_result = paUnanticipatedHostError;
-	assert(usbradio_start_audio(&radio) == -1);
-	assert(!radio.pa.active);
-	modern_start_result = paNoError;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.pa.active && radio.pa.input_channels == 1);
-	assert(radio.plus_portaudio_playout_hold_callbacks == 4U);
-	ast_radio_pa_stop(&radio.pa);
-
-	/* The playout hold has a conservative one-block fallback whenever PortAudio
-	 * cannot supply a usable output-latency estimate. */
-	modern_stream_info_available = 0;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.plus_portaudio_playout_hold_callbacks == 1U);
-	ast_radio_pa_stop(&radio.pa);
-	modern_stream_info_available = 1;
-	modern_stream_info.outputLatency = -1.0;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.plus_portaudio_playout_hold_callbacks == 1U);
-	ast_radio_pa_stop(&radio.pa);
-	modern_stream_info.outputLatency = NAN;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.plus_portaudio_playout_hold_callbacks == 1U);
-	ast_radio_pa_stop(&radio.pa);
-	modern_stream_info.outputLatency =
-		((double)UINT_MAX * (double)URP_NATIVE_SAMPLES / (double)URP_RATE_NATIVE) + 1.0;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.plus_portaudio_playout_hold_callbacks == UINT_MAX);
-	ast_radio_pa_stop(&radio.pa);
-	modern_open_without_stream = 1;
-	assert(usbradio_start_audio(&radio) == 0);
-	assert(radio.plus_portaudio_playout_hold_callbacks == 1U);
-	ast_radio_pa_stop(&radio.pa);
-	modern_open_without_stream = 0;
-	modern_stream_info.outputLatency = 0.041;
-
-	{
-		short output[AST_RADIO_PA_48K_STEREO_SAMPLES] = {1};
-		short *stereo = (short *)(radio.usbradio_read_buf + AST_FRIENDLY_OFFSET);
-
-		radio.radio_device = NULL;
-		radio.pa.active = 0;
-		assert(soundcard_writeframe(&radio, output) == 0);
-		radio.radio_device = &device;
-		modern_open_result = paNoError;
-		modern_start_result = paNoError;
-		assert(soundcard_writeframe(&radio, output) > 0);
-		radio.pa.active = 1;
-		radio.radio = &radio_state;
-		radio_state.txPttIn = radio_state.txPttOut = 0;
-		atomic_store_explicit(&radio.plus_radio_tx_active, 0, memory_order_release);
-		modern_write_result = paNoError;
-		assert(soundcard_writeframe(&radio, output) ==
-		       AST_RADIO_PA_48K_STEREO_SAMPLES * (int)sizeof(short));
-		assert(modern_last_write == silence_buf);
-		radio_state.txPttIn = radio_state.txPttOut = 1;
-		atomic_store_explicit(&radio.plus_radio_tx_active, 1, memory_order_release);
-		modern_write_result = paNoError;
-		assert(soundcard_writeframe(&radio, output) > 0);
-		assert(modern_last_write == output);
-		assert(radio.plus_tx_playout_hold.callbacks_remaining == 4U);
-		modern_write_result = paOutputUnderflowed;
-		assert(soundcard_writeframe(&radio, output) > 0);
-		assert(modern_last_write == output);
-		assert(radio.plus_tx_playout_hold.callbacks_remaining == 4U);
-		radio.hasusb = 1;
-		modern_write_result = paUnanticipatedHostError;
-		assert(soundcard_writeframe(&radio, output) == 0);
-		assert(!radio.hasusb && !radio.pa.active);
-
-		radio.pa.input_channels = 1;
-		modern_read_sample = 1234;
-		modern_read_result = paNoError;
-		assert(usbradio_read_pa_stereo(&radio) == paNoError);
-		assert(stereo[0] == 1234 && stereo[1] == 1234);
-		modern_read_result = paInputOverflowed;
-		assert(usbradio_read_pa_stereo(&radio) == paInputOverflowed);
-		radio.pa.input_channels = 2;
-		modern_read_result = paNoError;
-		assert(usbradio_read_pa_stereo(&radio) == paNoError);
-
-		radio.pa.active = 1;
-		radio.audio_thread_ready = 1;
-		radio.swap_state = DEVICE_SWAP_QUIESCING;
-		stream_cleanup(&radio);
-		assert(!radio.pa.active && !radio.audio_thread_ready && radio.swap_audio_ready);
-		assert(!radio.plus_portaudio_playout_hold_callbacks);
-	}
-}
-
-static void test_modern_channel_callbacks(void)
-{
-	struct chan_usbradio_pvt radio = {.name = "modern-test"};
-	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
-	struct ast_module_info module_info = {0};
-	struct ast_format_cap *formats = (struct ast_format_cap *)(uintptr_t)1;
-	short samples[URP_LINK_SAMPLES] = {1};
-	struct ast_frame frame = {
-		.frametype = AST_FRAME_VOICE,
-		.data.ptr = samples,
-		.datalen = sizeof(samples),
-	};
-	urp_radio_state radio_state = {0};
-	urp_radio_state radio_configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-	int cause = 0;
-
-	assert(!rpcr_init(&radio.plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST));
-	test_channel_private = &radio;
-	radio.radio = &radio_state;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(usbradio_write(channel, &frame) == 0);
-	radio.hasusb = 1;
-	assert(usbradio_write(channel, &frame) == 0);
-	radio.audio_thread_ready = 1;
-	radio.echoing = 1;
-	assert(usbradio_write(channel, &frame) == 0);
-	radio.plus_advanced = 1;
-	assert(usbradio_write(channel, &frame) == 0);
-	radio.plus_advanced = 0;
-	radio.echoing = 0;
-	assert(usbradio_write(channel, &frame) == 0);
-	radio.txkeyed = 1;
-	frame.frametype = AST_FRAME_NULL;
-	assert(usbradio_write(channel, &frame) == 0);
-	frame.frametype = AST_FRAME_VOICE;
-	frame.data.ptr = NULL;
-	assert(usbradio_write(channel, &frame) == 0);
-	frame.data.ptr = samples;
-	assert(usbradio_write(channel, &frame) == 0);
-	assert(rpcr_available(&radio.plus_program_ring) > 0);
-	rpcr_destroy(&radio.plus_program_ring);
-
-	radio.hidthread = radio.audiothread = AST_PTHREADT_NULL;
-	pthread_create_calls = 0;
-	fail_pthread_create_call = 1;
-	assert(usbradio_call(channel, "destination", 1000) == -1);
-	pthread_create_calls = 0;
-	fail_pthread_create_call = 2;
-	assert(usbradio_call(channel, "destination", 1000) == -1);
-	assert(radio.hidthread == AST_PTHREADT_NULL);
-	pthread_create_calls = 0;
-	fail_pthread_create_call = 0;
-	assert(usbradio_call(channel, "destination", 1000) == 0);
-	assert(pthread_create_calls == 2 && setstate_calls > 0);
-	/* Existing workers are reused on a repeated call. */
-	assert(usbradio_call(channel, "destination", 1000) == 0);
-	assert(pthread_create_calls == 2);
-
-	usbradioplus_test_set_module_info(&module_info);
-	radio.owner = channel;
-	radio.hookstate = 1;
-	radio.pa.active = 1;
-	assert(usbradio_hangup(channel) == 0);
-	assert(!radio.owner && !radio.hookstate && !radio.pa.active);
-	assert(radio.hidthread == AST_PTHREADT_NULL && radio.audiothread == AST_PTHREADT_NULL);
-	radio.owner = channel;
-	radio.hookstate = 0;
-	test_channel_private = &radio;
-	assert(usbradio_hangup(channel) == 0);
-
-	radio.owner = NULL;
-	fail_channel_alloc = 1;
-	assert(!usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL));
-	fail_channel_alloc = 0;
-	assert(usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL));
-	radio.owner = NULL;
-	pbx_start_result = 0;
-	assert(usbradio_new(&radio, "s", "default", AST_STATE_UP, NULL, NULL));
-	radio.owner = NULL;
-	pbx_start_result = 1;
-	hangup_calls = 0;
-	assert(!usbradio_new(&radio, "s", "default", AST_STATE_UP, NULL, NULL));
-	assert(hangup_calls == 1);
-	pbx_start_result = 0;
-
-	usbradio_default.next = NULL;
-	assert(!usbradio_request("RadioPlus", formats, NULL, NULL, "missing", &cause));
-	usbradio_default.next = &radio;
-	radio.next = NULL;
-	format_compatible = 0;
-	assert(!usbradio_request("RadioPlus", formats, NULL, NULL, "modern-test", &cause));
-	format_compatible = 1;
-	radio.owner = channel;
-	assert(!usbradio_request("RadioPlus", formats, NULL, NULL, "modern-test", &cause));
-	assert(cause == AST_CAUSE_BUSY);
-	radio.owner = NULL;
-	fail_channel_alloc = 1;
-	assert(!usbradio_request("RadioPlus", formats, NULL, NULL, "modern-test", &cause));
-	fail_channel_alloc = 0;
-	radio.owner = NULL;
-	radio.radio = urp_radio_create(&radio_configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	assert(usbradio_request("RadioPlus", formats, NULL, NULL, "modern-test", &cause));
-	assert(!radio.remoted);
-
-	usbradioplus_test_set_module_info(NULL);
-	test_channel_private = NULL;
-	usbradio_default.next = NULL;
-	urp_radio_destroy(radio.radio);
-}
-
-static void test_modern_hid_worker_baseline(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct chan_usbradio_pvt constructed = {0};
-	struct chan_usbradio_pvt inactive = {.name = "inactive", .radioactive = 1};
-	struct ast_radio_device device = {
-		.devstr = "usb-modern",
-		.serial = "serial-modern",
-		.usb_device = (libusb_device *)(uintptr_t)1,
-		.pa_input_channels = 2,
-		.pa_output_channels = 2,
-	};
-	urp_radio_state configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 0;
-	strcpy(settings.profiles[0].name, "modern-hid");
-	strcpy(settings.profiles[0].channel, "RadioPlus/modern-hid");
-	radio.name = "modern-hid";
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_deemphasis_corner_hz = 300.0;
-	radio.plus_preemphasis_corner_hz = 300.0;
-	radio.wanteeprom = 1;
-	radio.gpios[0] = "in";
-	radio.gpios[1] = "out";
-	radio.gpios[2] = "in";
-	radio.valid_gpios = 1;
-	radio.pps[2] = "ptt";
-	radio.pps[3] = "output";
-	radio.pps[10] = "in";
-	radio.pps[11] = "out";
-	radio.pps[12] = "cor";
-	radio.pps[13] = "ctcss";
-	radio.hid_gpio_pulsetimer[0] = 100;
-	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	/* The HID worker consumes only the audio worker's atomic PTT request.  A
-	 * direct signaling-state write must not be mistaken for a physical key
-	 * request in this worker-only fixture. */
-	usbradioplus_publish_hardware_ptt(&radio, 1);
-	modern_acquire_device = &device;
-	modern_acquire_result = AST_RADIO_DEVICE_READY;
-	modern_mixer_max = 100;
-	device.product_id = C108AH_PRODUCT_ID;
-	modern_libusb_open_result = 0;
-	modern_libusb_claim_result = 0;
-	modern_libusb_detach_result = 0;
-	modern_open_result = paNoError;
-	modern_start_result = paNoError;
-	modern_hid_input_calls = 0;
-	memset(modern_hid_inputs, 0xff, sizeof(modern_hid_inputs));
-	modern_eeprom_result = 0;
-	modern_eeprom_valid_magic = 1;
-	modern_eeprom_write_after_read = &radio;
-	haspp = 2;
-	mock_parallel_inputs = 0xff;
-	modern_stop_hid_target = &radio;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	variable_browse_calls = 0;
-	assert(hidthread(&radio) == NULL);
-	settings_defaults(&settings);
-	assert(radio.stophid && modern_hid_input_calls == 1);
-	assert(!radio.radio_device);
-	/* The audio worker posts clipping asynchronously; only the HID worker may
-	 * turn that request into a timed physical GPIO pulse. */
-	radio.stophid = 0;
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-	modern_hid_input_calls = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	assert(radio.hid_gpio_pulsetimer[0] == CLIP_LED_HOLD_TIME_MS);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	/* A clear request, an unavailable LED, and an active pulse all consume no
-	 * additional GPIO time. */
-	radio.stophid = 0;
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
-	modern_hid_input_calls = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	assert(radio.hid_gpio_pulsetimer[0] == 0);
-	radio.stophid = 0;
-	radio.clipledgpio = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-	modern_hid_input_calls = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	{
-		const long saved_clip_time_step = mock_tvnow_step;
-
-		mock_tvnow_step = 0;
-		radio.stophid = 0;
-		radio.clipledgpio = 1;
-		radio.hid_gpio_pulsetimer[0] = 1;
-		atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-		modern_hid_input_calls = 0;
-		modern_stop_hid_target = &radio;
-		assert(hidthread(&radio) == NULL);
-		assert(radio.hid_gpio_pulsetimer[0] == 1);
-		assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-		mock_tvnow_step = saved_clip_time_step;
-	}
-	radio.clipledgpio = 0;
-	radio.hid_gpio_pulsetimer[0] = 0;
-	modern_stop_hid_target = NULL;
-	mock_poll_enabled = 0;
-	ast_radio_pa_stop(&radio.pa);
-	urp_radio_destroy(radio.radio);
-	if (radio.pttkick[0] >= 0)
-		close(radio.pttkick[0]);
-	if (radio.pttkick[1] >= 0)
-		close(radio.pttkick[1]);
-
-	constructed.name = "modern-constructed";
-	constructed.pttkick[0] = constructed.pttkick[1] = -1;
-	constructed.plus_app_rpt_rate = URP_RATE_LINK;
-	constructed.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	constructed.plus_deemphasis_corner_hz = 300.0;
-	constructed.plus_preemphasis_corner_hz = 300.0;
-	constructed.txmixa = TX_OUT_OFF;
-	constructed.txmixb = TX_OUT_OFF;
-	constructed.txpreemphasis = 1;
-	constructed.wanteeprom = 1;
-	constructed.radioactive = 1;
-	constructed.invertptt = 1;
-	constructed.gpios[0] = "in";
-	constructed.valid_gpios = 1;
-	constructed.had_gpios_in = 1;
-	constructed.last_gpios_in = 0;
-	constructed.pps[10] = "in";
-	constructed.had_pp_in = 1;
-	constructed.last_pp_in = 0;
-	strcpy(constructed.txctcssdefault, "100.0");
-	strcpy(constructed.txctcssfreq, "100.0");
-	device.product_id = C108_PRODUCT_ID + 1;
-	modern_eeprom_valid_magic = 0;
-	modern_eeprom_result = 1;
-	modern_eeprom_write_after_read = NULL;
-	mock_tvnow_step = 10;
-	constructed.hid_gpio_pulsetimer[0] = 1;
-	inactive.next = &constructed;
-	usbradio_default.next = &inactive;
-	modern_stop_hid_target = &constructed;
-	assert(hidthread(&constructed) == NULL);
-	assert(constructed.radio && constructed.devtype == C108_PRODUCT_ID);
-	assert(!inactive.radioactive && constructed.radioactive);
-	modern_stop_hid_target = NULL;
-	modern_eeprom_result = 1;
-	modern_eeprom_valid_magic = 0;
-	modern_eeprom_write_after_read = NULL;
-	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
-	haspp = 0;
-	mock_parallel_inputs = 0;
-	mock_tvnow_step = 0;
-	ast_radio_pa_stop(&constructed.pa);
-	urp_radio_destroy(constructed.radio);
-	if (constructed.pttkick[0] >= 0)
-		close(constructed.pttkick[0]);
-	if (constructed.pttkick[1] >= 0)
-		close(constructed.pttkick[1]);
-	usbradio_default.next = NULL;
-}
-
-/** @brief Verify a parallel-port PTT release is not gated by radio programming. */
-static void test_modern_parallel_ptt_release(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	unsigned char outputs[4] = {0};
-	unsigned char saved[4] = {0};
-	const int saved_haspp = haspp;
-	const int8_t saved_pp_val = pp_val;
-	const int saved_parallel_write_calls = parallel_write_calls;
-
-	radio.pps[2] = "ptt";
-	radio.hid_gpio_loc = 0;
-	radio.hid_gpio_ctl_loc = 1;
-	radio.hid_io_ptt = 1;
-	radio.hid_gpio_val = 1;
-	atomic_init(&radio.plus_hardware_ptt_applied, 1);
-	haspp = 2;
-	pp_val = (int8_t)0xff;
-	parallel_write_calls = 0;
-	/* A normal key-up must not run the unkey-only parallel clear path. */
-	hidthread_apply_ptt(&radio, (struct libusb_device_handle *)(uintptr_t)1, outputs, saved, 1,
-			    NULL, 0);
-	assert(radio.lasttx);
-	assert(atomic_load_explicit(&radio.plus_hardware_ptt_applied, memory_order_acquire));
-	parallel_write_calls = 0;
-	hidthread_apply_ptt(&radio, (struct libusb_device_handle *)(uintptr_t)1, outputs, saved, 0,
-			    NULL, 0);
-	assert(!radio.lasttx);
-	assert(!atomic_load_explicit(&radio.plus_hardware_ptt_applied, memory_order_acquire));
-	assert(parallel_write_calls > 0);
-	haspp = saved_haspp;
-	pp_val = saved_pp_val;
-	parallel_write_calls = saved_parallel_write_calls;
-}
-
-static void run_modern_audio_iteration(struct chan_usbradio_pvt *radio)
-{
-	radio->stopaudiothread = 0;
-	radio->hasusb = 1;
-	radio->pa.active = 1;
-	modern_stop_audio_target = radio;
-	assert(usbradio_audio_thread(radio) == NULL);
-	modern_stop_audio_target = NULL;
-}
-
-static void test_modern_audio_worker_baseline(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct ast_radio_device device = {
-		.devstr = "usb-modern",
-		.pa_input_channels = 2,
-		.pa_output_channels = 2,
-	};
-	urp_radio_state configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 0;
-	strcpy(settings.profiles[0].name, "modern-audio");
-	strcpy(settings.profiles[0].channel, "RadioPlus/modern-audio");
-	radio.name = "modern-audio";
-	radio.radio_device = &device;
-	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	radio.pa.input_channels = 2;
-	radio.pa.output_channels = 2;
-	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_deemphasis_corner_hz = 300.0;
-	radio.plus_preemphasis_corner_hz = 300.0;
-	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
-	assert(usbradioplus_dsp_init(&radio) == 0);
-	modern_read_result = paNoError;
-	modern_read_sample = 0;
-	modern_write_result = paNoError;
-	modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
-	run_modern_audio_iteration(&radio);
-	assert(radio.stopaudiothread && !radio.audio_thread_ready && !radio.pa.active);
-
-	/* A parser reload must keep PortAudio paced with silence without consuming
-	 * signaling state; its write path also has terminal and full-queue cases. */
-	memset(radio.usbradio_read_buf_8k, 0x5a, sizeof(radio.usbradio_read_buf_8k));
-	memset(radio.usbradio_write_buf, 0x5a, sizeof(radio.usbradio_write_buf));
-	atomic_store_explicit(&radio.plus_radio_tx_active, 1, memory_order_release);
-	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 1, memory_order_seq_cst);
-	modern_write_result = paNoError;
-	run_modern_audio_iteration(&radio);
-	assert(!atomic_load_explicit(&radio.plus_radio_tx_active, memory_order_acquire));
-	assert(!memcmp(radio.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, silence_buf,
-		       radio.plus_app_rpt_samples * sizeof(short)));
-	assert(!memcmp(radio.usbradio_write_buf, silence_buf, sizeof(radio.usbradio_write_buf)));
-	modern_write_available = 0;
-	run_modern_audio_iteration(&radio);
-	modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
-	modern_write_result = paUnanticipatedHostError;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.pa.active);
-	modern_write_result = paNoError;
-	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 0, memory_order_seq_cst);
-
-	/* The worker can open and start an inactive stream, not only reuse one. */
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 0;
-	modern_stop_audio_target = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_target = NULL;
-
-	modern_read_result = paTimedOut;
-	run_modern_audio_iteration(&radio);
-	modern_read_result = paInputOverflowed;
-	run_modern_audio_iteration(&radio);
-	modern_read_result = paUnanticipatedHostError;
-	run_modern_audio_iteration(&radio);
-	modern_read_result = paNoError;
-	modern_write_available = -1;
-	run_modern_audio_iteration(&radio);
-	modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
-	modern_write_result = paUnanticipatedHostError;
-	radio.txkeyed = 1;
-	run_modern_audio_iteration(&radio);
-	modern_write_result = paNoError;
-	radio.txkeyed = 0;
-	/* PortAudio's underflow recovery writes a priming frame but does not advance
-	 * the transmitter's submitted-frame accounting. */
-	modern_write_result = paOutputUnderflowed;
-	run_modern_audio_iteration(&radio);
-	modern_write_result = paNoError;
-	/* Isolate the following receive checks from the preceding transmit-error
-	 * scenario, including its deliberately conservative post-playout blanking. */
-	radio.radio->txPttIn = 0;
-	radio.radio->txPttOut = 0;
-	radio.radio->txState = CHAN_TXSTATE_IDLE;
-	radio.radio->txrxblankingtime = 0;
-	radio.radio->txrxblankingtimer = 0;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	radio.owner = (struct ast_channel *)(uintptr_t)1;
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-	radio.rxhidsq = 1;
-	radio.rxhidctcss = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.radioduplex = 1;
-	radio.rxctcssdecode = 1;
-	strcpy(radio.rxctcssfreq, "100.0");
-	radio.duplex3 = 999;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	run_modern_audio_iteration(&radio);
-	assert(radio.rxkeyed && radio.lastrx);
-	/* A post-transmit blanking interval overrides an otherwise valid carrier. */
-	radio.radio->txrxblankingtimer = 2 * MS_PER_FRAME;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rx_cos_active);
-	radio.radio->txrxblankingtimer = 0;
-
-	/* Advanced transport delivers hardware-rate frames through this worker too. */
-	usbradioplus_interface_mode(&radio, 1);
-	run_modern_audio_iteration(&radio);
-	assert(radio.read_f.subclass.format == ast_format_cache_get_slin_by_rate(48000));
-	assert(radio.read_f.samples == URP_NATIVE_SAMPLES);
-	mixer_write(&radio);
-	radio.rxhidsq = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	radio.rxhidsq = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	assert(radio.rxkeyed && radio.lastrx);
-	usbradioplus_interface_mode(&radio, 0);
-
-	radio.rxhidsq = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rxkeyed && !radio.lastrx);
-
-	/* A nonzero, current HID timestamp is healthy. */
-	radio.lasthidtime = 1234;
-	run_modern_audio_iteration(&radio);
-	radio.lasthidtime = 0;
-
-	radio.rxcdtype = CD_HID_INVERT;
-	radio.rxhidsq = 0;
-	radio.rxsdtype = SD_HID_INVERT;
-	radio.rxhidctcss = 0;
-	usbradioplus_publish_hardware_inputs(&radio, 0U);
-	run_modern_audio_iteration(&radio);
-	radio.radio->rxExtCarrierDetect = 1;
-	run_modern_audio_iteration(&radio);
-	radio.rxcdtype = CD_HID;
-	radio.rxhidsq = 1;
-	radio.rxsdtype = SD_PP;
-	radio.rxppctcss = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_PARALLEL_CTCSS);
-	run_modern_audio_iteration(&radio);
-	radio.rxsdtype = SD_PP_INVERT;
-	radio.rxppctcss = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER);
-	run_modern_audio_iteration(&radio);
-
-	radio.txoffdelay = 1;
-	radio.txkeyed = 1;
-	run_modern_audio_iteration(&radio);
-	radio.txkeyed = 0;
-	radio.txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
-	radio.radio->txPttOut = 0;
-	run_modern_audio_iteration(&radio);
-	assert(radio.txoffcnt == MS_TO_FRAMES(TX_OFF_DELAY_MAX));
-	radio.txoffdelay = 0;
-
-	radio.echomode = 1;
-	radio.echomax = 2;
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-	radio.rxhidsq = radio.rxhidctcss = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	/* A second keyed frame traverses an existing queued echo frame. */
-	run_modern_audio_iteration(&radio);
-	radio.rxhidsq = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = 0;
-	run_modern_audio_iteration(&radio);
-
-	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
-	radio.rxhidsq = radio.rxhidctcss = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	radio.rxhidsq = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	radio.echomode = 0;
-	run_modern_audio_iteration(&radio);
-
-	radio.rxctcssoverride = 1;
-	radio.rxhidsq = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxondelay = 2;
-	radio.rxoncnt = 0;
-	radio.rxkeyed = radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	assert(radio.rxoncnt == 1 && !radio.rxkeyed);
-	run_modern_audio_iteration(&radio);
-	radio.rxondelay = 0;
-	radio.rxctcssoverride = 0;
-	radio.rxhidsq = 1;
-	radio.rxhidctcss = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER);
-	radio.rxsdtype = SD_HID;
-	radio.radio->b.ctcssRxEnable = 1;
-	radio.radio->rxCtcss->decode = CTCSS_NULL;
-	run_modern_audio_iteration(&radio);
-	radio.radio->b.ctcssRxEnable = 0;
-	radio.rxcdtype = CD_IGNORE;
-	radio.rxsdtype = SD_HID;
-	run_modern_audio_iteration(&radio);
-	radio.rxsdtype = SD_IGNORE;
-	run_modern_audio_iteration(&radio);
-	radio.rxsdtype = SD_HID;
-	run_modern_audio_iteration(&radio);
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-
-	mock_audio_clipping = 1;
-	radio.clipledgpio = 0;
-	run_modern_audio_iteration(&radio);
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 0;
-	run_modern_audio_iteration(&radio);
-	/* The audio callback only requests a clip indication.  The HID worker owns
-	 * the GPIO pulse timer and consumes this request on its next iteration. */
-	assert(atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
-	mock_audio_clipping = 0;
-	radio.clipledgpio = 0;
-
-	radio.radio->b.txCtcssReady = 1;
-	radio.sendvoter = 1;
-	radio.count_rssi_update = 1;
-	radio.rxhidctcss = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = 1;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.radio->b.txCtcssReady && radio.count_rssi_update == 10);
-	radio.sendvoter = 0;
-	radio.sendvoter = 1;
-	radio.count_rssi_update = 2;
-	radio.rxkeyed = 1;
-	radio.rxctcssoverride = 1;
-	run_modern_audio_iteration(&radio);
-	radio.rxctcssoverride = 0;
-	radio.sendvoter = 0;
-	radio.sendvoter = 1;
-	radio.count_rssi_update = 0;
-	run_modern_audio_iteration(&radio);
-	radio.count_rssi_update = 1;
-	radio.rxkeyed = 0;
-	radio.rxhidsq = 0;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	radio.rxhidsq = 1;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.sendvoter = 0;
-
-	radio.usedtmf = 1;
-	radio.dsp = (struct ast_dsp *)(uintptr_t)1;
-	dsp_result_type = AST_FRAME_DTMF_END;
-	dsp_result_digit = 'm';
-	run_modern_audio_iteration(&radio);
-	dsp_result_digit = 'u';
-	run_modern_audio_iteration(&radio);
-	dsp_result_digit = '5';
-	option_verbose = 1;
-	run_modern_audio_iteration(&radio);
-	option_verbose = 0;
-	dsp_result_type = AST_FRAME_DTMF_END;
-	dsp_result_digit = '7';
-	run_modern_audio_iteration(&radio);
-	dsp_result_type = AST_FRAME_DTMF_BEGIN;
-	dsp_result_digit = '6';
-	radio.toneflag = 0;
-	run_modern_audio_iteration(&radio);
-	radio.toneflag = 1;
-	run_modern_audio_iteration(&radio);
-	dsp_result_type = AST_FRAME_VOICE;
-	run_modern_audio_iteration(&radio);
-	dsp_result_type = -1;
-	radio.usedtmf = 0;
-	radio.dsp = NULL;
-	/* DTMF enabled without an allocated detector must pass voice unchanged. */
-	radio.usedtmf = 1;
-	run_modern_audio_iteration(&radio);
-	radio.usedtmf = 0;
-
-	/* A temporarily full output buffer skips the write without faulting the
-	 * stream. A clip indication already being held is not restarted. */
-	modern_write_available = 0;
-	run_modern_audio_iteration(&radio);
-	modern_write_available = AST_RADIO_PA_FRAMES_PER_BUFFER;
-	mock_audio_clipping = 1;
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 1;
-	run_modern_audio_iteration(&radio);
-	mock_audio_clipping = 0;
-	radio.clipledgpio = 0;
-
-	/* Cover transmitter state that is already asserted and test-key-only PTT. */
-	radio.txkeyed = 1;
-	radio.radio->txPttIn = 1;
-	run_modern_audio_iteration(&radio);
-	radio.txkeyed = 0;
-	radio.txtestkey = 1;
-	radio.radio->txPttIn = 0;
-	run_modern_audio_iteration(&radio);
-	radio.txtestkey = 0;
-
-	/* Half-duplex transmission suppresses an otherwise valid carrier. */
-	radio.rxcdtype = CD_HID_INVERT;
-	radio.rxhidsq = 0;
-	radio.radio->rxExtCarrierDetect = 1;
-	run_modern_audio_iteration(&radio);
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-	radio.rxhidsq = radio.rxhidctcss = 1;
-	radio.radio->txPttIn = 0;
-	radio.radio->txPttOut = 0;
-	radio.radio->txState = CHAN_TXSTATE_IDLE;
-	radio.txkeyed = 1;
-	radio.radioduplex = 0;
-	radio.rxkeyed = radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rx_cos_active);
-	radio.txkeyed = 0;
-	radio.radio->txPttOut = 0;
-	radio.radioduplex = 1;
-
-	/* An advanced transport remains eligible for COR while its local PTT is
-	 * asserted; this takes the middle full-duplex admission arm. */
-	radio.radio->txPttIn = radio.radio->txPttOut = 1;
-	radio.radio->txState = CHAN_TXSTATE_ACTIVE;
-	radio.txkeyed = 1;
-	radio.plus_advanced = 1;
-	radio.radioduplex = 0;
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	run_modern_audio_iteration(&radio);
-	assert(radio.radio->txPttOut && radio.rx_cos_active);
-	radio.txkeyed = 0;
-	radio.plus_advanced = 0;
-	radio.radioduplex = 1;
-	radio.radio->txPttIn = radio.radio->txPttOut = 0;
-	radio.radio->txState = CHAN_TXSTATE_IDLE;
-	usbradioplus_tx_playout_hold_reset(&radio);
-
-	/* Both delay predicates are evaluated while receive qualification waits. */
-	radio.rxhidsq = radio.rxhidctcss = 1;
-	radio.rxctcssoverride = 1;
-	radio.rxkeyed = 0;
-	radio.rxoncnt = 0;
-	radio.rxondelay = 2;
-	radio.txoffcnt = 0;
-	radio.txoffdelay = 2;
-	run_modern_audio_iteration(&radio);
-	radio.rxondelay = 0;
-	radio.txoffdelay = 0;
-	radio.rxctcssoverride = 0;
-
-	/* Delay counters exercise their unsaturated and already-keyed paths. */
-	radio.txoffdelay = 10;
-	radio.txoffcnt = 0;
-	radio.rxkeyed = 1;
-	run_modern_audio_iteration(&radio);
-	radio.txoffdelay = 0;
-	radio.rxkeyed = 0;
-
-	/* A full legacy echo queue and an allocation failure both drop the current
-	 * frame safely. */
-	radio.echomode = 1;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	radio.rxkeyed = radio.lastrx = 1;
-	radio.echoing = 1;
-	run_modern_audio_iteration(&radio);
-	radio.echoing = 0;
-	radio.echomax = 0;
-	run_modern_audio_iteration(&radio);
-	radio.echomax = 2;
-	ast_calloc_calls = 0;
-	fail_ast_calloc_call = 1;
-	run_modern_audio_iteration(&radio);
-	fail_ast_calloc_call = 0;
-	radio.echomode = 0;
-
-	/* Signaling transitions remain safe without an attached channel, and with
-	 * local-repeat sidetone disabled. */
-	radio.owner = NULL;
-	radio.plus_advanced = 1;
-	radio.duplex3 = 999;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	radio.rxcdtype = CD_HID;
-	radio.rxsdtype = SD_HID;
-	radio.rxctcssoverride = 0;
-	radio.rxondelay = radio.txoffdelay = 0;
-	radio.radio->txPttIn = radio.radio->txPttOut = 0;
-	radio.radio->txState = CHAN_TXSTATE_IDLE;
-	radio.radio->txrxblankingtimer = 0;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	usbradioplus_publish_hardware_inputs(&radio, 0U);
-	radio.rxkeyed = 1;
-	radio.lastrx = 1;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	/* A hardware key transition follows the same owner-free advanced path. */
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = 0;
-	radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	assert(radio.rxkeyed && radio.lastrx);
-	radio.plus_advanced = 0;
-	radio.duplex3 = 0;
-	usbradioplus_publish_hardware_inputs(&radio, 0U);
-	radio.rxkeyed = radio.lastrx = 1;
-	run_modern_audio_iteration(&radio);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	usbradioplus_publish_hardware_inputs(&radio, URP_HARDWARE_INPUT_HID_CARRIER |
-							     URP_HARDWARE_INPUT_HID_CTCSS);
-	radio.rxkeyed = radio.lastrx = 0;
-	run_modern_audio_iteration(&radio);
-	assert(radio.rxkeyed && radio.lastrx);
-	radio.owner = (struct ast_channel *)(uintptr_t)1;
-	channel_state = AST_STATE_DOWN;
-	run_modern_audio_iteration(&radio);
-	channel_state = AST_STATE_UP;
-	radio.rxctcssdecode = 0;
-	radio.rxkeyed = 0;
-	radio.lastrx = 0;
-	radio.rxhidsq = radio.rxhidctcss = 1;
-	run_modern_audio_iteration(&radio);
-
-	radio.lasthidtime = 1;
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	radio.lasthidtime = 0;
-
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	radio.rxkeyed = 1;
-	radio.duplex3 = 1;
-	modern_radio_time_calls = 0;
-	modern_drop_hasusb_on_time = &radio;
-	modern_drop_hasusb_on_time_call = 3;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	modern_drop_hasusb_on_time = NULL;
-	radio.duplex3 = 0;
-
-	/* USB loss with no keyed receiver skips signaling teardown. */
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	radio.rxkeyed = 0;
-	modern_radio_time_calls = 0;
-	modern_drop_hasusb_on_time = &radio;
-	modern_drop_hasusb_on_time_call = 3;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	modern_drop_hasusb_on_time = NULL;
-
-	/* Losing USB after the final queued frame reaches the loop condition with
-	 * stop still clear, rather than taking the immediate mid-frame break. */
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	radio.owner = (struct ast_channel *)(uintptr_t)1;
-	radio.rxkeyed = radio.lastrx = 1;
-	modern_drop_hasusb_on_queue = &radio;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	modern_drop_hasusb_on_queue = NULL;
-
-	/* A keyed receiver can disappear without an owner or hardware sidetone. */
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 1;
-	radio.owner = NULL;
-	radio.rxkeyed = 1;
-	radio.duplex3 = 0;
-	modern_radio_time_calls = 0;
-	modern_drop_hasusb_on_time = &radio;
-	modern_drop_hasusb_on_time_call = 3;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	modern_drop_hasusb_on_time = NULL;
-	radio.owner = NULL;
-
-	radio.stopaudiothread = 0;
-	radio.hasusb = 0;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-
-	radio.stopaudiothread = 0;
-	radio.hasusb = 1;
-	radio.pa.active = 0;
-	modern_open_result = paUnanticipatedHostError;
-	modern_stop_audio_on_usleep = &radio;
-	assert(usbradio_audio_thread(&radio) == NULL);
-	modern_stop_audio_on_usleep = NULL;
-	modern_open_result = paNoError;
-	usbradioplus_dsp_destroy(&radio);
-	urp_radio_destroy(radio.radio);
-}
-
-static void run_modern_hid_retry(struct chan_usbradio_pvt *radio, int stop_after)
-{
-	radio->stophid = 0;
-	stop_hid_usleep_count = 0;
-	stop_hid_after_usleeps = stop_after;
-	stop_hid_radio_on_usleep = radio;
-	assert(hidthread(radio) == NULL);
-	assert(radio->stophid);
-	stop_hid_radio_on_usleep = NULL;
-	stop_hid_after_usleeps = 0;
-}
-
-static void configure_modern_hid_status_iteration(struct chan_usbradio_pvt *radio,
-						  unsigned char *inputs, int call)
-{
-	unsigned int pp10 = 1U << ppinshift[10];
-	unsigned int pp11 = 1U << ppinshift[11];
-
-	assert(radio && call > 0);
-	radio->devtype = C108AH_PRODUCT_ID;
-	radio->gpios[0] = "in";
-	radio->gpios[1] = "in";
-	radio->valid_gpios = 3;
-	radio->had_gpios_in = 1;
-	radio->last_gpios_in = 1;
-	inputs[radio->hid_io_cor_loc] &= (unsigned char)~0x10U;
-	inputs[radio->hid_gpio_loc] = 3;
-
-	radio->pps[2] = NULL;
-	radio->pps[10] = "in";
-	radio->pps[11] = "in";
-	radio->pps[14] = "in";
-	radio->pps[12] = "cor";
-	radio->had_pp_in = 1;
-	radio->last_pp_in = (int)pp10;
-	mock_parallel_inputs = (unsigned char)(0x80U | pp10 | pp11);
-	radio->rxppsq = (int)(1U << ppinshift[12]);
-	radio->lasttx = 0;
-	usbradioplus_publish_hardware_ptt(radio, 1);
-}
-
-/** @brief Script two idle HID polls around an unavailable program snapshot. */
-static void configure_modern_hid_idle_program_iteration(struct chan_usbradio_pvt *radio,
-							unsigned char *inputs, int call)
-{
-	assert(radio && call > 0);
-	assert(radio->hid_io_cor && radio->hid_io_ctcss);
-	inputs[radio->hid_io_cor_loc] |= (unsigned char)radio->hid_io_cor;
-	inputs[radio->hid_io_ctcss_loc] |= (unsigned char)radio->hid_io_ctcss;
-	radio->pps[12] = NULL;
-	radio->pps[13] = "ctcss";
-	mock_parallel_inputs = 0;
-	if (call == 1) {
-		/* Hold the sequence odd so the worker has no coherent program request. */
-		atomic_store_explicit(&radio->plus_radio_program_generation, 1U,
-				      memory_order_release);
-		radio->lasttx = 0;
-		usbradioplus_publish_hardware_ptt(radio, 1);
-	}
-}
-
-/** @brief Request PTT only after a valid program snapshot becomes current. */
-static void request_modern_hid_stable_program_ptt(struct chan_usbradio_pvt *radio,
-						  unsigned char *inputs, int call)
-{
-	(void)inputs;
-	assert(radio && call > 0);
-	if (call == 3)
-		usbradioplus_publish_hardware_ptt(radio, 1);
-}
-
-static void test_modern_hid_worker_retries(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct chan_usbradio_pvt constructed = {0};
-	struct ast_radio_device device = {
-		.devstr = "usb-retry",
-		.usb_device = (libusb_device *)(uintptr_t)1,
-		.product_id = C119_PRODUCT_ID,
-		.pa_input_channels = 2,
-		.pa_output_channels = 2,
-	};
-	urp_radio_state configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-	struct ast_variable explicit_rxvoice = {.name = "rxvoiceadj", .value = "0.75"};
-
-	radio.name = "modern-retry";
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_deemphasis_corner_hz = 300.0;
-	radio.plus_preemphasis_corner_hz = 300.0;
-	radio.radio = urp_radio_create(&configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	modern_acquire_device = &device;
-	modern_mixer_max = 100;
-	modern_open_result = paNoError;
-	modern_start_result = paNoError;
-
-	constructed.name = "modern-create-failure";
-	constructed.pttkick[0] = constructed.pttkick[1] = -1;
-	constructed.plus_app_rpt_rate = URP_RATE_LINK;
-	constructed.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	constructed.plus_deemphasis_corner_hz = 300.0;
-	constructed.plus_preemphasis_corner_hz = 300.0;
-	fail_radio_state_allocation = 1;
-	run_modern_hid_retry(&constructed, 1);
-	fail_radio_state_allocation = 0;
-
-	for (int mode = 0; mode < 3; ++mode) {
-		struct ast_variable ignored_option = {.name = "unsupported", .value = "4999"};
-		constructed.plus_advanced = mode == 1;
-		constructed.radioduplex = mode == 2;
-		constructed.name = "modern-tone-route";
-		constructed.stophid = 0;
-		constructed.txmixa = TX_OUT_VOICE;
-		constructed.txmixb = TX_OUT_LSD;
-		strcpy(constructed.txctcssfreq, "100.0");
-		strcpy(constructed.txctcssdefault, "100.0");
-		test_config_category = constructed.name;
-		test_config_variables = &ignored_option;
-		test_config_load_result = (struct ast_config *)(uintptr_t)1;
-		modern_stop_hid_target = &constructed;
-		assert(hidthread(&constructed) == NULL);
-		modern_stop_hid_target = NULL;
-		test_config_category = NULL;
-		test_config_variables = NULL;
-		test_config_load_result = NULL;
-		assert(constructed.radio);
-		assert(constructed.radio->radioDuplex == (mode != 0));
-		urp_radio_destroy(constructed.radio);
-		constructed.radio = NULL;
-		if (constructed.pttkick[0] >= 0)
-			close(constructed.pttkick[0]);
-		if (constructed.pttkick[1] >= 0)
-			close(constructed.pttkick[1]);
-		constructed.pttkick[0] = constructed.pttkick[1] = -1;
-	}
-
-	radio.lastaudiotime = 1;
-	radio.stophid = 0;
-	modern_stop_hid_on_radio_time = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_on_radio_time = NULL;
-	radio.lastaudiotime = 0;
-	radio.stophid = 0;
-	radio.wanteeprom = 1;
-	modern_eeprom_result = 0;
-	modern_eeprom_valid_magic = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	modern_eeprom_result = 1;
-	radio.wanteeprom = 0;
-
-	radio.stophid = 0;
-	radio.gpios[0] = "in";
-	radio.valid_gpios = 1;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_after_inputs = 2;
-	modern_toggle_hid_inputs = 1;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	modern_stop_hid_after_inputs = 1;
-	modern_toggle_hid_inputs = 0;
-
-	/* Configure status state after attachment so radio_config() cannot replace
-	 * the transition setup used by this worker-level test. */
-	radio.stophid = 0;
-	radio.lastaudiotime = 1234;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_target = &radio;
-	modern_hid_input_hook = configure_modern_hid_status_iteration;
-	haspp = 2;
-	assert(hidthread(&radio) == NULL);
-	modern_hid_input_hook = NULL;
-	modern_stop_hid_target = NULL;
-	radio.lastaudiotime = 0;
-	mock_poll_enabled = 0;
-	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
-
-	/* Idle COR/CTCSS, a missing parallel CTCSS input, and a torn programming
-	 * publication must leave the second hardware pass as a no-op. */
-	radio.stophid = 0;
-	radio.lastaudiotime = 0;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_after_inputs = 2;
-	modern_stop_hid_target = &radio;
-	modern_hid_input_hook = configure_modern_hid_idle_program_iteration;
-	radio.hdwtype = 0;
-	assert(hidhdwconfig(&radio) == 0);
-	haspp = 2;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
-	assert(hidthread(&radio) == NULL);
-	assert(modern_hid_input_calls == 2);
-	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
-		 URP_HARDWARE_INPUT_HID_CARRIER));
-	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
-		 URP_HARDWARE_INPUT_HID_CTCSS));
-	modern_hid_input_hook = NULL;
-	modern_stop_hid_target = NULL;
-	modern_stop_hid_after_inputs = 1;
-	mock_poll_enabled = 0;
-	mock_parallel_inputs = 0;
-	haspp = 0;
-	atomic_store_explicit(&radio.plus_radio_program_generation, 0U, memory_order_release);
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-
-	/* A stable program snapshot must distinguish an unchanged PTT request from
-	 * a later PTT transition, which reapplies the current radio request. */
-	radio.stophid = 0;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_after_inputs = 3;
-	modern_stop_hid_target = &radio;
-	modern_hid_input_hook = request_modern_hid_stable_program_ptt;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	radio.rxfreq = 146520000U;
-	radio.txfreq = 146940000U;
-	usbradioplus_program_radio(&radio);
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	assert(hidthread(&radio) == NULL);
-	assert(modern_hid_input_calls == 3);
-	assert(atomic_load_explicit(&radio.plus_hardware_ptt_request, memory_order_acquire));
-	modern_hid_input_hook = NULL;
-	modern_stop_hid_target = NULL;
-	modern_stop_hid_after_inputs = 1;
-	mock_poll_enabled = 0;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-
-	radio.swap_state = DEVICE_SWAP_QUIESCING;
-	radio.swap_audio_ready = 0;
-	modern_swap_first = &radio;
-	modern_swap_second = &radio;
-	modern_swap_wait_step = 0;
-	run_modern_hid_retry(&radio, 2);
-	modern_swap_first = NULL;
-	modern_swap_second = NULL;
-
-	modern_acquire_result = AST_RADIO_DEVICE_WAIT;
-	run_modern_hid_retry(&radio, 2);
-	modern_acquire_result = AST_RADIO_DEVICE_READY;
-	modern_libusb_open_result = -1;
-	run_modern_hid_retry(&radio, 2);
-	modern_libusb_open_result = 0;
-	modern_libusb_claim_result = -1;
-	modern_libusb_detach_result = -1;
-	run_modern_hid_retry(&radio, 2);
-	modern_libusb_detach_result = 0;
-	modern_libusb_claim_calls = 0;
-	modern_libusb_claim_first_result = -1;
-	modern_libusb_claim_result = 0;
-	radio.stophid = 0;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	modern_libusb_claim_first_result = 0;
-	modern_libusb_claim_result = -1;
-	run_modern_hid_retry(&radio, 1);
-	modern_libusb_claim_result = 0;
-	assert(pipe(radio.pttkick) == 0);
-	mock_pipe_failure = 1;
-	run_modern_hid_retry(&radio, 1);
-	assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
-	mock_pipe_failure = 0;
-	ast_radio_pa_stop(&radio.pa);
-	modern_open_result = paUnanticipatedHostError;
-	run_modern_hid_retry(&radio, 1);
-	modern_open_result = paNoError;
-
-	mock_poll_enabled = 1;
-	mock_poll_result = -1;
-	run_modern_hid_retry(&radio, 1);
-	mock_poll_result = 1;
-	mock_poll_revents = POLLIN;
-	mock_oss_io = 1;
-	mock_read_result = -1;
-	mock_read_errno = EIO;
-	radio.stophid = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	/* A closed wake pipe is benign and must not be reported as an I/O error. */
-	mock_read_result = 0;
-	radio.stophid = 0;
-	modern_stop_hid_target = &radio;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	mock_read_errno = EAGAIN;
-	mock_oss_io = 0;
-	mock_poll_revents = 0;
-	mock_poll_result = 0;
-	mock_poll_enabled = 0;
-
-	/* Exercise healthy watchdog and successful kick reads, then EEPROM loading
-	 * when an explicit receive-level setting must win over the stored value. */
-	radio.stophid = 0;
-	radio.lastaudiotime = 1234;
-	radio.wanteeprom = 1;
-	radio.eepromctl = 1;
-	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_config_category = radio.name;
-	test_config_variables = &explicit_rxvoice;
-	modern_eeprom_result = 0;
-	modern_eeprom_valid_magic = 1;
-	modern_eeprom_write_after_read = &radio;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_after_inputs = 2;
-	modern_stop_hid_target = &radio;
-	mock_poll_enabled = 1;
-	mock_poll_result = 1;
-	mock_poll_revents = POLLIN;
-	mock_oss_io = 1;
-	mock_read_result = 1;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	modern_stop_hid_after_inputs = 1;
-	test_config_load_result = NULL;
-	test_config_category = NULL;
-	test_config_variables = NULL;
-	modern_eeprom_write_after_read = NULL;
-	mock_oss_io = 0;
-	mock_poll_revents = 0;
-	mock_poll_result = 0;
-	mock_poll_enabled = 0;
-	radio.lastaudiotime = 0;
-	radio.wanteeprom = 0;
-	modern_eeprom_result = 1;
-	modern_eeprom_valid_magic = 0;
-
-	/* Dropping only the acquired interface exercises the inner-loop USB-loss
-	 * condition; the outer retry sleep then requests orderly worker shutdown. */
-	radio.stophid = 0;
-	modern_hid_input_calls = 0;
-	modern_drop_hid_after_inputs = 1;
-	modern_stop_hid_target = &radio;
-	stop_hid_radio_on_usleep = &radio;
-	assert(hidthread(&radio) == NULL);
-	stop_hid_radio_on_usleep = NULL;
-	modern_stop_hid_target = NULL;
-	modern_drop_hid_after_inputs = 0;
-	modern_acquire_result = AST_RADIO_DEVICE_READY;
-
-	/* Two service intervals cover stable and changing HID/parallel inputs,
-	 * CM108AH hook deassertion, an expired pulse, and no parallel PTT route. */
-	radio.stophid = 0;
-	radio.devtype = C108AH_PRODUCT_ID;
-	radio.gpios[0] = "in";
-	radio.gpios[1] = "in";
-	radio.valid_gpios = 3;
-	radio.had_gpios_in = 1;
-	radio.last_gpios_in = 0;
-	radio.pps[2] = NULL;
-	radio.pps[10] = "in";
-	radio.pps[11] = "cor";
-	radio.had_pp_in = 1;
-	radio.last_pp_in = 0;
-	radio.rxppsq = 0;
-	radio.hid_gpio_pulsetimer[0] = 1;
-	radio.hid_gpio_pulsemask = 1;
-	memset(modern_hid_inputs, 0, sizeof(modern_hid_inputs));
-	modern_hid_inputs[radio.hid_io_cor_loc] = 0;
-	modern_hid_input_calls = 0;
-	modern_stop_hid_after_inputs = 2;
-	modern_toggle_hid_inputs = 1;
-	mock_parallel_inputs = 0x80;
-	toggle_parallel_inputs_mask = 0x40;
-	mock_tvnow_step = 10;
-	modern_stop_hid_target = &radio;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	assert(hidthread(&radio) == NULL);
-	modern_stop_hid_target = NULL;
-	modern_stop_hid_after_inputs = 1;
-	modern_toggle_hid_inputs = 0;
-	mock_poll_enabled = 0;
-	mock_tvnow_step = 0;
-	toggle_parallel_inputs_mask = 0;
-	haspp = 0;
-
-	if (radio.pttkick[0] >= 0)
-		close(radio.pttkick[0]);
-	if (radio.pttkick[1] >= 0)
-		close(radio.pttkick[1]);
-	urp_radio_destroy(radio.radio);
-}
-
-static void test_modern_module_lifecycle_baseline(void)
-{
-	struct chan_usbradio_pvt no_radio = {0};
-	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
-
-	haspp = hasout = 0;
-	usbradio_start_parallel_pulser();
-	haspp = hasout = 1;
-	usbradio_start_parallel_pulser();
-	haspp = hasout = 0;
-
-	fail_format_cap_alloc = 1;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
-	fail_format_cap_alloc = 0;
-	test_config_load_result = CONFIG_STATUS_FILEMISSING;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	separate_processing_config_result = 1;
-	test_processing_config_load_result = CONFIG_STATUS_FILEINVALID;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_processing_config_load_result = test_config_load_result;
-	test_config_category = "general";
-	test_config_variables = &active;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	test_config_category = "modern-test";
-	separate_processing_config_result = 0;
-	test_config_load_calls = 0;
-	test_config_load_second_result = CONFIG_STATUS_FILEINVALID;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
-	test_config_load_second_result = NULL;
-	separate_processing_config_result = 1;
-	ast_strdup_calls = 0;
-	fail_ast_strdup_call = 1;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
-	fail_ast_strdup_call = 0;
-	channel_register_result = 1;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	channel_register_result = 0;
-	cli_register_result = 1;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	cli_register_result = 0;
-	advanced_register_result = -1;
-	assert(load_module() == AST_MODULE_LOAD_FAILURE);
-	advanced_register_result = 0;
-	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
-	{
-		struct chan_usbradio_pvt *radio = usbradio_default.next;
-		assert(radio);
-		radio->owner = (struct ast_channel *)(uintptr_t)1;
-		radio->audiothread = (pthread_t)1;
-		radio->hidthread = (pthread_t)2;
-		radio->dsp = (struct ast_dsp *)(uintptr_t)1;
-		radio->gpios[0] = ast_strdup("in");
-		radio->pps[2] = ast_strdup("ptt");
-		assert(radio->gpios[0] && radio->pps[2]);
-		no_radio.pttkick[0] = no_radio.pttkick[1] = -1;
-		no_radio.hidthread = no_radio.audiothread = AST_PTHREADT_NULL;
-		radio->next = &no_radio;
-	}
-	assert(unload_module() == 0);
-	haspp = 0;
-	hasout = 0;
-	usbradio_default.next = NULL;
-	test_config_category = NULL;
-	test_config_variables = NULL;
-	test_config_load_result = NULL;
-	separate_processing_config_result = 0;
-}
-#endif
-
-#ifdef URP_TEST_MODERN
-int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, short count,
-			  short mono)
-#else
-/** @brief Host-API test double for ast_radio_check_audio; observable effects are recorded in
- * harness state.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @param statistics Audio measurement structure updated or displayed by the stub.
- * @param count Number of elements available in the supplied block.
- * @return Scripted host result for the current test scenario.
- */
-int ast_radio_check_audio(short *samples, struct audiostatistics *statistics, short count)
-#endif
-{
-	(void)samples;
-	(void)statistics;
-	(void)count;
-#ifdef URP_TEST_MODERN
-	(void)mono;
-#endif
-	return mock_audio_clipping;
 }
 
 static void add_processing_override(const char *section, const char *name, const char *value);
@@ -4867,14 +2581,36 @@ static void test_text_controls(void)
 	assert(usbradio_text(channel, "GPIO 1 1") == 0);
 	assert(radio.hid_gpio_val & 1);
 	haspp = 2;
+	direct_parallel_fixture(&radio);
 	assert(usbradio_text(channel, "PP") == 0);
 	assert(usbradio_text(channel, "PP 1 1") == 0);
 	assert(usbradio_text(channel, "PP 10 1") == 0);
 	assert(usbradio_text(channel, "PP 2 3") == 0);
-	assert(pp_pulsetimer[2] == 2);
+	assert(direct_parallel_pulse.invert_mask == 1U);
+	assert(direct_parallel_pulse.pulse_duration_milliseconds == 2U);
 	assert(usbradio_text(channel, "PP 2 0") == 0);
+	assert(direct_parallel_pulse.cancel_mask == 1U);
+	assert(direct_parallel_output.output_mask == 0U);
 	assert(usbradio_text(channel, "PP 2 1") == 0);
 	assert(pp_val & 1);
+	assert(direct_parallel_output.output_mask == 1U);
+	assert(direct_parallel_publish_calls == 2U);
+	/* A second node publishes through the same physical parallel owner. */
+	{
+		struct chan_usbradio_pvt second = {.name = "nonowner", .pttkick = {-1, -1}};
+
+		test_channel_private = &second;
+		assert(usbradio_text(channel, "PP 2 0") == 0);
+		assert(direct_parallel_output.output_mask == 0U);
+		assert(!radio.plus_parallel_adapter_poc.persistent_output);
+		assert(usbradio_text(channel, "PP 2 1") == 0);
+		assert(direct_parallel_output.output_mask == 1U);
+		assert(radio.plus_parallel_adapter_poc.persistent_output == 1U);
+		assert(!second.plus_parallel_adapter_poc.opened);
+		assert(direct_parallel_publish_calls == 4U);
+		test_channel_private = &radio;
+	}
+	usbradioplus_test_set_parallel_owner(NULL);
 	haspp = 0;
 	assert(usbradio_text(channel, "UNKNOWN") == 0);
 	assert(usbradio_text(channel, "UNKNOWN 1 2 3 4 H") == 0);
@@ -4912,13 +2648,8 @@ static void test_console_keying(void)
 /** @brief Verify channel selection helpers. */
 static void test_channel_selection_helpers(void)
 {
-	struct chan_usbradio_pvt first = {.name = "first"};
-	struct chan_usbradio_pvt second = {.name = "second"};
-#ifdef URP_TEST_MODERN
-	struct ast_radio_device first_device = {.devstr = "lease-first", .serial = "serial-first"};
-	struct ast_radio_device second_device = {.devstr = "lease-second",
-						 .serial = "serial-second"};
-#endif
+	struct chan_usbradio_pvt first = {.name = "first", .pttkick = {-1, -1}};
+	struct chan_usbradio_pvt second = {.name = "second", .pttkick = {-1, -1}};
 	const char *show_active[] = {"radio", "active"};
 	const char *invalid[] = {"radio", "active", "first", "extra"};
 	const char *missing[] = {"radio", "active", "missing"};
@@ -4927,10 +2658,15 @@ static void test_channel_selection_helpers(void)
 
 	strcpy(first.devstr, "usb-first");
 	strcpy(second.devstr, "usb-second");
+	strcpy(first.serial, "serial-first");
+	strcpy(second.serial, "serial-second");
+	strcpy(first.plus_cm119_gpio_usb_port_path, "1-1");
+	strcpy(second.plus_cm119_gpio_usb_port_path, "1-2");
+	first.plus_portaudio_input_device_index = 3;
+	first.plus_portaudio_output_device_index = 4;
+	second.plus_portaudio_input_device_index = 5;
+	second.plus_portaudio_output_device_index = 6;
 	first.next = &second;
-#ifdef URP_TEST_MODERN
-	first.radio_device = &first_device;
-#endif
 	usbradio_default.next = &first;
 	usbradio_active = first.name;
 	assert(radio_active(1, 2, show_active) == RESULT_SUCCESS);
@@ -4945,62 +2681,36 @@ static void test_channel_selection_helpers(void)
 	assert(usb_device_swap(1, NULL) == -1);
 	assert(usb_device_swap(1, "missing") == -1);
 	assert(usb_device_swap(1, "first") == -1);
-#ifndef URP_TEST_MODERN
 	first.devicenum = 1;
 	second.devicenum = 2;
 	first.hasusb = first.usbass = second.hasusb = second.usbass = 1;
 	assert(usb_device_swap(1, "second") == 0);
 	assert(first.devicenum == 2 && second.devicenum == 1);
 	assert(!first.hasusb && !first.usbass && !second.hasusb && !second.usbass);
-	installed_usb_device = NULL;
-	assert(find_installed_usb_match() == NULL);
-	installed_usb_device = "usb-second";
-	assert(find_installed_usb_match() == first.devstr);
-	installed_usb_device = NULL;
-#else
-	{
-		first.hasusb = 1;
-		second.hasusb = 0;
-		assert(usb_device_swap(1, "second") == -1);
-		first.hasusb = 0;
-		second.hasusb = 1;
-		assert(usb_device_swap(1, "second") == -1);
-
-		first.hasusb = second.hasusb = 1;
-		first.radio_device = &first_device;
-		second.radio_device = &second_device;
-		modern_swap_first = NULL;
-		modern_swap_second = NULL;
-		assert(usb_device_swap(1, "second") == -1);
-
-		first.hasusb = second.hasusb = 1;
-		modern_swap_first = &first;
-		modern_swap_second = &second;
-		modern_swap_wait_step = 0;
-		modern_swap_staggered = 1;
-		modern_device_swap_result = 0;
-		assert(usb_device_swap(1, "second") == 0);
-		modern_swap_staggered = 0;
-		assert(first.radio_device == &second_device);
-		assert(second.radio_device == &first_device);
-		assert(!strcmp(first.devstr, "lease-second"));
-		assert(!strcmp(second.devstr, "lease-first"));
-
-		first.hasusb = second.hasusb = 1;
-		first.radio_device->serial = NULL;
-		second.radio_device->serial = NULL;
-		modern_swap_wait_step = 0;
-		assert(usb_device_swap(1, "second") == 0);
-
-		first.hasusb = second.hasusb = 1;
-		modern_swap_wait_step = 0;
-		modern_device_swap_result = -1;
-		assert(usb_device_swap(1, "second") == -1);
-		modern_device_swap_result = 0;
-		modern_swap_first = NULL;
-		modern_swap_second = NULL;
-	}
-#endif
+	assert(!strcmp(first.devstr, "usb-second") && !strcmp(second.devstr, "usb-first"));
+	assert(!strcmp(first.serial, "serial-second") && !strcmp(second.serial, "serial-first"));
+	assert(!strcmp(first.plus_cm119_gpio_usb_port_path, "1-2"));
+	assert(!strcmp(second.plus_cm119_gpio_usb_port_path, "1-1"));
+	assert(first.plus_portaudio_input_device_index == 5 &&
+	       first.plus_portaudio_output_device_index == 6);
+	assert(second.plus_portaudio_input_device_index == 3 &&
+	       second.plus_portaudio_output_device_index == 4);
+	assert(!first.plus_hardware_worker_started && !second.plus_hardware_worker_started);
+	first.plus_hardware_worker_started = second.plus_hardware_worker_started = 1;
+	first.hidthread = (pthread_t)1;
+	second.hidthread = (pthread_t)2;
+	pthread_create_calls = 0;
+	fail_pthread_create_call = 0;
+	assert(usb_device_swap(1, "second") == 0);
+	assert(pthread_create_calls == 2);
+	assert(first.plus_hardware_worker_started && second.plus_hardware_worker_started);
+	assert(!strcmp(first.devstr, "usb-first") && !strcmp(second.devstr, "usb-second"));
+	pthread_create_calls = 0;
+	fail_pthread_create_call = 1;
+	assert(usb_device_swap(1, "second") == -1);
+	assert(!first.plus_hardware_worker_started && second.plus_hardware_worker_started);
+	assert(atomic_load_explicit(&first.plus_hardware_stop_request, memory_order_acquire));
+	fail_pthread_create_call = 0;
 	usbradio_default.next = NULL;
 	usbradio_active = NULL;
 }
@@ -5058,7 +2768,10 @@ static void test_cli_handlers(void)
 	EXERCISE_HANDLER(handle_radio_active);
 	assert(handle_radio_active(&entry, 0, args) == CLI_SUCCESS);
 	EXERCISE_HANDLER(handle_show_settings);
+	cli_output[0] = '\0';
+	cli_output_length = 0;
 	assert(handle_show_settings(&entry, 0, args) == CLI_SUCCESS);
+	assert(strstr(cli_output, "Tx Voice Level currently set to 500\n"));
 	usbradio_active = "missing";
 	assert(handle_show_settings(&entry, 0, args) == CLI_SUCCESS);
 	usbradio_active = radio.name;
@@ -5073,6 +2786,115 @@ static void test_cli_handlers(void)
 	assert(handle_radioplus_native_stats(&entry, 0, &stats4) == CLI_SUCCESS);
 	stats_args[3] = "invalid";
 	assert(handle_radioplus_native_stats(&entry, 0, &stats4) == CLI_SHOWUSAGE);
+	/* Audio-only POC selection must leave the established native status output
+	 * unchanged. The combined proof alone exposes adapter-owned raw counters. */
+	radio.plus_portaudio_poc = 1;
+	radio.plus_cm119_gpio_poc = 0;
+	cli_output[0] = '\0';
+	cli_output_length = 0U;
+	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
+	assert(!strstr(cli_output, "PortAudio/CM119 adapter:"));
+
+	combined_poc_statistics_calls = 0U;
+	combined_poc_statistics_copy_size = 0U;
+	combined_poc_statistics_result = RPTADV_AUDIO_OK;
+	combined_poc_statistics_snapshot = (struct rptadv_audio_stream_stats){
+		.struct_size = sizeof(combined_poc_statistics_snapshot),
+		.abi_version = RPTADV_AUDIO_ADAPTER_ABI_VERSION,
+		.callback_count = 17U,
+		.callback_frame_count = 16320U,
+		.oversized_callback_count = 2U,
+		.native_tick_failure_count = 3U,
+		.input_overflow_count = 4U,
+		.output_underflow_count = 5U,
+		.device_error_count = 6U,
+		.input_queue_capacity_frames = 128U,
+		.input_queue_occupancy_frames = 7U,
+		.output_queue_capacity_frames = 256U,
+		.output_queue_occupancy_frames = 8U,
+		.output_queue_dropped_frame_count = 9U,
+		.input_clip_sample_count = 10U,
+		.output_clip_sample_count = 11U,
+		.input_peak = 0.500F,
+		.input_rms = 0.250F,
+		.output_peak = 0.750F,
+		.output_rms = 0.375F,
+		.last_portaudio_error = -12,
+		.callback_last_duration_ns = UINT64_C(1234000),
+		.callback_max_duration_ns = UINT64_C(5678000),
+		.callback_last_start_delay_ns = UINT64_C(2345000),
+		.callback_max_start_delay_ns = UINT64_C(6789000),
+		.callback_late_start_count = 13U,
+		.callback_late_start_tolerance_ns = UINT64_C(1000000),
+		.last_input_xrun_monotonic_ns = UINT64_C(123456789000),
+		.last_output_xrun_monotonic_ns = UINT64_C(987654321000),
+		.callback_clock_error_count = 14U,
+		.capture_callback_count = 19U,
+		.capture_ring_target_frames = 1056U,
+		.capture_ring_ratio_correction_ppm = -130,
+		.capture_ring_missing_frames = 21U,
+		.capture_ring_dropped_frames = 22U,
+		.capture_startup_wait_frames = 960U,
+	};
+	radio.plus_cm119_gpio_poc = 1;
+	radio.plus_hardware_adapter_prepared = 1;
+	radio.plus_hardware_adapter.audio = &combined_poc_statistics_adapter;
+	radio.plus_portaudio_stream =
+		(struct rptadv_audio_stream *)&combined_poc_statistics_stream_token;
+	cli_output[0] = '\0';
+	cli_output_length = 0U;
+	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
+	assert(combined_poc_statistics_calls == 1U);
+	assert(strstr(
+		cli_output,
+		"PortAudio/CM119 adapter: input peak 0.500, RMS 0.250, clips 10, queue 7/128"));
+	assert(strstr(cli_output,
+		      "output peak 0.750, RMS 0.375, clips 11, queue 8/256, dropped 9"));
+	assert(strstr(cli_output,
+		      "callbacks 17/16320, oversize 2, tick failures 3, input overruns 4, "
+		      "output underruns 5, device errors 6, last error -12."));
+	assert(strstr(cli_output,
+		      "PortAudio callback timing: duration last 1.234/max 5.678 ms, start delay "
+		      "last 2.345/max 6.789 ms, late starts 13 (tolerance 1.000 ms), "
+		      "clock errors 14."));
+	assert(strstr(cli_output, "PortAudio xrun timestamps: last input 123.456789 s, last output "
+				  "987.654321 s (CLOCK_MONOTONIC since boot; 0 = none recorded)."));
+	assert(!strstr(cli_output, "PortAudio callback timing and xrun timestamps: unavailable"));
+	assert(strstr(cli_output,
+		      "PortAudio capture clock: callbacks 19, ring 7/128 frames, target 1056, "
+		      "correction -130 ppm, missing 21, dropped 22, startup wait 960 frames."));
+
+	/* The older shared object leaves the new destination tail untouched.  Its
+	 * existing counters remain valid, but zero-filled timing is unavailable. */
+	combined_poc_statistics_copy_size =
+		offsetof(struct rptadv_audio_stream_stats, callback_last_duration_ns);
+	cli_output[0] = '\0';
+	cli_output_length = 0U;
+	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
+	assert(combined_poc_statistics_calls == 2U);
+	assert(strstr(cli_output, "callbacks 17/16320"));
+	assert(strstr(cli_output, "PortAudio callback timing and xrun timestamps: unavailable."));
+	assert(!strstr(cli_output, "PortAudio callback timing: duration"));
+	assert(!strstr(cli_output, "PortAudio xrun timestamps: last input"));
+	assert(!strstr(cli_output, "PortAudio capture clock:"));
+	combined_poc_statistics_copy_size = 0U;
+
+	/* A failed facade read must publish no stale peak, RMS, queue, or error
+	 * values and must not make the normal native status command fail. */
+	combined_poc_statistics_result = RPTADV_AUDIO_PORTAUDIO_ERROR;
+	cli_output[0] = '\0';
+	cli_output_length = 0U;
+	assert(handle_radioplus_native_stats(&entry, 0, &stats3) == CLI_SUCCESS);
+	assert(combined_poc_statistics_calls == 3U);
+	assert(strstr(cli_output, "PortAudio/CM119 adapter: statistics unavailable (result"));
+	assert(!strstr(cli_output, "PortAudio/CM119 adapter: input peak"));
+	assert(!strstr(cli_output, "PortAudio callback timing:"));
+	assert(!strstr(cli_output, "PortAudio xrun timestamps:"));
+	radio.plus_portaudio_poc = 0;
+	radio.plus_cm119_gpio_poc = 0;
+	radio.plus_hardware_adapter_prepared = 0;
+	radio.plus_hardware_adapter.audio = NULL;
+	radio.plus_portaudio_stream = NULL;
 	/* The statistics command distinguishes an unavailable graph from an
 	 * unavailable renderer. Both are possible during a control-plane reload and
 	 * must report a normal CLI failure rather than dereferencing partial state. */
@@ -5298,10 +3120,6 @@ static void test_radio_tune_dispatch(void)
 static void test_menu_adjustment_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
-#ifdef URP_TEST_MODERN
-	struct ast_radio_device radio_device = {
-		.devstr = "usb-test", .serial = "serial-test", .alsa_card = 7};
-#endif
 	urp_radio_state radio_state = {0};
 	int16_t squelch_adjust = 0;
 	int32_t ctcss_adjust = 0;
@@ -5318,11 +3136,7 @@ static void test_menu_adjustment_helpers(void)
 
 	radio.name = "test";
 	radio.radio = &radio_state;
-#ifdef URP_TEST_MODERN
-	radio.radio_device = &radio_device;
-#else
 	radio.micmax = 100;
-#endif
 	radio_state.prxSquelchAdjust = &squelch_adjust;
 	radio_state.prxCtcssAdjust = &ctcss_adjust;
 	radio_state.ptxCtcssAdjust = &ctcss_adjust;
@@ -5332,12 +3146,6 @@ static void test_menu_adjustment_helpers(void)
 	_menu_rxvoice(1, &radio, "bad");
 	_menu_rxvoice(1, &radio, "500");
 	radio.rxdemod = RX_AUDIO_SPEAKER;
-#ifdef URP_TEST_MODERN
-	modern_mixer_max = 0;
-	_menu_rxvoice(1, &radio, "500");
-	tune_rxinput(1, &radio, 0, 1);
-	modern_mixer_max = 100;
-#endif
 	_menu_rxvoice(1, &radio, "");
 	_menu_rxvoice(1, &radio, "500");
 	radio.rxsquelchadj = 500;
@@ -5476,7 +3284,30 @@ static void test_menu_support_dispatch(void)
 	for (size_t index = 0; index < ARRAY_LEN(usb_commands); ++index)
 		tune_menusupport(1, &radio, usb_commands[index]);
 
+	/* Direct hardware publishes online independently of the retired USB flag.
+	 * Permit a real adjustment when online, and reject every USB menu action
+	 * with the unchanged diagnostic when the old flag falsely claims online. */
+	radio.plus_cm119_gpio_poc = 1;
+	atomic_store_explicit(&radio.plus_hardware_online, 1, memory_order_release);
+	cli_output[0] = '\0';
+	cli_output_length = 0U;
+	tune_menusupport(1, &radio, "e432");
+	assert(!radio.hasusb && radio.rxsquelchadj == 432);
+	assert(squelch_adjust == ((999 - 432) * 32767) / AUDIO_ADJUSTMENT);
+	assert(!strcmp(cli_output, "Changed Rx Squelch Level setting to 432\n"));
 	radio.hasusb = 1;
+	atomic_store_explicit(&radio.plus_hardware_online, 0, memory_order_release);
+	for (size_t index = 0; index < ARRAY_LEN(usb_commands); ++index) {
+		cli_output[0] = '\0';
+		cli_output_length = 0U;
+		tune_menusupport(1, &radio, usb_commands[index]);
+		assert(!strcmp(cli_output, "Device selected is selected, the associated USB device "
+					   "string usb-selected was not found\n"));
+		assert(radio.rxsquelchadj == 432);
+		assert(squelch_adjust == ((999 - 432) * 32767) / AUDIO_ADJUSTMENT);
+	}
+	radio.hasusb = 0;
+	atomic_store_explicit(&radio.plus_hardware_online, 1, memory_order_release);
 	wait_or_poll_fail_call = 1;
 	poll_successes_before_exit = 1;
 	for (size_t index = 0; index < ARRAY_LEN(usb_commands); ++index) {
@@ -5526,6 +3357,17 @@ static void test_menu_support_dispatch(void)
 	radio.txtestkey = 1;
 	tune_menusupport(1, &radio, "Z");
 	radio.txtestkey = 0;
+	memset(&radio.rxaudiostats, 0, sizeof(radio.rxaudiostats));
+	radio.rxaudiostats.index = 3;
+	radio.rxaudiostats.maxbuf[0] = 123;
+	radio.rxaudiostats.clipbuf[1] = 4;
+	radio.rxaudiostats.pwrbuf[2] = 5678;
+	radio_print_audio_stats_calls = 0;
+	memset(&radio_print_audio_statistics, 0, sizeof(radio_print_audio_statistics));
+	radio_print_audio_statistics_prefix[0] = '\0';
+	tune_menusupport(1, &radio, "Y");
+	assert(radio_print_audio_stats_calls == 1);
+	assert_audio_statistics_displayed(&radio.rxaudiostats, "Rx");
 	poll_successes_before_exit = 1;
 	tune_menusupport(1, &radio, "z");
 	radio.rxcdtype = CD_HID;
@@ -5620,10 +3462,6 @@ static void set_measurements(urp_radio_stage *stage, int value, size_t count)
 static void test_receive_calibration_helpers(void)
 {
 	struct chan_usbradio_pvt radio = {0};
-#ifdef URP_TEST_MODERN
-	struct ast_radio_device radio_device = {.devstr = "usb-assigned",
-						.serial = "serial-assigned"};
-#endif
 	urp_radio_state radio_state = {0};
 	urp_radio_stage measure = {0};
 	urp_radio_stage receive_output = {0};
@@ -5637,9 +3475,6 @@ static void test_receive_calibration_helpers(void)
 
 	radio.name = "test";
 	radio.radio = &radio_state;
-#ifdef URP_TEST_MODERN
-	radio.radio_device = &radio_device;
-#endif
 	tune_rxvoice(1, &radio, 1);
 	radio_state.spsMeasure = &measure;
 	tune_rxvoice(1, &radio, 1);
@@ -5717,9 +3552,7 @@ static void test_receive_calibration_helpers(void)
 	wait_or_poll_calls = 0;
 	assert(call_radio_tune(&radio, 3, "rxtone", NULL) == RESULT_SUCCESS);
 
-#ifndef URP_TEST_MODERN
 	radio.micmax = 100;
-#endif
 	radio.rxdemod = RX_AUDIO_FLAT;
 	radio.rxcdtype = CD_XPMR_NOISE;
 	radio_state.rxRssi = 12000;
@@ -5764,7 +3597,7 @@ static void test_receive_calibration_helpers(void)
 	set_measurements(&measure, 27000, 20);
 	tune_rxinput(1, &radio, 0, 1);
 	radio.rxsquelchadj = 999;
-	radio.rxaudiostats.pwrbuf[AUDIO_STATS_LEN - 1] = 100;
+	radio.rxaudiostats.pwrbuf[RPTADV_RADIO_AUDIO_STATS_LEN - 1] = 100;
 	set_measurements(&measure, 27000, 20);
 	tune_rxinput(1, &radio, 0, 1);
 
@@ -5783,10 +3616,6 @@ static void test_config_update_and_radio_programming(void)
 	struct ast_variable unrelated = {.name = "other", .value = "0", .next = &variable};
 	struct chan_usbradio_pvt radio = {0};
 	urp_radio_state template = {0};
-#ifdef URP_TEST_MODERN
-	struct ast_radio_device radio_device = {
-		.devstr = "usb-dump", .serial = "serial-dump", .alsa_card = 9};
-#endif
 
 	test_config_variables = &variable;
 	assert(usbradioplus_config_variable_update(config, "test.conf", category, "gain", "1") ==
@@ -5827,9 +3656,6 @@ static void test_config_update_and_radio_programming(void)
 	template.pTxCodeDefault = "100.0";
 	radio.radio = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 	assert(radio.radio);
-#ifdef URP_TEST_MODERN
-	radio.radio_device = &radio_device;
-#endif
 	strcpy(radio.rxctcssfreqs, "100.0");
 	strcpy(radio.txctcssfreqs, "100.0");
 	strcpy(radio.txctcssdefault, "100.0");
@@ -5873,7 +3699,6 @@ static void test_config_update_and_radio_programming(void)
 
 	struct usbradioplus_radio_program_request program_request;
 
-	parallel_write_calls = 0;
 	haspp = 2;
 	pp_val = 0;
 	radio.rxfreq = 146520000;
@@ -5882,7 +3707,6 @@ static void test_config_update_and_radio_programming(void)
 	usbradioplus_program_radio(&radio);
 	/* Programming is published by the control plane and consumed by the HID
 	 * worker. It must not write the parallel bus synchronously. */
-	assert(parallel_write_calls == 0);
 	assert(usbradioplus_read_radio_program_request(&radio, &program_request));
 	assert(program_request.rx_frequency == 146520000U);
 	assert(program_request.tx_frequency == 146520000U);
@@ -5893,17 +3717,13 @@ static void test_config_update_and_radio_programming(void)
 	radio.set_txfreq = 147600000;
 	radio.set_txpower = 1;
 	usbradioplus_program_radio(&radio);
-	assert(parallel_write_calls == 0);
 	assert(usbradioplus_read_radio_program_request(&radio, &program_request));
 	assert(program_request.rx_frequency == 147000000U);
 	assert(program_request.tx_frequency == 147600000U);
 	assert(program_request.high_power);
 	usbradioplus_program_radio(NULL);
-	parallel_write_calls = 0;
 	usbradioplus_set_channel(7);
-	assert(parallel_write_calls > 0);
-	usbradioplus_parallel_program_write(NULL, 0x55);
-	assert(pp_val == 0x55);
+	assert(pp_val == 0);
 	haspp = 0;
 	usbradioplus_program_radio(&radio);
 	usbradioplus_set_channel(1);
@@ -6037,9 +3857,6 @@ static void test_config_update_and_radio_programming(void)
 	radio.numrxctcssfreqs = 0;
 	radio.radio->numrxcodes = 0;
 	radio.radio->numtxcodes = 0;
-#ifdef URP_TEST_MODERN
-	radio.radio_device = NULL;
-#endif
 	assert(call_radio_tune(&radio, 3, "dump", NULL) == RESULT_SUCCESS);
 	assert(!urp_radio_destroy(radio.radio));
 	test_config_variables = NULL;
@@ -6160,6 +3977,11 @@ static void add_complete_processing_override_fixture(void)
 		{"hardware", "hardware_eeprom_enabled", "yes"},
 		{"hardware", "hardware_audio_fragment_count", "4"},
 		{"hardware", "hardware_audio_queue_size", "8"},
+		{"hardware", "hardware_audio_backend", "portaudio"},
+		{"hardware", "hardware_portaudio_input_device_index", "11"},
+		{"hardware", "hardware_portaudio_output_device_index", "12"},
+		{"hardware", "hardware_gpio_backend", "cm119"},
+		{"hardware", "hardware_gpio_usb_port_path", "3-1"},
 		{"hardware", "hardware_ptt_inverted", "yes"},
 		{"hardware", "hardware_repeater_number", "1"},
 		{"hardware", "hardware_area", "2"},
@@ -6272,6 +4094,11 @@ static void test_processing_config_overrides(void)
 	add_processing_override("hardware", "hardware_eeprom_enabled", "yes");
 	add_processing_override("hardware", "hardware_audio_fragment_count", "1");
 	add_processing_override("hardware", "hardware_audio_queue_size", "1");
+	add_processing_override("hardware", "hardware_audio_backend", "portaudio");
+	add_processing_override("hardware", "hardware_portaudio_input_device_index", "1");
+	add_processing_override("hardware", "hardware_portaudio_output_device_index", "2");
+	add_processing_override("hardware", "hardware_gpio_backend", "cm119");
+	add_processing_override("hardware", "hardware_gpio_usb_port_path", "3-1");
 	add_processing_override("hardware", "hardware_ptt_inverted", "yes");
 	add_processing_override("hardware", "hardware_user_key", "user-key");
 	add_processing_override("hardware", "hardware_gpio_1_mode", "in");
@@ -6308,6 +4135,11 @@ static void test_processing_config_overrides(void)
 	assert(radio.rxsdtype == SD_XPMR);
 	assert(radio.duplex3mode == DUPLEX3_MODE_SOFTWARE);
 	assert(radio.duplex3 == 999);
+	assert(radio.plus_portaudio_poc);
+	assert(radio.plus_cm119_gpio_poc);
+	assert(!strcmp(radio.plus_cm119_gpio_usb_port_path, "3-1"));
+	assert(radio.plus_portaudio_input_device_index == 1);
+	assert(radio.plus_portaudio_output_device_index == 2);
 	assert(radio.radioactive);
 	assert(radio.txpreemphasis);
 	assert(fabs(radio.plus_deemphasis_corner_hz - 250.0) < 0.001);
@@ -6360,6 +4192,9 @@ static void test_processing_config_overrides(void)
 	add_processing_override("hardware", "hardware_preemphasis_corner_hz", "invalid");
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	settings_defaults(&settings);
+	add_processing_override("hardware", "hardware_audio_backend", "invalid");
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
+	settings_defaults(&settings);
 	add_processing_override("asterisk", asterisk_override_options[0], "yes");
 	jitter_config_result = -1;
 	assert(apply_processing_config_overrides(&radio, "usb") == -1);
@@ -6400,6 +4235,81 @@ static void test_processing_config_overrides(void)
 	assert(radio.dcs_level > 0.0);
 }
 
+/** @brief Verify mandatory audio ownership and deferred identity selection. */
+static void test_portaudio_poc_configuration_gate(void)
+{
+	struct chan_usbradio_pvt radio = {0};
+	static const char *const accepted[] = {"portaudio", "portaudio_poc"};
+
+	for (size_t index = 0U; index < ARRAY_LEN(accepted); ++index) {
+		settings_defaults(&settings);
+		add_processing_override("hardware", "hardware_audio_backend", accepted[index]);
+		add_processing_override("hardware", "hardware_portaudio_input_device_index", "3");
+		add_processing_override("hardware", "hardware_portaudio_output_device_index", "4");
+		assert(apply_processing_config_overrides(&radio, "usb") == 0);
+		assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+		assert(radio.plus_portaudio_input_device_index == 3);
+		assert(radio.plus_portaudio_output_device_index == 4);
+	}
+
+	/* Exact selectors and automatic selection are resolved before hardware opens. */
+	memset(&radio, 0, sizeof(radio));
+	settings_defaults(&settings);
+	add_processing_override("hardware", "hardware_device_identifier", "hw:4,0");
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
+	assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+	assert(!strcmp(radio.devstr, "hw:4,0"));
+	memset(&radio, 0, sizeof(radio));
+	settings_defaults(&settings);
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
+	assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+
+	for (int missing_input = 0; missing_input <= 1; ++missing_input) {
+		settings_defaults(&settings);
+		add_processing_override("hardware", "hardware_portaudio_input_device_index",
+					missing_input ? "-1" : "3");
+		add_processing_override("hardware", "hardware_portaudio_output_device_index",
+					missing_input ? "4" : "-1");
+		assert(apply_processing_config_overrides(&radio, "usb") == -1);
+		assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+	}
+
+	/* An obsolete owner cannot replace a successfully selected direct backend. */
+	settings_defaults(&settings);
+	add_processing_override("hardware", "hardware_audio_backend", "oss");
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
+	assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+}
+
+/** @brief Verify one GPIO owner for the 8 kHz and native 48 kHz interfaces. */
+static void test_cm119_gpio_poc_configuration_gate(void)
+{
+	struct chan_usbradio_pvt radio = {0};
+	static const char *const accepted[] = {"cm119", "cm119_poc"};
+
+	for (int advanced = 0; advanced <= 1; ++advanced) {
+		for (size_t index = 0U; index < ARRAY_LEN(accepted); ++index) {
+			memset(&radio, 0, sizeof(radio));
+			radio.plus_advanced = advanced;
+			settings_defaults(&settings);
+			add_processing_override("hardware", "hardware_gpio_backend",
+						accepted[index]);
+			add_processing_override("hardware", "hardware_gpio_usb_port_path", "3-1");
+			assert(apply_processing_config_overrides(&radio, "usb") == 0);
+			assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+			assert(!strcmp(radio.plus_cm119_gpio_usb_port_path, "3-1"));
+		}
+	}
+
+	settings_defaults(&settings);
+	add_processing_override("hardware", "hardware_gpio_backend", "legacy_hid");
+	assert(apply_processing_config_overrides(&radio, "usb") == -1);
+	assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+	settings_defaults(&settings);
+	assert(apply_processing_config_overrides(&radio, "usb") == 0);
+	assert(radio.plus_portaudio_poc && radio.plus_cm119_gpio_poc);
+}
+
 /** @brief Verify that every modern non-audio option reaches the channel state. */
 static void test_complete_processing_config_overrides(void)
 {
@@ -6413,6 +4323,10 @@ static void test_complete_processing_config_overrides(void)
 	assert(!strcmp(radio.devstr, "usb-complete"));
 	assert(!strcmp(radio.serial, "serial-complete"));
 	assert(radio.hdwtype == 1 && radio.wanteeprom && radio.frags == 4 && radio.queuesize == 8);
+	assert(radio.plus_portaudio_poc && radio.plus_portaudio_input_device_index == 11 &&
+	       radio.plus_portaudio_output_device_index == 12);
+	assert(radio.plus_cm119_gpio_poc);
+	assert(!strcmp(radio.plus_cm119_gpio_usb_port_path, "3-1"));
 	assert(radio.rxcpusaver && radio.txcpusaver && radio.rxpolarity && radio.txpolarity);
 	assert(radio.rxdemod == RX_AUDIO_FLAT && radio.rxcdtype == CD_XPMR_NOISE);
 	assert(radio.voxhangtime == 100 && radio.rxsqvoxadj == 20 && radio.rxsqhyst == 2);
@@ -6441,6 +4355,8 @@ static void test_complete_processing_config_override_rejections(void)
 		{"hardware", "hardware_interface_type"},
 		{"hardware", "hardware_audio_fragment_count"},
 		{"hardware", "hardware_audio_queue_size"},
+		{"hardware", "hardware_portaudio_input_device_index"},
+		{"hardware", "hardware_portaudio_output_device_index"},
 		{"receive", "vox_hang_ms"},
 		{"receive", "vox_threshold"},
 		{"receive", "noise_squelch_hysteresis"},
@@ -6710,9 +4626,9 @@ static void test_independent_signaling_directions(void)
 						methods[transmit_index]);
 			/* This must be inert unless receive CTCSS is selected. */
 			add_processing_override("ctcss", "receive_override_enabled", "yes");
+			assert(!apply_processing_config_overrides(&radio, "usb"));
 			radio.radio = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 			assert(radio.radio);
-			assert(!apply_processing_config_overrides(&radio, "usb"));
 			assert(!radio_config(&radio));
 			assert(radio.radio->b.ctcssRxEnable == (receive_index == 1));
 			assert(radio.radio->b.ctcssTxEnable == (transmit_index == 1));
@@ -6814,18 +4730,18 @@ static void test_signaling_reload_preflight_transaction(void)
 	ast_copy_string(settings.profiles[0].name, first.name, sizeof(settings.profiles[0].name));
 	ast_copy_string(settings.profiles[0].channel, "RadioPlus/first",
 			sizeof(settings.profiles[0].channel));
+	assert(!apply_processing_config_overrides(&first, first.name));
 	first.radio = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 	assert(first.radio);
-	assert(!apply_processing_config_overrides(&first, first.name));
 	assert(!radio_config(&first));
 
 	settings_defaults(&settings);
 	ast_copy_string(settings.profiles[0].name, second.name, sizeof(settings.profiles[0].name));
 	ast_copy_string(settings.profiles[0].channel, "RadioPlus/second",
 			sizeof(settings.profiles[0].channel));
+	assert(!apply_processing_config_overrides(&second, second.name));
 	second.radio = urp_radio_create(&template, SAMPLES_PER_BLOCK);
 	assert(second.radio);
-	assert(!apply_processing_config_overrides(&second, second.name));
 	assert(!radio_config(&second));
 
 	settings_defaults(&settings);
@@ -6974,13 +4890,11 @@ static void test_signaling_parser_helper_edges(void)
 	no_radio.plus_parrot_state.count = 1;
 	usbradioplus_parrot_rx_transition(&no_radio, 1);
 	assert(atomic_load_explicit(&no_radio.echoing, memory_order_relaxed));
-	mock_oss_io = 1;
-	mock_write_result = -1;
+	mock_write_failure = 1;
 	radio.pttkick[1] = 1;
 	errno = EAGAIN;
 	kickptt(&radio);
-	mock_write_result = -2;
-	mock_oss_io = 0;
+	mock_write_failure = 0;
 
 	assert(!usbradioplus_test_ctcss_frequency_list_valid(NULL, &count));
 	assert(!usbradioplus_test_ctcss_frequency_list_valid("", &count));
@@ -7303,23 +5217,36 @@ static void test_processing_override_parse_edges(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 	size_t index;
-	static const int integer_hardware[] = {2, 4, 5, 7, 8, 10, 11, 12, 13};
-	static const int boolean_hardware[] = {3, 6, 12};
+	static const char *const integer_hardware[] = {
+		"hardware_interface_type",
+		"hardware_audio_fragment_count",
+		"hardware_audio_queue_size",
+		"hardware_portaudio_input_device_index",
+		"hardware_portaudio_output_device_index",
+		"hardware_repeater_number",
+		"hardware_area",
+		"hardware_idle_interval",
+		"hardware_turnoff_count",
+		"hardware_clip_led_gpio",
+	};
+	static const char *const boolean_hardware[] = {
+		"hardware_eeprom_enabled",
+		"hardware_ptt_inverted",
+		"hardware_voter_reporting",
+	};
 	static const char *const malformed_numbers[] = {"bad", "1x"};
 
 	for (index = 0; index < ARRAY_LEN(integer_hardware); ++index) {
 		for (size_t malformed = 0; malformed < ARRAY_LEN(malformed_numbers); ++malformed) {
 			settings_defaults(&settings);
-			add_processing_override("hardware",
-						hardware_override_options[integer_hardware[index]],
+			add_processing_override("hardware", integer_hardware[index],
 						malformed_numbers[malformed]);
 			assert(apply_processing_config_overrides(&radio, "usb") == -1);
 		}
 	}
 	for (index = 0; index < ARRAY_LEN(boolean_hardware); ++index) {
 		settings_defaults(&settings);
-		add_processing_override(
-			"hardware", hardware_override_options[boolean_hardware[index]], "invalid");
+		add_processing_override("hardware", boolean_hardware[index], "invalid");
 		assert(apply_processing_config_overrides(&radio, "usb") == -1);
 	}
 	for (index = 0; index < ARRAY_LEN(diagnostics_override_options); ++index) {
@@ -7382,10 +5309,9 @@ static void test_shared_config_loading(void)
 
 	settings_defaults(&settings);
 	config_destroy_calls = 0;
-	parallel_load_calls = 0;
 	test_config_load_result = valid;
 	assert(load_config(0) == 0);
-	assert(config_destroy_calls == 1 && parallel_load_calls == 1);
+	assert(config_destroy_calls == 1);
 	assert(!strcmp(pport, PP_PORT));
 	assert(pbase == PP_IOPORT);
 	test_config_category = "general";
@@ -7664,6 +5590,100 @@ static void test_shared_receive_signaling_helpers(void)
 	usbradioplus_refresh_ctcss_decode(&radio);
 	option_debug = 0;
 	module_debug_level = file_debug_level = 0;
+	/* A reconfiguration can briefly retire the optional decoder while the
+	 * signaling state remains readable by a hardware callback. */
+	radio_state.rxCtcss = NULL;
+	radio_state.b.ctcssRxEnable = 1;
+	assert(!usbradioplus_ctcss_detected(&radio));
+	usbradioplus_refresh_ctcss_decode(&radio);
+	assert(radio.rxctcssdecode == 5);
+	radio_state.rxCtcss = &ctcss;
+}
+
+/** @brief Verify receive qualification is invariant across native callback partitions. */
+static void test_shared_receive_state_timing(void)
+{
+	static const size_t partitions[] = {5U, 1U, 7U, 5U, 942U, 479U, 481U, 959U, 1U};
+	struct chan_usbradio_pvt reference = {0};
+	struct chan_usbradio_pvt partitioned = {0};
+	urp_radio_state reference_state = {0};
+	urp_radio_state partitioned_state = {0};
+	size_t i;
+
+	reference.radio = &reference_state;
+	partitioned.radio = &partitioned_state;
+	reference.rxcdtype = partitioned.rxcdtype = CD_HID;
+	reference.rxsdtype = partitioned.rxsdtype = SD_IGNORE;
+	reference.rxhidsq = partitioned.rxhidsq = 1;
+	reference.radioduplex = partitioned.radioduplex = 1;
+	reference.rxondelay = partitioned.rxondelay = 2;
+
+	/* A hardware edge remains observable immediately, while qualification
+	 * advances only when the same 20 ms PCM duration has elapsed. */
+	assert(!usbradioplus_update_receive_state_timed(&partitioned, 5U));
+	assert(partitioned.rx_cos_active && !partitioned.rxkeyed);
+	assert(partitioned.plus_receive_state_native_remainder == 5U);
+	partitioned.plus_receive_state_native_remainder = 0U;
+
+	for (i = 0U; i < sizeof(partitions) / sizeof(partitions[0]); ++i) {
+		(void)usbradioplus_update_receive_state_timed(&partitioned, partitions[i]);
+		if (i == 4U || i == 6U || i == 8U) {
+			(void)usbradioplus_update_receive_state(&reference);
+			assert(partitioned.rxkeyed == reference.rxkeyed);
+			assert(partitioned.rxoncnt == reference.rxoncnt);
+			assert(partitioned.txoffcnt == reference.txoffcnt);
+			assert(!partitioned.plus_receive_state_native_remainder);
+		}
+	}
+	assert(partitioned.rxkeyed);
+
+	/* TX-off qualification follows the same sample-clocked boundaries. */
+	memset(&reference, 0, sizeof(reference));
+	memset(&partitioned, 0, sizeof(partitioned));
+	memset(&reference_state, 0, sizeof(reference_state));
+	memset(&partitioned_state, 0, sizeof(partitioned_state));
+	reference.radio = &reference_state;
+	partitioned.radio = &partitioned_state;
+	reference.rxcdtype = partitioned.rxcdtype = CD_HID;
+	reference.rxsdtype = partitioned.rxsdtype = SD_IGNORE;
+	reference.rxhidsq = partitioned.rxhidsq = 1;
+	reference.radioduplex = partitioned.radioduplex = 1;
+	reference.txoffdelay = partitioned.txoffdelay = 2;
+	for (i = 0U; i < sizeof(partitions) / sizeof(partitions[0]); ++i) {
+		(void)usbradioplus_update_receive_state_timed(&partitioned, partitions[i]);
+		if (i == 4U || i == 6U || i == 8U) {
+			(void)usbradioplus_update_receive_state(&reference);
+			assert(partitioned.rxkeyed == reference.rxkeyed);
+			assert(partitioned.rxoncnt == reference.rxoncnt);
+			assert(partitioned.txoffcnt == reference.txoffcnt);
+		}
+	}
+	assert(partitioned.rxkeyed);
+}
+
+/** @brief Verify raw receive metering uses the portable core and rejects malformed spans. */
+static void test_shared_receive_meter(void)
+{
+	struct chan_usbradio_pvt radio = {0};
+	short samples[URP_NATIVE_STEREO_SAMPLES + 1U] = {0};
+
+	radio.clipledgpio = 1;
+	atomic_init(&radio.plus_clip_led_request, 0);
+	/* These are adjacent samples in the selected 48 kHz mono phase. The
+	 * historical meter reports clipping after its adjacent-rail counter, not
+	 * merely after one isolated PCM rail value. */
+	for (size_t index = 0U; index < 4U; ++index)
+		samples[10U + index * 12U] = INT16_MIN;
+	usbradioplus_measure_rx_audio(&radio, samples, URP_NATIVE_STEREO_SAMPLES);
+	assert(radio.rxaudiostats.index == 1U);
+	assert(atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
+
+	/* An oversized span is rejected before reading PCM and retains the previous
+	 * Rust meter history instead of switching to a second implementation. */
+	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
+	usbradioplus_measure_rx_audio(&radio, samples, URP_NATIVE_STEREO_SAMPLES + 1U);
+	assert(radio.rxaudiostats.index == 1U);
+	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
 }
 
 /** @brief Verify shared eeprom wait. */
@@ -7677,78 +5697,6 @@ static void test_shared_eeprom_wait(void)
 	usbradioplus_wait_for_eeprom_idle(&radio);
 	assert(!radio.eepromctl);
 	clear_eeprom_target = NULL;
-}
-
-/** @brief Verify one output frame per tick through PTT and receive-state transitions. */
-static void test_continuous_soundcard_output(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	urp_radio_state radio_state = {0};
-	const short silence[FRAME_SIZE * 2 * 6] = {0};
-	short output[FRAME_SIZE * 2 * 6];
-	short original[FRAME_SIZE * 2 * 6];
-	const int ptt_states[][2] = {{0, 0}, {0, 0}, {1, 0}, {1, 1},
-				     {0, 1}, {0, 1}, {0, 0}, {0, 0}};
-	unsigned int expected_writes = 0;
-	size_t index;
-	unsigned int receiver;
-
-	radio.name = "continuous-output";
-	radio.radio = &radio_state;
-	atomic_init(&radio.plus_radio_tx_active, 0);
-#ifdef URP_TEST_MODERN
-	radio.pa.active = 1;
-	modern_write_result = paNoError;
-#else
-	radio.sounddev = 7;
-	radio.total_blocks = 8;
-	radio.queuesize = 4;
-	mock_oss_io = 1;
-	mock_ioctl_failure = ULONG_MAX;
-	mock_oss_fragment_size = 3840;
-	mock_oss_output_space_calls = 0;
-	fail_oss_output_space_call = 0;
-	extreme_oss_output_space_call = 0;
-	mock_oss_fragment_total = 8;
-	mock_write_result = -2;
-#endif
-	for (index = 0; index < ARRAY_LEN(output); ++index)
-		output[index] = (short)((index % 2 ? -1 : 1) * (int)(index + 1));
-	memcpy(original, output, sizeof(original));
-	mock_sound_write_calls = 0;
-	for (receiver = 0; receiver < 8; ++receiver) {
-		radio.rxcarrierdetect = receiver & 1;
-		radio.rxctcssdecode = (receiver >> 1) & 1;
-		radio.rxkeyed = (receiver >> 2) & 1;
-		radio_state.rxCarrierDetect = radio.rxcarrierdetect;
-		for (index = 0; index < ARRAY_LEN(ptt_states); ++index) {
-			unsigned int tick;
-			const short *expected;
-
-			radio_state.txPttIn = ptt_states[index][0];
-			radio_state.txPttOut = ptt_states[index][1];
-			atomic_store_explicit(&radio.plus_radio_tx_active,
-					      radio_state.txPttIn || radio_state.txPttOut,
-					      memory_order_release);
-			expected = radio_state.txPttIn || radio_state.txPttOut ? original : silence;
-			for (tick = 0; tick < 2; ++tick) {
-#ifndef URP_TEST_MODERN
-				/* An empty queue must not add a second frame before this tick. */
-				mock_oss_fragments = 8 - (int)tick;
-#endif
-				assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-				assert(mock_sound_write_calls == ++expected_writes);
-				assert(mock_sound_write_bytes == sizeof(output));
-				assert(!memcmp(mock_sound_write_data, expected, sizeof(output)));
-				assert(!memcmp(output, original, sizeof(output)));
-				assert(radio.plus_sound_dropped_frames == 0);
-				assert(radio.plus_sound_short_writes == 0);
-			}
-		}
-	}
-#ifndef URP_TEST_MODERN
-	mock_oss_io = 0;
-#endif
 }
 
 /** @brief Verify PTT remains asserted through accepted DAC playout plus one block. */
@@ -7766,21 +5714,73 @@ static void test_tx_playout_hold(void)
 	usbradioplus_tx_playout_hold_prepare(NULL);
 	usbradioplus_tx_playout_hold_apply(NULL);
 	usbradioplus_tx_playout_hold_publish(NULL);
+	usbradioplus_tx_playout_hold_advance(NULL, 1U);
 	usbradioplus_tx_playout_hold_reset(NULL);
-	usbradioplus_tx_playout_hold_note_output(NULL, 1, 1, 1);
+	usbradioplus_tx_playout_hold_note_output(NULL, 1, 1, 1, 1);
+	usbradioplus_native_output_stage_publish_ptt(NULL);
 
 	atomic_init(&channel.plus_radio_tx_active, 0);
 	atomic_init(&channel.plus_hardware_ptt_request, 0);
+	atomic_init(&channel.plus_hardware_ptt_applied, 0);
+	atomic_init(&channel.plus_native_output_reset_request, 0U);
+	atomic_init(&channel.txkeyed, 0);
+	atomic_init(&channel.txtestkey, 0);
 	/* Teardown can publish a channel before its signaling state is attached. */
 	usbradioplus_tx_playout_hold_prepare(&channel);
 	usbradioplus_tx_playout_hold_apply(&channel);
 	usbradioplus_tx_playout_hold_publish(&channel);
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 1);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 1, 1);
 	assert(!atomic_load_explicit(&channel.plus_radio_tx_active, memory_order_acquire));
 	assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
 
 	channel.radio = &state;
 	state.txrxblankingtime = 40;
+	channel.plus_dsp_initialized = 1;
+
+	/* Device lifecycle code only requests a reset.  The audio owner consumes
+	 * that request under its reader lease, so legacy setup cannot race the
+	 * shared staged-output state. */
+	{
+		short staged[URP_NATIVE_MAX_SAMPLES * 2U] = {1};
+
+		urp_native_output_stage_init(&channel.plus_native_output_stage, 2U,
+					     URP_NATIVE_SAMPLES);
+		assert(urp_native_output_stage_enqueue(&channel.plus_native_output_stage, staged,
+						       URP_NATIVE_SAMPLES, 1, 1) == 1);
+		usbradioplus_publish_hardware_ptt(&channel, 1);
+		usbradioplus_native_output_stage_request_reset(&channel);
+		assert(urp_native_output_stage_peek(&channel.plus_native_output_stage));
+		assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request,
+					     memory_order_acquire));
+		usbradioplus_native_output_stage_consume_reset_request(&channel);
+		assert(!urp_native_output_stage_peek(&channel.plus_native_output_stage));
+		assert(channel.plus_native_output_reset_seen ==
+		       atomic_load_explicit(&channel.plus_native_output_reset_request,
+					    memory_order_acquire));
+	}
+
+	/* A key arriving after the prior tick but before a staged silent block
+	 * completes must bridge physical PTT until the next tick owns it. */
+	{
+		const struct urp_native_output_block silent_block = {
+			.frame_count = URP_NATIVE_SAMPLES,
+			.logical_ptt = 0,
+			.audio_bearing = 0,
+		};
+
+		atomic_store_explicit(&channel.txkeyed, 1, memory_order_release);
+		usbradioplus_import_external_ptt_request(&channel);
+		usbradioplus_native_output_stage_complete(&channel, &silent_block, 0U);
+		assert(state.txPttOut);
+		assert(atomic_load_explicit(&channel.plus_hardware_ptt_request,
+					    memory_order_acquire));
+		atomic_store_explicit(&channel.txkeyed, 0, memory_order_release);
+		state.txPttIn = 0;
+		usbradioplus_tx_playout_hold_reset(&channel);
+		usbradioplus_tx_playout_hold_publish(&channel);
+		assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request,
+					     memory_order_acquire));
+	}
 
 	/* A normal key publishes raw PTT and accepts audio as the timer origin. */
 	state.txPttIn = state.txPttOut = 1;
@@ -7788,14 +5788,19 @@ static void test_tx_playout_hold(void)
 	usbradioplus_tx_playout_hold_publish(&channel);
 	assert(atomic_load_explicit(&channel.plus_radio_tx_active, memory_order_acquire));
 	assert(atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
-	usbradioplus_tx_playout_hold_note_output(&channel, 0, 1, 3);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 0U);
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 3);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 3U);
-	/* A speech pause still consumes accepted DAC time but cannot clear the
-	 * deadline while the signaling engine remains keyed. */
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 2U);
+	usbradioplus_tx_playout_hold_note_output(&channel, 0, 1, 3U * URP_NATIVE_SAMPLES,
+						 URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 0U);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 3U * URP_NATIVE_SAMPLES,
+						 URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 3U * URP_NATIVE_SAMPLES);
+	/* Several queued silence blocks can be accepted in one device drain. They
+	 * must not advance time until the next native callback actually elapses. */
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0, URP_NATIVE_SAMPLES);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 3U * URP_NATIVE_SAMPLES);
+	usbradioplus_tx_playout_hold_advance(&channel, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 2U * URP_NATIVE_SAMPLES);
 	usbradioplus_tx_playout_hold_prepare(&channel);
 	usbradioplus_tx_playout_hold_apply(&channel);
 	assert(state.txPttOut && !usbradioplus_tx_playout_hold_draining(&channel));
@@ -7809,28 +5814,49 @@ static void test_tx_playout_hold(void)
 	assert(!atomic_load_explicit(&channel.plus_radio_tx_active, memory_order_acquire));
 	assert(atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
 
-	/* A blocked or short write never advances the post-DAC countdown. */
-	usbradioplus_tx_playout_hold_note_output(&channel, 0, 0, 0);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 2U);
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 1U);
+	/* Writes alone never advance the post-DAC countdown. */
+	usbradioplus_tx_playout_hold_note_output(&channel, 0, 0, 0, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 2U * URP_NATIVE_SAMPLES);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 2U * URP_NATIVE_SAMPLES);
+	usbradioplus_tx_playout_hold_advance(&channel, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == URP_NATIVE_SAMPLES);
 	usbradioplus_tx_playout_hold_prepare(&channel);
 	usbradioplus_tx_playout_hold_apply(&channel);
 	assert(state.txPttOut && usbradioplus_tx_playout_hold_draining(&channel));
 
-	/* The final accepted silent block releases virtual PTT and restarts RX blanking. */
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0);
+	/* The next elapsed native span releases virtual PTT. RX blanking begins only
+	 * when the HID worker later confirms the physical falling edge. */
+	atomic_store_explicit(&channel.plus_hardware_ptt_applied, 1, memory_order_release);
+	usbradioplus_note_hardware_ptt_applied(&channel);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 0, 0, URP_NATIVE_SAMPLES);
+	usbradioplus_tx_playout_hold_advance(&channel, URP_NATIVE_SAMPLES);
 	usbradioplus_tx_playout_hold_prepare(&channel);
 	usbradioplus_tx_playout_hold_apply(&channel);
 	usbradioplus_tx_playout_hold_publish(&channel);
 	assert(!state.txPttOut && !usbradioplus_tx_playout_hold_draining(&channel));
-	assert(state.txrxblankingtimer == state.txrxblankingtime);
 	assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
+	assert(!state.txrxblankingtimer);
+	atomic_store_explicit(&channel.plus_hardware_ptt_applied, 0, memory_order_release);
+	usbradioplus_note_hardware_ptt_applied(&channel);
+	assert(state.txrxblankingtimer == state.txrxblankingtime);
+	/* A device-stop reset may publish unkey before HID acknowledges it. Retain
+	 * the applied-state shadow so that later physical falling edge still arms
+	 * the configured receive blanking interval. */
+	state.txrxblankingtimer = 0;
+	atomic_store_explicit(&channel.plus_hardware_ptt_applied, 1, memory_order_release);
+	usbradioplus_note_hardware_ptt_applied(&channel);
+	usbradioplus_native_output_stage_fail_safe_reset(&channel);
+	assert(channel.plus_tx_playout_hold.hardware_ptt_applied);
+	atomic_store_explicit(&channel.plus_hardware_ptt_applied, 0, memory_order_release);
+	usbradioplus_note_hardware_ptt_applied(&channel);
+	assert(state.txrxblankingtimer == state.txrxblankingtime);
 
 	/* A ready rekey discards an obsolete tail deadline and lets new PCM arm one. */
 	state.txPttIn = state.txPttOut = 1;
 	usbradioplus_tx_playout_hold_apply(&channel);
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 2);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 2U * URP_NATIVE_SAMPLES,
+						 URP_NATIVE_SAMPLES);
 	state.txPttIn = state.txPttOut = 0;
 	usbradioplus_tx_playout_hold_apply(&channel);
 	assert(usbradioplus_tx_playout_hold_draining(&channel));
@@ -7838,1136 +5864,241 @@ static void test_tx_playout_hold(void)
 	state.txPttIn = state.txPttOut = 1;
 	usbradioplus_tx_playout_hold_apply(&channel);
 	assert(!usbradioplus_tx_playout_hold_draining(&channel));
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 0U);
-	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 0);
-	assert(channel.plus_tx_playout_hold.callbacks_remaining == 1U);
+	assert(channel.plus_tx_playout_hold.frames_remaining == 0U);
+	usbradioplus_tx_playout_hold_note_output(&channel, 1, 1, 0, URP_NATIVE_SAMPLES);
+	assert(channel.plus_tx_playout_hold.frames_remaining == URP_NATIVE_SAMPLES);
 
 	state.txPttIn = state.txPttOut = 0;
 	usbradioplus_tx_playout_hold_apply(&channel);
 	assert(usbradioplus_tx_playout_hold_draining(&channel));
 	usbradioplus_tx_playout_hold_reset(&channel);
-	assert(!state.txPttOut && !channel.plus_tx_playout_hold.callbacks_remaining);
-}
+	assert(!state.txPttOut && !channel.plus_tx_playout_hold.frames_remaining);
 
-#ifndef URP_TEST_MODERN
-/** @brief Verify oss audio helpers. */
-static void test_oss_audio_helpers(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	urp_radio_state radio_state = {0};
-	short output[FRAME_SIZE * 2 * 6] = {0};
-	unsigned long failures[] = {SNDCTL_DSP_SETFMT, SNDCTL_DSP_STEREO, SNDCTL_DSP_SPEED};
-	size_t index;
-
-	mock_oss_io = 1;
-	mock_ioctl_failure = ULONG_MAX;
-	mock_oss_fragment_size = 3840;
-	mock_oss_bytes = -1;
-	mock_oss_output_delay = -1;
-	mock_oss_output_space_calls = 0;
-	fail_oss_output_space_call = 0;
-	extreme_oss_output_space_call = 0;
-	radio.name = "test";
-	radio.sounddev = 7;
-	radio.queuesize = 4;
-	mock_oss_fragment_total = 8;
-	mock_oss_fragments = 6;
-	assert(used_blocks(&radio) == 2);
-	assert(radio.total_blocks == 8);
-	mock_oss_fragments = 4;
-	assert(used_blocks(&radio) == 4);
-	mock_oss_fragments = 8;
-	assert(used_blocks(&radio) == 0);
-	radio.total_blocks = 0;
-	radio.queuesize = 8;
-	mock_oss_fragment_total = 2;
-	mock_oss_fragments = 1;
-	assert(used_blocks(&radio) == 1);
-	assert(radio.total_blocks == 2);
-	assert(radio.queuesize == QUEUE_SIZE);
-	radio.total_blocks = 0;
-	radio.queuesize = 8;
-	mock_oss_fragment_total = 8;
-	mock_oss_fragments = 8;
-	assert(used_blocks(&radio) == 0);
-	assert(radio.queuesize == 7);
-	mock_oss_fragment_total = 8;
-	mock_ioctl_failure = SNDCTL_DSP_GETOSPACE;
-	assert(used_blocks(&radio) == 1);
-	assert(used_blocks(&radio) == 1);
-
-	mock_ioctl_failure = ULONG_MAX;
-	mock_close_calls = 0;
-	radio.sounddev = 7;
-	assert(setformat(&radio, O_CLOSE) == 0);
-	assert(radio.sounddev == -1 && mock_close_calls == 1);
-	assert(radio.total_blocks == 0);
-	mock_open_result = -1;
-	assert(setformat(&radio, O_RDWR) == -1);
-	mock_open_result = 7;
-	for (index = 0; index < ARRAY_LEN(failures); ++index) {
-		radio.sounddev = -1;
-		mock_ioctl_failure = failures[index];
-		assert(setformat(&radio, O_RDWR) == -1);
-	}
-	mock_ioctl_failure = ULONG_MAX;
-	mock_oss_caps = DSP_CAP_DUPLEX;
-	mock_oss_speed = 44100;
-	radio.sounddev = -1;
-	radio.devicenum = 2;
-	radio.owner = (struct ast_channel *)(uintptr_t)1;
-	radio.frags = 1;
-	assert(setformat(&radio, O_RDWR) == 0 && radio.duplex == M_FULL);
-	radio.sounddev = -1;
-	mock_oss_caps = 0;
-	radio.duplex = M_READ;
-	assert(setformat(&radio, O_RDWR) == 0 && radio.duplex == M_READ);
-	radio.sounddev = -1;
-	mock_oss_caps = DSP_CAP_DUPLEX;
-	mock_ioctl_failure = SNDCTL_DSP_GETCAPS;
-	assert(setformat(&radio, O_RDWR) == 0 && radio.duplex == M_READ);
-	mock_ioctl_failure = ULONG_MAX;
-	mock_oss_caps = DSP_CAP_DUPLEX;
-	radio.sounddev = -1;
-	mock_oss_speed = 48000;
-	assert(setformat(&radio, O_WRONLY) == 0 && radio.duplex == M_WRITE);
-	radio.sounddev = -1;
-	assert(setformat(&radio, O_RDONLY) == 0 && radio.duplex == M_READ);
-	radio.sounddev = -1;
-	assert(setformat(&radio, O_APPEND) == 0);
-	radio.sounddev = -1;
-	mock_ioctl_failure = SNDCTL_DSP_SETFRAGMENT;
-	assert(setformat(&radio, O_RDWR) == 0);
-	radio.sounddev = -1;
-	assert(setformat(&radio, O_RDWR) == 0);
-
-	mock_ioctl_failure = ULONG_MAX;
-	radio.sounddev = -1;
-	mock_oss_speed = 44100;
-	assert(setformat(&radio, O_RDWR) == 0);
-	radio.sounddev = -1;
-	assert(setformat(&radio, O_RDWR) == 0);
-	mock_oss_speed = 48000;
-	radio.radio = &radio_state;
-	radio.sounddev = 7;
-	mock_sound_write_calls = 0;
-	radio_state.txPttIn = radio_state.txPttOut = 0;
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(mock_sound_write_calls == 1);
-	radio_state.txPttIn = 1;
-	radio.total_blocks = 8;
-	radio.queuesize = 1;
-	mock_oss_fragments = 0;
-	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 1 && radio.plus_sound_dropped_frames == 1);
-	radio_state.txPttIn = 0;
-	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 1 && radio.plus_sound_dropped_frames == 2);
-	radio_state.txPttIn = 1;
-	radio.total_blocks = 8;
-	radio.queuesize = 8;
-	mock_oss_fragments = 8;
-	/* A valid open device that cannot report space must reject the frame before
-	 * issuing a DAC write. */
+	/* A historical keyed block must keep physical PTT asserted even when the
+	 * just-completed signaling tick released it.  The final staged release must
+	 * then unkey rather than leave a silent carrier. */
 	{
-		unsigned int writes_before = mock_sound_write_calls;
-		uint64_t dropped_before = radio.plus_sound_dropped_frames;
+		short keyed[URP_NATIVE_MAX_SAMPLES * 2U] = {0};
 
-		mock_ioctl_failure = SNDCTL_DSP_GETOSPACE;
-		assert(soundcard_writeframe(&radio, output) == 0);
-		assert(mock_sound_write_calls == writes_before);
-		assert(radio.plus_sound_dropped_frames == dropped_before);
-		mock_ioctl_failure = ULONG_MAX;
+		keyed[0] = 1;
+		urp_native_output_stage_init(&channel.plus_native_output_stage, 2U,
+					     URP_NATIVE_SAMPLES);
+		assert(urp_native_output_stage_enqueue(&channel.plus_native_output_stage, keyed,
+						       URP_NATIVE_SAMPLES, 1, 1) == 1);
+		state.txPttIn = state.txPttOut = 0;
+		usbradioplus_tx_playout_hold_publish(&channel);
+		assert(atomic_load_explicit(&channel.plus_hardware_ptt_request,
+					    memory_order_acquire));
+		usbradioplus_native_output_stage_reset(&channel);
+		assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request,
+					     memory_order_acquire));
 	}
-	mock_write_result = -1;
-	assert(soundcard_writeframe(&radio, output) == -1);
-	assert(mock_sound_write_calls == 2 && radio.plus_sound_short_writes == 1);
-	mock_write_result = 1;
-	assert(soundcard_writeframe(&radio, output) == 1);
-	assert(mock_sound_write_calls == 3 && radio.plus_sound_short_writes == 2);
-	mock_write_result = 0;
-	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 4 && radio.plus_sound_short_writes == 3);
-	radio_state.txPttIn = 0;
-	mock_write_result = -1;
-	assert(soundcard_writeframe(&radio, output) == -1);
-	assert(mock_sound_write_calls == 5 && radio.plus_sound_short_writes == 4);
-	radio_state.txPttIn = 1;
-	mock_oss_fragments = 7;
-	mock_write_result = -2;
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(mock_sound_write_calls == 6 && radio.plus_sound_short_writes == 4);
-	mock_oss_fragments = 8;
-	mock_write_result = -2;
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(mock_sound_write_calls == 7 && radio.plus_sound_short_writes == 4);
-	/* A free fragment smaller than the direct native frame must not consume it. */
-	mock_oss_bytes = (int)sizeof(output) - 1;
-	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 7 && radio.plus_sound_dropped_frames == 3);
-	mock_oss_bytes = -1;
-	/* A complete audio write arms from GETODELAY; short writes cannot replace
-	 * that deadline. The fallback derives the same count from GETOSPACE. */
-	output[0] = 1;
-	atomic_init(&radio.plus_radio_tx_active, 1);
-	usbradioplus_tx_playout_hold_reset(&radio);
-	radio_state.txPttIn = radio_state.txPttOut = 1;
-	mock_oss_output_delay = (int)(sizeof(output) * 2U);
-	mock_write_result = -2;
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
-	mock_write_result = 1;
-	assert(soundcard_writeframe(&radio, output) == 1);
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
-	mock_oss_output_delay = -1;
-	mock_write_result = -2;
-	mock_oss_fragments = 6;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
-	/* A successful but invalid OSS delay report takes the same safe fallback. */
-	mock_oss_output_delay = INT_MIN;
-	mock_oss_fragments = 6;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 3U);
-	mock_oss_output_delay = -1;
-	/* GETOSPACE can fail after a frame was admitted. The hold calculation must
-	 * then use that admission snapshot rather than dropping the accepted frame. */
-	mock_oss_output_space_calls = 0;
-	fail_oss_output_space_call = 2;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 4U);
-	fail_oss_output_space_call = 0;
-	/* A full admission snapshot has no device backlog; retain only the frame
-	 * that was just accepted plus the one callback safety hold. */
-	mock_oss_fragments = 8;
-	mock_oss_bytes = mock_oss_fragment_total * 3840;
-	mock_oss_output_space_calls = 0;
-	fail_oss_output_space_call = 2;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == 2U);
-	fail_oss_output_space_call = 0;
-	mock_oss_bytes = -1;
-	/* OSS counter values can exceed the callback counter's public range. */
-	mock_oss_output_space_calls = 0;
-	extreme_oss_output_space_call = 2;
-	usbradioplus_tx_playout_hold_reset(&radio);
-	assert(soundcard_writeframe(&radio, output) == (int)sizeof(output));
-	assert(radio.plus_tx_playout_hold.callbacks_remaining == UINT_MAX);
-	extreme_oss_output_space_call = 0;
-	mock_oss_fragments = 8;
-	mock_oss_output_delay = -1;
-	radio.duplex3 = 500;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	radio.micplaymax = 100;
-	radio.micmax = 100;
-	radio.spkrmax = 100;
-	mixer_write(&radio);
-	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
-	mixer_write(&radio);
-	radio.sounddev = -1;
-	mock_open_result = -1;
-	assert(soundcard_writeframe(&radio, output) == 0);
-	assert(mock_sound_write_calls == 14);
-	mock_open_result = 7;
-	mock_oss_io = 0;
 }
 
-/** @brief Verify oss channel write and call. */
-static void test_oss_channel_write_and_call(void)
+/** @brief Verify staged native output preserves partial PCM and drops only complete backlog. */
+static void test_native_output_stage(void)
 {
-	struct chan_usbradio_pvt radio = {0};
+	struct urp_native_output_stage stage;
+	struct urp_native_output_block finished;
+	struct urp_native_output_block *block;
+	short first[URP_NATIVE_MAX_SAMPLES * 2U] = {0};
+	short second[URP_NATIVE_MAX_SAMPLES * 2U] = {0};
+	short third[URP_NATIVE_MAX_SAMPLES * 2U] = {0};
+
+	first[0] = 101;
+	second[0] = 202;
+	third[0] = 303;
+	urp_native_output_stage_init(NULL, 2U, URP_NATIVE_SAMPLES);
+	urp_native_output_stage_reset(NULL);
+	assert(!urp_native_output_stage_set_capacity(NULL, 2U));
+	assert(urp_native_output_stage_enqueue(NULL, first, URP_NATIVE_SAMPLES, 1, 1) == -1);
+	urp_native_output_stage_init(&stage, 0U, URP_NATIVE_SAMPLES);
+	assert(stage.capacity == 2U);
+	assert(urp_native_output_stage_enqueue(&stage, first, 0U, 1, 1) == -1);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_MAX_SAMPLES + 1U, 1, 1) ==
+	       -1);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES, 1, 1) == 1);
+	assert(urp_native_output_stage_enqueue(&stage, second, URP_NATIVE_SAMPLES, 1, 1) == 1);
+	assert(stage.high_water == 2U && urp_native_output_stage_has_ptt(&stage));
+	block = urp_native_output_stage_peek(&stage);
+	assert(block && block->pcm[0] == first[0] && !block->submitted_frames);
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES / 2U, NULL) == 0);
+	block = urp_native_output_stage_peek(&stage);
+	assert(block && block->pcm[0] == first[0] &&
+	       block->submitted_frames == URP_NATIVE_SAMPLES / 2U);
+	/* Only a partial oldest block accumulates age. Its queue-depth bound is two
+	 * 20 ms blocks, and a complete submission clears that age. */
+	assert(!urp_native_output_stage_note_unavailable(NULL, URP_NATIVE_SAMPLES));
+	assert(!urp_native_output_stage_note_unavailable(&stage, 0U));
+	assert(!urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(stage.stalled_partial_frames == URP_NATIVE_SAMPLES);
+	assert(urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(stage.stalled_partial_frames == 2U * URP_NATIVE_SAMPLES);
+	/* Recovery is based on the adapter-declared maximum, not on a smaller
+	 * partitioned block currently at the device boundary. */
+	urp_native_output_stage_init(&stage, 2U, URP_NATIVE_SAMPLES);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES / 2U, 1, 1) == 1);
+	assert(urp_native_output_stage_commit(&stage, 1U, NULL) == 0);
+	assert(!urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(stage.stalled_partial_frames == 2U * URP_NATIVE_SAMPLES);
+	/* The queue-depth deadline derives from the declared adapter maximum rather
+	 * than the historical 20 ms span. This is shared by both adapters. */
+	urp_native_output_stage_init(&stage, 2U, URP_NATIVE_SAMPLES / 2U);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES / 2U, 1, 1) == 1);
+	assert(urp_native_output_stage_commit(&stage, 1U, NULL) == 0);
+	assert(!urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES / 2U));
+	assert(urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES / 2U));
+	assert(stage.stalled_partial_frames == URP_NATIVE_SAMPLES);
+	/* A device that accepts only one PCM frame per callback is still stale.
+	 * Partial progress must not reset the bounded age of that same block. */
+	urp_native_output_stage_init(&stage, 2U, URP_NATIVE_SAMPLES);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES, 1, 1) == 1);
+	assert(urp_native_output_stage_commit(&stage, 1U, NULL) == 0);
+	assert(!urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(urp_native_output_stage_commit(&stage, 1U, NULL) == 0);
+	assert(urp_native_output_stage_note_unavailable(&stage, URP_NATIVE_SAMPLES));
+	assert(stage.stalled_partial_frames == 2U * URP_NATIVE_SAMPLES);
+	/* A full stage cannot discard the partially submitted first block. The next
+	 * oldest complete block is evicted and the new block follows the prefix. */
+	urp_native_output_stage_reset(&stage);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES, 1, 1) == 1);
+	assert(urp_native_output_stage_enqueue(&stage, second, URP_NATIVE_SAMPLES, 1, 1) == 1);
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES / 2U, NULL) == 0);
+	assert(urp_native_output_stage_enqueue(&stage, third, URP_NATIVE_SAMPLES, 1, 1) == 0);
+	assert(stage.dropped_complete_blocks == 1U);
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES / 2U, &finished) == 1);
+	assert(!stage.stalled_partial_frames);
+	assert(finished.pcm[0] == first[0] && finished.submitted_frames == URP_NATIVE_SAMPLES);
+	block = urp_native_output_stage_peek(&stage);
+	assert(block && block->pcm[0] == third[0]);
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES, &finished) == 1);
+	assert(finished.pcm[0] == third[0]);
+	assert(!urp_native_output_stage_peek(&stage) && !urp_native_output_stage_has_ptt(&stage));
+	assert(stage.partial_writes == 1U);
+	/* With no partial prefix, capacity pressure discards the literal oldest
+	 * complete block and retains ordered later output. */
+	urp_native_output_stage_reset(&stage);
+	assert(urp_native_output_stage_enqueue(&stage, first, URP_NATIVE_SAMPLES, 0, 0) == 1);
+	assert(urp_native_output_stage_enqueue(&stage, second, URP_NATIVE_SAMPLES, 0, 0) == 1);
+	assert(urp_native_output_stage_enqueue(&stage, third, URP_NATIVE_SAMPLES, 0, 0) == 0);
+	block = urp_native_output_stage_peek(&stage);
+	assert(block && block->pcm[0] == second[0] && !urp_native_output_stage_has_ptt(&stage));
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES, &finished) == 1);
+	assert(finished.pcm[0] == second[0]);
+	assert(urp_native_output_stage_commit(&stage, URP_NATIVE_SAMPLES, &finished) == 1);
+	assert(finished.pcm[0] == third[0]);
+	assert(urp_native_output_stage_commit(&stage, 1U, &finished) == -1);
+	assert(urp_native_output_stage_set_capacity(&stage, 1U));
+	assert(stage.capacity == 2U);
+}
+
+/** @brief Verify both controller interfaces retry only through the released facade. */
+static void test_direct_hardware_worker_without_adapters(void)
+{
+	for (int advanced = 0; advanced <= 1; ++advanced) {
+		struct chan_usbradio_pvt radio = {.name = "missing-adapters",
+						  .plus_advanced = advanced,
+						  .plus_portaudio_poc = 1,
+						  .plus_cm119_gpio_poc = 1,
+						  .pttkick = {-1, -1}};
+		atomic_store_explicit(&radio.plus_hardware_online, 1, memory_order_release);
+		atomic_store_explicit(&radio.plus_hardware_ptt_applied, 1, memory_order_release);
+		atomic_store_explicit(&radio.plus_hardware_last_service_time, 1,
+				      memory_order_release);
+		direct_audio_descriptor_queries = direct_gpio_descriptor_queries = 0U;
+		stop_hid_radio_on_usleep = &radio;
+		stop_hid_usleep_count = 0;
+		stop_hid_after_usleeps = 1;
+		assert(hidthread(&radio) == NULL);
+		assert(direct_audio_descriptor_queries == 1U &&
+		       direct_gpio_descriptor_queries == 1U);
+		assert(!atomic_load_explicit(&radio.plus_hardware_online, memory_order_acquire));
+		assert(!atomic_load_explicit(&radio.plus_hardware_ptt_applied,
+					     memory_order_acquire));
+		assert(!atomic_load_explicit(&radio.plus_hardware_last_service_time,
+					     memory_order_acquire));
+		assert(!radio.plus_hardware_adapter_prepared && !radio.usbass);
+		assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
+		stop_hid_radio_on_usleep = NULL;
+	}
+	stop_hid_after_usleeps = 0;
+}
+
+/** @brief Verify hardware publication gates app frames and preserves echo ownership. */
+static void test_direct_channel_write_and_call(void)
+{
+	struct chan_usbradio_pvt radio = {.name = "test", .plus_cm119_gpio_poc = 1};
 	urp_radio_state radio_state = {0};
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
-	short samples[160] = {0};
-	struct ast_frame frame = {.datalen = sizeof(samples), .data.ptr = samples};
+	short samples[URP_LINK_SAMPLES] = {1};
+	struct ast_frame frame = {
+		.frametype = AST_FRAME_VOICE, .datalen = sizeof(samples), .data.ptr = samples};
+	size_t available;
 
-	radio.name = "test";
 	radio.radio = &radio_state;
-	radio.sounddev = 7;
 	radio.plus_app_rpt_samples = ARRAY_LEN(samples);
-	assert(!rpcr_init(&radio.plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST));
+	assert(!rpcr_init(&radio.plus_program_ring, URP_PROGRAM_RING_MAX_SAMPLES, RPCR_SINC_BEST));
 	test_channel_private = &radio;
 	assert(usbradio_write(channel, &frame) == 0);
-	radio.hasusb = 1;
+	assert(!rpcr_available(&radio.plus_program_ring));
+	atomic_store_explicit(&radio.plus_hardware_online, 1, memory_order_release);
 	assert(usbradio_write(channel, &frame) == 0);
+	available = rpcr_available(&radio.plus_program_ring);
+	assert(available == URP_LINK_SAMPLES);
 	radio.echoing = 1;
 	assert(usbradio_write(channel, &frame) == 0);
+	assert(rpcr_available(&radio.plus_program_ring) == available);
 	radio.plus_advanced = 1;
 	assert(usbradio_write(channel, &frame) == 0);
-	radio.plus_advanced = 0;
-	radio.echoing = 0;
+	assert(rpcr_available(&radio.plus_program_ring) == available + URP_LINK_SAMPLES);
+	atomic_store_explicit(&radio.plus_hardware_online, 0, memory_order_release);
 	assert(usbradio_write(channel, &frame) == 0);
-	radio.txkeyed = 1;
-	assert(usbradio_write(channel, &frame) == 0);
-	assert(rpcr_available(&radio.plus_program_ring) > 0);
+	assert(rpcr_available(&radio.plus_program_ring) == available + URP_LINK_SAMPLES);
 	rpcr_destroy(&radio.plus_program_ring);
-	mock_oss_io = 1;
-	mock_open_result = -1;
-	radio.sounddev = -1;
-	assert(usbradio_write(channel, &frame) == 0);
-	mock_oss_io = 0;
-	mock_open_result = 7;
 	pthread_create_calls = 0;
 	assert(usbradio_call(channel, "destination", 1000) == 0);
-	assert(!radio.stophid && radio.lasthidtime == 1234 && pthread_create_calls == 1);
+	assert(!radio.stophid && radio.plus_hardware_worker_started && pthread_create_calls == 1);
+	assert(usbradio_call(channel, "destination", 1000) == 0);
+	assert(pthread_create_calls == 1);
 	assert(setstate_calls > 0);
 	test_channel_private = NULL;
 }
 
-/** @brief Verify oss channel hangup. */
-static void test_oss_channel_hangup(void)
+/** @brief Verify hangup quiesces worker ownership before releasing Asterisk state. */
+static void test_direct_channel_hangup(void)
 {
-	struct chan_usbradio_pvt radio = {0};
+	struct chan_usbradio_pvt radio = {.plus_portaudio_poc = 1,
+					  .plus_cm119_gpio_poc = 1,
+					  .pttkick = {-1, -1},
+					  .plus_hardware_worker_started = 1,
+					  .hidthread = (pthread_t)1};
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
 	struct ast_module_info module_info = {0};
 
 	usbradioplus_test_set_module_info(&module_info);
 	radio.owner = channel;
-	radio.sounddev = -1;
 	test_channel_private = &radio;
 	assert(usbradio_hangup(channel) == 0);
-	assert(!radio.owner && radio.stophid);
-	radio.owner = channel;
-	radio.hookstate = 1;
-	radio.sounddev = 7;
-	test_channel_private = &radio;
-	mock_oss_io = 1;
-	assert(usbradio_hangup(channel) == 0);
-	assert(!radio.hookstate && radio.sounddev == -1);
-	mock_oss_io = 0;
+	assert(!radio.owner && radio.stophid && !radio.plus_hardware_worker_started);
+	assert(atomic_load_explicit(&radio.plus_hardware_stop_request, memory_order_acquire));
+	assert(!atomic_load_explicit(&radio.plus_portaudio_delivery_running, memory_order_acquire));
+	assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
 	test_channel_private = NULL;
 	usbradioplus_test_set_module_info(NULL);
 }
 
-/** @brief Verify oss parallel pulser. */
-static void test_oss_parallel_pulser(void)
-{
-	pthread_t thread;
-
-	haspp = hasout = 0;
-	usbradio_start_parallel_pulser();
-	haspp = hasout = 1;
-	usbradio_start_parallel_pulser();
-
-	haspp = 2;
-	pp_val = 0;
-	memset(pp_pulsetimer, 0, sizeof(pp_pulsetimer));
-	pp_pulsetimer[2] = 10;
-	pp_pulsemask = 0;
-	parallel_write_calls = 0;
-	stop_pulser_on_usleep = 1;
-	assert(pthread_create(&thread, NULL, pulserthread, NULL) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(pp_pulsemask == 1);
-	assert(pp_val == 1);
-	assert(parallel_write_calls == 2);
-	stoppulser = 0;
-	pp_val = 0;
-	pp_pulsemask = 0;
-	pp_pulsetimer[2] = 5;
-	mock_tvnow_step = 10;
-	stop_pulser_on_usleep = 1;
-	assert(pthread_create(&thread, NULL, pulserthread, NULL) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(pp_pulsetimer[2] == 0 && pp_pulsemask == 0);
-	haspp = 1;
-	pp_pulsetimer[2] = 0;
-	stop_pulser_on_usleep = 1;
-	assert(pthread_create(&thread, NULL, pulserthread, NULL) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	mock_tvnow_step = 0;
-	stop_pulser_on_usleep = 0;
-}
-
-/** @brief Verify oss hid worker device retry. */
-static void test_oss_hid_worker_device_retry(void)
+/** @brief Verify direct-adapter tune write paths. */
+static void test_direct_tune_write_paths(void)
 {
 	struct chan_usbradio_pvt radio = {0};
-	urp_radio_state radio_state = {0};
-	pthread_t thread;
-
-	radio.name = "test";
-	radio.radio = &radio_state;
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	usbradio_default.next = &radio;
-	radio.next = NULL;
-	installed_usb_device = NULL;
-	stop_hid_radio_on_usleep = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.stophid && radio.gpio_set && !radio.hasusb);
-	stop_hid_radio_on_usleep = NULL;
-	usbradio_default.next = NULL;
-}
-
-/** @brief Exercise OSS HID recovery using scripted USB availability.
- * @param radio Named radio profile or signaling state, as declared.
- */
-static void run_oss_hid_retry(struct chan_usbradio_pvt *radio)
-{
-	pthread_t thread;
-
-	radio->stophid = 0;
-	stop_hid_radio_on_usleep = radio;
-	assert(pthread_create(&thread, NULL, hidthread, radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio->stophid);
-	stop_hid_radio_on_usleep = NULL;
-}
-
-/** @brief Verify oss hid attach failures. */
-static void test_oss_hid_attach_failures(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct chan_usbradio_pvt other = {0};
-	struct chan_usbradio_pvt candidate = {0};
-	urp_radio_state radio_configuration = {
-		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
-	pthread_t thread;
-
-	settings_defaults(&settings);
-	strcpy(settings.profiles[0].name, "test");
-	strcpy(settings.profiles[0].channel, "RadioPlus/test");
-	settings.profiles[0].enabled = 0;
-	radio.name = "test";
-	radio.radio = urp_radio_create(&radio_configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	strcpy(radio.devstr, "usb-test");
-	usbradio_default.next = &radio;
-	radio.next = NULL;
-	installed_usb_device = "usb-test";
-	mock_usb_device_number = -1;
-	run_oss_hid_retry(&radio);
-
-	mock_usb_device_number = 0;
-	mock_hid_device_available = 0;
-	run_oss_hid_retry(&radio);
-	mock_hid_device_available = 1;
-	mock_usb_open_success = 0;
-	run_oss_hid_retry(&radio);
-	mock_usb_open_success = 1;
-	mock_usb_claim_calls = 0;
-	mock_usb_claim_result = -1;
-	mock_usb_detach_result = -1;
-	run_oss_hid_retry(&radio);
-	mock_usb_claim_calls = 0;
-	mock_usb_detach_result = 0;
-	mock_usb_second_claim_result = -1;
-	run_oss_hid_retry(&radio);
-
-	/* Automatic assignment reports an empty USB inventory without changing devstr. */
-	mock_usb_second_claim_result = 0;
-	radio.devstr[0] = '\0';
-	radio.serial[0] = '\0';
-	mock_no_usb_devices = 1;
-	run_oss_hid_retry(&radio);
-	assert(!radio.devstr[0]);
-	run_oss_hid_retry(&radio);
-	mock_no_usb_devices = 0;
-
-	/* Automatic assignment skips an occupied device and records the next serial. */
-	other.name = "other";
-	strcpy(other.devstr, "usb-test");
-	other.usbass = 1;
-	radio.next = &other;
-	other.next = NULL;
-	mock_second_usb_device = 1;
-	mock_usb_serial_result = 1;
-	mock_hid_device_available = 0;
-	run_oss_hid_retry(&radio);
-	assert(!strcmp(radio.devstr, "usb-second"));
-	assert(!strcmp(radio.serial, mock_usb_serial));
-	mock_second_usb_device = 0;
-	mock_usb_serial_result = 0;
-
-	/* Reject a device already owned by another configured channel. */
-	mock_usb_claim_result = 0;
-	mock_usb_second_claim_result = 0;
-	strcpy(other.devstr, "usb-test");
-	other.usbass = 1;
-	strcpy(radio.devstr, "usb-test");
-	radio.next = &other;
-	other.next = NULL;
-	run_oss_hid_retry(&radio);
-
-	/* Serial enumeration covers missing serials and an exact match. */
-	other.usbass = 0;
-	radio.next = NULL;
-	radio.devstr[0] = '\0';
-	strcpy(radio.serial, "serial-test");
-	mock_usb_serial_result = 0;
-	mock_hid_device_available = 0;
-	run_oss_hid_retry(&radio);
-	radio.devstr[0] = '\0';
-	mock_usb_serial_result = 1;
-	mock_usb_serial = "different-serial";
-	run_oss_hid_retry(&radio);
-	assert(radio.devstr[0]);
-	mock_usb_serial = "serial-test";
-	strcpy(radio.serial, "serial-test");
-	radio.devstr[0] = '\0';
-	mock_usb_serial_result = 1;
-	mock_usb_serial_by_device = 1;
-	mock_second_usb_device = 1;
-	installed_usb_device = "usb-second";
-	mock_hid_device_available = 0;
-	run_oss_hid_retry(&radio);
-	assert(!strcmp(radio.devstr, "usb-second"));
-	mock_usb_serial_by_device = 0;
-	mock_second_usb_device = 0;
-	installed_usb_device = "usb-test";
-
-	/* Assigned nonmatching channels do not block a distinct installed candidate. */
-	radio.serial[0] = '\0';
-	strcpy(radio.devstr, "missing");
-	strcpy(other.devstr, "usb-other");
-	other.usbass = 1;
-	strcpy(candidate.devstr, "usb-test");
-	candidate.usbass = 0;
-	radio.next = &other;
-	other.next = &candidate;
-	candidate.next = NULL;
-	mock_usb_device_number = 0;
-	run_oss_hid_retry(&radio);
-	assert(!strcmp(radio.devstr, "usb-test"));
-	radio.next = &other;
-	other.next = NULL;
-
-	/* A stale configured device may fall back to an installed configured device. */
-	radio.serial[0] = '\0';
-	strcpy(radio.devstr, "missing");
-	strcpy(other.devstr, "usb-test");
-	radio.next = &other;
-	other.usbass = 0;
-	installed_usb_device = "usb-test";
-	mock_usb_device_number = -1;
-	run_oss_hid_retry(&radio);
-	mock_usb_device_number = 0;
-	other.usbass = 1;
-	run_oss_hid_retry(&radio);
-	other.usbass = 0;
-	strcpy(radio.devstr, "missing");
-	run_oss_hid_retry(&radio);
-	assert(!strcmp(radio.devstr, "usb-test"));
-	/* Repeated discovery failures suppress duplicate device diagnostics. */
-	strcpy(radio.devstr, "missing");
-	radio.device_error = 1;
-	installed_usb_device = NULL;
-	run_oss_hid_retry(&radio);
-	assert(radio.device_error);
-	installed_usb_device = "usb-test";
-
-	/* A detach followed by a successful second claim reaches normal setup. */
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.stophid = 0;
-	mock_hid_device_available = 1;
-	mock_usb_open_success = 1;
-	mock_usb_claim_calls = 0;
-	mock_usb_claim_result = -1;
-	mock_usb_second_claim_result = 0;
-	mock_usb_detach_result = 0;
-	mock_pipe_failure = 1;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	mock_pipe_failure = 0;
-	mock_usb_claim_result = 0;
-
-	/* Once attachment succeeds, pipe creation failure terminates the worker. */
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	mock_hid_device_available = 1;
-	mock_usb_open_success = 1;
-	mock_pipe_failure = 1;
-	radio.stophid = 0;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
-	mock_pipe_failure = 0;
-
-	/* A failed nonblocking setup must close both freshly-created pipe ends and
-	 * release the claimed HID interface rather than leaving a future control
-	 * writer blocked on a partially initialized wake pipe. */
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.stophid = 0;
-	mock_fcntl_calls = 0;
-	/* Fail the outer F_SETFL; failing F_GETFL would be ORed with O_NONBLOCK. */
-	mock_fcntl_fail_call = 2;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
-	mock_fcntl_fail_call = 0;
-
-	/* The second endpoint is independently required to be nonblocking. */
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.stophid = 0;
-	mock_fcntl_calls = 0;
-	mock_fcntl_fail_call = 4;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.pttkick[0] == -1 && radio.pttkick[1] == -1);
-	mock_fcntl_fail_call = 0;
-
-	mock_usb_serial_result = 0;
-	mock_hid_device_available = 0;
-	mock_usb_open_success = 0;
-	mock_usb_claim_result = 0;
-	mock_usb_second_claim_result = 0;
-	mock_usb_detach_result = 0;
-	mock_usb_device_number = 0;
-	mock_no_usb_devices = 0;
-	mock_second_usb_device = 0;
-	installed_usb_device = NULL;
-	usbradio_default.next = NULL;
-	assert(!urp_radio_destroy(radio.radio));
-}
-
-/** Select the advanced-interface variant of hardware attachment. */
-static int advanced_hid_mode;
-
-/** @brief Verify hardware attachment for the selected controller interface. */
-static void test_oss_hid_worker_attach(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	urp_radio_state radio_configuration = {0};
-	struct ast_variable explicit_rxvoice = {.name = "rxvoiceadj", .value = "0.625"};
-	pthread_t thread;
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 0;
-	strcpy(settings.profiles[0].name, "test");
-	strcpy(settings.profiles[0].channel, "RadioPlus/test");
-	radio.name = "test";
-	strcpy(radio.devstr, "usb-test");
-	radio.plus_advanced = advanced_hid_mode;
-	radio.owner = (struct ast_channel *)(uintptr_t)1;
-	radio.sounddev = -1;
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.frags = 1;
-	radio.queuesize = 2;
-	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_deemphasis_corner_hz = 300.0;
-	radio.plus_preemphasis_corner_hz = 300.0;
-	radio.valid_gpios = (1 << 0) | (1 << 2);
-	radio.gpios[0] = "in";
-	radio.gpios[1] = "out";
-	radio.gpios[2] = "in";
-	radio.gpios[3] = "in";
-	radio.txmixa = TX_OUT_VOICE;
-	radio.txmixb = TX_OUT_LSD;
-	strcpy(radio.txctcssfreq, "100.0");
-	radio_configuration.pRxCodeSrc = "0";
-	radio_configuration.pTxCodeSrc = "0";
-	radio_configuration.pTxCodeDefault = "0";
-	radio.radio = urp_radio_create(&radio_configuration, URP_LINK_SAMPLES);
-	assert(radio.radio);
-	assert(usbradioplus_dsp_init(&radio) == 0);
-	usbradio_default.next = &radio;
-	radio.next = NULL;
-	installed_usb_device = "usb-test";
-	mock_hid_device_available = 1;
-	mock_usb_open_success = 1;
-	mock_usb_claim_result = 0;
-	mock_usb_detach_result = 0;
-	mock_oss_io = 1;
-	mock_new_mixer_name = 1;
-	mock_usb_device.descriptor.idProduct = C108AH_PRODUCT_ID;
-	mock_open_result = 7;
-	mock_ioctl_failure = ULONG_MAX;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	mock_poll_revents = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 2;
-	toggle_hid_inputs_mask = 1;
-	mock_hid_inputs[0] = 0x10;
-	mock_tvnow_step = 100;
-	radio.hid_gpio_pulsetimer[0] = 10;
-	radio.hid_gpio_pulsetimer[1] = 1000;
-	usbradioplus_publish_hardware_ptt(&radio, 1);
-	radio.devtype = C108AH_PRODUCT_ID;
-	haspp = 2;
-	radio.pps[2] = "ptt";
-	radio.pps[3] = "out";
-	radio.pps[10] = "in";
-	radio.pps[11] = "out";
-	radio.pps[12] = "cor";
-	radio.pps[13] = "ctcss";
-	radio.pps[14] = "in";
-	mock_parallel_inputs = 0xff;
-	toggle_parallel_inputs_mask = 0x40;
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.stophid && radio.hasusb && radio.usbass);
-	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
-	module_debug_level = 10;
-	file_debug_level = 0;
-
-	/* The audio callback only posts the clip request; the HID owner turns it
-	 * into one timed GPIO pulse after inspecting its current timer state. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.hid_gpio_pulsetimer[0] == CLIP_LED_HOLD_TIME_MS);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-
-	/* A stale request is consumed even when this interface has no clip LED. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	radio.clipledgpio = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-
-	/* A request arriving while the LED pulse is active is consumed without
-	 * restarting its timer. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	radio.clipledgpio = 1;
-	radio.hid_gpio_pulsetimer[0] = 1;
-	mock_tvnow_step = 0;
-	atomic_store_explicit(&radio.plus_clip_led_request, 1, memory_order_release);
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.hid_gpio_pulsetimer[0] == 1);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	mock_tvnow_step = 100;
-
-	/* An in-progress radio-program publication cannot defer an unkey.  The
-	 * worker must use its no-program release branch for the parallel PTT line. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	/* Publish the unkey in one polling pass, then stop on the next so the
-	 * worker must apply the unavailable-program release before cleanup runs. */
-	stop_hid_after_inputs = 2;
-	parallel_write_calls = 0;
-	unkey_without_program_after_inputs = 1;
-	unkey_without_program_on_input = &radio;
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!unkey_without_program_on_input && !radio.lasttx);
-	assert(parallel_write_calls > 0);
-	assert(!atomic_load_explicit(&radio.plus_hardware_ptt_applied, memory_order_acquire));
-	atomic_store_explicit(&radio.plus_radio_program_generation, 0U, memory_order_release);
-
-	/* A missing program snapshot only skips radio programming.  It must not
-	 * prevent an otherwise requested physical key-up. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 2;
-	parallel_write_calls = 0;
-	radio.invertptt = 0;
-	mock_parallel_ptt_mask = 1U;
-	parallel_saw_ptt_asserted = 0;
-	key_without_program_after_inputs = 1;
-	key_without_program_on_input = &radio;
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!key_without_program_on_input && parallel_saw_ptt_asserted);
-	assert(parallel_write_calls > 0);
-	mock_parallel_ptt_mask = 0;
-	atomic_store_explicit(&radio.plus_radio_program_generation, 0U, memory_order_release);
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-
-	/* A new, valid radio-program snapshot is applied even if PTT did not
-	 * change; the programming update must not manufacture a key transition. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	parallel_write_calls = 0;
-	radio.lasttx = 0;
-	radio.rxfreq = 146520000U;
-	radio.txfreq = 146520000U;
-	usbradioplus_program_radio(&radio);
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.lasttx && parallel_write_calls > 0);
-
-	/* A fresh radio program and a PTT transition may arrive in one worker pass.
-	 * Publish them after setup so the worker observes both in this iteration. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	parallel_write_calls = 0;
-	mock_parallel_ptt_mask = 1U;
-	parallel_saw_ptt_asserted = 0;
-	radio.lasttx = 0;
-	radio.rxfreq = 146520000U;
-	radio.txfreq = 146520000U;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	program_and_key_after_inputs = 1;
-	program_and_key_on_input = &radio;
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!program_and_key_on_input && parallel_saw_ptt_asserted);
-	mock_parallel_ptt_mask = 0;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-
-	/* Once setup's program snapshot is current, a later PTT request must key
-	 * without reprogramming the radio. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 2;
-	parallel_write_calls = 0;
-	mock_parallel_ptt_mask = 1U;
-	parallel_saw_ptt_asserted = 0;
-	radio.lasttx = 0;
-	radio.rxfreq = 146520000U;
-	radio.txfreq = 146520000U;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	key_after_program_after_inputs = 2;
-	key_after_program_on_input = &radio;
-	stop_hid_on_input = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!key_after_program_on_input && parallel_saw_ptt_asserted);
-	mock_parallel_ptt_mask = 0;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-
-	/* A valid EEPROM read can be followed by a requested write in the same
-	 * service interval; an adapter checksum failure must still clear control. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	toggle_hid_inputs_mask = 1;
-	radio.wanteeprom = 1;
-	mock_eeprom_result = 0;
-	mock_eeprom_valid_magic = 1;
-	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_config_variables = &explicit_rxvoice;
-	radio.eepromctl = 1;
-	eeprom_write_after_read = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.eepromctl);
-	test_config_load_result = NULL;
-	test_config_variables = NULL;
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	radio.eepromctl = 1;
-	radio.txmixb = TX_OUT_COMPOSITE;
-	eeprom_write_after_read = NULL;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.eepromctl);
-	radio.txmixb = TX_OUT_LSD;
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	radio.eepromctl = 2;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.eepromctl);
-	module_debug_level = 0;
-	file_debug_level = 10;
-
-	/* A readable EEPROM with a foreign signature is ignored. Exercise an
-	 * inverted PTT release and a non-retryable kick-pipe read in the same interval. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	radio.eepromctl = 1;
-	mock_eeprom_result = 0;
-	mock_eeprom_valid_magic = 0;
-	radio.invertptt = 1;
-	radio.lasttx = 1;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	mock_poll_revents = POLLIN;
-	mock_read_result = -1;
-	mock_read_errno = EIO;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.eepromctl && radio.invertptt);
-	mock_read_errno = EAGAIN;
-
-	/* A wake pipe can close cleanly or report its other nonblocking errno. Both
-	 * are nonfatal because the worker always polls its atomic PTT request too. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	mock_read_result = 0;
-	mock_poll_revents = POLLIN;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	mock_read_result = -1;
-	mock_read_errno = EWOULDBLOCK;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	mock_read_errno = EAGAIN;
-
-	/* A readable kick byte requests the unkeyed state without forcing HID recovery. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	mock_read_result = 1;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.lasttx);
-	/* A real nonblocking kick pipe becomes empty after its readable byte. The
-	 * fixture must do the same so the worker's drain-until-EAGAIN loop reaches
-	 * normal shutdown instead of spinning forever on a fictional byte. */
-	assert(mock_read_result == -1 && mock_read_errno == EAGAIN);
-
-	/* With a stable valid programming snapshot and unchanged PTT, the second
-	 * HID pass must be a no-op.  High input bits also represent idle COR and
-	 * CTCSS, so neither HID signaling bit may be published. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 2;
-	toggle_hid_inputs_mask = 0;
-	memset(mock_hid_inputs, 0, sizeof(mock_hid_inputs));
-	radio.hdwtype = 0;
-	assert(hidhdwconfig(&radio) == 0);
-	assert(radio.hid_io_cor && radio.hid_io_ctcss);
-	mock_hid_inputs[radio.hid_io_cor_loc] |= radio.hid_io_cor;
-	mock_hid_inputs[radio.hid_io_ctcss_loc] |= radio.hid_io_ctcss;
-	radio.invertptt = 0;
-	radio.lasttx = 0;
-	radio.rxfreq = 146520000U;
-	radio.txfreq = 146520000U;
-	usbradioplus_program_radio(&radio);
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	mock_poll_revents = 0;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(mock_hid_input_calls == 2);
-	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
-		 URP_HARDWARE_INPUT_HID_CARRIER));
-	assert(!(atomic_load_explicit(&radio.plus_hardware_inputs, memory_order_acquire) &
-		 URP_HARDWARE_INPUT_HID_CTCSS));
-	memset(mock_hid_inputs, 0, sizeof(mock_hid_inputs));
-	mock_hid_inputs[0] = 0x10;
-	toggle_hid_inputs_mask = 1;
-	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
-	file_debug_level = 0;
-	option_debug = 10;
-	mock_poll_revents = 0;
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	mock_eeprom_result = 1;
-	mock_eeprom_valid_magic = 0;
-	eeprom_write_after_read = NULL;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.eepromctl);
-
-	/* Stable low inputs cover the no-change path for GPIO and parallel status.
-	 * Omitting a parallel PTT assignment also exercises USB-only keying. */
-	radio.stophid = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 2;
-	toggle_hid_input_index = radio.hid_gpio_loc;
-	mock_hid_inputs[radio.hid_gpio_loc] = 1 << 2;
-	toggle_hid_inputs_mask = 0;
-	toggle_parallel_inputs_mask = 0;
-	radio.pps[2] = NULL;
-	radio.pps[11] = "in";
-	radio.had_gpios_in = 1;
-	radio.last_gpios_in = 0;
-	radio.had_pp_in = 1;
-	radio.last_pp_in = 0;
-	mock_parallel_inputs = 0x80;
-	radio.invertptt = 0;
-	radio.lasttx = 1;
-	usbradioplus_publish_hardware_ptt(&radio, 0);
-	mock_poll_revents = 0;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.lasttx);
-	/* Losing the attached interface returns to discovery and closes the old
-	 * libusb handle before retrying. */
-	radio.stophid = 0;
-	radio.wanteeprom = 0;
-	mock_hid_input_calls = 0;
-	stop_hid_on_input = NULL;
-	drop_hid_on_input = &radio;
-	stop_hid_radio_on_usleep = &radio;
-	mock_hid_device_available = 1;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.stophid && !radio.hasusb);
-	drop_hid_on_input = NULL;
-	stop_hid_radio_on_usleep = NULL;
-	mock_hid_device_available = 1;
-
-	/* A failed poll sleeps briefly and retries until shutdown is requested. */
-	radio.stophid = 0;
-	radio.wanteeprom = 0;
-	stop_hid_on_input = NULL;
-	stop_hid_radio_on_usleep = &radio;
-	mock_poll_result = -1;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.stophid);
-	stop_hid_radio_on_usleep = NULL;
-	mock_poll_result = 0;
-	stop_hid_on_input = NULL;
-	mock_eeprom_result = 0;
-	mock_oss_io = 0;
-	mock_new_mixer_name = 0;
-	mock_usb_device.descriptor.idProduct = 0;
-	mock_hid_device_available = 0;
-	mock_usb_open_success = 0;
-	mock_poll_enabled = 0;
-	mock_tvnow_step = 0;
-	option_debug = 0;
-	module_debug_level = file_debug_level = 0;
-	haspp = 0;
-	toggle_parallel_inputs_mask = 0;
-	installed_usb_device = NULL;
-	usbradio_default.next = NULL;
-	if (radio.pttkick[0] >= 0)
-		close(radio.pttkick[0]);
-	if (radio.pttkick[1] >= 0)
-		close(radio.pttkick[1]);
-	usbradioplus_dsp_destroy(&radio);
-	urp_radio_destroy(radio.radio);
-}
-
-/** @brief Verify oss hid worker first radio construction. */
-static void test_oss_hid_worker_first_radio_construction(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-	struct ast_variable ignored_option = {.name = "unsupported", .value = "1"};
-	pthread_t thread;
-
-	settings_defaults(&settings);
-	settings.profiles[0].enabled = 0;
-	ast_copy_string(settings.profiles[0].name, "first-radio",
-			sizeof(settings.profiles[0].name));
-	ast_copy_string(settings.profiles[0].channel, "RadioPlus/first-radio",
-			sizeof(settings.profiles[0].channel));
-	radio.name = "first-radio";
-	radio.plus_advanced = advanced_hid_mode == 1;
-	radio.radioduplex = advanced_hid_mode == 2;
-	strcpy(radio.devstr, "usb-test");
-	radio.sounddev = -1;
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
-	radio.plus_deemphasis_corner_hz = 250.0;
-	radio.plus_preemphasis_corner_hz = 250.0;
-	radio.radioactive = 1;
-	radio.txpreemphasis = 1;
-	radio.txmixa = TX_OUT_OFF;
-	radio.txmixb = TX_OUT_LSD;
-	radio.txctcssadj = 250;
-	assert(usbradioplus_dsp_init(&radio) == 0);
-	usbradio_default.next = &radio;
-	radio.next = NULL;
-	installed_usb_device = "usb-test";
-	mock_hid_device_available = 1;
-	mock_usb_open_success = 1;
-	mock_usb_claim_calls = 0;
-	mock_usb_claim_result = 0;
-	mock_usb_device_number = 0;
-	mock_oss_io = 1;
-	mock_open_result = 7;
-	mock_usb_device.descriptor.idProduct = C108_PRODUCT_ID + 1;
-	mock_poll_enabled = 1;
-	mock_poll_result = 0;
-	test_config_load_result = (struct ast_config *)(uintptr_t)1;
-	test_config_variables = &ignored_option;
-	mock_hid_input_calls = 0;
-	stop_hid_after_inputs = 1;
-	stop_hid_on_input = &radio;
-	fail_radio_state_allocation = 1;
-	stop_hid_radio_on_usleep = &radio;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(!radio.radio);
-	fail_radio_state_allocation = 0;
-	stop_hid_radio_on_usleep = NULL;
-	/* A malformed processing override is reported but must not prevent the HID
-	 * worker from bringing up an otherwise valid radio interface. */
-	add_processing_override("hardware", "hardware_interface_type", "invalid");
-	radio.stophid = 0;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.radio && radio.hasusb && radio.radioactive);
-	settings.profiles[0].override_count = 0;
-
-	/* Reuse the attached-channel fixture to cover a first construction with
-	 * voice but no output assigned for a configured CTCSS tone. */
-	urp_radio_destroy(radio.radio);
-	radio.radio = NULL;
-	if (radio.pttkick[0] >= 0)
-		close(radio.pttkick[0]);
-	if (radio.pttkick[1] >= 0)
-		close(radio.pttkick[1]);
-	radio.pttkick[0] = radio.pttkick[1] = -1;
-	radio.stophid = radio.hasusb = radio.usbass = 0;
-	radio.radioactive = 0;
-	radio.txpreemphasis = 0;
-	radio.txmixa = TX_OUT_VOICE;
-	radio.txmixb = TX_OUT_OFF;
-	strcpy(radio.txctcssfreq, "100.0");
-	test_config_load_result = NULL;
-	test_config_variables = NULL;
-	mock_hid_input_calls = 0;
-	assert(pthread_create(&thread, NULL, hidthread, &radio) == 0);
-	assert(pthread_join(thread, NULL) == 0);
-	assert(radio.radio && radio.hasusb);
-	stop_hid_on_input = NULL;
-	mock_poll_enabled = 0;
-	mock_oss_io = 0;
-	mock_hid_device_available = 0;
-	mock_usb_device.descriptor.idProduct = 0;
-	mock_usb_open_success = 0;
-	installed_usb_device = NULL;
-	test_config_load_result = NULL;
-	test_config_variables = NULL;
-	usbradio_default.next = NULL;
-	if (radio.pttkick[0] >= 0)
-		close(radio.pttkick[0]);
-	if (radio.pttkick[1] >= 0)
-		close(radio.pttkick[1]);
-	usbradioplus_dsp_destroy(&radio);
-	urp_radio_destroy(radio.radio);
-}
-
-#endif
-
-/** @brief Verify oss tune write paths. */
-static void test_oss_tune_write_paths(void)
-{
-	struct chan_usbradio_pvt radio = {0};
-#ifdef URP_TEST_MODERN
-	struct ast_radio_device radio_device = {.devstr = "usb-assigned",
-						.serial = "serial-assigned"};
-	struct ast_variable serial_selector = {.name = "serial", .value = "configured-serial"};
-#endif
 	struct ast_variable duplex_mode = {.name = "duplex3mode", .value = "hardware"};
 	struct ast_variable device = {.name = "devstr", .value = "usb-test", .next = &duplex_mode};
 
 	radio.name = "test";
 	strcpy(radio.devstr, "usb-test");
 	strcpy(radio.serial, "serial-test");
-#ifdef URP_TEST_MODERN
-	radio.radio_device = &radio_device;
-#else
 	radio.micmax = 100;
-#endif
 	radio.rxmixerset = 500;
 	radio.txmixaset = 501;
 	radio.txmixbset = 502;
@@ -9021,56 +6152,16 @@ static void test_oss_tune_write_paths(void)
 	radio.devstr[0] = '\0';
 	tune_write(&radio);
 	strcpy(radio.devstr, "usb-test");
-#ifdef URP_TEST_MODERN
-	/* A serial-only explicit selector evaluates both automatic-assignment
-	 * predicates, and an existing serial variable is updated from an empty
-	 * current serial value. */
-	radio.devstr[0] = '\0';
-	strcpy(radio.serial, "configured-serial");
-	tune_write(&radio);
-	strcpy(radio.devstr, "configured-device");
-	radio.serial[0] = '\0';
-	device.next = &serial_selector;
-	serial_selector.next = &duplex_mode;
-	tune_write(&radio);
-	device.next = &duplex_mode;
-
-	radio.devstr[0] = '\0';
-	modern_automatic_device_count = 2;
-	variable_update_result = 0;
-	tune_write(&radio);
-	radio_device.serial = NULL;
-	tune_write(&radio);
-	radio_device.devstr = "";
-	tune_write(&radio);
-	radio_device.devstr = "usb-assigned";
-	variable_update_result = -1;
-	variable_new_failure = 1;
-	radio_device.serial = "serial-assigned";
-	tune_write(&radio);
-	radio_device.serial = NULL;
-	device.inherited = 1;
-	tune_write(&radio);
-	device.inherited = 0;
-	variable_new_failure = 0;
-	variable_update_result = 0;
-	modern_automatic_device_count = 0;
-#endif
 	test_config_variables = NULL;
-	mock_second_usb_device = 0;
 	tune_write(&radio);
-	mock_second_usb_device = 1;
 	tune_write(&radio);
-	mock_second_usb_device = 0;
 	test_category_get_result = (struct ast_category *)(uintptr_t)1;
 	test_config_load_result = NULL;
 	usbradio_default.next = NULL;
 }
 
-#ifndef URP_TEST_MODERN
-
-/** @brief Verify oss channel creation and request. */
-static void test_oss_channel_creation_and_request(void)
+/** @brief Verify direct-adapter channel creation and request. */
+static void test_direct_channel_creation_and_request(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 	struct ast_module_info module_info = {0};
@@ -9081,24 +6172,11 @@ static void test_oss_channel_creation_and_request(void)
 
 	usbradioplus_test_set_module_info(&module_info);
 	radio.name = "test";
-	radio.sounddev = -1;
 	fail_channel_alloc = 1;
 	assert(!usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL));
 	fail_channel_alloc = 0;
 	channel = usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL);
 	assert(channel && radio.owner == channel && test_channel_private == &radio);
-	radio.owner = NULL;
-	radio.hasusb = 1;
-	radio.sounddev = -1;
-	mock_oss_io = 1;
-	mock_open_result = -1;
-	assert(usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL));
-	radio.owner = NULL;
-	radio.sounddev = -1;
-	mock_open_result = 7;
-	assert(usbradio_new(&radio, "s", "default", AST_STATE_DOWN, NULL, NULL));
-	mock_oss_io = 0;
-	radio.hasusb = 0;
 	radio.owner = NULL;
 	pbx_start_result = 0;
 	channel = usbradio_new(&radio, "s", "default", AST_STATE_UP, NULL, NULL);
@@ -9137,84 +6215,31 @@ static void test_oss_channel_creation_and_request(void)
 	usbradio_default.next = NULL;
 }
 
-/** @brief Verify oss channel read guards. */
-static void test_oss_channel_read_guards(void)
+/** @brief Verify callback-delivery channels reject a stale hardware worker. */
+static void test_direct_channel_read_guards(void)
 {
-	struct chan_usbradio_pvt radio = {0};
+	struct chan_usbradio_pvt radio = {.name = "test"};
 	struct ast_channel *channel = (struct ast_channel *)(uintptr_t)1;
 
-	radio.name = "test";
-	radio.sounddev = 7;
-	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	test_channel_private = &radio;
-	radio.lasthidtime = 1230;
+	assert(usbradio_read(channel) == &ast_null_frame);
+	atomic_store_explicit(&radio.plus_hardware_last_service_time, (long long)time(NULL) - 10,
+			      memory_order_release);
 	assert(!usbradio_read(channel));
-	radio.lasthidtime = 1232;
+	atomic_store_explicit(&radio.plus_hardware_last_service_time, (long long)time(NULL),
+			      memory_order_release);
 	assert(usbradio_read(channel) == &ast_null_frame);
-	radio.rxkeyed = 1;
-	radio.owner = channel;
-	radio.duplex3 = 0;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	radio.rxkeyed = 1;
-	radio.duplex3 = 999;
-	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	radio.rxkeyed = 1;
-	radio.duplex3 = 999;
-	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.rxkeyed && !radio.lastrx);
-	radio.rxkeyed = radio.plus_advanced = 1;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.rxkeyed);
-	radio.plus_advanced = 0;
-
-	radio.hasusb = 1;
-	mock_oss_io = 1;
-	mock_read_result = -1;
-	mock_read_errno = EIO;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.hasusb);
-	radio.hasusb = 1;
-	mock_read_errno = EAGAIN;
-	radio.readerrs = 0;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(radio.readerrs == 1 && radio.hasusb);
-	radio.readerrs = 1;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(radio.readerrs == 2 && radio.hasusb);
-	radio.readerrs = READERR_THRESHOLD + 1;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(!radio.hasusb && !radio.readerrs);
-	radio.hasusb = 1;
-	radio.readpos = AST_FRIENDLY_OFFSET;
-	radio.readerrs = 1;
-	mock_read_result = 16;
-	assert(usbradio_read(channel) == &ast_null_frame);
-	assert(radio.readpos == AST_FRIENDLY_OFFSET + 16 && !radio.readerrs);
-	mock_read_result = -1;
-	mock_oss_io = 0;
 	test_channel_private = NULL;
 }
 
-/** @brief Drive one complete OSS receiver block through the channel harness.
- * @param radio Named radio profile or signaling state, as declared.
- * @param channel Radio channel or channel index, as declared.
- * @return Result used by the test's assertions.
- */
-static struct ast_frame *oss_read_complete(struct chan_usbradio_pvt *radio,
-					   struct ast_channel *channel)
+/** @brief Drive one native callback and its real bounded Asterisk handoff. */
+static struct ast_frame *direct_read_complete(struct chan_usbradio_pvt *radio,
+					      struct ast_channel *channel)
 {
-	struct ast_frame *frame;
 	unsigned int inputs = 0U;
-	unsigned int writes_before = mock_sound_write_calls;
+	float output[URP_NATIVE_SAMPLES * 2U];
 
-	/* The fixture's direct receive fields model the state sampled by the HID
-	 * worker. Publish that sample before the audio callback imports its atomic
-	 * snapshot, just as the real HID worker does. */
+	(void)channel;
 	if (radio->rxhidsq)
 		inputs |= URP_HARDWARE_INPUT_HID_CARRIER;
 	if (radio->rxhidctcss)
@@ -9224,18 +6249,25 @@ static struct ast_frame *oss_read_complete(struct chan_usbradio_pvt *radio,
 	if (radio->rxppctcss)
 		inputs |= URP_HARDWARE_INPUT_PARALLEL_CTCSS;
 	usbradioplus_publish_hardware_inputs(radio, inputs);
-	mock_read_result = (ssize_t)(sizeof(radio->usbradio_read_buf) - radio->readpos);
-	frame = usbradio_read(channel);
-	/* Direct rendering fills the app and DAC frame in this callback. */
-	assert(mock_sound_write_calls == writes_before + 1);
-	assert(mock_sound_write_bytes == sizeof(radio->usbradio_write_buf));
-	assert(radio->plus_sound_dropped_frames == 0);
-	assert(radio->plus_sound_short_writes == 0);
-	return frame;
+	assert(!usbradioplus_portaudio_poc_test_callback(radio, NULL, output, URP_NATIVE_SAMPLES));
+	direct_delivery_frame_count = 0U;
+	direct_delivery_capture = 1;
+	assert(usbradioplus_portaudio_poc_test_deliver(radio, &direct_delivered_keyed,
+						       &direct_delivery_generation,
+						       &direct_status_sequence) == 1);
+	direct_delivery_capture = 0;
+	if (!direct_delivery_frame_count)
+		return &ast_null_frame;
+	assert(direct_delivery_frame_count == 1U);
+	if (direct_delivery_frame.frametype == AST_FRAME_VOICE) {
+		direct_delivery_voice_frame = direct_delivery_frame;
+		return &direct_delivery_voice_frame;
+	}
+	return &direct_delivery_frame;
 }
 
-/** @brief Verify oss complete read frame. */
-static void test_oss_complete_read_frame(void)
+/** @brief Verify direct-adapter complete read frame. */
+static void test_direct_complete_read_frame(void)
 {
 	struct chan_usbradio_pvt radio = {0};
 	urp_radio_state radio_configuration = {0};
@@ -9248,15 +6280,14 @@ static void test_oss_complete_read_frame(void)
 	strcpy(settings.profiles[0].channel, "RadioPlus/test");
 	radio.name = "test";
 	radio.owner = channel;
-	radio.sounddev = 7;
 	radio.hasusb = 1;
+	radio.plus_native_max_frames = URP_NATIVE_SAMPLES;
 	radio.radioactive = 1;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.plus_hardware_applied = 1;
 	radio.plus_deemphasis_corner_hz = 300.0;
 	radio.plus_preemphasis_corner_hz = 300.0;
-	radio.readpos = AST_FRIENDLY_OFFSET;
 	urp_sample_queue_init(&radio.echo_queue, radio.echo_samples, URP_ECHO_QUEUE_SAMPLES);
 	radio_configuration.pRxCodeSrc = "100.0";
 	radio_configuration.pTxCodeSrc = "0";
@@ -9265,75 +6296,16 @@ static void test_oss_complete_read_frame(void)
 	assert(radio.radio);
 	assert(usbradioplus_dsp_init(&radio) == 0);
 	test_channel_private = &radio;
-	mock_oss_io = 1;
-	mock_ioctl_failure = ULONG_MAX;
-	mock_oss_fragment_total = mock_oss_fragments = 8;
-	mock_oss_fragment_size = 3840;
-	mock_oss_bytes = -1;
-	mock_oss_output_space_calls = 0;
-	fail_oss_output_space_call = 0;
-	extreme_oss_output_space_call = 0;
-	radio.total_blocks = 8;
-	radio.queuesize = 7;
-	mock_write_result = -2;
-	mock_read_errno = 0;
+	assert(!usbradioplus_prepare_native_processing(&radio));
+	usbradioplus_portaudio_poc_handoff_init(&radio.plus_portaudio_rx_handoff);
+	usbradioplus_portaudio_poc_status_init(&radio.plus_portaudio_status_handoff);
+	direct_delivered_keyed = 0;
+	direct_delivery_generation = 0U;
+	direct_status_sequence = 0U;
 	channel_state = AST_STATE_UP;
-	/* A control-plane radio reconfiguration may temporarily deny the callback
-	 * access to signaling state.  The real-time path must keep its cadence with
-	 * zeroed app_rpt and DAC buffers instead of touching that state or stalling. */
-	memset(radio.usbradio_read_buf_8k, 0x5a, sizeof(radio.usbradio_read_buf_8k));
-	memset(radio.usbradio_write_buf, 0x5a, sizeof(radio.usbradio_write_buf));
-	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 1, memory_order_seq_cst);
-	mock_read_result = (ssize_t)(sizeof(radio.usbradio_read_buf) - radio.readpos);
-	{
-		unsigned int writes_before = mock_sound_write_calls;
-
-		assert(usbradio_read(channel) == &ast_null_frame);
-		assert(radio.readpos == AST_FRIENDLY_OFFSET);
-		assert(mock_sound_write_calls == writes_before + 1U);
-	}
-	for (size_t sample = 0; sample < radio.plus_app_rpt_samples; ++sample)
-		assert(radio.usbradio_read_buf_8k[AST_FRIENDLY_OFFSET + sample] == 0);
-	for (size_t sample = 0; sample < ARRAY_LEN(radio.usbradio_write_buf); ++sample)
-		assert(radio.usbradio_write_buf[sample] == 0);
-	assert(!atomic_load_explicit(&radio.plus_radio_tx_active, memory_order_acquire));
-	/* A full DAC follows the same no-wait reconfiguration path without writing
-	 * an unadmitted frame. */
-	mock_oss_bytes = (int)sizeof(radio.usbradio_write_buf) - 1;
-	mock_read_result = (ssize_t)(sizeof(radio.usbradio_read_buf) - radio.readpos);
-	{
-		unsigned int writes_before = mock_sound_write_calls;
-
-		assert(usbradio_read(channel) == &ast_null_frame);
-		assert(mock_sound_write_calls == writes_before);
-	}
-	mock_oss_bytes = -1;
-	radio.plus_sound_dropped_frames = 0;
-	atomic_store_explicit(&radio.plus_radio_access.reconfiguring, 0, memory_order_seq_cst);
-	radio.clipledgpio = 1;
-	mock_audio_clipping = 1;
-	frame = oss_read_complete(&radio, channel);
-	assert(frame == &radio.read_f && frame->frametype == AST_FRAME_VOICE);
+	frame = direct_read_complete(&radio, channel);
+	assert(frame == &direct_delivery_voice_frame && frame->frametype == AST_FRAME_VOICE);
 	assert(frame->samples == URP_LINK_SAMPLES);
-	/* OSS capture posts the same worker-owned clip request as the modern
-	 * callback; it must not mutate GPIO timing from the audio path. */
-	assert(atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
-	radio.hid_gpio_pulsetimer[0] = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
-	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
-	radio.rxcdtype = CD_IGNORE;
-	radio.rxsdtype = SD_HID;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	radio.rxcdtype = CD_HID;
-	assert(radio.hid_gpio_pulsetimer[0] == 1);
-	/* The preceding capture was also clipped, but emulate the worker consuming
-	 * that request before checking that a disabled LED posts nothing new. */
-	atomic_store_explicit(&radio.plus_clip_led_request, 0, memory_order_release);
-	radio.clipledgpio = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(!atomic_load_explicit(&radio.plus_clip_led_request, memory_order_acquire));
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 10;
 	file_debug_level = 0;
@@ -9341,9 +6313,8 @@ static void test_oss_complete_read_frame(void)
 	radio_configuration.pRxCodeSrc = "0";
 	radio.radio = urp_radio_create(&radio_configuration, URP_LINK_SAMPLES);
 	assert(radio.radio);
-	mock_audio_clipping = 0;
 	channel_state = AST_STATE_DOWN;
-	assert(oss_read_complete(&radio, channel) == &ast_null_frame);
+	assert(direct_read_complete(&radio, channel) == &ast_null_frame);
 	channel_state = AST_STATE_UP;
 
 	/* Hardware COS drives key/unkey signaling independently of the audio DSP. */
@@ -9352,49 +6323,49 @@ static void test_oss_complete_read_frame(void)
 	radio.rxhidsq = 1;
 	radio.duplex3 = 999;
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.rxkeyed && radio.lastrx);
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && !radio.lastrx);
 	/* Mixer routing is untouched when local repeat is disabled. */
 	radio.duplex3 = 0;
 	radio.rxhidsq = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.rxkeyed && radio.lastrx);
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && !radio.lastrx);
 	/* Software local repeat never changes the hardware monitor mixer. */
 	radio.duplex3 = 999;
 	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	radio.rxhidsq = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.rxkeyed && radio.lastrx);
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && !radio.lastrx);
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
 	radio.rxcdtype = CD_HID_INVERT;
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.rxkeyed);
 	radio.rxcdtype = CD_PP;
 	radio.rxppsq = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxcdtype = CD_PP_INVERT;
 	radio.rxppsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxcdtype = CD_HID_INVERT;
 	radio.rxhidsq = 1;
 	radio.radio->rxExtCarrierDetect = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.radio->rxExtCarrierDetect);
 	radio.rxcdtype = CD_HID;
 	radio.rxhidsq = 1;
 	radio.radio->txPttOut = 1;
 	radio.radioduplex = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.radio->txPttOut = 0;
 	radio.radioduplex = 0;
 	module_debug_level = 0;
@@ -9402,25 +6373,25 @@ static void test_oss_complete_read_frame(void)
 
 	/* app_rpt and the tuning utility are the only transmit-key owners. */
 	radio.txkeyed = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.radio->txPttIn);
 	radio.txkeyed = 0;
 	radio.txtestkey = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.radio->txPttIn);
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.radio->txPttIn);
 	radio.txtestkey = 0;
 	radio.txkeyed = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.radio->txPttIn);
 	radio.txoffdelay = 2;
 	radio.txkeyed = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.txoffcnt);
 	radio.txkeyed = 0;
 	radio.txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	/* The audio queue can still hold PTT after app_rpt has unkeyed; RX holdoff
 	 * begins only after the effective physical request falls. */
 	assert(!radio.txoffcnt);
@@ -9433,24 +6404,30 @@ static void test_oss_complete_read_frame(void)
 	{
 		short echo[FRAME_SIZE] = {0};
 
+		/* This subcase starts playback only after receiver activity has ended.
+		 * Earlier PTT/COR cases intentionally exercise both receiver states. */
+		radio.rxkeyed = 0;
+		radio.lastrx = direct_delivered_keyed = 0;
 		for (size_t echo_sample = 0; echo_sample < FRAME_SIZE; ++echo_sample)
 			assert(urp_sample_queue_push_sample(&radio.echo_queue, echo[echo_sample]));
 		radio.echomode = 0;
-		assert(oss_read_complete(&radio, channel) == &radio.read_f);
+		assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 		assert(!urp_sample_queue_samples(&radio.echo_queue));
 		for (size_t echo_sample = 0; echo_sample < FRAME_SIZE; ++echo_sample)
 			assert(urp_sample_queue_push_sample(&radio.echo_queue, echo[echo_sample]));
 		radio.echomode = 1;
 		radio.echoing = 0;
-		assert(oss_read_complete(&radio, channel) == &radio.read_f);
-		assert(radio.echoing);
+		assert(usbradioplus_echo_start(&radio));
+		assert(atomic_load_explicit(&radio.echoing, memory_order_acquire));
+		assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
+		assert(!urp_sample_queue_samples(&radio.echo_queue));
 	}
 	radio.rxkeyed = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.echoing);
 	radio.rxkeyed = 1;
 	radio.echomax = 2;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(urp_sample_queue_samples(&radio.echo_queue) == FRAME_SIZE);
 	/* Echo capture caps its duration and safely stops if its SPSC ring is full. */
 	urp_sample_queue_reset(&radio.echo_queue);
@@ -9478,16 +6455,16 @@ static void test_oss_complete_read_frame(void)
 	radio.rxhidsq = 1;
 	radio.radioduplex = 1;
 	radio.echomax = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(urp_sample_queue_samples(&radio.echo_queue) == FRAME_SIZE);
 	radio.echoing = 1;
 	radio.rxcdtype = CD_IGNORE;
 	radio.rxsdtype = SD_IGNORE;
 	radio.rxkeyed = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.echomode = 0;
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxcdtype = CD_HID;
 
 	/* Exercise the external CTCSS indication choices and override. */
@@ -9495,71 +6472,71 @@ static void test_oss_complete_read_frame(void)
 	radio.rxhidsq = 1;
 	radio.rxsdtype = SD_HID;
 	radio.rxhidctcss = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxsdtype = SD_HID_INVERT;
 	radio.rxhidctcss = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxsdtype = SD_PP;
 	radio.rxppctcss = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxsdtype = SD_PP_INVERT;
 	radio.rxppctcss = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxsdtype = SD_XPMR;
 	radio.rxctcssoverride = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxctcssoverride = 0;
 	radio.rxcdtype = CD_IGNORE;
 	radio.rxsdtype = SD_HID;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.rxsdtype = SD_IGNORE;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	/* Carrier alone must not key when an external CTCSS indication is required. */
 	radio.rxcdtype = CD_HID;
 	radio.rxhidsq = 1;
 	radio.rxsdtype = SD_HID;
 	radio.rxhidctcss = 0;
-	radio.rxkeyed = radio.lastrx = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed);
 
 	/* Receiver on-delay holds keying until the configured frame count. */
 	radio.rxsdtype = SD_IGNORE;
 	radio.rxcdtype = CD_HID;
 	radio.rxhidsq = 1;
-	radio.rxkeyed = radio.lastrx = 0;
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
 	radio.rxondelay = 2;
 	radio.rxoncnt = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && radio.rxoncnt == 1);
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && radio.rxoncnt == 2);
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.rxkeyed);
 	/* Transmit holdoff is evaluated independently of receiver on-delay. */
-	radio.rxkeyed = radio.lastrx = 0;
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
 	radio.txoffdelay = 2;
 	radio.txoffcnt = 0;
 	radio.rxoncnt = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed && radio.rxoncnt == 1);
 	radio.txoffdelay = 0;
 	radio.rxondelay = 0;
 	radio.rxctcssdecode = 1;
 	strcpy(radio.rxctcssfreq, "100.0");
-	radio.rxkeyed = radio.lastrx = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.lastrx);
 	radio.rxctcssdecode = 0;
-	radio.rxkeyed = radio.lastrx = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.lastrx);
 
 	/* Software duplex echo records the native-rate receive branch. */
 	radio.echomode = 1;
 	radio.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxkeyed);
 	radio.echomode = 0;
 	radio.duplex3mode = DUPLEX3_MODE_HARDWARE;
@@ -9568,58 +6545,59 @@ static void test_oss_complete_read_frame(void)
 	radio.radio->b.txCtcssReady = 1;
 	strcpy(radio.radio->txctcssfreq, "100.0");
 	radio.sendvoter = 1;
-	radio.count_rssi_update = 1;
+	radio.plus_portaudio_voter_remaining_frames = URP_NATIVE_SAMPLES;
 	radio.rxkeyed = 1;
 	radio.rxhidsq = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(!radio.radio->b.txCtcssReady && radio.count_rssi_update == 10);
-	radio.count_rssi_update = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	radio.count_rssi_update = 3;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
+	assert(!radio.radio->b.txCtcssReady &&
+	       radio.plus_portaudio_voter_remaining_frames == 10U * URP_NATIVE_SAMPLES);
+	radio.plus_portaudio_voter_remaining_frames = 0;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
+	radio.plus_portaudio_voter_remaining_frames = 3U * URP_NATIVE_SAMPLES;
 	radio.rxkeyed = 1;
 	radio.rxhidsq = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
-	assert(radio.count_rssi_update == 2);
-	radio.count_rssi_update = 1;
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
+	assert(radio.plus_portaudio_voter_remaining_frames == 2U * URP_NATIVE_SAMPLES);
+	radio.plus_portaudio_voter_remaining_frames = URP_NATIVE_SAMPLES;
 	radio.rxkeyed = 0;
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 
 	/* Asterisk's detector may mute reserved digits, return ordinary digits, or
 	 * suppress a duplicate begin frame while retaining the voice frame. */
 	radio.usedtmf = 1;
 	radio.dsp = NULL;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	radio.dsp = (struct ast_dsp *)(uintptr_t)1;
 	dsp_result_type = AST_FRAME_VOICE;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	dsp_result_type = AST_FRAME_DTMF_END;
 	dsp_result_digit = 'm';
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_NULL && !frame->subclass.integer);
 	dsp_result_type = AST_FRAME_DTMF_END;
 	dsp_result_digit = 'u';
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_NULL && !frame->subclass.integer);
 	dsp_result_type = AST_FRAME_DTMF_END;
 	dsp_result_digit = '5';
 	option_verbose = 1;
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_DTMF_END && !radio.toneflag);
 	option_verbose = 0;
 	dsp_result_type = AST_FRAME_DTMF_END;
 	dsp_result_digit = '7';
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_DTMF_END);
 	dsp_result_type = AST_FRAME_DTMF_BEGIN;
 	dsp_result_digit = '6';
 	radio.toneflag = 0;
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_DTMF_BEGIN && radio.toneflag);
 	frame_free_calls = 0;
 	radio.toneflag = 1;
-	frame = oss_read_complete(&radio, channel);
-	assert(frame == &radio.read_f && frame_free_calls == 1);
+	frame = direct_read_complete(&radio, channel);
+	assert(frame == &direct_delivery_voice_frame && frame_free_calls == 1);
 	dsp_result_type = -1;
 	radio.usedtmf = 0;
 	radio.dsp = NULL;
@@ -9631,7 +6609,7 @@ static void test_oss_complete_read_frame(void)
 	radio.dsp = (struct ast_dsp *)&radio;
 	radio.echomode = radio.echoing = 1;
 	dsp_result_type = AST_FRAME_DTMF_BEGIN;
-	frame = oss_read_complete(&radio, channel);
+	frame = direct_read_complete(&radio, channel);
 	assert(frame->frametype == AST_FRAME_VOICE && frame->samples == 960);
 	assert(frame->datalen == 1920 &&
 	       ast_format_get_sample_rate(frame->subclass.format) == 48000);
@@ -9642,57 +6620,15 @@ static void test_oss_complete_read_frame(void)
 	radio.radio->txPttOut = 1;
 	radio.rxcdtype = CD_HID;
 	radio.rxsdtype = SD_IGNORE;
-	radio.rxkeyed = radio.lastrx = 0;
+	radio.rxkeyed = radio.lastrx = direct_delivered_keyed = 0;
 	radio.rxhidsq = 1;
-	assert(oss_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
+	assert(direct_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
 	radio.rxhidsq = 0;
-	assert(oss_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
+	assert(direct_read_complete(&radio, channel)->frametype == AST_FRAME_VOICE);
 	dsp_result_type = -1;
 	radio.usedtmf = radio.echomode = 0;
 	radio.dsp = NULL;
 	usbradioplus_interface_mode(&radio, 0);
-
-	/* A short DAC write is counted by the adapter. Direct rendering does not
-	 * retain an unacknowledged output record for a later callback. */
-	{
-		uint64_t short_writes_before = radio.plus_sound_short_writes;
-
-		mock_write_result = 0;
-		mock_read_result =
-			(ssize_t)(sizeof(radio.usbradio_read_buf) - (size_t)radio.readpos);
-		assert(usbradio_read(channel) == &radio.read_f);
-		assert(radio.plus_sound_short_writes == short_writes_before + 1U);
-		mock_write_result = -2;
-	}
-
-	/* An OSS fragment count alone is not enough: reject a short free-space
-	 * report before the callback consumes the sole program ring. */
-	{
-		short program[URP_LINK_SAMPLES];
-		size_t available_before;
-		uint64_t dropped_before = radio.plus_sound_dropped_frames;
-		unsigned int writes_before = mock_sound_write_calls;
-
-		for (size_t sample = 0; sample < ARRAY_LEN(program); ++sample)
-			program[sample] = (short)(sample + 1U);
-		usbradioplus_queue_program(&radio, program, ARRAY_LEN(program));
-		available_before = rpcr_available(&radio.plus_program_ring);
-		mock_oss_fragments = mock_oss_fragment_total;
-		mock_oss_bytes = (int)sizeof(radio.usbradio_write_buf) - 1;
-		mock_read_result =
-			(ssize_t)(sizeof(radio.usbradio_read_buf) - (size_t)radio.readpos);
-		assert(usbradio_read(channel));
-		assert(mock_sound_write_calls == writes_before);
-		assert(rpcr_available(&radio.plus_program_ring) == available_before);
-		assert(radio.plus_sound_dropped_frames == dropped_before + 1U);
-
-		mock_oss_bytes = -1;
-		mock_read_result =
-			(ssize_t)(sizeof(radio.usbradio_read_buf) - (size_t)radio.readpos);
-		assert(usbradio_read(channel));
-		assert(mock_sound_write_calls == writes_before + 1U);
-		assert(rpcr_available(&radio.plus_program_ring) < available_before);
-	}
 
 	/* Post-PTT blanking overrides hardware COR, and a stale tx-off counter
 	 * remains bounded. These terminal probes leave no later test state to alter. */
@@ -9703,26 +6639,24 @@ static void test_oss_complete_read_frame(void)
 	radio.rxhidsq = 1;
 	radio.radio->txrxblankingtimer = 100;
 	radio.rxcarrierdetect = 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(!radio.rxcarrierdetect);
 	radio.radio->txrxblankingtimer = 0;
 	radio.radio->txPttOut = 0;
 	radio.txoffdelay = 1;
 	radio.txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX) + 1;
-	assert(oss_read_complete(&radio, channel) == &radio.read_f);
+	assert(direct_read_complete(&radio, channel) == &direct_delivery_voice_frame);
 	assert(radio.txoffcnt == MS_TO_FRAMES(TX_OFF_DELAY_MAX));
 
-	mock_read_result = -1;
 	option_debug = 0;
 	module_debug_level = file_debug_level = 0;
-	mock_oss_io = 0;
 	test_channel_private = NULL;
 	usbradioplus_dsp_destroy(&radio);
 	urp_radio_destroy(radio.radio);
 }
 
-/** @brief Verify oss module lifecycle guards. */
-static void test_oss_module_lifecycle_guards(void)
+/** @brief Verify direct-adapter module lifecycle guards. */
+static void test_direct_module_lifecycle_guards(void)
 {
 	struct ast_variable active = {.name = "channel_enabled", .value = "yes"};
 	struct chan_usbradio_pvt active_owner = {0};
@@ -9730,9 +6664,6 @@ static void test_oss_module_lifecycle_guards(void)
 	fail_format_cap_alloc = 1;
 	assert(load_module() == AST_MODULE_LOAD_DECLINE);
 	fail_format_cap_alloc = 0;
-	hid_mklist_result = 1;
-	assert(load_module() == AST_MODULE_LOAD_DECLINE);
-	hid_mklist_result = 0;
 	test_config_load_result = CONFIG_STATUS_FILEMISSING;
 	assert(load_module() == AST_MODULE_LOAD_FAILURE);
 	separate_processing_config_result = 1;
@@ -9789,31 +6720,24 @@ static void test_oss_module_lifecycle_guards(void)
 	usbradio_default.next = NULL;
 	active.next = NULL;
 	haspp = 0;
-	hasout = 0;
 	assert(load_module() == AST_MODULE_LOAD_SUCCESS);
 	assert(unload_module() == 0);
 	usbradio_default.next = NULL;
 	active_owner.name = "active-owner";
-	active_owner.sounddev = 7;
+	atomic_store_explicit(&active_owner.plus_hardware_online, 1, memory_order_release);
 	active_owner.dsp = (struct ast_dsp *)(uintptr_t)1;
 	active_owner.owner = (struct ast_channel *)(uintptr_t)1;
 	usbradio_default.next = &active_owner;
-	mock_oss_io = 1;
 	assert(unload_module() == -1);
 	/* An active Asterisk owner can still enter the native callback.  Failed
 	 * unload leaves its device and worker state intact rather than partially
 	 * tearing down a live callback path. */
-	assert(active_owner.sounddev == 7);
-	/* Once ownership is gone, unload performs the complete legacy cleanup: it
-	 * closes the OSS device, marks it unavailable, and frees the DTMF detector. */
+	assert(atomic_load_explicit(&active_owner.plus_hardware_online, memory_order_acquire));
+	/* Once ownership is gone, unload frees the Asterisk DTMF detector. */
 	active_owner.owner = NULL;
-	mock_close_calls = 0;
 	ast_dsp_free_calls = 0;
 	assert(unload_module() == 0);
-	assert(active_owner.sounddev == -1);
-	assert(mock_close_calls == 1);
 	assert(ast_dsp_free_calls == 1);
-	mock_oss_io = 0;
 	active_owner.dsp = NULL;
 	usbradio_default.next = NULL;
 	test_config_category = NULL;
@@ -9821,7 +6745,6 @@ static void test_oss_module_lifecycle_guards(void)
 	test_config_load_result = NULL;
 	separate_processing_config_result = 0;
 }
-#endif
 
 /** @brief Verify squelch copy. */
 static void test_native_fifo_and_squelch_copy(void)
@@ -9830,22 +6753,240 @@ static void test_native_fifo_and_squelch_copy(void)
 	short *capture = (short *)(radio.usbradio_read_buf + AST_FRIENDLY_OFFSET);
 	size_t i;
 
+	radio.plus_native_max_frames = URP_NATIVE_SAMPLES;
 	for (i = 0; i < ARRAY_LEN(radio.plus_squelch_native); i++)
 		capture[i] = (short)(i - 100);
-	usbradioplus_prepare_squelch_audio(&radio);
+	usbradioplus_prepare_squelch_audio(&radio, URP_NATIVE_SAMPLES);
 	assert(memcmp(capture, radio.plus_squelch_native, sizeof(radio.plus_squelch_native)) == 0);
 }
 
 /** @brief Render one complete native callback frame into its direct destinations. */
 static void native_tick_then_process(struct chan_usbradio_pvt *channel)
 {
-	usbradioplus_native_tick(channel, 1);
+	usbradioplus_native_tick(channel, URP_NATIVE_SAMPLES);
 }
 
 /** @brief Render one direct frame for waveform-oriented assertions. */
 static void native_tick_then_process_and_consume(struct chan_usbradio_pvt *channel)
 {
 	native_tick_then_process(channel);
+}
+
+/** @brief Prepare one hardware-free direct-PortAudio callback channel. */
+static void portaudio_poc_callback_channel_init(struct chan_usbradio_pvt *channel,
+						urp_radio_state *radio_config, short *program,
+						size_t program_count, int advanced)
+{
+	channel->name = "portaudio-poc-callback";
+	channel->plus_native_max_frames = URP_NATIVE_SAMPLES;
+	channel->plus_deemphasis_corner_hz = 300.0;
+	channel->plus_preemphasis_corner_hz = 300.0;
+	channel->radio = urp_radio_create(radio_config, URP_LINK_SAMPLES);
+	assert(channel->radio);
+	assert(!usbradioplus_dsp_init(channel));
+	usbradioplus_interface_mode(channel, advanced);
+	assert(!usbradioplus_prepare_native_processing(channel));
+	usbradioplus_portaudio_poc_handoff_init(&channel->plus_portaudio_rx_handoff);
+	usbradioplus_portaudio_poc_status_init(&channel->plus_portaudio_status_handoff);
+	usbradioplus_portaudio_poc_receive_assembler_reset(
+		&channel->plus_portaudio_legacy_rx_assembler);
+	atomic_store_explicit(&channel->txkeyed, 1, memory_order_release);
+	channel->radio->txPttOut = 1;
+	atomic_store_explicit(&channel->plus_applied_txmixa, URP_TX_OUTPUT_VOICE,
+			      memory_order_release);
+	atomic_store_explicit(&channel->plus_applied_txmixb, URP_TX_OUTPUT_DISABLED,
+			      memory_order_release);
+	atomic_store_explicit(&channel->plus_applied_tx_output_gain_a, M_Q8, memory_order_release);
+	atomic_store_explicit(&channel->plus_applied_tx_output_gain_b, M_Q8, memory_order_release);
+	for (size_t index = 0U; index < program_count; ++index)
+		program[index] = (short)(12000 - (int)(index % 97U));
+	for (unsigned int block = 0U; block < 16U; ++block)
+		usbradioplus_queue_program(channel, program, program_count);
+}
+
+/** @brief Verify a direct callback writes exactly its supplied native frame span. */
+static void test_portaudio_poc_callback_partitions(void)
+{
+	enum { PORTAUDIO_POC_TEST_CHANNELS = 2U };
+	struct chan_usbradio_pvt whole = {0};
+	struct chan_usbradio_pvt split = {0};
+	urp_radio_state whole_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	urp_radio_state split_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	static const uint32_t partitions[] = {5U, 1U, 7U, 5U, URP_NATIVE_SAMPLES - 18U};
+	short program[URP_NATIVE_SAMPLES];
+	float input[URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS];
+	float whole_guard[URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS + 4U];
+	float split_guard[URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS + 4U];
+	float *whole_output = whole_guard + 2U;
+	float *split_output = split_guard + 2U;
+	size_t offset = 0U;
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "portaudio-poc-callback");
+	strcpy(settings.profiles[0].channel, "RadioPlus/portaudio-poc-callback");
+	settings.profiles[0].enabled = 0;
+	for (size_t index = 0U; index < ARRAY_LEN(input); ++index)
+		input[index] = ((float)((int)(index % 31U) - 15)) / 32.0F;
+	for (size_t index = 0U; index < ARRAY_LEN(whole_guard); ++index)
+		whole_guard[index] = split_guard[index] = -12345.0F;
+	portaudio_poc_callback_channel_init(&whole, &whole_config, program, ARRAY_LEN(program), 1);
+	portaudio_poc_callback_channel_init(&split, &split_config, program, ARRAY_LEN(program), 1);
+
+	assert(!usbradioplus_portaudio_poc_test_callback(&whole, input, whole_output,
+							 URP_NATIVE_SAMPLES));
+	assert(whole_guard[0] == -12345.0F && whole_guard[1] == -12345.0F);
+	assert(whole_guard[ARRAY_LEN(whole_guard) - 2U] == -12345.0F &&
+	       whole_guard[ARRAY_LEN(whole_guard) - 1U] == -12345.0F);
+	assert(urp_pcm_peak((const short *)whole.usbradio_write_buf,
+			    URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS) > 0U);
+	for (size_t index = 0U; index < URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS; ++index)
+		assert(whole_output[index] ==
+		       (float)((const short *)whole.usbradio_write_buf)[index] / 32768.0F);
+
+	for (size_t part = 0U; part < ARRAY_LEN(partitions); ++part) {
+		const uint32_t frame_count = partitions[part];
+
+		assert(!usbradioplus_portaudio_poc_test_callback(
+			&split, input + offset * PORTAUDIO_POC_TEST_CHANNELS,
+			split_output + offset * PORTAUDIO_POC_TEST_CHANNELS, frame_count));
+		for (size_t index = 0U; index < (size_t)frame_count * PORTAUDIO_POC_TEST_CHANNELS;
+		     ++index)
+			assert(split_output[offset * PORTAUDIO_POC_TEST_CHANNELS + index] ==
+			       (float)((const short *)split.usbradio_write_buf)[index] / 32768.0F);
+		offset += frame_count;
+	}
+	assert(offset == URP_NATIVE_SAMPLES);
+	assert(split_guard[0] == -12345.0F && split_guard[1] == -12345.0F);
+	assert(split_guard[ARRAY_LEN(split_guard) - 2U] == -12345.0F &&
+	       split_guard[ARRAY_LEN(split_guard) - 1U] == -12345.0F);
+	assert(!memcmp(whole_output, split_output,
+		       URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS * sizeof(*whole_output)));
+
+	usbradioplus_dsp_destroy(&whole);
+	usbradioplus_dsp_destroy(&split);
+	assert(!urp_radio_destroy(whole.radio));
+	assert(!urp_radio_destroy(split.radio));
+}
+
+/** @brief Verify the F32 native-tick boundary owns direct PortAudio conversion semantics. */
+static void test_portaudio_poc_native_tick_f32_boundary(void)
+{
+	enum { PORTAUDIO_POC_TEST_CHANNELS = 2U };
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	short program[URP_NATIVE_SAMPLES];
+	const float input[] = {NAN, INFINITY, -INFINITY, -1.0F, 1.0F, 0.5F, -0.5F, 0.0F};
+	float output[ARRAY_LEN(input)];
+	short *capture;
+	const short *transmit;
+	int logical_ptt = -1;
+	int output_has_audio = -1;
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "portaudio-poc-callback");
+	strcpy(settings.profiles[0].channel, "RadioPlus/portaudio-poc-callback");
+	settings.profiles[0].enabled = 0;
+	portaudio_poc_callback_channel_init(&channel, &radio_config, program, ARRAY_LEN(program),
+					    1);
+	memset(output, 0x5a, sizeof(output));
+	channel.clipledgpio = 1;
+	(void)usbradioplus_native_tick_f32(&channel, input, output,
+					   ARRAY_LEN(input) / PORTAUDIO_POC_TEST_CHANNELS,
+					   &logical_ptt, &output_has_audio);
+	capture = (short *)(channel.usbradio_read_buf + AST_FRIENDLY_OFFSET);
+	assert(capture[0] == 0 && capture[1] == 0);
+	assert(capture[2] == 0 && capture[3] == INT16_MIN);
+	assert(capture[4] == INT16_MAX);
+	assert(capture[5] == (short)lrintf(0.5F * (float)INT16_MAX));
+	assert(capture[6] == (short)lrintf(-0.5F * (float)INT16_MAX));
+	assert(capture[7] == 0);
+	assert(!atomic_load_explicit(&channel.plus_clip_led_request, memory_order_acquire));
+	assert(channel.rxaudiostats.index == 1U);
+	assert((logical_ptt == 0 || logical_ptt == 1) &&
+	       (output_has_audio == 0 || output_has_audio == 1));
+	assert(!output_has_audio || logical_ptt);
+	transmit = (const short *)channel.usbradio_write_buf;
+	for (size_t index = 0U; index < ARRAY_LEN(output); ++index)
+		assert(output[index] == (logical_ptt ? (float)transmit[index] / 32768.0F : 0.0F));
+
+	/* Preserve the shared meter's four adjacent selected-phase rail threshold
+	 * through the actual F32 boundary, not merely its conversion helper. */
+	{
+		float clipped_input[48] = {0};
+		float clipped_output[48];
+
+		for (size_t index = 0U; index < 4U; ++index)
+			clipped_input[10U + index * 12U] = -1.0F;
+		(void)usbradioplus_native_tick_f32(&channel, clipped_input, clipped_output, 24U,
+						   NULL, NULL);
+		assert(atomic_load_explicit(&channel.plus_clip_led_request, memory_order_acquire));
+	}
+	logical_ptt = output_has_audio = -1;
+	assert(!usbradioplus_native_tick_f32(&channel, input, NULL, 1U, &logical_ptt,
+					     &output_has_audio));
+	assert(!logical_ptt && !output_has_audio);
+	(void)usbradioplus_native_tick_f32(&channel, NULL, output, 1U, NULL, NULL);
+	assert(capture[0] == 0 && capture[1] == 0);
+
+	channel.plus_native_max_frames = 3U;
+	memset(output, 0x5a, sizeof(output));
+	logical_ptt = output_has_audio = -1;
+	assert(!usbradioplus_native_tick_f32(&channel, input, output,
+					     ARRAY_LEN(input) / PORTAUDIO_POC_TEST_CHANNELS,
+					     &logical_ptt, &output_has_audio));
+	assert(!logical_ptt && !output_has_audio);
+	for (size_t index = 0U; index < ARRAY_LEN(output); ++index)
+		assert(output[index] == 0.0F);
+
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
+}
+
+/** @brief Verify ordinary 8 kHz POC handoffs remain on native 20 ms boundaries. */
+static void test_portaudio_poc_legacy_receive_boundaries(void)
+{
+	enum { PORTAUDIO_POC_TEST_CHANNELS = 2U };
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	short program[URP_NATIVE_SAMPLES];
+	float input[URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS] = {0};
+	float output[URP_NATIVE_SAMPLES * PORTAUDIO_POC_TEST_CHANNELS];
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "portaudio-poc-callback");
+	strcpy(settings.profiles[0].channel, "RadioPlus/portaudio-poc-callback");
+	settings.profiles[0].enabled = 0;
+	portaudio_poc_callback_channel_init(&channel, &radio_config, program, ARRAY_LEN(program),
+					    0);
+	assert(!channel.plus_advanced);
+	assert(channel.plus_app_rpt_rate == URP_APP_RPT_RATE_DEFAULT);
+	assert(channel.plus_app_rpt_samples == URP_PORTAUDIO_POC_LEGACY_RX_BLOCK_SAMPLES);
+	assert(!atomic_load_explicit(&channel.plus_portaudio_rx_handoff.producer,
+				     memory_order_acquire));
+	/* The next callback straddles the 960-native-sample boundary. The direct
+	 * renderer may emit one carried SRC sample either side of it, but only one
+	 * assembled legacy 160-sample handoff may be published. */
+	assert(!usbradioplus_portaudio_poc_test_callback(&channel, input, output, 959U));
+	assert(!atomic_load_explicit(&channel.plus_portaudio_rx_handoff.producer,
+				     memory_order_acquire));
+	assert(!usbradioplus_portaudio_poc_test_callback(&channel, input, output, 5U));
+	assert(atomic_load_explicit(&channel.plus_portaudio_rx_handoff.producer,
+				    memory_order_acquire) == 1U);
+	assert(channel.plus_portaudio_rx_blocks[0].frame_count ==
+	       URP_PORTAUDIO_POC_LEGACY_RX_BLOCK_SAMPLES);
+	assert(channel.plus_portaudio_legacy_rx_assembler.sample_count <
+	       URP_PORTAUDIO_POC_LEGACY_RX_BLOCK_SAMPLES);
+	assert(!usbradioplus_portaudio_poc_test_callback(&channel, input, output, 956U));
+	assert(atomic_load_explicit(&channel.plus_portaudio_rx_handoff.producer,
+				    memory_order_acquire) == 2U);
+	assert(channel.plus_portaudio_rx_blocks[1].frame_count ==
+	       URP_PORTAUDIO_POC_LEGACY_RX_BLOCK_SAMPLES);
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
 }
 
 /** @brief Verify callback-owned native echo recording, playback, and clearing. */
@@ -9855,7 +6996,7 @@ static void test_parrot_transitions(void)
 	urp_radio_state radio_config = {
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 	struct usbradioplus_native_renderer_stats statistics;
-	struct audiostatistics tx_statistics;
+	struct rptadv_radio_audio_statistics tx_statistics;
 	short *capture = (short *)(channel.usbradio_read_buf + AST_FRIENDLY_OFFSET);
 	short *transmit = (short *)channel.usbradio_write_buf;
 	size_t sample;
@@ -9867,7 +7008,7 @@ static void test_parrot_transitions(void)
 	usbradioplus_native_renderer_stats_reset(NULL);
 	usbradioplus_native_renderer_clear_parrot(NULL);
 	usbradioplus_native_renderer_clear_legacy_echo(NULL);
-	usbradioplus_native_tick(NULL, 1);
+	usbradioplus_native_tick(NULL, URP_NATIVE_SAMPLES);
 	assert(usbradioplus_native_renderer_stats_read(&channel, &statistics) == -1);
 	assert(usbradioplus_native_renderer_stats_read(NULL, &statistics) == -1);
 	assert(usbradioplus_native_renderer_stats_read(&channel, NULL) == -1);
@@ -9884,6 +7025,7 @@ static void test_parrot_transitions(void)
 	channel.duplex3 = 999;
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
 	channel.echomode = 1;
+	channel.plus_native_max_frames = URP_NATIVE_SAMPLES;
 	channel.plus_deemphasis_corner_hz = 300.0;
 	channel.plus_preemphasis_corner_hz = 300.0;
 	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
@@ -9892,7 +7034,7 @@ static void test_parrot_transitions(void)
 	 * preserving the signaling-owned PTT request. */
 	atomic_init(&channel.plus_hardware_ptt_request, 0);
 	channel.radio->txPttOut = 1;
-	usbradioplus_native_tick(&channel, 1);
+	usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 	assert(atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
 	channel.radio->txPttOut = 0;
 	assert(!usbradioplus_dsp_init(&channel));
@@ -9958,13 +7100,17 @@ static void test_parrot_transitions(void)
 	/* Exercise successful tuner updates against a ready native renderer. The
 	 * lightweight dispatch test deliberately does not start one, so it only
 	 * reaches these commands' rollback paths. */
-	channel.hasusb = 1;
+	atomic_store_explicit(&channel.plus_hardware_online, 1, memory_order_release);
 	channel.txkeyed = 1;
+	assert(!usbradioplus_native_renderer_tx_audio_stats_read(&channel, &tx_statistics));
 	radio_print_audio_stats_calls = 0;
+	memset(&radio_print_audio_statistics, 0, sizeof(radio_print_audio_statistics));
+	radio_print_audio_statistics_prefix[0] = '\0';
 	tune_menusupport(1, &channel, "Z");
 	assert(radio_print_audio_stats_calls == 1);
+	assert_audio_statistics_displayed(&tx_statistics, "Tx");
 	channel.txkeyed = 0;
-	channel.hasusb = 0;
+	atomic_store_explicit(&channel.plus_hardware_online, 0, memory_order_release);
 	channel.echomode = 0;
 	tune_menusupport(1, &channel, "k1");
 	assert(channel.echomode);
@@ -9993,7 +7139,7 @@ static void test_program_ring_and_parrot_storage(void)
 	assert(usbradioplus_ensure_parrot_capacity(NULL) == -1);
 	radio.plus_app_rpt_samples = URP_LINK_SAMPLES;
 	radio.plus_app_rpt_rate = URP_RATE_LINK;
-	assert(!rpcr_init(&radio.plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST));
+	assert(!rpcr_init(&radio.plus_program_ring, URP_PROGRAM_RING_MAX_SAMPLES, RPCR_SINC_BEST));
 	assert(!rpcr_set_rates(&radio.plus_program_ring, URP_RATE_LINK, URP_RATE_NATIVE));
 	for (i = 0; i < ARRAY_LEN(samples); ++i)
 		samples[i] = (short)i;
@@ -10002,7 +7148,14 @@ static void test_program_ring_and_parrot_storage(void)
 	assert(rpcr_available(&radio.plus_program_ring) == 0);
 	usbradioplus_queue_program(&radio, samples, ARRAY_LEN(samples));
 	assert(rpcr_available(&radio.plus_program_ring) == ARRAY_LEN(samples));
-	assert(radio.plus_program_ring.storage[159] == 159);
+	/* The released ring ABI deliberately keeps its storage private. Validate
+	 * producer order only through the public single-sample consumer boundary. */
+	for (i = 0; i < 160U; ++i) {
+		short sample = -1;
+
+		assert(rpcr_consumer_pop_sample(&radio.plus_program_ring, &sample));
+		assert(sample == (short)i);
+	}
 	/* Fill the producer side through its real one-sample publication API. */
 	while (rpcr_available(&radio.plus_program_ring) < radio.plus_program_ring.capacity)
 		assert(rpcr_producer_push_sample(&radio.plus_program_ring, 0));
@@ -10085,7 +7238,7 @@ static void test_program_ring_native_tick(void)
 	native_tick_then_process(&channel);
 	/* One under-target app_rpt block is consumed immediately. A sinc startup
 	 * may still conceal its first output samples, but it must not defer the raw
-	 * read cursor until the 110 ms drift setpoint is reached. */
+	 * read cursor until the 40 ms drift setpoint is reached. */
 	assert(rpcr_available(&channel.plus_program_ring) < available_before);
 	rpcr_observe(&channel.plus_program_ring, &observation);
 	assert(observation.target_samples == channel.plus_program_target_samples);
@@ -10160,18 +7313,20 @@ static void test_native_renderer_transmit_admission(void)
 		usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
 	available_before = rpcr_available(&channel.plus_program_ring);
 
-	/* A full physical device renders neither a stale DAC record nor consumes the
-	 * sole SPSC program ring. PTT remains the signaling engine's decision. */
+	/* Output-device congestion no longer gates the native tick. The completed
+	 * block is retained by the adapter stage, while program PCM and signaling
+	 * advance exactly once for this native input span. */
 	memset(dac_pcm, 0x5a, URP_NATIVE_SAMPLES * 2U * sizeof(*dac_pcm));
-	usbradioplus_native_tick(&channel, 0);
-	assert(rpcr_available(&channel.plus_program_ring) == available_before);
-	assert(urp_pcm_peak(dac_pcm, URP_NATIVE_SAMPLES * 2U) == 0U);
+	usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
+	assert(rpcr_available(&channel.plus_program_ring) < available_before);
 	assert(atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_acquire));
+	usbradioplus_native_output_stage_enqueue(&channel, URP_NATIVE_SAMPLES);
+	assert(urp_native_output_stage_peek(&channel.plus_native_output_stage));
 
-	/* Once the device accepts a frame, the same callback consumes program PCM and
-	 * writes its current DAC block directly—there is no output queue or ACK. */
+	/* Subsequent native spans retain their rendered output independently of a
+	 * device acknowledgement. */
 	for (unsigned int frame = 0; frame < 16U; ++frame) {
-		usbradioplus_native_tick(&channel, 1);
+		usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 		rendered |= urp_pcm_peak(dac_pcm, URP_NATIVE_SAMPLES * 2U) != 0U;
 	}
 	assert(rpcr_available(&channel.plus_program_ring) < available_before);
@@ -10218,7 +7373,7 @@ static void test_native_tick_voice_graph_ownership(void)
 		voice->agc.compressor_enabled = 0;
 		voice->agc.limiter_enabled = 0;
 		voice->agc.lookahead_limiter_enabled = 0;
-		voice->agc.post_limiter_lowpass_enabled = 0;
+		voice->agc.post_limiter_bandpass_enabled = 0;
 		channel.name = "voice-graph-ownership";
 		channel.plus_app_rpt_rate = URP_RATE_NATIVE;
 		channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
@@ -10244,7 +7399,8 @@ static void test_native_tick_voice_graph_ownership(void)
 			program[sample] =
 				(short)lround(amplitude * sin(2.0 * M_PI * frequencies[tone] *
 							      sample / URP_RATE_NATIVE));
-		for (unsigned int frame = 0; frame < URP_PROGRAM_RING_FRAMES; ++frame)
+		for (unsigned int frame = 0;
+		     frame < URP_PROGRAM_RING_MAX_SAMPLES / URP_NATIVE_SAMPLES; ++frame)
 			usbradioplus_queue_program(&channel, program, ARRAY_LEN(program));
 		assert(!channel.plus_link_queue_overflows);
 		for (unsigned int tick = 0; tick < 4U; ++tick)
@@ -10257,9 +7413,7 @@ static void test_native_tick_voice_graph_ownership(void)
 		final_config = graphs->final.config;
 		usbradioplus_native_graphs_release(&channel);
 		assert(!final_config.preemphasis_enabled);
-		assert(!final_config.post_limiter_lowpass_enabled);
-		assert(!final_config.dcs_spectral_shaping_enabled);
-		assert(final_config.dcs_spectral_lowpass_hz == 0.0);
+		assert(!final_config.post_limiter_bandpass_enabled);
 		for (size_t sample = 0; sample < ARRAY_LEN(expected); ++sample)
 			expected[sample] = channel.plus_link_native[sample];
 		/* The native program ring may make a sub-code sinc rounding adjustment,
@@ -10337,6 +7491,88 @@ static void test_native_graph_slot_deferred_reclaim(void)
 
 	usbradioplus_dsp_destroy(&channel);
 	assert(!urp_radio_destroy(channel.radio));
+}
+
+/** @brief Verify silent warmup completes before publication and failures preserve the live graph.
+ */
+static void test_native_graph_warmup(void)
+{
+	struct chan_usbradio_pvt channel = {0};
+	urp_radio_state radio_config = {
+		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
+	struct usbradioplus_native_graph_set *active;
+	const unsigned int blocks = TXAGC_AVFILTER_INPUT_FRAME_COUNT;
+	const unsigned int dcs_failures[] = {1U, 2U, 2U * blocks - 1U, 2U * blocks};
+
+	settings_defaults(&settings);
+	strcpy(settings.profiles[0].name, "graph-warmup");
+	strcpy(settings.profiles[0].channel, "RadioPlus/graph-warmup");
+	channel.name = "graph-warmup";
+	channel.plus_app_rpt_rate = URP_RATE_LINK;
+	channel.plus_app_rpt_samples = URP_LINK_SAMPLES;
+	channel.plus_deemphasis_corner_hz = 300.0;
+	channel.plus_preemphasis_corner_hz = 300.0;
+	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
+	assert(channel.radio);
+	observe_native_warmup = 1;
+	warmup_voice_calls = warmup_dcs_calls = 0U;
+	assert(!usbradioplus_dsp_init(&channel));
+	assert(warmup_voice_calls == 4U * blocks);
+	assert(warmup_dcs_calls == 2U * blocks);
+	active = usbradioplus_native_graphs_acquire(&channel);
+	assert(active);
+	{
+		const struct txagc_avfilter *const voice[] = {
+			&active->receive_deemphasis, &active->receive_filter,
+			&active->local_dynamics, &active->final};
+
+		for (size_t index = 0; index < ARRAY_LEN(voice); ++index) {
+			assert(voice[index]->output_started);
+			assert(!voice[index]->input_frame_index);
+			assert(!voice[index]->input_samples);
+			assert(!voice[index]->output_samples);
+			assert(!voice[index]->underrun_samples);
+			assert(!voice[index]->startup_fill_samples);
+			assert(!voice[index]->runtime_underrun_samples);
+		}
+	}
+	usbradioplus_native_graphs_release(&channel);
+
+	/* Fail the first and final silent block in every voice stage, including a
+	 * configured notch. None may replace the fully warmed active generation. */
+	settings.profiles[0].chains[TXAGC_LOCAL].agc.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;
+	strcpy(channel.rxctcssfreqs, "100.0");
+	for (unsigned int stage = 0; stage < 5U; ++stage) {
+		for (unsigned int edge = 0; edge < 2U; ++edge) {
+			warmup_voice_calls = warmup_dcs_calls = 0U;
+			fail_warmup_voice_call = stage * blocks + (edge ? blocks : 1U);
+			assert(usbradioplus_prepare_native_processing(&channel) == -1);
+			assert(warmup_voice_calls == fail_warmup_voice_call);
+			assert(atomic_load_explicit(&channel.plus_native_graphs.active,
+						    memory_order_acquire) == active);
+		}
+	}
+	fail_warmup_voice_call = 0U;
+	for (size_t index = 0; index < ARRAY_LEN(dcs_failures); ++index) {
+		warmup_voice_calls = warmup_dcs_calls = 0U;
+		fail_warmup_dcs_call = dcs_failures[index];
+		assert(usbradioplus_prepare_native_processing(&channel) == -1);
+		assert(warmup_dcs_calls == fail_warmup_dcs_call);
+		assert(atomic_load_explicit(&channel.plus_native_graphs.active,
+					    memory_order_acquire) == active);
+	}
+	fail_warmup_dcs_call = 0U;
+	warmup_voice_calls = warmup_dcs_calls = 0U;
+	assert(!usbradioplus_prepare_native_processing(&channel));
+	assert(warmup_voice_calls == 5U * blocks);
+	assert(warmup_dcs_calls == 2U * blocks);
+	assert(atomic_load_explicit(&channel.plus_native_graphs.active, memory_order_acquire) !=
+	       active);
+	assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request, memory_order_relaxed));
+	observe_native_warmup = 0;
+	usbradioplus_dsp_destroy(&channel);
+	assert(!urp_radio_destroy(channel.radio));
+	settings_defaults(&settings);
 }
 
 /** @brief Exercise native graph transactions without involving a native audio callback. */
@@ -10468,16 +7704,11 @@ static void test_native_graph_transaction_paths(void)
 
 	/* Speech-spectrum filtering is owned by the configured processing graph.
 	 * The DCS-only shaper cannot enter the final voice/telemetry graph. */
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_shaping_enabled = 1;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_lowpass_hz = 250.0;
 	assert(!usbradioplus_prepare_native_processing(&channel));
 	held = usbradioplus_native_graphs_acquire(&channel);
 	assert(held);
-	assert(!held->final.config.dcs_spectral_shaping_enabled);
-	assert(held->final.config.dcs_spectral_lowpass_hz == 0.0);
+	assert(held->dcs.graph && held->dcs_turnoff.graph);
 	usbradioplus_native_graphs_release(&channel);
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_shaping_enabled = 0;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_lowpass_hz = 0.0;
 
 	/* A held callback generation bounds retirement.  Staging must reject a
 	 * third generation rather than waiting for the reader or leaking graphs. */
@@ -10654,14 +7885,14 @@ static void test_native_tick_processing_edges(void)
 		       URP_NATIVE_SAMPLES * sizeof(short));
 		memset(channel.usbradio_write_buf, 0x5a, sizeof(channel.usbradio_write_buf));
 		/* A normal signaling state retains its PTT decision while graphs reload. */
-		usbradioplus_native_tick(&channel, 1);
+		usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 		assert(urp_pcm_peak((short *)(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
 				    URP_NATIVE_SAMPLES) == 0U);
 		assert(urp_pcm_peak((short *)channel.usbradio_write_buf, URP_NATIVE_SAMPLES * 2U) ==
 		       0U);
 		/* Teardown can remove the radio state during that same unpublished span. */
 		channel.radio = NULL;
-		usbradioplus_native_tick(&channel, 1);
+		usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 		assert(urp_pcm_peak((short *)(channel.usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
 				    URP_NATIVE_SAMPLES) == 0U);
 		assert(urp_pcm_peak((short *)channel.usbradio_write_buf, URP_NATIVE_SAMPLES * 2U) ==
@@ -10677,7 +7908,7 @@ static void test_native_tick_processing_edges(void)
 
 		channel.radio = NULL;
 		atomic_store_explicit(&channel.plus_hardware_ptt_request, 1, memory_order_release);
-		usbradioplus_native_tick(&channel, 1);
+		usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 		assert(!atomic_load_explicit(&channel.plus_hardware_ptt_request,
 					     memory_order_acquire));
 		channel.radio = saved_radio;
@@ -10745,18 +7976,27 @@ static void test_native_tick_processing_edges(void)
 	}
 
 	/* Test-tone generation bypasses dynamics but not the native output path. */
+	channel.radio->txPttOut = 1;
+	channel.radio->txState = CHAN_TXSTATE_ACTIVE;
+	channel.radio->txCtcssEnabled = 0;
+	channel.radio->dcs.enabled_transmit = 0;
+	atomic_store_explicit(&channel.plus_applied_txmixa, URP_TX_OUTPUT_VOICE,
+			      memory_order_release);
+	atomic_store_explicit(&channel.plus_applied_txmixb, URP_TX_OUTPUT_DISABLED,
+			      memory_order_release);
+	atomic_store_explicit(&channel.plus_applied_tx_output_gain_a, M_Q8, memory_order_release);
+	atomic_store_explicit(&channel.plus_applied_tx_output_gain_b, M_Q8, memory_order_release);
+	memset(channel.usbradio_write_buf, 0, sizeof(channel.usbradio_write_buf));
 	channel.plus_test_tone_enabled = 1;
 	native_tick_then_process(&channel);
 	assert(channel.plus_test_tone_phase > 0.0);
+	assert(transmit[0] == 0);
+	assert(transmit[24] >= 7517 && transmit[24] <= 7519);
 	channel.plus_test_tone_enabled = 0;
 
 	/* The DCS-only shaper cannot affect transmitter voice audio. */
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_shaping_enabled = 1;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_lowpass_hz = 250.0;
 	assert(!usbradioplus_prepare_native_processing(&channel));
 	native_tick_then_process(&channel);
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_shaping_enabled = 0;
-	settings.profiles[0].chains[TXAGC_VOICE_TELEMETRY].agc.dcs_spectral_lowpass_hz = 0.0;
 
 	/* CPU saving bypasses optional dynamics only while receive is unqualified. */
 	channel.rxcpusaver = 1;
@@ -10768,7 +8008,7 @@ static void test_native_tick_processing_edges(void)
 	channel.rxcpusaver = 0;
 	channel.rxkeyed = 1;
 	assert(!usbradioplus_prepare_native_processing(&channel));
-	/* Bypass and error paths reset state without altering the program ring. */
+	/* Bypass resets stream state without altering the program ring. */
 	settings.profiles[0].chains[TXAGC_LOCAL].rnnoise_enabled = 0;
 	assert(!usbradioplus_prepare_native_processing(&channel));
 	native_tick_then_process(&channel);
@@ -10776,12 +8016,18 @@ static void test_native_tick_processing_edges(void)
 	assert(!usbradioplus_prepare_native_processing(&channel));
 	src_process_calls = 0;
 	fail_src_process_call = 1;
-	native_tick_then_process(&channel);
 	{
-		struct usbradioplus_native_renderer_stats statistics;
+		struct usbradioplus_native_renderer_stats before;
+		struct usbradioplus_native_renderer_stats after;
 
-		assert(!usbradioplus_native_renderer_stats_read(&channel, &statistics));
-		assert(statistics.rnnoise_errors);
+		/* Fixed native-rate denoising must keep running without a hidden SRC
+		 * dependency, even with the converter failure injection armed. */
+		assert(!usbradioplus_native_renderer_stats_read(&channel, &before));
+		native_tick_then_process(&channel);
+		assert(!usbradioplus_native_renderer_stats_read(&channel, &after));
+		assert(src_process_calls == 0);
+		assert(after.rnnoise_frames > before.rnnoise_frames);
+		assert(after.rnnoise_errors == before.rnnoise_errors);
 	}
 	fail_src_process_call = 0;
 	/* Cover each native control choice without involving hardware state. */
@@ -10881,10 +8127,11 @@ static void test_native_tick_processing_edges(void)
 			usbradioplus_native_graphs_acquire(&channel);
 
 		assert(graphs);
-		fail_avfilter_process_state = &graphs->dcs;
+		fail_ffmpeg_adapter_process_state = &graphs->dcs;
 		memset(channel.usbradio_write_buf, 0, sizeof(channel.usbradio_write_buf));
 		native_tick_then_process_and_consume(&channel);
 		assert(urp_pcm_peak(transmit, URP_NATIVE_SAMPLES * 2U) == 0U);
+		fail_ffmpeg_adapter_process_state = NULL;
 		fail_avfilter_process_state = &graphs->final;
 		native_tick_then_process_and_consume(&channel);
 		fail_avfilter_process_state = NULL;
@@ -10892,7 +8139,12 @@ static void test_native_tick_processing_edges(void)
 	}
 	/* The signaling engine holds PTT during finishing. Its normal shaping
 	 * graph may still contain history, but it must not put a new DCS word on
-	 * the air after the tail has completed. */
+	 * the air after the tail has completed. Model a real unkeyed three-frame
+	 * finish rather than leaving the earlier external PTT request asserted. */
+	atomic_store_explicit(&channel.txkeyed, 0, memory_order_release);
+	channel.radio->txPttIn = 0;
+	channel.radio->txBufferClear = 3;
+	channel.radio->txFinishTimer = 3 * MS_PER_FRAME;
 	channel.radio->txState = CHAN_TXSTATE_FINISHING;
 	for (unsigned int finish_frame = 0; finish_frame < 3U; ++finish_frame) {
 		memset(channel.usbradio_write_buf, 0, sizeof(channel.usbradio_write_buf));
@@ -10904,6 +8156,7 @@ static void test_native_tick_processing_edges(void)
 	native_tick_then_process_and_consume(&channel);
 	assert(urp_pcm_peak(transmit, URP_NATIVE_SAMPLES * 2U) == 0U);
 	channel.radio->dcs.enabled_transmit = 0;
+	atomic_store_explicit(&channel.txkeyed, 1, memory_order_release);
 	channel.radio->txPttOut = 1;
 	native_tick_then_process(&channel);
 	atomic_store_explicit(&channel.plus_applied_txmixa, URP_TX_OUTPUT_DISABLED,
@@ -10930,7 +8183,7 @@ static void test_native_tick_processing_edges(void)
 	 * allocate while it processes the current hardware block. */
 	av_frame_alloc_calls = 0;
 	fail_av_frame_alloc_call = 1;
-	usbradioplus_native_tick(&channel, 1);
+	usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
 	assert(!av_frame_alloc_calls);
 	fail_av_frame_alloc_call = 0;
 	channel.echomode = 1;
@@ -11093,7 +8346,8 @@ static void test_native_tick_processing_edges(void)
 	 * queued program PCM is consumed without a false underflow, and exhaustion
 	 * reports one callback-level underflow to the channel. */
 	rpcr_destroy(&channel.plus_program_ring);
-	assert(!rpcr_init(&channel.plus_program_ring, URP_PROGRAM_RING_SAMPLES, RPCR_SINC_BEST));
+	assert(!rpcr_init(&channel.plus_program_ring, URP_PROGRAM_RING_MAX_SAMPLES,
+			  RPCR_SINC_BEST));
 	assert(!rpcr_set_rates(&channel.plus_program_ring, URP_APP_RPT_RATE_DEFAULT,
 			       URP_RATE_NATIVE));
 	for (unsigned int frame = 0; frame < 6U; ++frame)
@@ -11146,31 +8400,36 @@ static void test_native_sample_gate(void)
 	channel.plus_app_rpt_samples = URP_NATIVE_SAMPLES;
 	channel.plus_deemphasis_corner_hz = 300.0;
 	channel.plus_preemphasis_corner_hz = 300.0;
-	channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
-	assert(channel.radio);
-	assert(!usbradioplus_dsp_init(&channel));
-	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
-		capture[2 * i] = 1000;
-		channel.radio->rxCarrierGate[i] = i < URP_NATIVE_SAMPLES / 2;
-	}
-
 	for (size_t source = 0; source < ARRAY_LEN(carrier_sources); ++source) {
 		channel.rxcdtype = carrier_modes[source];
-		/* The signaling engine owns the sample gate state. Native tick must
-		 * consume that already-applied value rather than refresh configuration. */
-		channel.radio->rxCdType = carrier_modes[source];
+		/* The radio owns detector-specific stages at construction time.  Build
+		 * each source variant rather than changing its selector after creation. */
+		radio_config.rxCdType = carrier_modes[source];
+		channel.radio = urp_radio_create(&radio_config, URP_LINK_SAMPLES);
+		assert(channel.radio);
+		assert(!usbradioplus_dsp_init(&channel));
+		for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
+			capture[2 * i] = 1000;
+			channel.radio->rxCarrierGate[i] = i < URP_NATIVE_SAMPLES / 2;
+		}
 		assert(!usbradioplus_prepare_native_processing(&channel));
 		native_tick_then_process_and_consume(&channel);
 		for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i) {
-			double expected = source == 0 && i >= URP_NATIVE_SAMPLES / 2 ? 0.0 : 1000.0;
+			/* Native signaling now advances before the renderer snapshots its
+			 * sample gate. The DSP detector therefore replaces the seeded gate
+			 * with the value calculated from this capture block; other carrier
+			 * sources intentionally leave local program audio ungated. */
+			double expected =
+				source == 0 && !channel.radio->rxCarrierGate[i] ? 0.0 : 1000.0;
 			assert(channel.plus_local_native[i] == expected);
 			assert(network[i] == expected);
 		}
 		assert(channel.rxkeyed); /* No changes to carrier, CTCSS, or PTT qualification. */
 		assert(!channel.radio->txPttIn && !channel.radio->txPttOut);
+		usbradioplus_dsp_destroy(&channel);
+		assert(!urp_radio_destroy(channel.radio));
+		channel.radio = NULL;
 	}
-	usbradioplus_dsp_destroy(&channel);
-	assert(!urp_radio_destroy(channel.radio));
 }
 
 /** @brief Verify unlinked channel cleanup. */
@@ -11258,8 +8517,48 @@ static void test_store_config_failure_and_option_edges(void)
 	assert(store_config("usb") == NULL);
 	fail_radio_state_allocation = 0;
 	mock_dsp_available = 1;
+	add_processing_override("receive", "signaling_method", "ctcss");
+	add_processing_override("ctcss", "receive_frequencies", "114.8");
+	add_processing_override("ctcss", "receive_source", "dsp");
+	add_processing_override("ctcss", "receive_relax", "1");
+	add_processing_override("ctcss", "receive_decoder_gain_db", "2.219");
 	created = store_config("usb");
 	assert(created);
+	/* Production creates native DSP before the signaling engine. Both receive
+	 * decoders must still attach to that existing renderer before any callback. */
+	assert(created->radio->rxCtcss->receive_callback);
+	assert(created->radio->rxCtcss->receive_callback_context == created->plus_native_renderer);
+	assert(created->radio->dcs.receive_callback);
+	assert(created->radio->dcs.receive_callback_context == created->plus_native_renderer);
+	{
+		float input[URP_NATIVE_SAMPLES * 2U];
+		float output[URP_NATIVE_SAMPLES * 2U];
+		int qualified = 0;
+
+		/* Follow worker setup after store_config, then exercise the real 48 kHz
+		 * ADC/frontend/center-slicer/Rust-decoder path used by the live node. */
+		usbradioplus_interface_mode(created, 1);
+		assert(!radio_config(created));
+		assert(created->radio->rxCtcss->relax == 1);
+		for (unsigned int block = 0; block < 100U; ++block) {
+			for (size_t sample = 0; sample < URP_NATIVE_SAMPLES; ++sample) {
+				double phase = 2.0 * M_PI * (block * URP_NATIVE_SAMPLES + sample) /
+					       URP_RATE_NATIVE;
+				float pcm = (float)(0.15 * sin(114.8 * phase) +
+						    0.01 * sin(1000.0 * phase));
+
+				input[sample * 2U] = input[sample * 2U + 1U] = pcm;
+			}
+			assert(!usbradioplus_portaudio_poc_test_callback(created, input, output,
+									 URP_NATIVE_SAMPLES));
+			qualified |= created->rxkeyed;
+		}
+		assert(qualified && created->rx_cos_active && created->rx_ctcss_active);
+		assert(created->radio->rxCtcss->decode == urp_ctcss_frequency_index(114.8F));
+		/* A repeated quiesced bind must not reset the same decoder's history. */
+		usbradioplus_native_renderer_bind_radio(created);
+		assert(created->radio->rxCtcss->decode == urp_ctcss_frequency_index(114.8F));
+	}
 	usbradio_default.next = created->next;
 	destroy_unlinked_channel(created);
 
@@ -11294,7 +8593,10 @@ static void test_store_config_failure_and_option_edges(void)
 	/* Clean-slate [receive] defaults override an unrelated compatibility
 	 * initializer, so an omitted squelch_delay_ms remains the shipped zero. */
 	assert(created->rxsquelchdelay == 0);
-	assert(created->radioactive && !existing.radioactive && hasout);
+	assert(created->radioactive && !existing.radioactive);
+	assert(created->pps[3] && !strcmp(created->pps[3], "out1"));
+	assert(created->pps[4] && !strcmp(created->pps[4], "ptt"));
+	assert(created->pps[5] && !strcmp(created->pps[5], "out0"));
 	usbradio_default.next = created->next;
 	destroy_unlinked_channel(created);
 
@@ -11398,9 +8700,10 @@ static void test_native_renderer_start_failures(void)
 		fail_ast_calloc_call = 0;
 	}
 
-	/* The renderer owns its persistent program/echo converters. Each constructor
-	 * failure must leave no started renderer or retained graph. */
-	for (int failure = 1; failure <= 4; ++failure) {
+	/* The renderer owns exactly two persistent echo/receive converters. Native
+	 * 48 kHz RNNoise needs no converter. Fail each released-adapter constructor
+	 * and verify the following non-injected attempt creates exactly two. */
+	for (int failure = 1; failure <= 3; ++failure) {
 		struct chan_usbradio_pvt channel = {0};
 		urp_radio_state radio_config = {
 			.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
@@ -11417,10 +8720,10 @@ static void test_native_renderer_start_failures(void)
 		assert(channel.radio);
 		src_new_calls = 0;
 		fail_src_new_call = failure;
-		assert(usbradioplus_dsp_init(&channel) == -1);
-		assert(src_new_calls >= failure);
-		assert(!channel.plus_dsp_initialized);
-		assert(!channel.plus_native_renderer);
+		assert(usbradioplus_dsp_init(&channel) == (failure <= 2 ? -1 : 0));
+		assert(src_new_calls == 2);
+		assert(!!channel.plus_dsp_initialized == (failure == 3));
+		assert(!!channel.plus_native_renderer == (failure == 3));
 		usbradioplus_dsp_destroy(&channel);
 		assert(!urp_radio_destroy(channel.radio));
 		fail_src_new_call = 0;
@@ -11584,8 +8887,11 @@ static void test_advanced_native_clock(void)
 	fail_rpcr_set_rates = 0;
 	usbradioplus_interface_mode(&channel, 1);
 	assert(channel.plus_app_rpt_rate == 48000 && channel.plus_app_rpt_samples == 960);
+	assert(channel.plus_program_reserve_samples ==
+	       (URP_RATE_NATIVE * URP_PROGRAM_RING_RESERVE_MS + 999U) / 1000U);
 	assert(channel.plus_program_target_samples ==
 	       (URP_RATE_NATIVE * URP_PROGRAM_RING_TARGET_MS + 999U) / 1000U);
+	assert(channel.plus_program_ring.capacity == URP_PROGRAM_RING_MAX_SAMPLES);
 	assert(channel.plus_program_target_samples < channel.plus_program_ring.capacity);
 	short program[URP_NATIVE_SAMPLES];
 	for (size_t i = 0; i < URP_NATIVE_SAMPLES; ++i)
@@ -11594,13 +8900,16 @@ static void test_advanced_native_clock(void)
 	atomic_store_explicit(&channel.txkeyed, 1, memory_order_release);
 	channel.duplex3 = 999;
 	channel.duplex3mode = DUPLEX3_MODE_SOFTWARE;
+	/* Keep the target reserve plus the two callback spans observed below.  The
+	 * consumer intentionally starts immediately; target only controls its slow
+	 * rate correction and does not manufacture an additional startup reserve. */
 	for (unsigned int frame = 0;
 	     frame < channel.plus_program_target_samples / URP_NATIVE_SAMPLES + 1U; ++frame)
 		usbradioplus_queue_program(&channel, program, URP_NATIVE_SAMPLES);
 	assert(rpcr_available(&channel.plus_program_ring) >= channel.plus_program_target_samples);
 	channel.plus_link_queue_underflows = 0;
 	/* Native-rate playout consumes directly without startup priming. */
-	for (unsigned int tick = 0; tick < 4U; ++tick)
+	for (unsigned int tick = 0; tick < 2U; ++tick)
 		native_tick_then_process(&channel);
 	assert(rpcr_available(&channel.plus_program_ring) <
 	       channel.plus_program_target_samples + URP_NATIVE_SAMPLES);
@@ -11657,17 +8966,21 @@ static void test_advanced_adapter(void)
 		.indicate = advanced_backend_indicate,
 	};
 	usbradioplus_advanced_unregister();
-	assert(usbradioplus_advanced_register(&backend, 44100, advanced_configure) == -1);
+	requested_native_format_rate = 0U;
+	native_format_rate = URP_APP_RPT_RATE_DEFAULT;
+	assert(usbradioplus_advanced_register(&backend, advanced_configure) == -1);
+	assert(requested_native_format_rate == URP_RATE_NATIVE);
+	native_format_rate = URP_RATE_NATIVE;
 	fail_format_cap_alloc = 1;
-	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	assert(usbradioplus_advanced_register(&backend, advanced_configure) == -1);
 	fail_format_cap_alloc = 0;
 	format_append_result = -1;
-	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	assert(usbradioplus_advanced_register(&backend, advanced_configure) == -1);
 	format_append_result = 0;
 	channel_register_result = -1;
-	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == -1);
+	assert(usbradioplus_advanced_register(&backend, advanced_configure) == -1);
 	channel_register_result = 0;
-	assert(usbradioplus_advanced_register(&backend, 48000, advanced_configure) == 0);
+	assert(usbradioplus_advanced_register(&backend, advanced_configure) == 0);
 	int cause = 0;
 	format_compatible = 0;
 	assert(!advanced_technology->requester("RadioPlusAdvanced", NULL, NULL, NULL, "test",
@@ -11707,7 +9020,7 @@ static void test_native_renderer_guard_paths(void)
 	urp_radio_state radio_config = {
 		.pRxCodeSrc = "0", .pTxCodeSrc = "0", .pTxCodeDefault = "0"};
 	struct usbradioplus_native_renderer_stats statistics;
-	struct audiostatistics tx_statistics;
+	struct rptadv_radio_audio_statistics tx_statistics;
 	struct chan_usbradio_pvt no_renderer = {0};
 
 	settings_defaults(&settings);
@@ -11727,7 +9040,7 @@ static void test_native_renderer_guard_paths(void)
 	usbradioplus_native_renderer_stats_reset(&no_renderer);
 	usbradioplus_native_renderer_clear_parrot(&no_renderer);
 	usbradioplus_native_renderer_clear_legacy_echo(&no_renderer);
-	usbradioplus_native_tick(&no_renderer, 1);
+	usbradioplus_native_tick(&no_renderer, URP_NATIVE_SAMPLES);
 	assert(usbradioplus_native_renderer_stats_read(&no_renderer, &statistics) == -1);
 	assert(usbradioplus_native_renderer_tx_audio_stats_read(&no_renderer, &tx_statistics) ==
 	       -1);
@@ -11743,6 +9056,8 @@ static void test_native_renderer_guard_paths(void)
 	assert(usbradioplus_native_renderer_test_statistics_retry(&channel) == -1);
 	assert(usbradioplus_native_renderer_test_tx_audio_statistics_retry(&channel) == -1);
 
+	usbradioplus_native_tick(&channel, URP_NATIVE_SAMPLES);
+
 	usbradioplus_dsp_destroy(&channel);
 	assert(usbradioplus_native_renderer_stats_read(&channel, &statistics) == -1);
 	assert(usbradioplus_native_renderer_tx_audio_stats_read(&channel, &tx_statistics) == -1);
@@ -11752,24 +9067,30 @@ static void test_native_renderer_guard_paths(void)
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
+#include "channel_hardware_cases.h"
+#include "channel_portaudio_cases.h"
+#include "channel_native_tick_cases.h"
+#include "channel_common_boundary_cases.h"
+
 int main(void)
 {
+	const char *selected_test = getenv("URP_CHANNEL_TEST");
+	unsigned int tests_run = 0U;
+
+	assert(urp_radio_core_initialize() == 0);
 
 #define RUN_TEST(function)                                                                         \
 	do {                                                                                       \
-		puts(#function);                                                                   \
-		function();                                                                        \
+		if (!selected_test || !strcmp(selected_test, #function)) {                         \
+			puts(#function);                                                           \
+			function();                                                                \
+			++tests_run;                                                               \
+		}                                                                                  \
 	} while (0)
-#ifdef URP_TEST_MODERN
-	RUN_TEST(test_modern_device_policy_helpers);
-	RUN_TEST(test_modern_channel_callbacks);
-	RUN_TEST(test_modern_hid_worker_baseline);
-	RUN_TEST(test_modern_parallel_ptt_release);
-	RUN_TEST(test_modern_hid_worker_retries);
-	RUN_TEST(test_modern_audio_worker_baseline);
-	RUN_TEST(test_modern_module_lifecycle_baseline);
-#endif
 	RUN_TEST(test_clean_slate_signaling_defaults);
+	RUN_TEST(test_common_lifecycle_boundaries);
+	RUN_TEST(test_common_hardware_reload_boundaries);
+	RUN_TEST(test_common_parallel_reload_boundaries);
 	RUN_TEST(test_option_decoders);
 	RUN_TEST(test_channel_callbacks);
 	RUN_TEST(test_text_controls);
@@ -11785,6 +9106,8 @@ int main(void)
 	RUN_TEST(test_config_update_and_radio_programming);
 	RUN_TEST(test_hardware_handoff_snapshots);
 	RUN_TEST(test_processing_config_overrides);
+	RUN_TEST(test_portaudio_poc_configuration_gate);
+	RUN_TEST(test_cm119_gpio_poc_configuration_gate);
 	RUN_TEST(test_complete_processing_config_overrides);
 	RUN_TEST(test_complete_processing_config_override_rejections);
 	RUN_TEST(test_processing_override_parse_edges);
@@ -11794,43 +9117,43 @@ int main(void)
 	RUN_TEST(test_shared_hardware_layouts);
 	RUN_TEST(test_shared_control_helpers);
 	RUN_TEST(test_shared_receive_signaling_helpers);
+	RUN_TEST(test_shared_receive_state_timing);
+	RUN_TEST(test_shared_receive_meter);
 	RUN_TEST(test_shared_eeprom_wait);
-	RUN_TEST(test_continuous_soundcard_output);
 	RUN_TEST(test_tx_playout_hold);
-	RUN_TEST(test_oss_tune_write_paths);
-#ifndef URP_TEST_MODERN
-	RUN_TEST(test_oss_audio_helpers);
-	RUN_TEST(test_oss_channel_write_and_call);
-	RUN_TEST(test_oss_channel_hangup);
-	RUN_TEST(test_oss_parallel_pulser);
-	RUN_TEST(test_oss_hid_worker_device_retry);
-	RUN_TEST(test_oss_hid_attach_failures);
-	RUN_TEST(test_oss_hid_worker_attach);
-	advanced_hid_mode = 1;
-	RUN_TEST(test_oss_hid_worker_attach);
-	advanced_hid_mode = 0;
+	RUN_TEST(test_native_output_stage);
+	RUN_TEST(test_direct_tune_write_paths);
+	RUN_TEST(test_direct_hardware_worker_without_adapters);
+	RUN_TEST(test_hardware_identity_and_mixer_helpers);
+	RUN_TEST(test_hardware_wake_and_publication_helpers);
+	RUN_TEST(test_hardware_radio_and_service_helpers);
+	RUN_TEST(test_hardware_start_attempt_boundaries);
+	RUN_TEST(test_hardware_parallel_owner_service);
+	RUN_TEST(test_hardware_control_and_calibration_helpers);
+	RUN_TEST(test_hardware_routing_and_owner_eligibility);
+	RUN_TEST(test_hardware_swap_identity_boundaries);
+	RUN_TEST(test_hardware_sidetone_and_refresh_boundaries);
+	RUN_TEST(test_portaudio_lifecycle_boundaries);
+	RUN_TEST(test_native_tick_release_boundaries);
+	RUN_TEST(test_direct_channel_write_and_call);
+	RUN_TEST(test_direct_channel_hangup);
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 10;
-	RUN_TEST(test_oss_hid_worker_attach);
 	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 0;
-	RUN_TEST(test_oss_hid_worker_first_radio_construction);
-	advanced_hid_mode = 1;
-	RUN_TEST(test_oss_hid_worker_first_radio_construction);
-	advanced_hid_mode = 2;
-	RUN_TEST(test_oss_hid_worker_first_radio_construction);
-	advanced_hid_mode = 0;
-	RUN_TEST(test_oss_channel_creation_and_request);
-	RUN_TEST(test_oss_channel_read_guards);
-	RUN_TEST(test_oss_complete_read_frame);
+	RUN_TEST(test_direct_channel_creation_and_request);
+	RUN_TEST(test_direct_channel_read_guards);
+	RUN_TEST(test_direct_complete_read_frame);
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 10;
-	RUN_TEST(test_oss_complete_read_frame);
+	RUN_TEST(test_direct_complete_read_frame);
 	ast_clear_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);
 	module_debug_level = 0;
-	RUN_TEST(test_oss_module_lifecycle_guards);
-#endif
+	RUN_TEST(test_direct_module_lifecycle_guards);
 	RUN_TEST(test_native_fifo_and_squelch_copy);
+	RUN_TEST(test_portaudio_poc_callback_partitions);
+	RUN_TEST(test_portaudio_poc_native_tick_f32_boundary);
+	RUN_TEST(test_portaudio_poc_legacy_receive_boundaries);
 	RUN_TEST(test_parrot_transitions);
 	RUN_TEST(test_program_ring_and_parrot_storage);
 	RUN_TEST(test_dsp_init_failures);
@@ -11840,6 +9163,7 @@ int main(void)
 	RUN_TEST(test_native_tick_voice_graph_ownership);
 	RUN_TEST(test_native_renderer_guard_paths);
 	RUN_TEST(test_native_graph_slot_deferred_reclaim);
+	RUN_TEST(test_native_graph_warmup);
 	RUN_TEST(test_native_graph_transaction_paths);
 	RUN_TEST(test_radio_access_reconfigure_exclusion);
 	RUN_TEST(test_native_tick_processing_edges);
@@ -11860,6 +9184,10 @@ int main(void)
 	RUN_TEST(test_processing_config_missing_option_paths);
 	RUN_TEST(test_radio_config_parser_failure_paths);
 #undef RUN_TEST
+	if (!tests_run) {
+		fprintf(stderr, "Unknown channel test: %s\n", selected_test);
+		return EXIT_FAILURE;
+	}
 	puts("channel core tests passed");
 	return 0;
 }

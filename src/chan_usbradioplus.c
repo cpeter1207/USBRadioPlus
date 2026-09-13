@@ -47,16 +47,13 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <usb.h>
 #include <search.h>
-#include <alsa/asoundlib.h>
-#include <linux/ppdev.h>
-#include <linux/parport.h>
 #include <linux/version.h>
 
-#include "asterisk/res_usbradio.h"
+#include "usbradioplus_host_util.h"
 
 #ifdef HAVE_SYS_IO
 #include <sys/io.h>
@@ -106,6 +103,17 @@
 #include "./txagc/avfilter_processor.h"
 #include "./txagc/rnnoise_processor.h"
 #include "usbradioplus_processing.h"
+#ifdef URP_HAVE_PORTAUDIO_POC
+#include "usbradioplus_portaudio_poc.h"
+#endif
+#ifdef URP_HAVE_GPIO_POC
+#include <rptadv_gpio_adapter/rptadv_gpio_adapter.h>
+#include "usbradioplus_hardware_adapter.h"
+#include "usbradioplus_cm119_gpio_poc_worker.h"
+#include "usbradioplus_hardware_eeprom_poc.h"
+#include "usbradioplus_hardware_gpio_poc.h"
+#include "usbradioplus_portaudio_poc_identity.h"
+#endif
 
 #ifdef URP_CHANNEL_UNIT_TEST
 #define URP_CHANNEL_LOCAL
@@ -116,14 +124,6 @@
 #include "usbradioplus_repeat.h"
 #include "usbradioplus_channel_core.h"
 #include "usbradioplus_config.h"
-#ifdef __linux
-#include <linux/soundcard.h>
-#elif defined(__FreeBSD__)
-#include <sys/soundcard.h>
-#else
-#include <soundcard.h>
-#endif
-
 #include "asterisk/lock.h"
 #include "asterisk/frame.h"
 #include "asterisk/logger.h"
@@ -160,38 +160,38 @@ static struct ast_jb_conf default_jbconf = {
 /** Asterisk jitter-buffer settings applied to newly created channels. */
 struct ast_jb_conf global_jbconf;
 
-#define URP_LEGACY_TEST_TONE_PEAK 7518.0
-
 #define CONFIG "usbradioplus.conf" /* default config file */
 
 /** Mutex protecting legacy USB-device allocation. */
 AST_MUTEX_DEFINE_STATIC(usb_dev_lock);
 /** Mutex protecting shared parallel-port output state. */
 ast_mutex_t pp_lock = AST_MUTEX_INIT_VALUE;
+/** Physical parallel transport owner, accessed only while holding pp_lock. */
+static struct chan_usbradio_pvt *parallel_owner;
+
+struct chan_usbradio_pvt *usbradioplus_parallel_owner(void)
+{
+	return parallel_owner;
+}
+
+#ifdef URP_CHANNEL_UNIT_TEST
+void usbradioplus_test_set_parallel_owner(struct chan_usbradio_pvt *owner)
+{
+	ast_mutex_lock(&pp_lock);
+	parallel_owner = owner;
+	ast_mutex_unlock(&pp_lock);
+}
+#endif
 
 /* variables for communicating with the parallel port */
 /** Cached parallel-port output byte. */
 int8_t pp_val;
-/** Parallel outputs with active timed pulses. */
-int8_t pp_pulsemask;
-/** Previously applied parallel-port pulse mask. */
-int8_t pp_lastmask;
-/** Remaining pulse duration for each parallel output. */
-int pp_pulsetimer[32];
 /** Nonzero when parallel-port hardware is available. */
 int haspp;
-/** Open parallel-port device descriptor. */
-int ppfd;
 /** Parallel-port device path. */
 char pport[50];
 /** Parallel-port I/O base address. */
 int pbase;
-/** Stop request observed by the parallel-port pulse worker. */
-char stoppulser;
-/** Nonzero when any parallel-port output is configured. */
-URP_CHANNEL_LOCAL char hasout;
-/** Parallel-port pulse worker thread. */
-pthread_t pulserid;
 
 /** Names of supported carrier-detection assignments. */
 const char *const cd_signal_type[] = {"no", "dsp", "vox", "usb", "usbinvert", "pp", "ppinvert"};
@@ -220,7 +220,7 @@ struct chan_usbradio_pvt usbradio_default = {
 	.sounddev = -1,
 	.duplex = M_UNSET,
 	.queuesize = QUEUE_SIZE,
-	.frags = FRAGS,
+	.frags = 0,
 	.readpos = AST_FRIENDLY_OFFSET, /* start here on reads */
 	.wanteeprom = 1,
 	.usedtmf = 1,
@@ -244,6 +244,9 @@ struct chan_usbradio_pvt usbradio_default = {
 	 * future native-rate app_rpt path can bypass conversion. */
 	.plus_app_rpt_rate = URP_APP_RPT_RATE_DEFAULT,
 	.plus_app_rpt_samples = URP_LINK_SAMPLES,
+	.plus_native_max_frames = URP_NATIVE_SAMPLES,
+	.plus_portaudio_input_device_index = -1,
+	.plus_portaudio_output_device_index = -1,
 	/* Default receiver de-emphasis corner frequency in Hz. */
 	.plus_deemphasis_corner_hz = 300.0,
 	/* Default transmitter pre-emphasis corner frequency in Hz. */
@@ -269,7 +272,6 @@ void usbradioplus_test_set_module_info(struct ast_module_info *info)
  * @return Zero on success; nonzero if configuration fails.
  */
 int hidhdwconfig(struct chan_usbradio_pvt *o);
-URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode);
 URP_CHANNEL_LOCAL struct ast_channel *usbradio_request(const char *type, struct ast_format_cap *cap,
 						       const struct ast_assigned_ids *assignedids,
 						       const struct ast_channel *requestor,
@@ -300,7 +302,6 @@ struct chan_usbradio_pvt *store_config(const char *ctg);
 char *usbradio_active; /* the active device */
 
 /** Parallel input-pin to register-bit mapping. */
-URP_CHANNEL_LOCAL const int ppinshift[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 5, 4, 0, 3};
 
 /** Asterisk channel technology description. */
 static const char tdesc[] = "USB (CM108) Radio Channel Driver";
@@ -340,26 +341,11 @@ struct chan_usbradio_pvt *find_desc(const char *dev)
 	return o;
 }
 
-URP_CHANNEL_LOCAL char *find_installed_usb_match(void)
-{
-	struct chan_usbradio_pvt *o = NULL;
-	char *match = NULL;
-
-	for (o = usbradio_default.next; o; o = o->next) {
-		if (ast_radio_usb_list_check(o->devstr)) {
-			match = o->devstr;
-			break;
-		}
-	}
-
-	return match;
-}
-
 /** @brief Build the configured parallel-port PTT mask for one hardware worker.
  * @param o Private channel whose parallel assignments are inspected.
  * @return Bit mask of parallel pins assigned to PTT.
  */
-static uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
 {
 	uint8_t mask = 0;
 	int pin;
@@ -373,1087 +359,1015 @@ static uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
 	return mask;
 }
 
-/** @brief Apply a PTT request on every configured physical output.
- * @param o Private channel receiving the physical output state.
- * @param usb_handle Open USB interface used for HID output.
- * @param buf Current HID output report.
- * @param bufsave Receives the applied HID output report.
- * @param asserted Nonzero asserts PTT.
- * @param request Radio-programming snapshot, nonnull when @p reprogram is nonzero.
- * @param reprogram Nonzero applies the supplied radio-programming request.
+URP_CHANNEL_LOCAL void hidthread_close_pttkick(struct chan_usbradio_pvt *o);
+
+/**
+ * @brief Recreate the nonblocking control wake pipe used by one hardware owner.
+ * @param o Channel whose control worker receives wake notifications.
+ * @return Zero on success, or minus one when the pipe cannot be prepared.
+ *
+ * The pipe is only an advisory control-plane wake.  Every hardware owner also
+ * polls the published PTT request, so a full pipe can never delay a fail-safe
+ * transmitter release indefinitely.
  */
-static void hidthread_apply_ptt(struct chan_usbradio_pvt *o, struct usb_dev_handle *usb_handle,
-				unsigned char *buf, unsigned char *bufsave, int asserted,
-				const struct usbradioplus_radio_program_request *request,
-				int reprogram)
+URP_CHANNEL_LOCAL int hidthread_open_pttkick(struct chan_usbradio_pvt *o)
 {
-	const uint8_t parallel_mask = hidthread_parallel_ptt_mask(o);
-
-	if (haspp) {
-		ast_mutex_lock(&pp_lock);
-		if (reprogram) {
-			struct urp_parallel_bus bus = {
-				.value = (uint8_t)pp_val,
-				.write = usbradioplus_parallel_program_write,
-			};
-
-			urp_hardware_program_radio(&bus, request->rx_frequency,
-						   request->tx_frequency, asserted,
-						   request->high_power);
-			pp_val = (int8_t)bus.value;
-		} else if (!asserted) {
-			struct urp_parallel_bus bus = {
-				.value = (uint8_t)pp_val,
-				.write = usbradioplus_parallel_program_write,
-			};
-
-			/* A concurrent control-plane publication must never postpone an unkey. */
-			urp_hardware_clear_transmit(&bus);
-			pp_val = (int8_t)bus.value;
-		}
-		urp_apply_ptt_outputs(asserted, o->invertptt, parallel_mask, o->hid_io_ptt,
-				      &o->hid_gpio_val, &pp_val);
-		if (parallel_mask)
-			ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
-		ast_mutex_unlock(&pp_lock);
-	} else {
-		/* HID PTT remains available on interfaces without a parallel port. */
-		urp_apply_ptt_outputs(asserted, o->invertptt, 0, o->hid_io_ptt, &o->hid_gpio_val,
-				      &pp_val);
+	hidthread_close_pttkick(o);
+	if (pipe(o->pttkick) == -1) {
+		ast_log(LOG_ERROR, "Channel %s: Is not able to create a pipe\n", o->name);
+		return -1;
 	}
-	buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
-	buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-	memcpy(bufsave, buf, 4);
-	ast_radio_hid_set_outputs(usb_handle, buf);
-	o->lasttx = !!asserted;
-	/* Publish only after both physical output paths have received their state. */
-	atomic_store_explicit(&o->plus_hardware_ptt_applied, !!asserted, memory_order_release);
+	if (fcntl(o->pttkick[0], F_SETFL, fcntl(o->pttkick[0], F_GETFL) | O_NONBLOCK) ||
+	    fcntl(o->pttkick[1], F_SETFL, fcntl(o->pttkick[1], F_GETFL) | O_NONBLOCK)) {
+		ast_log(LOG_ERROR, "Channel %s: Is not able to make the wake pipe nonblocking\n",
+			o->name);
+		close(o->pttkick[0]);
+		close(o->pttkick[1]);
+		o->pttkick[0] = -1;
+		o->pttkick[1] = -1;
+		return -1;
+	}
+	return 0;
 }
 
-/** @brief Fail safe to an unkeyed state before losing a hardware interface.
- * @param o Private channel whose transmitter must be released.
- * @param usb_handle Optional open USB interface.
- * @param buf HID output report updated to the unkeyed state.
+/**
+ * @brief Retire the advisory PTT wake pipe after its hardware worker exits.
+ * @param o Channel whose stopped worker no longer observes wake requests.
  */
-static void hidthread_failsafe_unkey(struct chan_usbradio_pvt *o, struct usb_dev_handle *usb_handle,
-				     unsigned char *buf)
+URP_CHANNEL_LOCAL void hidthread_close_pttkick(struct chan_usbradio_pvt *o)
 {
-	const uint8_t parallel_mask = hidthread_parallel_ptt_mask(o);
-
-	if (haspp) {
-		struct urp_parallel_bus bus;
-
-		ast_mutex_lock(&pp_lock);
-		bus.value = (uint8_t)pp_val;
-		bus.write = usbradioplus_parallel_program_write;
-		bus.opaque = NULL;
-		/* Clear the RTX PTT bit immediately; a serial reprogram cycle must never
-		 * be a prerequisite for transmitter release. */
-		urp_hardware_clear_transmit(&bus);
-		pp_val = (int8_t)bus.value;
-		urp_apply_ptt_outputs(0, o->invertptt, parallel_mask, o->hid_io_ptt,
-				      &o->hid_gpio_val, &pp_val);
-		ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
-		ast_mutex_unlock(&pp_lock);
+	if (o->pttkick[0] != -1) {
+		close(o->pttkick[0]);
+		o->pttkick[0] = -1;
 	}
-	if (usb_handle) {
+	if (o->pttkick[1] != -1) {
+		close(o->pttkick[1]);
+		o->pttkick[1] = -1;
+	}
+}
+
+#ifdef URP_HAVE_GPIO_POC
+/**
+ * @brief Create or refresh the radio engine after a hardware owner is ready.
+ * @param o Channel whose device-independent radio state is prepared.
+ * @return Zero on success, or minus one when radio initialization fails.
+ *
+ * Hardware-specific workers call this only after device identity and mixer
+ * state are known.  Keeping the preparation here lets a selected hardware
+ * adapter replace HID ownership without duplicating radio configuration.
+ */
+URP_CHANNEL_LOCAL int hidthread_prepare_radio(struct chan_usbradio_pvt *o)
+{
+	if (o->radio == NULL) {
+		urp_radio_state tChan;
+
+		memset(&tChan, 0, sizeof(tChan));
+		tChan.pTxCodeDefault = o->txctcssdefault;
+		tChan.pRxCodeSrc = o->rxctcssfreqs;
+		tChan.pTxCodeSrc = o->txctcssfreqs;
+		tChan.rxDemod = o->rxdemod;
+		tChan.rxCdType = effective_rxcdtype(o);
+		tChan.voxHangTime = o->voxhangtime;
+		tChan.rxSqVoxAdj = o->rxsqvoxadj;
+		tChan.txMixA = effective_txmixa(o);
+		tChan.txMixB = effective_txmixb(o);
+		tChan.rxCpuSaver = o->rxcpusaver;
+		tChan.txCpuSaver = o->txcpusaver;
+		tChan.b.rxpolarity = o->rxpolarity;
+		tChan.b.txpolarity = o->txpolarity;
+		ast_copy_string(tChan.dcsRxCode, o->dcs_receive_code, sizeof(tChan.dcsRxCode));
+		ast_copy_string(tChan.dcsTxCode, o->dcs_transmit_code, sizeof(tChan.dcsTxCode));
+		tChan.dcsTurnoffEnabled = o->dcs_turnoff_enabled;
+		tChan.dcsTurnoffDuration = o->dcs_turnoff_duration_ms;
+		tChan.dcsPeak = o->dcs_level;
+		tChan.txCtcssTocShift = o->ctcss_phase_shift_degrees;
+		tChan.txCtcssTocTime = o->ctcss_tail_duration_ms;
+		tChan.txCtcssTocToneHz = o->ctcss_tail_frequency_hz;
+		tChan.b.lsdrxpolarity = o->lsdrxpolarity;
+		tChan.b.lsdtxpolarity = o->lsdtxpolarity;
+		tChan.tracetype = o->tracetype;
+		tChan.tracelevel = o->tracelevel;
+		tChan.rptnum = o->rptnum;
+		tChan.idleinterval = o->idleinterval;
+		tChan.turnoffs = o->turnoffs;
+		tChan.area = o->area;
+		tChan.ukey = o->ukey;
+		tChan.name = o->name;
+		tChan.fever = o->fever;
+
+		o->radio = urp_radio_create(&tChan, FRAME_SIZE);
+		if (!o->radio) {
+			ast_log(LOG_ERROR, "Channel %s: signaling engine initialization failed\n",
+				o->name);
+			return -1;
+		}
+		o->radio->radioDuplex = o->plus_advanced || o->radioduplex;
+		o->radio->b.loopback = 0;
+		o->radio->txsettletime = o->txsettletime;
+		o->radio->txrxblankingtime = o->txrxblankingtime;
+		o->radio->rxCpuSaver = o->rxcpusaver;
+		o->radio->txCpuSaver = o->txcpusaver;
+		*(o->radio->prxSquelchAdjust) =
+			((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
+		*(o->radio->prxVoiceAdjust) = effective_rx_decoder_gain(o) * M_Q8;
+		*(o->radio->prxCtcssAdjust) = o->rxctcssadj * M_Q8;
+		o->radio->rxCtcss->relax = o->rxctcssrelax;
+		o->radio->txTocType = o->txtoctype;
+		if (urp_tx_pair_has_tone((enum urp_tx_output_mode)o->txmixa,
+					 (enum urp_tx_output_mode)o->txmixb))
+			set_txctcss_level(o);
+		if (!urp_tx_pair_has_voice((enum urp_tx_output_mode)o->txmixa,
+					   (enum urp_tx_output_mode)o->txmixb))
+			ast_log(LOG_ERROR, "Channel %s: No txvoice output configured.\n", o->name);
+		if (o->radioactive) {
+			struct chan_usbradio_pvt *active_channel;
+
+			for (active_channel = usbradio_default.next; active_channel;
+			     active_channel = active_channel->next)
+				active_channel->radioactive = 0;
+			usbradio_active = o->name;
+			o->radioactive = 1;
+			ast_log(LOG_NOTICE, "radio active set to [%s]\n", o->name);
+		}
+	}
+	radio_config(o);
+	mixer_write(o);
+	mult_set(o);
+	if (apply_processing_config_overrides(o, o->name))
+		ast_log(LOG_WARNING, "Unable to apply current RadioPlus settings for %s\n",
+			o->name);
+	/* Processing hardware overrides are applied by the hardware-control owner.
+	 * The native callback only consumes the published atomics. */
+	refresh_processing_hardware(o);
+	mult_set(o);
+	set_txctcss_level(o);
+	ast_mutex_lock(&o->eepromlock);
+	if (o->wanteeprom)
+		o->eepromctl = 1;
+	ast_mutex_unlock(&o->eepromlock);
+	usbradioplus_native_renderer_bind_radio(o);
+	return 0;
+}
+
+/**
+ * @brief Start the selected PCM owner after radio preparation.
+ * @param o Channel whose audio backend is started.
+ * @return Zero on success, or minus one when the selected backend fails.
+ */
+URP_CHANNEL_LOCAL int hidthread_start_audio(struct chan_usbradio_pvt *o)
+{
+	if (!usbradioplus_portaudio_poc_start(o))
+		return 0;
+	ast_log(LOG_ERROR, "Channel %s: unable to start PortAudio stream\n", o->name);
+	return -1;
+}
+
+/**
+ * @brief Report whether one channel participates in the shared parallel transport.
+ * @param o Candidate configured channel.
+ * @return Nonzero when the channel uses the configured shared transport.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_parallel_requested(const struct chan_usbradio_pvt *o)
+{
+	return o && o->plus_cm119_gpio_poc && haspp;
+}
+
+/**
+ * @brief Require the selected audio and GPIO hardware composition.
+ * @param o Candidate configured channel.
+ * @return Nonzero when a retired hardware backend is selected.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_validate(const struct chan_usbradio_pvt *o)
+{
+	return !o->plus_portaudio_poc || !o->plus_cm119_gpio_poc;
+}
+
+/**
+ * @brief Prepare the released audio/GPIO composition for one combined POC attempt.
+ * @param o Channel selecting the direct PortAudio and CM119 GPIO proofs.
+ * @return Zero when the facade is ready, or minus one when identity cannot be proved.
+ *
+ * A combined proof binds its PCM, HID, and semantic mixer controls to one
+ * CM119. It fails closed rather than falling back to an independent numeric
+ * ALSA-card selection when the released composition cannot establish that fact.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_prepare_hardware_adapter(struct chan_usbradio_pvt *o)
+{
+	struct usbradioplus_hardware_adapter_config config = {
+		.struct_size = sizeof(config),
+		.abi_version = USBRADIOPLUS_HARDWARE_ADAPTER_ABI_VERSION,
+		.usb_serial = ast_strlen_zero(o->serial) ? NULL : o->serial,
+		.device_selection_policy =
+			ast_strlen_zero(o->devstr) && ast_strlen_zero(o->serial) &&
+					ast_strlen_zero(o->plus_cm119_gpio_usb_port_path)
+				? RPTADV_AUDIO_USB_SELECTION_AUTOMATIC_LOWEST_ALSA_CARD
+				: RPTADV_AUDIO_USB_SELECTION_EXACT,
+		.device_identifier = ast_strlen_zero(o->devstr) ? NULL : o->devstr,
+		.usb_port_path = ast_strlen_zero(o->devstr) &&
+						 !ast_strlen_zero(o->plus_cm119_gpio_usb_port_path)
+					 ? o->plus_cm119_gpio_usb_port_path
+					 : NULL,
+		.cm119_profile = (uint32_t)o->hdwtype,
+		.ptt_inverted = !!o->invertptt,
+		.input_device_channels = 1U,
+		.output_device_channels = RPTADV_AUDIO_CANONICAL_CHANNELS,
+		/* The established HID configuration includes PTT in the control mask.
+		 * The GPIO adapter owns PTT separately, leaving only ordinary output
+		 * bits (including a configured clip LED) in this request. */
+		.gpio_output_enable_mask = (uint32_t)(o->hid_gpio_ctl & ~o->hid_io_ptt),
+		.gpio_output_initial_mask =
+			(uint32_t)(o->hid_gpio_val & (o->hid_gpio_ctl & ~o->hid_io_ptt)),
+	};
+	enum usbradioplus_hardware_adapter_result result;
+	enum usbradioplus_portaudio_poc_identity_result identity_result;
+
+	/* Semantic mixer handles retain facade-owned adapter state and must always
+	 * disappear before a retry releases that state. */
+	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
+	usbradioplus_hardware_adapter_close(&o->plus_hardware_adapter);
+	o->plus_hardware_adapter_prepared = 0;
+	result = usbradioplus_hardware_adapter_prepare_released(&o->plus_hardware_adapter, &config);
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		ast_log(LOG_WARNING,
+			"Channel %s: CM119 GPIO proof cannot prove audio/GPIO identity (%d)\n",
+			o->name, result);
+		return -1;
+	}
+	identity_result = usbradioplus_portaudio_poc_combined_facade_validate(
+		&o->plus_hardware_adapter, 1, o->plus_cm119_gpio_usb_port_path);
+	if (identity_result != USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_OK) {
+		ast_log(LOG_ERROR,
+			"Channel %s: CM119 GPIO proof rejected unproven audio/GPIO identity (%d)\n",
+			o->name, identity_result);
+		usbradioplus_hardware_adapter_close(&o->plus_hardware_adapter);
+		return -1;
+	}
+	o->plus_hardware_adapter_prepared = 1;
+	ast_log(LOG_NOTICE, "Channel %s: CM119 composition facade bound audio and GPIO at USB %s\n",
+		o->name, o->plus_hardware_adapter.usb_port_path);
+	return 0;
+}
+
+/**
+ * @brief Release a prepared composition after its stream and facade owners stop.
+ * @param o Channel holding the combined POC composition.
+ */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_discard_hardware_adapter(struct chan_usbradio_pvt *o)
+{
+	ast_mutex_lock(&o->usblock);
+	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
+	ast_mutex_unlock(&o->usblock);
+	ast_mutex_lock(&pp_lock);
+	if (parallel_owner == o) {
+		struct chan_usbradio_pvt *next;
+		parallel_owner = NULL;
+		/* Transfer the one physical port without resetting other nodes' pins. */
+		for (next = usbradio_default.next; next; next = next->next) {
+			if (next != o && next->plus_hardware_adapter_prepared &&
+			    cm119_gpio_poc_parallel_requested(next) &&
+			    atomic_load_explicit(&next->plus_hardware_online,
+						 memory_order_acquire) &&
+			    !atomic_load_explicit(&next->plus_hardware_stop_request,
+						  memory_order_acquire)) {
+				if (usbradioplus_parallel_adapter_poc_transfer(
+					    &o->plus_parallel_adapter_poc,
+					    &o->plus_hardware_adapter,
+					    &next->plus_parallel_adapter_poc,
+					    &next->plus_hardware_adapter))
+					parallel_owner = next;
+				break;
+			}
+		}
+	}
+	usbradioplus_parallel_adapter_poc_reset(&o->plus_parallel_adapter_poc);
+	usbradioplus_hardware_adapter_close(&o->plus_hardware_adapter);
+	o->plus_hardware_adapter_prepared = 0;
+	ast_mutex_unlock(&pp_lock);
+	o->plus_hardware_gpio_poc_state = (struct usbradioplus_hardware_gpio_poc_state){0};
+	o->plus_hardware_gpio_poc_cancel_mask = 0U;
+}
+
+/**
+ * @brief Apply the selected RX capture and TX A/B mixer state through the facade.
+ * @param o Non-NULL channel whose combined proof owns semantic mixer controls.
+ * @return Zero on success, or minus one after latching a hardware fault.
+ *
+ * This is control-plane work. It never touches a legacy mixer card and it is
+ * deliberately separate from the native callback, which consumes only the
+ * already-published radio state.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_apply_mixer(struct chan_usbradio_pvt *o)
+{
+	const int rx = effective_rxmixerset(o);
+	const int tx_a = effective_txmixaset(o);
+	const int tx_b = effective_txmixbset(o);
+	enum usbradioplus_hardware_adapter_result result;
+
+	/* Validated finite settings and urp_gain_db_to_mixer bound all gains to 0..999. */
+	if (!o->plus_hardware_adapter_prepared || !o->plus_hardware_mixer_poc.opened)
+		return -1;
+	ast_mutex_lock(&o->usblock);
+	result = usbradioplus_hardware_mixer_poc_apply(&o->plus_hardware_mixer_poc, (uint32_t)rx,
+						       (uint32_t)tx_a, (uint32_t)tx_b);
+	ast_mutex_unlock(&o->usblock);
+	if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		return 0;
+	ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof semantic mixer update failed (%d)\n",
+		o->name, result);
+	/* A partially applied gain state must not remain live. Retire these handles
+	 * now; the hardware worker sees the latch, unkeys, and retries the binding. */
+	atomic_store_explicit(&o->plus_hardware_online, 0, memory_order_release);
+	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
+	return -1;
+}
+
+/**
+ * @brief Set the combined proof's normalized RX capture gain during calibration.
+ * @param o Channel whose semantic RX mixer path is open.
+ * @param value Inclusive normalized gain from zero through 999.
+ * @return Zero on success, or minus one after latching a hardware fault.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_set_rx_mixer(struct chan_usbradio_pvt *o, int value)
+{
+	enum usbradioplus_hardware_adapter_result result;
+
+	if (!o || !o->plus_hardware_adapter_prepared || !o->plus_hardware_mixer_poc.opened ||
+	    value < 0 || value > (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM)
+		return -1;
+	ast_mutex_lock(&o->usblock);
+	result = usbradioplus_hardware_mixer_poc_set_normalized(
+		&o->plus_hardware_mixer_poc, USBRADIOPLUS_HARDWARE_MIXER_POC_RX_CAPTURE,
+		(uint32_t)value);
+	ast_mutex_unlock(&o->usblock);
+	if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		return 0;
+	ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof RX capture mixer update failed (%d)\n",
+		o->name, result);
+	atomic_store_explicit(&o->plus_hardware_online, 0, memory_order_release);
+	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
+	return -1;
+}
+
+/**
+ * @brief Open and apply every semantic mixer control required by the combined proof.
+ * @param o Channel whose facade already identifies the selected CM119.
+ * @return Zero on success, or minus one when semantic setup fails closed.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_open_mixer(struct chan_usbradio_pvt *o)
+{
+	enum usbradioplus_hardware_adapter_result result;
+
+	if (!o || !o->plus_hardware_adapter_prepared)
+		return -1;
+	result = usbradioplus_hardware_mixer_poc_open(&o->plus_hardware_mixer_poc,
+						      &o->plus_hardware_adapter);
+	if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		o->micplaymax = usbradioplus_hardware_mixer_poc_sidetone_available(
+					&o->plus_hardware_mixer_poc)
+					? 999
+					: 0;
+		if (!o->plus_advanced && o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE &&
+		    !o->micplaymax) {
+			ast_log(LOG_ERROR,
+				"Channel %s: hardware local repeat requires a sidetone control\n",
+				o->name);
+		} else if (!cm119_gpio_poc_apply_mixer(o)) {
+			return 0;
+		}
+	}
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		ast_log(LOG_ERROR,
+			"Channel %s: CM119 GPIO proof cannot open semantic RX/TX mixer controls "
+			"(%d)\n",
+			o->name, result);
+	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
+	return -1;
+}
+
+/**
+ * @brief Reserve a selected CM119 identity without resolving a legacy mixer card.
+ * @param o Channel whose adapter-owned USB identity is reserved.
+ * @return Zero on success, or minus one when another channel already owns it.
+ *
+ * The former device allocator reserved a numeric
+ * ALSA mixer. The semantic bridge now owns that hardware control. This small
+ * registry reservation remains only to keep the normal legacy allocator from
+ * claiming the same configured interface while the combined proof is live.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_reserve_device_identity(struct chan_usbradio_pvt *o)
+{
+	struct chan_usbradio_pvt *other;
+
+	ast_mutex_lock(&usb_dev_lock);
+	o->hasusb = 0;
+	o->usbass = 0;
+	o->devicenum = (int)o->plus_hardware_adapter.audio_selection.alsa_card_index;
+	for (other = usbradio_default.next; other; other = other->next) {
+		if (other != o && other->usbass &&
+		    !strcmp(other->plus_hardware_adapter.usb_port_path,
+			    o->plus_hardware_adapter.usb_port_path))
+			break;
+	}
+	if (other) {
+		ast_log(LOG_ERROR,
+			"Channel %s: Device string %s is already assigned to channel %s\n", o->name,
+			o->devstr, other->name);
+		ast_mutex_unlock(&usb_dev_lock);
+		return -1;
+	}
+	o->usbass = 1;
+	ast_mutex_unlock(&usb_dev_lock);
+	/* The direct proof exposes the same portable scale as processing and tuning.
+	 * No physical ALSA mixer step count is retained or translated here. */
+	o->micmax = (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM;
+	o->spkrmax = (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM;
+	o->micplaymax = 0;
+	o->newname = 0;
+	ast_log(LOG_NOTICE, "Channel %s: CM119 GPIO proof reserves adapter identity %s at USB %s\n",
+		o->name, o->devstr, o->plus_hardware_adapter.usb_port_path);
+	return 0;
+}
+
+/**
+ * @brief Release a prior adapter-identity reservation after the worker stops.
+ * @param o Channel whose device reservation is no longer live.
+ */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_release_device_identity(struct chan_usbradio_pvt *o)
+{
+	ast_mutex_lock(&usb_dev_lock);
+	o->hasusb = 0;
+	o->usbass = 0;
+	o->devicenum = 0;
+	ast_mutex_unlock(&usb_dev_lock);
+}
+
+/**
+ * @brief Drain advisory PTT wake bytes without making wake delivery mandatory.
+ * @param o Channel owning the nonblocking wake pipe.
+ * @return Zero on success, or minus one on a non-recoverable pipe failure.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_drain_pttkick(const struct chan_usbradio_pvt *o)
+{
+	char byte;
+	int bytes;
+
+	do {
+		bytes = read(o->pttkick[0], &byte, 1);
+	} while (bytes > 0);
+	if (bytes < 0 && errno != EAGAIN
+#if EWOULDBLOCK != EAGAIN
+	    && errno != EWOULDBLOCK
+#endif
+	)
+		return -1;
+	return 0;
+}
+
+/**
+ * \brief Return a monotonic millisecond timestamp for GPIO pulse scheduling.
+ * \return Current monotonic time in milliseconds, with an Asterisk-time fallback.
+ *
+ * The GPIO facade owns pulse timing, but this bridge retains the legacy rule
+ * that an active clip LED pulse is not extended by another clip request.
+ */
+URP_CHANNEL_LOCAL uint64_t cm119_gpio_poc_monotonic_milliseconds(void)
+{
+	struct timespec now;
+	struct timeval fallback;
+
+	if (clock_gettime(CLOCK_MONOTONIC, &now) == 0)
+		return (uint64_t)now.tv_sec * 1000U + (uint64_t)now.tv_nsec / 1000000U;
+	fallback = ast_tvnow();
+	return (uint64_t)fallback.tv_sec * 1000U + (uint64_t)fallback.tv_usec / 1000U;
+}
+
+/**
+ * @brief Service one pending legacy tuning-EEPROM command through the GPIO facade.
+ * @param o Channel whose direct CM119 worker owns the GPIO device.
+ *
+ * The legacy tuner continues to exchange a zero-based 13-word image. The
+ * GPIO adapter owns physical addresses, checksum validation, and restoration
+ * of its latest output state after the transfer. This control-plane helper is
+ * called by the same worker that services GPIO, never by the native callback.
+ */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o)
+{
+	struct rptadv_gpio_eeprom_image image;
+	enum usbradioplus_hardware_adapter_result result;
+	const size_t user_word_count = sizeof(o->eeprom) / sizeof(o->eeprom[0]);
+	unsigned char command;
+
+	_Static_assert(EEPROM_USER_LEN == USBRADIOPLUS_HARDWARE_EEPROM_POC_USER_WORD_COUNT,
+		       "CM119 EEPROM user region must retain the established 13-word layout");
+	_Static_assert(sizeof(o->eeprom[0]) == sizeof(uint16_t),
+		       "legacy EEPROM words must remain 16-bit");
+	if (!o->wanteeprom)
+		return;
+
+	ast_mutex_lock(&o->eepromlock);
+	command = (unsigned char)o->eepromctl;
+	if (!command) {
+		ast_mutex_unlock(&o->eepromlock);
+		return;
+	}
+	memset(&image, 0, sizeof(image));
+	if (command == 1U) {
+		image.struct_size = sizeof(image);
+		result = usbradioplus_hardware_adapter_read_eeprom(&o->plus_hardware_adapter,
+								   &image);
+		if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK &&
+		    !usbradioplus_hardware_eeprom_poc_import(&image, (uint16_t *)o->eeprom,
+							     user_word_count)) {
+			o->rxmixerset = o->eeprom[EEPROM_USER_RXMIXERSET];
+			o->txmixaset = o->eeprom[EEPROM_USER_TXMIXASET];
+			o->txmixbset = o->eeprom[EEPROM_USER_TXMIXBSET];
+			o->txctcssadj = o->eeprom[EEPROM_USER_TXCTCSSADJ];
+			o->rxsquelchadj = o->eeprom[EEPROM_USER_RXSQUELCHADJ];
+			mixer_write(o);
+			mult_set(o);
+			set_txctcss_level(o);
+			ast_log(LOG_NOTICE, "Channel %s: EEPROM Loaded\n", o->name);
+		} else if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+			ast_log(LOG_ERROR, "Channel %s: EEPROM bad magic number or checksum\n",
+				o->name);
+		} else {
+			ast_log(LOG_ERROR,
+				"Channel %s: USB adapter has no EEPROM installed or checksum is "
+				"bad\n",
+				o->name);
+		}
+	} else if (command == 2U) {
+		/* Both arrays and the exact user-word count are guaranteed above. */
+		(void)usbradioplus_hardware_eeprom_poc_export((const uint16_t *)o->eeprom,
+							      user_word_count, &image);
+		if (usbradioplus_hardware_adapter_write_eeprom(&o->plus_hardware_adapter, &image) ==
+		    USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+			ast_log(LOG_NOTICE, "Channel %s: USB parameters written to EEPROM\n",
+				o->name);
+		} else {
+			ast_log(LOG_ERROR, "Channel %s: Unable to write tuning EEPROM\n", o->name);
+		}
+	}
+	o->eepromctl = 0;
+	ast_mutex_unlock(&o->eepromlock);
+}
+
+/** @brief Queue one established parallel-input text event to the Asterisk owner. */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_parallel_input_event(void *opaque, unsigned int pin,
+							   int value)
+{
+	struct chan_usbradio_pvt *o = opaque;
+	struct ast_frame frame = {
+		.frametype = AST_FRAME_TEXT,
+		.src = __PRETTY_FUNCTION__,
+	};
+	char text[32];
+
+	if (!o || !o->owner)
+		return;
+	snprintf(text, sizeof(text), "PP%u %d\n", pin, value);
+	frame.data.ptr = text;
+	frame.datalen = strlen(text);
+	ast_queue_frame(o->owner, &frame);
+}
+
+/**
+ * @brief Service the optional adapter-owned legacy parallel transport.
+ * @param o Channel whose direct proof owns the worker.
+ * @param hardware_inputs Optional recipient for mapped parallel COS and CTCSS bits.
+ * @param force_unkey Nonzero performs the fail-safe parallel PTT/RTX release only.
+ * @return Zero on success, or minus one after a facade failure.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_service_parallel(struct chan_usbradio_pvt *o,
+						      unsigned int *hardware_inputs,
+						      int force_unkey)
+{
+	struct usbradioplus_parallel_adapter_poc_service_request request = {
+		.ptt_asserted =
+			atomic_load_explicit(&o->plus_hardware_ptt_request, memory_order_acquire),
+		.ptt_inverted = o->invertptt,
+		.ptt_mask = hidthread_parallel_ptt_mask(o),
+		.force_unkey = force_unkey,
+	};
+	struct rptadv_gpio_parallel_input_snapshot inputs = {
+		.struct_size = sizeof(inputs),
+	};
+	struct rptadv_gpio_parallel_stats stats = {
+		.struct_size = sizeof(stats),
+	};
+	struct usbradioplus_radio_program_request program;
+	enum usbradioplus_hardware_adapter_result result;
+	uint32_t translated;
+	uint8_t output;
+	int had_input;
+	int last_input;
+	struct chan_usbradio_pvt *owner;
+
+	if (!cm119_gpio_poc_parallel_requested(o))
+		return 0;
+	request.have_program = !force_unkey && usbradioplus_read_radio_program_request(o, &program);
+	if (request.have_program) {
+		request.program_generation = program.generation;
+		request.rx_frequency_hz = program.rx_frequency;
+		request.tx_frequency_hz = program.tx_frequency;
+		request.high_power = program.high_power;
+	}
+	ast_mutex_lock(&pp_lock);
+	owner = parallel_owner;
+	if (!owner) {
+		ast_mutex_unlock(&pp_lock);
+		return force_unkey ? 0 : -1;
+	}
+	output = (uint8_t)pp_val;
+	result = usbradioplus_parallel_adapter_poc_service(
+		&owner->plus_parallel_adapter_poc, &owner->plus_hardware_adapter,
+		&o->plus_parallel_adapter_poc, &request, &output, hardware_inputs ? &inputs : NULL,
+		hardware_inputs ? &stats : NULL);
+	if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		pp_val = (int8_t)usbradioplus_parallel_adapter_poc_persistent_output(
+			&owner->plus_parallel_adapter_poc);
+	ast_mutex_unlock(&pp_lock);
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		return -1;
+	if (!hardware_inputs)
+		return 0;
+	had_input = o->had_pp_in;
+	last_input = o->last_pp_in;
+	translated = usbradioplus_parallel_adapter_poc_translate_inputs(
+		(uint8_t)inputs.status_mask, o->pps, &had_input, &last_input,
+		cm119_gpio_poc_parallel_input_event, o);
+	o->had_pp_in = (char)had_input;
+	o->last_pp_in = (int8_t)last_input;
+	if (translated & USBRADIOPLUS_PARALLEL_ADAPTER_INPUT_CARRIER)
+		*hardware_inputs |= URP_HARDWARE_INPUT_PARALLEL_CARRIER;
+	if (translated & USBRADIOPLUS_PARALLEL_ADAPTER_INPUT_CTCSS)
+		*hardware_inputs |= URP_HARDWARE_INPUT_PARALLEL_CTCSS;
+	return 0;
+}
+
+/**
+ * @brief Apply the latest PTT request and publish one CM119 HID input snapshot.
+ * @param o Channel whose atomics bridge native audio and the hardware owner.
+ * @return Zero after a complete service cycle, or minus one on hardware failure.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_service(struct chan_usbradio_pvt *o)
+{
+	struct rptadv_gpio_input_snapshot inputs = {
+		.struct_size = sizeof(inputs),
+	};
+	struct rptadv_gpio_device_stats stats = {
+		.struct_size = sizeof(stats),
+	};
+	unsigned int hardware_inputs = 0U;
+	enum usbradioplus_hardware_adapter_result result;
+	uint64_t monotonic_milliseconds;
+	uint32_t clip_requested;
+
+	/* The adapter publishes output state lock-free. Keep the legacy control
+	 * fields coherent while copying them, then perform the only HID I/O in the
+	 * facade service call below after releasing this control-plane mutex. */
+	ast_mutex_lock(&o->usblock);
+	result = usbradioplus_hardware_mixer_poc_set_sidetone(
+		&o->plus_hardware_mixer_poc, (uint32_t)o->duplex3,
+		!o->plus_advanced && o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE &&
+			atomic_load_explicit(&o->plus_portaudio_delivered_keyed,
+					     memory_order_acquire));
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		ast_mutex_unlock(&o->usblock);
+		return -1;
+	}
+	monotonic_milliseconds = cm119_gpio_poc_monotonic_milliseconds();
+	clip_requested = (uint32_t)atomic_exchange_explicit(&o->plus_clip_led_request, 0,
+							    memory_order_acq_rel);
+	result = usbradioplus_hardware_gpio_poc_publish(
+		&o->plus_hardware_adapter, &o->plus_hardware_gpio_poc_state,
+		(uint32_t)atomic_load_explicit(&o->plus_hardware_ptt_request, memory_order_acquire),
+		o->plus_hardware_adapter.gpio_output_enable_mask, (uint32_t)o->hid_gpio_val,
+		o->hid_gpio_pulsetimer, ARRAY_LEN(o->hid_gpio_pulsetimer),
+		&o->plus_hardware_gpio_poc_cancel_mask,
+		o->clipledgpio > 0 ? UINT32_C(1) << (o->clipledgpio - 1) : 0U, clip_requested,
+		CLIP_LED_HOLD_TIME_MS, monotonic_milliseconds);
+	o->gpio_set = 0;
+	ast_mutex_unlock(&o->usblock);
+
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK ||
+	    usbradioplus_hardware_adapter_service_gpio(&o->plus_hardware_adapter, &inputs,
+						       &stats) != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+		return -1;
+	cm119_gpio_poc_service_eeprom(o);
+	if (cm119_gpio_poc_service_parallel(o, &hardware_inputs, 0))
+		return -1;
+	if (inputs.cor_active)
+		hardware_inputs |= URP_HARDWARE_INPUT_HID_CARRIER;
+	if (inputs.ctcss_active)
+		hardware_inputs |= URP_HARDWARE_INPUT_HID_CTCSS;
+	usbradioplus_publish_hardware_inputs(o, hardware_inputs);
+	atomic_store_explicit(&o->plus_hardware_ptt_applied, !!stats.ptt_applied,
+			      memory_order_release);
+	atomic_store_explicit(&o->plus_hardware_online, !!stats.online, memory_order_release);
+	atomic_store_explicit(&o->plus_hardware_last_service_time, (long long)time(NULL),
+			      memory_order_release);
+	return 0;
+}
+
+/**
+ * @brief Stop direct audio, unkey through the adapter, and clear published state.
+ * @param o Channel whose experimental hardware worker is being retired.
+ */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_stop(struct chan_usbradio_pvt *o)
+{
+	struct rptadv_gpio_output_action action = {
+		.struct_size = sizeof(action),
+		.abi_version = RPTADV_GPIO_ADAPTER_ABI_VERSION,
+		.ptt_asserted = 0U,
+	};
+
+	if (o->plus_hardware_adapter_prepared) {
 		ast_mutex_lock(&o->usblock);
-		o->hid_gpio_val &= ~o->hid_io_ptt;
-		if (o->invertptt)
-			o->hid_gpio_val |= o->hid_io_ptt;
-		buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
-		buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-		ast_radio_hid_set_outputs(usb_handle, buf);
+		action.gpio_output_mask = (uint32_t)o->hid_gpio_val &
+					  o->plus_hardware_adapter.gpio_output_enable_mask;
 		ast_mutex_unlock(&o->usblock);
 	}
-	o->lasttx = 0;
+
+	usbradioplus_portaudio_poc_stop(o);
+	atomic_store_explicit(&o->plus_hardware_ptt_request, 0, memory_order_release);
+	if (o->plus_hardware_adapter_prepared) {
+		if (cm119_gpio_poc_service_parallel(o, NULL, 1))
+			ast_log(LOG_WARNING,
+				"Channel %s: adapter parallel transport could not complete its "
+				"unkey\n",
+				o->name);
+		(void)usbradioplus_hardware_adapter_publish_gpio(&o->plus_hardware_adapter,
+								 &action);
+		(void)usbradioplus_hardware_adapter_service_gpio(&o->plus_hardware_adapter, NULL,
+								 NULL);
+	}
+	usbradioplus_publish_hardware_inputs(o, 0U);
 	atomic_store_explicit(&o->plus_hardware_ptt_applied, 0, memory_order_release);
 	atomic_store_explicit(&o->plus_hardware_online, 0, memory_order_release);
+	atomic_store_explicit(&o->plus_hardware_last_service_time, 0, memory_order_release);
+	cm119_gpio_poc_discard_hardware_adapter(o);
 }
 
+/** \brief Return whether the legacy channel has requested worker shutdown. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_stop_requested(void *opaque)
+{
+	const struct chan_usbradio_pvt *o = opaque;
+
+	return atomic_load_explicit(&o->plus_hardware_stop_request, memory_order_acquire);
+}
+
+/** \brief Return whether the legacy worker considers its composed device online. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_online(void *opaque)
+{
+	const struct chan_usbradio_pvt *o = opaque;
+
+	return atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire);
+}
+
+/** \brief Clear legacy-published direct-hardware state before one worker lifetime. */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_clear_published_state(void *opaque)
+{
+	struct chan_usbradio_pvt *o = opaque;
+
+	atomic_store_explicit(&o->plus_hardware_ptt_applied, 0, memory_order_release);
+	atomic_store_explicit(&o->plus_hardware_online, 0, memory_order_release);
+	atomic_store_explicit(&o->plus_hardware_last_service_time, 0, memory_order_release);
+	usbradioplus_publish_hardware_inputs(o, 0U);
+}
+
+/** \brief Validate one legacy CM119 GPIO proof configuration. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_validate(void *opaque)
+{
+	return cm119_gpio_poc_validate(opaque);
+}
+
+/**
+ * \brief Start one complete legacy CM119 GPIO ownership attempt.
+ * \param opaque Legacy channel-private state.
+ * \return Zero on success, or minus one after adapter-specific diagnostics.
+ *
+ * The common worker owns retry and cleanup.  This thin callback retains the
+ * legacy adapter's device reservation, semantic mixer, and Asterisk radio
+ * preparation because those operations depend on its private channel layout.
+ */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_start_attempt(void *opaque)
+{
+	struct chan_usbradio_pvt *o = opaque;
+	enum usbradioplus_hardware_adapter_result hardware_result;
+
+	if (cm119_gpio_poc_prepare_hardware_adapter(o)) {
+		ast_log(LOG_ERROR,
+			"Channel %s: CM119 GPIO proof will not start without a proven "
+			"audio/GPIO identity\n",
+			o->name);
+		return -1;
+	}
+	if (cm119_gpio_poc_reserve_device_identity(o) || cm119_gpio_poc_open_mixer(o))
+		return -1;
+	hardware_result = usbradioplus_hardware_adapter_open_gpio(&o->plus_hardware_adapter);
+	if (hardware_result != USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		ast_log(LOG_ERROR,
+			"Channel %s: CM119 GPIO proof cannot claim composed CM119 %s "
+			"(result %d)\n",
+			o->name, o->plus_hardware_adapter.usb_port_path, hardware_result);
+		return -1;
+	}
+	if (cm119_gpio_poc_parallel_requested(o)) {
+		ast_mutex_lock(&pp_lock);
+		usbradioplus_parallel_adapter_poc_init(&o->plus_parallel_adapter_poc);
+		hardware_result = USBRADIOPLUS_HARDWARE_ADAPTER_OK;
+		if (!parallel_owner) {
+			struct chan_usbradio_pvt *channel;
+			uint8_t initial_output = (uint8_t)pp_val;
+
+			/* A failed port may retain the last keyed baseline. Reopen with
+			 * every configured transmitter released; live workers reapply PTT. */
+			for (channel = usbradio_default.next; channel; channel = channel->next) {
+				struct usbradioplus_radio_program_request program;
+				const uint8_t mask = hidthread_parallel_ptt_mask(channel);
+
+				initial_output &= (uint8_t)~mask;
+				if (channel->invertptt)
+					initial_output |= mask;
+				if (usbradioplus_read_radio_program_request(channel, &program) &&
+				    program.rx_frequency)
+					initial_output &= (uint8_t)~UINT8_C(0x18);
+			}
+			hardware_result = usbradioplus_parallel_adapter_poc_open(
+				&o->plus_parallel_adapter_poc, &o->plus_hardware_adapter, haspp,
+				pport, (uint32_t)pbase, initial_output);
+			/* Preserve the configured raw-I/O fallback through the adapter. */
+			if (hardware_result != USBRADIOPLUS_HARDWARE_ADAPTER_OK && haspp == 1 &&
+			    pbase)
+				hardware_result = usbradioplus_parallel_adapter_poc_open(
+					&o->plus_parallel_adapter_poc, &o->plus_hardware_adapter, 2,
+					NULL, (uint32_t)pbase, initial_output);
+			if (hardware_result == USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+				pp_val = (int8_t)initial_output;
+				parallel_owner = o;
+			}
+		}
+		ast_mutex_unlock(&pp_lock);
+		if (hardware_result != USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+			ast_log(LOG_ERROR, "Channel %s: cannot claim parallel transport (%d)\n",
+				o->name, hardware_result);
+			return -1;
+		}
+	}
+	if (hidthread_open_pttkick(o) || hidthread_prepare_radio(o) ||
+	    !o->plus_hardware_mixer_poc.opened || hidthread_start_audio(o)) {
+		ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof startup failed\n", o->name);
+		return -1;
+	}
+	return 0;
+}
+
+/** \brief Service one legacy CM119 GPIO proof cycle. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_service(void *opaque)
+{
+	return cm119_gpio_poc_service(opaque);
+}
+
+/** \brief Publish successful startup and retain the established ownership notice. */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_mark_online(void *opaque)
+{
+	struct chan_usbradio_pvt *o = opaque;
+
+	atomic_store_explicit(&o->plus_hardware_online, 1, memory_order_release);
+	ast_log(LOG_NOTICE,
+		"Channel %s: CM119 GPIO proof owns USB %s (vendor %04x, product %04x)\n", o->name,
+		o->plus_hardware_adapter.usb_port_path,
+		o->plus_hardware_adapter.gpio_info.vendor_id,
+		o->plus_hardware_adapter.gpio_info.product_id);
+}
+
+/** \brief Return the legacy advisory PTT wake pipe's read descriptor. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_wake_read_fd(void *opaque)
+{
+	return ((const struct chan_usbradio_pvt *)opaque)->pttkick[0];
+}
+
+/** \brief Drain pending bytes from the legacy advisory PTT wake pipe. */
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_drain_wake(void *opaque)
+{
+	return cm119_gpio_poc_drain_pttkick(opaque);
+}
+
+/** \brief Stop one legacy attempt before its identity reservation is released. */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_stop_attempt(void *opaque)
+{
+	cm119_gpio_poc_stop(opaque);
+}
+
+/** \brief Release the legacy device reservation after an attempt stops. */
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_release_identity(void *opaque)
+{
+	cm119_gpio_poc_release_device_identity(opaque);
+}
+
+/** \brief Translate common worker failure classifications into legacy diagnostics. */
+URP_CHANNEL_LOCAL void
+cm119_gpio_poc_worker_report(void *opaque, enum usbradioplus_cm119_gpio_poc_worker_event event,
+			     int detail)
+{
+	const struct chan_usbradio_pvt *o = opaque;
+
+	switch (event) {
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_VALIDATE_FAILED:
+		ast_log(LOG_ERROR, "Channel %s: CM119 GPIO adapter is unavailable\n", o->name);
+		break;
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_INITIAL_SERVICE_FAILED:
+		ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof initial HID service failed\n",
+			o->name);
+		break;
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_POLL_FAILED:
+		ast_log(LOG_WARNING, "Channel %s: CM119 GPIO proof poll failed: %s\n", o->name,
+			strerror(detail));
+		break;
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_WAKE_FAILED:
+		ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof wake pipe failed: %s\n", o->name,
+			strerror(detail));
+		break;
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_SERVICE_FAILED:
+		ast_log(LOG_ERROR, "Channel %s: CM119 GPIO proof HID service failed\n", o->name);
+		break;
+	case USBRADIOPLUS_CM119_GPIO_POC_WORKER_START_FAILED:
+		/* The start callback retained each established detailed diagnostic. */
+		break;
+	}
+}
+
+/**
+ * @brief Own CM119 HID signaling through the opt-in adapter proof.
+ * @param arg Private channel state supplied by the Asterisk channel lifecycle.
+ * @return Always null after the exclusive hardware worker stops.
+ *
+ * This is deliberately a narrow ownership replacement: PortAudio owns PCM,
+ * this worker owns HID PTT/COR/CTCSS and semantic mixer controls.  No audio
+ * callback waits on HID I/O or mixer control I/O.
+ */
+static void *cm119_gpio_poc_hidthread(void *arg)
+{
+	const struct usbradioplus_cm119_gpio_poc_worker_ops ops = {
+		.struct_size = sizeof(ops),
+		.opaque = arg,
+		.stop_requested = cm119_gpio_poc_worker_stop_requested,
+		.online = cm119_gpio_poc_worker_online,
+		.clear_published_state = cm119_gpio_poc_worker_clear_published_state,
+		.validate = cm119_gpio_poc_worker_validate,
+		.start_attempt = cm119_gpio_poc_worker_start_attempt,
+		.service = cm119_gpio_poc_worker_service,
+		.mark_online = cm119_gpio_poc_worker_mark_online,
+		.wake_read_fd = cm119_gpio_poc_worker_wake_read_fd,
+		.drain_wake = cm119_gpio_poc_worker_drain_wake,
+		.stop_attempt = cm119_gpio_poc_worker_stop_attempt,
+		.release_identity = cm119_gpio_poc_worker_release_identity,
+		.report = cm119_gpio_poc_worker_report,
+	};
+
+	return usbradioplus_cm119_gpio_poc_worker_run(&ops);
+}
+#endif
+
+/* Service device controls without involving the native audio callback.
+ * The test-visible declaration documents this shared worker entry point. */
 URP_CHANNEL_LOCAL void *hidthread(void *arg)
 {
-	unsigned char buf[4], bufsave[4], keyed, ctcssed;
-	unsigned int program_generation = ~0U;
-	struct usbradioplus_radio_program_request program_request;
-	char *s;
-	register int i, j, k;
-	int res;
-	struct usb_device *usb_dev;
-	struct usb_dev_handle *usb_handle;
-	struct chan_usbradio_pvt *o = arg, *ao;
-	struct timeval then;
-	struct pollfd rfds[1];
-
-	usb_dev = NULL;
-	usb_handle = NULL;
-	memset(buf, 0, sizeof(buf));
-	memset(bufsave, 0, sizeof(bufsave));
-	/* enable gpio_set so that we will write GPIO information upon start up */
-	o->gpio_set = 1;
-	atomic_store_explicit(&o->plus_hardware_ptt_applied, 0, memory_order_release);
-	atomic_store_explicit(&o->plus_hardware_online, 0, memory_order_release);
-
-#ifdef HAVE_SYS_IO
-	if (haspp == 2) {
-		ioperm(pbase, 2, 1);
-	}
-#endif
-	/* This is the main loop for this thread.
-	 * It performs setup and initialization of the usb device.
-	 * After setup is complete and the device can be accessed,
-	 * it enters a processing loop responsible for interacting
-	 * with the usb hid device
-	 */
-	while (!o->stophid) {
-		char serial[sizeof(o->serial)] = {'\0'};
-
-		ast_radio_time(&o->lasthidtime);
-		ast_mutex_lock(&usb_dev_lock);
-		o->hasusb = 0;
-		o->usbass = 0;
-		o->devicenum = 0;
-		if (usb_handle) {
-			hidthread_failsafe_unkey(o, usb_handle, buf);
-			usb_close(usb_handle);
-		}
-		usb_handle = NULL;
-		usb_dev = NULL;
-		ast_radio_hid_device_mklist();
-
-		/* Check to see if our specified device string
-		 * matches to a device that is attached to this system, or exists
-		 * in our channel configuration.
-		 *
-		 * If no device string is specified, attempt to assign the first
-		 * found device.
-		 */
-		ast_radio_time(&o->lasthidtime);
-
-		/* If configuration has a serial number defined, find the device */
-		if (!ast_strlen_zero(o->serial)) {
-			int index;
-			char *index_devstr = NULL;
-
-			for (index = 0;; index++) {
-				index_devstr = ast_radio_usb_get_devstr(index);
-				if (ast_strlen_zero(index_devstr)) {
-					/* if no more devices */
-					break;
-				}
-
-				/* get the device serial number */
-				if (ast_radio_usb_get_serial(index_devstr, serial,
-							     sizeof(serial)) == 0) {
-					/* if no serial number */
-					continue;
-				}
-
-				if (strcmp(o->serial, serial) == 0) {
-					/*
-					 * We found a device with the matching serial number, set
-					 * the devstr to the matching device.
-					 */
-					ast_log(LOG_NOTICE, "Matched device serial %s to %s\n",
-						o->serial, o->name);
-					ast_copy_string(o->devstr, index_devstr, sizeof(o->devstr));
-					break;
-				}
-			}
-		}
-
-		/* Automatically assign a devstr if one was not specified in the configuration. */
-		if (ast_strlen_zero(o->devstr)) {
-			int index = 0;
-			char *index_devstr = NULL;
-
-			for (;;) {
-				index_devstr = ast_radio_usb_get_devstr(index);
-				if (ast_strlen_zero(index_devstr)) {
-					if (!o->device_error) {
-						ast_log(LOG_ERROR,
-							"Channel %s: No USB devices are available "
-							"for assignment.\n",
-							o->name);
-						o->device_error = 1;
-					}
-					ast_mutex_unlock(&usb_dev_lock);
-					usleep(500000);
-					break;
-				}
-				/* We found an available device - see if it already in use */
-				for (ao = usbradio_default.next; ao; ao = ao->next) {
-					if (ao->usbass && (!strcmp(ao->devstr, index_devstr))) {
-						break;
-					}
-				}
-				if (ao) {
-					index++;
-					continue;
-				}
-				/* We found an unused device assign it to our node */
-				ast_copy_string(o->devstr, index_devstr, sizeof(o->devstr));
-				ast_log(LOG_NOTICE,
-					"Channel %s: Automatically assigned USB device %s to "
-					"USBRadio channel\n",
-					o->name, o->devstr);
-				if (ast_radio_usb_get_serial(index_devstr, serial, sizeof(serial)) >
-				    0) {
-					ast_copy_string(o->serial, serial, sizeof(o->serial));
-				}
-				break;
-			}
-			if (ast_strlen_zero(o->devstr)) {
-				continue;
-			}
-		}
-
-		if (!ast_radio_usb_list_check(o->devstr)) {
-			/* The device string did not match.
-			 * Now look through the attached devices and see
-			 * one of those is associated with one of our
-			 * configured channels.
-			 */
-			s = find_installed_usb_match();
-			if (ast_strlen_zero(s)) {
-				if (!o->device_error) {
-					ast_log(LOG_ERROR,
-						"Channel %s: Device string %s was not found.\n",
-						o->name, o->devstr);
-					o->device_error = 1;
-				}
-				ast_mutex_unlock(&usb_dev_lock);
-				usleep(500000);
-				continue;
-			}
-			i = ast_radio_usb_get_usbdev(s);
-			if (i < 0) {
-				ast_mutex_unlock(&usb_dev_lock);
-				usleep(500000);
-				continue;
-			}
-			/* See if this device is already assigned to another usb channel */
-			for (ao = usbradio_default.next; ao; ao = ao->next) {
-				if (ao->usbass && (!strcmp(ao->devstr, s))) {
-					break;
-				}
-			}
-			if (ao) {
-				ast_log(LOG_ERROR,
-					"Channel %s: Device string %s is already assigned to "
-					"channel %s",
-					o->name, s, ao->name);
-				ast_mutex_unlock(&usb_dev_lock);
-				usleep(500000);
-				continue;
-			}
-			ast_log(LOG_NOTICE,
-				"Channel %s: Assigned USB device %s to usbradio channel\n", o->name,
-				s);
-			ast_copy_string(o->devstr, s, sizeof(o->devstr));
-		}
-		/* Double check to see if the device string is assigned to another usb channel */
-		for (ao = usbradio_default.next; ao; ao = ao->next) {
-			if (ao->usbass && (!strcmp(ao->devstr, o->devstr))) {
-				break;
-			}
-		}
-		if (ao) {
-			ast_log(LOG_ERROR,
-				"Channel %s: Device string %s is already assigned to channel %s",
-				o->name, o->devstr, ao->name);
-			ast_mutex_unlock(&usb_dev_lock);
-			usleep(500000);
-			continue;
-		}
-		/* get the index to the device and assign it to our channel */
-		i = ast_radio_usb_get_usbdev(o->devstr);
-		if (i < 0) {
-			ast_mutex_unlock(&usb_dev_lock);
-			usleep(500000);
-			continue;
-		}
-		o->devicenum = i;
-		o->device_error = 0;
-		ast_radio_time(&o->lasthidtime);
-		o->usbass = 1;
-		ast_mutex_unlock(&usb_dev_lock);
-		/* set the audio mixer values */
-		o->micmax = ast_radio_amixer_max(o->devicenum, MIXER_PARAM_MIC_CAPTURE_VOL);
-		o->spkrmax = ast_radio_amixer_max(o->devicenum, MIXER_PARAM_SPKR_PLAYBACK_VOL);
-		if (o->spkrmax == -1) {
-			o->newname = 1;
-			o->spkrmax = ast_radio_amixer_max(o->devicenum,
-							  MIXER_PARAM_SPKR_PLAYBACK_VOL_NEW);
-		}
-		/* initialize the usb device */
-		usb_dev = ast_radio_hid_device_init(o->devstr);
-		if (usb_dev == NULL) {
-			ast_log(LOG_ERROR, "Channel %s: Cannot initialize device %s\n", o->name,
-				o->devstr);
-			usleep(500000);
-			continue;
-		}
-		/* open the usb device device */
-		usb_handle = usb_open(usb_dev);
-		if (usb_handle == NULL) {
-			ast_log(LOG_ERROR, "Channel %s: Cannot open device %s\n", o->name,
-				o->devstr);
-			usleep(500000);
-			continue;
-		}
-		/* attempt to claim the usb hid interface and detach from the kernel */
-		if (usb_claim_interface(usb_handle, C108_HID_INTERFACE) < 0) {
-			if (usb_detach_kernel_driver_np(usb_handle, C108_HID_INTERFACE) < 0) {
-				ast_log(LOG_ERROR,
-					"Channel %s: Is not able to detach the USB device\n",
-					o->name);
-				usleep(500000);
-				continue;
-			}
-			if (usb_claim_interface(usb_handle, C108_HID_INTERFACE) < 0) {
-				ast_log(LOG_ERROR,
-					"Channel %s: Is not able to claim the USB device\n",
-					o->name);
-				usleep(500000);
-				continue;
-			}
-		}
-		/* write initial value to GPIO */
-		memset(buf, 0, sizeof(buf));
-		buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-		buf[o->hid_gpio_loc] = o->hid_gpio_val;
-		ast_radio_hid_set_outputs(usb_handle, buf);
-		memcpy(bufsave, buf, sizeof(buf));
-		/* setup the pttkick pipe
-		 * this pipe is used for timing the main processing loop
-		 * it also signaled when the ptt changes to exit the timer
-		 */
-		if (o->pttkick[0] != -1) {
-			close(o->pttkick[0]);
-			o->pttkick[0] = -1;
-		}
-		if (o->pttkick[1] != -1) {
-			close(o->pttkick[1]);
-			o->pttkick[1] = -1;
-		}
-		if (pipe(o->pttkick) == -1) {
-			ast_log(LOG_ERROR, "Channel %s: Is not able to create a pipe\n", o->name);
-			hidthread_failsafe_unkey(o, usb_handle, buf);
-			usb_close(usb_handle);
-			return NULL;
-		}
-		/* A control-plane wake is advisory: the worker also polls atomics every
-		 * 50 ms.  Never let a full wake pipe block an Asterisk control thread. */
-		if (fcntl(o->pttkick[0], F_SETFL, fcntl(o->pttkick[0], F_GETFL) | O_NONBLOCK) ||
-		    fcntl(o->pttkick[1], F_SETFL, fcntl(o->pttkick[1], F_GETFL) | O_NONBLOCK)) {
-			ast_log(LOG_ERROR,
-				"Channel %s: Is not able to make the wake pipe nonblocking\n",
-				o->name);
-			close(o->pttkick[0]);
-			close(o->pttkick[1]);
-			o->pttkick[0] = -1;
-			o->pttkick[1] = -1;
-			hidthread_failsafe_unkey(o, usb_handle, buf);
-			usb_close(usb_handle);
-			return NULL;
-		}
-		if ((usb_dev->descriptor.idProduct & 0xfffc) == C108_PRODUCT_ID) {
-			o->devtype = C108_PRODUCT_ID;
-		} else {
-			o->devtype = usb_dev->descriptor.idProduct;
-		}
-		ast_debug(5, "Channel %s: Starting normally.\n", o->name);
-		ast_debug(5, "Channel %s: Attached to usb device %s.\n", o->name, o->devstr);
-		/* setup the xmpr subsystem */
-		if (o->radio == NULL) {
-			urp_radio_state tChan;
-
-			memset(&tChan, 0, sizeof(urp_radio_state));
-
-			tChan.pTxCodeDefault = o->txctcssdefault;
-			tChan.pRxCodeSrc = o->rxctcssfreqs;
-			tChan.pTxCodeSrc = o->txctcssfreqs;
-
-			tChan.rxDemod = o->rxdemod;
-			tChan.rxCdType = effective_rxcdtype(o);
-			tChan.voxHangTime = o->voxhangtime;
-			tChan.rxSqVoxAdj = o->rxsqvoxadj;
-
-			tChan.txMixA = effective_txmixa(o);
-			tChan.txMixB = effective_txmixb(o);
-
-			tChan.rxCpuSaver = o->rxcpusaver;
-			tChan.txCpuSaver = o->txcpusaver;
-
-			tChan.b.rxpolarity = o->rxpolarity;
-			tChan.b.txpolarity = o->txpolarity;
-
-			ast_copy_string(tChan.dcsRxCode, o->dcs_receive_code,
-					sizeof(tChan.dcsRxCode));
-			ast_copy_string(tChan.dcsTxCode, o->dcs_transmit_code,
-					sizeof(tChan.dcsTxCode));
-			tChan.dcsTurnoffEnabled = o->dcs_turnoff_enabled;
-			tChan.dcsTurnoffDuration = o->dcs_turnoff_duration_ms;
-			tChan.dcsPeak = o->dcs_level;
-			tChan.txCtcssTocShift = o->ctcss_phase_shift_degrees;
-			tChan.txCtcssTocTime = o->ctcss_tail_duration_ms;
-			tChan.txCtcssTocToneHz = o->ctcss_tail_frequency_hz;
-
-			tChan.b.lsdrxpolarity = o->lsdrxpolarity;
-			tChan.b.lsdtxpolarity = o->lsdtxpolarity;
-
-			tChan.tracetype = o->tracetype;
-			tChan.tracelevel = o->tracelevel;
-
-			tChan.rptnum = o->rptnum;
-			tChan.idleinterval = o->idleinterval;
-			tChan.turnoffs = o->turnoffs;
-			tChan.area = o->area;
-			tChan.ukey = o->ukey;
-			tChan.name = o->name;
-			tChan.fever = o->fever;
-
-			o->radio = urp_radio_create(&tChan, FRAME_SIZE);
-			if (!o->radio) {
-				ast_log(LOG_ERROR,
-					"Channel %s: signaling engine initialization failed\n",
-					o->name);
-				usleep(500000);
-				continue;
-			}
-
-			o->radio->radioDuplex = o->plus_advanced || o->radioduplex;
-			o->radio->b.loopback = 0;
-			o->radio->txsettletime = o->txsettletime;
-			o->radio->txrxblankingtime = o->txrxblankingtime;
-			o->radio->rxCpuSaver = o->rxcpusaver;
-			o->radio->txCpuSaver = o->txcpusaver;
-
-			*(o->radio->prxSquelchAdjust) =
-				((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
-			*(o->radio->prxVoiceAdjust) = effective_rx_decoder_gain(o) * M_Q8;
-			*(o->radio->prxCtcssAdjust) = o->rxctcssadj * M_Q8;
-			o->radio->rxCtcss->relax = o->rxctcssrelax;
-			o->radio->txTocType = o->txtoctype;
-
-			if (urp_tx_pair_has_tone((enum urp_tx_output_mode)o->txmixa,
-						 (enum urp_tx_output_mode)o->txmixb)) {
-				set_txctcss_level(o);
-			}
-
-			if (!urp_tx_pair_has_voice((enum urp_tx_output_mode)o->txmixa,
-						   (enum urp_tx_output_mode)o->txmixb)) {
-				ast_log(LOG_ERROR, "Channel %s: No txvoice output configured.\n",
-					o->name);
-			}
-
-			if (o->radioactive) {
-				struct chan_usbradio_pvt *active_channel;
-				for (active_channel = usbradio_default.next; active_channel;
-				     active_channel = active_channel->next)
-					active_channel->radioactive = 0;
-				usbradio_active = o->name;
-				o->radioactive = 1;
-				ast_log(LOG_NOTICE, "radio active set to [%s]\n", o->name);
-			}
-		}
-		radio_config(o);
-		mixer_write(o);
-		mult_set(o);
-
-		if (apply_processing_config_overrides(o, o->name))
-			ast_log(LOG_WARNING, "Unable to apply current RadioPlus settings for %s\n",
-				o->name);
-
-		/* Processing hardware overrides are applied by the HID/control thread.
-		 * The native callback only consumes the published atomics. */
-		refresh_processing_hardware(o);
-		mult_set(o);
-		set_txctcss_level(o);
-
-		ast_mutex_lock(&o->eepromlock);
-		if (o->wanteeprom) {
-			o->eepromctl = 1;
-		}
-		ast_mutex_unlock(&o->eepromlock);
-
-		setformat(o, O_RDWR);
-		o->hasusb = 1;
-		o->had_gpios_in = 0;
-		o->lasttx = 0;
-		program_generation = ~0U;
-		atomic_store_explicit(&o->plus_hardware_ptt_applied, 0, memory_order_release);
-		atomic_store_explicit(&o->plus_hardware_online, 1, memory_order_release);
-
-		memset(&rfds, 0, sizeof(rfds));
-		/* The read end is pollable.  Polling the writer can never observe a kick. */
-		rfds[0].fd = o->pttkick[0];
-		rfds[0].events = POLLIN;
-
-		ast_radio_time(&o->lasthidtime);
-		/* Main processing loop for GPIO
-		 * This loop process every 50 milliseconds.
-		 * The timer can be interrupted by writing to
-		 * the pttkick pipe.
-		 */
-		while ((!o->stophid) && o->hasusb) {
-			unsigned int hardware_inputs = 0;
-
-			then = ast_radio_tvnow();
-			/* poll the pttkick pipe - timeout after 50 milliseconds */
-			res = ast_poll(rfds, 1, 50);
-			if (res < 0) {
-				ast_log(LOG_WARNING, "Channel %s: Poll failed: %s\n", o->name,
-					strerror(errno));
-				usleep(10000);
-				continue;
-			}
-			if (rfds[0].revents) {
-				char c;
-				int bytes;
-
-				do {
-					bytes = read(o->pttkick[0], &c, 1);
-				} while (bytes > 0);
-				if (bytes < 0 && errno != EAGAIN
-#if EWOULDBLOCK != EAGAIN
-				    && errno != EWOULDBLOCK
-#endif
-				) {
-					ast_log(LOG_ERROR, "Channel %s: pttkick read failed: %s\n",
-						o->name, strerror(errno));
-				}
-			}
-			/* see if we need to process an eeprom read or write */
-			if (o->wanteeprom) {
-				ast_mutex_lock(&o->eepromlock);
-				if (o->eepromctl == 1) { /* to read */
-					/* if CS okay */
-					if (!ast_radio_get_eeprom(usb_handle, o->eeprom)) {
-						if (o->eeprom[EEPROM_USER_MAGIC_ADDR] !=
-						    EEPROM_MAGIC) {
-							ast_log(LOG_ERROR,
-								"Channel %s: EEPROM bad magic "
-								"number\n",
-								o->name);
-						} else {
-							o->rxmixerset =
-								o->eeprom[EEPROM_USER_RXMIXERSET];
-							o->txmixaset =
-								o->eeprom[EEPROM_USER_TXMIXASET];
-							o->txmixbset =
-								o->eeprom[EEPROM_USER_TXMIXBSET];
-							o->txctcssadj =
-								o->eeprom[EEPROM_USER_TXCTCSSADJ];
-							o->rxsquelchadj =
-								o->eeprom[EEPROM_USER_RXSQUELCHADJ];
-							ast_log(LOG_NOTICE,
-								"Channel %s: EEPROM Loaded\n",
-								o->name);
-							mixer_write(o);
-							mult_set(o);
-							set_txctcss_level(o);
-						}
-					} else {
-						ast_log(LOG_ERROR,
-							"Channel %s: USB adapter has no EEPROM "
-							"installed or Checksum is bad\n",
-							o->name);
-					}
-					ast_radio_hid_set_outputs(usb_handle, bufsave);
-				}
-				if (o->eepromctl == 2) { /* to write */
-					ast_radio_put_eeprom(usb_handle, o->eeprom);
-					ast_radio_hid_set_outputs(usb_handle, bufsave);
-					ast_log(LOG_NOTICE,
-						"Channel %s: USB parameters written to EEPROM\n",
-						o->name);
-				}
-				o->eepromctl = 0;
-				ast_mutex_unlock(&o->eepromlock);
-			}
-			ast_mutex_lock(&o->usblock);
-			buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-			ast_radio_hid_get_inputs(usb_handle, buf);
-			/* See if we are keyed */
-			keyed = !(buf[o->hid_io_cor_loc] & o->hid_io_cor);
-			if (keyed)
-				hardware_inputs |= URP_HARDWARE_INPUT_HID_CARRIER;
-			/* See if we are receiving ctcss */
-			ctcssed = !(buf[o->hid_io_ctcss_loc] & o->hid_io_ctcss);
-			if (ctcssed)
-				hardware_inputs |= URP_HARDWARE_INPUT_HID_CTCSS;
-			/* Get the GPIO information */
-			j = buf[o->hid_gpio_loc];
-			/* If this device is a CM108AH, map the "HOOK" bit (which used to
-			   be GPIO2 in the CM108 into the GPIO position */
-			if (o->devtype == C108AH_PRODUCT_ID) {
-				j |= 2; /* set GPIO2 bit */
-				/* if HOOK is asserted, clear GPIO bit */
-				if (buf[o->hid_io_cor_loc] & 0x10) {
-					j &= ~2;
-				}
-			}
-			for (i = 0; i < GPIO_PINCOUNT; i++) {
-				/* if a valid input bit, dont clear it */
-				if ((o->gpios[i]) && (!strcasecmp(o->gpios[i], "in")) &&
-				    (o->valid_gpios & (1 << i))) {
-					continue;
-				}
-				j &= ~(1 << i); /* clear the bit, since its not an input */
-			}
-			if ((!o->had_gpios_in) || (o->last_gpios_in != j)) {
-				char buf1[100];
-				struct ast_frame fr = {
-					.frametype = AST_FRAME_TEXT,
-					.src = __PRETTY_FUNCTION__,
-				};
-
-				for (i = 0; i < GPIO_PINCOUNT; i++) {
-					/* skip if not specified */
-					if (!o->gpios[i]) {
-						continue;
-					}
-					/* skip if not input */
-					if (strcasecmp(o->gpios[i], "in")) {
-						continue;
-					}
-					/* skip if not a valid GPIO */
-					if (!(o->valid_gpios & (1 << i))) {
-						continue;
-					}
-					/* if bit has changed, or never reported */
-					if ((!o->had_gpios_in) ||
-					    ((o->last_gpios_in & (1 << i)) != (j & (1 << i)))) {
-						snprintf(buf1, sizeof(buf1), "GPIO%d %d\n", i + 1,
-							 (j & (1 << i)) ? 1 : 0);
-						fr.data.ptr = buf1;
-						fr.datalen = strlen(buf1);
-						ast_queue_frame(o->owner, &fr);
-					}
-				}
-				o->had_gpios_in = 1;
-				o->last_gpios_in = j;
-			}
-			/* process the parallel port GPIO */
-			if (haspp) {
-				ast_mutex_lock(&pp_lock);
-				j = k = ast_radio_ppread(haspp, ppfd, pbase, pport) ^
-					0x80; /* get PP input */
-				ast_mutex_unlock(&pp_lock);
-				for (i = 10; i <= 15; i++) {
-					/* if a valid input bit, dont clear it */
-					if ((o->pps[i]) && (!strcasecmp(o->pps[i], "in"))) {
-						continue;
-					}
-					j &= ~(1 << ppinshift[i]); /* clear the bit, since its not
-								      an input */
-				}
-				if ((!o->had_pp_in) || (o->last_pp_in != j)) {
-					char buf1[100];
-					struct ast_frame fr = {
-						.frametype = AST_FRAME_TEXT,
-						.src = __PRETTY_FUNCTION__,
-					};
-
-					for (i = 10; i <= 15; i++) {
-						/* skip if not specified */
-						if (!o->pps[i]) {
-							continue;
-						}
-						/* skip if not input */
-						if (strcasecmp(o->pps[i], "in")) {
-							continue;
-						}
-						/* if bit has changed, or never reported */
-						if ((!o->had_pp_in) ||
-						    ((o->last_pp_in & (1 << ppinshift[i])) !=
-						     (j & (1 << ppinshift[i])))) {
-							snprintf(buf1, sizeof(buf1), "PP%d %d\n", i,
-								 (j & (1 << ppinshift[i])) ? 1 : 0);
-							fr.data.ptr = buf1;
-							fr.datalen = strlen(buf1);
-							ast_queue_frame(o->owner, &fr);
-						}
-					}
-					o->had_pp_in = 1;
-					o->last_pp_in = j;
-				}
-				for (i = 10; i <= 15; i++) {
-					if ((o->pps[i]) && (!strcasecmp(o->pps[i], "cor"))) {
-						j = k &
-						    (1
-						     << ppinshift[i]); /* set the bit accordingly */
-						if (j)
-							hardware_inputs |=
-								URP_HARDWARE_INPUT_PARALLEL_CARRIER;
-					} else if ((o->pps[i]) &&
-						   (!strcasecmp(o->pps[i], "ctcss"))) {
-						if (k & (1 << ppinshift[i]))
-							hardware_inputs |=
-								URP_HARDWARE_INPUT_PARALLEL_CTCSS;
-					}
-				}
-			}
-			usbradioplus_publish_hardware_inputs(o, hardware_inputs);
-			j = ast_tvdiff_ms(ast_radio_tvnow(), then);
-			/* make output inversion mask (for pulseage) */
-			o->hid_gpio_lastmask = o->hid_gpio_pulsemask;
-			o->hid_gpio_pulsemask = 0;
-			for (i = 0; i < GPIO_PINCOUNT; i++) {
-				k = o->hid_gpio_pulsetimer[i];
-				if (k) {
-					k -= j;
-					if (k < 0) {
-						k = 0;
-					}
-					o->hid_gpio_pulsetimer[i] = k;
-				}
-				if (k) {
-					o->hid_gpio_pulsemask |= 1 << i;
-				}
-			}
-			if (atomic_exchange_explicit(&o->plus_clip_led_request, 0,
-						     memory_order_acq_rel) &&
-			    o->clipledgpio && !o->hid_gpio_pulsetimer[o->clipledgpio - 1]) {
-				/* The callback posts only a request.  This worker owns GPIO timing.
-				 */
-				o->hid_gpio_pulsetimer[o->clipledgpio - 1] = CLIP_LED_HOLD_TIME_MS;
-			}
-			if (o->hid_gpio_pulsemask ||
-			    o->hid_gpio_lastmask) { /* if anything inverted (temporarily) */
-				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
-				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-				ast_radio_hid_set_outputs(usb_handle, buf);
-			}
-			if (o->gpio_set) {
-				o->gpio_set = 0;
-				buf[o->hid_gpio_loc] = o->hid_gpio_val ^ o->hid_gpio_pulsemask;
-				buf[o->hid_gpio_ctl_loc] = o->hid_gpio_ctl;
-				ast_radio_hid_set_outputs(usb_handle, buf);
-			}
-			{
-				const int desired_ptt = atomic_load_explicit(
-					&o->plus_hardware_ptt_request, memory_order_acquire);
-				const int have_program = usbradioplus_read_radio_program_request(
-					o, &program_request);
-				const int program_changed =
-					have_program &&
-					program_request.generation != program_generation;
-				const int ptt_changed = o->lasttx != !!desired_ptt;
-				/* A missing in-progress program snapshot must never defer PTT
-				 * release. */
-				const int reprogram =
-					have_program && (program_changed || ptt_changed);
-
-				if (program_changed || ptt_changed) {
-					hidthread_apply_ptt(
-						o, usb_handle, buf, bufsave, desired_ptt,
-						have_program ? &program_request : NULL, reprogram);
-					if (have_program)
-						program_generation = program_request.generation;
-				}
-			}
-			ast_radio_time(&o->lasthidtime);
-			ast_mutex_unlock(&o->usblock);
-		}
-		/* Every disconnect and stop transitions physical PTT through this same
-		 * fail-safe path before the worker can reopen or exit. */
-		hidthread_failsafe_unkey(o, usb_handle, buf);
-	}
-	/* clean up before exiting the thread */
-	hidthread_failsafe_unkey(o, usb_handle, buf);
-	if (usb_handle) {
-		usb_close(usb_handle);
-		usb_handle = NULL;
-	}
-	pthread_exit(0);
+	return cm119_gpio_poc_hidthread(arg);
 }
 
-/** @brief Query one OSS output-space snapshot and maintain its capacity cache.
- * @param o Channel that owns the OSS device.
- * @param info Receives the current OSS output-space snapshot.
- * @return Zero on success, or minus one when OSS cannot report output space.
+/** @brief Start the sole device lifecycle owner after the channel is configured.
+ * @param o Configured channel whose device worker will start.
+ * @return Zero if started or already running, or minus one on thread creation failure.
  */
-static int soundcard_output_space(struct chan_usbradio_pvt *o, struct audio_buf_info *info)
+static int start_hardware_worker(struct chan_usbradio_pvt *o)
 {
-	if (ioctl(o->sounddev, SNDCTL_DSP_GETOSPACE, info)) {
-		if (!(o->warned & WARN_used_blocks)) {
-			o->warned |= WARN_used_blocks;
-		}
+	if (o->plus_hardware_worker_started)
+		return 0;
+	o->stophid = 0;
+	atomic_store_explicit(&o->plus_hardware_stop_request, 0, memory_order_release);
+	if (ast_pthread_create(&o->hidthread, NULL, hidthread, o)) {
+		atomic_store_explicit(&o->plus_hardware_stop_request, 1, memory_order_release);
 		return -1;
 	}
-
-	/* Cache capacity, not the free-space snapshot: idle playback remains active. */
-	if (o->total_blocks == 0) {
-		o->total_blocks = info->fragstotal;
-		/* Check the queue size, it cannot exceed the total fragments */
-		if (o->queuesize >= (unsigned int)info->fragstotal) {
-			o->queuesize = info->fragstotal - 1;
-			if (o->queuesize < 2) {
-				o->queuesize = QUEUE_SIZE;
-			}
-		}
-	}
+	o->plus_hardware_worker_started = 1;
 	return 0;
 }
 
-#ifdef URP_CHANNEL_UNIT_TEST
-/** @brief Expose legacy queue accounting only to the OSS unit harness. */
-int used_blocks(struct chan_usbradio_pvt *o)
-{
-	struct audio_buf_info info;
-
-	if (soundcard_output_space(o, &info))
-		return 1;
-
-	return o->total_blocks - info.fragments;
-}
-#endif
-
-/** @brief Test whether OSS can accept one complete native stereo frame.
- * @param o Channel that owns the OSS device.
- * @param admission Receives the successful output-space snapshot.
- * @return One when admitted, zero when capacity is unavailable, or minus one
- * when the device cannot be opened or queried.
+/** @brief Join the device owner, which first quiesces its callback and delivery worker.
+ * @param o Channel whose device worker will stop.
  */
-static int soundcard_admit_native_frame(struct chan_usbradio_pvt *o,
-					struct audio_buf_info *admission)
+static void stop_hardware_worker(struct chan_usbradio_pvt *o)
 {
-	struct audio_buf_info info;
-	int queued;
-
-	if (o->sounddev < 0)
-		setformat(o, O_RDWR);
-	if (o->sounddev < 0 || soundcard_output_space(o, &info))
-		return -1;
-	queued = o->total_blocks - info.fragments;
-	if ((unsigned int)queued > o->queuesize ||
-	    info.bytes < (int)(URP_NATIVE_SAMPLES * 2U * sizeof(short)))
-		return 0;
-	*admission = info;
-	return 1;
-}
-
-/** @brief Estimate queued OSS bytes when the driver cannot report output delay.
- * @param o Channel that owns the OSS device.
- * @param admission Output-space snapshot made before the accepted write.
- * @param written Complete byte count accepted by OSS.
- * @return Estimated queued-byte count.
- */
-static uint64_t soundcard_estimate_queued_bytes(struct chan_usbradio_pvt *o,
-						const struct audio_buf_info *admission, int written)
-{
-	struct audio_buf_info after;
-
-	/* OSS implementations without GETODELAY still expose an occupied-byte
-	 * estimate. A failed post-write query falls back to the admission snapshot. */
-	if (!soundcard_output_space(o, &after)) {
-		uint64_t capacity = (uint64_t)after.fragstotal * (uint64_t)after.fragsize;
-		uint64_t free_bytes = after.bytes > 0 ? (uint64_t)after.bytes : 0U;
-
-		return free_bytes < capacity ? capacity - free_bytes : 0U;
-	}
-	uint64_t capacity = (uint64_t)admission->fragstotal * (uint64_t)admission->fragsize;
-	uint64_t free_bytes = admission->bytes > 0 ? (uint64_t)admission->bytes : 0U;
-
-	return (free_bytes < capacity ? capacity - free_bytes : 0U) + (uint64_t)written;
-}
-
-/** @brief Convert an accepted OSS frame's remaining device delay into callback periods.
- * @param o Channel that owns the OSS device.
- * @param admission Output-space snapshot made before the accepted write.
- * @param written Complete byte count accepted by OSS.
- * @return Native callbacks through playout plus the required one-block safety hold.
- */
-static unsigned int soundcard_playout_hold_callbacks(struct chan_usbradio_pvt *o,
-						     const struct audio_buf_info *admission,
-						     int written)
-{
-	const uint64_t frame_bytes = (uint64_t)URP_NATIVE_SAMPLES * 2U * sizeof(short);
-	uint64_t queued_bytes = 0U;
-	uint64_t callbacks;
-
-#ifdef SNDCTL_DSP_GETODELAY
-	{
-		int delay = 0;
-
-		/* Query after the write so partial accepted writes and device scheduling
-		 * are reflected in the queue estimate instead of assumed from fragments. */
-		if (!ioctl(o->sounddev, SNDCTL_DSP_GETODELAY, &delay) && delay >= 0) {
-			queued_bytes = (uint64_t)delay;
-		} else
-			queued_bytes = soundcard_estimate_queued_bytes(o, admission, written);
-	}
-#else
-	queued_bytes = soundcard_estimate_queued_bytes(o, admission, written);
-#endif
-	/* Round up the queued device time, then retain PTT for one additional native
-	 * 20 ms callback. A callback cadence is the only timing source used here. */
-	callbacks = (queued_bytes + frame_bytes - 1U) / frame_bytes + 1U;
-	return callbacks > UINT_MAX ? UINT_MAX : (unsigned int)callbacks;
-}
-
-/** @brief Write one previously admitted native stereo frame without rechecking OSS.
- * @param o Channel that owns the OSS device.
- * @param data Native stereo PCM to submit.
- * @param admission Output-space snapshot that admitted @p data.
- * @return Number of bytes written, or the OSS error result.
- */
-static int soundcard_write_admitted_frame(struct chan_usbradio_pvt *o, short *data,
-					  const struct audio_buf_info *admission)
-{
-	static const short silence[URP_NATIVE_SAMPLES * 2] = {0};
-	const short *output = data;
-	int audio_bearing;
-	int res;
-
-	/* Keep the DAC fed at the capture clock's cadence, including while idle.
-	 * PTT selects audio or silence; it never starts or stops device writes. */
-	audio_bearing = atomic_load_explicit(&o->plus_radio_tx_active, memory_order_acquire) &&
-			usbradioplus_pcm_has_audio(data, URP_NATIVE_SAMPLES * 2U);
-	if (!audio_bearing) {
-		output = silence;
-	}
-	res = write(o->sounddev, output, sizeof(silence));
-	if (res < 0) {
-		o->plus_sound_short_writes++;
-	} else if (res != (int)sizeof(silence)) {
-		o->plus_sound_short_writes++;
-	}
-	if (res == (int)sizeof(silence))
-		usbradioplus_tx_playout_hold_note_output(
-			o, 1, audio_bearing,
-			audio_bearing ? soundcard_playout_hold_callbacks(o, admission, res) : 0U);
-
-	return res;
-}
-
-#ifdef URP_CHANNEL_UNIT_TEST
-/** @brief Exercise OSS admission and write behavior through the unit harness. */
-int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data)
-{
-	struct audio_buf_info admission;
-	int admitted = soundcard_admit_native_frame(o, &admission);
-
-	if (admitted != 1) {
-		if (!admitted)
-			o->plus_sound_dropped_frames++;
-		return 0;
-	}
-	return soundcard_write_admitted_frame(o, data, &admission);
-}
-#endif
-
-URP_CHANNEL_LOCAL int setformat(struct chan_usbradio_pvt *o, int mode)
-{
-	int fmt, desired, res, fd;
-	char device[100];
-
-	/* A reopened device may have a different playback-buffer capacity. */
-	o->total_blocks = 0;
-	usbradioplus_tx_playout_hold_reset(o);
-	/* If the device is open, close it */
-	if (o->sounddev >= 0) {
-		ioctl(o->sounddev, SNDCTL_DSP_RESET, 0);
-		close(o->sounddev);
-		o->duplex = M_UNSET;
-		o->sounddev = -1;
-	}
-	if (mode == O_CLOSE) { /* we are done */
-		return 0;
-	}
-
-	ast_copy_string(device, "/dev/dsp", sizeof(device));
-	if (o->devicenum) {
-		sprintf(device, "/dev/dsp%d", o->devicenum);
-	}
-	/* open the device */
-	fd = o->sounddev = open(device, mode | O_NONBLOCK);
-	if (fd < 0) {
-		ast_log(LOG_ERROR, "Channel %s: Unable to open DSP device %d: %s.\n", o->name,
-			o->devicenum, strerror(errno));
-		return -1;
-	}
-	if (o->owner) {
-		ast_channel_internal_fd_set(o->owner, 0, fd);
-	}
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	fmt = AFMT_S16_LE;
-#else
-	fmt = AFMT_S16_BE;
-#endif
-	res = ioctl(fd, SNDCTL_DSP_SETFMT, &fmt);
-	if (res < 0) {
-		ast_log(LOG_WARNING, "Channel %s: Unable to set format to 16-bit signed\n",
-			o->name);
-		return -1;
-	}
-	/* set our duplex mode based on the way we opened the device. */
-	switch (mode) {
-	case O_RDWR:
-		(void)ioctl(fd, SNDCTL_DSP_SETDUPLEX, 0);
-		/* Check to see if duplex set (FreeBSD Bug) */
-		res = ioctl(fd, SNDCTL_DSP_GETCAPS, &fmt);
-		if (res == 0 && (fmt & DSP_CAP_DUPLEX)) {
-			o->duplex = M_FULL;
-		}
-		break;
-	case O_WRONLY:
-		o->duplex = M_WRITE;
-		break;
-	case O_RDONLY:
-		o->duplex = M_READ;
-		break;
-	default:
-		break;
-	}
-
-	fmt = 1;
-	res = ioctl(fd, SNDCTL_DSP_STEREO, &fmt);
-	if (res < 0) {
-		ast_log(LOG_WARNING, "Channel %s: Failed to set audio device to stereo\n", o->name);
-		return -1;
-	}
-	fmt = desired = 48000; /* 48000 Hz desired */
-	res = ioctl(fd, SNDCTL_DSP_SPEED, &fmt);
-	if (res < 0) {
-		ast_log(LOG_WARNING, "Channel %s: Failed to set audio device sample rate.\n",
-			o->name);
-		return -1;
-	}
-	if (fmt != desired) {
-		if (!(o->warned & WARN_speed)) {
-			ast_log(LOG_WARNING,
-				"Channel %s: Requested %d Hz, got %d Hz -- sound may be choppy.\n",
-				o->name, desired, fmt);
-			o->warned |= WARN_speed;
-		}
-	}
-	/*
-	 * on Freebsd, SETFRAGMENT does not work very well on some cards.
-	 * Default to use 256 bytes, let the user override
-	 */
-	if (o->frags) {
-		fmt = o->frags;
-		res = ioctl(fd, SNDCTL_DSP_SETFRAGMENT, &fmt);
-		if (res < 0) {
-			if (!(o->warned & WARN_frag)) {
-				ast_log(LOG_WARNING,
-					"Channel %s: Unable to set fragment size -- sound may be "
-					"choppy.\n",
-					o->name);
-				o->warned |= WARN_frag;
-			}
-		}
-	}
-	/* on some cards, we need SNDCTL_DSP_SETTRIGGER to start outputting */
-	res = PCM_ENABLE_INPUT | PCM_ENABLE_OUTPUT;
-	res = ioctl(fd, SNDCTL_DSP_SETTRIGGER, &res);
-	/* it may fail if we are in half duplex, never mind */
-	return 0;
+	if (!o->plus_hardware_worker_started)
+		return;
+	atomic_store_explicit(&o->plus_hardware_stop_request, 1, memory_order_release);
+	o->stophid = 1;
+	kickptt(o);
+	pthread_join(o->hidthread, NULL);
+	o->plus_hardware_worker_started = 0;
+	hidthread_close_pttkick(o);
 }
 
 URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
@@ -1468,12 +1382,6 @@ URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
 	if (!o) {
 		return -1;
 	}
-
-#ifdef HAVE_SYS_IO
-	if (haspp == 2) {
-		ioperm(pbase, 2, 1);
-	}
-#endif
 
 	cmd[0] = rxs[0] = txs[0] = rxpl[0] = txpl[0] = pwr = '\0';
 
@@ -1534,6 +1442,12 @@ URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
 		} else {
 			/* clear pulsetimer, if in the middle of running */
 			o->hid_gpio_pulsetimer[i] = 0;
+#ifdef URP_HAVE_GPIO_POC
+			/* The direct HID proof transfers pulses to the facade immediately, so
+			 * retain this explicit legacy cancellation until its next service pass. */
+			if (o->plus_cm119_gpio_poc)
+				o->plus_hardware_gpio_poc_cancel_mask |= UINT32_C(1) << i;
+#endif
 			o->hid_gpio_val &= ~(1 << i);
 			if (j) {
 				o->hid_gpio_val |= 1 << i;
@@ -1554,19 +1468,51 @@ URP_CHANNEL_LOCAL int usbradio_text(struct ast_channel *c, const char *text)
 		if ((i < 2) || (i > 9)) {
 			return 0;
 		}
-		ast_mutex_lock(&pp_lock);
-		if (j > 1) { /* if to request pulse-age */
-			pp_pulsetimer[i] = j - 1;
-		} else {
-			/* clear pulsetimer, if in the middle of running */
-			pp_pulsetimer[i] = 0;
-			pp_val &= ~(1 << (i - 2));
-			if (j) {
-				pp_val |= 1 << (i - 2);
+#ifdef URP_HAVE_GPIO_POC
+		{
+			struct chan_usbradio_pvt *owner;
+			enum usbradioplus_hardware_adapter_result result;
+			const uint8_t bit = (uint8_t)(UINT8_C(1) << (i - 2));
+			uint8_t output;
+
+			ast_mutex_lock(&pp_lock);
+			owner = parallel_owner;
+			if (!owner) {
+				ast_mutex_unlock(&pp_lock);
+				ast_log(LOG_WARNING,
+					"Channel %s: parallel transport is unavailable\n", o->name);
+				return 0;
 			}
-			ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
+			if (j > 1) {
+				result = usbradioplus_parallel_adapter_poc_schedule_pulse(
+					&owner->plus_parallel_adapter_poc,
+					&owner->plus_hardware_adapter, bit, (uint32_t)(j - 1), 0U);
+			} else {
+				output = usbradioplus_parallel_adapter_poc_persistent_output(
+					&owner->plus_parallel_adapter_poc);
+				output &= (uint8_t)~bit;
+				if (j)
+					output |= bit;
+				result = usbradioplus_parallel_adapter_poc_schedule_pulse(
+					&owner->plus_parallel_adapter_poc,
+					&owner->plus_hardware_adapter, 0U, 0U, bit);
+				if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+					result = usbradioplus_parallel_adapter_poc_publish_output(
+						&owner->plus_parallel_adapter_poc,
+						&owner->plus_hardware_adapter, output);
+				if (result == USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+					pp_val = (int8_t)output;
+			}
+			kickptt(owner);
+			ast_mutex_unlock(&pp_lock);
+			if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
+				ast_log(LOG_ERROR,
+					"Channel %s: adapter parallel output request failed\n",
+					o->name);
+			return 0;
 		}
-		ast_mutex_unlock(&pp_lock);
+#endif
+		ast_log(LOG_WARNING, "Channel %s: parallel transport is unavailable\n", o->name);
 		return 0;
 	}
 
@@ -1603,9 +1549,8 @@ URP_CHANNEL_LOCAL int usbradio_call(struct ast_channel *c, const char *dest, int
 	(void)timeout;
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 
-	o->stophid = 0;
-	ast_radio_time(&o->lasthidtime);
-	ast_pthread_create(&o->hidthread, NULL, hidthread, o);
+	if (start_hardware_worker(o))
+		return -1;
 	ast_setstate(c, AST_STATE_UP);
 	return 0;
 }
@@ -1614,14 +1559,11 @@ URP_CHANNEL_LOCAL int usbradio_hangup(struct ast_channel *c)
 {
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 
+	/* The delivery worker references owner while it queues frames. Quiesce it
+	 * before detaching the Asterisk channel from this adapter state. */
+	stop_hardware_worker(o);
 	ast_channel_tech_pvt_set(c, NULL);
 	ast_module_unref(ast_module_info->self);
-	if (o->hookstate) {
-		o->hookstate = 0;
-		setformat(o, O_CLOSE);
-	}
-	o->stophid = 1;
-	pthread_join(o->hidthread, NULL);
 	/* Keep ownership observable until device and callback activity has quiesced.
 	 * Module unload uses owner as its lifetime barrier before it frees native
 	 * renderer and signaling state. */
@@ -1635,21 +1577,9 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 {
 	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
 
-	if (!o->hasusb) {
+	if (!atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)) {
 		return 0;
 	}
-	if (o->sounddev < 0) {
-		setformat(o, O_RDWR);
-	}
-	if (o->sounddev < 0) {
-		return 0; /* not fatal */
-	}
-	/*
-	 * we could receive a block which is not a multiple of our
-	 * FRAME_SIZE, so buffer it locally and write to the device
-	 * in FRAME_SIZE chunks.
-	 * Keep the residue stored for future use.
-	 */
 
 	/* Preserve app_rpt's continuous stream, including idle silence, so PTT
 	 * transitions do not interrupt clock recovery. Echo owns the input while playing. */
@@ -1662,393 +1592,17 @@ URP_CHANNEL_LOCAL int usbradio_write(struct ast_channel *c, struct ast_frame *f)
 
 URP_CHANNEL_LOCAL struct ast_frame *usbradio_read(struct ast_channel *c)
 {
-	int res;
-	int cd, sd;
-	int tx_write_ready;
-	struct audio_buf_info tx_admission;
-	struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
-	struct ast_frame *f = &o->read_f;
-	time_t now;
+	const struct chan_usbradio_pvt *o = ast_channel_tech_pvt(c);
+	const long long last_service =
+		atomic_load_explicit(&o->plus_hardware_last_service_time, memory_order_acquire);
+	time_t now = time(NULL);
 
-	/* check to the if the hid thread is still processing */
-	if (o->lasthidtime) {
-		ast_radio_time(&now);
-		if ((now - o->lasthidtime) > 3) {
-			ast_log(LOG_ERROR,
-				"Channel %s: HID process has died or is not responding.\n",
-				o->name);
-			return NULL;
-		}
+	if (last_service && now - (time_t)last_service > 3) {
+		ast_log(LOG_ERROR, "Channel %s: hardware worker is not responding.\n", o->name);
+		return NULL;
 	}
-	/* Set frame defaults */
-	memset(f, 0, sizeof(struct ast_frame));
-	f->frametype = AST_FRAME_NULL;
-	f->src = __PRETTY_FUNCTION__;
-
-	/* if USB device not ready, just return NULL frame */
-	if (!o->hasusb) {
-		if (o->rxkeyed) {
-			struct ast_frame wf = {
-				.frametype = AST_FRAME_CONTROL,
-				.subclass.integer = AST_CONTROL_RADIO_UNKEY,
-				.src = __PRETTY_FUNCTION__,
-			};
-
-			o->lastrx = 0;
-			o->rxkeyed = 0;
-			ast_queue_frame(o->owner, &wf);
-			if (!o->plus_advanced && o->duplex3 &&
-			    o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
-				ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_SW, 0,
-						    0);
-			}
-		}
-		return &ast_null_frame;
-	}
-
-	/* If we have stopped echoing, clear the echo queue */
-	if (o->plus_advanced || !o->echomode) {
-		usbradioplus_echo_clear(o);
-	}
-
-	/* If we are in echomode and we have stopped receiving audio
-	 * queue up the packets we have stored in the echo queue
-	 * for playback.
-	 */
-	if (!o->plus_advanced && o->echomode && !usbradioplus_native_echo(o) && (!o->rxkeyed)) {
-		(void)usbradioplus_echo_start(o);
-	}
-
-	/* Read audio data from the USB sound device.
-	 * Sound data will arrive at 48000 samples per second
-	 * in stereo format.
-	 */
-	res = read(o->sounddev, o->usbradio_read_buf + o->readpos,
-		   sizeof(o->usbradio_read_buf) - o->readpos);
-	if (res < 0) { /* Audio data not ready, return a NULL frame */
-		if (errno != EAGAIN) {
-			o->readerrs = 0;
-			o->hasusb = 0;
-			return &ast_null_frame;
-		}
-		if (o->readerrs++ > READERR_THRESHOLD) {
-			ast_log(LOG_ERROR, "Stuck USB read channel [%s], un-sticking it!\n",
-				o->name);
-			o->readerrs = 0;
-			o->hasusb = 0;
-			return &ast_null_frame;
-		}
-		if (o->readerrs == 1) {
-			ast_log(LOG_WARNING, "Possibly stuck USB read channel. [%s]\n", o->name);
-		}
-		return &ast_null_frame;
-	}
-
-	if (o->readerrs) {
-		ast_log(LOG_WARNING, "USB read channel [%s] was not stuck.\n", o->name);
-	}
-
-	o->readerrs = 0;
-	o->readpos += res;
-	if ((size_t)o->readpos < sizeof(o->usbradio_read_buf)) { /* not enough samples */
-		return &ast_null_frame;
-	}
-
-	/* Check for ADC clipping and input audio statistics before any filtering is done.
-	 * FRAME_SIZE define refers to 8Ksps mono which is 160 samples per 20mS USB frame.
-	 * ast_radio_check_audio() takes the read buffer as received (48K stereo),
-	 * extracts the mono 48K channel, checks amplitude and distortion characteristics,
-	 * and returns true if clipping was detected.
-	 */
-	if (ast_radio_check_audio((short *)o->usbradio_read_buf, &o->rxaudiostats,
-				  12 * FRAME_SIZE)) {
-		usbradioplus_request_clip_led(o);
-	}
-	/* Admit the exact DAC frame before rendering it. The direct renderer drains
-	 * the program ring only after this non-mutating OSS capacity snapshot. */
-	tx_write_ready = soundcard_admit_native_frame(o, &tx_admission);
-	if (!tx_write_ready)
-		o->plus_sound_dropped_frames++;
-	tx_write_ready = tx_write_ready > 0;
-
-	/* A processing reload may briefly replace parser-owned CTCSS state. Do not
-	 * wait in this hardware-paced callback: keep the DAC cadence with silence and
-	 * resume the normal signaling engine on the next native block. */
-	if (!usbradioplus_radio_access_acquire(o)) {
-		memset(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET, 0,
-		       o->plus_app_rpt_samples * sizeof(short));
-		memset(o->usbradio_write_buf, 0, sizeof(o->usbradio_write_buf));
-		atomic_store_explicit(&o->plus_radio_tx_active, 0, memory_order_release);
-		if (tx_write_ready)
-			(void)soundcard_write_admitted_frame(o, (short *)o->usbradio_write_buf,
-							     &tx_admission);
-		o->readpos = AST_FRIENDLY_OFFSET;
-		return &ast_null_frame;
-	}
-	/* HID sampling and physical PTT completion are independent workers. Import
-	 * their published snapshot before the audio-owned signaling tick. */
-	usbradioplus_audio_load_hardware_state(o);
-	/* Only app_rpt and tuning own PTT. */
-	if (atomic_load_explicit(&o->txkeyed, memory_order_acquire) ||
-	    atomic_load_explicit(&o->txtestkey, memory_order_acquire)) {
-		if (!o->radio->txPttIn) {
-			o->radio->txPttIn = 1;
-		}
-	} else if (o->radio->txPttIn) {
-		o->radio->txPttIn = 0;
-	}
-	usbradioplus_prepare_squelch_audio(o);
-	/* A full DAC queue freezes the TX state. Restoring raw PTT before a
-	 * non-advancing tick could release audio that the device still holds. */
-	if (tx_write_ready)
-		usbradioplus_tx_playout_hold_prepare(o);
-	urp_radio_process_timed(o->radio, (i16 *)o->plus_squelch_native,
-				(i16 *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-				(i16 *)(o->usbradio_write_buf), tx_write_ready);
-	if (tx_write_ready) {
-		usbradioplus_tx_playout_hold_apply(o);
-		/* The HID worker owns all physical output and consumes this request. */
-		usbradioplus_tx_playout_hold_publish(o);
-	}
-	usbradioplus_refresh_ctcss_decode(o);
-	usbradioplus_native_tick(o, tx_write_ready);
-
-	/* The callback renders directly into this admitted hardware frame. */
-	if (tx_write_ready &&
-	    soundcard_write_admitted_frame(o, (short *)o->usbradio_write_buf, &tx_admission) ==
-		    (int)sizeof(o->usbradio_write_buf)) {
-		/* Advance the playout deadline only after the complete hardware write.
-		 * Re-applying here releases PTT on the exact final held callback. */
-		usbradioplus_tx_playout_hold_prepare(o);
-		usbradioplus_tx_playout_hold_apply(o);
-		usbradioplus_tx_playout_hold_publish(o);
-	}
-
-	/* Check for carrier detect - COR active */
-	{
-		enum radio_carrier_detect rxcdtype = effective_rxcdtype(o);
-		cd = 0;
-		if (rxcdtype == CD_HID && (o->radio->rxExtCarrierDetect != o->rxhidsq)) {
-			o->radio->rxExtCarrierDetect = o->rxhidsq;
-		}
-
-		if (rxcdtype == CD_HID_INVERT && (o->radio->rxExtCarrierDetect == o->rxhidsq)) {
-			o->radio->rxExtCarrierDetect = !o->rxhidsq;
-		}
-
-		if (usbradioplus_carrier_detected(o, rxcdtype)) {
-			if (!o->radio->txPttOut || o->plus_advanced || o->radioduplex) {
-				cd = 1;
-			}
-		} else {
-			cd = 0;
-		}
-		/* This interval was re-armed at the true physical PTT release, after
-		 * the device queue drained. Do not admit hardware COR in that boundary. */
-		if (o->radio->txrxblankingtimer > 0)
-			cd = 0;
-
-		if (cd != o->rxcarrierdetect) {
-			o->rxcarrierdetect = cd;
-			ast_debug(3, "Channel %s: rxcarrierdetect = %i.\n", o->name, cd);
-		}
-		o->rx_cos_active = cd;
-	}
-
-	/* Check for SD - CTCSS active. */
-	if (usbradioplus_ctcss_detected(o)) {
-		sd = 1;
-	} else {
-		sd = 0;
-	}
-	if (o->rxsdtype == SD_HID) {
-		sd = o->rxhidctcss;
-	} else if (o->rxsdtype == SD_HID_INVERT) {
-		sd = !o->rxhidctcss;
-	} else if (o->rxsdtype == SD_PP) {
-		sd = o->rxppctcss;
-	} else if (o->rxsdtype == SD_PP_INVERT) {
-		sd = !o->rxppctcss;
-	}
-	/* See if we are overriding CTCSS to active */
-	if (o->rxctcssoverride) {
-		sd = 1;
-	}
-	o->rx_ctcss_active = sd;
-
-	/* Special case where cd and sd have been configured for no */
-	if (effective_rxcdtype(o) == CD_IGNORE && o->rxsdtype == SD_IGNORE) {
-		cd = 0;
-		sd = 0;
-	}
-
-	/* Timer for how long TX has been unkeyed - used with txoffdelay */
-	if (o->txoffdelay) {
-		if (o->radio->txPttOut) {
-			o->txoffcnt = 0; /* If keyed, set this to zero. */
-		} else {
-			o->txoffcnt++;
-			if (o->txoffcnt > MS_TO_FRAMES(TX_OFF_DELAY_MAX)) {
-				o->txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX); /* Limit the count */
-			}
-		}
-	}
-
-	/* Check conditions and set receiver active */
-	if (cd && sd) {
-		if (!o->rxkeyed) {
-			ast_debug(3, "Channel %s: o->rxkeyed = 1.\n", o->name);
-		}
-		if (o->rxkeyed ||
-		    ((o->txoffcnt >= o->txoffdelay) && (o->rxoncnt >= o->rxondelay))) {
-			o->rxkeyed = 1;
-		} else {
-			o->rxoncnt++;
-		}
-	} else {
-		if (o->rxkeyed) {
-			ast_debug(3, "Channel %s: o->rxkeyed = 0.\n", o->name);
-		}
-		o->rxkeyed = 0;
-		o->rxoncnt = 0;
-	}
-	/* If we are in echomode and receiving audio, store
-	 * it in the echo queue for later playback.
-	 */
-	if (!o->plus_advanced && o->echomode && !usbradioplus_native_echo(o) && o->rxkeyed &&
-	    (!atomic_load_explicit(&o->echoing, memory_order_acquire))) {
-		usbradioplus_echo_record(
-			o, (const short *)(o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET),
-			FRAME_SIZE);
-	}
-
-	/* Send a message to indicate rx signal detect conditions */
-	if (o->lastrx && (!o->rxkeyed)) {
-		struct ast_frame wf = {
-			.frametype = AST_FRAME_CONTROL,
-			.subclass.integer = AST_CONTROL_RADIO_UNKEY,
-			.src = __PRETTY_FUNCTION__,
-		};
-
-		o->lastrx = 0;
-		ast_queue_frame(o->owner, &wf);
-		if (!o->plus_advanced && o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
-			ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_SW, 0, 0);
-		}
-	} else if ((!o->lastrx) && (o->rxkeyed)) {
-		struct ast_frame wf = {
-			.frametype = AST_FRAME_CONTROL,
-			.subclass.integer = AST_CONTROL_RADIO_KEY,
-			.src = __PRETTY_FUNCTION__,
-		};
-
-		o->lastrx = 1;
-		if (o->rxctcssdecode) {
-			wf.data.ptr = o->rxctcssfreq;
-			wf.datalen = strlen(o->rxctcssfreq) + 1;
-			ast_debug(7, "Radio Key - CTCSS frequency=%s.\n", o->rxctcssfreq);
-		}
-		ast_queue_frame(o->owner, &wf);
-		o->count_rssi_update = 1;
-		if (!o->plus_advanced && o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
-			ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_SW, 1, 0);
-		}
-	}
-
-	/* reset read pointer for next frame */
-	o->readpos = AST_FRIENDLY_OFFSET;
-	/* Do not return the frame if the channel is not up */
-	if (ast_channel_state(c) != AST_STATE_UP) {
-		usbradioplus_radio_access_release(o);
-		return &ast_null_frame;
-	}
-	/* ok we can build and deliver the frame to the caller */
-	f->frametype = AST_FRAME_VOICE;
-	f->subclass.format = o->plus_advanced
-				     ? ast_format_cache_get_slin_by_rate(o->plus_app_rpt_rate)
-				     : ast_format_slin;
-	f->offset = AST_FRIENDLY_OFFSET;
-	f->samples = o->plus_app_rpt_samples;
-	f->datalen = f->samples * sizeof(short);
-	f->data.ptr = o->usbradio_read_buf_8k + AST_FRIENDLY_OFFSET;
-	f->src = __PRETTY_FUNCTION__;
-	if (!o->rxkeyed) {
-		memset(f->data.ptr, 0, f->datalen);
-	}
-	/* Process the audio to see if contains DTMF */
-	if (!o->plus_advanced && o->usedtmf && o->dsp) {
-		struct ast_frame *f1 = ast_dsp_process(c, o->dsp, f);
-		if ((f1->frametype == AST_FRAME_DTMF_END) ||
-		    (f1->frametype == AST_FRAME_DTMF_BEGIN)) {
-			if ((f1->subclass.integer == 'm') || (f1->subclass.integer == 'u')) {
-				f1->frametype = AST_FRAME_NULL;
-				f1->subclass.integer = 0;
-				usbradioplus_radio_access_release(o);
-				return f1;
-			}
-			if (f1->frametype == AST_FRAME_DTMF_END) {
-				f1->len = ast_tvdiff_ms(ast_radio_tvnow(), o->tonetime);
-				if (option_verbose) {
-					ast_log(LOG_NOTICE,
-						"Channel %s: Got DTMF char %c duration %ld ms\n",
-						o->name, f1->subclass.integer, f1->len);
-				}
-				o->toneflag = 0;
-			} else {
-				if (o->toneflag) {
-					ast_frfree(f1);
-					f1 = NULL;
-				} else {
-					o->tonetime = ast_radio_tvnow();
-					o->toneflag = 1;
-				}
-			}
-			if (f1) {
-				usbradioplus_radio_access_release(o);
-				return f1;
-			}
-		}
-	}
-
-	if (o->radio->b.txCtcssReady) {
-		struct ast_frame wf = {
-			.frametype = AST_FRAME_TEXT,
-			.src = __PRETTY_FUNCTION__,
-		};
-		char msg[32];
-
-		snprintf(msg, sizeof(msg), "cstx=%.26s", o->radio->txctcssfreq);
-		wf.data.ptr = msg;
-		wf.datalen = strlen(msg) + 1;
-		ast_queue_frame(o->owner, &wf);
-
-		ast_debug(3, "Channel %s: got b.txCtcssReady %s.\n", o->name,
-			  o->radio->txctcssfreq);
-		o->radio->b.txCtcssReady = 0;
-	}
-	/* report channel rssi */
-	if (o->sendvoter && o->count_rssi_update && o->rxkeyed) {
-		if (--o->count_rssi_update <= 0) {
-			struct ast_frame wf = {
-				.frametype = AST_FRAME_TEXT,
-				.src = __PRETTY_FUNCTION__,
-			};
-			char msg[32];
-
-			snprintf(msg, sizeof(msg), "R %i",
-				 ((32767 - o->radio->rxRssi) * 1000) / 32767);
-			wf.data.ptr = msg;
-			wf.datalen = strlen(msg) + 1;
-			ast_queue_frame(o->owner, &wf);
-
-			o->count_rssi_update = 10;
-			ast_debug(4, "Channel %s: Count_rssi_update %i\n", o->name,
-				  ((32767 - o->radio->rxRssi) * 1000 / 32767));
-		}
-	}
-
-	usbradioplus_radio_access_release(o);
-	return f;
+	/* The callback's bounded handoff is delivered by the non-real-time worker. */
+	return &ast_null_frame;
 }
 
 URP_CHANNEL_LOCAL struct ast_channel *usbradio_new(struct chan_usbradio_pvt *o, char *ext,
@@ -2064,10 +1618,7 @@ URP_CHANNEL_LOCAL struct ast_channel *usbradio_new(struct chan_usbradio_pvt *o, 
 		return NULL;
 	}
 	ast_channel_tech_set(c, &usbradio_tech);
-	if ((o->sounddev < 0) && o->hasusb) {
-		setformat(o, O_RDWR);
-	}
-	ast_channel_internal_fd_set(c, 0, o->sounddev); /* -1 if device closed, override later */
+	ast_channel_internal_fd_set(c, 0, -1); /* PCM arrives through the delivery queue. */
 	ast_channel_nativeformats_set(c, usbradio_tech.capabilities);
 	ast_channel_set_readformat(c, ast_format_slin);
 	ast_channel_set_writeformat(c, ast_format_slin);
@@ -2144,7 +1695,7 @@ URP_CHANNEL_LOCAL int radio_active(int fd, int argc, const char *const *argv)
 			ast_mutex_lock(&usb_dev_lock);
 			for (o = usbradio_default.next; o; o = o->next) {
 				ast_cli(fd, "Device [%s] exists as device=%s card=%d\n", o->name,
-					o->devstr, ast_radio_usb_get_usbdev(o->devstr));
+					o->devstr, o->devicenum);
 			}
 			ast_mutex_unlock(&usb_dev_lock);
 			return RESULT_SUCCESS;
@@ -2169,7 +1720,10 @@ URP_CHANNEL_LOCAL int radio_active(int fd, int argc, const char *const *argv)
 int usb_device_swap(int fd, const char *other)
 {
 	int d;
+	int restart_o, restart_p, failed = 0;
 	char tmp[128];
+	char resolved_o[USBRADIOPLUS_HARDWARE_ADAPTER_USB_PATH_CAPACITY];
+	char resolved_p[USBRADIOPLUS_HARDWARE_ADAPTER_USB_PATH_CAPACITY];
 	struct chan_usbradio_pvt *p = NULL, *o = find_desc(usbradio_active);
 
 	if (o == NULL) {
@@ -2187,19 +1741,52 @@ int usb_device_swap(int fd, const char *other)
 		ast_cli(fd, "You can't swap active device with itself!!\n");
 		return -1;
 	}
+	restart_o = o->plus_hardware_worker_started;
+	restart_p = p->plus_hardware_worker_started;
+	ast_copy_string(resolved_o, o->plus_hardware_adapter.usb_port_path, sizeof(resolved_o));
+	ast_copy_string(resolved_p, p->plus_hardware_adapter.usb_port_path, sizeof(resolved_p));
+	/* No callback or control worker may retain either old identity while swapping. */
+	stop_hardware_worker(o);
+	stop_hardware_worker(p);
 	ast_mutex_lock(&usb_dev_lock);
+	if (!o->devstr[0] && !o->serial[0] && !o->plus_cm119_gpio_usb_port_path[0])
+		ast_copy_string(o->devstr, resolved_o, sizeof(o->devstr));
+	if (!p->devstr[0] && !p->serial[0] && !p->plus_cm119_gpio_usb_port_path[0])
+		ast_copy_string(p->devstr, resolved_p, sizeof(p->devstr));
 	ast_copy_string(tmp, p->devstr, sizeof(tmp));
 	d = p->devicenum;
 	ast_copy_string(p->devstr, o->devstr, sizeof(p->devstr));
 	p->devicenum = o->devicenum;
 	ast_copy_string(o->devstr, tmp, sizeof(o->devstr));
 	o->devicenum = d;
+	ast_copy_string(tmp, p->serial, sizeof(tmp));
+	ast_copy_string(p->serial, o->serial, sizeof(p->serial));
+	ast_copy_string(o->serial, tmp, sizeof(o->serial));
+	ast_copy_string(tmp, p->plus_cm119_gpio_usb_port_path, sizeof(tmp));
+	ast_copy_string(p->plus_cm119_gpio_usb_port_path, o->plus_cm119_gpio_usb_port_path,
+			sizeof(p->plus_cm119_gpio_usb_port_path));
+	ast_copy_string(o->plus_cm119_gpio_usb_port_path, tmp,
+			sizeof(o->plus_cm119_gpio_usb_port_path));
+	d = p->plus_portaudio_input_device_index;
+	p->plus_portaudio_input_device_index = o->plus_portaudio_input_device_index;
+	o->plus_portaudio_input_device_index = d;
+	d = p->plus_portaudio_output_device_index;
+	p->plus_portaudio_output_device_index = o->plus_portaudio_output_device_index;
+	o->plus_portaudio_output_device_index = d;
 	o->hasusb = 0;
 	o->usbass = 0;
 	p->hasusb = 0;
 	p->usbass = 0;
-	ast_cli(fd, "USB Devices successfully swapped.\n");
 	ast_mutex_unlock(&usb_dev_lock);
+	if (restart_o && start_hardware_worker(o))
+		failed = 1;
+	if (restart_p && start_hardware_worker(p))
+		failed = 1;
+	if (failed) {
+		ast_cli(fd, "USB assignments swapped, but a hardware worker could not restart.\n");
+		return -1;
+	}
+	ast_cli(fd, "USB Devices successfully swapped.\n");
 	return 0;
 }
 
@@ -2227,6 +1814,10 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 	}
 
 	settingmax = o->micmax;
+#ifdef URP_HAVE_GPIO_POC
+	if (o->plus_cm119_gpio_poc)
+		settingmax = (float)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM;
+#endif
 
 	o->fever = 1;
 	o->radio->fever = 1;
@@ -2239,10 +1830,18 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 		tolerance);
 
 	while (tries < maxtries) {
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_VOL, setting, 0);
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_BOOST, 1, 0);
+#ifdef URP_HAVE_GPIO_POC
+		if (o->plus_cm119_gpio_poc) {
+			if (cm119_gpio_poc_set_rx_mixer(o, setting)) {
+				ast_cli(fd, "ERROR: RX INPUT ADJUST FAILED: semantic mixer is "
+					    "unavailable.\n");
+				o->radio->b.tuning = 0;
+				return;
+			}
+		}
+#endif
 
-		if (ast_radio_wait_or_poll(fd, 100, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 100, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
@@ -2250,7 +1849,7 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 		o->radio->spsMeasure->discfactor = 2000;
 		o->radio->spsMeasure->enabled = 1;
 		o->radio->spsMeasure->amax = o->radio->spsMeasure->amin = 0;
-		if (ast_radio_wait_or_poll(fd, 400, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 400, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
@@ -2261,7 +1860,8 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 			meas++;
 		}
 		unsigned int stats_index =
-			(o->rxaudiostats.index + AUDIO_STATS_LEN - 1) % AUDIO_STATS_LEN;
+			(o->rxaudiostats.index + RPTADV_RADIO_AUDIO_STATS_LEN - 1) %
+			RPTADV_RADIO_AUDIO_STATS_LEN;
 		rms = (unsigned int)(sqrt((double)o->rxaudiostats.pwrbuf[stats_index]) + 0.5);
 		peak_dbfs = 20.0 * log10((double)meas / 32768.0);
 		rms_dbfs = rms ? 20.0 * log10((double)rms / 32768.0) : -96.0;
@@ -2292,7 +1892,7 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 	o->radio->spsRx->discfactor = (i16)2000;
 	o->radio->spsRx->discounteru = o->radio->spsRx->discounterl = 0;
 	o->radio->spsRx->amax = o->radio->spsRx->amin = 0;
-	if (ast_radio_wait_or_poll(fd, 200, intflag)) {
+	if (usbradioplus_host_wait_or_poll(fd, 200, intflag)) {
 		o->radio->b.tuning = 0;
 		return;
 	}
@@ -2302,21 +1902,32 @@ void tune_rxinput(int fd, struct chan_usbradio_pvt *o, int setsql, int intflag)
 	o->radio->spsRx->discfactor = tmpdiscfactor;
 	o->radio->spsRx->discounteru = o->radio->spsRx->discounterl = 0;
 	o->radio->spsRx->amax = o->radio->spsRx->amin = 0;
-	if (ast_radio_wait_or_poll(fd, 200, intflag)) {
+	if (usbradioplus_host_wait_or_poll(fd, 200, intflag)) {
 		o->radio->b.tuning = 0;
 		return;
 	}
 
-	ast_cli(fd,
-		"DONE tries=%i, setting=%i, Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS), sqnoise=%i\n",
-		tries, ((setting * 1000) + (o->micmax / 2)) / o->micmax, meas, peak_dbfs, rms,
-		rms_dbfs, measnoise);
+	{
+		int normalized_setting = ((setting * 1000) + (o->micmax / 2)) / o->micmax;
+
+#ifdef URP_HAVE_GPIO_POC
+		if (o->plus_cm119_gpio_poc)
+			normalized_setting = setting;
+#endif
+		ast_cli(fd,
+			"DONE tries=%i, setting=%i, Peak=%i (%.1f dBFS), RMS=%u (%.1f dBFS), "
+			"sqnoise=%i\n",
+			tries, normalized_setting, meas, peak_dbfs, rms, rms_dbfs, measnoise);
+	}
 
 	if (meas < target - tolerance || meas > target + tolerance) {
 		ast_cli(fd, "ERROR: RX INPUT ADJUST FAILED.\n");
 	} else {
 		ast_cli(fd, "INFO: RX INPUT ADJUST SUCCESS.\n");
-		setting = ((setting * 1000) + (o->micmax / 2)) / o->micmax;
+#ifdef URP_HAVE_GPIO_POC
+		if (!o->plus_cm119_gpio_poc)
+#endif
+			setting = ((setting * 1000) + (o->micmax / 2)) / o->micmax;
 		usbradioplus_processing_set_hardware_input_gain(o->name,
 								urp_mixer_to_gain_db(setting));
 
@@ -2380,12 +1991,17 @@ void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str)
 	} else {
 		usbradioplus_processing_set_hardware_input_gain(o->name, urp_mixer_to_gain_db(i));
 		/* adjust settings based on the device */
-		int adjustment = effective_rxmixerset(o) * o->micmax / AUDIO_ADJUSTMENT;
 		/* get interval step size */
 		f = AUDIO_ADJUSTMENT / (float)o->micmax;
 
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_VOL, adjustment, 0);
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_BOOST, 1, 0);
+#ifdef URP_HAVE_GPIO_POC
+		if (o->plus_cm119_gpio_poc) {
+			if (cm119_gpio_poc_set_rx_mixer(o, effective_rxmixerset(o))) {
+				ast_cli(fd, "RX mixer is unavailable.\n");
+				return;
+			}
+		}
+#endif
 		f = 0.5 + (modff(((float)i) / f, &f1) * .093981);
 	}
 	usbradioplus_processing_set_local_input_gain(o->name,
@@ -2403,7 +2019,12 @@ void _menu_print(int fd, struct chan_usbradio_pvt *o)
 		ast_cli(fd, "Device Serial is %s\n", o->serial);
 	}
 	ast_mutex_unlock(&usb_dev_lock);
-	ast_cli(fd, "Card is %i\n", ast_radio_usb_get_usbdev(o->devstr));
+#ifdef URP_HAVE_GPIO_POC
+	if (o->plus_cm119_gpio_poc && o->plus_hardware_adapter_prepared)
+		ast_cli(fd, "Adapter USB topology is %s\n", o->plus_hardware_adapter.usb_port_path);
+	else
+#endif
+		ast_cli(fd, "Card is %i\n", o->devicenum);
 	ast_cli(fd, "Output A is currently set to ");
 	if (o->txmixa == TX_OUT_COMPOSITE) {
 		ast_cli(fd, "composite.\n");
@@ -2437,7 +2058,7 @@ void _menu_print(int fd, struct chan_usbradio_pvt *o)
 		ast_cli(fd, "Rx Level currently set to %d\n", effective_rxmixerset(o));
 	}
 	ast_cli(fd, "Rx Squelch currently set to %d\n", o->rxsquelchadj);
-	ast_cli(fd, "Tx Voice Level currently set to %d\n", o->txmixaset);
+	ast_cli(fd, "Tx Voice Level currently set to %d\n", effective_txmixaset(o));
 	ast_cli(fd, "Tx Tone Level currently set to %d\n", o->txctcssadj);
 }
 
@@ -2473,37 +2094,10 @@ void tune_write(struct chan_usbradio_pvt *o)
 
 void mixer_write(struct chan_usbradio_pvt *o)
 {
-	int mic_setting;
-
-	if (!o->plus_advanced && o->duplex3 && o->duplex3mode == DUPLEX3_MODE_HARDWARE) {
-		/* Scale the portable 0--999 setting to this CM119 mixer's range. */
-		int mixer_level =
-			(o->duplex3 * o->micplaymax + DUPLEX3_LEVEL_MAX / 2) / DUPLEX3_LEVEL_MAX;
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_VOL, mixer_level, 0);
-	} else {
-		ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_VOL, 0, 0);
-	}
-	ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_PLAYBACK_SW, 0, 0);
-	ast_radio_setamixer(o->devicenum,
-			    (o->newname) ? MIXER_PARAM_SPKR_PLAYBACK_SW_NEW
-					 : MIXER_PARAM_SPKR_PLAYBACK_SW,
-			    1, 0);
-	ast_radio_setamixer(
-		o->devicenum,
-		(o->newname) ? MIXER_PARAM_SPKR_PLAYBACK_VOL_NEW : MIXER_PARAM_SPKR_PLAYBACK_VOL,
-		ast_radio_make_spkr_playback_value(o->spkrmax, effective_txmixaset(o), o->devtype),
-		ast_radio_make_spkr_playback_value(o->spkrmax, effective_txmixbset(o), o->devtype));
-	/* adjust settings based on the device */
-	mic_setting = effective_rxmixerset(o) * o->micmax / AUDIO_ADJUSTMENT;
-	ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_VOL, mic_setting, 0);
-	ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_BOOST, 1, 0);
-	ast_radio_setamixer(o->devicenum, MIXER_PARAM_MIC_CAPTURE_SW, 1, 0);
+	(void)cm119_gpio_poc_apply_mixer(o);
 }
 
-/**
- * \brief Print an integer expression for radio_dump().
- * \param x Expression to print.
- */
+/** @brief Print one integer expression in the diagnostic settings dump. */
 #define pd(x)                                                                                      \
 	{                                                                                          \
 		ast_cli(fd, #x " = %d\n", x);                                                      \
@@ -2722,7 +2316,6 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 		if (!strcasecmp(o->pps[i], "out1")) {
 			pp_val |= (1 << (i - 2));
 		}
-		hasout = 1;
 	}
 
 	/* if we are using the EEPROM, request hidthread load the EEPROM */
@@ -2837,6 +2430,9 @@ struct chan_usbradio_pvt *store_config(const char *ctg)
 	}
 
 	hidhdwconfig(o);
+	/* DSP is prepared before this late-created signaling engine. Attach its
+	 * CTCSS/DCS receive callbacks before the hardware worker starts audio. */
+	usbradioplus_native_renderer_bind_radio(o);
 
 	/* The default category returned above; every remaining object is listable. */
 	o->next = usbradio_default.next;
@@ -2989,6 +2585,103 @@ URP_CHANNEL_LOCAL char *handle_set_dsp_debug(struct ast_cli_entry *e, int cmd,
 	return res2cli(radio_set_dsp_debug(a->fd, a->argc, a->argv));
 }
 
+#ifdef URP_HAVE_GPIO_POC
+/**
+ * @brief Append raw stream and callback timing measurements for the CM119 adapter.
+ * @param fd Asterisk CLI output descriptor.
+ * @param channel Selected channel whose status is being reported.
+ *
+ * The composition facade owns this immutable adapter snapshot.  This helper
+ * runs only from the CLI control plane, never from the PortAudio callback.  It
+ * locks the stream lifetime while reading so teardown cannot invalidate the
+ * opaque stream handle; an unavailable snapshot is reported without changing
+ * channel or callback state.
+ */
+URP_CHANNEL_LOCAL void radioplus_native_stats_combined_poc(int fd,
+							   struct chan_usbradio_pvt *channel)
+{
+	struct rptadv_audio_stream_stats stream_statistics = {
+		.struct_size = sizeof(stream_statistics),
+	};
+	enum usbradioplus_hardware_adapter_result result;
+
+	if (!channel || !channel->plus_portaudio_poc || !channel->plus_cm119_gpio_poc)
+		return;
+	ast_mutex_lock(&channel->usblock);
+	if (!channel->plus_hardware_adapter_prepared || !channel->plus_portaudio_stream) {
+		ast_mutex_unlock(&channel->usblock);
+		ast_cli(fd, "PortAudio/CM119 adapter: statistics unavailable.\n");
+		return;
+	}
+	result = usbradioplus_hardware_adapter_stream_get_stats(&channel->plus_hardware_adapter,
+								channel->plus_portaudio_stream,
+								&stream_statistics);
+	ast_mutex_unlock(&channel->usblock);
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		ast_cli(fd, "PortAudio/CM119 adapter: statistics unavailable (result %d).\n",
+			result);
+		return;
+	}
+	ast_cli(fd,
+		"PortAudio/CM119 adapter: input peak %.3f, RMS %.3f, clips %" PRIu64
+		", queue %" PRIu64 "/%" PRIu64 "; output peak %.3f, RMS %.3f, clips %" PRIu64
+		", queue %" PRIu64 "/%" PRIu64 ", dropped %" PRIu64 "; callbacks %" PRIu64
+		"/%" PRIu64 ", oversize %" PRIu64 ", tick failures %" PRIu64
+		", input overruns %" PRIu64 ", output underruns %" PRIu64 ", device errors %" PRIu64
+		", last error %d.\n",
+		stream_statistics.input_peak, stream_statistics.input_rms,
+		stream_statistics.input_clip_sample_count,
+		stream_statistics.input_queue_occupancy_frames,
+		stream_statistics.input_queue_capacity_frames, stream_statistics.output_peak,
+		stream_statistics.output_rms, stream_statistics.output_clip_sample_count,
+		stream_statistics.output_queue_occupancy_frames,
+		stream_statistics.output_queue_capacity_frames,
+		stream_statistics.output_queue_dropped_frame_count,
+		stream_statistics.callback_count, stream_statistics.callback_frame_count,
+		stream_statistics.oversized_callback_count,
+		stream_statistics.native_tick_failure_count, stream_statistics.input_overflow_count,
+		stream_statistics.output_underflow_count, stream_statistics.device_error_count,
+		stream_statistics.last_portaudio_error);
+	/* An older adapter writes only its known prefix.  The zero-initialized tail
+	 * distinguishes absent timing support from a measured zero-duration sample. */
+	if (!stream_statistics.callback_late_start_tolerance_ns) {
+		ast_cli(fd, "PortAudio callback timing and xrun timestamps: unavailable.\n");
+		return;
+	}
+	ast_cli(fd,
+		"PortAudio callback timing: duration last %.3f/max %.3f ms, start delay last "
+		"%.3f/max %.3f ms, late starts %" PRIu64
+		" (tolerance %.3f ms), clock errors %" PRIu64 ".\n",
+		(double)stream_statistics.callback_last_duration_ns / 1000000.0,
+		(double)stream_statistics.callback_max_duration_ns / 1000000.0,
+		(double)stream_statistics.callback_last_start_delay_ns / 1000000.0,
+		(double)stream_statistics.callback_max_start_delay_ns / 1000000.0,
+		stream_statistics.callback_late_start_count,
+		(double)stream_statistics.callback_late_start_tolerance_ns / 1000000.0,
+		stream_statistics.callback_clock_error_count);
+	ast_cli(fd,
+		"PortAudio xrun timestamps: last input %.6f s, last output %.6f s "
+		"(CLOCK_MONOTONIC since boot; 0 = none recorded).\n",
+		(double)stream_statistics.last_input_xrun_monotonic_ns / 1000000000.0,
+		(double)stream_statistics.last_output_xrun_monotonic_ns / 1000000000.0);
+	/* A zero target identifies adapters predating independent capture. */
+	if (stream_statistics.capture_ring_target_frames) {
+		ast_cli(fd,
+			"PortAudio capture clock: callbacks %" PRIu64 ", ring %" PRIu64 "/%" PRIu64
+			" frames, target %" PRIu64 ", correction %+" PRId64 " ppm, missing %" PRIu64
+			", dropped %" PRIu64 ", startup wait %" PRIu64 " frames.\n",
+			stream_statistics.capture_callback_count,
+			stream_statistics.input_queue_occupancy_frames,
+			stream_statistics.input_queue_capacity_frames,
+			stream_statistics.capture_ring_target_frames,
+			stream_statistics.capture_ring_ratio_correction_ppm,
+			stream_statistics.capture_ring_missing_frames,
+			stream_statistics.capture_ring_dropped_frames,
+			stream_statistics.capture_startup_wait_frames);
+	}
+}
+#endif
+
 URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, int cmd,
 						      struct ast_cli_args *a)
 {
@@ -3103,7 +2796,8 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		final_filter->buffered_samples, final_filter->startup_fill_samples,
 		final_filter->runtime_underrun_samples);
 	ast_cli(a->fd,
-		"FFmpeg final cleanup: pre-filter peak %.1f/max %.1f dBFS, RMS %.1f/max %.1f dBFS; "
+		"FFmpeg final post-limiter band-pass: pre-filter peak %.1f/max %.1f dBFS, RMS "
+		"%.1f/max %.1f dBFS; "
 		"5-8 kHz pre %.1f/max %.1f, post %.1f/max %.1f dBFS; "
 		">8 kHz pre %.1f/max %.1f, post %.1f/max %.1f dBFS.\n",
 		final_filter->cleanup_pre_peak_dbfs, final_filter->cleanup_pre_max_peak_dbfs,
@@ -3115,6 +2809,9 @@ URP_CHANNEL_LOCAL char *handle_radioplus_native_stats(struct ast_cli_entry *e, i
 		final_filter->cleanup_pre_8_plus_max_rms_dbfs,
 		final_filter->cleanup_post_8_plus_rms_dbfs,
 		final_filter->cleanup_post_8_plus_max_rms_dbfs);
+#ifdef URP_HAVE_GPIO_POC
+	radioplus_native_stats_combined_poc(a->fd, o);
+#endif
 	return CLI_SUCCESS;
 }
 
@@ -3128,13 +2825,6 @@ static struct ast_cli_entry cli_usbradio[] = {
 	AST_CLI_DEFINE(handle_show_settings, "Show device settings"),
 	AST_CLI_DEFINE(handle_radioplus_native_stats, "Show native RadioPlus statistics")};
 
-/** Start the parallel-port pulse worker when an output is configured. */
-URP_CHANNEL_LOCAL void usbradio_start_parallel_pulser(void)
-{
-	if (urp_parallel_pulser_needed(haspp, hasout))
-		ast_pthread_create_background(&pulserid, NULL, pulserthread, NULL);
-}
-
 URP_CHANNEL_LOCAL int load_module(void)
 {
 	usbradio_tech.capabilities = ast_format_cap_alloc(AST_FORMAT_CAP_FLAG_DEFAULT);
@@ -3143,18 +2833,12 @@ URP_CHANNEL_LOCAL int load_module(void)
 	}
 	ast_format_cap_append(usbradio_tech.capabilities, ast_format_slin, 0);
 
-	if (ast_radio_hid_device_mklist()) {
-		ast_log(LOG_ERROR, "Unable to make hid list\n");
-		return AST_MODULE_LOAD_DECLINE;
-	}
-
 	usbradio_active = NULL;
 
 	/* Copy the default jb config over global_jbconf */
 	memcpy(&global_jbconf, &default_jbconf, sizeof(struct ast_jb_conf));
 
 	pp_val = 0;
-	hasout = 0;
 	if (usbradioplus_processing_prime()) {
 		ast_log(LOG_ERROR, "Unable to start RadioPlus processing engine\n");
 		return AST_MODULE_LOAD_FAILURE;
@@ -3185,14 +2869,12 @@ URP_CHANNEL_LOCAL int load_module(void)
 		ast_channel_unregister(&usbradio_tech);
 		return AST_MODULE_LOAD_FAILURE;
 	}
-	if (usbradioplus_advanced_register(&usbradio_tech, URP_RATE_NATIVE,
-					   usbradioplus_configure_advanced)) {
+	if (usbradioplus_advanced_register(&usbradio_tech, usbradioplus_configure_advanced)) {
 		usbradioplus_processing_unload();
 		ast_cli_unregister_multiple(cli_usbradio, ARRAY_LEN(cli_usbradio));
 		ast_channel_unregister(&usbradio_tech);
 		return AST_MODULE_LOAD_FAILURE;
 	}
-	usbradio_start_parallel_pulser();
 
 	return AST_MODULE_LOAD_SUCCESS;
 }
@@ -3201,7 +2883,6 @@ URP_CHANNEL_LOCAL int unload_module(void)
 {
 	struct chan_usbradio_pvt *o;
 
-	stoppulser = 1;
 	usbradioplus_advanced_unregister();
 	usbradioplus_processing_unload();
 
@@ -3222,15 +2903,15 @@ URP_CHANNEL_LOCAL int unload_module(void)
 		}
 	}
 	for (o = usbradio_default.next; o; o = o->next) {
+#ifdef URP_HAVE_PORTAUDIO_POC
+		if (o->plus_portaudio_poc)
+			usbradioplus_portaudio_poc_stop(o);
+#endif
 		usbradioplus_dsp_destroy(o);
 		if (o->radio) {
 			urp_radio_destroy(o->radio);
 		}
 
-		if (o->sounddev >= 0) {
-			close(o->sounddev);
-			o->sounddev = -1;
-		}
 		if (o->dsp) {
 			ast_dsp_free(o->dsp);
 		}
@@ -3245,7 +2926,7 @@ URP_CHANNEL_LOCAL int unload_module(void)
 #ifndef URP_CHANNEL_UNIT_TEST
 AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "USB Radio Plus Channel Driver",
 		.support_level = AST_MODULE_SUPPORT_EXTENDED, .load = load_module,
-		.unload = unload_module, .reload = reload_module, .requires = "res_usbradio", );
+		.unload = unload_module, .reload = reload_module, .requires = "", );
 #endif
 
 /** @name File-local and build-time constants
@@ -3306,9 +2987,6 @@ AST_MODULE_INFO(ASTERISK_GPL_KEY, AST_MODFLAG_DEFAULT, "USB Radio Plus Channel D
  */
 /** @def URP_CHANNEL_LOCAL
  * @brief Expose adapter-private functions only to the isolated channel test harness.
- */
-/** @def URP_LEGACY_TEST_TONE_PEAK
- * @brief PCM peak of the calibrated 1 kHz transmitter test tone.
  */
 /** @def CONFIG
  * @brief Unified channel-driver configuration filename.

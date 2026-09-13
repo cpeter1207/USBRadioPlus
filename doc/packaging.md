@@ -16,18 +16,34 @@ make clean
 
 Package builds must declare every build dependency and must not run `install.sh`
 or `scripts/install-build-deps.sh`. Expected Debian build dependencies include
-`asl3-asterisk-dev`, `debhelper-compat`, `pkgconf`, `libasound2-dev`,
-`libusb-dev`, `portaudio19-dev`, `libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
+`asl3-asterisk-dev`, `debhelper-compat`, `pkg-config`,
+`libsamplerate0-dev`, `libavfilter-dev`, `libavutil-dev`,
 `ladspa-sdk`, `librnnoise-dev`, `librate-adjusting-pcm-ring-dev (>= 1.0.1)`,
-`python3`, and `python3-pytest`. The USBRadioPlus repository
+`librptadv-samplerate-adapter-dev (>= 0.1.0~alpha1)`,
+`librptadvradio-dev (>= 0.1.0~alpha1)`,
+`librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha1)`,
+`librptadv-portaudio-alsa-adapter-dev (>= 0.1.0~alpha2)`,
+`librptadv-gpio-adapter-dev (>= 0.1.0~alpha1)`, `python3`, and
+`python3-pytest`. The USBRadioPlus repository
 publishes RNNoise 0.2 separately as `librnnoise0` and `librnnoise-dev`; the
 USBRadioPlus package links to that shared library. The interactive source-install
 wrapper may download RNNoise; Make and Debian package builds never do.
 
 USBRadioPlus links dynamically to the separately released GPL-2.0-only
 `rate_adjusting_pcm_ring` library. Build packages require its development
-package; installed modules require its matching runtime package. CI stages the
-released library source only to test that public ABI deterministically.
+package; installed modules require its matching runtime package. CI installs
+digest-verified release packages to test that public ABI deterministically.
+
+The current mono sinc compatibility path also links dynamically to the
+separately released `rptadv_samplerate_adapter` library. It owns the
+libsamplerate ABI and exchanges normalized F32 PCM; USBRadioPlus retains S16
+conversion only at its legacy Asterisk boundary. Build packages require its
+development package and installed modules require its matching runtime package.
+
+The DCS and DCS turn-off shapers use the dynamically linked
+`rptadv_ffmpeg_adapter` exact-block API. Its development package supplies only
+the public F32 descriptor; FFmpeg objects remain inside the shared library.
+Other processing graphs remain in the existing channel engine during migration.
 
 The package includes the original gated RMS AGC as a private LADSPA effect:
 `/usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so`. It runs only inside
@@ -37,24 +53,33 @@ requires FFmpeg's `ladspa` filter, included in the supported Debian packages;
 `ladspa-sdk` supplies build headers only. Do not place the effect in Asterisk's
 module directory or add it to `modules.conf`.
 
-The Makefile detects the ASL radio-device API from
-`asterisk/res_usbradio.h`. The legacy build uses OSS and libusb-0.1. The modern
-build uses the ASL shared-device service, PortAudio, and libusb-1.0. Packagers
-may set `ASL_RADIO_API=legacy` or `ASL_RADIO_API=modern` for a controlled build,
-but the selected source must be compiled against headers from the matching ASL
-package. Both builds use the same configuration, DSP, utilities, and installed
-file layout.
+The Makefile always builds `src/chan_usbradioplus.c` against matching ASL3
+headers and dynamically links the released audio and GPIO adapter SONAMEs.
+There is no resource-module API autodetection or optional hardware build.
+The module link check rejects undefined `ast_radio_*` imports. `res_usbradio.so`
+is not required for installation or module loading.
+
+Container callers provide a `shared_packages` context containing the released
+Debian packages. The workflow pins release tags and verifies every asset's
+SHA-256 digest before passing this context. The staged image installs the
+development packages; the final image installs only runtime packages and
+checks their versioned dependencies. The channel retains ring ABI 1 from
+v1.0.1; the audio adapter's private ring ABI 2 is installed alongside it.
 
 Binary modules are tied to the ASL host interface against which they were
-built. The Debian package records an exact dependency on that
-`asl3-asterisk` version. Published package versions also carry a generation
-tag. The original host interface is packaged as `usbradioplus`; the ASL
-22.10/app_rpt 3.10 host port is packaged as `usbradioplus-asl3105`. Distinct
-binary package names allow both to remain in one Debian suite because reprepro
-retains only one version of a package name for each architecture. The modern
-package replaces and conflicts with the original package. A new package build
+built. Debian 13 builds use ASL3 3.9.3 headers and declare exact alternatives
+for ASL3 3.9.3 and 3.10.5. Their module build-options checksum and used public
+interfaces match; the required gate must load the same artifact under both
+runtimes before release. Other host builds retain their exact
+`asl3-asterisk` dependency. The single binary package is named `usbradioplus` on
+both supported architectures; no resource-module generation selects its name,
+sources, dependencies, or installer path. A new package build
 is required when ASL3 Asterisk is updated; do not weaken this dependency unless
 ASL publishes a stable module ABI or a suitable virtual ABI package.
+The unified package conflicts with and replaces the retired
+`usbradioplus-asl3105` variant. The installer permits removal of that specific
+package and its `usbradioplus-asl3105-dbgsym` companion during replacement,
+while continuing to reject ASL changes and unrelated removals.
 
 Set `SOURCE_DATE_EPOCH` when producing the upstream archive. The `dist` target
 normalizes archive ownership, ordering, and timestamps. `distcheck` extracts
@@ -73,5 +98,5 @@ explicitly requested; it has no automatic test or staged-install matrix.
 integrated implementation components, not convenience copies selected in
 preference to packaged shared libraries. The radio code contains the native
 detectors and signaling state machine; txagc contains the audio-processing
-implementation. Record their provenance and license status in the eventual
-Debian `debian/copyright` file.
+implementation. Their provenance and license status are recorded in
+`debian/copyright`.

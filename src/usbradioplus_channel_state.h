@@ -1,13 +1,27 @@
 /** @file
- * @brief Per-channel state for the OSS and libusb radio adapter.
+ * @brief Per-channel state for the single ASL3 hardware-adapter composition.
  */
 
-#ifndef USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
-#define USBRADIOPLUS_CHANNEL_LEGACY_PRIVATE_H
+#ifndef USBRADIOPLUS_CHANNEL_STATE_H
+#define USBRADIOPLUS_CHANNEL_STATE_H
 
+#include <stddef.h>
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include <rate_adjusting_pcm_ring.h>
+#include <rptadvradio/rptadvradio.h>
+
+#include "usbradioplus_channel_core.h"
+#include "usbradioplus_ctcss.h"
+#include "usbradioplus_portaudio_poc.h"
+#include "usbradioplus_portaudio_poc_handoff.h"
+#include "usbradioplus_portaudio_poc_status.h"
+
+#include "usbradioplus_hardware_adapter.h"
+#include "usbradioplus_hardware_gpio_poc.h"
+#include "usbradioplus_hardware_mixer_poc.h"
+#include "usbradioplus_parallel_adapter_poc.h"
 
 /** Private per-radio state shared by channel callbacks and device workers. */
 struct chan_usbradio_pvt {
@@ -20,8 +34,6 @@ struct chan_usbradio_pvt {
 	int devtype; /* actual type of device */
 	/** Pipe used to wake the HID worker after PTT changes. */
 	int pttkick[2]; /* ptt kick pipe */
-	/** Total fragments available in the audio output device. */
-	int total_blocks; /* total blocks in the output device */
 	/** Open OSS audio device descriptor. */
 	int sounddev;
 	/** Audio-device open mode. */
@@ -31,21 +43,10 @@ struct chan_usbradio_pvt {
 		M_READ /**< Capture-only device mode. */,
 		M_WRITE /**< Playback-only device mode. */
 	} duplex;
-	/** Current telephone-style channel hook state. */
-	int hookstate;
 	/** Maximum queued audio fragments. */
 	unsigned int queuesize; /* max fragments in queue */
-	/** OSS fragment count/size request. */
-	unsigned int frags; /* parameter for SETFRAGMENT */
-
-	/** Bit mask of device warnings already reported. */
-	int warned; /* various flags used for warnings */
-
-#define WARN_used_blocks 1
-
-#define WARN_speed 2
-
-#define WARN_frag 4
+	/** Compatibility audio-fragment configuration retained for existing files. */
+	unsigned int frags;
 
 	/** Assigned ALSA sound card index. */
 	char devicenum;
@@ -62,6 +63,8 @@ struct chan_usbradio_pvt {
 
 	/** USB HID worker thread. */
 	pthread_t hidthread;
+	/** Control-plane lifetime guard: an allocated channel may not yet be called. */
+	int plus_hardware_worker_started;
 	/** Stop request observed by the HID worker. */
 	int stophid;
 
@@ -74,14 +77,65 @@ struct chan_usbradio_pvt {
 	char usbradio_write_buf[FRAME_SIZE * 2 * 2 * 6];
 	/** Raw native-rate mono PCM from the CM119 ADC. */
 	short plus_rx_native[URP_NATIVE_SAMPLES];
+	/** Preallocated F32 boundary storage for the raw stereo receive meter. */
+	float plus_rx_audio_meter_f32[URP_NATIVE_STEREO_SAMPLES];
 	/** Floating-point local-receiver processing workspace. */
 	double plus_local_native[URP_NATIVE_SAMPLES];
 	/** Configured app_rpt sample rate in Hz. */
 	unsigned int plus_app_rpt_rate;
 	/** Samples in one app_rpt frame at the configured rate. */
 	unsigned int plus_app_rpt_samples;
+	/** Maximum native PCM frames declared by this adapter at stream setup. */
+	size_t plus_native_max_frames;
 	/** Native hardware-clocked controller owns repeat and transmitter audio. */
 	int plus_advanced;
+	/** Selects the released PortAudio/ALSA audio boundary. */
+	int plus_portaudio_poc;
+	/** Selects the released CM119 GPIO hardware boundary. */
+	int plus_cm119_gpio_poc;
+	/** Optional configured USB topology constraint for the CM119 composition. */
+	char plus_cm119_gpio_usb_port_path[32];
+	/** Optional PortAudio capture index; -1 selects automatic identity resolution. */
+	int plus_portaudio_input_device_index;
+	/** Optional PortAudio playback index; -1 selects automatic identity resolution. */
+	int plus_portaudio_output_device_index;
+	/** Live direct PortAudio stream, owned by the HID/control lifecycle. */
+	struct rptadv_audio_stream *plus_portaudio_stream;
+	/** Prepared released audio/GPIO composition for this radio. */
+	struct usbradioplus_hardware_adapter plus_hardware_adapter;
+	/** Nonzero while @ref plus_hardware_adapter owns the resolved CM119 identity. */
+	int plus_hardware_adapter_prepared;
+	/** Semantic RX capture and TX A/B mixer controls owned by the composition. */
+	struct usbradioplus_hardware_mixer_poc plus_hardware_mixer_poc;
+	/** Compatibility GPIO/clip state retained by the CM119 adapter boundary. */
+	struct usbradioplus_hardware_gpio_poc_state plus_hardware_gpio_poc_state;
+	/** Ordinary GPIO pulses explicitly cancelled by a legacy text control request. */
+	uint32_t plus_hardware_gpio_poc_cancel_mask;
+	/** State for the optional adapter-owned parallel transport. */
+	struct usbradioplus_parallel_adapter_poc_state plus_parallel_adapter_poc;
+	/** Non-real-time worker which delivers callback output to Asterisk. */
+	pthread_t plus_portaudio_delivery_thread;
+	/** Requests termination of the callback-to-Asterisk delivery worker. */
+	atomic_int plus_portaudio_delivery_stop;
+	/** Nonzero while the delivery worker is joinable. */
+	atomic_int plus_portaudio_delivery_running;
+	/** Last receiver state delivered to the Asterisk boundary. */
+	atomic_int plus_portaudio_delivered_keyed;
+	/** Callback-local receiver state used to pace legacy voter reports. */
+	int plus_portaudio_callback_keyed;
+	/** Native frames remaining before the next 200 ms legacy voter report. */
+	size_t plus_portaudio_voter_remaining_frames;
+	/** Actual 8 kHz receive PCM retained until a complete legacy handoff is due. */
+	struct usbradioplus_portaudio_poc_receive_assembler plus_portaudio_legacy_rx_assembler;
+	/** One complete ordinary app_rpt handoff assembled by the callback. */
+	short plus_portaudio_legacy_rx_frame[URP_PORTAUDIO_POC_LEGACY_RX_BLOCK_SAMPLES];
+	/** Lock-free callback-to-Asterisk receive handoff state. */
+	struct usbradioplus_portaudio_poc_handoff plus_portaudio_rx_handoff;
+	/** Independent callback-to-Asterisk CTCSS/voter event retention. */
+	struct usbradioplus_portaudio_poc_status_handoff plus_portaudio_status_handoff;
+	/** Preallocated callback-to-Asterisk receive handoff slots. */
+	struct usbradioplus_portaudio_poc_rx_block
+		plus_portaudio_rx_blocks[URP_PORTAUDIO_POC_RX_BLOCK_COUNT];
 	/** Nonzero once native graph and SRC resources can be rebuilt safely. */
 	int plus_dsp_initialized;
 	/** Callback-owned persistent native DSP renderer. */
@@ -94,6 +148,8 @@ struct chan_usbradio_pvt {
 	struct rpcr_ring plus_program_ring;
 	/** Program-ring source occupancy target for clock recovery in samples. */
 	unsigned int plus_program_target_samples;
+	/** Program-ring retained source reserve in samples. */
+	unsigned int plus_program_reserve_samples;
 	/** Count of empty app_rpt queue reads. */
 	uint64_t plus_link_queue_underflows;
 	/** Count of app_rpt queue overflow corrections. */
@@ -114,10 +170,20 @@ struct chan_usbradio_pvt {
 	struct usbradioplus_radio_access_slot plus_radio_access;
 	/** Callback-owned PTT hold while the CM119 playback queue drains. */
 	struct usbradioplus_tx_playout_hold plus_tx_playout_hold;
+	/** Preallocated complete-block staging for nonblocking OSS playback. */
+	struct urp_native_output_stage plus_native_output_stage;
+	/** Monotonic OSS reset request consumed only by the native audio owner. */
+	atomic_uint plus_native_output_reset_request;
+	/** Last OSS reset request consumed by the native audio owner. */
+	unsigned int plus_native_output_reset_seen;
 	/** Last signaling-engine PTT state safe for DAC-side silence selection. */
 	_Atomic int plus_radio_tx_active;
 	/** Desired physical PTT state published synchronously from the signaling engine. */
 	atomic_int plus_hardware_ptt_request;
+	/** Stop request consumed by the direct hardware proof worker. */
+	atomic_int plus_hardware_stop_request;
+	/** Most recent completed direct hardware service, in whole seconds. */
+	atomic_llong plus_hardware_last_service_time;
 	/** Physical PTT state acknowledged by the HID hardware worker. */
 	atomic_int plus_hardware_ptt_applied;
 	/** Nonzero while the HID worker owns a live hardware interface. */
@@ -216,8 +282,6 @@ struct chan_usbradio_pvt {
 	char usbradio_read_buf_8k[URP_NATIVE_SAMPLES * 2 + AST_FRIENDLY_OFFSET];
 	/** Bytes accumulated in the current receive block. */
 	int readpos; /* read position above */
-	/** Asterisk frame returned by the receive callback. */
-	struct ast_frame read_f; /* returned by usbradio_read */
 
 	/** Previous receiver indication state. */
 	char lastrx;
@@ -237,8 +301,6 @@ struct chan_usbradio_pvt {
 	/** Qualified receiver key state. */
 	char rxkeyed; /* Indicates rx signal is present */
 
-	/** Previous transmitter indication state. */
-	char lasttx;
 	/** PTT request received from app_rpt. */
 	atomic_char txkeyed;
 	/** PTT request from the calibration utility. */
@@ -247,8 +309,8 @@ struct chan_usbradio_pvt {
 	atomic_char plus_test_tone_enabled;
 	/** Native calibration oscillator phase in radians. */
 	double plus_test_tone_phase;
-	/** Continuous-phase native CTCSS oscillator. */
-	struct urp_ctcss_generator plus_ctcss_generator;
+	/** Portable-core CTCSS phase mirrored for existing diagnostics. */
+	struct urp_ctcss_phase_state plus_ctcss_generator;
 
 	/** Most recent successful HID worker timestamp. */
 	time_t lasthidtime;
@@ -277,13 +339,12 @@ struct chan_usbradio_pvt {
 	/** Configured signaling user key. */
 	char ukey[48];
 
-	/** Received low-speed-data indication retained in radio state. */
-	int rxlsddecode;
-
 	/** Counts the number of 20 ms intervals after RX activity */
 	int rxoncnt; /* Counts the number of 20 ms intervals after RX activity */
 	/** Counts the number of 20 ms intervals after TX unkey */
 	int txoffcnt; /* Counts the number of 20 ms intervals after TX unkey */
+	/** Native PCM frames accumulated toward the next 20 ms compatibility update. */
+	size_t plus_receive_state_native_remainder;
 	/** This is the value which RX is ignored after RX activity */
 	int rxondelay; /* This is the value which RX is ignored after RX activity */
 	/** This is the value which RX is ignored after TX unkey */
@@ -489,8 +550,6 @@ struct chan_usbradio_pvt {
 	unsigned int lsdtxpolarity : 1; /* indicator for lsd transmit polarity */
 	/** Whether this configured radio channel is enabled. */
 	unsigned int radioactive : 1; /* indicator for active radio channel */
-	/** Latched USB/audio device error text. */
-	unsigned int device_error : 1; /* indicator set when we cannot find the USB device */
 	unsigned int
 		/** Pending radio assignment name. */
 		newname : 1; /* indicator that we should use MIXER_PARAM_SPKR_PLAYBACK_VOL_NEW */
@@ -527,10 +586,6 @@ struct chan_usbradio_pvt {
 	/** Mutex protecting EEPROM commands and tuning words. */
 	ast_mutex_t eepromlock;
 
-	/** Acquired libusb device handle. */
-	struct usb_dev_handle *usb_handle;
-	/** Consecutive hardware audio read errors. */
-	int readerrs;
 	/** DTMF tone timing state. */
 	struct timeval tonetime;
 	/** Nonzero while native DTMF audio should be muted. */
@@ -544,8 +599,6 @@ struct chan_usbradio_pvt {
 
 	/** Low-level calibration/diagnostic setting. */
 	int fever;
-	/** Counter used to pace RSSI reports. */
-	int count_rssi_update;
 
 	/** Current USB GPIO input word. */
 	int32_t cur_gpios;
@@ -557,25 +610,10 @@ struct chan_usbradio_pvt {
 	int sendvoter;
 
 	/** Raw receiver peak, RMS, and rail measurements. */
-	struct audiostatistics rxaudiostats;
-	/** Transmitter peak, RMS, and rail measurements. */
-	struct audiostatistics txaudiostats;
+	struct rptadv_radio_audio_statistics rxaudiostats;
 
 	/** Mutex protecting USB-device operations. */
 	ast_mutex_t usblock;
 };
 
 #endif
-
-/** @name File-local and build-time constants
- * @{ */
-/** @def WARN_used_blocks
- * @brief Flag recording an output queue-depth warning.
- */
-/** @def WARN_speed
- * @brief Flag recording a sample-rate mismatch warning.
- */
-/** @def WARN_frag
- * @brief Flag recording an audio-fragment warning.
- */
-/** @} */

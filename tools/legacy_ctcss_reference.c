@@ -17,7 +17,7 @@ typedef uint32_t u32;
 
 #include "../src/usbradioplus_radio_coefficients.h"
 #include "../src/usbradioplus_ctcss.h"
-
+#include "../src/usbradioplus_radio_core_adapter.h"
 
 #define SAMPLES_PER_SINE 256
 
@@ -125,6 +125,9 @@ int main(void)
 {
 	size_t i;
 	int failures = 0;
+
+	if (urp_radio_core_initialize())
+		return 1;
 	for (i = 0; i < sizeof(freq_ctcss) / sizeof(freq_ctcss[0]); ++i) {
 		struct level_result narrow_result = characterize(freq_ctcss[i], 0, 256, 256, 0);
 		struct level_result wide_result = characterize(freq_ctcss[i], 1, 256, 256, 0);

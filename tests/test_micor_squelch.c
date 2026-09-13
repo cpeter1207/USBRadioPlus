@@ -3,6 +3,7 @@
  */
 
 #include "../src/usbradioplus_squelch.h"
+#include "../src/usbradioplus_radio_core_adapter.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@
 /** Detector fixture preserving the previous sample's comparator output. */
 struct detector {
 	/** Continuous capacitor and detector state. */
-	struct urp_micor_squelch state;
+	struct rptadv_radio_micor_squelch_state state;
 	/** Most recent output: one closed, zero open. */
 	int closed;
 };
@@ -233,11 +234,116 @@ static void benchmark_detector(void)
 	assert(!d.closed);
 }
 
+/** @brief Exercise the compatibility fallback before the portable descriptor is published. */
+static void test_uninitialized_core_falls_back_to_legacy(void)
+{
+	struct rptadv_radio_micor_squelch_state state = {0};
+
+	assert(urp_micor_squelch_update(&state, 1, 10000.0 * 10000.0, 7000, 500));
+	assert(state.settling_samples == 1U);
+}
+
+/** @brief Compare the portable primitive with the retained C fallback one sample at a time.
+ *
+ * The first pass intentionally runs before descriptor publication.  It therefore
+ * creates an exact C reference across startup, strong and weak signal periods,
+ * threshold changes, and deterministic broadband ripple.  The second pass uses
+ * the published Rust function and must reproduce every comparator result and
+ * the final persistent state bit for bit.
+ */
+static void test_portable_core_matches_legacy_sample_sequence(void)
+{
+	struct rptadv_radio_micor_squelch_state legacy = {0};
+	struct rptadv_radio_micor_squelch_state portable = {0};
+	unsigned char reference[4096];
+	uint32_t random = 1U;
+	int legacy_closed = 1;
+	int portable_closed = 1;
+	unsigned int index;
+
+	for (index = 0U; index < sizeof(reference); ++index) {
+		double level;
+		uint32_t open_level;
+		uint32_t hysteresis;
+
+		random = random * 1664525U + 1013904223U;
+		switch ((index / 256U) % 5U) {
+		case 0U:
+			level = 10000.0;
+			break;
+		case 1U:
+			level = 900.0;
+			break;
+		case 2U:
+			level = 6500.0;
+			break;
+		case 3U:
+			level = 7350.0;
+			break;
+		default:
+			level = 2500.0;
+			break;
+		}
+		level += (double)(random & 0x3ffU) - 512.0;
+		open_level = 6800U + (index % 5U) * 100U;
+		hysteresis = 300U + (index % 3U) * 100U;
+		legacy_closed = urp_micor_squelch_update(&legacy, legacy_closed, level * level,
+							 open_level, hysteresis);
+		reference[index] = (unsigned char)legacy_closed;
+	}
+	assert(!urp_radio_core_initialize());
+	random = 1U;
+	for (index = 0U; index < sizeof(reference); ++index) {
+		double level;
+		uint32_t open_level;
+		uint32_t hysteresis;
+
+		random = random * 1664525U + 1013904223U;
+		switch ((index / 256U) % 5U) {
+		case 0U:
+			level = 10000.0;
+			break;
+		case 1U:
+			level = 900.0;
+			break;
+		case 2U:
+			level = 6500.0;
+			break;
+		case 3U:
+			level = 7350.0;
+			break;
+		default:
+			level = 2500.0;
+			break;
+		}
+		level += (double)(random & 0x3ffU) - 512.0;
+		open_level = 6800U + (index % 5U) * 100U;
+		hysteresis = 300U + (index % 3U) * 100U;
+		portable_closed = urp_micor_squelch_update(&portable, portable_closed,
+							   level * level, open_level, hysteresis);
+		assert(portable_closed == reference[index]);
+	}
+	assert(portable.noise_power == legacy.noise_power);
+	assert(portable.idle_power == legacy.idle_power);
+	assert(portable.hold_charge == legacy.hold_charge);
+	assert(portable.settling_samples == legacy.settling_samples);
+}
+
 /** @brief Execute continuous squelch regression tests.
  * @return Zero when all assertions pass.
  */
 int main(void)
 {
+	struct rptadv_radio_micor_squelch_state boundary = {
+		.settling_samples = URP_MICOR_SETTLE_SAMPLES,
+		.idle_power = 1.0e12,
+		.hold_charge = 0.0,
+	};
+	assert(urp_micor_squelch_update(NULL, 1, 0.0, 0, 0));
+	assert(urp_micor_squelch_update(&boundary, 0, 0.0, 0, 0));
+	assert(boundary.noise_power == 0.0 && boundary.hold_charge == 0.0);
+	test_uninitialized_core_falls_back_to_legacy();
+	test_portable_core_matches_legacy_sample_sequence();
 	test_every_carrier_loss_alignment();
 	test_fast_ramps_and_weak_hold();
 	test_fade_flutter_and_defeat();

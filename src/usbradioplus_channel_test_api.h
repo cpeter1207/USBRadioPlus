@@ -7,18 +7,174 @@
 
 #include "usbradioplus_channel_private.h"
 #include "usbradioplus_channel_common.h"
+#include "usbradioplus_cm119_gpio_poc_worker.h"
 
-/** Nonzero when any parallel-port output is configured. */
-extern char hasout;
-/** Parallel input-pin to register-bit mapping. */
-extern const int ppinshift[];
-
-/** @brief Open or reopen the OSS device with the required native audio format.
- * @param o Private state of the selected radio channel.
- * @param mode OSS open mode, or CLOSE_DEV to close the stream.
- * @return Zero on success; a nonzero status if the operation cannot complete.
+/** @brief Display combined native statistics through test linkage.
+ * @param fd Asterisk CLI output descriptor.
+ * @param channel Radio state whose native statistics are displayed.
  */
-int setformat(struct chan_usbradio_pvt *o, int mode);
+void radioplus_native_stats_combined_poc(int fd, struct chan_usbradio_pvt *channel);
+
+/** @brief Test linkage for the unchanged production-local hidthread_parallel_ptt_mask helper. */
+uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the unchanged production-local hidthread_close_pttkick helper. */
+void hidthread_close_pttkick(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the unchanged production-local hidthread_open_pttkick helper. */
+int hidthread_open_pttkick(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local hidthread_prepare_radio helper.
+ * @param o Radio state to prepare.
+ * @return Zero on success or a negative status on failure.
+ */
+int hidthread_prepare_radio(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local hidthread_start_audio helper.
+ * @param o Prepared radio state.
+ * @return Zero on success or a negative status on failure.
+ */
+int hidthread_start_audio(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_parallel_requested helper.
+ * @param o Radio configuration to inspect.
+ * @return Nonzero when parallel GPIO is configured.
+ */
+int cm119_gpio_poc_parallel_requested(const struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_validate helper.
+ * @param o Radio configuration to validate.
+ * @return Zero when valid or a negative status on failure.
+ */
+int cm119_gpio_poc_validate(const struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_prepare_hardware_adapter helper.
+ * @param o Radio state receiving the prepared hardware adapter.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_prepare_hardware_adapter(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_discard_hardware_adapter helper.
+ * @param o Radio state whose prepared adapter is discarded.
+ */
+void cm119_gpio_poc_discard_hardware_adapter(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_apply_mixer helper.
+ * @param o Radio state with validated mixer settings.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_apply_mixer(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_set_rx_mixer helper.
+ * @param o Radio state with an opened mixer.
+ * @param value Validated capture mixer level.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_set_rx_mixer(struct chan_usbradio_pvt *o, int value);
+/** @brief Test linkage for the production-local cm119_gpio_poc_open_mixer helper.
+ * @param o Radio state receiving mixer handles.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_open_mixer(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_reserve_device_identity helper.
+ * @param o Radio state requesting a unique hardware identity.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_reserve_device_identity(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_release_device_identity helper.
+ * @param o Radio state releasing its hardware identity.
+ */
+void cm119_gpio_poc_release_device_identity(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_drain_pttkick helper.
+ * @param o Radio state containing the wake pipe.
+ * @return Zero when drained or a negative status on failure.
+ */
+int cm119_gpio_poc_drain_pttkick(const struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_monotonic_milliseconds helper.
+ * @return Monotonic milliseconds, or zero when the clock cannot be read.
+ */
+uint64_t cm119_gpio_poc_monotonic_milliseconds(void);
+/** @brief Test linkage for the production-local cm119_gpio_poc_service_eeprom helper.
+ * @param o Radio state containing the EEPROM request.
+ */
+void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_parallel_input_event helper.
+ * @param opaque Radio state supplied to the callback.
+ * @param pin Parallel input pin number.
+ * @param value Observed logical input level.
+ */
+void cm119_gpio_poc_parallel_input_event(void *opaque, unsigned int pin, int value);
+/** @brief Test linkage for the production-local cm119_gpio_poc_service_parallel helper.
+ * @param o Radio state owning the parallel adapter.
+ * @param hardware_inputs Input mask updated with observed parallel inputs.
+ * @param force_unkey Nonzero to force transmitter outputs inactive.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_service_parallel(struct chan_usbradio_pvt *o, unsigned int *hardware_inputs,
+				    int force_unkey);
+/** @brief Test linkage for the production-local cm119_gpio_poc_service helper.
+ * @param o Radio state whose hardware is serviced.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_service(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_stop helper.
+ * @param o Radio state whose hardware is stopped.
+ */
+void cm119_gpio_poc_stop(struct chan_usbradio_pvt *o);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_stop_requested helper.
+ * @param opaque Radio state supplied to the worker.
+ * @return Nonzero when shutdown is requested.
+ */
+int cm119_gpio_poc_worker_stop_requested(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_online helper.
+ * @param opaque Radio state supplied to the worker.
+ * @return Nonzero when the hardware is online.
+ */
+int cm119_gpio_poc_worker_online(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_clear_published_state helper.
+ * @param opaque Radio state whose public hardware status is cleared.
+ */
+void cm119_gpio_poc_worker_clear_published_state(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_validate helper.
+ * @param opaque Radio state supplied to the worker.
+ * @return Zero when valid or a negative status on failure.
+ */
+int cm119_gpio_poc_worker_validate(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_start_attempt helper.
+ * @param opaque Radio state supplied to the worker.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_worker_start_attempt(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_service helper.
+ * @param opaque Radio state supplied to the worker.
+ * @return Zero on success or a negative status on failure.
+ */
+int cm119_gpio_poc_worker_service(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_mark_online helper.
+ * @param opaque Radio state whose hardware is marked online.
+ */
+void cm119_gpio_poc_worker_mark_online(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_wake_read_fd helper.
+ * @param opaque Radio state containing the wake pipe.
+ * @return Wake descriptor, or a negative value when unavailable.
+ */
+int cm119_gpio_poc_worker_wake_read_fd(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_drain_wake helper.
+ * @param opaque Radio state containing the wake pipe.
+ * @return Zero when drained or a negative status on failure.
+ */
+int cm119_gpio_poc_worker_drain_wake(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_stop_attempt helper.
+ * @param opaque Radio state whose hardware attempt is stopped.
+ */
+void cm119_gpio_poc_worker_stop_attempt(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_release_identity helper.
+ * @param opaque Radio state whose hardware identity is released.
+ */
+void cm119_gpio_poc_worker_release_identity(void *opaque);
+/** @brief Test linkage for the production-local cm119_gpio_poc_worker_report helper.
+ * @param opaque Radio state supplied to the worker.
+ * @param event Worker lifecycle event to report.
+ * @param detail Event-specific diagnostic status.
+ */
+void cm119_gpio_poc_worker_report(void *opaque, enum usbradioplus_cm119_gpio_poc_worker_event event,
+				  int detail);
+
+/** @brief Select a deterministic shared parallel-port owner for channel tests.
+ * @param owner Prepared fixture owner, or null to clear it.
+ */
+void usbradioplus_test_set_parallel_owner(struct chan_usbradio_pvt *owner);
+
 int usbradio_text(struct ast_channel *c, const char *text);
 /** @brief Release Asterisk ownership and reset radio call state.
  * @param c Asterisk channel associated with the radio or link.
@@ -45,17 +201,6 @@ int usbradio_write(struct ast_channel *c, struct ast_frame *f);
  * @return Asterisk tuning-command result code.
  */
 int radio_active(int fd, int argc, const char *const *argv);
-/** @brief Measure queued OSS output fragments for transmitter pacing.
- * @param o Private state of the selected radio channel.
- * @return Number of queued OSS output blocks.
- */
-int used_blocks(struct chan_usbradio_pvt *o);
-/** @brief Write one native stereo frame, substituting silence while transmit is idle.
- * @param o Private state of the selected radio channel.
- * @param data One native-rate interleaved stereo PCM block, left unchanged.
- * @return Bytes written, zero if no frame was written, or a negative OSS write error.
- */
-int soundcard_writeframe(struct chan_usbradio_pvt *o, short *data);
 /** @brief Register the channel technology and start configured radio workers.
  * @return Asterisk module-load status.
  */
@@ -68,10 +213,6 @@ int unload_module(void);
  * @param info Test module metadata.
  */
 void usbradioplus_test_set_module_info(struct ast_module_info *info);
-/** @brief Match installed USB interfaces to configured channel assignments.
- * @return Borrowed configured USB identifier, or NULL if none is present.
- */
-char *find_installed_usb_match(void);
 /** @brief Service USB GPIO, PTT, EEPROM, device recovery, and radio status.
  * @param arg Private radio state passed to the worker.
  * @return NULL when the HID worker exits.
@@ -162,32 +303,4 @@ char *handle_set_dsp_debug(struct ast_cli_entry *entry, int command, struct ast_
  */
 char *handle_radioplus_native_stats(struct ast_cli_entry *entry, int command,
 				    struct ast_cli_args *args);
-/** @brief Start the pulse worker when a parallel-port output is configured. */
-void usbradio_start_parallel_pulser(void);
-
-#ifdef URP_CHANNEL_MODERN
-extern short silence_buf[];
-int usbradio_log_fault(struct chan_usbradio_pvt *o, int already_logged, const char *format, ...)
-	__attribute__((format(printf, 3, 4)));
-void usbradio_device_identity(struct chan_usbradio_pvt *o, char *devstr, size_t devstr_size,
-			      char *serial, size_t serial_size, int *alsa_card);
-void usbradio_log_usb_recovered(struct chan_usbradio_pvt *o);
-void usbradio_adjust_txmix_for_mono(struct chan_usbradio_pvt *o);
-void usbradio_release_device(struct chan_usbradio_pvt *o);
-void usbradio_swap_begin(struct chan_usbradio_pvt *o);
-void usbradio_swap_audio_stopped(struct chan_usbradio_pvt *o);
-int usbradio_swap_hid_wait(struct chan_usbradio_pvt *o);
-int usbradio_swap_ready(struct chan_usbradio_pvt *o);
-void usbradio_swap_finish(struct chan_usbradio_pvt *o);
-void usbradio_mixer_limits(struct chan_usbradio_pvt *o, int *rx_max, int *tx_max,
-			   int *sidetone_max);
-void usbradio_set_sidetone_switch(struct chan_usbradio_pvt *o, int enabled);
-void usbradio_set_rx_mixer(struct chan_usbradio_pvt *o, long volume);
-int init_audio_device(struct chan_usbradio_pvt *o);
-int usbradio_start_audio(struct chan_usbradio_pvt *o);
-PaError usbradio_read_pa_stereo(struct chan_usbradio_pvt *o);
-void stream_cleanup(struct chan_usbradio_pvt *o);
-void *usbradio_audio_thread(void *arg);
-#endif
-
 #endif

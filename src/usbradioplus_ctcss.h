@@ -1,15 +1,16 @@
 /** @file
- * @brief Continuous-phase 48 kHz CTCSS generation.
+ * @brief CTCSS configuration validation and legacy calibration helpers.
+ *
+ * The declarations preserve the USBRadioPlus compatibility surface while the
+ * implementation forwards to the released portable Rust radio core.
  */
 
 #ifndef USBRADIOPLUS_CTCSS_H
 #define USBRADIOPLUS_CTCSS_H
 
-#include <stddef.h>
-
-/** Continuous oscillator phase retained across native CTCSS blocks. */
-struct urp_ctcss_generator {
-	/** Oscillator phase in radians, retained across blocks. */
+/** @brief CTCSS phase mirror published by the portable radio core. */
+struct urp_ctcss_phase_state {
+	/** Current portable-core oscillator phase in radians. */
 	double phase;
 };
 
@@ -49,26 +50,5 @@ double urp_ctcss_legacy_scaled_peak(double frequency, int filter_250, int tone_g
  */
 void urp_ctcss_legacy_scaled_levels(double frequency, int filter_250, int tone_gain_q8,
 				    int output_gain_q8, double *amplitude, double *bias);
-/** @brief Render a phase-continuous CTCSS block at 48 kHz, including a turn-off phase shift.
- * @param generator Persistent oscillator phase state.
- * @param output Destination sample buffer owned by the caller.
- * @param count Number of elements available in the supplied block.
- * @param frequency CTCSS frequency in Hz.
- * @param peak Absolute sample peak in PCM codes.
- * @param enabled Nonzero enables the operation.
- * @param phase_shift_degrees Turn-off phase shift in degrees; zero preserves oscillator phase.
- */
-void urp_ctcss_generate(struct urp_ctcss_generator *generator, double *output, size_t count,
-			double frequency, double peak, int enabled, double phase_shift_degrees);
-/** @brief Render an exact-frequency tail tone at the native sample rate.
- * @param generator Persistent oscillator phase state.
- * @param output Destination sample buffer owned by the caller.
- * @param count Number of elements available in the supplied block.
- * @param frequency Tail-tone frequency in Hz.
- * @param peak Absolute sample peak in PCM codes.
- * @param enabled Nonzero enables the operation.
- */
-void urp_ctcss_generate_tail_tone(struct urp_ctcss_generator *generator, double *output,
-				  size_t count, double frequency, double peak, int enabled);
 
 #endif

@@ -58,16 +58,22 @@ channel_enabled = yes
 ; queued sample; its 110 ms target is for clock recovery, not startup delay.
 ; Its persistent converter handles source-rate conversion and hardware-clock
 ; recovery across PTT transitions; a short producer gap is concealed smoothly.
-; The following OSS-device controls do not configure that program ring.
-; On the PortAudio adapter they are accepted but have no effect.
-; Raw OSS SNDCTL_DSP_SETFRAGMENT request; leave at the adapter default unless
-; the sound device requires a documented override.
+; Compatibility fragment/queue settings are accepted but have no effect.
 ;hardware_audio_fragment_count = 196
-; Maximum queued OSS playback fragments. It bounds OSS device latency but
-; does not affect the program ring. After active PCM, USBRadioPlus holds
-; physical PTT through the measured OSS queue drain plus one 20 ms block;
-; PortAudio instead uses its stream output-latency estimate.
 ;hardware_audio_queue_size = 20
+; Every channel uses the released PortAudio/ALSA audio and CM119 GPIO adapters.
+; Audio and HID bind to one resolved USB identity. If no identifier or serial
+; is configured, selection must find one unambiguous supported interface.
+; The earlier portaudio_poc and cm119_poc names remain accepted aliases.
+;hardware_audio_backend = portaudio
+;hardware_gpio_backend = cm119
+; Optional explicit endpoint indexes must be supplied as a matching pair.
+; Leave both at -1 to resolve capture/playback from the selected USB identity.
+;hardware_portaudio_input_device_index = -1
+;hardware_portaudio_output_device_index = -1
+; Optional stable USB topology constraint, for example 3-1.
+;hardware_gpio_usb_port_path =
+; Device selection changes require a channel restart.
 ; Radio identity and signaling metadata remains hardware-specific.
 ;hardware_repeater_number = 0
 ;hardware_area = 0
@@ -272,6 +278,7 @@ deesser_attack_ms = 2.0
 ; Time to restore sibilance-band level in milliseconds.
 deesser_release_ms = 60.0
 ; RNNoise runs after de-emphasis, squelch gating, and PL removal, before dynamics.
+; It uses native 48 kHz audio directly; no sample-rate conversion is added.
 rnnoise_enabled = no
 ; Apply a steep receive band-pass immediately after the squelch gate and before
 ; PL filtering. Cutoffs are the -3 dB crossover frequencies; the high cutoff
@@ -673,7 +680,7 @@ enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
 ; Reorder the equalizer and dynamics stages. The fixed final limiter and
-; post-limiter low-pass are not listed here. The de-esser runs immediately before
+; post-limiter brick-wall band-pass are not listed here. The de-esser runs immediately before
 ; the compressor by default.
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
@@ -731,10 +738,12 @@ lookahead_limiter_lookahead_ms = 5.0
 lookahead_limiter_attack_ms = 1.0
 ; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
-; Enable the fixed cleanup low-pass after final limiting.
-post_limiter_lowpass_enabled = no
-; Cleanup low-pass cutoff, 5000 through 20000 Hz.
-post_limiter_lowpass_hz = 5500.0
+; Enable the fixed brick-wall band-pass after final limiting.
+post_limiter_bandpass_enabled = no
+; Lower band-pass cutoff, 0 through 300 Hz; 0 disables the lower edge.
+post_limiter_bandpass_highpass_hz = 0.0
+; Upper band-pass cutoff, 2500 through 20000 Hz.
+post_limiter_bandpass_lowpass_hz = 5500.0
 ; Gain at the end of the transmitter chain, -30 through +30 dB.
 output_gain_db = 0.0
 ;

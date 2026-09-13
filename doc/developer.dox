@@ -7,41 +7,74 @@ configuration and operation.
 
 @section architecture Source layout
 
+Review the accepted architecture and ADRs in the rpt_advanced repository's
+`doc/architecture` before changing a component boundary and again before
+integration. The shared PCM ring owns elastic buffering and its rate correction;
+the samplerate adapter owns other stream conversion; the FFmpeg adapter owns
+voice filtering and dynamics. Reuse those dynamic components, not a second
+implementation in the channel driver. Prefer existing GPL-2.0-compatible
+libraries for other capabilities, checking their actual license and build
+options before introducing a dependency.
+
 Transmit observability uses opt-in Asterisk debug level 5 records prefixed
 URP_TXTRACE. Request, render, queue, write, and HID-call boundaries are distinct:
 generation or enqueue is not DAC playback, and HID return is not RF confirmation.
-OSS trace records report occupied bytes, including partial fragments. The
-PortAudio trace reports submission results rather than a per-write playback
+PortAudio trace records report submission results rather than a per-write playback
 timestamp. Its playout guard separately uses the stream's output-latency
 estimate obtained at open. See the configuration manual for trace enablement
 and disable instructions. No new PTT policy or audio buffering is introduced
 by the trace.
 
-- chan_usbradioplus.c adapts OSS/libusb radio devices to Asterisk.
-- chan_usbradioplus_modern.c adapts the ASL radio-device API and PortAudio.
+- chan_usbradioplus.c is the single ASL3 channel adapter. It retains the 8 kHz
+  app_rpt boundary and the native 48 kHz RadioPlusAdvanced boundary.
+- usbradioplus_portaudio_poc.c binds the released PortAudio/ALSA adapter to the
+  native tick. Its callback consumes canonical normalized F32 PCM using the
+  actual bounded frame count. A preallocated handoff lets a non-real-time
+  delivery worker assemble complete Asterisk frames and perform frame APIs.
+- usbradioplus_hardware_adapter.c composes the mandatory released audio and
+  GPIO descriptors around one resolved USB identity. Setup rejects absent or
+  incompatible descriptors, ambiguous selection, and audio/HID mismatches.
+- usbradioplus_cm119_gpio_poc_worker.c owns the control-plane GPIO lifecycle.
+  Its callbacks apply PTT, publish input snapshots, and coordinate cleanup.
+  Mixer controls, hardware local-repeat sidetone, EEPROM, and parallel I/O
+  use the selected versioned hardware descriptors.
+- usbradioplus_host_util.c supplies monotonic timing, terminal polling, and
+  presentation of portable meter snapshots without resource-module helpers.
 - usbradioplus_channel_common.h defines shared channel lifecycle and tuning calls.
 - usbradioplus_channel_core.h defines PCM routing, the lock-free program ring,
   and echo state.
 - usbradioplus_native_tick.c directly renders local receive, final
   voice/telemetry processing, CTCSS/DCS, and DAC PCM in the native hardware
-  callback.
+  callback. Its hardware-edge receive extraction, local repeat, transmitter
+  routing, CTCSS/DCS generation, and bounded transmitter drain/completion
+  scalar transitions use the versioned Rust core; the compatibility shim
+  preserves existing graph, detector, display-string, device, and Asterisk
+  integration while later slices migrate them.
 - usbradioplus_processing.h exposes validated profiles and live processing controls.
 - txagc_config describes the shared FFmpeg graph. Filtering, emphasis,
   equalization, dynamics, and limiting are implemented by that graph.
 - usbradioplus_radio.h contains carrier, CTCSS, DCS, measurement, and
   transmit-signaling state.
-- usbradioplus_ctcss.h, usbradioplus_dcs.h, and usbradioplus_hardware.h provide
-  tone/code generation and parallel-port radio programming.
+- usbradioplus_ctcss.h preserves CTCSS validation and calibration compatibility;
+  portable CTCSS generation is supplied by librptadvradio. usbradioplus_dcs.h
+  and usbradioplus_hardware.h provide code generation and parallel-port radio
+  programming.
 - scripts/usbradioplus-tune implements the screen-reader-friendly tuner.
 - tests and tests_py contain executable unit, failure-injection, integration,
   configuration, utility, and install checks. Upstream reference fixtures are test data.
 
 @section units Audio buffers and units
 
-The CM119 path runs at 48,000 samples per second with 960 samples in a 20 ms
-mono block. App_rpt starts at 8,000 samples per second; each channel stores its
-rate explicitly. The program-ring converter uses a nominal one-to-one ratio
-when its input and output rates are equal.
+Native radio and controller processing runs at 48,000 samples per second;
+higher native rates are unsupported (rpt_advanced ADR 0035). RNNoise consumes
+that rate directly using 480-sample framing, without input/output resamplers.
+Its assembly is causal and independent of callback partitioning. Codec and
+app_rpt conversion remains at the existing adapter/shared-ring boundaries.
+The native tick and the audio adapter accept each nonzero span up to the
+stream's declared maximum. App_rpt starts at 8,000 samples per second; each channel
+stores its rate explicitly. An adapter assembles integral 8 kHz app frames from
+its persistent conversion state. The program-ring converter uses a nominal
+one-to-one ratio when its input and output rates are equal.
 Signed PCM spans -32768 through 32767. Native floating-point workspaces retain
 PCM amplitude units. FFmpeg format conversion supplies the graph's normalized
 audio representation. dBFS measurements use the full signed PCM range.
@@ -58,7 +91,7 @@ buffers and changes no PTT state. A temporary program-source shortfall is
 concealed smoothly by the callback renderer rather than rendered as an abrupt
 silence insertion.
 
-Both adapters admit app_rpt program frames continuously, including idle
+The ASL3 adapter admits app_rpt program frames continuously, including idle
 silence. A native-parrot implementation may be the sole external program-audio
 producer only while it supplies native-rate samples through that same lock-free
 program ring. Legacy app_rpt echo is distinct and is not an external producer
@@ -67,8 +100,8 @@ input uses the same stream with a nominal one-to-one ratio. This continuous PCM
 flow affects audio only: program-ring occupancy neither requests nor releases
 PTT. The signaling engine retains ownership of the desired PTT state.
 
-The hardware callback directly renders each prepared native block. It owns
-local receive processing, final voice/telemetry processing, CTCSS/DCS
+The hardware callback directly renders each supplied bounded native span. It
+owns local receive processing, final voice/telemetry processing, CTCSS/DCS
 generation, and native DAC PCM rendering. The program ring is its only
 program-audio bridge: app_rpt normally produces it, and native-parrot playback
 may temporarily supply native-rate samples through it. No other audio worker
@@ -76,18 +109,12 @@ is permitted; there is no per-channel native worker thread or native
 input/output worker queue. A program-source shortfall is concealed in the
 callback without changing PTT, COS, CTCSS, or DCS state.
 
-The device writer submits one 48 kHz stereo block per completed capture
-interval, including while idle. COS and CTCSS decode do not control device
-write cadence. The OSS writer does not prepend silence when its queue empties.
-Its queue-depth bound and short/failed-write diagnostics still apply during
-idle operation. After a complete non-silent DAC submission, the adapter holds
-physical `txPttOut` through the measured or estimated device playout delay plus
-one native 20 ms block. It submits silence while draining, cancels the hold on
-a new key request, and never advances the hold for a short, failed, or
-underflowed submission. OSS measures queue delay after the write with an
-available-space fallback; PortAudio uses the output latency reported when the
-stream opens. This is a best-effort queue-drain guard, not a second PTT owner.
-PortAudio otherwise retains the ASL audio API's device recovery.
+The audio adapter returns exactly the current callback span at 48 kHz,
+including silence while idle. COS and CTCSS decode do not control callback
+cadence. After complete non-silent output, the channel holds physical PTT
+through the stream's output-latency estimate plus one 20 ms native block. It
+submits silence while draining and cancels the hold on a new key request.
+This is a best-effort playout guard; the signaling engine owns desired PTT.
 
 When the local chain is enabled, its enabled RNNoise and FFmpeg dynamics
 stages advance in the direct callback every native interval with
@@ -148,6 +175,11 @@ profile snapshots. Never hold it while looking up or locking an Asterisk
 channel: app_rpt can read processing settings while holding channel locks. The
 scanner copies the needed profile data before channel lookup.
 
+SRC and RNNoise expose prepared processing calls only. Reserve or prepare their
+workspaces before activating a stream; a callback cannot grow or reconfigure
+them through a convenience API. Matching-rate Asterisk conversion remains a
+direct copy without a converter delay.
+
 Native-parrot playback may be a separate producer only when it hands
 native-rate samples to the hardware callback through the lock-free program
 ring. Legacy app_rpt echo is not covered by this exception. No other audio
@@ -199,7 +231,56 @@ admission, so each callback uses either the old graph, the new graph, or a
 clean bypass. Hardware adapters own their device references and coordinate
 device and HID state when swapping USB assignments.
 
+@section rust_radio_state Rust radio-state migration
+
+DCS generation and final routing exchange normalized F32 PCM through the
+radio core. DCS and turn-off-tone shaping use the dynamic FFmpeg adapter's
+prepared exact-block interface; the intermediate PCM-code double buffer and
+general-graph DCS options are removed. The fixed 250 Hz twentieth-order
+crossover and separate NRZ/turn-off calibration remain unchanged. Existing
+spectral and peak tests exercise this shared path; a partition test compares
+960 samples with calls of 317 and 643 samples.
+
+The native renderer owns one dynamically linked `librptadvradio` object for
+its stream lifetime. CTCSS and DCS receive qualification use that object's
+Rust decoders at the established post-frontend/post-blanking taps. Callback
+registration happens during renderer setup and is removed after audio has
+quiesced. Missing or rejected decoder results clear qualification; there is
+no duplicate C decoder or second detector history. The former C correlator
+trace slots remain zero, as they were when the Rust receiver was selected.
+
+Raw RX and TX meter arithmetic likewise uses the shared Rust core. A rejected
+input span retains the last valid meter snapshot rather than invoking an
+ASL meter with different history. Device-boundary adapter statistics are
+separate from these compatibility meters and from processed audio levels.
+
+This is an intermediate composition: channel configuration, orchestration,
+and the native processing tick still reside in C. The Rust top-level tick is
+not yet the complete radio engine. A Rust-only signaling owner now composes
+receive detection, source qualification, transmitter signaling, and status
+timing. It preallocates diagnostics and coalesced sample-offset transmitter
+intents, including selected CTCSS frequency. Internal sample-time stepping
+keeps callback partitioning from changing radio deadlines; periodic status
+rounds up to the next callback without accumulating rounding drift.
+
+The channel does not yet select that owner. The old 8 kHz voice-filter output
+is overwritten by native FFmpeg receive rendering before audio delivery; it
+must not become the owned engine's delivered receive audio. Its remaining
+voice-calibration and trace uses must be preserved until equivalent tuning
+taps replace them. The production C orchestration and scalar bridges are
+retired only after whole-engine integration and reload parity are verified.
+
 @section verification Building and checking the reference
+
+For an affected channel test, select its exact C function name with
+`URP_CHANNEL_TEST`, for example
+`URP_CHANNEL_TEST=test_native_renderer_start_failures`. The linked channel
+harness rejects an unknown name. Leave the variable unset to run every test;
+the selector is for local diagnosis, not a substitute for the pull-request gate.
+The channel group always builds the single implementation with the installed
+ASL3 headers and the released audio and GPIO adapter development packages.
+No legacy/modern header selector is required. The package gate loads the same
+module under both supported ASL3 runtimes on each native architecture.
 
 Run `make docs` with Doxygen 1.9.8 or newer, Graphviz, and Python 3 installed.
 Generated HTML is written to `build/doxygen/html`; XML is written beside it. Doxygen checks

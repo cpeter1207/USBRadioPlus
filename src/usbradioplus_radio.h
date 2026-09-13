@@ -38,6 +38,7 @@
 #ifndef USBRADIOPLUS_RADIO_H
 #define USBRADIOPLUS_RADIO_H 1
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asterisk/rpt_chan_shared.h"
@@ -188,25 +189,9 @@
 
 #define CTCSS_NUM_CODES 38 /* 0 - 37 */
 
-#define CTCSS_SCOUNT_MUL 100
-
-#define CTCSS_INTEGRATE 3932 /* 32767*.120 -> 120/1000 = 0.120 */
-
-#define CTCSS_INPUT_LIMIT 1000
-
-#define CTCSS_DETECT_POINT 1989
-
-#define CTCSS_HYSTERSIS 200
-
 #define CTCSS_TURN_OFF_TIME 180 /* ms */
 
 #define CTCSS_TURN_OFF_SHIFT 120.0 /* degrees */
-
-#define DDB_FRAME_SIZE 160 /* clock de-drift defaults */
-
-#define DDB_FRAMES_IN_BUFF 8
-
-#define DDB_ERR_MODULUS 10000
 
 #define CHAN_TXSTATE_IDLE 0
 
@@ -319,128 +304,49 @@ typedef struct {
 	i16 *source[16];
 } t_sdbg;
 
-/*
-	one structure for each ctcss tone to decode
-*/
-/** Correlator, qualification, and reverse-burst state for one receive CTCSS tone. */
+/** @brief Rust CTCSS receiver invoked after frontend filtering and blanking.
+ * @param context Callback-local object supplied at registration.
+ * @param samples Post-filter, center-sliced signed-16 mono detector PCM.
+ * @param sample_count Number of 8 kHz samples in @p samples.
+ * @param tone_mask Configured receive-tone table indexes.
+ * @param relax Nonzero selects the configured talk-off relaxation behavior.
+ * @param carrier_detect Current compatibility carrier decision.
+ * @param decoded Receives a table index or @ref CTCSS_NULL.
+ * @return Zero when @p decoded is authoritative; nonzero clears qualification.
+ *
+ * The C signaling engine owns the call order and invokes this hook after the
+ * existing receive frontend has applied carrier/blanking behavior. This lets
+ * the portable core replace detector state without moving the established
+ * CTCSS signaling decision point.
+ */
+typedef int (*urp_ctcss_receive_callback)(void *context, const i16 *samples, size_t sample_count,
+					  uint64_t tone_mask, int relax, int carrier_detect,
+					  int *decoded);
+
+/** Adapter-side CTCSS input/status; decoder history belongs to the Rust stream. */
 typedef struct {
-	/** Countdown to the next correlator sample. */
-	i16 counter; /* counter to next sample */
-	/** Tone-period divisor used to advance the sample counter. */
-	i16 counterFactor; /* full divisor used to increment counter */
-	/** Quarter-cycle correlator bin spacing. */
-	i16 binFactor;
-	/** Tone qualification count adjustment. */
-	i16 fudgeFactor;
-	/** Largest observed absolute sample magnitude. */
-	i16 peak; /* peak amplitude now   maw sph now */
-	/** Nonzero enables this channel, stage, or detector. */
+	/** Nonzero enables receive tone qualification. */
 	i16 enabled;
-	/** Current stage or stream state. */
-	i16 state; /* dead, running, error */
-	/** Current quadrature correlator bin. */
-	i16 zIndex; /* z bucket index */
-	/** Correlator history bins. */
-	i16 z[4];
-	/** Integrated quadrature-bin state. */
-	i16 zi;
-	/** Positive tone-envelope slope. */
-	i16 dvu;
-	/** Negative tone-envelope slope. */
-	i16 dvd;
-	/** Previous correlator difference. */
-	i16 zd;
-	/** Detector decision threshold. */
-	i16 setpt;
-	/** Detector release hysteresis. */
-	i16 hyst;
-	/** Current decoded-tone or detector decision. */
+	/** Borrowed post-filter, center-sliced detector samples. */
+	i16 *input;
+	/** Qualified CTCSS table index, or CTCSS_NULL. */
 	i16 decode;
-	/** Peak difference used to detect reverse burst. */
-	i16 diffpeak;
-	/** Per-detector debug enable state. */
-	i16 debug;
-
-#if URP_RADIO_DEBUG == 1
-	/** Previous quadrature correlator value for this tone bin. */
-	i16 lasttv0;
-	/** Previous quadrature correlator value for this tone bin. */
-	i16 lasttv1;
-	/** Previous quadrature correlator value for this tone bin. */
-	i16 lasttv2;
-	/** Previous quadrature correlator value for this tone bin. */
-	i16 lasttv3;
-
-	/** pointer to debug output */
-	i16 *pDebug0; /* pointer to debug output */
-	/** pointer to debug output */
-	i16 *pDebug1; /* pointer to debug output */
-	/** pointer to debug output */
-	i16 *pDebug2; /* pointer to debug output */
-	/** pointer to debug output */
-	i16 *pDebug3; /* pointer to debug output */
-#endif
-
-} urp_ctcss_tone_detector;
-
-/** CTCSS decoder bank and receive-to-transmit tone selection state. */
-typedef struct {
-	/** Nonzero enables this channel, stage, or detector. */
-	i16 enabled; /* if 0 none, 0xFFFF all tones, or single tone */
-	/** Borrowed subaudible detector input samples. */
-	i16 *input; /* source data */
-	/** Tracked subaudible signal amplitude. */
-	i16 clamplitude;
-	/** Tracked subaudible DC center. */
-	i16 center;
-	/** Current decoded-tone or detector decision. */
-	i16 decode; /* current ctcss decode index */
-	/** Remaining decoder blanking interval. */
-	i32 BlankingTimer;
-	/** Remaining CTCSS turn-off qualification interval. */
-	u32 TurnOffTimer;
-	/** Subaudible detector gain metadata. */
-	i16 gain;
-	/** Input amplitude bound used by the detector. */
-	i16 limit;
-	/** Selected diagnostic trace channel. */
-	i16 debugIndex;
-	/** P Debug0 diagnostic sample workspace. */
-	i16 *pDebug0;
-	/** P Debug1 diagnostic sample workspace. */
-	i16 *pDebug1;
-	/** P Debug2 diagnostic sample workspace. */
-	i16 *pDebug2;
-	/** P Debug3 diagnostic sample workspace. */
-	i16 *pDebug3;
-	/** Selected detector test index. */
-	i16 testIndex;
-	/** Nonzero when multiple receive tones are configured. */
-	i16 multiFreq;
 	/** CTCSS qualification/talk-off tolerance setting. */
 	i8 relax;
-	/** One correlator for each supported receive tone. */
-	urp_ctcss_tone_detector tdet[CTCSS_NUM_CODES];
-
-	/** Number of configured receive signaling codes. */
-	i8 numrxcodes;
-	/** Map from detected receive tones to transmit tone selections. */
-	i16 rxCtcssMap[CTCSS_NUM_CODES];
-	/** Configured receive CTCSS code values. */
-	char *rxctcss[CTCSS_NUM_CODES]; /* pointers to each tone in string above */
-	/** Configured transmit CTCSS code values. */
-	char *txctcss[CTCSS_NUM_CODES];
-
-	/** Default transmit CTCSS table index. */
-	i32 txctcssdefault_index;
-	/** Default transmit CTCSS frequency in Hz. */
-	float txctcssdefault_value;
-
-	struct {
-		/** Nonzero when the detector configuration is usable. */
-		unsigned valid : 1;
-		/** Packed radio-signaling status and enable flags. */
-	} b; /**< Packed radio-signaling status and enable flags. */
+	/** Stream-owned Rust receiver at the established decode point. */
+	urp_ctcss_receive_callback receive_callback;
+	/** Callback-local opaque context for @ref receive_callback. */
+	void *receive_callback_context;
+#if URP_RADIO_DEBUG == 1
+	/** Zero-filled compatibility trace for the retired C correlator. */
+	i16 *pDebug0;
+	/** Zero-filled compatibility trace for the retired C correlator. */
+	i16 *pDebug1;
+	/** Zero-filled compatibility trace for the retired C correlator. */
+	i16 *pDebug2;
+	/** Zero-filled compatibility trace for the retired C correlator. */
+	i16 *pDebug3;
+#endif
 } urp_ctcss_decoder;
 
 /*
@@ -474,8 +380,6 @@ typedef struct urp_radio_stage {
 	/** Selected output channel index. */
 	i16 selChanOut;
 
-	/** Processing tick counter. */
-	i32 ticks;
 	/** Stage timing counter. */
 	i32 timer;
 	/** Number of occupied elements. */
@@ -495,6 +399,15 @@ typedef struct urp_radio_stage {
 
 	/** Samples processed per block. */
 	i16 nSamples; /* number of samples in the buffer */
+	/**
+	 * Explicit native input-frame count for a rate-converting stage.
+	 *
+	 * A zero value retains the legacy @c nSamples * @c decimate contract for
+	 * direct compatibility callers.  The receive frontend consumes a nonzero
+	 * value exactly once, then publishes its actual base-rate output count in
+	 * @ref nSamples.
+	 */
+	u32 nativeSamples;
 
 	/** Allocated sample-buffer capacity. */
 	u32 buffSize; /* buffer maximum index */
@@ -512,13 +425,9 @@ typedef struct urp_radio_stage {
 	/** Current decimation phase. */
 	i16 decimator; /* like the state this must be saved between calls (could be put in x's) */
 
-	/** Stage sample rate in Hz. */
-	u32 sampleRate; /* in Hz for elements in this structure */
 	/** Detector operating frequency. */
 	u32 freq; /* in 0.1 Hz */
 
-	/** Most recent peak-to-peak calibration measurement. */
-	i16 measPeak; /* do measure Peak */
 	/** Tracked positive sample extremum. */
 	i16 amax; /* buffer amplitude maximum */
 	/** Tracked negative sample extremum. */
@@ -533,8 +442,12 @@ typedef struct urp_radio_stage {
 	i16 compOut; /* amplitude comparator output */
 	/** Nonzero while detector input is blanked. */
 	i16 blanking; /* blanking timer in frames */
-	/** Noise-dependent carrier qualification state. */
-	struct urp_micor_squelch micor_squelch;
+	/** Noise-dependent carrier qualification state owned by the portable core ABI. */
+	struct rptadv_radio_micor_squelch_state micor_squelch;
+	/** Accumulated native discriminator-noise power for one calibration window. */
+	i64 rssiPower;
+	/** Native samples accumulated in @ref rssiPower. */
+	u32 rssiSamples;
 
 	/** Upper-envelope decay counter. */
 	i32 discounteru; /* amplitude detector integrator discharge counter upper */
@@ -543,8 +456,6 @@ typedef struct urp_radio_stage {
 	/** Envelope decay factor. */
 	i32 discfactor; /* amplitude detector integrator discharge factor */
 
-	/** Accumulated detector error. */
-	i16 err; /* error condition */
 	/** Requested stage operation. */
 	i16 option; /* option / request zero */
 	/** Current stage or stream state. */
@@ -554,46 +465,10 @@ typedef struct urp_radio_stage {
 	i16 pending;
 
 	struct {
-		/** Current detector match indicator. */
-		unsigned hit : 1;
-		/** Previous detector match indicator. */
-		unsigned hitlast : 1;
-		/** First detector match accumulator. */
-		unsigned hita : 1;
-		/** Second detector match accumulator. */
-		unsigned hitb : 1;
-		/** Matched signaling-bit indicator. */
-		unsigned bithit : 1;
-		/** Current stage timing/sample position. */
-		unsigned now : 1;
-		/** Next configured radio in the channel list. */
-		unsigned next : 1;
-		/** Previous stage timing/sample position. */
-		unsigned prev : 1;
-		/** Detector clock recovery state. */
-		unsigned clock : 1;
-		/** Detector hold counter. */
-		unsigned hold : 1;
-		/** First stage-specific option. */
-		unsigned opt1 : 1;
-		/** Second stage-specific option. */
-		unsigned opt2 : 1;
-		/** Signal polarity inversion selector. */
-		unsigned polarity : 1;
-		/** Alternating-bit signaling acquisition state. */
-		unsigned dotting : 1;
-		/** Nonzero when a final signaling bit is pending. */
-		unsigned lastbitpending : 1;
 		/** Nonzero requests a zeroed stage output. */
 		unsigned outzero : 1;
-		/** Nonzero while the detector or transmitter settles. */
-		unsigned settling : 1;
-		/** Nonzero while signaling synchronization is in progress. */
-		unsigned syncing : 1;
 		/** Nonzero when stage state needs refreshing. */
 		unsigned dirty : 1;
-		/** Nonzero requests silent stage output. */
-		unsigned mute : 1;
 		/** Packed radio-signaling status and enable flags. */
 	} b; /**< Packed radio-signaling status and enable flags. */
 
@@ -615,9 +490,6 @@ typedef struct urp_radio_stage {
 	i16 mixOut;
 	/** Nonzero selects mono stage output. */
 	i16 monoOut;
-
-	/** Detector-filter selection. */
-	i16 filterType; /* iir, fir, 1, 2, 3, 4 ... */
 
 	/** Stage processing callback. */
 	i16 (*sigProc)(struct urp_radio_stage *sps); /* function to call */
@@ -652,11 +524,6 @@ typedef struct urp_radio_stage {
 	/** One radio-detection or measurement stage and its owned filter workspace. */
 } urp_radio_stage;
 
-struct t_lsd_control;
-struct t_decLsd;
-;
-struct t_encLsd;
-
 /*
 	pmr channel
 */
@@ -679,40 +546,34 @@ typedef struct urp_radio_state {
 	i16 tracelevel;
 	/** Selected radio diagnostic trace format. */
 	i16 tracetype;
-	/** Selected radio trace-point mask. */
-	u32 tracemask;
 
-	/** Base-rate receive samples per processing block. */
-	i16 nSamplesRx; /* max frame size */
-	/** Base-rate transmitter samples per block. */
+	/** Maximum base-rate receive samples declared at stream setup. */
+	i16 nSamplesRx;
+	/**
+	 * Allocated base-rate receive capacity, including the one sample that a
+	 * carried decimator phase may require beyond the fixed legacy frame count.
+	 */
+	u32 rxBaseCapacity;
+	/** Maximum base-rate transmitter samples declared at stream setup. */
 	i16 nSamplesTx;
-
-	/** ADC sample rate in Hz. */
-	i32 inputSampleRate; /* in S/s  48000 */
-	/** Detector sample rate in Hz. */
-	i32 baseSampleRate; /* in S/s   8000 */
+	/** Base-rate receive samples in the native block currently being processed. */
+	i16 activeSamplesRx;
+	/** Base-rate transmitter samples in the native block currently being processed. */
+	i16 activeSamplesTx;
+	/** Native sample-time remainder used to advance receiver-side legacy timers. */
+	u32 rxTimerSampleRemainder;
+	/** Native sample-time remainder owned by the current RX blanking interval. */
+	u32 txrxBlankingSampleRemainder;
+	/** Native sample-time remainder used to advance DAC-paced transmitter timers. */
+	u32 txTimerSampleRemainder;
+	/** Remaining finishing interval in milliseconds after signaling turn-off. */
+	i32 txFinishTimer;
 
 	/** Primary input gain in the stage's fixed-point scale. */
 	i16 inputGain;
-	/** DC offset applied to detector input. */
-	i16 inputOffset;
 
-	/** Processing tick counter. */
-	i32 ticks; /* time ticks */
-	/** Number of receive blocks processed. */
-	u32 frameCountRx; /* number processed */
-	/** Number of transmitter blocks processed. */
-	u32 frameCountTx;
-
-	/** Transmitter frame synchronization state. */
-	i8 txframelock;
-
-	/** Configured transmitter hang interval. */
+	/** Remaining transmitter CTCSS turn-off hang interval in milliseconds. */
 	i32 txHangTime;
-	/** Remaining transmitter hang interval. */
-	i32 txHangTimer;
-	/** Transmitter turn-off sequence selection. */
-	i32 txTurnOff;
 	/** Nonzero requests transmitter history clearing. */
 	i16 txBufferClear;
 
@@ -726,16 +587,8 @@ typedef struct urp_radio_state {
 	/** Remaining radio-signaling blanking interval. */
 	i16 txrxblankingtimer;
 
-	/** Tracked receiver DC offset. */
-	i16 rxDC; /* average DC value of input */
-	/** DSP squelch opening threshold. */
-	i16 rxSqSet; /* carrier squelch threshold */
-	/** DSP squelch closing hysteresis. */
-	i16 rxSqHyst; /* carrier squelch hysterysis */
 	/** Measured discriminator-noise signal-strength value. */
 	i16 rxRssi; /* current Rssi level */
-	/** Receiver signal-quality estimate. */
-	i16 rxQuality; /* signal quality metric */
 	/** Current native carrier-detector state. */
 	i16 rxCarrierDetect; /* carrier detect */
 	/** Configured carrier detector source. */
@@ -746,8 +599,6 @@ typedef struct urp_radio_state {
 	i16 rxSqVoxAdj;
 	/** External hardware carrier indication. */
 	i16 rxExtCarrierDetect;
-	/** Input-blanking interval/state. */
-	i32 inputBlanking; /* Tx pulse eliminator */
 
 	/** Receiver audio-source assignment. */
 	enum radio_rx_audio rxDemod;
@@ -834,9 +685,6 @@ typedef struct urp_radio_state {
 	char rxctcssfreq[32]; /* decode now */
 	/*      end most of signaling code info derived from source */
 
-	/** Low-speed-data control metadata. */
-	struct t_lsd_control *pLsdCtl;
-
 	/** Configured signaling repeater number. */
 	i16 rptnum;
 	/** Configured signaling area identifier. */
@@ -854,34 +702,15 @@ typedef struct urp_radio_state {
 	/** Reserved signaling-state field. */
 	i16 dummy;
 
-	/** Transmit scrambler frequency metadata. */
-	i32 txScramFreq;
-	/** Receive scrambler frequency metadata. */
-	i32 rxScramFreq;
-
-	/** Voice calibration gain metadata. */
-	i16 gainVoice;
-	/** Subaudible calibration gain. */
-	i16 gainSubAudible;
-
 	/** Transmitter output-A assignment. */
 	enum radio_tx_mix txMixA;
 	/** Transmitter output-B assignment. */
 	enum radio_tx_mix txMixB;
 
-	/** Receiver muting state. */
-	i16 rxMuting;
-
 	/** Receiver idle-processing reduction setting. */
 	i16 rxCpuSaver;
 	/** Transmitter idle-processing reduction setting. */
 	i16 txCpuSaver;
-
-	/** Receiver squelch mode metadata. */
-	i8 rxSqMode; /* 0 open, 1 carrier, 2 coded */
-
-	/** Carrier detector method metadata. */
-	i8 cdMethod;
 
 	/** Receiver closing decision threshold. */
 	i16 rxSquelchPoint;
@@ -902,8 +731,6 @@ typedef struct urp_radio_state {
 
 	/** Current signaling mode. */
 	i16 smode; /* ctcss, dcs, lsd */
-	/** Code selected by the current signaling mode. */
-	i16 smodecode;
 	/** Previous signaling mode. */
 	i16 smodewas; /* ctcss, dcs, lsd */
 	/** Remaining signaling-mode hold interval. */
@@ -927,13 +754,6 @@ typedef struct urp_radio_state {
 	i16 dcsTurnoffDuration;
 	/** DCS modulation amplitude in PCM codes. */
 	double dcsPeak;
-	/** Low-speed-data decoder metadata. */
-	struct t_decLsd *decLsd;
-
-	/** Tracked low-speed-data amplitude metadata. */
-	i16 clamplitudeLsd;
-	/** Tracked low-speed-data DC-center metadata. */
-	i16 centerLsd;
 
 	/** PTT request from the channel driver. */
 	i16 txPttIn; /* from external request */
@@ -944,25 +764,6 @@ typedef struct urp_radio_state {
 
 	/** Channel bandwidth metadata. */
 	i16 bandwidth; /* wide/narrow */
-	/** Transmit compander selection metadata. */
-	i16 txCompand; /* type */
-	/** Receive compander selection metadata. */
-	i16 rxCompand;
-
-	/** muted, flat, pre-emp limited filtered */
-	i16 txEqRight; /* muted, flat, pre-emp limited filtered */
-	/** Left transmitter equalizer selection metadata. */
-	i16 txEqLeft;
-
-	/** Right transmitter potentiometer setting metadata. */
-	i16 txPotRight;
-	/** Left transmitter potentiometer setting metadata. */
-	i16 txPotLeft;
-
-	/** Right receiver potentiometer setting metadata. */
-	i16 rxPotRight;
-	/** Left receiver potentiometer setting metadata. */
-	i16 rxPotLeft;
 
 	/** Signaling-system function selector. */
 	i16 function;
@@ -1048,22 +849,6 @@ typedef struct urp_radio_state {
 	i32 *ptxCtcssAdjust; /* from calling application */
 
 	struct {
-		/** Noise-squelch selection metadata. */
-		unsigned pmrNoiseSquelch : 1;
-		/** Receiver high-pass selection metadata. */
-		unsigned rxHpf : 1;
-		/** Transmitter high-pass selection metadata. */
-		unsigned txHpf : 1;
-		/** Transmitter low-pass selection metadata. */
-		unsigned txLpf : 1;
-		/** Receiver deemphasis selection metadata. */
-		unsigned rxDeEmphasis : 1;
-		/** Transmitter preemphasis selection metadata. */
-		unsigned txPreEmphasis : 1;
-		/** External hardware carrier indication. */
-		unsigned extCarrierDetect : 1;
-		/** Receive CTCSS monitor mode. */
-		unsigned rxplmon : 1;
 		/** Nonzero when remote-radio control is active. */
 		unsigned remoted : 1;
 		/** Radio loopback diagnostic mode. */
@@ -1076,8 +861,6 @@ typedef struct urp_radio_state {
 		unsigned lsdrxpolarity : 1;
 		/** Transmit low-speed-data polarity inversion. */
 		unsigned lsdtxpolarity : 1;
-		/** Nonzero while the transmitter is settling. */
-		unsigned txsettling : 1;
 		/** Signaling-mode turn-off state. */
 		unsigned smodeturnoff : 1;
 
@@ -1101,8 +884,6 @@ typedef struct urp_radio_state {
 		unsigned p25RxEnable : 1;
 		/** Nonzero enables p25 transmitter. */
 		unsigned p25TxEnable : 1;
-		/** Nonzero enables ax25. */
-		unsigned ax25Enable : 1;
 
 		/** Nonzero inhibits transmitted CTCSS. */
 		unsigned txCtcssInhibit : 1;
@@ -1119,8 +900,6 @@ typedef struct urp_radio_state {
 		unsigned txhalted : 1;
 		/** Nonzero while a radio calibration command is active. */
 		unsigned tuning : 1;
-		/** Previous transmit PTT request. */
-		unsigned pttwas : 1;
 		/** Packed radio-signaling status and enable flags. */
 	} b; /**< Packed radio-signaling status and enable flags. */
 
@@ -1152,6 +931,60 @@ typedef struct urp_radio_state {
 	i16 *prxVoxMeas;
 	/** Receiver calibration measurement workspace. */
 	i16 *prxMeasure;
+	/** Preallocated canonical-F32 input workspace for the portable envelope meter. */
+	float *measureF32Input;
+	/** Preallocated canonical-F32 output workspace for the portable envelope meter. */
+	float *measureF32Output;
+	/** Scalar capacity of both portable envelope-meter workspaces. */
+	u32 measureF32Capacity;
+	/** Preallocated canonical-F32 input workspace for the portable delay stage. */
+	float *delayF32Input;
+	/** Preallocated canonical-F32 output workspace for the portable delay stage. */
+	float *delayF32Output;
+	/** Preallocated canonical-F32 circular storage for the portable delay stage. */
+	float *delayF32Storage;
+	/** Scalar capacity of the delay input and output workspaces. */
+	u32 delayF32FrameCapacity;
+	/** Scalar capacity of @ref delayF32Storage. */
+	u32 delayF32StorageCapacity;
+	/** Preallocated canonical-F32 input workspace for the portable center slicer. */
+	float *centerSlicerF32Input;
+	/** Preallocated canonical-F32 centered-output workspace for the portable center slicer. */
+	float *centerSlicerF32CenteredOutput;
+	/** Preallocated canonical-F32 limited-output workspace for the portable center slicer. */
+	float *centerSlicerF32LimitedOutput;
+	/** Scalar capacity of all portable center-slicer workspaces. */
+	u32 centerSlicerF32Capacity;
+	/** Preallocated canonical-F32 input workspace for receiver deemphasis. */
+	float *deemphasisIntegratorF32Input;
+	/** Preallocated canonical-F32 output workspace for receiver deemphasis. */
+	float *deemphasisIntegratorF32Output;
+	/** Scalar capacity of both portable receiver-deemphasis workspaces. */
+	u32 deemphasisIntegratorF32Capacity;
+	/** Preallocated canonical-F32 input workspace for mono receiver FIR stages. */
+	float *firF32Input;
+	/** Preallocated canonical-F32 output workspace for mono receiver FIR stages. */
+	float *firF32Output;
+	/** Temporary signed-16 history for transactional portable FIR calls. */
+	i16 *firHistoryScratch;
+	/** Scalar capacity of the portable FIR input and output workspaces. */
+	u32 firF32Capacity;
+	/** Signed-16 history capacity of the portable FIR bridge. */
+	u32 firHistoryCapacity;
+	/** Preallocated canonical-F32 stereo input for the portable RX frontend. */
+	float *receiveFrontendF32Input;
+	/** Preallocated canonical-F32 decimated output for the portable RX frontend. */
+	float *receiveFrontendF32Output;
+	/** Transactional signed-16 frontend history for portable calls. */
+	i16 *receiveFrontendHistoryScratch;
+	/** Transactional native-frame carrier gates for portable frontend calls. */
+	u8 *receiveFrontendCarrierGateScratch;
+	/** Native-frame capacity of the portable RX frontend input and gate storage. */
+	u32 receiveFrontendNativeCapacity;
+	/** Decimated output capacity of the portable RX frontend. */
+	u32 receiveFrontendBaseCapacity;
+	/** Signed-16 history capacity of the portable RX frontend bridge. */
+	u32 receiveFrontendHistoryCapacity;
 
 	/** First alternate detector workspace. */
 	i16 *pAlt0;
@@ -1167,9 +1000,6 @@ typedef struct urp_radio_state {
 	i16 *prxDebug0;
 
 #endif
-
-	/** Number of active trace channels. */
-	i16 numDebugChannels;
 
 	/** Owned radio trace configuration and buffers. */
 	t_sdbg *sdbg;
@@ -1190,10 +1020,11 @@ typedef struct urp_radio_state {
  * @param value Signed sample or detector-state value to record.
  */
 void strace(i16 point, t_sdbg *sdbg, i16 index, i16 value);
-/** @brief Collect the configured radio trace channels into the debug buffer.
- * @param sdbg Radio trace configuration and sample storage.
+/** @brief Copy selected trace sources for the active detector sample count.
+ * @param sdbg Trace workspace to update.
+ * @param samples Active 8 kHz detector samples in this native callback.
  */
-void strace2(t_sdbg *sdbg);
+void strace2(t_sdbg *sdbg, i16 samples);
 /** @brief Emit a control-plane radio trace when the configured and requested levels permit it.
  * This diagnostic helper is intentionally not callable from the native audio
  * callback or its detector stages because Asterisk logging can lock and write.
@@ -1228,7 +1059,10 @@ i16 urp_radio_destroy(urp_radio_state *pChan);
 i16 urp_radio_stage_destroy(urp_radio_stage *pSps);
 /** @brief Measure discriminator noise and update DSP carrier qualification.
  * This real-time stage uses only caller-owned preallocated state; it never
- * logs, locks, allocates, or performs file I/O.
+ * logs, locks, allocates, or performs file I/O.  When @ref urp_radio_stage::nativeSamples
+ * is nonzero, it consumes exactly that native-frame span and overwrites
+ * @ref urp_radio_stage::nSamples with the number of emitted base-rate samples.
+ * A zero native count retains the direct legacy @c nSamples * @c decimate input contract.
  * @param mySps Detector stage and its input/output workspace.
  * @return Zero after processing; one when the stage is disabled or cannot process.
  */
@@ -1251,41 +1085,59 @@ i16 CenterSlicer(urp_radio_stage *mySps);
 /** @brief Update the enabled CTCSS tone detectors and decoded-tone state.
  * This runs from the native audio callback and deliberately performs no
  * Asterisk logging, locking, allocation, or file I/O.
- * @param radio Radio-signaling engine state.
- * @return Zero after processing; one when the stage is disabled or cannot process.
+ * @param channel Radio-signaling engine state.
+ * @return Zero after decoding, one when disabled, or negative on receiver failure.
+ *
+ * Frontend filtering, carrier detection, and TX/RX blanking precede this call.
+ * Decoder history belongs to the stream-owned Rust object. An unavailable or
+ * failed receiver clears qualification instead of switching algorithms.
  */
-i16 urp_ctcss_decode(urp_radio_state *radio);
+i16 urp_ctcss_decode(urp_radio_state *channel);
+/** @brief Install or remove the portable CTCSS receive implementation.
+ * @param decoder CTCSS decoder state selecting the implementation.
+ * @param callback Stream-owned Rust receiver; NULL detaches it during teardown.
+ * @param context Stable caller-owned object supplied at callback time.
+ *
+ * This is a setup/teardown operation. It preserves current CTCSS
+ * configuration. An absent or failed callback clears receive qualification;
+ * there is no second decoder implementation.
+ */
+void urp_ctcss_set_receive_callback(urp_ctcss_decoder *decoder, urp_ctcss_receive_callback callback,
+				    void *context);
 /** @brief Apply the configured receiver squelch-tail delay.
  * @param mySps Detector stage and its input/output workspace.
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
 i16 DelayLine(urp_radio_stage *mySps);
 
-/** @brief Advance carrier detection, CTCSS decoding, measurements, and TX signaling for one block.
- * This is the native audio callback's signaling step. It uses only prepared,
- * caller-owned memory and never logs, locks, allocates, or performs file I/O.
- * @param PmrChan Radio-signaling engine state.
- * @param input Input samples; the caller retains ownership.
- * @param outputrx Base-rate receiver output buffer.
- * @param outputtx Transmitter scratch buffer retained by the radio interface.
- * @return Zero after a processed block; one when processing cannot proceed.
- */
-i16 urp_radio_process(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx);
-
-/** @brief Advance a radio-signaling block while optionally freezing TX time.
+/** @brief Advance native-rate signaling for an explicitly sized PCM block.
  *
- * Receiver processing always advances. A hardware callback passes zero for
- * @p advance_tx when its DAC cannot accept the matching output frame so CTCSS,
- * DCS, PTT, and transmitter-tail state cannot run ahead of rendered audio.
+ * The native rate is fixed for the lifetime of the radio state.  Any bounded
+ * positive native frame count is valid: the receive frontend preserves its
+ * decimator phase and records the actual emitted 8 kHz count in
+ * @ref urp_radio_state::activeSamplesRx.  Downstream base-rate DSP and CTCSS
+ * consume only that emitted span, while native DCS, MICOR, blanking, PTT, and
+ * elapsed-time timers consume every supplied native frame.
  * @param PmrChan Radio-signaling engine state.
- * @param input Input samples; the caller retains ownership.
- * @param outputrx Base-rate receiver output buffer.
- * @param outputtx Transmitter scratch buffer retained by the radio interface.
- * @param advance_tx Nonzero to advance transmitter signaling for this block.
- * @return Zero after a processed block; one when processing cannot proceed.
+ * @param input Interleaved native-rate input PCM.
+ * @param outputrx Base-rate receiver scratch output with at least
+ * @ref urp_radio_state::rxBaseCapacity samples when non-NULL.
+ * @param outputtx Native-rate transmitter scratch output.
+ * @param native_frame_count Native PCM frames in this call.
+ * @param advance_tx Nonzero to advance transmitter signaling.
+ * @return Zero after a complete block, or one for invalid input.
  */
-i16 urp_radio_process_timed(urp_radio_state *PmrChan, i16 *input, i16 *outputrx, i16 *outputtx,
-			    int advance_tx);
+i16 urp_radio_process_native_timed(urp_radio_state *PmrChan, i16 *input, i16 *outputrx,
+				   i16 *outputtx, size_t native_frame_count, int advance_tx);
+
+/** @brief Start a fresh receive-signaling blanking interval.
+ *
+ * Blanking is armed by a physical PTT release or transmitter turn-off.  Its
+ * fractional native-sample remainder must start at zero so an earlier
+ * receiver timer cannot shorten the new protected interval.
+ * @param pChan Radio-signaling engine state.
+ */
+void urp_radio_arm_txrx_blanking(urp_radio_state *pChan);
 
 /** @brief Split a comma-separated signaling-code list into owned strings and a pointer table.
  * @param src Comma-separated signaling codes; not modified.
@@ -1503,35 +1355,11 @@ i16 MeasureBlock(urp_radio_stage *mySps);
 /** @def CTCSS_NUM_CODES
  * @brief Number of supported CTCSS reference tones.
  */
-/** @def CTCSS_SCOUNT_MUL
- * @brief Fixed-point scale for CTCSS sample-count qualification.
- */
-/** @def CTCSS_INTEGRATE
- * @brief 32767*.120 -> 120/1000 = 0.120
- */
-/** @def CTCSS_INPUT_LIMIT
- * @brief Bound used for CTCSS detector input amplitude.
- */
-/** @def CTCSS_DETECT_POINT
- * @brief CTCSS correlator opening decision threshold.
- */
-/** @def CTCSS_HYSTERSIS
- * @brief CTCSS correlator release margin.
- */
 /** @def CTCSS_TURN_OFF_TIME
  * @brief CTCSS reverse-burst duration in milliseconds.
  */
 /** @def CTCSS_TURN_OFF_SHIFT
  * @brief CTCSS reverse-burst phase shift in degrees.
- */
-/** @def DDB_FRAME_SIZE
- * @brief clock de-drift defaults
- */
-/** @def DDB_FRAMES_IN_BUFF
- * @brief Reference elastic-buffer depth in frames.
- */
-/** @def DDB_ERR_MODULUS
- * @brief Reference fixed-point clock-error scale.
  */
 /** @def CHAN_TXSTATE_IDLE
  * @brief CHAN TXSTATE IDLE.

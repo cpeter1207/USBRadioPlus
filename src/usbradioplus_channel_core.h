@@ -14,18 +14,28 @@
 /* A non-lock-free atomic implementation would violate the audio-thread contract. */
 _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "USBRadioPlus requires lock-free atomic cursors");
 
-/** Maximum retained program-audio history: 200 ms at the native rate. */
-#define URP_PROGRAM_RING_FRAMES 10U
-/** Number of PCM samples allocated for the app_rpt-to-native program ring. */
-#define URP_PROGRAM_RING_SAMPLES (URP_PROGRAM_RING_FRAMES * URP_NATIVE_SAMPLES)
+/**
+ * Program-ring retained reserve, controller target, and physical capacity.
+ *
+ * These durations target a source and hardware clock mismatch of at most
+ * 100 ppm.  At 48 kHz that is 4.8 samples per second, so a full 20 ms reserve
+ * protects a very large pure-drift interval while the 40 ms target minimizes
+ * ordinary program-to-DAC latency.  Capacity is expressed at the active
+ * source rate when the ring is configured.
+ */
+#define URP_PROGRAM_RING_RESERVE_MS 20U
+/** Program-ring clock-recovery target in milliseconds. */
+#define URP_PROGRAM_RING_TARGET_MS 40U
+/** Maximum program-ring capacity in milliseconds. */
+#define URP_PROGRAM_RING_CAPACITY_MS 80U
+/** Largest source-rate storage allocation needed by a 48 kHz program source. */
+#define URP_PROGRAM_RING_MAX_SAMPLES                                                               \
+	((URP_RATE_NATIVE * URP_PROGRAM_RING_CAPACITY_MS + 999U) / 1000U)
 /** Source-audio occupancy used by the program-ring drift controller.
  *
  * This is a controller setpoint, not an admission threshold: playout starts
- * immediately and a temporary shortfall is concealed by the consumer.  The
- * 110 ms target leaves room for independent Asterisk and CM119 clocks without
- * adding a keyed-transmit startup delay.
+ * immediately and a temporary shortfall is concealed by the consumer.
  */
-#define URP_PROGRAM_RING_TARGET_MS 110U
 /** Maximum duration retained by the legacy 8 kHz echo path: 20 seconds. */
 #define URP_ECHO_QUEUE_SAMPLES (URP_APP_RPT_RATE_DEFAULT * 20U)
 
@@ -106,6 +116,62 @@ struct urp_sample_queue {
 	atomic_uint high_water;
 };
 
+/** Maximum complete native blocks retained by one compatibility adapter.
+ *
+ * The adapter derives its active depth from the already configured device
+ * queue or latency.  Two blocks are retained when the device cannot expose a
+ * useful limit.  Storage remains fixed so an audio worker never allocates.
+ */
+#define URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS 20U
+
+/** One rendered native stereo block awaiting a compatibility-adapter write. */
+struct urp_native_output_block {
+	/** Interleaved native-rate transmitter PCM. */
+	short pcm[URP_NATIVE_MAX_SAMPLES * 2U];
+	/** Complete native frames represented by @ref pcm. */
+	size_t frame_count;
+	/** Native frames already submitted to the audio device. */
+	size_t submitted_frames;
+	/** Logical PTT state captured when the renderer produced this block. */
+	int logical_ptt;
+	/** Nonzero when this keyed block contains non-silent PCM. */
+	int audio_bearing;
+};
+
+/**
+ * Preallocated ordered output stage for an ASL compatibility adapter.
+ *
+ * Only its owning audio worker accesses this object.  @ref current is the
+ * sole block allowed to be partially submitted; @ref pending contains only
+ * complete, unsubmitted blocks.  This makes congestion recovery able to
+ * discard the oldest complete block without ever truncating PCM already sent
+ * to a device.
+ */
+struct urp_native_output_stage {
+	/** Oldest block, if one is currently awaiting a device write. */
+	struct urp_native_output_block current;
+	/** Ordered complete blocks behind @ref current. */
+	struct urp_native_output_block pending[URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS];
+	/** First pending-block index. */
+	unsigned int pending_head;
+	/** Number of pending complete blocks. */
+	unsigned int pending_count;
+	/** Active total-block bound, including @ref current. */
+	unsigned int capacity;
+	/** Declared largest native span accepted from this adapter. */
+	size_t maximum_frame_count;
+	/** Largest observed total-block occupancy. */
+	unsigned int high_water;
+	/** Number of discarded complete blocks caused by device congestion. */
+	uint64_t dropped_complete_blocks;
+	/** Number of non-final device submissions. */
+	uint64_t partial_writes;
+	/** Native PCM age of the current partially submitted block. */
+	uint64_t stalled_partial_frames;
+	/** Nonzero when @ref current contains a block. */
+	int current_valid;
+};
+
 /** Buffer and playback cursor for native-rate echo audio. */
 struct urp_parrot_state {
 	/** Owned floating-point native echo recording. */
@@ -122,33 +188,31 @@ struct urp_parrot_state {
 	unsigned int truncated : 1;
 };
 
-/** Measurements collected while preparing one native receiver block. */
-struct urp_receive_block_stats {
-	/** Largest observed absolute sample magnitude. */
-	unsigned int peak;
-	/** Count of samples at a signed 16-bit PCM rail. */
-	unsigned long rail_samples;
+/** Opaque fixed-rate portable radio-core context. */
+struct rptadv_radio;
+
+/**
+ * @brief Preallocated f32 boundary storage for one native transmitter block.
+ *
+ * The existing compatibility renderer presently owns PCM-code `double`
+ * workspace. This transient boundary converts only its program span to the
+ * portable core's canonical f32 representation without an
+ * allocation or a second DSP implementation in the native tick.
+ */
+struct urp_transmit_render_workspace {
+	/** Processed program audio normalized from PCM-code doubles. */
+	float program[URP_NATIVE_MAX_SAMPLES];
+	/** Unit-amplitude CTCSS waveform from the portable signal generator. */
+	float ctcss[URP_NATIVE_MAX_SAMPLES];
+	/** Normalized DCS source waveform supplied to the shared FFmpeg shaper. */
+	float dcs[URP_NATIVE_MAX_SAMPLES];
 };
 
-/** @brief Extract the left CM119 channel, collect ADC measurements, apply the optional squelch-tail
- * delay, and create the floating-point receiver working block.
- * @param stereo Interleaved signed 16-bit stereo samples.
- * @param pcm Receives the delayed signed 16-bit receiver block.
- * @param working Receives the floating-point receiver working block.
- * @param count Number of elements available in the supplied block.
- * @param delay Receiver squelch-tail delay ring.
- * @param delay_samples Delay-ring length in samples.
- * @param delay_index Delay-ring cursor, updated in place.
- * @param stats Receives raw ADC peak and rail counts.
- */
-void urp_prepare_receive_block(const short *stereo, short *pcm, double *working, size_t count,
-			       short *delay, size_t delay_samples, unsigned int *delay_index,
-			       struct urp_receive_block_stats *stats);
-
-/** @brief Quantize and route one native transmitter block to the CM119 channels.
+/** @brief Quantize and route one native transmitter block through the Rust core.
+ * @param radio Fixed-rate portable radio context created at renderer setup.
  * @param program Processed transmitter program audio.
  * @param ctcss Unit-amplitude native CTCSS samples.
- * @param dcs Native DCS samples already scaled in PCM codes.
+ * @param dcs Filtered normalized native DCS samples.
  * @param count Number of elements available in the supplied block.
  * @param output_a Output-A routing assignment.
  * @param output_b Output-B routing assignment.
@@ -156,16 +220,22 @@ void urp_prepare_receive_block(const short *stereo, short *pcm, double *working,
  * @param ctcss_bias_a CTCSS calibration bias in PCM codes for output A.
  * @param ctcss_peak_b CTCSS amplitude in PCM codes for output B.
  * @param ctcss_bias_b CTCSS calibration bias in PCM codes for output B.
+ * @param workspace Preallocated canonical-f32 boundary storage.
  * @param stereo Interleaved signed 16-bit stereo samples.
  * @param meter_stereo Optional unrouted program-audio buffer for transmitter metering.
- * @return Number of program samples outside signed 16-bit PCM range.
+ * @param rail_samples Receives program samples outside signed 16-bit PCM range.
+ * @return Zero on success, otherwise nonzero with no partial result committed.
+ *
+ * `program` and calibration values retain the PCM-code unit at this
+ * compatibility boundary. CTCSS and DCS remain F32 through generation,
+ * filtering, and routing without intermediate conversion or copying.
  */
-unsigned long urp_render_transmit_block(const double *program, const double *ctcss,
-					const double *dcs, size_t count,
-					enum urp_tx_output_mode output_a,
-					enum urp_tx_output_mode output_b, double ctcss_peak_a,
-					double ctcss_bias_a, double ctcss_peak_b,
-					double ctcss_bias_b, short *stereo, short *meter_stereo);
+int urp_render_transmit_block(const struct rptadv_radio *radio, const double *program,
+			      const float *ctcss, const float *dcs, size_t count,
+			      enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b,
+			      double ctcss_peak_a, double ctcss_bias_a, double ctcss_peak_b,
+			      double ctcss_bias_b, struct urp_transmit_render_workspace *workspace,
+			      short *stereo, short *meter_stereo, unsigned long *rail_samples);
 
 /** @brief Initialize an SPSC sample ring before either endpoint uses it.
  * @param queue Ring to initialize.
@@ -221,6 +291,78 @@ unsigned int urp_sample_queue_high_water(const struct urp_sample_queue *queue);
  * @param queue Queue whose peak measurement is reset.
  */
 void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue);
+
+/** @brief Initialize a preallocated native-output stage.
+ * @param stage Stage to initialize.
+ * @param capacity Maximum retained native blocks, clamped to the fixed storage range.
+ * @param maximum_frame_count Largest native callback span declared by the adapter.
+ *
+ * The bound is retained separately from the current partial block so stalled
+ * output recovery always protects at least the configured device depth in
+ * maximum native spans, even when a callback was partitioned more finely.
+ */
+void urp_native_output_stage_init(struct urp_native_output_stage *stage, unsigned int capacity,
+				  size_t maximum_frame_count);
+
+/** @brief Clear queued native output while retaining its configured capacity.
+ * @param stage Stage to clear.
+ */
+void urp_native_output_stage_reset(struct urp_native_output_stage *stage);
+
+/** @brief Set the active retained-block capacity when the stage is empty.
+ * @param stage Stage to configure.
+ * @param capacity Requested maximum complete blocks.
+ * @return Nonzero on success; zero when queued PCM prevents a capacity change.
+ */
+int urp_native_output_stage_set_capacity(struct urp_native_output_stage *stage,
+					 unsigned int capacity);
+
+/** @brief Enqueue one complete renderer output block.
+ * @param stage Owning adapter's output stage.
+ * @param pcm Interleaved native-rate PCM.
+ * @param frame_count Native frames in @p pcm.
+ * @param logical_ptt Logical PTT state captured with the block.
+ * @param audio_bearing Nonzero when the keyed block contains non-silent PCM.
+ * @return One when retained without eviction, zero when the oldest complete
+ * block was discarded to retain this block, or minus one for invalid input.
+ */
+int urp_native_output_stage_enqueue(struct urp_native_output_stage *stage, const short *pcm,
+				    size_t frame_count, int logical_ptt, int audio_bearing);
+
+/** @brief Return the oldest native block still awaiting device submission.
+ * @param stage Stage to inspect.
+ * @return Mutable oldest block, or NULL when the stage is empty.
+ */
+struct urp_native_output_block *urp_native_output_stage_peek(struct urp_native_output_stage *stage);
+
+/** @brief Commit an accepted contiguous prefix of the oldest output block.
+ * @param stage Stage owning the submitted PCM.
+ * @param frame_count Native frames accepted by the device.
+ * @param finished Optional completed-block metadata destination.
+ * @return One when a complete block finished, zero when more of the current
+ * block remains, or minus one for an invalid submission.
+ */
+int urp_native_output_stage_commit(struct urp_native_output_stage *stage, size_t frame_count,
+				   struct urp_native_output_block *finished);
+
+/** @brief Report whether queued output contains any logical PTT assertion.
+ * @param stage Stage to inspect.
+ * @return Nonzero when queued PCM still requires physical PTT.
+ */
+int urp_native_output_stage_has_ptt(const struct urp_native_output_stage *stage);
+
+/** @brief Advance the age of a partially submitted output block.
+ * @param stage Stage whose incomplete oldest block remains queued.
+ * @param elapsed_frames Native PCM time elapsed since the preceding adapter tick.
+ * @return Nonzero when the derived device-queue interval has elapsed and the
+ * adapter must recover by discarding staged output.
+ *
+ * A complete but unsubmitted block can be evicted by normal queue pressure.
+ * A partial block cannot; this age limit prevents a trickle-fed immutable
+ * prefix from keeping stale PCM and PTT asserted indefinitely.
+ */
+int urp_native_output_stage_note_unavailable(struct urp_native_output_stage *stage,
+					     size_t elapsed_frames);
 
 /** @brief Convert a dB hardware gain around the 500 midpoint to the 0 through 999 mixer scale.
  * @param gain_db Gain in dB.
@@ -348,24 +490,6 @@ void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int us
  */
 int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int is_keyed);
 
-/** @brief Copy the next playback block and return its sample count.
- * @param state Processor or stream state owned by the caller.
- * @param output Destination sample buffer owned by the caller.
- * @param count Number of elements available in the supplied block.
- * @return Number of playback samples copied.
- */
-size_t urp_parrot_play(struct urp_parrot_state *state, double *output, size_t count);
-
-/** @brief Append a recording block within a configured sample limit.
- * @param state Processor or stream state owned by the caller.
- * @param input Input samples; the caller retains ownership.
- * @param count Number of elements available in the supplied block.
- * @param limit Maximum recording length in samples.
- * @return Number of samples appended to the recording.
- */
-size_t urp_parrot_record(struct urp_parrot_state *state, const double *input, size_t count,
-			 size_t limit);
-
 /** @brief Parse a receive audio source.
  * @param text Text to parse; mutable storage may be edited in place.
  * @param mode Receives the parsed assignment.
@@ -398,7 +522,7 @@ int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode);
 
 /** @name File-local and build-time constants
  * @{ */
-/** @def URP_PROGRAM_RING_FRAMES
- * @brief Maximum retained app_rpt program-audio history at the native rate.
+/** @def URP_PROGRAM_RING_CAPACITY_MS
+ * @brief Maximum retained app_rpt program-audio duration at the active source rate.
  */
 /** @} */

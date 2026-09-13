@@ -40,60 +40,6 @@
 #ifndef USBRADIOPLUS_RADIO_COEFFICIENTS_H
 #define USBRADIOPLUS_RADIO_COEFFICIENTS_H 1
 
-/* frequencies in 0.1 Hz */
-/** DTMF low-group reference frequencies in Hz. */
-static const u32 dtmf_row[] = {6970, 7700, 8520, 9410};
-/** DTMF high-group reference frequencies in Hz. */
-static const u32 dtmf_col[] = {12090, 13360, 14770, 16330};
-
-#define CTCSS_COEF_INT 120
-
-#define CTCSS_SAMPLE_RATE 8000
-
-#define TDIV(x) ((CTCSS_SAMPLE_RATE * 1000 / (x)) + 5) / 10
-
-/** Per-tone fixed-point correlator period divisors. */
-static i16 coef_ctcss_div[] = {
-	2985, /* 00   067.0 */
-	2782, /* 01   071.9 */
-	2688, /* 02   074.4 */
-	2597, /* 03   077.0 */
-	2509, /* 04   079.7 */
-	2424, /* 05   082.5 */
-	2342, /* 06   085.4 */
-	2260, /* 07   088.5 */
-	2186, /* 08   091.5 */
-	2110, /* 09   094.8 */
-	2053, /* 10   097.4 */
-	2000, /* 11   100.0 */
-	1932, /* 12   103.5 */
-	1866, /* 13   107.2 */
-	1803, /* 14   110.9 */
-	1742, /* 15   114.8 */
-	1684, /* 16   118.8 */
-	1626, /* 17   123.0 */
-	1571, /* 18   127.3 */
-	1517, /* 19   131.8 */
-	1465, /* 20   136.5 */
-	1415, /* 21   141.3 */
-	1368, /* 22   146.2 */
-	1321, /* 23   151.4 */
-	1276, /* 24   156.7 */
-	1233, /* 25   162.2 */
-	1191, /* 26   167.9 */
-	1151, /* 27   173.8 */
-	1112, /* 28   179.9 */
-	1074, /* 29   186.2 */
-	1037, /* 30   192.8 */
-	983,  /* 31   203.5 */
-	949,  /* 32   210.7 */
-	917,  /* 33   218.1 */
-	886,  /* 34   225.7 */
-	856,  /* 35   233.6 */
-	827,  /* 36   241.8 */
-	799   /* 37   250.3 */
-};
-
 /** Supported CTCSS reference frequencies in Hz. */
 static float freq_ctcss[] = {
 	067.0, /* 00 */
@@ -418,15 +364,6 @@ static const T_FIR fir_txlpf[] = {
 
 /** @name File-local and build-time constants
  * @{ */
-/** @def CTCSS_COEF_INT
- * @brief Fixed-point scale used by the CTCSS reference coefficients.
- */
-/** @def CTCSS_SAMPLE_RATE
- * @brief Sample rate in Hz used to derive CTCSS detector coefficients.
- */
-/** @def TDIV
- * @brief Reference tone-period division factor.
- */
 /** @def MAX_COEFS
  * @brief Maximum FIR coefficient-table length.
  */

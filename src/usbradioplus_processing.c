@@ -30,6 +30,7 @@
 #include "usbradioplus_ctcss.h"
 #include "usbradioplus_processing.h"
 #include "usbradioplus_processing_internal.h"
+#include "usbradioplus_radio_core_adapter.h"
 #include "usbradioplus_radio.h"
 
 #define CONFIG_FILE "usbradioplus.conf"
@@ -431,8 +432,9 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.lookahead_ms = 5.0;
 	base->agc.lookahead_attack_ms = 1.0;
 	base->agc.lookahead_release_ms = 100.0;
-	base->agc.post_limiter_lowpass_enabled = 0;
-	base->agc.post_limiter_lowpass_hz = 8000.0;
+	base->agc.post_limiter_bandpass_enabled = 0;
+	base->agc.post_limiter_bandpass_highpass_hz = 0.0;
+	base->agc.post_limiter_bandpass_lowpass_hz = 8000.0;
 	base->agc.output_gain_db = -6.2;
 	value->chains[TXAGC_LINK] = *base;
 	value->chains[TXAGC_VOICE_TELEMETRY] = *base;
@@ -461,7 +463,7 @@ PROCESSING_PRIVATE void settings_defaults(struct txagc_settings *all)
 	base->agc.equalizer_mid_gain_db = -0.5;
 	base->agc.equalizer_high_gain_db = -1.0;
 	base->agc.lookahead_limiter_enabled = 0;
-	base->agc.post_limiter_lowpass_enabled = 0;
+	base->agc.post_limiter_bandpass_enabled = 0;
 	base->agc.output_gain_db = 0.0;
 	value->hardware.input_gain_db = 0.0;
 	value->hardware.output_a_gain_db = 0.0;
@@ -587,7 +589,8 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	REQUIRE_FINITE(lookahead_ms);
 	REQUIRE_FINITE(lookahead_attack_ms);
 	REQUIRE_FINITE(lookahead_release_ms);
-	REQUIRE_FINITE(post_limiter_lowpass_hz);
+	REQUIRE_FINITE(post_limiter_bandpass_highpass_hz);
+	REQUIRE_FINITE(post_limiter_bandpass_lowpass_hz);
 	REQUIRE_FINITE(output_gain_db);
 #undef REQUIRE_FINITE
 	if ((value->agc.compressor_bands != 1 && value->agc.compressor_bands != 3) ||
@@ -746,9 +749,11 @@ PROCESSING_PRIVATE int validate_chain(const struct txagc_chain *value)
 	    value->agc.lookahead_ms < 0.1 || value->agc.lookahead_ms > 20.0 ||
 	    value->agc.lookahead_attack_ms < 0.1 || value->agc.lookahead_attack_ms > 20.0 ||
 	    value->agc.lookahead_release_ms < 1.0 || value->agc.lookahead_release_ms > 5000.0 ||
-	    value->agc.post_limiter_lowpass_hz < 5000.0 ||
-	    value->agc.post_limiter_lowpass_hz > 20000.0 || value->agc.output_gain_db < -30.0 ||
-	    value->agc.output_gain_db > 30.0) {
+	    value->agc.post_limiter_bandpass_highpass_hz < 0.0 ||
+	    value->agc.post_limiter_bandpass_highpass_hz > 300.0 ||
+	    value->agc.post_limiter_bandpass_lowpass_hz < 2500.0 ||
+	    value->agc.post_limiter_bandpass_lowpass_hz > 20000.0 ||
+	    value->agc.output_gain_db < -30.0 || value->agc.output_gain_db > 30.0) {
 		return -1;
 	}
 	return 0;
@@ -801,7 +806,7 @@ PROCESSING_PRIVATE int validate_profile(const struct txagc_profile *value)
 		}
 		if (source != TXAGC_VOICE_TELEMETRY &&
 		    (value->chains[source].agc.lookahead_limiter_enabled ||
-		     value->chains[source].agc.post_limiter_lowpass_enabled)) {
+		     value->chains[source].agc.post_limiter_bandpass_enabled)) {
 			ast_log(LOG_ERROR,
 				"RadioPlus [%s]: transmitter-tail stages are valid only in "
 				"[voice_telemetry]\n",
@@ -975,8 +980,9 @@ PROCESSING_PRIVATE int known_chain_option(const char *name)
 		"lookahead_limiter_lookahead_ms",
 		"lookahead_limiter_attack_ms",
 		"lookahead_limiter_release_ms",
-		"post_limiter_lowpass_enabled",
-		"post_limiter_lowpass_hz",
+		"post_limiter_bandpass_enabled",
+		"post_limiter_bandpass_highpass_hz",
+		"post_limiter_bandpass_lowpass_hz",
 		"output_gain_db",
 	};
 	size_t index;
@@ -995,6 +1001,11 @@ PROCESSING_PRIVATE const char
 		"hardware_eeprom_enabled",
 		"hardware_audio_fragment_count",
 		"hardware_audio_queue_size",
+		"hardware_audio_backend",
+		"hardware_portaudio_input_device_index",
+		"hardware_portaudio_output_device_index",
+		"hardware_gpio_backend",
+		"hardware_gpio_usb_port_path",
 		"hardware_ptt_inverted",
 		"hardware_repeater_number",
 		"hardware_area",
@@ -1313,7 +1324,9 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 		if (end == value || *end || !isfinite(frequency) || frequency <= 0.0 ||
 		    frequency > 500.0)
 			goto invalid;
-	} else if (!strncasecmp(name, "hardware_gpio_", 14)) {
+	} else if (!strncasecmp(name, "hardware_gpio_", 14) &&
+		   strcasecmp(name, "hardware_gpio_backend") &&
+		   strcasecmp(name, "hardware_gpio_usb_port_path")) {
 		if (strcasecmp(value, "in") && strcasecmp(value, "out0") &&
 		    strcasecmp(value, "out1"))
 			goto invalid;
@@ -1397,8 +1410,20 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 	} else if (!strcasecmp(name, "duplex_local_repeat_mode")) {
 		if (strcasecmp(value, "hardware") && strcasecmp(value, "software"))
 			goto invalid;
+	} else if (!strcasecmp(name, "hardware_audio_backend")) {
+		if (strcasecmp(value, "portaudio") && strcasecmp(value, "portaudio_poc"))
+			goto invalid;
+	} else if (!strcasecmp(name, "hardware_gpio_backend")) {
+		if (strcasecmp(value, "cm119") && strcasecmp(value, "cm119_poc"))
+			goto invalid;
+	} else if (!strcasecmp(name, "hardware_portaudio_input_device_index") ||
+		   !strcasecmp(name, "hardware_portaudio_output_device_index")) {
+		long index = strtol(value, &end, 0);
+		if (end == value || *end || index < -1L || index > INT_MAX)
+			goto invalid;
 	} else if (strcasecmp(name, "hardware_device_identifier") &&
-		   strcasecmp(name, "hardware_serial") && strcasecmp(name, "hardware_user_key")) {
+		   strcasecmp(name, "hardware_serial") && strcasecmp(name, "hardware_user_key") &&
+		   strcasecmp(name, "hardware_gpio_usb_port_path")) {
 		double number = strtod(value, &end);
 		if (end == value || *end || !isfinite(number))
 			goto invalid;
@@ -1810,8 +1835,11 @@ PROCESSING_PRIVATE int read_chain(struct ast_config *cfg, const char *section,
 	read_double(cfg, section, "lookahead_limiter_lookahead_ms", &chain->agc.lookahead_ms);
 	read_double(cfg, section, "lookahead_limiter_attack_ms", &chain->agc.lookahead_attack_ms);
 	read_double(cfg, section, "lookahead_limiter_release_ms", &chain->agc.lookahead_release_ms);
-	READ_BOOL("post_limiter_lowpass_enabled", chain->agc.post_limiter_lowpass_enabled);
-	read_double(cfg, section, "post_limiter_lowpass_hz", &chain->agc.post_limiter_lowpass_hz);
+	READ_BOOL("post_limiter_bandpass_enabled", chain->agc.post_limiter_bandpass_enabled);
+	read_double(cfg, section, "post_limiter_bandpass_highpass_hz",
+		    &chain->agc.post_limiter_bandpass_highpass_hz);
+	read_double(cfg, section, "post_limiter_bandpass_lowpass_hz",
+		    &chain->agc.post_limiter_bandpass_lowpass_hz);
 	read_double(cfg, section, "output_gain_db", &chain->agc.output_gain_db);
 #undef READ_BOOL
 	return read_stage_order(cfg, section, chain);
@@ -1831,7 +1859,7 @@ static int scoped_section(char *destination, size_t size, const char *kind, cons
 
 	if (kind_length + name_length + 2 > size)
 		return -1;
-	memcpy(destination, kind, kind_length);
+	memcpy(destination, kind, kind_length + 1);
 	destination[kind_length] = ' ';
 	memcpy(destination + kind_length + 1, name, name_length + 1);
 	return 0;
@@ -3317,6 +3345,10 @@ int usbradioplus_processing_load(void)
 
 int usbradioplus_processing_prime(void)
 {
+	/* CTCSS configuration validation uses the shared core's exact calibration
+	 * tables. Validate that descriptor before parsing any radio profile. */
+	if (urp_radio_core_initialize())
+		return -1;
 	clear_audio_settings();
 	settings_defaults(&settings);
 	return load_settings();

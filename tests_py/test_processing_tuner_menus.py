@@ -418,7 +418,7 @@ def test_voice_filters_remove_retired_bandpass_and_migrate_stale_assignments(mon
     An earlier tuner displayed 300--3000 Hz controls and wrote them back even
     though the module no longer accepts those settings.  The next legitimate
     voice/telemetry edit must therefore expose only the configured FFmpeg
-    cleanup filter and remove every obsolete assignment before reload.
+    post-limiter band-pass and remove every obsolete assignment before reload.
 
     @param monkeypatch Pytest fixture that restores patched module state.
     """
@@ -455,8 +455,8 @@ def test_voice_filters_remove_retired_bandpass_and_migrate_stale_assignments(mon
     )
     MODULE["settings_menu"]("voice_telemetry", "Filters")
     screen = "\n".join(screens[0])
-    assert selections == [("voice_telemetry", "post_limiter_lowpass_enabled")]
-    assert "Post-limiter cleanup low-pass" in screen
+    assert selections == [("voice_telemetry", "post_limiter_bandpass_enabled")]
+    assert "Post-limiter brick-wall band-pass" in screen
     assert "Transmit brick-wall band-pass" not in screen
     assert "Receive brick-wall band-pass" not in screen
     assert "3000" not in screen
@@ -472,9 +472,9 @@ def test_voice_filters_remove_retired_bandpass_and_migrate_stale_assignments(mon
         "apply_config",
         lambda old, new: applied.append((old, new)),
     )
-    MODULE["edit_setting"]("voice_telemetry", "post_limiter_lowpass_enabled")
+    MODULE["edit_setting"]("voice_telemetry", "post_limiter_bandpass_enabled")
     assert applied[0][0] == original
-    assert "post_limiter_lowpass_enabled = yes" in applied[0][1]
+    assert "post_limiter_bandpass_enabled = yes" in applied[0][1]
     for key in MODULE["RETIRED_VOICE_FILTER_KEYS"]:
         assert key not in applied[0][1]
 

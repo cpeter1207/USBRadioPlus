@@ -67,15 +67,15 @@ asl_status=$(dpkg-query -W -f='${db:Status-Status}' asl3-asterisk 2>/dev/null ||
 [ "$asl_status" = installed ] || die "asl3-asterisk is not installed normally (status: ${asl_status:-missing})"
 asl_version=$(dpkg-query -W -f='${Version}' asl3-asterisk)
 
-package=
+package=usbradioplus
 case "$suite:$architecture:$asl_version" in
 	bookworm:amd64:2:22.9.0+asl3-3.9.3-1.deb12|\
 	bookworm:arm64:2:22.9.0+asl3-3.9.3-1.deb12|\
 	trixie:amd64:2:22.9.0+asl3-3.9.3-1.deb13|\
-	trixie:arm64:2:22.9.0+asl3-3.9.3-1.deb13)
-		package=usbradioplus ;;
+	trixie:arm64:2:22.9.0+asl3-3.9.3-1.deb13|\
+	trixie:amd64:2:22.10.1+asl3-3.10.5-1.deb13|\
 	trixie:arm64:2:22.10.1+asl3-3.10.5-1.deb13)
-		package=usbradioplus-asl3105 ;;
+		;;
 	*)
 		die "no package is published for Debian $suite $architecture with asl3-asterisk $asl_version"
 		;;
@@ -136,8 +136,9 @@ printf '%s\n' "$candidate_depends" | grep -F "asl3-asterisk (= $asl_version)" >/
 
 simulation=$temporary_directory/apt-simulation.txt
 apt-get -s install "$package=$candidate" > "$simulation"
-if grep -E '^(Remv|Inst asl3-asterisk |Conf asl3-asterisk )' "$simulation" >/dev/null; then
-	die "APT would change asl3-asterisk; installation refused"
+if grep -E '^(Remv|Inst asl3-asterisk |Conf asl3-asterisk )' "$simulation" | \
+	grep -Ev '^Remv usbradioplus-asl3105(-dbgsym)? ' >/dev/null; then
+	die "APT would change asl3-asterisk or remove unrelated packages; installation refused"
 fi
 apt-get install -y --no-install-recommends "$package=$candidate"
 

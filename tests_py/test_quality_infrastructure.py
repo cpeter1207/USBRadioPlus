@@ -73,7 +73,9 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "container-smoke-test.sh" in dockerfile
     assert "/usr/local/libexec/usbradioplus/container-smoke-test.sh" in dockerfile
     smoke = read("tests/container-smoke-test.sh")
-    assert "module load res_usbradio.so" in smoke
+    assert "res_usbradio" not in smoke
+    assert "$(NM) -D --undefined-only $@" in read("Makefile")
+    assert "ast_radio_" in read("Makefile")
     assert "module load chan_usbradioplus.so" in smoke
     assert "core waitfullybooted" in smoke
     assert "wait_for_module chan_usbradioplus" in smoke

@@ -11,6 +11,22 @@ noise measurement. The `[receive]` section configures squelch, `[ctcss]`
 configures decoder tolerance and gain, and `[local]` configures receive input
 gain.
 
+## DSP preparation
+
+Before initial publication or a processing reload, every prepared native FFmpeg
+graph processes eight maximum-size silent blocks. This exercises its runtime
+frame pool and more than the supported limiter lookahead before the callback
+can acquire it. Returned silence is discarded; the actual graphs and their
+silent delay history remain intact. A processing failure rejects the candidate
+and leaves the previous generation active. Warmup samples do not contribute to
+live sample or underrun counters.
+
+RNNoise similarly processes two silent library frames when its instance is
+created. The retained denoiser is warmed without consuming its live framing
+delay or statistics. Warmup never runs the radio tick, keys a transmitter,
+advances signaling, or consumes program audio. DSP settings, gains, and the
+configured audio latency are unchanged.
+
 ## Noise squelch
 
 DSP COS evaluates every 48 kHz noise-filter sample, not a 20 ms block average.
@@ -95,3 +111,41 @@ procedures are in the release checklist.
 
 Replacing a loaded channel module requires an Asterisk restart. A module-only
 reload may leave the CM119 unassigned even when USB enumeration is healthy.
+
+## Callback timing and xruns
+
+`radioplus native stats` includes PortAudio input-overrun and output-underrun
+counts. With a timing-capable adapter it also shows the last and maximum
+callback duration and start delay in milliseconds, late-start count, tolerance,
+and clock-read errors. Start delay is the positive excess of the interval
+between callback starts over the preceding audio block's duration; only delays
+greater than the displayed 1 ms tolerance count as late starts. This measures
+callback cadence, not kernel run-queue delay, and does not by itself identify
+the cause of an xrun.
+
+The last input and output xrun timestamps are seconds on `CLOCK_MONOTONIC`
+since boot, not UTC or wall-clock time; zero means no timestamp was recorded.
+Compare successive snapshots to distinguish startup events from ongoing
+failures. Older adapters retain their existing counters and show callback
+timing and xrun timestamps as unavailable rather than reporting false zeros.
+## Independent capture clock trial
+
+The PortAudio adapter can drain CM119 mono capture separately from playback.
+The input callback publishes raw normalized PCM to the released shared ring;
+the playback callback uses its clock-corrected output as native-tick input.
+This corrects capture/playback oscillator mismatch without altering receiver
+gain, filtering, or radio signaling. The experimental build accepts mono
+capture only; it is not a general stereo-capture release.
+
+For 960-frame callbacks, the trial uses a 1,536-frame clock target (32 ms),
+3,840-frame capacity, and two capture blocks for initial priming. The 96-frame
+reserve is a diagnostic working margin, not a hard playout gate. Conversion
+uses the shared ring's highest-quality setting. `radioplus native stats`
+reports capture callback count, occupancy, target, ratio correction, missing
+and discarded frames, and initial waiting separately. Callback execution and
+late-start statistics refer to the playback/native-tick callback; hardware
+input overruns are recorded by the capture callback.
+
+This target is selected for the measured capture-faster-than-playback mismatch
+on node 524950. It is not a universal reserve for arbitrary clock direction or
+host scheduling jitter; those combinations need separate qualification.

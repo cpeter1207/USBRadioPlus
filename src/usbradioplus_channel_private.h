@@ -8,13 +8,35 @@
 #include <stdatomic.h>
 
 #include "txagc/avfilter_processor.h"
+#include "usbradioplus_ffmpeg_adapter.h"
 #include "usbradioplus_radio.h"
+
+/** Asterisk compatibility frame length at 8 kHz; not a native tick constraint. */
+#define FRAME_SIZE 160
+/** Number of assignable CM119 GPIO pins. */
+#define GPIO_PINCOUNT 8
+/** Stored mixer scale retains its established endpoint convention. */
+#define AUDIO_ADJUSTMENT 1000
+/** Number of words in the existing tuning EEPROM image. */
+#define EEPROM_USER_LEN 13
+/** Tuning-image field offsets; physical EEPROM I/O belongs to the GPIO adapter. */
+enum {
+	EEPROM_USER_RXMIXERSET = 1,
+	EEPROM_USER_TXMIXASET = 2,
+	EEPROM_USER_TXMIXBSET = 3,
+	EEPROM_USER_RXCTCSSADJ = 6,
+	EEPROM_USER_TXCTCSSADJ = 8,
+	EEPROM_USER_RXSQUELCHADJ = 9,
+};
+/** Hold a clipping indicator long enough to be visible. */
+#define CLIP_LED_HOLD_TIME_MS 500
+/** Message retained by the interactive radio tuner. */
+#define USB_UNASSIGNED_FMT                                                                         \
+	"Device %s is selected, the associated USB device string %s was not found\n"
 
 #define DUPLEX3_LEVEL_MAX 999
 
 #define DEFAULT_ECHO_MAX 1000
-
-#define URP_LEGACY_TEST_TONE_PEAK 7518.0
 
 #define RX_ON_DELAY_MAX 60000
 
@@ -52,22 +74,12 @@ extern struct ast_jb_conf global_jbconf;
 extern ast_mutex_t pp_lock;
 /** Cached parallel-port output byte. */
 extern int8_t pp_val;
-/** Parallel outputs with active timed pulses. */
-extern int8_t pp_pulsemask;
-/** Previously applied parallel-port pulse mask. */
-extern int8_t pp_lastmask;
-/** Remaining pulse duration for each parallel output. */
-extern int pp_pulsetimer[32];
 /** Nonzero when parallel-port hardware is available. */
 extern int haspp;
-/** Open parallel-port device descriptor. */
-extern int ppfd;
 /** Parallel-port device path. */
 extern char pport[50];
 /** Parallel-port I/O base address. */
 extern int pbase;
-/** Stop request observed by the parallel-port pulse worker. */
-extern char stoppulser;
 /** Name of the radio selected for interactive tuning. */
 extern char *usbradio_active;
 
@@ -85,6 +97,8 @@ struct usbradioplus_native_graph_set {
 	unsigned int app_rpt_samples;
 	/** Program-ring clock-recovery target in source-rate samples. */
 	size_t program_target_samples;
+	/** Program-ring retained source reserve in samples. */
+	size_t program_reserve_samples;
 	/** Nonzero when this generation serves the legacy app_rpt-rate interface. */
 	int legacy_interface;
 	/** Nonzero allows optional dynamics to idle while receiver qualification is absent. */
@@ -114,9 +128,9 @@ struct usbradioplus_native_graph_set {
 	/** Final voice/telemetry graph, including pre-emphasis and final limiting. */
 	struct txagc_avfilter final;
 	/** DCS spectrum-shaping stage. */
-	struct txagc_avfilter dcs;
+	struct usbradioplus_ffmpeg_adapter dcs;
 	/** DCS 134.4-Hz turn-off-tone spectrum-shaping stage. */
-	struct txagc_avfilter dcs_turnoff;
+	struct usbradioplus_ffmpeg_adapter dcs_turnoff;
 	/** One prepared CTCSS notch graph per selectable decode code. */
 	struct txagc_avfilter ctcss_notch[CTCSS_NUM_CODES];
 	/** Older generation retained until a quiescent control-plane reclaim. */
@@ -161,19 +175,21 @@ struct usbradioplus_radio_access_slot {
  * while draining, so no later program PCM can extend the transmission.
  */
 struct usbradioplus_tx_playout_hold {
-	/** Native callbacks remaining before the virtual PTT hold may release. */
-	unsigned int callbacks_remaining;
+	/** Native PCM frames remaining before the virtual PTT hold may release. */
+	size_t frames_remaining;
 	/** Last PTT output actually requested by the signaling engine. */
 	int engine_ptt_out;
 	/** Previous external PTT input, used to cancel a stale drain on rekey. */
 	int input_keyed;
-	/** Nonzero while txPttOut is held only for queued DAC audio. */
+	/** Nonzero while txPttOut temporarily bridges queued DAC audio or a pending input key. */
 	int draining;
+	/** Last physical PTT state observed from the HID worker. */
+	int hardware_ptt_applied;
 };
 
 /** Opaque per-channel renderer that owns persistent native DSP state. */
 struct usbradioplus_native_renderer;
-struct audiostatistics;
+struct rptadv_radio_audio_statistics;
 
 /** Meter values copied from one FFmpeg graph by its owning callback. */
 struct usbradioplus_native_filter_statistics {
@@ -205,29 +221,29 @@ struct usbradioplus_native_filter_statistics {
 	double output_rms_dbfs;
 	/** Largest output RMS in dBFS. */
 	double output_max_rms_dbfs;
-	/** Peak before cleanup filtering in dBFS. */
+	/** Peak before the post-limiter band-pass in dBFS. */
 	double cleanup_pre_peak_dbfs;
-	/** Largest pre-cleanup peak in dBFS. */
+	/** Largest pre-band-pass peak in dBFS. */
 	double cleanup_pre_max_peak_dbfs;
-	/** RMS before cleanup filtering in dBFS. */
+	/** RMS before the post-limiter band-pass in dBFS. */
 	double cleanup_pre_rms_dbfs;
-	/** Largest pre-cleanup RMS in dBFS. */
+	/** Largest pre-band-pass RMS in dBFS. */
 	double cleanup_pre_max_rms_dbfs;
-	/** RMS in the 5--8 kHz band before cleanup. */
+	/** RMS in the 5--8 kHz band before the post-limiter band-pass. */
 	double cleanup_pre_5_8_rms_dbfs;
-	/** Largest 5--8 kHz pre-cleanup RMS. */
+	/** Largest 5--8 kHz pre-band-pass RMS. */
 	double cleanup_pre_5_8_max_rms_dbfs;
-	/** RMS in the 5--8 kHz band after cleanup. */
+	/** RMS in the 5--8 kHz band after the post-limiter band-pass. */
 	double cleanup_post_5_8_rms_dbfs;
-	/** Largest 5--8 kHz post-cleanup RMS. */
+	/** Largest 5--8 kHz post-band-pass RMS. */
 	double cleanup_post_5_8_max_rms_dbfs;
-	/** RMS above 8 kHz before cleanup. */
+	/** RMS above 8 kHz before the post-limiter band-pass. */
 	double cleanup_pre_8_plus_rms_dbfs;
-	/** Largest above-8-kHz pre-cleanup RMS. */
+	/** Largest above-8-kHz pre-band-pass RMS. */
 	double cleanup_pre_8_plus_max_rms_dbfs;
-	/** RMS above 8 kHz after cleanup. */
+	/** RMS above 8 kHz after the post-limiter band-pass. */
 	double cleanup_post_8_plus_rms_dbfs;
-	/** Largest above-8-kHz post-cleanup RMS. */
+	/** Largest above-8-kHz post-band-pass RMS. */
 	double cleanup_post_8_plus_max_rms_dbfs;
 };
 
@@ -278,7 +294,7 @@ struct usbradioplus_native_renderer_stats {
 	uint64_t rnnoise_output_samples;
 	/** RNNoise startup samples withheld before output became available. */
 	uint64_t rnnoise_startup_samples;
-	/** RNNoise or its converters' cumulative failures. */
+	/** RNNoise setup cumulative failures. */
 	uint64_t rnnoise_errors;
 	/** Most recent RNNoise voice-activity probability. */
 	double rnnoise_vad_probability;
@@ -290,11 +306,7 @@ struct usbradioplus_native_renderer_stats {
 	struct usbradioplus_native_filter_statistics final_filter;
 };
 
-#ifdef URP_CHANNEL_MODERN
-#include "usbradioplus_channel_modern_private.h"
-#else
-#include "usbradioplus_channel_legacy_private.h"
-#endif
+#include "usbradioplus_channel_state.h"
 
 #define plus_parrot plus_parrot_state.audio
 
@@ -312,27 +324,27 @@ struct usbradioplus_native_renderer_stats {
 	urp_native_echo_enabled((channel)->duplex3, (channel)->duplex3mode == DUPLEX3_MODE_SOFTWARE)
 
 /** @brief Read the resolved local-receiver gain immediately after deemphasis.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
  */
-double effective_rx_input_gain_db(const struct chan_usbradio_pvt *channel);
+double effective_rx_input_gain_db(const struct chan_usbradio_pvt *o);
 /** @brief Read the resolved output-A program/transmit-signaling routing assignment.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
  */
-enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *channel);
+enum radio_tx_mix effective_txmixa(const struct chan_usbradio_pvt *o);
 /** @brief Read the resolved output-B program/transmit-signaling routing assignment.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
  */
-enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *channel);
+enum radio_tx_mix effective_txmixb(const struct chan_usbradio_pvt *o);
 /** @brief Apply changed hardware gains, assignments, and CTCSS maps from the control plane.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  *
  * This operation writes mixer controls and may take adapter locks. It must run
  * during setup, configuration reload, or tuning--never from a native audio callback.
  */
-void refresh_processing_hardware(struct chan_usbradio_pvt *channel);
+void refresh_processing_hardware(struct chan_usbradio_pvt *o);
 /** @brief Apply resolved hardware settings to every live radio from the control plane.
  * @return Zero after visiting all configured channels.
  */
@@ -360,11 +372,39 @@ usbradioplus_native_graphs_acquire(struct chan_usbradio_pvt *channel);
  * @param channel Native radio channel.
  */
 void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel);
-/** @brief Process a native receiver block and render its matching transmitter block.
+/** @brief Process a variable native receiver block and render its matching transmitter block.
  * @param channel Private state of the selected radio channel.
- * @param transmit_ready Nonzero only when the physical DAC will accept this block.
+ * @param frame_count Native PCM frames in the already assembled callback block.
+ * @return Number of app-facing receive samples actually emitted, or zero when processing
+ * failed or no app-rate sample boundary completed.
+ *
+ * Adapters assemble a whole native span before calling this routine, then
+ * retain the rendered output in their preallocated device stage.  The tick
+ * therefore always advances radio timing and program audio by exactly
+ * @p frame_count frames; device availability never gates signal processing.
  */
-void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_ready);
+size_t usbradioplus_native_tick(struct chan_usbradio_pvt *channel, size_t frame_count);
+/** @brief Process one direct canonical-F32 hardware callback through the native tick.
+ * @param channel Private state of the selected radio channel.
+ * @param input Interleaved canonical-F32 stereo ADC frames, or NULL for silence.
+ * @param output Writable interleaved canonical-F32 stereo DAC frames.
+ * @param frame_count Native PCM frames in the callback span.
+ * @param logical_ptt Receives the signaling-owned logical transmit state, or NULL.
+ * @param output_has_audio Receives nonzero when emitted DAC PCM contains audio, or NULL.
+ * @return Number of app-facing receive samples actually emitted, or zero after a rejected
+ * callback span.
+ *
+ * The direct PortAudio proof calls this boundary while it owns the same radio
+ * access lease required by @ref usbradioplus_native_tick.  Its signed-16
+ * conversion uses the existing preallocated Asterisk-facing ADC and DAC
+ * workspaces; it allocates, locks, and waits nowhere.  Non-finite input maps
+ * to zero, endpoint clamps retain the established signed-16 mapping, and
+ * output is silence while logical PTT is inactive.  The retained renderer may
+ * remain signed-16 internally during the ADR-0029 transition.
+ */
+size_t usbradioplus_native_tick_f32(struct chan_usbradio_pvt *channel, const float *input,
+				    float *output, size_t frame_count, int *logical_ptt,
+				    int *output_has_audio);
 /** @brief Create the persistent direct native renderer.
  * @param channel Private state of the selected radio channel.
  * @return Zero on success or nonzero when setup fails.
@@ -373,6 +413,14 @@ void usbradioplus_native_tick(struct chan_usbradio_pvt *channel, int transmit_re
  * prepared FFmpeg, local-receive RNNoise, and legacy-only SRC state directly.
  */
 int usbradioplus_native_renderer_start(struct chan_usbradio_pvt *channel);
+/** @brief Attach a late-created radio engine to its existing native decoder owner.
+ * @param channel Private channel with a prepared renderer and optional radio engine.
+ *
+ * Call only on the control plane before audio starts or while callbacks are
+ * quiesced. Rebinding the same engine preserves decoder history; a new engine
+ * causes its first receive block to configure fresh CTCSS/DCS state.
+ */
+void usbradioplus_native_renderer_bind_radio(struct chan_usbradio_pvt *channel);
 /** @brief Stop and destroy a channel's native renderer after callback quiescence.
  * @param channel Private state of the selected radio channel.
  */
@@ -409,12 +457,12 @@ void usbradioplus_native_renderer_clear_parrot(struct chan_usbradio_pvt *channel
 void usbradioplus_native_renderer_clear_legacy_echo(struct chan_usbradio_pvt *channel);
 /** @brief Copy transmitter audio measurements owned by the native renderer.
  * @param channel Private state of the selected radio channel.
- * @param statistics Receives the Asterisk-compatible transmitter meter state.
+ * @param statistics Receives the portable transmitter meter state.
  * @return Zero on success, or nonzero when native processing is unavailable or a
  * bounded retry cannot pin a snapshot without waiting.
  */
-int usbradioplus_native_renderer_tx_audio_stats_read(struct chan_usbradio_pvt *channel,
-						     struct audiostatistics *statistics);
+int usbradioplus_native_renderer_tx_audio_stats_read(
+	struct chan_usbradio_pvt *channel, struct rptadv_radio_audio_statistics *statistics);
 #ifdef URP_PROCESSING_TESTING
 /** @brief Force a bounded diagnostics read to exhaust all retries. */
 int usbradioplus_native_renderer_test_statistics_retry(struct chan_usbradio_pvt *channel);
@@ -468,71 +516,71 @@ void _menu_rxvoice(int fd, struct chan_usbradio_pvt *o, const char *str);
 void _menu_print(int fd, struct chan_usbradio_pvt *o);
 /** @brief Transmit three calibration bursts while honoring interactive cancellation.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param interactive Nonzero permits interactive cancellation.
+ * @param o Private state of the selected radio channel.
+ * @param intflag Nonzero permits interactive cancellation.
  */
-void tune_flash(int fd, struct chan_usbradio_pvt *channel, int interactive);
+void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag);
 /** @brief Read the resolved CTCSS decoder-input gain.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
  */
-float effective_rx_decoder_gain(const struct chan_usbradio_pvt *channel);
+float effective_rx_decoder_gain(const struct chan_usbradio_pvt *o);
 /** @brief Convert resolved hardware input gain to the normalized CM119 mixer scale.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Resolved gain, mixer level, or routing value in the units described above.
  */
-int effective_rxmixerset(const struct chan_usbradio_pvt *channel);
+int effective_rxmixerset(const struct chan_usbradio_pvt *o);
 /** @brief Stream the receive voice calibration level until input cancels the display.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  */
-void tune_rxdisplay(int fd, struct chan_usbradio_pvt *channel);
+void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o);
 /** @brief Stream COS, CTCSS, PTT, receive, and transmit measurements on one screen.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  */
-void tune_rxtx_status(int fd, struct chan_usbradio_pvt *channel);
+void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o);
 /** @brief Display or adjust the live DSP squelch threshold.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param value Optional textual tuning command; an empty string requests the current value.
+ * @param o Private state of the selected radio channel.
+ * @param str Optional textual tuning command; an empty string requests the current value.
  */
-void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *channel, const char *value);
+void _menu_rxsquelch(int fd, struct chan_usbradio_pvt *o, const char *str);
 /** @brief Display or adjust the voice output and optional calibration tone.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param value Optional textual tuning command; an empty string requests the current value.
+ * @param o Private state of the selected radio channel.
+ * @param cstr Optional textual tuning command; an empty string requests the current value.
  */
-void _menu_txvoice(int fd, struct chan_usbradio_pvt *channel, const char *value);
+void _menu_txvoice(int fd, struct chan_usbradio_pvt *o, const char *cstr);
 /** @brief Display or adjust the auxiliary voice output level.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param value Optional textual tuning command; an empty string requests the current value.
+ * @param o Private state of the selected radio channel.
+ * @param str Optional textual tuning command; an empty string requests the current value.
  */
-void _menu_auxvoice(int fd, struct chan_usbradio_pvt *channel, const char *value);
+void _menu_auxvoice(int fd, struct chan_usbradio_pvt *o, const char *str);
 /** @brief Display or adjust transmit CTCSS level and optional keyed tone.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param value Optional textual tuning command; an empty string requests the current value.
+ * @param o Private state of the selected radio channel.
+ * @param cstr Optional textual tuning command; an empty string requests the current value.
  */
-void _menu_txtone(int fd, struct chan_usbradio_pvt *channel, const char *value);
+void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr);
 /** @brief Calibrate receiver voice gain from a 1 kHz reference signal.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param interactive Nonzero permits interactive cancellation.
+ * @param o Private state of the selected radio channel.
+ * @param intflag Nonzero permits interactive cancellation.
  */
-void tune_rxvoice(int fd, struct chan_usbradio_pvt *channel, int interactive);
+void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag);
 /** @brief Calibrate the CTCSS decoder's input level.
  * @param fd Asterisk CLI output descriptor.
- * @param channel Private state of the selected radio channel.
- * @param interactive Nonzero permits interactive cancellation.
+ * @param o Private state of the selected radio channel.
+ * @param intflag Nonzero permits interactive cancellation.
  */
-void tune_rxctcss(int fd, struct chan_usbradio_pvt *channel, int interactive);
+void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag);
 /** @brief Reserve native echo storage for the configured maximum duration.
- * @param channel Private state of the selected radio channel.
+ * @param o Private state of the selected radio channel.
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
-int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *channel);
+int usbradioplus_ensure_parrot_capacity(struct chan_usbradio_pvt *o);
 /** @brief Return the head of the configured radio-channel list.
  * @return Borrowed head of the configured channel list.
  */
@@ -552,9 +600,6 @@ struct chan_usbradio_pvt *find_desc(const char *device);
  */
 /** @def DEFAULT_ECHO_MAX
  * @brief Default app_rpt-rate echo capacity in frames.
- */
-/** @def URP_LEGACY_TEST_TONE_PEAK
- * @brief PCM peak of the calibrated 1 kHz transmitter test tone.
  */
 /** @def RX_ON_DELAY_MAX
  * @brief Maximum receiver-on delay in app_rpt frames.
