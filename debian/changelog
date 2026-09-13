@@ -1,3 +1,10 @@
+usbradioplus (0.1.0~alpha18-1) unstable; urgency=medium
+
+  * Ship one ASL3 channel and package using released shared audio, GPIO, and DSP adapters.
+  * Remove resource-module dependencies and verify one module against both supported ASL3 runtimes.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sun, 13 Sep 2026 14:00:00 -0500
+
 usbradioplus (0.1.0~alpha17-1) unstable; urgency=medium
 
   * Split the receiver de-emphasis and transmitter pre-emphasis corners.

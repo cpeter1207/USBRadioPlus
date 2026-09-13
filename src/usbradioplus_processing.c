@@ -30,6 +30,7 @@
 #include "usbradioplus_ctcss.h"
 #include "usbradioplus_processing.h"
 #include "usbradioplus_processing_internal.h"
+#include "usbradioplus_radio_core_adapter.h"
 #include "usbradioplus_radio.h"
 
 #define CONFIG_FILE "usbradioplus.conf"
@@ -1000,6 +1001,11 @@ PROCESSING_PRIVATE const char
 		"hardware_eeprom_enabled",
 		"hardware_audio_fragment_count",
 		"hardware_audio_queue_size",
+		"hardware_audio_backend",
+		"hardware_portaudio_input_device_index",
+		"hardware_portaudio_output_device_index",
+		"hardware_gpio_backend",
+		"hardware_gpio_usb_port_path",
 		"hardware_ptt_inverted",
 		"hardware_repeater_number",
 		"hardware_area",
@@ -1318,7 +1324,9 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 		if (end == value || *end || !isfinite(frequency) || frequency <= 0.0 ||
 		    frequency > 500.0)
 			goto invalid;
-	} else if (!strncasecmp(name, "hardware_gpio_", 14)) {
+	} else if (!strncasecmp(name, "hardware_gpio_", 14) &&
+		   strcasecmp(name, "hardware_gpio_backend") &&
+		   strcasecmp(name, "hardware_gpio_usb_port_path")) {
 		if (strcasecmp(value, "in") && strcasecmp(value, "out0") &&
 		    strcasecmp(value, "out1"))
 			goto invalid;
@@ -1402,8 +1410,20 @@ PROCESSING_PRIVATE int add_override(struct txagc_profile *updated, struct ast_co
 	} else if (!strcasecmp(name, "duplex_local_repeat_mode")) {
 		if (strcasecmp(value, "hardware") && strcasecmp(value, "software"))
 			goto invalid;
+	} else if (!strcasecmp(name, "hardware_audio_backend")) {
+		if (strcasecmp(value, "portaudio") && strcasecmp(value, "portaudio_poc"))
+			goto invalid;
+	} else if (!strcasecmp(name, "hardware_gpio_backend")) {
+		if (strcasecmp(value, "cm119") && strcasecmp(value, "cm119_poc"))
+			goto invalid;
+	} else if (!strcasecmp(name, "hardware_portaudio_input_device_index") ||
+		   !strcasecmp(name, "hardware_portaudio_output_device_index")) {
+		long index = strtol(value, &end, 0);
+		if (end == value || *end || index < -1L || index > INT_MAX)
+			goto invalid;
 	} else if (strcasecmp(name, "hardware_device_identifier") &&
-		   strcasecmp(name, "hardware_serial") && strcasecmp(name, "hardware_user_key")) {
+		   strcasecmp(name, "hardware_serial") && strcasecmp(name, "hardware_user_key") &&
+		   strcasecmp(name, "hardware_gpio_usb_port_path")) {
 		double number = strtod(value, &end);
 		if (end == value || *end || !isfinite(number))
 			goto invalid;
@@ -1839,7 +1859,7 @@ static int scoped_section(char *destination, size_t size, const char *kind, cons
 
 	if (kind_length + name_length + 2 > size)
 		return -1;
-	memcpy(destination, kind, kind_length);
+	memcpy(destination, kind, kind_length + 1);
 	destination[kind_length] = ' ';
 	memcpy(destination + kind_length + 1, name, name_length + 1);
 	return 0;
@@ -3325,6 +3345,10 @@ int usbradioplus_processing_load(void)
 
 int usbradioplus_processing_prime(void)
 {
+	/* CTCSS configuration validation uses the shared core's exact calibration
+	 * tables. Validate that descriptor before parsing any radio profile. */
+	if (urp_radio_core_initialize())
+		return -1;
 	clear_audio_settings();
 	settings_defaults(&settings);
 	return load_settings();

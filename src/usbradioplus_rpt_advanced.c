@@ -8,6 +8,7 @@
 #include "asterisk/format.h"
 #include "asterisk/format_cache.h"
 #include "asterisk/format_cap.h"
+#include "usbradioplus_dsp.h"
 #include "usbradioplus_rpt_advanced.h"
 
 /** Hardware lifecycle and callbacks, owned by this module. */
@@ -119,11 +120,11 @@ static struct ast_channel *request(const char *type, struct ast_format_cap *cap,
 	return channel;
 }
 
-int usbradioplus_advanced_register(const struct ast_channel_tech *backend, unsigned int native_rate,
+int usbradioplus_advanced_register(const struct ast_channel_tech *backend,
 				   void (*configure)(struct ast_channel *channel))
 {
-	native_format = ast_format_cache_get_slin_by_rate(native_rate);
-	if (ast_format_get_sample_rate(native_format) != native_rate)
+	native_format = ast_format_cache_get_slin_by_rate(URP_RATE_NATIVE);
+	if (ast_format_get_sample_rate(native_format) != URP_RATE_NATIVE)
 		return -1;
 	hardware = backend;
 	configure_native = configure;

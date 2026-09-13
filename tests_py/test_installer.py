@@ -20,7 +20,9 @@ def test_staged_install_manifest(tmp_path):
     stage = tmp_path / "stage"
     build = tmp_path / "build"
     fixture = ROOT / "tests/fixtures/asterisk-dev"
-    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment = dict(
+        os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true"
+    )
     subprocess.run(
         [
             "make",
@@ -128,7 +130,9 @@ def test_install_preserves_existing_processing_configuration(tmp_path):
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
     fixture = ROOT / "tests/fixtures/asterisk-dev"
-    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment = dict(
+        os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true"
+    )
     subprocess.run(
         [
             "make",
@@ -159,7 +163,9 @@ def test_install_preserves_existing_channel_configuration(tmp_path):
     config.parent.mkdir(parents=True)
     config.write_text("operator configuration\n", encoding="utf-8")
     fixture = ROOT / "tests/fixtures/asterisk-dev"
-    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment = dict(
+        os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true"
+    )
     subprocess.run(
         [
             "make",
@@ -187,7 +193,9 @@ def test_private_agc_path_rebuilds_after_build_prefix_changes(tmp_path):
     fixture = ROOT / "tests/fixtures/asterisk-dev"
     build = tmp_path / "build"
     stage = tmp_path / "stage"
-    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment = dict(
+        os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true"
+    )
     arguments = [
         "make",
         f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
@@ -250,7 +258,9 @@ def test_uninstall_removes_private_agc_but_preserves_operator_files(tmp_path):
     fixture = ROOT / "tests/fixtures/asterisk-dev"
     stage = tmp_path / "stage"
     build = tmp_path / "build"
-    environment = dict(os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment = dict(
+        os.environ, TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true"
+    )
     arguments = [
         "make",
         f"ASTERISK_INCLUDEDIR={fixture / 'include'}",
@@ -321,10 +331,13 @@ def test_rnnoise_bootstrap_avoids_noexec_temporary_filesystems():
     assert "./autogen.sh" not in source
 
 
-def test_installer_includes_asterisk_transitive_header_dependencies():
-    """Verify installer includes asterisk transitive header dependencies."""
+def test_installer_includes_mandatory_hardware_adapter_dependencies():
+    """Verify the installer provides both versioned hardware contracts."""
     source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
-    assert "portaudio19-dev" in source
+    assert "librptadv-portaudio-alsa-adapter-dev" in source
+    assert "librptadv-gpio-adapter-dev" in source
+    assert "portaudio19-dev" not in source
+    assert "libusb-dev" not in source
 
 
 def test_source_installer_configures_signed_shared_ring_dependency():
@@ -379,7 +392,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
     assert f"{root}/Makefile" in names
     assert f"{root}/COPYING" in names
     assert f"{root}/.github/workflows/release.yml" in names
-    assert f"{root}/src/chan_usbradioplus_modern.c" in names
+    assert f"{root}/src/chan_usbradioplus.c" in names
     for artifact in (
         "src/txagc/rms_agc_ladspa.c",
         "src/txagc/rms_agc_ladspa.h",
@@ -408,7 +421,7 @@ def test_dist_archive_has_one_versioned_root(tmp_path):
     )
     fixture = ROOT / "tests/fixtures/asterisk-dev"
     stage = tmp_path / "from-dist"
-    environment.update(TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}")
+    environment.update(TMPDIR=str(tmp_path), CC=f"bash {fixture / 'fake-cc'}", NM="true")
     subprocess.run(
         [
             "make",

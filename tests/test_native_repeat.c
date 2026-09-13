@@ -14,15 +14,17 @@ int main(void)
 {
 	const double input[] = {1200.0, -600.0, 300.0, -150.0};
 	double output[4];
+	struct urp_native_repeat_workspace workspace = {0};
 	size_t index;
 
-	urp_native_repeat_prepare(output, input, 4, 0.5, 0);
+	assert(urp_native_repeat_initialize() == 0);
+	assert(urp_native_repeat_prepare(output, input, 4, 0.5, 0, &workspace) == 0);
 	assert(output[0] == 600.0);
 	assert(output[1] == -300.0);
 	assert(output[2] == 150.0);
 	assert(output[3] == -75.0);
 
-	urp_native_repeat_prepare(output, input, 4, 1.0, 1);
+	assert(urp_native_repeat_prepare(output, input, 4, 1.0, 1, &workspace) == 0);
 	for (index = 0; index < 4; ++index)
 		assert(output[index] == 0.0);
 

@@ -1,5 +1,8 @@
 /** @file
- * @brief Sample-rate conversion and receive-echo matching.
+ * @brief Transitional S16 sample-rate conversion.
+ *
+ * Mono conversion delegates normalized F32 PCM to the released sample-rate
+ * adapter. Only the Asterisk-facing S16 boundary remains here.
  */
 
 #ifdef AST_MODULE
@@ -7,9 +10,9 @@
 #endif
 
 #include "usbradioplus_dsp.h"
+#include "usbradioplus_samplerate_adapter.h"
 
 #include <math.h>
-#include <samplerate.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,17 +36,10 @@ void *urp_test_realloc(void *pointer, size_t size);
 #define URP_FREE(p) free((p))
 #endif
 
-#ifndef M_PI
-
-#define M_PI 3.14159265358979323846
-#endif
-
-/** Owned libsamplerate state and reusable floating-point conversion buffers. */
+/** Owned converter state and reusable floating-point boundary workspaces. */
 struct urp_src {
-	/** Owned libsamplerate converter handle. */
-	SRC_STATE *state;
-	/** Number of interleaved channels. */
-	unsigned int channels;
+	/** Released Rust adapter owning the persistent mono converter. */
+	struct usbradioplus_samplerate_adapter adapter;
 	/** Owned floating-point input-conversion workspace. */
 	float *input;
 	/** Output workspace for the current conversion. */
@@ -67,21 +63,40 @@ static int16_t saturate(double value)
 	return (int16_t)lrint(value);
 }
 
+/**
+ * @brief Convert one signed-16 boundary sample to normalized canonical F32.
+ * @param sample Signed-16 PCM sample at the legacy boundary.
+ * @return Normalized F32 sample in the canonical internal range.
+ */
+static float pcm_s16_to_f32(int16_t sample)
+{
+	return (float)sample / 32768.0F;
+}
+
+/**
+ * @brief Quantize one normalized canonical F32 sample at the legacy boundary.
+ * @param sample Normalized F32 sample from the canonical internal range.
+ * @return Rounded, saturated signed-16 PCM sample.
+ */
+static int16_t pcm_f32_to_s16(float sample)
+{
+	return saturate((double)sample * 32768.0);
+}
+
 struct urp_src *urp_src_create(int converter, unsigned int channels)
 {
 	struct urp_src *src;
-	int error = 0;
-	if (!channels)
+	if (channels != 1U)
 		return NULL;
 	src = URP_CALLOC(1, sizeof(*src));
 	if (!src)
 		return NULL;
-	src->state = src_new(converter, (int)channels, &error);
-	if (!src->state) {
+	if (usbradioplus_samplerate_adapter_prepare_released(
+		    &src->adapter, (enum rptadv_samplerate_quality)converter) !=
+	    USBRADIOPLUS_SAMPLERATE_ADAPTER_OK) {
 		URP_FREE(src);
 		return NULL;
 	}
-	src->channels = channels;
 	return src;
 }
 
@@ -89,7 +104,7 @@ void urp_src_destroy(struct urp_src *src)
 {
 	if (!src)
 		return;
-	src_delete(src->state);
+	usbradioplus_samplerate_adapter_close(&src->adapter);
 	URP_FREE(src->input);
 	URP_FREE(src->output);
 	URP_FREE(src);
@@ -97,8 +112,9 @@ void urp_src_destroy(struct urp_src *src)
 
 void urp_src_reset(struct urp_src *src)
 {
-	if (src)
-		src_reset(src->state);
+	if (!src)
+		return;
+	(void)usbradioplus_samplerate_adapter_reset(&src->adapter);
 }
 
 int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_capacity)
@@ -106,10 +122,10 @@ int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_ca
 	float *input;
 	float *output;
 
-	if (!src || !input_capacity || !output_capacity)
+	if (!src || !input_capacity || !output_capacity || input_capacity > UINT32_MAX ||
+	    output_capacity > UINT32_MAX || input_capacity > SIZE_MAX / sizeof(*input) ||
+	    output_capacity > SIZE_MAX / sizeof(*output))
 		return -1;
-	input_capacity *= src->channels;
-	output_capacity *= src->channels;
 	if (input_capacity > src->input_capacity) {
 		input = URP_REALLOC(src->input, input_capacity * sizeof(*input));
 		if (!input)
@@ -131,48 +147,30 @@ int urp_src_process_prepared(struct urp_src *src, const int16_t *input, size_t i
 			     int16_t *output, size_t output_capacity, double ratio,
 			     size_t *input_used, size_t *output_generated)
 {
-	SRC_DATA data;
-	size_t i, in_values, out_values;
-	int result;
-	if (!src || !input || !output || ratio <= 0.0)
+	uint32_t used = 0U;
+	uint32_t made = 0U;
+	size_t i;
+
+	if (!src || !input || !output || ratio <= 0.0 || input_count > src->input_capacity ||
+	    output_capacity > src->output_capacity)
 		return -1;
-	in_values = input_count * src->channels;
-	out_values = output_capacity * src->channels;
-	/* Prepared audio processing must not resize these workspaces. Setup and reload
-	 * reserve the largest supported source and destination blocks beforehand. */
-	if (in_values > src->input_capacity || out_values > src->output_capacity)
+	/* Setup bounds both workspaces to the adapter's uint32_t frame-count ABI. */
+	for (i = 0U; i < input_count; ++i)
+		src->input[i] = pcm_s16_to_f32(input[i]);
+	if (usbradioplus_samplerate_adapter_process(&src->adapter, src->input,
+						    (uint32_t)input_count, src->output,
+						    (uint32_t)output_capacity, ratio, &used,
+						    &made) != USBRADIOPLUS_SAMPLERATE_ADAPTER_OK)
 		return -1;
-	src_short_to_float_array(input, src->input, (int)in_values);
-	memset(&data, 0, sizeof(data));
-	data.data_in = src->input;
-	data.data_out = src->output;
-	data.input_frames = (long)input_count;
-	data.output_frames = (long)output_capacity;
-	data.src_ratio = ratio;
-	result = src_process(src->state, &data);
-	if (result)
-		return result;
-	src_float_to_short_array(src->output, output,
-				 (int)(data.output_frames_gen * src->channels));
+	for (i = 0U; i < made; ++i)
+		output[i] = pcm_f32_to_s16(src->output[i]);
 	if (input_used)
-		*input_used = (size_t)data.input_frames_used;
+		*input_used = used;
 	if (output_generated)
-		*output_generated = (size_t)data.output_frames_gen;
-	for (i = data.output_frames_gen * src->channels; i < out_values; ++i)
+		*output_generated = made;
+	for (; i < output_capacity; ++i)
 		output[i] = 0;
 	return 0;
-}
-
-int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output,
-		    size_t output_capacity, double ratio, size_t *input_used,
-		    size_t *output_generated)
-{
-	if (!src || !input || !output || ratio <= 0.0)
-		return -1;
-	if (urp_src_reserve(src, input_count, output_capacity))
-		return -1;
-	return urp_src_process_prepared(src, input, input_count, output, output_capacity, ratio,
-					input_used, output_generated);
 }
 
 int urp_rate_convert_prepared(struct urp_src *src, const int16_t *input, size_t input_count,
@@ -200,109 +198,6 @@ int urp_rate_convert_prepared(struct urp_src *src, const int16_t *input, size_t 
 	return input_count <= output_capacity ? 0 : -1;
 }
 
-int urp_rate_convert(struct urp_src *src, const int16_t *input, size_t input_count,
-		     unsigned int input_rate, int16_t *output, size_t output_capacity,
-		     unsigned int output_rate, size_t *input_used, size_t *output_generated)
-{
-	if (!input || !output || !input_rate || !output_rate)
-		return -1;
-	if (input_rate != output_rate && urp_src_reserve(src, input_count, output_capacity))
-		return -1;
-	return urp_rate_convert_prepared(src, input, input_count, input_rate, output,
-					 output_capacity, output_rate, input_used,
-					 output_generated);
-}
-
-void urp_extract_mono(const int16_t *stereo, int16_t *mono, size_t frames, unsigned int channel)
-{
-	size_t i;
-	channel = channel ? 1 : 0;
-	for (i = 0; i < frames; ++i)
-		mono[i] = stereo[i * 2 + channel];
-}
-
-void urp_duplicate_mono(const int16_t *mono, int16_t *stereo, size_t frames, double gain_a,
-			double gain_b)
-{
-	size_t i;
-	for (i = 0; i < frames; ++i) {
-		stereo[i * 2] = saturate(mono[i] * gain_a);
-		stereo[i * 2 + 1] = saturate(mono[i] * gain_b);
-	}
-}
-
-void urp_echo_init(struct urp_echo_replacer *s)
-{
-	if (!s)
-		return;
-	memset(s, 0, sizeof(*s));
-	s->last_delay_frames = -1;
-}
-
-void urp_echo_push(struct urp_echo_replacer *s, const int16_t *link, const int16_t *native)
-{
-	struct urp_echo_frame *f;
-	if (!s || !link || !native)
-		return;
-	f = &s->history[s->write_index];
-	memcpy(f->link, link, sizeof(f->link));
-	memcpy(f->native, native, sizeof(f->native));
-	f->sequence = ++s->sequence;
-	s->write_index = (s->write_index + 1) % URP_ECHO_HISTORY_FRAMES;
-}
-
-int urp_echo_remove(struct urp_echo_replacer *s, int16_t *mixed, int16_t *matched_native,
-		    double minimum_correlation)
-{
-	double best_corr = -1.0, best_scale = 0.0;
-	unsigned int best = 0, n;
-	int found = 0;
-	if (!s || !mixed || !matched_native)
-		return 0;
-	for (n = 0; n < URP_ECHO_HISTORY_FRAMES; ++n) {
-		const struct urp_echo_frame *f = &s->history[n];
-		double xy = 0.0, xx = 0.0, yy = 0.0, corr, scale;
-		size_t i;
-		if (!f->sequence)
-			continue;
-		for (i = 0; i < URP_LINK_SAMPLES; ++i) {
-			double x = f->link[i], y = mixed[i];
-			xx += x * x;
-			yy += y * y;
-			xy += x * y;
-		}
-		if (xx < 1.0 || yy < 1.0)
-			continue;
-		corr = xy / sqrt(xx * yy);
-		scale = xy / xx;
-		if (corr > best_corr && scale > 0.25 && scale < 2.5) {
-			best_corr = corr;
-			best_scale = scale;
-			best = n;
-			found = 1;
-		}
-	}
-	if (!found || best_corr < minimum_correlation) {
-		s->misses++;
-		s->last_correlation = found ? best_corr : 0.0;
-		memset(matched_native, 0, URP_NATIVE_SAMPLES * sizeof(*matched_native));
-		return 0;
-	}
-	{
-		const struct urp_echo_frame *f = &s->history[best];
-		size_t i;
-		for (i = 0; i < URP_LINK_SAMPLES; ++i)
-			mixed[i] = saturate(mixed[i] - f->link[i] * best_scale);
-		for (i = 0; i < URP_NATIVE_SAMPLES; ++i)
-			matched_native[i] = saturate(f->native[i] * best_scale);
-		s->last_delay_frames = (int)(s->sequence - f->sequence);
-	}
-	s->last_scale = best_scale;
-	s->last_correlation = best_corr;
-	s->matches++;
-	return 1;
-}
-
 /** @name File-local and build-time constants
  * @{ */
 /** @def URP_CALLOC
@@ -313,8 +208,5 @@ int urp_echo_remove(struct urp_echo_replacer *s, int16_t *mixed, int16_t *matche
  */
 /** @def URP_FREE
  * @brief Deallocation entry point replaceable by the failure-injection harness.
- */
-/** @def M_PI
- * @brief Pi for platforms whose math headers omit it.
  */
 /** @} */

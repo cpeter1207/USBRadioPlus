@@ -5,6 +5,7 @@
 struct ast_config;
 struct ast_category;
 #include "../src/usbradioplus_processing_internal.h"
+#include "../src/usbradioplus_radio_core_adapter.h"
 
 #include <assert.h>
 #include <stddef.h>
@@ -2049,6 +2050,11 @@ static void test_section_override_parser(void)
 		{"hardware", "hardware_serial", "serial", NULL},
 		{"hardware", "hardware_user_key", "key", NULL},
 		{"hardware", "hardware_audio_fragment_count", "2", "-1"},
+		{"hardware", "hardware_audio_backend", "portaudio", "oss"},
+		{"hardware", "hardware_portaudio_input_device_index", "-1", "-2"},
+		{"hardware", "hardware_portaudio_output_device_index", "2147483647", "2147483648"},
+		{"hardware", "hardware_gpio_backend", "cm119", "legacy_hid"},
+		{"hardware", "hardware_gpio_usb_port_path", "3-1:1.3", NULL},
 		{"receive", "squelch_level", "999", "1000"},
 		{"ctcss", "transmit_peak_dbfs", "-24", "-91"},
 		{"dcs", "peak_dbfs", "-24", "-91"},
@@ -2105,6 +2111,14 @@ static void test_section_override_parser(void)
 	assert(add_single_override("hardware", "hardware_parallel_port_base_address",
 				   "0x100000000") < 0);
 	assert(add_single_override("hardware", "hardware_audio_fragment_count", "nan") < 0);
+	assert(add_single_override("hardware", "hardware_portaudio_input_device_index", "1x") < 0);
+	assert(add_single_override("hardware", "hardware_portaudio_output_device_index", "nan") <
+	       0);
+	assert(!add_single_override("hardware", "hardware_audio_backend", "portaudio_poc"));
+	assert(!add_single_override("hardware", "hardware_gpio_backend", "cm119_poc"));
+	assert(add_single_override("hardware", "hardware_audio_backend", "invalid") < 0);
+	assert(add_single_override("hardware", "hardware_gpio_backend", "invalid") < 0);
+	assert(!add_single_override("hardware", "hardware_gpio_usb_port_path", "3-1"));
 
 	settings_defaults(&value);
 	value.profiles[0].override_count = MAX_SECTION_OVERRIDES;
@@ -4026,6 +4040,7 @@ int main(void)
 	/* Keep this large fixture out of the thread stack: boundary helpers also
 	 * construct complete settings snapshots while they exercise validation. */
 	static struct txagc_settings value;
+	assert(urp_radio_core_initialize() == 0);
 	settings_defaults(&value);
 	assert(!validate_profile(&value.profiles[0]));
 	assert(!strcmp(ctcss_filter_name(TXAGC_CTCSS_FILTER_NOTCH), "notch"));

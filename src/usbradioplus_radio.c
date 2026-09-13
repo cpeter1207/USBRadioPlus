@@ -73,6 +73,7 @@
 #include <stdlib.h>
 
 #include "usbradioplus_radio.h"
+#include "usbradioplus_radio_core_adapter.h"
 #include "usbradioplus_radio_coefficients.h"
 #include "asterisk/utils.h"
 #include "asterisk/logger.h"
@@ -81,6 +82,11 @@
 static i16 radioIndex = 0; /* Count live detector instances. */
 /** Empty signaling-code string used for disabled code lists. */
 static char disabled_code[] = "0";
+
+/** @brief Try the optional portable ordinary DSP-squelch receive frontend.
+ * @return Zero only when the portable result has been fully committed.
+ */
+static int urp_radio_receive_frontend_portable(urp_radio_stage *stage);
 
 /** @brief Test whether Asterisk's current debug level enables a radio trace.
  * @param level Message trace verbosity.
@@ -96,6 +102,12 @@ static int urp_radio_debug_atleast(int level)
 	       (int)ast_debug_get_by_module(__FILE__) >= level;
 }
 
+/* @brief Emit a trace only when both channel and Asterisk debug levels permit it.
+ * @param configured_level Channel's configured trace verbosity.
+ * @param level Minimum verbosity required by this message.
+ * @param format Printf-compatible message format.
+ * @param ... Values substituted into the message format.
+ */
 void urp_radio_trace_log(int configured_level, int level, const char *format, ...)
 {
 	va_list arguments;
@@ -261,12 +273,8 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 	}
 
 	pChan->rxCtcss->enabled = 0;
-	pChan->rxCtcss->gain = 1 * M_Q8;
-	pChan->rxCtcss->limit = 8192;
 	pChan->rxCtcss->input = pChan->pRxLsdLimit;
 	pChan->rxCtcss->decode = CTCSS_NULL;
-
-	pChan->rxCtcss->testIndex = 3;
 
 	pChan->rxctcssfreq[0] = 0; /* decode now   CTCSS_RXONLY */
 
@@ -364,18 +372,6 @@ i16 urp_radio_parse_codes(urp_radio_state *pChan)
 		pChan->spsRxLsdNrz->enabled = pChan->rxCenterSlicerEnable = 0;
 		pChan->rxCtcssDecodeEnable = 0;
 		pChan->rxCtcss->enabled = 0;
-	}
-
-	TRACEF(1, "urp_radio_parse_codes() CTCSS Init Decoders \n");
-	for (i = 0; i < CTCSS_NUM_CODES; i++) {
-		urp_ctcss_tone_detector *ptdet;
-		ptdet = &(pChan->rxCtcss->tdet[i]);
-		ptdet->counterFactor = coef_ctcss_div[i];
-		ptdet->state = 1;
-		ptdet->setpt = (M_Q15 * 0.041); /* 0.069 */
-		ptdet->hyst = (M_Q15 * 0.0130);
-		ptdet->binFactor = (M_Q15 * 0.135); /* was 0.140 */
-		ptdet->fudgeFactor = 8;
 	}
 
 	/* DEFAULT TX CODE */
@@ -504,19 +500,31 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 {
 
 #define DCgainBpfNoise 65536
+	const size_t calibration_window =
+		(size_t)SAMPLES_PER_BLOCK * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK);
+	const int explicit_native_count = mySps && mySps->nativeSamples != 0U;
+	const size_t native_capacity =
+		mySps && mySps->parentChan && mySps->parentChan->nSamplesRx > 0 &&
+				mySps->decimate > 0
+			? (size_t)mySps->parentChan->nSamplesRx * (size_t)mySps->decimate
+			: 0U;
 
-	i16 samples, nx, iOutput, *output, *noutput;
+	i16 nx, *output, *noutput;
 	const i16 *input;
 	i16 *x;
 	i16 decimator, decimate, doNoise, fever, fev1;
-	i32 i, naccum, outputGain, calcAdjust;
-	i64 y, npwr;
+	i32 naccum, outputGain, calcAdjust;
+	i64 y;
+	size_t i, iOutput, samples;
 
 	TRACEJ(5, "urp_radio_receive_frontend()\n");
 
-	if (!mySps->enabled) {
+	if (!mySps || !mySps->enabled || !mySps->parentChan || !mySps->source || !mySps->sink ||
+	    !mySps->x || mySps->decimate <= 0 || mySps->nSamples < 0) {
 		return 1;
 	}
+	if (!urp_radio_receive_frontend_portable(mySps))
+		return 0;
 
 	decimator = mySps->decimator;
 	decimate = mySps->decimate;
@@ -531,10 +539,20 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 	calcAdjust = mySps->calcAdjust;
 	outputGain = mySps->outputGain;
 
-	samples = mySps->nSamples * decimate;
+	/* A native tick supplies its exact input span.  Direct compatibility
+	 * callers retain the historic base-count times decimation contract. */
+	samples = explicit_native_count ? (size_t)mySps->nativeSamples
+					: (size_t)mySps->nSamples * (size_t)decimate;
+	/* Reserve the conservative carried-phase bound, not merely the ordinary
+	 * whole-frame quotient. A maximum native callback is normally 960 samples,
+	 * while its caller-owned base workspace is deliberately sized for 161. */
+	if (samples > native_capacity || samples > SIZE_MAX - (size_t)(2 * decimate - 2) ||
+	    (samples + (size_t)(2 * decimate - 2)) / (size_t)decimate >
+		    mySps->parentChan->rxBaseCapacity) {
+		return 1;
+	}
 	x = mySps->x;
 	iOutput = 0;
-	npwr = 0;
 
 	if (mySps->parentChan->rxCdType != CD_XPMR_VOX) {
 		doNoise = 1;
@@ -548,7 +566,7 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 		fev1 = nx - 1;
 	}
 
-	for (i = 0; i < samples; i++) {
+	for (i = 0U; i < samples; ++i) {
 		i16 n;
 
 		/* shift the old samples */
@@ -582,7 +600,17 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 #if URP_RADIO_TRACE_FRONTEND == 1
 			input[i * 2 + 1] = naccum; /* output noise filter results */
 #endif
-			npwr += naccum * naccum;
+			/* Keep calibration on its historic fixed 960-native-sample
+			 * window.  Small callbacks therefore cannot lower the displayed
+			 * RSSI or perturb a saved squelch calibration. */
+			mySps->rssiPower += (i64)naccum * naccum;
+			++mySps->rssiSamples;
+			if (mySps->rssiSamples == calibration_window) {
+				mySps->parentChan->rxRssi = mySps->apeak =
+					(i16)(sqrt((double)mySps->rssiPower) / 16.0);
+				mySps->rssiPower = 0;
+				mySps->rssiSamples = 0U;
+			}
 			/* The calibration meter remains sqrt(sum(960 samples))/16. Its
 			 * equivalent sample-power scale is 960/256, independent of where
 			 * the USB block boundary falls relative to carrier loss. */
@@ -610,24 +638,22 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 			} else if (y < -32767) {
 				y = -32767;
 			}
-			output[iOutput++] = y; /* Rx Baseband decimated */
+			output[iOutput++] = (i16)y; /* Rx Baseband decimated */
 
 		} /* if decimator */
 	}
 
-	if (doNoise) {
-		npwr = sqrt(npwr) / 16;
-
 #if URP_RADIO_DEBUG == 1
-		if (mySps->parentChan->tracetype) {
-			for (i = 0; i < mySps->nSamples; i++) {
-				noutput[i] = npwr;
-			}
+	if (doNoise && mySps->parentChan->tracetype) {
+		for (i = 0U; i < iOutput; ++i) {
+			noutput[i] = mySps->parentChan->rxRssi;
 		}
+	}
 #endif
 
-		((urp_radio_state *)(mySps->parentChan))->rxRssi = mySps->apeak = npwr;
-	}
+	mySps->decimator = decimator;
+	mySps->nSamples = (i16)iOutput;
+	mySps->nativeSamples = 0U;
 
 	return 0;
 }
@@ -635,6 +661,184 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 	pmr general purpose fir
 	works on a block of samples
 */
+/** @brief Test two signed-16 spans for any overlapping legacy storage.
+ * @param left First span's starting address.
+ * @param left_count Number of samples in the first span.
+ * @param right Second span's starting address.
+ * @param right_count Number of samples in the second span.
+ * @return Nonzero on overlap or an unrepresentable address range.
+ */
+static int urp_radio_fir_s16_spans_overlap(const i16 *left, size_t left_count, const i16 *right,
+					   size_t right_count)
+{
+	uintptr_t left_begin;
+	uintptr_t left_end;
+	uintptr_t right_begin;
+	uintptr_t right_end;
+
+	if (!left || !right || !left_count || !right_count)
+		return 0;
+	if (left_count > UINTPTR_MAX / sizeof(*left) || right_count > UINTPTR_MAX / sizeof(*right))
+		return 1;
+	left_begin = (uintptr_t)left;
+	right_begin = (uintptr_t)right;
+	left_end = left_begin + left_count * sizeof(*left);
+	right_end = right_begin + right_count * sizeof(*right);
+	if (left_end < left_begin || right_end < right_begin)
+		return 1;
+	return left_begin < right_end && right_begin < left_end;
+}
+
+/** @brief Run the ordinary native DSP-squelch frontend through the portable core.
+ * @param stage Receive frontend and its preallocated conversion workspace.
+ * @return Zero only after the complete portable result has replaced C state.
+ *
+ * VOX, trace, fever history, malformed stage, and storage-aliasing shapes
+ * remain in the retained C frontend.  That narrow boundary preserves every
+ * legacy diagnostic and uncommon mode while moving the normal live
+ * discriminator-noise path to the F32 portable core without callback
+ * allocation, locking, or device interaction.
+ */
+static int urp_radio_receive_frontend_portable(urp_radio_stage *stage)
+{
+	const size_t calibration_window =
+		(size_t)SAMPLES_PER_BLOCK * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK);
+	const size_t native_capacity =
+		stage && stage->parentChan && stage->parentChan->nSamplesRx > 0 &&
+				stage->decimate > 0
+			? (size_t)stage->parentChan->nSamplesRx * (size_t)stage->decimate
+			: 0U;
+	urp_radio_state *channel;
+	const T_FIR *baseband;
+	const i16 *noise_coefficients;
+	size_t noise_coefficient_count;
+	int32_t noise_divisor;
+	size_t sample_count;
+	size_t output_count;
+	int rssi_updated;
+	struct rptadv_radio_receive_frontend_state state;
+	struct urp_radio_receive_frontend_workspace workspace;
+
+	if (!stage || !stage->parentChan || !stage->source || !stage->sink || !stage->x ||
+	    !stage->enabled || stage->nSamples < 0 || !stage->nativeSamples ||
+	    stage->nativeSamples > native_capacity || stage->decimate <= 0 || stage->nx <= 0 ||
+	    stage->calcAdjust == 0 || stage->parentChan->rxCdType == CD_XPMR_VOX ||
+	    stage->parentChan->fever || stage->parentChan->tracetype)
+		return -1;
+	channel = stage->parentChan;
+	if (channel->rxlpf < 0 ||
+	    (size_t)channel->rxlpf >= sizeof(fir_rxlpf) / sizeof(fir_rxlpf[0]))
+		return -1;
+	baseband = &fir_rxlpf[channel->rxlpf];
+	if (stage->nx != baseband->taps ||
+	    urp_radio_fir_s16_spans_overlap(stage->source, (size_t)stage->nativeSamples * 2U,
+					    stage->sink, channel->rxBaseCapacity) ||
+	    urp_radio_fir_s16_spans_overlap(stage->source, (size_t)stage->nativeSamples * 2U,
+					    (const i16 *)stage->x, (size_t)stage->nx) ||
+	    urp_radio_fir_s16_spans_overlap(stage->sink, channel->rxBaseCapacity,
+					    (const i16 *)stage->x, (size_t)stage->nx))
+		return -1;
+	if (channel->rxNoiseFilType == 0) {
+		noise_coefficients = coef_fir_bpf_noise_1;
+		noise_coefficient_count = taps_fir_bpf_noise_1;
+		noise_divisor = 65536;
+	} else {
+		noise_coefficients = coef_fir_bpf_noise_2;
+		noise_coefficient_count = taps_fir_bpf_noise_2;
+		noise_divisor = gain_fir_bpf_noise_2;
+	}
+	sample_count = stage->nativeSamples;
+	workspace.input = channel->receiveFrontendF32Input;
+	workspace.baseband_output = channel->receiveFrontendF32Output;
+	workspace.history = channel->receiveFrontendHistoryScratch;
+	workspace.carrier_gate = channel->receiveFrontendCarrierGateScratch;
+	workspace.native_frame_capacity = channel->receiveFrontendNativeCapacity;
+	workspace.baseband_output_capacity = channel->receiveFrontendBaseCapacity;
+	workspace.history_capacity = channel->receiveFrontendHistoryCapacity;
+	state.decimator = stage->decimator;
+	state.comparator_output = stage->compOut;
+	state.rssi_peak = stage->apeak;
+	state.reserved = 0U;
+	state.rssi_power = stage->rssiPower;
+	state.rssi_samples = stage->rssiSamples;
+	state.micor_squelch = stage->micor_squelch;
+	if (urp_radio_core_receive_frontend_s16(
+		    stage->source, stage->sink, channel->rxBaseCapacity, channel->rxCarrierGate,
+		    sample_count, (i16 *)stage->x, (size_t)stage->nx, baseband->coefs,
+		    stage->calcAdjust, stage->outputGain, noise_coefficients,
+		    noise_coefficient_count, noise_divisor, (uint32_t)stage->decimate,
+		    (uint32_t)calibration_window, (uint32_t)stage->setpt, (uint32_t)stage->hyst,
+		    &state, &output_count, &rssi_updated, &workspace))
+		return -1;
+	stage->decimator = state.decimator;
+	stage->compOut = state.comparator_output;
+	stage->rssiPower = state.rssi_power;
+	stage->rssiSamples = state.rssi_samples;
+	stage->micor_squelch = state.micor_squelch;
+	if (rssi_updated) {
+		stage->apeak = state.rssi_peak;
+		channel->rxRssi = state.rssi_peak;
+	}
+	stage->nSamples = (i16)output_count;
+	stage->nativeSamples = 0U;
+	return 0;
+}
+
+/** @brief Run the live mono/unit-rate FIR shape through the optional core.
+ * @param stage FIR stage and its caller-owned state and conversion spans.
+ * @return Zero when the portable result was committed, otherwise nonzero.
+ *
+ * The two live receive FIR stages have this narrow shape.  The generic legacy
+ * stage retains interpolation, output routing, mixing, and detector behavior;
+ * any such request deliberately falls through to the original C path.
+ */
+static int urp_radio_fir_portable(urp_radio_stage *stage)
+{
+	urp_radio_state *channel;
+	struct urp_radio_fir_workspace workspace;
+	size_t sample_count;
+	size_t history_count;
+	i16 *history;
+	const i16 *coefficients;
+
+	if (!stage || !stage->parentChan || !stage->source || !stage->sink || !stage->x ||
+	    !stage->coef || !stage->enabled || stage->option || stage->nSamples <= 0 ||
+	    stage->nx <= 0 || stage->ncoef != stage->nx || stage->size_x != sizeof(i16) ||
+	    stage->size_coef != sizeof(i16) || stage->decimate != 1 || stage->interpolate != 1 ||
+	    stage->numChanOut != 1 || stage->selChanOut != 0 || stage->mixOut || stage->monoOut ||
+	    stage->setpt)
+		return -1;
+	channel = stage->parentChan;
+	sample_count = (size_t)stage->nSamples;
+	history_count = (size_t)stage->nx;
+	history = (i16 *)stage->x;
+	coefficients = (const i16 *)stage->coef;
+	workspace.input = channel->firF32Input;
+	workspace.output = channel->firF32Output;
+	workspace.history = channel->firHistoryScratch;
+	workspace.frame_capacity = channel->firF32Capacity;
+	workspace.history_capacity = channel->firHistoryCapacity;
+	if (urp_radio_fir_s16_spans_overlap(stage->source, sample_count, stage->sink,
+					    sample_count) ||
+	    urp_radio_fir_s16_spans_overlap(stage->source, sample_count, history, history_count) ||
+	    urp_radio_fir_s16_spans_overlap(stage->sink, sample_count, history, history_count) ||
+	    urp_radio_fir_s16_spans_overlap(stage->source, sample_count, coefficients,
+					    history_count) ||
+	    urp_radio_fir_s16_spans_overlap(stage->sink, sample_count, coefficients,
+					    history_count) ||
+	    urp_radio_fir_s16_spans_overlap(history, history_count, coefficients, history_count) ||
+	    urp_radio_core_fir_mono_s16(stage->source, stage->sink, sample_count, coefficients,
+					history, history_count, stage->inputGain, stage->outputGain,
+					stage->calcAdjust, &workspace))
+		return -1;
+
+	/* The original stage publishes these local signed-16 values on every call. */
+	stage->apeak = 0;
+	stage->discounteru = (i16)stage->discounteru;
+	stage->discounterl = (i16)stage->discounterl;
+	return 0;
+}
+
 i16 urp_radio_fir(urp_radio_stage *mySps)
 {
 	i32 nsamples, inputGain, outputGain, calcAdjust;
@@ -652,6 +856,9 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 
 	if (!mySps->enabled) {
 		return 1;
+	}
+	if (mySps->option != 3 && !urp_radio_fir_portable(mySps)) {
+		return 0;
 	}
 
 	inputGain = mySps->inputGain;
@@ -788,57 +995,99 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
 	return 0;
 }
 
+/** @brief Run the required portable receiver-deemphasis integrator.
+ * @param stage Enabled legacy recursive-filter stage.
+ * @return Zero after a portable update, otherwise nonzero.
+ *
+ * The compatibility stage owns its coefficient table and two-word history. The
+ * shared core receives exact signed-16/F32 conversion spans and only publishes
+ * its recursive accumulator after validating its complete output.
+ */
+static int gp_inte_00_portable(urp_radio_stage *stage)
+{
+	urp_radio_state *channel;
+	struct rptadv_radio_deemphasis_integrator_state state;
+	struct urp_radio_deemphasis_integrator_workspace workspace;
+
+	if (!stage || !stage->parentChan || stage->nSamples < 0 || !stage->coef || !stage->x)
+		return -1;
+	channel = stage->parentChan;
+	workspace.input = channel->deemphasisIntegratorF32Input;
+	workspace.output = channel->deemphasisIntegratorF32Output;
+	workspace.capacity = channel->deemphasisIntegratorF32Capacity;
+	state.accumulator = ((i32 *)stage->x)[0];
+	if (urp_radio_core_deemphasis_integrator_s16(
+		    stage->source, stage->sink, (size_t)stage->nSamples, ((i16 *)stage->coef)[0],
+		    ((i16 *)stage->coef)[1], stage->outputGain, &state, &workspace))
+		return -1;
+	((i32 *)stage->x)[0] = state.accumulator;
+	return 0;
+}
+
 /*
 	general purpose integrator lpf
 */
 i16 gp_inte_00(urp_radio_stage *mySps)
 {
-	i16 npoints;
-	const i16 *input;
-	i16 *output;
-
-	i32 outputGain;
-	i32 i;
-	i32 state00;
-	i16 coeff00, coeff01;
-
 	TRACEJ(5, "gp_inte_00() %i\n", mySps->enabled);
-	if (!mySps->enabled) {
+	if (!mySps->enabled)
 		return 1;
-	}
+	/* Historical signed negative spans are a no-op; they are never emitted by
+	 * a live stage but retaining this guard keeps malformed compatibility calls
+	 * side-effect free without retaining a second implementation. */
+	if (mySps->nSamples < 0)
+		return 0;
+	return (i16) !!gp_inte_00_portable(mySps);
+}
 
-	input = mySps->source;
-	output = mySps->sink;
+/** @brief Run the optional portable center slicer through caller-owned workspaces.
+ * @param stage Enabled CTCSS centering stage.
+ * @return Zero after a portable update; nonzero selects the retained C path.
+ *
+ * Active diagnostic tracing retains the exact C implementation because its
+ * historical per-sample min/max trace phase is diagnostic-only and process
+ * global. The F32 primitive therefore cannot perturb audio, detector state,
+ * or callback partitioning when tracing is enabled.
+ */
+static int center_slicer_portable(urp_radio_stage *stage)
+{
+	urp_radio_state *channel;
+	struct rptadv_radio_center_slicer_state state;
+	struct urp_radio_center_slicer_workspace workspace;
 
-	npoints = mySps->nSamples;
-
-	outputGain = mySps->outputGain;
-
-	coeff00 = ((i16 *)mySps->coef)[0];
-	coeff01 = ((i16 *)mySps->coef)[1];
-	state00 = ((i32 *)mySps->x)[0];
-
-	/* note fixed gain of 2 to compensate for attenuation */
-	/* in passband */
-
-	for (i = 0; i < npoints; i++) {
-		i32 accum;
-
-		accum = input[i];
-		state00 = accum + (state00 * coeff01) / M_Q15;
-		accum = (state00 * coeff00) / (M_Q15 / 4);
-		output[i] = (accum * outputGain) / M_Q8;
-	}
-
-	((i32 *)(mySps->x))[0] = state00;
-
+	if (!stage || !stage->parentChan || stage->nSamples < 0)
+		return -1;
+	channel = stage->parentChan;
+#if URP_RADIO_DEBUG == 1
+	if (channel->tracetype)
+		return -1;
+#endif
+	workspace.input = channel->centerSlicerF32Input;
+	workspace.centered_output = channel->centerSlicerF32CenteredOutput;
+	workspace.limited_output = channel->centerSlicerF32LimitedOutput;
+	workspace.capacity = channel->centerSlicerF32Capacity;
+	state.maximum = stage->amax;
+	state.minimum = stage->amin;
+	state.peak = stage->apeak;
+	state.upper_decay_counter = stage->discounteru;
+	state.lower_decay_counter = stage->discounterl;
+	if (urp_radio_core_center_slicer_s16(stage->source, stage->sink, (i16 *)stage->buff,
+					     (size_t)stage->nSamples, stage->inputGainB,
+					     stage->setpt, stage->discfactor, &state, &workspace))
+		return -1;
+	stage->amax = state.maximum;
+	stage->amin = state.minimum;
+	stage->apeak = state.peak;
+	stage->discounteru = state.upper_decay_counter;
+	stage->discounterl = state.lower_decay_counter;
 	return 0;
 }
 
-/* 	----------------------------------------------------------------------
-	CenterSlicer
-*/
-i16 CenterSlicer(urp_radio_stage *mySps)
+/** @brief Run the retained signed-16 center slicer after an optional-core fallback.
+ * @param mySps Enabled CTCSS centering stage with legacy sample buffers.
+ * @return Zero after processing.
+ */
+static i16 center_slicer_legacy_active(urp_radio_stage *mySps)
 {
 	i16 npoints;
 	const i16 *input;
@@ -857,11 +1106,6 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 	i32 discounteru; /* amplitude detector integrator discharge counter upper */
 	i32 discounterl; /* amplitude detector integrator discharge counter lower */
 	i32 discfactor;	 /* amplitude detector integrator discharge factor */
-
-	TRACEJ(5, "CenterSlicer() %i\n", mySps->enabled);
-	if (!mySps->enabled) {
-		return 1;
-	}
 
 	input = mySps->source;
 	output = mySps->sink; /* limited output */
@@ -939,87 +1183,101 @@ i16 CenterSlicer(urp_radio_stage *mySps)
 }
 
 /* 	----------------------------------------------------------------------
+	CenterSlicer
+*/
+i16 CenterSlicer(urp_radio_stage *mySps)
+{
+	TRACEJ(5, "CenterSlicer() %i\n", mySps->enabled);
+	if (!mySps->enabled)
+		return 1;
+	if (!center_slicer_portable(mySps))
+		return 0;
+	return center_slicer_legacy_active(mySps);
+}
+
+/** @brief Run the required portable envelope primitive for one C stage.
+ * @param stage Existing compatibility stage whose state remains C-owned.
+ * @return Zero after a portable update, otherwise nonzero.
+ *
+ * The stage and its source/sink buffers belong to the existing radio core.
+ * Only exact signed-16/F32 conversion workspaces cross the shared-library
+ * boundary. Descriptor validation during setup makes the primitive mandatory.
+ */
+static int measure_block_portable(urp_radio_stage *stage)
+{
+	urp_radio_state *channel;
+	struct rptadv_radio_envelope_state state;
+	int comparator = 0;
+
+	if (!stage || !stage->parentChan || stage->nSamples < 0 ||
+	    (stage->nSamples && !stage->source))
+		return -1;
+	channel = stage->parentChan;
+	state.maximum = stage->amax;
+	state.minimum = stage->amin;
+	state.peak = stage->apeak;
+	state.upper_decay_counter = stage->discounteru;
+	state.lower_decay_counter = stage->discounterl;
+	if (urp_radio_core_measure_envelope_s16(stage->source, stage->sink, (size_t)stage->nSamples,
+						stage->discfactor, stage->setpt, &state,
+						channel->measureF32Input, channel->measureF32Output,
+						channel->measureF32Capacity, &comparator))
+		return -1;
+	stage->amax = state.maximum;
+	stage->amin = state.minimum;
+	stage->apeak = state.peak;
+	stage->discounteru = state.upper_decay_counter;
+	stage->discounterl = state.lower_decay_counter;
+	stage->compOut = (i16)comparator;
+	return 0;
+}
+
+/* 	----------------------------------------------------------------------
 	MeasureBlock
 	determine peak amplitude
 */
 i16 MeasureBlock(urp_radio_stage *mySps)
 {
-	i16 npoints;
-	const i16 *input;
-	i16 *output;
-
-	i32 i;
-	i16 amax;      /* buffer amplitude maximum */
-	i16 amin;      /* buffer amplitude minimum */
-	i16 apeak = 0; /* buffer amplitude peak (peak to peak)/2 */
-	i16 setpt;     /* amplitude set point for amplitude comparator */
-
-	i32 discounteru; /* amplitude detector integrator discharge counter upper */
-	i32 discounterl; /* amplitude detector integrator discharge counter lower */
-	i32 discfactor;	 /* amplitude detector integrator discharge factor */
-
 	TRACEJ(5, "MeasureBlock() %i\n", mySps->enabled);
 
 	if (!mySps->enabled) {
 		return 1;
 	}
 
-	if (mySps->option == 3) {
-		mySps->amax = mySps->amin = mySps->apeak = mySps->discounteru = mySps->discounterl =
-			mySps->enabled = 0;
-		return 1;
-	}
+	return (i16) !!measure_block_portable(mySps);
+}
 
-	input = mySps->source;
-	output = mySps->sink;
+/** @brief Run the required portable delay primitive for one C stage.
+ * @param stage Existing compatibility stage whose cursor remains C-owned.
+ * @return Zero after a portable update, otherwise nonzero.
+ *
+ * The F32 storage is allocated while the receive stage is built and remains
+ * authoritative for the lifetime of the stage. The S16 boundary conversion
+ * completes before output is published, so an in-place source/sink is safe.
+ */
+static int delay_line_portable(urp_radio_stage *stage)
+{
+	urp_radio_state *channel;
+	struct urp_radio_delay_workspace workspace;
+	unsigned int dirty;
+	int result;
 
-	npoints = mySps->nSamples;
-
-	amax = mySps->amax;
-	amin = mySps->amin;
-	setpt = mySps->setpt;
-	discounteru = mySps->discounteru;
-	discounterl = mySps->discounterl;
-
-	discfactor = mySps->discfactor;
-	for (i = 0; i < npoints; i++) {
-		i32 accum;
-
-		accum = input[i];
-
-		if (accum > amax) {
-			amax = accum;
-			discounteru = discfactor;
-		} else if (--discounteru <= 0) {
-			discounteru = discfactor;
-			amax = (i32)((amax * 32700) / 32768);
-		}
-
-		if (accum < amin) {
-			amin = accum;
-			discounterl = discfactor;
-		} else if (--discounterl <= 0) {
-			discounterl = discfactor;
-			amin = (i32)((amin * 32700) / 32768);
-		}
-
-		apeak = (i32)(amax - amin) / 2;
-		if (output) {
-			output[i] = apeak;
-		}
-	}
-
-	mySps->amax = amax;
-	mySps->amin = amin;
-	mySps->apeak = apeak;
-	mySps->discounteru = discounteru;
-	mySps->discounterl = discounterl;
-	if (apeak >= setpt) {
-		mySps->compOut = 1;
-	} else {
-		mySps->compOut = 0;
-	}
-
+	if (!stage || !stage->parentChan)
+		return -1;
+	channel = stage->parentChan;
+	workspace.input = channel->delayF32Input;
+	workspace.output = channel->delayF32Output;
+	workspace.storage = channel->delayF32Storage;
+	workspace.frame_capacity = channel->delayF32FrameCapacity;
+	workspace.storage_capacity = channel->delayF32StorageCapacity;
+	dirty = stage->b.dirty;
+	result = urp_radio_core_delay_line_s16(stage->source, stage->sink, (size_t)stage->nSamples,
+					       stage->buffSize, stage->buffLead,
+					       &stage->buffInIndex, &dirty, !!stage->enabled,
+					       !!stage->b.outzero, &workspace);
+	if (result)
+		return -1;
+	stage->b.dirty = dirty;
 	return 0;
 }
 
@@ -1028,236 +1286,68 @@ i16 MeasureBlock(urp_radio_stage *mySps)
 */
 i16 DelayLine(urp_radio_stage *mySps)
 {
-	const i16 *input;
-	i16 *output, *buff;
-	i16 i, npoints, buffsize, inindex, outindex;
-
-	if (!mySps->enabled || mySps->b.outzero) {
-		if (mySps->b.dirty) {
-			mySps->b.dirty = 0;
-			mySps->buffInIndex = 0;
-			memset((void *)(mySps->buff), 0, mySps->buffSize * 2);
-			memset((void *)(mySps->sink), 0, mySps->nSamples * 2);
-		}
+	if (mySps->nSamples < 0)
 		return 0;
-	}
-
-	input = mySps->source;
-	output = mySps->sink;
-	buff = (i16 *)(mySps->buff);
-	buffsize = mySps->buffSize;
-	npoints = mySps->nSamples;
-	inindex = mySps->buffInIndex;
-	outindex = inindex - mySps->buffLead;
-
-	if (outindex < 0) {
-		outindex += buffsize;
-	}
-
-	for (i = 0; i < npoints; i++) {
-		inindex %= buffsize;
-		outindex %= buffsize;
-		buff[inindex] = input[i];
-		output[i] = buff[outindex];
-		inindex++;
-		outindex++;
-	}
-	mySps->buffInIndex = inindex;
-	mySps->b.dirty = 1;
-	return 0;
+	return (i16) !!delay_line_portable(mySps);
 }
 
-/*
-	Continuous Tone Coded Squelch (CTCSS) Detector
-*/
-i16 urp_ctcss_decode(urp_radio_state *pChan)
+/** @brief Build the portable decoder's selected-tone snapshot from C mappings.
+ * @param channel Radio-signaling state owning the CTCSS mapping.
+ * @return Bit mask with one bit for each configured receive detector.
+ */
+static uint64_t urp_ctcss_receive_tone_mask(const urp_radio_state *channel)
 {
-	i16 i, points2do, thit, relax;
-	const i16 *pInput;
-	i16 tnum, tmp, indexNow, diffpeak;
-	i16 tv0, tv1, tv2, tv3, indexDebug;
-	i16 points = 0;
-	i16 indexWas = 0;
+	uint64_t mask = 0U;
+	i16 index;
 
-	if (!pChan->rxCtcss->enabled) {
+	for (index = 0; index < CTCSS_NUM_CODES; ++index)
+		if (channel->rxCtcssMap[index] != CTCSS_NULL)
+			mask |= UINT64_C(1) << index;
+	return mask;
+}
+
+/** @brief Publish a portable CTCSS decision through the compatibility fields.
+ * @param channel Radio-signaling state owning CTCSS status text.
+ * @param decoded Portable CTCSS table index or @ref CTCSS_NULL.
+ */
+static void urp_ctcss_apply_portable_decode(urp_radio_state *channel, int decoded)
+{
+	if (decoded > CTCSS_NULL && decoded < CTCSS_NUM_CODES) {
+		channel->rxCtcss->decode = (i16)decoded;
+		snprintf(channel->rxctcssfreq, sizeof(channel->rxctcssfreq), "%.1f",
+			 freq_ctcss[decoded]);
+		return;
+	}
+	channel->rxCtcss->decode = CTCSS_NULL;
+	strcpy(channel->rxctcssfreq, "0");
+}
+
+void urp_ctcss_set_receive_callback(urp_ctcss_decoder *decoder, urp_ctcss_receive_callback callback,
+				    void *context)
+{
+	if (!decoder)
+		return;
+	decoder->receive_callback = callback;
+	decoder->receive_callback_context = context;
+}
+
+i16 urp_ctcss_decode(urp_radio_state *channel)
+{
+	int decoded = CTCSS_NULL;
+	int result = -1;
+
+	if (!channel->rxCtcss->enabled)
 		return 1;
+	if (channel->rxCtcss->receive_callback)
+		result = channel->rxCtcss->receive_callback(
+			channel->rxCtcss->receive_callback_context, channel->rxCtcss->input,
+			(size_t)channel->activeSamplesRx, urp_ctcss_receive_tone_mask(channel),
+			channel->rxCtcss->relax, channel->rxCarrierDetect, &decoded);
+	if (result != 0 || decoded < CTCSS_NULL || decoded >= CTCSS_NUM_CODES) {
+		urp_ctcss_apply_portable_decode(channel, CTCSS_NULL);
+		return -1;
 	}
-
-	relax = pChan->rxCtcss->relax;
-	pInput = pChan->rxCtcss->input;
-
-	thit = -1;
-
-	for (tnum = 0; tnum < CTCSS_NUM_CODES; tnum++) {
-		i32 accum, peak;
-		urp_ctcss_tone_detector *ptdet;
-		i16 fudgeFactor;
-		i16 binFactor;
-
-		if ((pChan->rxCtcssMap[tnum] == CTCSS_NULL) ||
-		    (pChan->rxCtcss->decode > CTCSS_NULL && (tnum != pChan->rxCtcss->decode))) {
-			continue;
-		}
-
-		ptdet = &(pChan->rxCtcss->tdet[tnum]);
-		indexDebug = 0;
-		points = points2do = pChan->activeSamplesRx;
-		fudgeFactor = ptdet->fudgeFactor;
-		binFactor = ptdet->binFactor;
-
-		while (ptdet->counter < (points2do * CTCSS_SCOUNT_MUL)) {
-			tmp = (ptdet->counter / CTCSS_SCOUNT_MUL) + 1;
-			ptdet->counter -= (tmp * CTCSS_SCOUNT_MUL);
-			points2do -= tmp;
-			indexNow = points - points2do;
-
-			ptdet->counter += ptdet->counterFactor;
-
-			accum = pInput[indexNow - 1]; /* duuuude's major bug fix! */
-
-			ptdet->z[ptdet->zIndex] +=
-				(((accum - ptdet->z[ptdet->zIndex]) * binFactor) / M_Q15);
-
-			peak = abs(ptdet->z[0] - ptdet->z[2]) + abs(ptdet->z[1] - ptdet->z[3]);
-
-			if (ptdet->peak < peak) {
-				ptdet->peak += (((peak - ptdet->peak) * binFactor) / M_Q15);
-			} else {
-				ptdet->peak = peak;
-			}
-
-			{
-				static const i16 a0 = 13723;
-				static const i16 a1 = -13723;
-				i32 temp0, temp1;
-				i16 x0;
-
-				/* differentiate */
-				x0 = ptdet->zd;
-				temp0 = x0 * a1;
-				ptdet->zd = ptdet->peak;
-				temp1 = ptdet->peak * a0;
-				diffpeak = (temp0 + temp1) / 1024;
-			}
-
-			if (diffpeak < (-0.03 * M_Q15)) {
-				ptdet->dvd -= 4;
-			} else if (ptdet->dvd < 0) {
-				ptdet->dvd++;
-			}
-
-			if ((ptdet->dvd < -12) && diffpeak > (-0.02 * M_Q15)) {
-				ptdet->dvu += 2;
-			} else if (ptdet->dvu) {
-				ptdet->dvu--;
-			}
-
-			tmp = ptdet->setpt;
-			if (pChan->rxCtcss->decode == tnum) {
-				if (relax) {
-					tmp = (tmp * 55) / 100;
-				} else {
-					tmp = (tmp * 80) / 100;
-				}
-			}
-
-			if (ptdet->peak > tmp) {
-				if (ptdet->decode < (fudgeFactor * 32)) {
-					ptdet->decode++;
-				}
-			} else if (pChan->rxCtcss->decode == tnum) {
-				if (ptdet->peak > ptdet->hyst) {
-					ptdet->decode--;
-				} else if (relax) {
-					ptdet->decode--;
-				} else {
-					ptdet->decode -= 4;
-				}
-			} else {
-				ptdet->decode = 0;
-			}
-
-			if ((pChan->rxCtcss->decode == tnum) && !relax &&
-			    (ptdet->dvu > (0.00075 * M_Q15))) {
-				ptdet->decode = 0;
-				ptdet->z[0] = ptdet->z[1] = ptdet->z[2] = ptdet->z[3] = ptdet->dvu =
-					0;
-			}
-
-			if (ptdet->decode < 0 || !pChan->rxCarrierDetect) {
-				ptdet->decode = 0;
-			}
-
-			if (ptdet->decode >= fudgeFactor) {
-				thit = tnum;
-				if (pChan->rxCtcss->decode != tnum) {
-					ptdet->zd = ptdet->dvu = ptdet->dvd = 0;
-				}
-			}
-
-#if URP_RADIO_DEBUG == 1
-			tv0 = ptdet->peak;
-			tv1 = ptdet->decode;
-			tv2 = tmp;
-			tv3 = ptdet->dvu * 32;
-
-			if (indexDebug == 0) {
-				ptdet->lasttv0 = ptdet->pDebug0[points - 1];
-				ptdet->lasttv1 = ptdet->pDebug1[points - 1];
-				ptdet->lasttv2 = ptdet->pDebug2[points - 1];
-				ptdet->lasttv3 = ptdet->pDebug3[points - 1];
-			}
-
-			while (indexDebug < indexNow) {
-				ptdet->pDebug0[indexDebug] = ptdet->lasttv0;
-				ptdet->pDebug1[indexDebug] = ptdet->lasttv1;
-				ptdet->pDebug2[indexDebug] = ptdet->lasttv2;
-				ptdet->pDebug3[indexDebug] = ptdet->lasttv3;
-				indexDebug++;
-			}
-			ptdet->lasttv0 = tv0;
-			ptdet->lasttv1 = tv1;
-			ptdet->lasttv2 = tv2;
-			ptdet->lasttv3 = tv3;
-#endif
-			indexWas = indexNow;
-			ptdet->zIndex = (ptdet->zIndex + 1) % 4;
-		}
-		ptdet->counter -= (points2do * CTCSS_SCOUNT_MUL);
-
-#if URP_RADIO_DEBUG == 1
-		for (i = indexWas; i < points; i++) {
-			ptdet->pDebug0[i] = ptdet->lasttv0;
-			ptdet->pDebug1[i] = ptdet->lasttv1;
-			ptdet->pDebug2[i] = ptdet->lasttv2;
-			ptdet->pDebug3[i] = ptdet->lasttv3;
-		}
-#endif
-	}
-
-	if (pChan->rxCtcss->BlankingTimer > 0) {
-		pChan->rxCtcss->BlankingTimer -= points;
-	}
-
-	if (pChan->rxCtcss->BlankingTimer < 0) {
-		pChan->rxCtcss->BlankingTimer = 0;
-	}
-
-	if (thit > CTCSS_NULL && pChan->rxCtcss->decode <= CTCSS_NULL &&
-	    !pChan->rxCtcss->BlankingTimer) {
-		pChan->rxCtcss->decode = thit;
-		sprintf(pChan->rxctcssfreq, "%.1f", freq_ctcss[thit]);
-	} else if (thit <= CTCSS_NULL && pChan->rxCtcss->decode > CTCSS_NULL) {
-		pChan->rxCtcss->BlankingTimer = SAMPLE_RATE_NETWORK / 5;
-		pChan->rxCtcss->decode = CTCSS_NULL;
-		strcpy(pChan->rxctcssfreq, "0");
-		for (tnum = 0; tnum < CTCSS_NUM_CODES; tnum++) {
-			urp_ctcss_tone_detector *ptdet = NULL;
-			ptdet = &(pChan->rxCtcss->tdet[tnum]);
-			ptdet->decode = 0;
-			ptdet->z[0] = ptdet->z[1] = ptdet->z[2] = ptdet->z[3] = 0;
-		}
-	}
+	urp_ctcss_apply_portable_decode(channel, decoded);
 	return 0;
 }
 
@@ -1307,6 +1397,13 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	pChan->index = radioIndex++;
 	pChan->nSamplesTx = pChan->nSamplesRx = numSamples;
+	/* The legacy wrapper remains a fixed 160-sample 8 kHz frame.  Native
+	 * callbacks can begin mid-decimation, so allocate the conservative
+	 * ceil((max_native + factor - 1) / factor) baseband bound separately. */
+	pChan->rxBaseCapacity =
+		(u32)(((size_t)numSamples * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) +
+		       2U * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) - 2U) /
+		      (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK));
 	/* A direct decoder call is valid before the first native tick. */
 	pChan->activeSamplesTx = pChan->activeSamplesRx = numSamples;
 
@@ -1428,34 +1525,63 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	TRACEF(1, "calloc buffers \n");
 
-	ALLOCATE_OR_FAIL(pChan->pRxDemod, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxNoise, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxBase, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxDemod, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxNoise, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxBase, pChan->rxBaseCapacity, 2);
 	ALLOCATE_OR_FAIL(pChan->rxCarrierGate, numSamples * 6, sizeof(*pChan->rxCarrierGate));
-	ALLOCATE_OR_FAIL(pChan->pRxHpf, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxLsd, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxSpeaker, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxCtcss, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxDcTrack, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->pRxLsdLimit, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->prxMeasure, numSamples, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxHpf, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxLsd, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxSpeaker, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxCtcss, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxDcTrack, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->pRxLsdLimit, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->prxMeasure, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->measureF32Input, pChan->rxBaseCapacity,
+			 sizeof(*pChan->measureF32Input));
+	ALLOCATE_OR_FAIL(pChan->measureF32Output, pChan->rxBaseCapacity,
+			 sizeof(*pChan->measureF32Output));
+	pChan->measureF32Capacity = pChan->rxBaseCapacity;
+	ALLOCATE_OR_FAIL(pChan->centerSlicerF32Input, pChan->rxBaseCapacity,
+			 sizeof(*pChan->centerSlicerF32Input));
+	ALLOCATE_OR_FAIL(pChan->centerSlicerF32CenteredOutput, pChan->rxBaseCapacity,
+			 sizeof(*pChan->centerSlicerF32CenteredOutput));
+	ALLOCATE_OR_FAIL(pChan->centerSlicerF32LimitedOutput, pChan->rxBaseCapacity,
+			 sizeof(*pChan->centerSlicerF32LimitedOutput));
+	pChan->centerSlicerF32Capacity = pChan->rxBaseCapacity;
+	ALLOCATE_OR_FAIL(pChan->firF32Input, pChan->rxBaseCapacity, sizeof(*pChan->firF32Input));
+	ALLOCATE_OR_FAIL(pChan->firF32Output, pChan->rxBaseCapacity, sizeof(*pChan->firF32Output));
+	/* A history larger than this configured callback bound retains the C fallback. */
+	ALLOCATE_OR_FAIL(pChan->firHistoryScratch, pChan->rxBaseCapacity,
+			 sizeof(*pChan->firHistoryScratch));
+	pChan->firF32Capacity = pChan->rxBaseCapacity;
+	pChan->firHistoryCapacity = pChan->rxBaseCapacity;
+	/* The frontend keeps native stereo input and a transactional gate span;
+	 * all storage is allocated at stream setup so its optional portable call is
+	 * allocation-free inside the receive callback. */
+	ALLOCATE_OR_FAIL(pChan->receiveFrontendF32Input,
+			 (size_t)pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) * 2U,
+			 sizeof(*pChan->receiveFrontendF32Input));
+	ALLOCATE_OR_FAIL(pChan->receiveFrontendF32Output, pChan->rxBaseCapacity,
+			 sizeof(*pChan->receiveFrontendF32Output));
+	ALLOCATE_OR_FAIL(pChan->receiveFrontendHistoryScratch, pChan->rxBaseCapacity,
+			 sizeof(*pChan->receiveFrontendHistoryScratch));
+	ALLOCATE_OR_FAIL(pChan->receiveFrontendCarrierGateScratch,
+			 (size_t)pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK),
+			 sizeof(*pChan->receiveFrontendCarrierGateScratch));
+	pChan->receiveFrontendNativeCapacity =
+		pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK);
+	pChan->receiveFrontendBaseCapacity = pChan->rxBaseCapacity;
+	pChan->receiveFrontendHistoryCapacity = pChan->rxBaseCapacity;
 
 #if URP_RADIO_DEBUG == 1
 	TRACEF(1, "configure tracing\n");
 
-	ALLOCATE_OR_FAIL(pChan->pRxLsdCen, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->prxDebug0, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug0, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug1, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug2, numSamples, 2);
-	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug3, numSamples, 2);
-
-	for (i = 0; i < CTCSS_NUM_CODES; i++) {
-		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug0, numSamples, 2);
-		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug1, numSamples, 2);
-		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug2, numSamples, 2);
-		ALLOCATE_OR_FAIL(pChan->rxCtcss->tdet[i].pDebug3, numSamples, 2);
-	}
+	ALLOCATE_OR_FAIL(pChan->pRxLsdCen, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->prxDebug0, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug0, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug1, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug2, pChan->rxBaseCapacity, 2);
+	ALLOCATE_OR_FAIL(pChan->rxCtcss->pDebug3, pChan->rxBaseCapacity, 2);
 
 	/* TSCOPE CONFIGURATION SETSCOPE configure debug traces and sources for each channel of the
 	 * output */
@@ -1475,7 +1601,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->sdbg->source[4] = pChan->pRxLsd;
 		pChan->sdbg->source[5] = pChan->pRxLsdCen;
 		pChan->sdbg->source[6] = pChan->pRxLsdLimit;
-		pChan->sdbg->source[7] = pChan->rxCtcss->tdet[3].pDebug0;
+		pChan->sdbg->source[7] = pChan->rxCtcss->pDebug0;
 		pChan->sdbg->trace[8] = RX_CTCSS_DECODE;
 		pChan->sdbg->trace[9] = RX_SMODE;
 		pChan->sdbg->source[10] = pChan->pRxBase;
@@ -1488,10 +1614,10 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pChan->sdbg->source[4] = pChan->pRxLsdCen;
 		pChan->sdbg->source[5] = pChan->pRxDcTrack;
 		pChan->sdbg->source[6] = pChan->pRxLsdLimit;
-		pChan->sdbg->source[7] = pChan->rxCtcss->tdet[3].pDebug0;
-		pChan->sdbg->source[8] = pChan->rxCtcss->tdet[3].pDebug1;
-		pChan->sdbg->source[9] = pChan->rxCtcss->tdet[3].pDebug2;
-		pChan->sdbg->source[10] = pChan->rxCtcss->tdet[3].pDebug3;
+		pChan->sdbg->source[7] = pChan->rxCtcss->pDebug0;
+		pChan->sdbg->source[8] = pChan->rxCtcss->pDebug1;
+		pChan->sdbg->source[9] = pChan->rxCtcss->pDebug2;
+		pChan->sdbg->source[10] = pChan->rxCtcss->pDebug3;
 		pChan->sdbg->trace[11] = RX_CTCSS_DECODE;
 		pChan->sdbg->trace[12] = RX_SMODE;
 		pChan->sdbg->trace[13] = TX_PTT_IN;
@@ -1683,6 +1809,11 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pSps->nx = taps_int_lpf_300_1_2;
 		pSps->size_x = 4;
 		ALLOCATE_OR_FAIL(pSps->x, pSps->nx, pSps->size_x);
+		ALLOCATE_OR_FAIL(pChan->deemphasisIntegratorF32Input, pChan->rxBaseCapacity,
+				 sizeof(*pChan->deemphasisIntegratorF32Input));
+		ALLOCATE_OR_FAIL(pChan->deemphasisIntegratorF32Output, pChan->rxBaseCapacity,
+				 sizeof(*pChan->deemphasisIntegratorF32Output));
+		pChan->deemphasisIntegratorF32Capacity = pChan->rxBaseCapacity;
 		pSps->calcAdjust = gain_int_lpf_300_1_2 / 2;
 		pSps->inputGain = (1.0 * M_Q8);
 		pSps->outputGain = (1.0 * M_Q8);
@@ -1706,6 +1837,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		}
 		pChan->spsDelayLine = pSps;
 		pChan->spsRxSquelchDelay = pSps;
+		pSps->parentChan = pChan;
 		pSps->sigProc = DelayLine;
 		if (pChan->rxDeEmpEnable) {
 			pSps->source = pChan->pRxSpeaker;
@@ -1720,8 +1852,17 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 		pSps->inputGain = 1 * M_Q8;
 		pSps->outputGain = 1 * M_Q8;
 		pSps->nSamples = pChan->nSamplesRx;
+		/* buffSize retains the active F32 circular-storage length; the old
+		 * signed-16 delay buffer is no longer allocated. */
 		pSps->buffSize = RXSQDELAYBUFSIZE;
-		ALLOCATE_OR_FAIL(pSps->buff, RXSQDELAYBUFSIZE, 2);
+		ALLOCATE_OR_FAIL(pChan->delayF32Input, pChan->rxBaseCapacity,
+				 sizeof(*pChan->delayF32Input));
+		ALLOCATE_OR_FAIL(pChan->delayF32Output, pChan->rxBaseCapacity,
+				 sizeof(*pChan->delayF32Output));
+		ALLOCATE_OR_FAIL(pChan->delayF32Storage, RXSQDELAYBUFSIZE,
+				 sizeof(*pChan->delayF32Storage));
+		pChan->delayF32FrameCapacity = pChan->rxBaseCapacity;
+		pChan->delayF32StorageCapacity = RXSQDELAYBUFSIZE;
 		pSps->buffLead = pChan->rxSquelchDelay * 8; /* convert ms to samples */
 		pSps->buffInIndex = 0;
 		pSps->buffOutIndex = 0;
@@ -1729,7 +1870,7 @@ urp_radio_state *urp_radio_create(urp_radio_state *tChan, i16 numSamples)
 
 	if (pChan->rxCdType == CD_XPMR_VOX) {
 		TRACEF(1, "create vox measureblock\n");
-		ALLOCATE_OR_FAIL(pChan->prxVoxMeas, pChan->nSamplesRx, 2);
+		ALLOCATE_OR_FAIL(pChan->prxVoxMeas, pChan->rxBaseCapacity, 2);
 
 		pSps = urp_radio_stage_append(pChan, pSps);
 		if (!pSps) {
@@ -1803,7 +1944,6 @@ allocation_failed:
 i16 urp_radio_destroy(urp_radio_state *pChan)
 {
 	urp_radio_stage *pmr_sps, *tmp_sps;
-	i16 i;
 
 	if (!pChan) {
 		return 1;
@@ -1826,6 +1966,23 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 	if (pChan->prxMeasure) {
 		ast_free(pChan->prxMeasure);
 	}
+	ast_free(pChan->measureF32Input);
+	ast_free(pChan->measureF32Output);
+	ast_free(pChan->centerSlicerF32Input);
+	ast_free(pChan->centerSlicerF32CenteredOutput);
+	ast_free(pChan->centerSlicerF32LimitedOutput);
+	ast_free(pChan->deemphasisIntegratorF32Input);
+	ast_free(pChan->deemphasisIntegratorF32Output);
+	ast_free(pChan->firF32Input);
+	ast_free(pChan->firF32Output);
+	ast_free(pChan->firHistoryScratch);
+	ast_free(pChan->receiveFrontendF32Input);
+	ast_free(pChan->receiveFrontendF32Output);
+	ast_free(pChan->receiveFrontendHistoryScratch);
+	ast_free(pChan->receiveFrontendCarrierGateScratch);
+	ast_free(pChan->delayF32Input);
+	ast_free(pChan->delayF32Output);
+	ast_free(pChan->delayF32Storage);
 	ast_free(pChan->prxVoxMeas);
 	ast_free((void *)pChan->pRxCode);
 	ast_free(pChan->pRxCodeStr);
@@ -1841,23 +1998,12 @@ i16 urp_radio_destroy(urp_radio_state *pChan)
 		ast_free(pChan->rxCtcss->pDebug1);
 		ast_free(pChan->rxCtcss->pDebug2);
 		ast_free(pChan->rxCtcss->pDebug3);
-
-		for (i = 0; i < CTCSS_NUM_CODES; i++) {
-			ast_free(pChan->rxCtcss->tdet[i].pDebug0);
-			ast_free(pChan->rxCtcss->tdet[i].pDebug1);
-			ast_free(pChan->rxCtcss->tdet[i].pDebug2);
-			ast_free(pChan->rxCtcss->tdet[i].pDebug3);
-		}
 	}
 #endif
 
 	ast_free(pChan->rxCtcss);
 
 	pmr_sps = pChan->spsRx;
-	if (pChan->spsDelayLine) {
-		ast_free(pChan->spsDelayLine->buff);
-		pChan->spsDelayLine->buff = NULL;
-	}
 
 	if (pChan->sdbg) {
 		ast_free(pChan->sdbg);
@@ -1910,6 +2056,8 @@ i16 urp_radio_stage_destroy(urp_radio_stage *pSps)
 }
 
 /** @brief Set the active detector count for one native callback.
+ * @param channel Radio state owning the receive detector stages.
+ * @param samples Number of emitted base-rate samples for these stages.
  *
  * Allocation occurs once for the adapter-declared maximum.  The fixed-point
  * detector stages retain their history while this helper changes only the
@@ -1921,27 +2069,45 @@ static void urp_radio_set_active_samples(urp_radio_state *channel, i16 samples)
 
 	channel->activeSamplesRx = samples;
 	channel->activeSamplesTx = samples;
+	/* The receive frontend has already consumed its native span and published
+	 * this exact base-rate count.  Every following stage must see only emitted
+	 * samples, including zero when a callback ends before a decimator boundary. */
 	for (stage = channel->spsRx; stage; stage = stage->nextSps)
 		stage->nSamples = samples;
 }
 
-/** @brief Convert native PCM duration to whole milliseconds without tick drift. */
+/** @brief Convert native PCM duration to whole milliseconds without tick drift.
+ * @param remainder Fractional native samples retained between calls.
+ * @param native_frames Native samples elapsed in this callback.
+ * @return Whole elapsed milliseconds after carrying the fraction.
+ */
 static i32 urp_radio_elapsed_ms(u32 *remainder, size_t native_frames)
 {
+	i32 milliseconds;
 	uint64_t elapsed = (uint64_t)*remainder + native_frames;
-	i32 milliseconds = (i32)(elapsed / (SAMPLE_RATE_INPUT / 1000U));
+
+	if (!urp_radio_core_elapsed_ms(remainder, native_frames, &milliseconds))
+		return milliseconds;
+	milliseconds = (i32)(elapsed / (SAMPLE_RATE_INPUT / 1000U));
 
 	*remainder = (u32)(elapsed % (SAMPLE_RATE_INPUT / 1000U));
 	return milliseconds;
 }
 
 /** @brief Consume a timer and return PCM time remaining after it expires.
+ * @param timer Remaining milliseconds, updated without crossing below zero.
+ * @param milliseconds Elapsed native PCM time in milliseconds.
+ * @return Elapsed time left after the timer expires.
  *
  * A native callback can be split differently by an adapter.  Returning the
  * residual duration lets a successor state start at the same sample time.
  */
 static i32 urp_radio_timer_consume(i32 *timer, i32 milliseconds)
 {
+	i32 remaining;
+
+	if (!urp_radio_core_timer_consume(timer, milliseconds, &remaining))
+		return remaining;
 	if (*timer <= 0 || milliseconds <= 0)
 		return milliseconds;
 	if (milliseconds >= *timer) {
@@ -1953,10 +2119,343 @@ static i32 urp_radio_timer_consume(i32 *timer, i32 milliseconds)
 	return 0;
 }
 
-/** @brief Decrement a millisecond timer by elapsed native PCM duration. */
+/** @brief Decrement a millisecond timer by elapsed native PCM duration.
+ * @param timer Remaining timer duration, updated in place.
+ * @param milliseconds Elapsed native PCM time in milliseconds.
+ */
 static void urp_radio_timer_advance(i32 *timer, i32 milliseconds)
 {
 	(void)urp_radio_timer_consume(timer, milliseconds);
+}
+
+/** @brief Try the portable post-transmit receive-blanking transition.
+ * \param channel Compatibility radio state owning the signed-16 ADC buffer.
+ * \param elapsed_ms Whole native PCM milliseconds already consumed this callback.
+ * \param remainder_before Fractional native frames before elapsed-time advancement.
+ * \param native_frame_count Native frames supplied to the current callback.
+ * \param blanked_frames Receives the leading input frames that must be muted.
+ * \return Zero only after a validated portable result is committed.
+ *
+ * C intentionally retains the left-channel PCM mute loop at its original
+ * hardware boundary.  The portable operation owns only state arithmetic, so
+ * a missing or rejected append-only descriptor can execute the exact retained
+ * C computation after the sample remainder has advanced once.
+ */
+static int urp_radio_rx_blanking_portable(urp_radio_state *channel, i32 elapsed_ms,
+					  u32 remainder_before, size_t native_frame_count,
+					  size_t *blanked_frames)
+{
+	const i16 prior_remaining_ms = channel ? channel->txrxblankingtimer : 0;
+	struct rptadv_radio_rx_blanking_input input;
+	struct rptadv_radio_rx_blanking_state state;
+
+	if (blanked_frames)
+		*blanked_frames = 0U;
+	if (!channel || !blanked_frames || prior_remaining_ms <= 0 || elapsed_ms < 0 ||
+	    native_frame_count > UINT32_MAX)
+		return -1;
+	input.elapsed_ms = elapsed_ms;
+	input.native_frame_count = (u32)native_frame_count;
+	input.sample_remainder_before = remainder_before;
+	state.remaining_ms = prior_remaining_ms;
+	state.blanked_frame_count = 0U;
+	if (urp_radio_core_rx_blanking_advance(&input, &state) || state.remaining_ms < 0 ||
+	    state.remaining_ms > prior_remaining_ms ||
+	    state.blanked_frame_count > input.native_frame_count)
+		return -1;
+	channel->txrxblankingtimer = (i16)state.remaining_ms;
+	*blanked_frames = state.blanked_frame_count;
+	return 0;
+}
+
+/** @brief Try the portable scalar VOX carrier-hang transition transactionally.
+ * @param channel Compatibility state holding the VOX timer and carrier result.
+ * @param elapsed_ms Whole native PCM milliseconds consumed in this callback.
+ * @return Zero after a validated portable state transition; otherwise C fallback.
+ *
+ * The retained envelope stage still owns detector measurement at 8 kHz. This
+ * helper moves only the timer/carrier decision, so an older shared object or a
+ * rejected result leaves all state available to the exact legacy C branch.
+ */
+static int urp_radio_vox_carrier_portable(urp_radio_state *channel, i32 elapsed_ms)
+{
+	struct rptadv_radio_vox_carrier_input input;
+	struct rptadv_radio_vox_carrier_state state;
+
+	if (!channel || !channel->spsRxVox)
+		return -1;
+	input.detector_active = channel->spsRxVox->compOut ? 1U : 0U;
+	input.hang_time_ms = channel->voxHangTime;
+	input.elapsed_ms = elapsed_ms;
+	state.remaining_ms = channel->rxVoxTimer;
+	state.carrier_detect = channel->rxCarrierDetect ? 1U : 0U;
+	if (urp_radio_core_vox_carrier_advance(&input, &state) || state.remaining_ms < 0 ||
+	    state.carrier_detect > 1U)
+		return -1;
+	channel->rxVoxTimer = state.remaining_ms;
+	channel->rxCarrierDetect = (i16)state.carrier_detect;
+	return 0;
+}
+
+/**
+ * @brief Try the portable transmitter CPU-saver transition transactionally.
+ * \param channel Compatibility transmitter state holding the halt flag.
+ * \return Zero after a validated portable state transition; otherwise C fallback.
+ *
+ * The legacy branch owns its early renderer return. This helper moves only
+ * the scalar halt decision, so a missing shared object or rejected result
+ * leaves that exact branch available without changing renderer behavior.
+ */
+static int urp_radio_tx_cpu_saver_portable(urp_radio_state *channel)
+{
+	struct rptadv_radio_tx_cpu_saver_input input;
+	struct rptadv_radio_tx_cpu_saver_state state;
+
+	if (!channel)
+		return -1;
+	input.enabled = !!channel->txCpuSaver;
+	input.tx_ptt_in = !!channel->txPttIn;
+	input.tx_ptt_out = !!channel->txPttOut;
+	input.tx_idle = channel->txState == CHAN_TXSTATE_IDLE;
+	state.halted = channel->b.txhalted;
+	if (urp_radio_core_tx_cpu_saver_advance(&input, &state) || state.halted > 1U)
+		return -1;
+	channel->b.txhalted = state.halted;
+	return 0;
+}
+
+/**
+ * \brief Try the portable receiver CPU-saver transition transactionally.
+ * \param channel Compatibility receiver state holding the halt flag.
+ * \param action Receives the validated DSP-stage transition action on success.
+ * \param next_halted Receives the validated halt bit after the transition.
+ * \return Zero after a validated portable transition; otherwise C fallback.
+ *
+ * The shared core owns only the scalar predicate and transition label. This
+ * compatibility boundary retains the physical HPF/deemphasis stage writes at
+ * their established location immediately before the native receive frontend.
+ */
+static int urp_radio_rx_cpu_saver_portable(urp_radio_state *channel, u32 *action, u32 *next_halted)
+{
+	struct rptadv_radio_rx_cpu_saver_input input;
+	struct rptadv_radio_rx_cpu_saver_state state;
+	u32 prior_halted;
+
+	if (!channel || !action || !next_halted)
+		return -1;
+	prior_halted = !!channel->b.rxhalted;
+	input.enabled = !!channel->rxCpuSaver;
+	input.carrier_detect = !!channel->rxCarrierDetect;
+	input.signal_mode_null = channel->smode == SMODE_NULL;
+	input.tx_ptt_in = !!channel->txPttIn;
+	input.tx_ptt_out = !!channel->txPttOut;
+	state.halted = prior_halted;
+	state.action = RPTADV_RADIO_RX_CPU_SAVER_ACTION_NONE;
+	if (urp_radio_core_rx_cpu_saver_advance(&input, &state) || state.halted > 1U ||
+	    state.action > RPTADV_RADIO_RX_CPU_SAVER_ACTION_LEAVE ||
+	    (state.halted == prior_halted &&
+	     state.action != RPTADV_RADIO_RX_CPU_SAVER_ACTION_NONE) ||
+	    (state.halted != prior_halted &&
+	     state.action != (state.halted ? RPTADV_RADIO_RX_CPU_SAVER_ACTION_ENTER
+					   : RPTADV_RADIO_RX_CPU_SAVER_ACTION_LEAVE)))
+		return -1;
+	*action = state.action;
+	*next_halted = state.halted;
+	return 0;
+}
+
+/** @brief Try the portable CTCSS/DCS signaling-mode resolver transactionally.
+ * @param channel Legacy signaling state to copy at the compatibility boundary.
+ * @param elapsed_ms Whole native PCM milliseconds in this callback span.
+ * @param decoded_ctcss Current decoder result or @ref CTCSS_NULL.
+ * @return Zero only after every portable result has been range-checked and committed.
+ *
+ * The portable operation receives fixed tenths-of-a-hertz selections instead
+ * of parser state or the legacy floating-point tone table.  This preserves
+ * the historical table conversion at the C boundary and keeps an unavailable
+ * shared object from changing the established signaling decision.
+ */
+static int urp_radio_signal_mode_portable(urp_radio_state *channel, i32 elapsed_ms,
+					  int decoded_ctcss)
+{
+	struct rptadv_radio_signal_mode_config config = {
+		.struct_size = sizeof(struct rptadv_radio_signal_mode_config),
+	};
+	struct rptadv_radio_signal_mode_input input;
+	struct rptadv_radio_signal_mode_state state;
+	int index;
+
+	if (!channel || decoded_ctcss < CTCSS_NULL || decoded_ctcss >= CTCSS_NUM_CODES)
+		return -1;
+	if (decoded_ctcss > CTCSS_NULL) {
+		const i16 selected = channel->rxCtcssMap[decoded_ctcss];
+
+		/* Preserve unusual legacy map values by letting the retained C block
+		 * handle them; the portable operation only receives defined selections. */
+		if (selected != CTCSS_RXONLY && (selected < 0 || selected >= CTCSS_NUM_CODES))
+			return -1;
+	}
+	config.hold_ms = channel->smodetime;
+	config.ctcss_tx_enabled = !!channel->b.ctcssTxEnable;
+	config.default_tx_ctcss_frequency_tenths_hz = (i32)(channel->txctcssdefault_value * 10.0F);
+	for (index = 0; index < CTCSS_NUM_CODES; ++index) {
+		const i16 mapped = channel->rxCtcssMap[index];
+
+		if (mapped >= 0 && mapped < CTCSS_NUM_CODES)
+			config.mapped_tx_ctcss_frequency_tenths_hz[index] =
+				(i32)(freq_ctcss[mapped] * 10.0F);
+	}
+	input.elapsed_ms = elapsed_ms;
+	input.decoded_ctcss = decoded_ctcss;
+	input.dcs_valid = !!channel->dcs.valid;
+	input.tx_ptt_in = !!channel->txPttIn;
+	state.smode = channel->smode;
+	state.smode_was = channel->smodewas;
+	state.smode_timer_ms = channel->smodetimer;
+	state.last_rx_ctcss = channel->lastrxdecode;
+	state.tx_ctcss_frequency_tenths_hz = channel->txCtcssFreq10;
+	state.tx_ctcss_option = channel->txCtcssOption;
+	state.smode_turnoff = !!channel->b.smodeturnoff;
+	if (urp_radio_core_signal_mode_advance(&config, &input, &state) ||
+	    state.smode < INT16_MIN || state.smode > INT16_MAX || state.smode_was < INT16_MIN ||
+	    state.smode_was > INT16_MAX || state.last_rx_ctcss < CTCSS_NULL ||
+	    state.last_rx_ctcss >= CTCSS_NUM_CODES || state.tx_ctcss_option > 3U ||
+	    state.smode_turnoff > 1U)
+		return -1;
+	channel->smode = (i16)state.smode;
+	channel->smodewas = (i16)state.smode_was;
+	channel->smodetimer = state.smode_timer_ms;
+	channel->lastrxdecode = (i16)state.last_rx_ctcss;
+	channel->txCtcssFreq10 = state.tx_ctcss_frequency_tenths_hz;
+	channel->txCtcssOption = (i16)state.tx_ctcss_option;
+	channel->b.smodeturnoff = state.smode_turnoff;
+	return 0;
+}
+
+/** @brief Try the portable final CTCSS oscillator-control transition transactionally.
+ * @param channel Legacy transmitter state to copy at the compatibility boundary.
+ * @param elapsed_ms Whole native PCM milliseconds in this callback span.
+ * @return Zero only after a fully validated portable result is committed.
+ *
+ * The transmitter state machine has already chosen whether this callback starts
+ * CTCSS, begins a phase/tail-tone turn-off, or disables it.  This narrow
+ * operation preserves that ownership: it only translates the one-shot request
+ * into renderer-facing state.  Any unusual legacy value falls through to the
+ * retained C block below without changing the current transition.
+ */
+static int urp_radio_ctcss_render_state_portable(urp_radio_state *channel, i32 elapsed_ms)
+{
+	struct rptadv_radio_ctcss_render_state_config config = {
+		.struct_size = sizeof(struct rptadv_radio_ctcss_render_state_config),
+	};
+	const struct rptadv_radio_ctcss_render_state_input input = {
+		.elapsed_ms = elapsed_ms,
+	};
+	struct rptadv_radio_ctcss_render_state state;
+
+	if (!channel || elapsed_ms < 0 || channel->txCtcssTocTime < 0 ||
+	    channel->txCtcssOption < 0 || channel->txCtcssOption > 3 || channel->txCtcssState < 0 ||
+	    channel->txCtcssState > 2 || channel->txCtcssEnabled < 0 ||
+	    channel->txCtcssEnabled > 1 || channel->txCtcssTurnoffTimer < 0 ||
+	    !isfinite(channel->txCtcssTocShift) || !isfinite(channel->txCtcssTocToneHz) ||
+	    !isfinite(channel->txCtcssPhaseShift) || !isfinite(channel->txCtcssTailToneHz))
+		return -1;
+	config.turnoff_duration_ms = channel->txCtcssTocTime;
+	config.turnoff_phase_shift_degrees = channel->txCtcssTocShift;
+	config.turnoff_tail_tone_hz = channel->txCtcssTocToneHz;
+	state.option = (uint32_t)channel->txCtcssOption;
+	state.oscillator_state = (uint32_t)channel->txCtcssState;
+	state.enabled = (uint32_t)channel->txCtcssEnabled;
+	state.turnoff_remaining_ms = channel->txCtcssTurnoffTimer;
+	state.phase_shift_degrees = channel->txCtcssPhaseShift;
+	state.tail_tone_hz = channel->txCtcssTailToneHz;
+	if (urp_radio_core_ctcss_render_state_advance(&config, &input, &state) ||
+	    state.option > 3U || state.oscillator_state > 2U || state.enabled > 1U ||
+	    state.turnoff_remaining_ms < 0 || !isfinite(state.phase_shift_degrees) ||
+	    !isfinite(state.tail_tone_hz))
+		return -1;
+	channel->txCtcssOption = (i8)state.option;
+	channel->txCtcssState = (i8)state.oscillator_state;
+	channel->txCtcssEnabled = (i8)state.enabled;
+	channel->txCtcssTurnoffTimer = state.turnoff_remaining_ms;
+	channel->txCtcssPhaseShift = state.phase_shift_degrees;
+	channel->txCtcssTailToneHz = state.tail_tone_hz;
+	return 0;
+}
+
+/** @brief Try the selected DCS transmitter turn-off timing through the core.
+ * @param channel Compatibility transmitter state copied at the ABI boundary.
+ * @param elapsed_ms Whole native PCM milliseconds in this callback span.
+ * @param begin_turnoff Nonzero only when C has selected a new DCS tail.
+ * @param finish_requested Receives the retained finishing-helper request.
+ * @param finish_elapsed_ms Receives the duration residual for that helper.
+ * @return Zero only after all portable state has been validated and committed.
+ *
+ * DCS eligibility, waveform rendering, PTT, and hardware remain in C. This
+ * helper only moves the existing ACTIVE/TOC timer arithmetic, so an absent or
+ * rejected descriptor leaves the exact C transition available as fallback.
+ */
+static int urp_radio_dcs_turnoff_portable(urp_radio_state *channel, i32 elapsed_ms,
+					  int begin_turnoff, int *finish_requested,
+					  i32 *finish_elapsed_ms)
+{
+	const i32 prior_dcs_turnoff_ms = channel ? channel->dcsTurnoffTimer : 0;
+	const i32 prior_tx_hang_ms = channel ? channel->txHangTime : 0;
+	const struct rptadv_radio_dcs_turnoff_config config = {
+		.turnoff_duration_ms = channel ? channel->dcsTurnoffDuration : 0,
+	};
+	const struct rptadv_radio_dcs_turnoff_input input = {
+		.elapsed_ms = elapsed_ms,
+		.tx_ptt_in = channel ? !!channel->txPttIn : 0U,
+		.begin_turnoff = !!begin_turnoff,
+	};
+	struct rptadv_radio_dcs_turnoff_state state;
+
+	if (finish_requested)
+		*finish_requested = 0;
+	if (finish_elapsed_ms)
+		*finish_elapsed_ms = 0;
+	if (!channel || !finish_requested || !finish_elapsed_ms || elapsed_ms < 0 ||
+	    channel->dcsTurnoffDuration <= 0)
+		return -1;
+	if (begin_turnoff) {
+		if (channel->txState != CHAN_TXSTATE_ACTIVE || channel->txPttIn ||
+		    !channel->dcs.enabled_transmit || !channel->dcsTurnoffEnabled)
+			return -1;
+	} else if (channel->txState != CHAN_TXSTATE_TOC || channel->dcsTurnoffTimer <= 0) {
+		return -1;
+	}
+	state.tx_state = channel->txState;
+	state.dcs_turnoff_remaining_ms = channel->dcsTurnoffTimer;
+	state.tx_hang_remaining_ms = channel->txHangTime;
+	state.finish_requested = 0U;
+	state.finish_elapsed_ms = 0;
+	if (urp_radio_core_dcs_turnoff_advance(&config, &input, &state) ||
+	    (state.tx_state != CHAN_TXSTATE_ACTIVE && state.tx_state != CHAN_TXSTATE_TOC) ||
+	    state.dcs_turnoff_remaining_ms < 0 || state.finish_requested > 1U ||
+	    state.finish_elapsed_ms < 0 || state.finish_elapsed_ms > elapsed_ms ||
+	    (!state.finish_requested && state.finish_elapsed_ms != 0) ||
+	    (begin_turnoff &&
+	     (state.tx_state != CHAN_TXSTATE_TOC ||
+	      state.dcs_turnoff_remaining_ms > config.turnoff_duration_ms ||
+	      state.tx_hang_remaining_ms != 0 ||
+	      (state.finish_requested != (state.dcs_turnoff_remaining_ms == 0)))) ||
+	    (!begin_turnoff && input.tx_ptt_in &&
+	     (state.tx_state != CHAN_TXSTATE_ACTIVE || state.dcs_turnoff_remaining_ms != 0 ||
+	      state.tx_hang_remaining_ms != prior_tx_hang_ms || state.finish_requested != 0U ||
+	      state.finish_elapsed_ms != 0)) ||
+	    (!begin_turnoff && !input.tx_ptt_in &&
+	     (state.tx_state != CHAN_TXSTATE_TOC ||
+	      state.dcs_turnoff_remaining_ms > prior_dcs_turnoff_ms ||
+	      state.tx_hang_remaining_ms != prior_tx_hang_ms ||
+	      (state.finish_requested != (state.dcs_turnoff_remaining_ms == 0)))))
+		return -1;
+	channel->txState = (i16)state.tx_state;
+	channel->dcsTurnoffTimer = state.dcs_turnoff_remaining_ms;
+	channel->txHangTime = state.tx_hang_remaining_ms;
+	*finish_requested = (int)state.finish_requested;
+	*finish_elapsed_ms = state.finish_elapsed_ms;
+	return 0;
 }
 
 void urp_radio_arm_txrx_blanking(urp_radio_state *pChan)
@@ -1967,11 +2466,90 @@ void urp_radio_arm_txrx_blanking(urp_radio_state *pChan)
 	pChan->txrxBlankingSampleRemainder = 0U;
 }
 
+/** @brief Try the portable scalar cleanup after a completed transmitter drain.
+ * @param channel Legacy transmitter state to copy at the compatibility boundary.
+ * @return Zero only after a fully validated portable result is committed.
+ *
+ * Display-string clearing, CTCSS/DCS waveform state, and device PTT remain in
+ * this compatibility unit. The shared object owns only the six scalar writes
+ * made by the historical completion branch, so a missing or malformed append
+ * member can safely leave this state unchanged for the exact C fallback.
+ */
+static int urp_radio_complete_tx_portable(urp_radio_state *channel)
+{
+	const struct rptadv_radio_tx_complete_config config = {
+		.struct_size = sizeof(struct rptadv_radio_tx_complete_config),
+		.txrx_blanking_time_ms = channel ? channel->txrxblankingtime : 0,
+	};
+	struct rptadv_radio_tx_complete_state state;
+
+	if (!channel)
+		return -1;
+	state.tx_state = channel->txState;
+	state.tx_ptt_out = !!channel->txPttOut;
+	state.tx_ctcss_option = channel->txCtcssOption;
+	state.txrx_blanking_timer_ms = channel->txrxblankingtimer;
+	state.txrx_blanking_sample_remainder = channel->txrxBlankingSampleRemainder;
+	state.tx_ctcss_ready = !!channel->b.txCtcssReady;
+	if (urp_radio_core_tx_complete(&config, &state) ||
+	    state.tx_state != RPTADV_RADIO_TX_STATE_IDLE || state.tx_ptt_out != 0U ||
+	    state.tx_ctcss_option != RPTADV_RADIO_CTCSS_RENDER_OPTION_DISABLE ||
+	    state.txrx_blanking_timer_ms != config.txrx_blanking_time_ms ||
+	    state.txrx_blanking_sample_remainder != 0U || state.tx_ctcss_ready != 1U)
+		return -1;
+	channel->txPttOut = (i16)state.tx_ptt_out;
+	channel->txCtcssOption = (i8)state.tx_ctcss_option;
+	channel->txrxblankingtimer = (i16)state.txrx_blanking_timer_ms;
+	channel->txrxBlankingSampleRemainder = state.txrx_blanking_sample_remainder;
+	channel->txState = (i16)state.tx_state;
+	channel->b.txCtcssReady = state.tx_ctcss_ready;
+	return 0;
+}
+
+/** @brief Try the portable normal transmitter finishing-drain transition.
+ * @param channel Legacy transmitter state to copy at the compatibility boundary.
+ * @param elapsed_ms Whole native PCM milliseconds in the entry callback.
+ * @return Zero only after a fully validated portable result is committed.
+ *
+ * The operation covers only the normal three-buffer 80 ms drain.  Special
+ * CTCSS-tail drains retain their existing compatibility path, and an older
+ * shared object or invalid response leaves the state untouched for C fallback.
+ */
+static int urp_radio_enter_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
+{
+	const struct rptadv_radio_tx_finish_input input = {
+		.elapsed_ms = elapsed_ms,
+	};
+	struct rptadv_radio_tx_finish_state state;
+
+	if (!channel || elapsed_ms < 0)
+		return -1;
+	state.buffer_clear_frames = channel->txBufferClear;
+	state.finish_remaining_ms = channel->txFinishTimer;
+	state.tx_state = channel->txState;
+	if (urp_radio_core_tx_finish_advance(&input, &state) ||
+	    (state.tx_state != RPTADV_RADIO_TX_STATE_FINISHING &&
+	     state.tx_state != RPTADV_RADIO_TX_STATE_COMPLETE) ||
+	    state.buffer_clear_frames < 0 || state.buffer_clear_frames > 3 ||
+	    state.finish_remaining_ms < 0 || state.finish_remaining_ms > (3 + 1) * MS_PER_FRAME)
+		return -1;
+	channel->txBufferClear = (i16)state.buffer_clear_frames;
+	channel->txFinishTimer = state.finish_remaining_ms;
+	channel->txState = (i16)state.tx_state;
+	return channel->txState == CHAN_TXSTATE_COMPLETE;
+}
+
 /** @brief Enter the fixed transmitter drain state at a precise native time.
+ * @param channel Radio state owning transmitter drain timing.
+ * @param elapsed_ms Elapsed milliseconds in the transition callback.
  * @return Nonzero when the supplied span also completes the drain.
  */
 static int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
 {
+	const int portable_result = urp_radio_enter_finishing_portable(channel, elapsed_ms);
+
+	if (portable_result >= 0)
+		return portable_result;
 	channel->txBufferClear = 3;
 	/* The legacy frame counter held PTT through the transition callback and
 	 * three further 20 ms drain spans. Preserve that real-time dwell even when
@@ -1987,42 +2565,76 @@ static int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
 	return 0;
 }
 
-/*
-	urp_radio_process handles a block of data from the usb audio device
-*/
+/** @brief Try the portable continuation of a transmitter finishing drain.
+ * @param channel Legacy transmitter state to copy at the compatibility boundary.
+ * @param elapsed_ms Whole native PCM milliseconds in this callback span.
+ * @return Zero or one after a portable commit, otherwise negative for C fallback.
+ *
+ * The portable operation is deliberately limited to normal and 55 Hz-tail
+ * compatibility counts. An unusual restored count remains in the retained C
+ * code, which preserves its historical behavior without widening this ABI.
+ */
+static int urp_radio_continue_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
+{
+	const struct rptadv_radio_tx_finish_input input = {
+		.elapsed_ms = elapsed_ms,
+	};
+	struct rptadv_radio_tx_finish_state state;
+
+	if (!channel || elapsed_ms < 0 || channel->txState != CHAN_TXSTATE_FINISHING ||
+	    channel->txBufferClear < 0 || channel->txBufferClear > 8 || channel->txFinishTimer < 0)
+		return -1;
+	state.buffer_clear_frames = channel->txBufferClear;
+	state.finish_remaining_ms = channel->txFinishTimer;
+	state.tx_state = channel->txState;
+	if (urp_radio_core_tx_finish_continue(&input, &state) ||
+	    (state.tx_state != RPTADV_RADIO_TX_STATE_FINISHING &&
+	     state.tx_state != RPTADV_RADIO_TX_STATE_COMPLETE) ||
+	    state.buffer_clear_frames < 0 || state.buffer_clear_frames > 8 ||
+	    state.finish_remaining_ms < 0 || state.finish_remaining_ms > 8 * MS_PER_FRAME)
+		return -1;
+	channel->txBufferClear = (i16)state.buffer_clear_frames;
+	channel->txFinishTimer = state.finish_remaining_ms;
+	channel->txState = (i16)state.tx_state;
+	return channel->txState == CHAN_TXSTATE_COMPLETE;
+}
+
 i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
 				   size_t native_frame_count, int advance_tx)
 {
 	int i, hit;
+	int decoded_ctcss = CTCSS_NULL;
 	i16 active_samples;
 	i32 rx_elapsed_ms;
 	i32 tx_elapsed_ms;
 	i32 tx_remaining_ms;
 	size_t blank_native_frames;
+	size_t native_capacity;
 	u32 blank_timer_remainder_before;
+	u32 rx_cpu_saver_action = RPTADV_RADIO_RX_CPU_SAVER_ACTION_NONE;
+	u32 rx_cpu_saver_halted = 0U;
 	float f = 0;
 	urp_radio_stage *pmr_sps;
 
-	if (pChan == NULL || input == NULL || !native_frame_count ||
-	    native_frame_count % (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) != 0U ||
-	    native_frame_count / (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK) >
-		    (size_t)pChan->nSamplesRx) {
+	if (pChan == NULL || input == NULL || !native_frame_count || pChan->nSamplesRx <= 0 ||
+	    !pChan->rxBaseCapacity || !pChan->spsRx || !pChan->spsRxOut) {
 		return 1;
 	}
-	active_samples = (i16)(native_frame_count / (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK));
-	urp_radio_set_active_samples(pChan, active_samples);
+	native_capacity = (size_t)pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK);
+	if (native_frame_count > native_capacity) {
+		return 1;
+	}
 	rx_elapsed_ms = urp_radio_elapsed_ms(&pChan->rxTimerSampleRemainder, native_frame_count);
-
-	pChan->frameCountRx++;
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->tracetype) {
 		memset((void *)pChan->sdbg->buffer, 0,
-		       (size_t)pChan->activeSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2U);
+		       (size_t)pChan->nSamplesRx * URP_RADIO_DEBUG_CHANNELS * 2U);
 	}
 #endif
+	if (pChan->rxCtcss)
+		decoded_ctcss = pChan->rxCtcss->decode;
 
-#ifndef URP_RADIO_VOTER
 	pmr_sps = pChan->spsRx; /* first sps */
 	pmr_sps->source = input;
 
@@ -2044,57 +2656,96 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 		 * Subtract that remainder before clamping so adjacent sub-millisecond
 		 * callbacks blank one continuous physical interval, not one rounded
 		 * interval per callback. */
-		blank_native_frames =
-			(size_t)pChan->txrxblankingtimer * (SAMPLE_RATE_INPUT / 1000U);
-		if (blank_native_frames > (size_t)blank_timer_remainder_before)
-			blank_native_frames -= (size_t)blank_timer_remainder_before;
-		else
-			blank_native_frames = 0U;
-		if (blank_native_frames > native_frame_count)
-			blank_native_frames = native_frame_count;
+		if (urp_radio_rx_blanking_portable(pChan, blank_elapsed_ms,
+						   blank_timer_remainder_before, native_frame_count,
+						   &blank_native_frames)) {
+			blank_native_frames =
+				(size_t)pChan->txrxblankingtimer * (SAMPLE_RATE_INPUT / 1000U);
+			if (blank_native_frames > (size_t)blank_timer_remainder_before)
+				blank_native_frames -= (size_t)blank_timer_remainder_before;
+			else
+				blank_native_frames = 0U;
+			if (blank_native_frames > native_frame_count)
+				blank_native_frames = native_frame_count;
+
+			if (blank_elapsed_ms >= pChan->txrxblankingtimer)
+				pChan->txrxblankingtimer = 0;
+			else
+				pChan->txrxblankingtimer -= (i16)blank_elapsed_ms;
+		}
 		for (i = 0; i < (int)blank_native_frames; ++i)
 			input[i * 2] = 0;
-
-		if (blank_elapsed_ms >= pChan->txrxblankingtimer)
-			pChan->txrxblankingtimer = 0;
-		else
-			pChan->txrxblankingtimer -= (i16)blank_elapsed_ms;
 	}
 
-	if (pChan->rxCpuSaver && !pChan->rxCarrierDetect && pChan->smode == SMODE_NULL &&
-	    !pChan->txPttIn && !pChan->txPttOut) {
-		if (!pChan->b.rxhalted) {
-			pChan->spsRxHpf->enabled = 0;
+	/* The core chooses only a scalar transition. The established C stage writes
+	 * remain immediately before the frontend, which keeps the first wake-up
+	 * callback and an unavailable-core fallback behavior-identical. */
+	if (urp_radio_rx_cpu_saver_portable(pChan, &rx_cpu_saver_action, &rx_cpu_saver_halted)) {
+		if (pChan->rxCpuSaver && !pChan->rxCarrierDetect && pChan->smode == SMODE_NULL &&
+		    !pChan->txPttIn && !pChan->txPttOut) {
+			if (!pChan->b.rxhalted) {
+				pChan->spsRxHpf->enabled = 0;
+				if (pChan->rxDeEmpEnable) {
+					pChan->spsRxDeEmp->enabled = 0;
+				}
+
+				pChan->b.rxhalted = 1;
+			}
+		} else if (pChan->b.rxhalted) {
+			pChan->spsRxHpf->enabled = 1;
 			if (pChan->rxDeEmpEnable) {
-				pChan->spsRxDeEmp->enabled = 0;
+				pChan->spsRxDeEmp->enabled = 1;
 			}
 
-			pChan->b.rxhalted = 1;
+			pChan->b.rxhalted = 0;
 		}
-	} else if (pChan->b.rxhalted) {
+	} else if (rx_cpu_saver_action == RPTADV_RADIO_RX_CPU_SAVER_ACTION_ENTER) {
+		pChan->spsRxHpf->enabled = 0;
+		if (pChan->rxDeEmpEnable) {
+			pChan->spsRxDeEmp->enabled = 0;
+		}
+		pChan->b.rxhalted = rx_cpu_saver_halted;
+	} else if (rx_cpu_saver_action == RPTADV_RADIO_RX_CPU_SAVER_ACTION_LEAVE) {
 		pChan->spsRxHpf->enabled = 1;
 		if (pChan->rxDeEmpEnable) {
 			pChan->spsRxDeEmp->enabled = 1;
 		}
-
-		pChan->b.rxhalted = 0;
+		pChan->b.rxhalted = rx_cpu_saver_halted;
 	}
 
-	while (pmr_sps != NULL) {
-		pmr_sps->sigProc(pmr_sps);
-		pmr_sps = (urp_radio_stage *)(pmr_sps->nextSps);
+	/* The frontend is the native-rate boundary.  It consumes every supplied
+	 * hardware frame, persists its decimator phase, and replaces nSamples with
+	 * the precise number of 8 kHz samples it emitted. */
+	pmr_sps->nativeSamples = (u32)native_frame_count;
+	if (pmr_sps->sigProc(pmr_sps)) {
+		return 1;
+	}
+	active_samples = pmr_sps->nSamples;
+	if (active_samples < 0 || (u32)active_samples > pChan->rxBaseCapacity) {
+		return 1;
+	}
+	urp_radio_set_active_samples(pChan, active_samples);
+
+	/* Filters, squelch delay, VOX, calibration, and CTCSS operate at 8 kHz;
+	 * an incomplete native decimation interval has no sample to give them. */
+	for (pmr_sps = (urp_radio_stage *)pmr_sps->nextSps; pmr_sps != NULL;
+	     pmr_sps = (urp_radio_stage *)pmr_sps->nextSps) {
+		if (active_samples > 0)
+			pmr_sps->sigProc(pmr_sps);
 	}
 
 	if (pChan->rxCdType == CD_XPMR_VOX) {
-		if (pChan->spsRxVox->compOut) {
-			pChan->rxVoxTimer = pChan->voxHangTime; /* VOX HangTime in ms */
-		}
-		if (pChan->rxVoxTimer > 0) {
-			urp_radio_timer_advance(&pChan->rxVoxTimer, rx_elapsed_ms);
-			pChan->rxCarrierDetect = 1;
-		} else {
-			pChan->rxVoxTimer = 0;
-			pChan->rxCarrierDetect = 0;
+		if (urp_radio_vox_carrier_portable(pChan, rx_elapsed_ms)) {
+			if (pChan->spsRxVox->compOut) {
+				pChan->rxVoxTimer = pChan->voxHangTime; /* VOX HangTime in ms */
+			}
+			if (pChan->rxVoxTimer > 0) {
+				urp_radio_timer_advance(&pChan->rxVoxTimer, rx_elapsed_ms);
+				pChan->rxCarrierDetect = 1;
+			} else {
+				pChan->rxVoxTimer = 0;
+				pChan->rxCarrierDetect = 0;
+			}
 		}
 	} else {
 		pChan->rxCarrierDetect = !pChan->spsRx->compOut;
@@ -2103,62 +2754,66 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 		}
 	}
 
-	/* DCS follows the left capture channel used by the receive frontend. */
+	/* The stream-owned Rust receiver supplies the DCS decision at this same
+	 * post-blanking point. No second decoder accumulates competing history. */
 	if (pChan->dcs.enabled_receive)
 		(void)urp_dcs_process(&pChan->dcs, input, native_frame_count, 2U,
 				      SAMPLE_RATE_INPUT);
 
 	/* stop and start these engines instead to eliminate falsing */
-	if (pChan->b.ctcssRxEnable &&
+	if (active_samples > 0 && pChan->b.ctcssRxEnable && pChan->rxCtcss &&
 	    (!pChan->b.rxhalted || pChan->rxCtcss->decode != CTCSS_NULL)) {
 		urp_ctcss_decode(pChan);
 	}
+	/* A reload can retire the optional decoder while this callback retains the
+	 * signaling state. Treat that transient exactly like no decoded tone so COR,
+	 * DCS, timers, and transmitter state continue to advance. */
+	if (pChan->rxCtcss)
+		decoded_ctcss = pChan->rxCtcss->decode;
 
-	if (pChan->txPttIn != pChan->b.pttwas) {
-		pChan->b.pttwas = pChan->txPttIn;
-	}
+	if (urp_radio_signal_mode_portable(pChan, rx_elapsed_ms, decoded_ctcss)) {
+		/* An older or rejected shared core takes the exact established path. */
+		if (pChan->smodetimer > 0 && !pChan->txPttIn) {
+			urp_radio_timer_advance(&pChan->smodetimer, rx_elapsed_ms);
 
-	if (pChan->smodetimer > 0 && !pChan->txPttIn) {
-		urp_radio_timer_advance(&pChan->smodetimer, rx_elapsed_ms);
-
-		if (pChan->smodetimer == 0) {
-			pChan->smodewas = pChan->smode;
-			pChan->smode = SMODE_NULL;
-			pChan->b.smodeturnoff = 1;
+			if (pChan->smodetimer == 0) {
+				pChan->smodewas = pChan->smode;
+				pChan->smode = SMODE_NULL;
+				pChan->b.smodeturnoff = 1;
+			}
 		}
-	}
 
-	if (pChan->rxCtcss->decode > CTCSS_NULL &&
-	    (pChan->smode == SMODE_NULL || pChan->smode == SMODE_CTCSS)) {
-		if (pChan->smode != SMODE_CTCSS) {
-			pChan->smode = pChan->smodewas = SMODE_CTCSS;
+		if (decoded_ctcss > CTCSS_NULL &&
+		    (pChan->smode == SMODE_NULL || pChan->smode == SMODE_CTCSS)) {
+			if (pChan->smode != SMODE_CTCSS) {
+				pChan->smode = pChan->smodewas = SMODE_CTCSS;
+			}
+			pChan->smodetimer = pChan->smodetime;
 		}
-		pChan->smodetimer = pChan->smodetime;
-	}
-	if (pChan->smode == SMODE_CTCSS && pChan->b.ctcssTxEnable) {
-		if (pChan->rxCtcss->decode != pChan->lastrxdecode) {
-			pChan->lastrxdecode = pChan->rxCtcss->decode;
-			f = 0;
-			if (pChan->rxCtcss->decode > CTCSS_NULL) {
-				if (pChan->rxCtcssMap[pChan->rxCtcss->decode] != CTCSS_RXONLY) {
-					f = freq_ctcss[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
+		if (pChan->smode == SMODE_CTCSS && pChan->b.ctcssTxEnable) {
+			if (decoded_ctcss != pChan->lastrxdecode) {
+				pChan->lastrxdecode = decoded_ctcss;
+				f = 0;
+				if (decoded_ctcss > CTCSS_NULL) {
+					if (pChan->rxCtcssMap[decoded_ctcss] != CTCSS_RXONLY) {
+						f = freq_ctcss[pChan->rxCtcssMap[decoded_ctcss]];
+					}
+				} else {
+					f = pChan->txctcssdefault_value;
 				}
-			} else {
-				f = pChan->txctcssdefault_value;
+				if (f && pChan->txCtcssFreq10 != f * 10) {
+					pChan->txCtcssFreq10 = f * 10;
+					pChan->txCtcssOption = 1;
+				}
 			}
-			if (f && pChan->txCtcssFreq10 != f * 10) {
-				pChan->txCtcssFreq10 = f * 10;
-				pChan->txCtcssOption = 1;
-			}
+		} else {
+			pChan->lastrxdecode = CTCSS_NULL;
 		}
-	} else {
-		pChan->lastrxdecode = CTCSS_NULL;
+		if (pChan->dcs.valid && (pChan->smode == SMODE_NULL || pChan->smode == SMODE_DCS)) {
+			pChan->smode = pChan->smodewas = SMODE_DCS;
+			pChan->smodetimer = pChan->smodetime;
+		}
 	}
-	if (pChan->dcs.valid && (pChan->smode == SMODE_NULL || pChan->smode == SMODE_DCS)) {
-		pChan->smode = pChan->smodewas = SMODE_DCS;
-		pChan->smodetimer = pChan->smodetime;
-	}
-#endif
 	/* The receiver still owns this captured frame, but transmitter timing must
 	 * not advance unless the matching native DAC frame will be rendered. */
 	if (!advance_tx) {
@@ -2176,12 +2831,10 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 			 * CTCSS tone may select a mapped TX tone, but received DCS or carrier
 			 * must not suppress the configured transmit default. */
 			if (pChan->b.ctcssTxEnable && !pChan->b.txCtcssInhibit) {
-				if (pChan->smode == SMODE_CTCSS &&
-				    pChan->rxCtcss->decode > CTCSS_NULL &&
-				    pChan->rxCtcssMap[pChan->rxCtcss->decode] != CTCSS_RXONLY)
-					f = freq_ctcss[pChan->rxCtcssMap[pChan->rxCtcss->decode]];
-				else if (pChan->smode != SMODE_CTCSS ||
-					 pChan->rxCtcss->decode == CTCSS_NULL)
+				if (pChan->smode == SMODE_CTCSS && decoded_ctcss > CTCSS_NULL &&
+				    pChan->rxCtcssMap[decoded_ctcss] != CTCSS_RXONLY)
+					f = freq_ctcss[pChan->rxCtcssMap[decoded_ctcss]];
+				else if (pChan->smode != SMODE_CTCSS || decoded_ctcss == CTCSS_NULL)
 					f = pChan->txctcssdefault_value;
 				if (f) {
 					pChan->txCtcssFreq10 = f * 10;
@@ -2207,13 +2860,22 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 			pChan->smodetimer = pChan->smodetime;
 		} else if (!pChan->txPttIn && pChan->txState == CHAN_TXSTATE_ACTIVE) {
 			if (pChan->dcs.enabled_transmit && pChan->dcsTurnoffEnabled) {
-				pChan->txState = CHAN_TXSTATE_TOC;
-				pChan->dcsTurnoffTimer = pChan->dcsTurnoffDuration;
-				pChan->txHangTime = 0;
-				tx_remaining_ms = urp_radio_timer_consume(&pChan->dcsTurnoffTimer,
-									  tx_elapsed_ms);
-				if (pChan->dcsTurnoffTimer == 0)
+				int finish_requested;
+
+				if (urp_radio_dcs_turnoff_portable(pChan, tx_elapsed_ms, 1,
+								   &finish_requested,
+								   &tx_remaining_ms)) {
+					pChan->txState = CHAN_TXSTATE_TOC;
+					pChan->dcsTurnoffTimer = pChan->dcsTurnoffDuration;
+					pChan->txHangTime = 0;
+					tx_remaining_ms = urp_radio_timer_consume(
+						&pChan->dcsTurnoffTimer, tx_elapsed_ms);
+					if (pChan->dcsTurnoffTimer == 0)
+						hit = urp_radio_enter_finishing(pChan,
+										tx_remaining_ms);
+				} else if (finish_requested) {
 					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
+				}
 			} else if (pChan->txCtcssEnabled && !pChan->b.txCtcssInhibit) {
 				if (pChan->txTocType == TOC_NONE || !pChan->b.ctcssTxEnable) {
 					pChan->txCtcssOption = 3;
@@ -2245,10 +2907,19 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_TOC) {
 			if (pChan->txPttIn && pChan->dcsTurnoffTimer > 0) {
-				/* Resume normal DCS immediately; do not finish an obsolete tail. */
-				pChan->dcsTurnoffTimer = 0;
-				pChan->txState = CHAN_TXSTATE_ACTIVE;
-				hit = 0;
+				int finish_requested;
+
+				if (urp_radio_dcs_turnoff_portable(pChan, tx_elapsed_ms, 0,
+								   &finish_requested,
+								   &tx_remaining_ms)) {
+					/* Resume normal DCS immediately; do not finish an obsolete
+					 * tail. */
+					pChan->dcsTurnoffTimer = 0;
+					pChan->txState = CHAN_TXSTATE_ACTIVE;
+					hit = 0;
+				} else if (finish_requested) {
+					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
+				}
 			} else if (pChan->txPttIn && pChan->b.ctcssTxEnable) {
 				/* A no-tone tail clears the emitted tone, not the configured
 				 * transmit CTCSS selection. Rekeying during that tail restores it.
@@ -2267,9 +2938,17 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 					hit = 1;
 				}
 			} else if (pChan->dcsTurnoffTimer > 0) {
-				tx_remaining_ms = urp_radio_timer_consume(&pChan->dcsTurnoffTimer,
-									  tx_elapsed_ms);
-				if (pChan->dcsTurnoffTimer == 0) {
+				int finish_requested;
+
+				if (urp_radio_dcs_turnoff_portable(pChan, tx_elapsed_ms, 0,
+								   &finish_requested,
+								   &tx_remaining_ms)) {
+					tx_remaining_ms = urp_radio_timer_consume(
+						&pChan->dcsTurnoffTimer, tx_elapsed_ms);
+					if (pChan->dcsTurnoffTimer == 0)
+						hit = urp_radio_enter_finishing(pChan,
+										tx_remaining_ms);
+				} else if (finish_requested) {
 					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
 				}
 			} else if (pChan->txCtcssState == 0) {
@@ -2286,15 +2965,22 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 				}
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_FINISHING) {
-			/* Keep externally restored legacy frame counts meaningful while all
-			 * normal transitions use the duration-based timer above. */
-			if (pChan->txFinishTimer == 0 && pChan->txBufferClear > 0)
-				pChan->txFinishTimer = pChan->txBufferClear * MS_PER_FRAME;
-			urp_radio_timer_advance(&pChan->txFinishTimer, tx_elapsed_ms);
-			if (pChan->txFinishTimer == 0) {
-				pChan->txBufferClear = 0;
-				pChan->txState = CHAN_TXSTATE_COMPLETE;
-				hit = 1;
+			const int portable_result =
+				urp_radio_continue_finishing_portable(pChan, tx_elapsed_ms);
+
+			if (portable_result >= 0) {
+				hit = portable_result;
+			} else {
+				/* Keep externally restored legacy frame counts meaningful while all
+				 * normal transitions use the duration-based timer above. */
+				if (pChan->txFinishTimer == 0 && pChan->txBufferClear > 0)
+					pChan->txFinishTimer = pChan->txBufferClear * MS_PER_FRAME;
+				urp_radio_timer_advance(&pChan->txFinishTimer, tx_elapsed_ms);
+				if (pChan->txFinishTimer == 0) {
+					pChan->txBufferClear = 0;
+					pChan->txState = CHAN_TXSTATE_COMPLETE;
+					hit = 1;
+				}
 			}
 		} else if (pChan->txState == CHAN_TXSTATE_COMPLETE) {
 			hit = 1;
@@ -2302,13 +2988,15 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 	} /* end of if SMODE==LSD */
 
 	if (hit) {
-		pChan->txPttOut = 0;
-		pChan->txCtcssOption = 3;
-		urp_radio_arm_txrx_blanking(pChan);
-		pChan->txState = CHAN_TXSTATE_IDLE;
+		if (urp_radio_complete_tx_portable(pChan)) {
+			pChan->txPttOut = 0;
+			pChan->txCtcssOption = 3;
+			urp_radio_arm_txrx_blanking(pChan);
+			pChan->txState = CHAN_TXSTATE_IDLE;
+			pChan->b.txCtcssReady = 1;
+		}
 
 		memset(pChan->txctcssfreq, 0, sizeof(pChan->txctcssfreq));
-		pChan->b.txCtcssReady = 1;
 	}
 
 	if (pChan->txsettletimer && pChan->txPttHid) {
@@ -2316,13 +3004,15 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 	}
 
 	/* enable this after we know everything else is working */
-	if (pChan->txCpuSaver && !pChan->txPttIn && !pChan->txPttOut &&
-	    pChan->txState == CHAN_TXSTATE_IDLE) {
-		if (!pChan->b.txhalted) {
-			pChan->b.txhalted = 1;
+	if (urp_radio_tx_cpu_saver_portable(pChan)) {
+		if (pChan->txCpuSaver && !pChan->txPttIn && !pChan->txPttOut &&
+		    pChan->txState == CHAN_TXSTATE_IDLE) {
+			if (!pChan->b.txhalted) {
+				pChan->b.txhalted = 1;
+			}
+		} else if (pChan->b.txhalted) {
+			pChan->b.txhalted = 0;
 		}
-	} else if (pChan->b.txhalted) {
-		pChan->b.txhalted = 0;
 	}
 
 	if (pChan->b.txhalted) {
@@ -2331,28 +3021,31 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 
 	/* Preserve established CTCSS start and squelch-tail timing while the channel
 	 * driver renders the waveform at the CM119's native sample rate. */
-	pChan->txCtcssPhaseShift = 0;
-	if (pChan->txCtcssOption == 1) {
-		pChan->txCtcssOption = 0;
-		pChan->txCtcssState = 1;
-		pChan->txCtcssTailToneHz = 0.0;
-	} else if (pChan->txCtcssOption == 2) {
-		pChan->txCtcssOption = 0;
-		pChan->txCtcssState = 2;
-		pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - tx_elapsed_ms;
-		if (pChan->txCtcssTurnoffTimer < 0)
-			pChan->txCtcssTurnoffTimer = 0;
-		pChan->txCtcssPhaseShift = pChan->txCtcssTocShift;
-		pChan->txCtcssTailToneHz = pChan->txCtcssTocToneHz;
-	} else if (pChan->txCtcssOption == 3) {
-		pChan->txCtcssOption = 0;
-		pChan->txCtcssState = 0;
-		pChan->txCtcssEnabled = 0;
-		pChan->txCtcssTailToneHz = 0.0;
-	} else if (pChan->txCtcssState == 2) {
-		urp_radio_timer_advance(&pChan->txCtcssTurnoffTimer, tx_elapsed_ms);
-		if (pChan->txCtcssTurnoffTimer == 0)
-			pChan->txCtcssOption = 3;
+	if (urp_radio_ctcss_render_state_portable(pChan, tx_elapsed_ms)) {
+		/* An older or rejected shared core retains the established exact branch. */
+		pChan->txCtcssPhaseShift = 0;
+		if (pChan->txCtcssOption == 1) {
+			pChan->txCtcssOption = 0;
+			pChan->txCtcssState = 1;
+			pChan->txCtcssTailToneHz = 0.0;
+		} else if (pChan->txCtcssOption == 2) {
+			pChan->txCtcssOption = 0;
+			pChan->txCtcssState = 2;
+			pChan->txCtcssTurnoffTimer = pChan->txCtcssTocTime - tx_elapsed_ms;
+			if (pChan->txCtcssTurnoffTimer < 0)
+				pChan->txCtcssTurnoffTimer = 0;
+			pChan->txCtcssPhaseShift = pChan->txCtcssTocShift;
+			pChan->txCtcssTailToneHz = pChan->txCtcssTocToneHz;
+		} else if (pChan->txCtcssOption == 3) {
+			pChan->txCtcssOption = 0;
+			pChan->txCtcssState = 0;
+			pChan->txCtcssEnabled = 0;
+			pChan->txCtcssTailToneHz = 0.0;
+		} else if (pChan->txCtcssState == 2) {
+			urp_radio_timer_advance(&pChan->txCtcssTurnoffTimer, tx_elapsed_ms);
+			if (pChan->txCtcssTurnoffTimer == 0)
+				pChan->txCtcssOption = 3;
+		}
 	}
 
 	/* This engine controls signaling and PTT only; USBRadioPlus renders audio. */
@@ -2361,13 +3054,16 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 
 #if URP_RADIO_DEBUG == 1
 	if (pChan->tracetype) {
-		for (i = 0; i < pChan->activeSamplesRx; i++) {
+		/* The historical trace workspace stores one legacy 160-sample frame.
+		 * A carried decimator phase may emit one extra baseband sample, which
+		 * remains processed but is intentionally outside this compatibility trace. */
+		for (i = 0; i < pChan->activeSamplesRx && i < SAMPLES_PER_BLOCK; i++) {
 			pChan->pRxDemod[i] = input[i * 2 * 6];
 			TSCOPE((RX_NOISE_TRIG, pChan->sdbg, i,
 				(pChan->rxCarrierDetect * URP_RADIO_TRACE_AMP) -
 					URP_RADIO_TRACE_AMP / 2));
 			TSCOPE((RX_CTCSS_DECODE, pChan->sdbg, i,
-				pChan->rxCtcss->decode * (M_Q14 / CTCSS_NUM_CODES)));
+				decoded_ctcss * (M_Q14 / CTCSS_NUM_CODES)));
 			TSCOPE((RX_SMODE, pChan->sdbg, i,
 				pChan->smode * (URP_RADIO_TRACE_AMP / 4)));
 			TSCOPE((TX_PTT_IN, pChan->sdbg, i,
@@ -2380,25 +3076,6 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 
 	strace2(pChan->sdbg, pChan->activeSamplesRx);
 	return 0;
-}
-
-/* Retain the fixed-block public entry for callers that operate an 8 kHz
- * legacy frame.  Native adapters use urp_radio_process_native_timed() so the
- * actual hardware callback duration—not this compatibility wrapper—controls
- * timer advancement. */
-i16 urp_radio_process_timed(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx,
-			    int advance_tx)
-{
-	if (!pChan)
-		return 1;
-	return urp_radio_process_native_timed(
-		pChan, input, outputrx, outputtx,
-		(size_t)pChan->nSamplesRx * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK), advance_tx);
-}
-
-i16 urp_radio_process(urp_radio_state *pChan, i16 *input, i16 *outputrx, i16 *outputtx)
-{
-	return urp_radio_process_timed(pChan, input, outputrx, outputtx, 1);
 }
 
 #if GCC_VERSION > 40600

@@ -105,17 +105,6 @@ wait_for_module()
 	return 1
 }
 
-# Do not issue a load request while asynchronous autoload is still registering
-# the provider.  Debian 13 can otherwise report a transient registration error.
-if ! wait_for_module res_usbradio 100; then
-	asterisk -rx 'module load res_usbradio.so' >/dev/null 2>&1 || true
-fi
-if ! wait_for_module res_usbradio 20; then
-	echo "res_usbradio did not become ready" >&2
-	tail -n 100 "$log" >&2
-	exit 1
-fi
-
 if ! wait_for_module chan_usbradioplus 10; then
 	module_load_output=$(asterisk -rx 'module load chan_usbradioplus.so' 2>&1 || true)
 fi

@@ -2,7 +2,13 @@
 
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 ASL3_ASTERISK_VERSION ?= $(shell dpkg-query -W -f='$${Version}' asl3-asterisk)
-DEB_BINARY_PACKAGE ?= usbradioplus
+ASL3_COMPATIBLE_VERSIONS := 2:22.9.0+asl3-3.9.3-1.deb13 2:22.10.1+asl3-3.10.5-1.deb13
+ifneq ($(filter $(ASL3_ASTERISK_VERSION),$(ASL3_COMPATIBLE_VERSIONS)),)
+ASL3_ASTERISK_DEPENDS := asl3-asterisk (= 2:22.9.0+asl3-3.9.3-1.deb13) | \
+	asl3-asterisk (= 2:22.10.1+asl3-3.10.5-1.deb13)
+else
+ASL3_ASTERISK_DEPENDS := asl3-asterisk (= $(ASL3_ASTERISK_VERSION))
+endif
 
 %:
 	dh $@
@@ -14,7 +20,7 @@ override_dh_auto_test:
 	$(MAKE) check
 
 override_dh_auto_install:
-	$(MAKE) DESTDIR=$(CURDIR)/debian/$(DEB_BINARY_PACKAGE) prefix=/usr \
+	$(MAKE) DESTDIR=$(CURDIR)/debian/usbradioplus prefix=/usr \
 		asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules install
 
 override_dh_auto_clean:
@@ -25,4 +31,4 @@ override_dh_installdocs:
 		examples/usbradioplus.conf.sample
 
 override_dh_gencontrol:
-	dh_gencontrol -- -V'usbradioplus:ASLDepends=asl3-asterisk (= $(ASL3_ASTERISK_VERSION))'
+	dh_gencontrol -- -V'usbradioplus:ASLDepends=$(ASL3_ASTERISK_DEPENDS)'

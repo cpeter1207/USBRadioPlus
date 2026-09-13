@@ -211,8 +211,6 @@ struct txagc_config {
 	double limiter_attack_ms;
 	/** Single-band limiter release in milliseconds. */
 	double limiter_release_ms;
-	/** Nonzero enables the internal DCS spectral low-pass shaper. */
-	int dcs_spectral_shaping_enabled;
 	/** Limiter low crossover in Hz. */
 	double limiter_low_crossover_hz;
 	/** Limiter high crossover in Hz. */
@@ -263,8 +261,6 @@ struct txagc_config {
 	double post_limiter_bandpass_highpass_hz;
 	/** Post-limiter band-pass upper edge in Hz. */
 	double post_limiter_bandpass_lowpass_hz;
-	/** DCS spectral low-pass cutoff in Hz. */
-	double dcs_spectral_lowpass_hz;
 	/** Output gain in DB. */
 	double output_gain_db;
 };

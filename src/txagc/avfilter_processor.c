@@ -692,18 +692,6 @@ AVFILTER_PRIVATE int build_description(char *graph, size_t size, const struct tx
 		snprintf(current, sizeof(current), "%s", next);
 	}
 
-	if (cfg->dcs_spectral_shaping_enabled && cfg->dcs_spectral_lowpass_hz > 0.0) {
-		char rejected[NAME_SIZE];
-		snprintf(next, sizeof(next), "s%u", stage++);
-		snprintf(rejected, sizeof(rejected), "lp%urej", stage);
-		if (graph_append(graph, size,
-				 "[%s]acrossover=split=%.9g:order=20th[%s][%s];[%s]anullsink;",
-				 current, cfg->dcs_spectral_lowpass_hz, next, rejected,
-				 rejected) < 0)
-			return AVERROR(ENOSPC);
-		snprintf(current, sizeof(current), "%s", next);
-	}
-
 	/* Output gain precedes the final limiter so it cannot defeat the configured
 	 * ceiling. PCM conversion clamps only values that cannot be represented. */
 	if (cfg->output_gain_db != 0.0) {
@@ -1166,7 +1154,6 @@ AVFILTER_PRIVATE int txagc_config_equal(const struct txagc_config *left,
 	equal &= left->limiter_knee_db == right->limiter_knee_db;
 	equal &= left->limiter_attack_ms == right->limiter_attack_ms;
 	equal &= left->limiter_release_ms == right->limiter_release_ms;
-	equal &= left->dcs_spectral_shaping_enabled == right->dcs_spectral_shaping_enabled;
 	equal &= left->limiter_low_crossover_hz == right->limiter_low_crossover_hz;
 	equal &= left->limiter_high_crossover_hz == right->limiter_high_crossover_hz;
 	equal &= left->low_limiter_threshold_dbfs == right->low_limiter_threshold_dbfs;
@@ -1193,7 +1180,6 @@ AVFILTER_PRIVATE int txagc_config_equal(const struct txagc_config *left,
 	equal &=
 		left->post_limiter_bandpass_highpass_hz == right->post_limiter_bandpass_highpass_hz;
 	equal &= left->post_limiter_bandpass_lowpass_hz == right->post_limiter_bandpass_lowpass_hz;
-	equal &= left->dcs_spectral_lowpass_hz == right->dcs_spectral_lowpass_hz;
 	equal &= left->output_gain_db == right->output_gain_db;
 	return equal;
 }

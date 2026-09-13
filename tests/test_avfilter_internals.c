@@ -323,12 +323,6 @@ static void test_description_variants(void)
 	cfg.preemphasis_enabled = 1;
 	expect_post_input_stage_overflow(&cfg);
 	cfg = base_config();
-	cfg.dcs_spectral_shaping_enabled = 1;
-	cfg.dcs_spectral_lowpass_hz = 250.0;
-	expect_post_input_stage_overflow(&cfg);
-	cfg.dcs_spectral_lowpass_hz = 0.0;
-	assert(!build_description(graph, sizeof(graph), &cfg, 48000));
-	cfg = base_config();
 	cfg.output_gain_db = 1.0;
 	expect_post_input_stage_overflow(&cfg);
 	cfg = base_config();
@@ -348,8 +342,7 @@ static void test_description_variants(void)
 		cfg.stage_order[index] = (enum txagc_stage)index;
 	cfg.deesser_enabled = cfg.equalizer_enabled = cfg.agc_enabled = 1;
 	cfg.expander_enabled = cfg.compressor_enabled = cfg.limiter_enabled = 1;
-	cfg.preemphasis_enabled = cfg.dcs_spectral_shaping_enabled = 1;
-	cfg.dcs_spectral_lowpass_hz = 250.0;
+	cfg.preemphasis_enabled = 1;
 	cfg.output_gain_db = 2.0;
 	cfg.lookahead_limiter_enabled = 1;
 	cfg.post_limiter_bandpass_enabled = 1;

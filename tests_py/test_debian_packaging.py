@@ -3,8 +3,6 @@
 import subprocess
 from pathlib import Path
 
-import pytest
-
 ## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
 ## Reusable workflow reference required by the code repository's callers.
@@ -25,15 +23,20 @@ def test_usbradioplus_debian_package_is_nonactivating():
     rules = read("debian/rules")
     assert "Architecture: amd64 arm64" in control
     assert "asl3-asterisk-dev" in control
-    assert "portaudio19-dev" in control
+    assert "librptadv-portaudio-alsa-adapter-dev" in control
+    assert "librptadv-gpio-adapter-dev" in control
+    assert "libusb-dev" not in control
+    assert "portaudio19-dev" not in control
     assert "librnnoise-dev" in control
     assert "ladspa-sdk" in control
     assert "dpkg-architecture -qDEB_HOST_MULTIARCH" in rules
     assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
     assert "${usbradioplus:ASLDepends}" in control
     assert "ASL3_ASTERISK_VERSION" in rules
-    assert "DEB_BINARY_PACKAGE ?= usbradioplus" in rules
-    assert "debian/$(DEB_BINARY_PACKAGE)" in rules
+    assert "DEB_BINARY_PACKAGE" not in rules
+    assert "debian/usbradioplus" in rules
+    assert control.count("\nPackage: ") == 1
+    assert "\nPackage: usbradioplus\n" in control
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
     for document in ("README.md", "CHANGELOG.md", "doc/native-radio.md", "doc/agc.md"):
         assert document in rules
@@ -63,16 +66,10 @@ def test_debian_source_version_matches_the_release_archive_version():
         assert generated in source_options
 
 
-@pytest.mark.parametrize("package_name", ["usbradioplus", "usbradioplus-asl3105"])
-def test_private_agc_build_dependency_and_license_are_shipped(package_name):
-    """Keep the FFmpeg-hosted AGC buildable and licensed without a runtime SDK requirement.
-
-    @param package_name Standard or modern-ASL binary package name.
-    """
+def test_private_agc_build_dependency_and_license_are_shipped():
+    """Keep the FFmpeg-hosted AGC buildable and licensed without a runtime SDK requirement."""
     control = read("debian/control")
     source_control, binary_control = control.split("\nPackage: ", maxsplit=1)
-    # The modern-ASL build changes only the binary package name.
-    binary_control = package_name + "\n" + binary_control.split("\n", maxsplit=1)[1]
     assert "ladspa-sdk" in source_control
     assert "ladspa-sdk" not in binary_control
     assert "${shlibs:Depends}" in binary_control

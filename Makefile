@@ -17,6 +17,7 @@ agcplugindir ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))/usbradioplus
 DESTDIR ?=
 
 CC ?= cc
+NM ?= nm
 PKG_CONFIG ?= pkg-config
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL)
@@ -52,55 +53,146 @@ RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring
 RPCR_BUILD_DEP := $(RPCR_LIBRARY)
 else
 RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring)
-RPCR_LIBS := $(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring)
+# pkg-config suppresses the standard multiarch -L path. Keep it explicitly so
+# a stale /usr/local development symlink cannot select an older ring SONAME.
+RPCR_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring) \
+	$(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring)
 RPCR_BUILD_DEP :=
+endif
+# USBRadioPlus consumes the portable Rust radio core through its released
+# versioned shared-object ABI. CI may stage a checked-out release source;
+# ordinary builds consume its installed development package.
+RPTADV_RADIO_SOURCE ?=
+ifneq ($(strip $(RPTADV_RADIO_SOURCE)),)
+RPTADV_RADIO_STAGE ?= $(CURDIR)/build/rptadvradio-stage
+RPTADV_RADIO_PREFIX := $(RPTADV_RADIO_STAGE)/usr
+RPTADV_RADIO_LIBDIR := $(RPTADV_RADIO_PREFIX)/lib$(if $(MULTIARCH),/$(MULTIARCH))
+RPTADV_RADIO_LIBRARY := $(RPTADV_RADIO_LIBDIR)/librptadvradio.so
+RPTADV_RADIO_SOURCE_FILES := $(RPTADV_RADIO_SOURCE)/Makefile \
+	$(RPTADV_RADIO_SOURCE)/Cargo.toml $(RPTADV_RADIO_SOURCE)/Cargo.lock \
+	$(wildcard $(RPTADV_RADIO_SOURCE)/include/rptadvradio/*.h \
+		$(RPTADV_RADIO_SOURCE)/src/*.rs)
+RPTADV_RADIO_CFLAGS := -I$(RPTADV_RADIO_PREFIX)/include
+RPTADV_RADIO_LIBS := -L$(RPTADV_RADIO_LIBDIR) -lrptadvradio
+RPTADV_RADIO_BUILD_DEP := $(RPTADV_RADIO_LIBRARY)
+else
+ifeq ($(shell $(PKG_CONFIG) --exists rptadvradio && echo yes),)
+$(error USBRadioPlus requires the librptadvradio development package)
+endif
+RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
+RPTADV_RADIO_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadvradio) \
+	$(shell $(PKG_CONFIG) --libs rptadvradio)
+RPTADV_RADIO_BUILD_DEP :=
+endif
+# USBRadioPlus routes its current mono sinc compatibility conversion through
+# this released dynamically linked adapter. There is no direct converter
+# fallback in the native compatibility path.
+RPTADV_SAMPLERATE_SOURCE ?=
+ifneq ($(strip $(RPTADV_SAMPLERATE_SOURCE)),)
+RPTADV_SAMPLERATE_STAGE ?= $(CURDIR)/build/rptadv-samplerate-adapter-stage
+RPTADV_SAMPLERATE_PREFIX := $(RPTADV_SAMPLERATE_STAGE)/usr
+RPTADV_SAMPLERATE_LIBDIR := $(RPTADV_SAMPLERATE_PREFIX)/lib$(if $(MULTIARCH),/$(MULTIARCH))
+RPTADV_SAMPLERATE_LIBRARY := $(RPTADV_SAMPLERATE_LIBDIR)/librptadv_samplerate_adapter.so
+RPTADV_SAMPLERATE_SOURCE_FILES := $(RPTADV_SAMPLERATE_SOURCE)/Makefile \
+	$(RPTADV_SAMPLERATE_SOURCE)/Cargo.toml $(RPTADV_SAMPLERATE_SOURCE)/Cargo.lock \
+	$(wildcard $(RPTADV_SAMPLERATE_SOURCE)/include/rptadv_samplerate_adapter/*.h \
+		$(RPTADV_SAMPLERATE_SOURCE)/src/*.rs)
+RPTADV_SAMPLERATE_CFLAGS := -I$(RPTADV_SAMPLERATE_PREFIX)/include
+RPTADV_SAMPLERATE_LIBS := -L$(RPTADV_SAMPLERATE_LIBDIR) -lrptadv_samplerate_adapter
+RPTADV_SAMPLERATE_BUILD_DEP := $(RPTADV_SAMPLERATE_LIBRARY)
+else
+ifeq ($(shell $(PKG_CONFIG) --exists rptadv_samplerate_adapter && echo yes),)
+$(error USBRadioPlus requires the librptadv-samplerate-adapter development package)
+endif
+RPTADV_SAMPLERATE_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_samplerate_adapter)
+RPTADV_SAMPLERATE_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter) \
+	$(shell $(PKG_CONFIG) --libs rptadv_samplerate_adapter)
+RPTADV_SAMPLERATE_BUILD_DEP :=
+endif
+# Native signaling graphs use the released dynamic FFmpeg adapter.
+RPTADV_FFMPEG_SOURCE ?=
+ifneq ($(strip $(RPTADV_FFMPEG_SOURCE)),)
+RPTADV_FFMPEG_STAGE ?= $(CURDIR)/build/rptadv-ffmpeg-adapter-stage
+RPTADV_FFMPEG_PREFIX := $(RPTADV_FFMPEG_STAGE)/usr
+RPTADV_FFMPEG_LIBDIR := $(RPTADV_FFMPEG_PREFIX)/lib$(if $(MULTIARCH),/$(MULTIARCH))
+RPTADV_FFMPEG_LIBRARY := $(RPTADV_FFMPEG_LIBDIR)/librptadv_ffmpeg_adapter.so
+RPTADV_FFMPEG_SOURCE_FILES := $(RPTADV_FFMPEG_SOURCE)/Makefile \
+	$(RPTADV_FFMPEG_SOURCE)/Cargo.toml $(RPTADV_FFMPEG_SOURCE)/Cargo.lock \
+	$(wildcard $(RPTADV_FFMPEG_SOURCE)/include/rptadv_ffmpeg_adapter/*.h \
+		$(RPTADV_FFMPEG_SOURCE)/src/*.rs $(RPTADV_FFMPEG_SOURCE)/src/*.c \
+		$(RPTADV_FFMPEG_SOURCE)/src/*.h)
+RPTADV_FFMPEG_CFLAGS := -I$(RPTADV_FFMPEG_PREFIX)/include
+RPTADV_FFMPEG_LIBS := -L$(RPTADV_FFMPEG_LIBDIR) -lrptadv_ffmpeg_adapter
+RPTADV_FFMPEG_BUILD_DEP := $(RPTADV_FFMPEG_LIBRARY)
+else
+ifeq ($(shell $(PKG_CONFIG) --exists rptadv_ffmpeg_adapter && echo yes),)
+$(error USBRadioPlus requires the librptadv-ffmpeg-adapter development package)
+endif
+RPTADV_FFMPEG_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_ffmpeg_adapter)
+RPTADV_FFMPEG_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter) \
+	$(shell $(PKG_CONFIG) --libs rptadv_ffmpeg_adapter)
+RPTADV_FFMPEG_BUILD_DEP :=
 endif
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 0)
 
-ASL_RADIO_API ?= $(strip $(shell \
-	grep -q ast_radio_device_acquire \
-		$(ASTERISK_INCLUDEDIR)/asterisk/res_usbradio.h 2>/dev/null \
-		&& echo modern || echo legacy))
-
-DSP_PACKAGES := rnnoise samplerate libavfilter libavutil alsa
+DSP_PACKAGES := rnnoise libavfilter libavutil
 DSP_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(DSP_PACKAGES))
-DSP_LIBS := $(RPCR_LIBS) $(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES))
+DSP_LIBS := $(RPCR_LIBS) $(RPTADV_RADIO_LIBS) $(RPTADV_SAMPLERATE_LIBS) $(RPTADV_FFMPEG_LIBS) \
+	$(shell $(PKG_CONFIG) --libs $(DSP_PACKAGES))
 # ladspa-sdk installs its public header below this Debian include directory and
 # does not provide pkg-config metadata.
 LADSPA_CFLAGS := -I/usr/include/ladspa
-ifeq ($(ASL_RADIO_API),modern)
-CHANNEL_SOURCE := src/chan_usbradioplus_modern.c
-CHANNEL_CPPFLAGS := -DURP_CHANNEL_MODERN
-RADIO_PACKAGES := portaudio-2.0 libusb-1.0
+CHANNEL_SOURCE := src/chan_usbradioplus.c
+CHANNEL_CPPFLAGS := -DURP_HAVE_PORTAUDIO_POC -DURP_HAVE_GPIO_POC
+# Every channel uses the released audio and GPIO contracts. Neither capability
+# may be omitted and no Asterisk resource-module hardware API is selected.
+RADIO_PACKAGES := rptadv_portaudio_alsa_adapter rptadv_gpio_adapter
+ifeq ($(shell $(PKG_CONFIG) --exists $(RADIO_PACKAGES) && echo yes),)
+$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev and librptadv-gpio-adapter-dev)
+endif
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.1.0~alpha2 rptadv_portaudio_alsa_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.1.0~alpha2 or newer)
+endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
 RADIO_LIBS := $(shell $(PKG_CONFIG) --libs $(RADIO_PACKAGES))
-else ifeq ($(ASL_RADIO_API),legacy)
-CHANNEL_SOURCE := src/chan_usbradioplus.c
-CHANNEL_CPPFLAGS :=
-RADIO_CFLAGS :=
-RADIO_LIBS := -lusb
-else
-$(error ASL_RADIO_API must be legacy or modern)
-endif
+HARDWARE_SOURCES := src/usbradioplus_hardware_adapter.c \
+	src/usbradioplus_cm119_gpio_poc_worker.c \
+	src/usbradioplus_hardware_eeprom_poc.c \
+	src/usbradioplus_hardware_gpio_poc.c \
+	src/usbradioplus_hardware_mixer_poc.c \
+	src/usbradioplus_parallel_adapter_poc.c \
+	src/usbradioplus_portaudio_poc_identity.c \
+	src/usbradioplus_portaudio_poc.c \
+	src/usbradioplus_portaudio_poc_handoff.c \
+	src/usbradioplus_portaudio_poc_selection.c \
+	src/usbradioplus_portaudio_poc_status.c \
+	src/usbradioplus_portaudio_poc_timing.c
 # External Asterisk headers use GNU pthread declarations before autoconfig.h
 # can request them, so make that feature set explicit for every module build.
-COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc $(RPCR_CFLAGS)
+COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc $(RPCR_CFLAGS) \
+	$(RPTADV_RADIO_CFLAGS) $(RPTADV_SAMPLERATE_CFLAGS) $(RPTADV_FFMPEG_CFLAGS)
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
 AGC_PLUGIN := $(BUILD_DIR)/usbradioplus_agc.so
 AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
+BUILD_CONFIG_STAMP := $(BUILD_DIR)/.module-build-config
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
 SHARED_SOURCES := src/usbradioplus_config.c src/usbradioplus_radio.c \
-	src/usbradioplus_dsp.c src/usbradioplus_ctcss.c src/usbradioplus_dcs.c src/usbradioplus_hardware.c \
-	src/usbradioplus_repeat.c src/usbradioplus_channel_core.c \
+	src/usbradioplus_host_util.c \
+	src/usbradioplus_squelch.c src/usbradioplus_dsp.c src/usbradioplus_dcs.c \
+	src/usbradioplus_hardware.c \
+	src/usbradioplus_radio_core_adapter.c src/usbradioplus_samplerate_adapter.c \
+	src/usbradioplus_ffmpeg_adapter.c src/usbradioplus_repeat.c \
+	src/usbradioplus_channel_core.c \
 	src/usbradioplus_channel_common.c src/usbradioplus_native_tick.c \
 	src/usbradioplus_tune_menu.c src/usbradioplus_rpt_advanced.c \
 	src/usbradioplus_processing.c src/txagc/agc_core.c \
 	src/txagc/avfilter_processor.c src/txagc/rnnoise_processor.c
 CHANNEL_OBJECT := $(BUILD_DIR)/$(patsubst src/%.c,%.o,$(CHANNEL_SOURCE))
 SHARED_OBJECTS := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SHARED_SOURCES))
-MODULE_OBJECTS := $(CHANNEL_OBJECT) $(SHARED_OBJECTS)
+HARDWARE_OBJECTS := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(HARDWARE_SOURCES))
+MODULE_OBJECTS := $(CHANNEL_OBJECT) $(SHARED_OBJECTS) $(HARDWARE_OBJECTS)
 
 MODULE_SOURCES := $(wildcard src/*.c src/*.h src/txagc/*)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
@@ -116,21 +208,54 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 
 .PHONY: all check ci coverage docs lint static-analysis platform-verify \
 	clean dist distcheck install install-strip install-from-dist \
-	print-asl-radio-api uninstall validate-release
+	uninstall validate-release
 
-.PHONY: force-agc-path
+.PHONY: force-agc-path force-build-config
 
-print-asl-radio-api:
-	@echo $(ASL_RADIO_API)
-
-all: $(RPCR_BUILD_DEP) $(MODULE) $(AGC_PLUGIN)
+all: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(MODULE) $(AGC_PLUGIN)
 
 $(BUILD_DIR):
 	mkdir -p $@
 
+# Object files embed the selected headers and shared adapter state layout.
+# Invalidate objects atomically whenever the compilation configuration changes.
+$(BUILD_CONFIG_STAMP): force-build-config | $(BUILD_DIR)
+	@printf '%s\n' 'ASTERISK_INCLUDEDIR=$(ASTERISK_INCLUDEDIR)' \
+		'CPPFLAGS=$(CPPFLAGS)' 'CFLAGS=$(CFLAGS)' \
+		'CHANNEL_CPPFLAGS=$(CHANNEL_CPPFLAGS)' \
+		'COMMON_CPPFLAGS=$(COMMON_CPPFLAGS)' \
+		'DSP_CFLAGS=$(DSP_CFLAGS)' 'RADIO_CFLAGS=$(RADIO_CFLAGS)' \
+		'RPCR_CFLAGS=$(RPCR_CFLAGS)' 'RPTADV_RADIO_CFLAGS=$(RPTADV_RADIO_CFLAGS)' \
+		'RPTADV_SAMPLERATE_CFLAGS=$(RPTADV_SAMPLERATE_CFLAGS)' \
+		'RPTADV_FFMPEG_CFLAGS=$(RPTADV_FFMPEG_CFLAGS)' > $@.tmp
+	@if test -f $@ && cmp -s $@.tmp $@; then \
+		rm -f $@.tmp; \
+	else \
+		mv $@.tmp $@; \
+		rm -f $(MODULE_OBJECTS); \
+	fi
+
 ifneq ($(strip $(RPCR_SOURCE)),)
 $(RPCR_LIBRARY): $(RPCR_SOURCE_FILES)
 	$(MAKE) -C $(RPCR_SOURCE) DESTDIR=$(RPCR_STAGE) prefix=/usr install
+endif
+
+ifneq ($(strip $(RPTADV_RADIO_SOURCE)),)
+$(RPTADV_RADIO_LIBRARY): $(RPTADV_RADIO_SOURCE_FILES)
+	$(MAKE) -C $(RPTADV_RADIO_SOURCE) DESTDIR=$(RPTADV_RADIO_STAGE) PREFIX=/usr \
+		LIBDIR=/usr/lib$(if $(MULTIARCH),/$(MULTIARCH)) install
+endif
+
+ifneq ($(strip $(RPTADV_SAMPLERATE_SOURCE)),)
+$(RPTADV_SAMPLERATE_LIBRARY): $(RPTADV_SAMPLERATE_SOURCE_FILES)
+	$(MAKE) -C $(RPTADV_SAMPLERATE_SOURCE) DESTDIR=$(RPTADV_SAMPLERATE_STAGE) PREFIX=/usr \
+		LIBDIR=/usr/lib$(if $(MULTIARCH),/$(MULTIARCH)) install
+endif
+
+ifneq ($(strip $(RPTADV_FFMPEG_SOURCE)),)
+$(RPTADV_FFMPEG_LIBRARY): $(RPTADV_FFMPEG_SOURCE_FILES)
+	$(MAKE) -C $(RPTADV_FFMPEG_SOURCE) DESTDIR=$(RPTADV_FFMPEG_STAGE) PREFIX=/usr \
+		LIBDIR=/usr/lib$(if $(MULTIARCH),/$(MULTIARCH)) install
 endif
 
 # A later staged install may select a different prefix from the initial build.
@@ -146,26 +271,34 @@ $(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
 
 $(BUILD_DIR)/txagc/avfilter_processor.o: $(BUILD_DIR)/agc-plugin-path
 
-$(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(BUILD_CONFIG_STAMP) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(AGC_PLUGIN_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
-$(MODULE): $(RPCR_BUILD_DEP) $(MODULE_OBJECTS)
-	@echo "Building $(PACKAGE) for the $(ASL_RADIO_API) ASL3 radio API"
+$(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(MODULE_OBJECTS)
+	@echo "Building $(PACKAGE) with the released audio and GPIO adapters"
 	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
 		$(DSP_LIBS) $(RADIO_LIBS) -lm
+	@set -eu; undefined_symbols="$$($(NM) -D --undefined-only $@)"; \
+		if printf '%s\n' "$$undefined_symbols" | grep -Eq '[[:space:]]ast_radio_'; then \
+			echo 'USBRadioPlus must not import retired ast_radio hardware helpers' >&2; \
+			exit 1; \
+		fi
 
 # The graph loads this private LADSPA effect; it is not an Asterisk module.
-$(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h | $(BUILD_DIR)
+$(AGC_PLUGIN): src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h $(BUILD_CONFIG_STAMP) | $(BUILD_DIR)
 	$(CC) $(CPPFLAGS) $(LADSPA_CFLAGS) $(CFLAGS) $(WARNFLAGS) -fPIC -shared $(LDFLAGS) \
 		-o $@ src/txagc/rms_agc_ladspa.c -lm
 
 check: all
 	$(PYTHON) -m pytest -q tests_py
-	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
+	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
 		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
+		RPTADV_RADIO_CFLAGS="$(RPTADV_RADIO_CFLAGS)" RPTADV_RADIO_LIBS="$(RPTADV_RADIO_LIBS)" \
+		RPTADV_SAMPLERATE_CFLAGS="$(RPTADV_SAMPLERATE_CFLAGS)" RPTADV_SAMPLERATE_LIBS="$(RPTADV_SAMPLERATE_LIBS)" \
+		RPTADV_FFMPEG_CFLAGS="$(RPTADV_FFMPEG_CFLAGS)" RPTADV_FFMPEG_LIBS="$(RPTADV_FFMPEG_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) validate-release
 
@@ -180,42 +313,50 @@ lint:
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 
-static-analysis: $(RPCR_BUILD_DEP)
+static-analysis: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP)
 	@set +e; \
 	$(CPPCHECK) -j$(PARALLEL_JOBS) --std=c11 \
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
 		--suppress=normalCheckLevelMaxBranches \
 		--suppress=syntaxError:src/chan_usbradioplus.c \
-		--suppress=syntaxError:src/chan_usbradioplus_modern.c \
-		-Isrc $(RPCR_CFLAGS) src & cppcheck_pid=$$!; \
+		-Isrc $(CHANNEL_CPPFLAGS) $(RADIO_CFLAGS) $(RPCR_CFLAGS) $(RPTADV_RADIO_CFLAGS) $(RPTADV_SAMPLERATE_CFLAGS) $(RPTADV_FFMPEG_CFLAGS) src & cppcheck_pid=$$!; \
 	clang-tidy $(CHANNEL_SOURCE) src/usbradioplus_rpt_advanced.c \
-		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
+		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& channel_tidy_pid=$$!; \
-	clang-tidy src/usbradioplus_ctcss.c src/usbradioplus_dcs.c src/usbradioplus_dsp.c \
-		src/usbradioplus_hardware.c src/usbradioplus_repeat.c \
+	clang-tidy src/usbradioplus_dcs.c src/usbradioplus_dsp.c \
+		src/usbradioplus_squelch.c \
+		src/usbradioplus_samplerate_adapter.c src/usbradioplus_ffmpeg_adapter.c \
+		src/usbradioplus_hardware.c src/usbradioplus_host_util.c $(HARDWARE_SOURCES) src/usbradioplus_repeat.c \
 		src/usbradioplus_channel_core.c \
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
 		src/txagc/rms_agc_ladspa.c \
 		src/txagc/rnnoise_processor.c \
-		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 \
+		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 \
+		-DAST_MODULE='"chan_usbradioplus"' \
+		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& shared_tidy_pid=$$!; \
+	clang-tidy --extra-arg='-DAST_MODULE="chan_usbradioplus"' \
+		--extra-arg=-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
+		src/usbradioplus_radio.c src/usbradioplus_radio_core_adapter.c \
+		-- $(COMMON_CPPFLAGS) $(DSP_CFLAGS) -std=gnu11 -fblocks \
+		& radio_tidy_pid=$$!; \
 	clang-tidy --extra-arg='-DAST_MODULE="chan_usbradioplus"' \
 		--extra-arg=-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		src/usbradioplus_native_tick.c \
 		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		& native_tick_tidy_pid=$$!; \
 	status=0; \
-	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid $$native_tick_tidy_pid; do \
+	for pid in $$cppcheck_pid $$channel_tidy_pid $$shared_tidy_pid $$radio_tidy_pid $$native_tick_tidy_pid; do \
 		wait $$pid || status=1; \
 	done; \
 	exit $$status
 
-coverage: $(RPCR_BUILD_DEP)
+coverage: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP)
 	rm -rf $(BUILD_DIR)/coverage $(BUILD_DIR)/coverage-focus
-	rm -f $(MODULE) $(AGC_PLUGIN) $(SHARED_OBJECTS) $(CHANNEL_OBJECT)
+	rm -f $(MODULE) $(AGC_PLUGIN) $(MODULE_OBJECTS)
 	rm -f $(BUILD_DIR)/*.gcda $(BUILD_DIR)/*.gcno
 	# Manual focused runs may place GCC counters at the repository root. Never
 	# allow counters produced by another compiler/image to enter this report.
@@ -233,11 +374,14 @@ coverage: $(RPCR_BUILD_DEP)
 		--cov-report=xml:$(BUILD_DIR)/coverage/python.xml
 	C_TEST_CFLAGS="--coverage -O0 -g" \
 		C_TEST_OUTPUT="$(CURDIR)/$(BUILD_DIR)/coverage/raw" \
-		LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
+		LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
 		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
+		RPTADV_RADIO_CFLAGS="$(RPTADV_RADIO_CFLAGS)" RPTADV_RADIO_LIBS="$(RPTADV_RADIO_LIBS)" \
+		RPTADV_SAMPLERATE_CFLAGS="$(RPTADV_SAMPLERATE_CFLAGS)" RPTADV_SAMPLERATE_LIBS="$(RPTADV_SAMPLERATE_LIBS)" \
+		RPTADV_FFMPEG_CFLAGS="$(RPTADV_FFMPEG_CFLAGS)" RPTADV_FFMPEG_LIBS="$(RPTADV_FFMPEG_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
-	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$${LD_LIBRARY_PATH:-}" \
+	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
 		sh ./tests/run_coverage_integration.sh
 	# Keep the real-module smoke test mandatory, while using focused-harness
 	# counters for complete source coverage. The smoke intentionally executes
@@ -259,7 +403,7 @@ platform-verify:
 	$(MAKE) validate-release
 	$(MAKE) distcheck DISTCHECK_TEST_TARGET=
 
-docs: $(RPCR_BUILD_DEP)
+docs: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP)
 	mkdir -p $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/doxygen-warnings.log
 	$(DOXYGEN) Doxyfile
@@ -356,23 +500,66 @@ DIST_RPCR_ARGS :=
 DIST_RPCR_ENV = :;
 endif
 
-distcheck: dist $(RPCR_BUILD_DEP)
+# Release-tree checks use the staged radio core in exactly the same way as the
+# staged ring.  An unpacked source archive must never depend on a writable
+# external checkout, and the emitted module must retain its dynamic SONAME.
+ifneq ($(strip $(RPTADV_RADIO_SOURCE)),)
+DIST_RPTADV_RADIO_ARGS := 'RPTADV_RADIO_CFLAGS=-I$(RPTADV_RADIO_PREFIX)/include' \
+	'RPTADV_RADIO_LIBS=-L$(RPTADV_RADIO_LIBDIR) -lrptadvradio'
+DIST_RPTADV_RADIO_ENV = export LD_LIBRARY_PATH="$(RPTADV_RADIO_LIBDIR)$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"; \
+	unset RPTADV_RADIO_SOURCE RPTADV_RADIO_STAGE;
+else
+DIST_RPTADV_RADIO_ARGS :=
+DIST_RPTADV_RADIO_ENV = :;
+endif
+
+# Release-tree checks use the staged sample-rate adapter only as an installed
+# shared object. The unpacked source must not rebuild or vendor that adapter.
+ifneq ($(strip $(RPTADV_SAMPLERATE_SOURCE)),)
+DIST_RPTADV_SAMPLERATE_ARGS := \
+	'RPTADV_SAMPLERATE_CFLAGS=-I$(RPTADV_SAMPLERATE_PREFIX)/include' \
+	'RPTADV_SAMPLERATE_LIBS=-L$(RPTADV_SAMPLERATE_LIBDIR) -lrptadv_samplerate_adapter'
+DIST_RPTADV_SAMPLERATE_ENV = export LD_LIBRARY_PATH="$(RPTADV_SAMPLERATE_LIBDIR)$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"; \
+	unset RPTADV_SAMPLERATE_SOURCE RPTADV_SAMPLERATE_STAGE;
+else
+DIST_RPTADV_SAMPLERATE_ARGS :=
+DIST_RPTADV_SAMPLERATE_ENV = :;
+endif
+
+ifneq ($(strip $(RPTADV_FFMPEG_SOURCE)),)
+DIST_RPTADV_FFMPEG_ARGS := \
+	'RPTADV_FFMPEG_CFLAGS=-I$(RPTADV_FFMPEG_PREFIX)/include' \
+	'RPTADV_FFMPEG_LIBS=-L$(RPTADV_FFMPEG_LIBDIR) -lrptadv_ffmpeg_adapter'
+DIST_RPTADV_FFMPEG_ENV = export LD_LIBRARY_PATH="$(RPTADV_FFMPEG_LIBDIR)$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"; \
+	unset RPTADV_FFMPEG_SOURCE RPTADV_FFMPEG_STAGE;
+else
+DIST_RPTADV_FFMPEG_ARGS :=
+DIST_RPTADV_FFMPEG_ENV = :;
+endif
+
+distcheck: dist $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP)
 	set -eu; tmp=$$(mktemp -d "$(CURDIR)/build/distcheck.XXXXXX"); \
 		trap 'rm -rf "$$tmp"' EXIT; \
 		$(TAR) -C "$$tmp" -xf $(TARBALL); \
 		$(DIST_RPCR_ENV) \
+		$(DIST_RPTADV_RADIO_ENV) \
+		$(DIST_RPTADV_SAMPLERATE_ENV) \
+		$(DIST_RPTADV_FFMPEG_ENV) \
 		if test -n "$(DISTCHECK_TEST_TARGET)"; then \
-			$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DISTCHECK_TEST_TARGET); \
+			$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DIST_RPTADV_RADIO_ARGS) $(DIST_RPTADV_SAMPLERATE_ARGS) $(DIST_RPTADV_FFMPEG_ARGS) $(DISTCHECK_TEST_TARGET); \
 		fi; \
-		$(MAKE) -j$(PARALLEL_JOBS) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) \
+		$(MAKE) -j$(PARALLEL_JOBS) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DIST_RPTADV_RADIO_ARGS) $(DIST_RPTADV_SAMPLERATE_ARGS) $(DIST_RPTADV_FFMPEG_ARGS) \
 			DESTDIR="$$tmp/stage" prefix=/usr install
 
-install-from-dist: dist $(RPCR_BUILD_DEP)
+install-from-dist: dist $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP)
 	set -eu; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
 		$(TAR) -C "$$tmp" -xf $(TARBALL); \
 		$(DIST_RPCR_ENV) \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) all; \
-		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) DESTDIR="$(DESTDIR)" prefix="$(prefix)" \
+		$(DIST_RPTADV_RADIO_ENV) \
+		$(DIST_RPTADV_SAMPLERATE_ENV) \
+		$(DIST_RPTADV_FFMPEG_ENV) \
+		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DIST_RPTADV_RADIO_ARGS) $(DIST_RPTADV_SAMPLERATE_ARGS) $(DIST_RPTADV_FFMPEG_ARGS) all; \
+		$(MAKE) -C "$$tmp/$(DISTNAME)" $(DIST_RPCR_ARGS) $(DIST_RPTADV_RADIO_ARGS) $(DIST_RPTADV_SAMPLERATE_ARGS) $(DIST_RPTADV_FFMPEG_ARGS) DESTDIR="$(DESTDIR)" prefix="$(prefix)" \
 			asteriskmoduledir="$(asteriskmoduledir)" install
 
 clean:

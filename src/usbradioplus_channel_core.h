@@ -24,7 +24,9 @@ _Static_assert(ATOMIC_INT_LOCK_FREE == 2, "USBRadioPlus requires lock-free atomi
  * source rate when the ring is configured.
  */
 #define URP_PROGRAM_RING_RESERVE_MS 20U
+/** Program-ring clock-recovery target in milliseconds. */
 #define URP_PROGRAM_RING_TARGET_MS 40U
+/** Maximum program-ring capacity in milliseconds. */
 #define URP_PROGRAM_RING_CAPACITY_MS 80U
 /** Largest source-rate storage allocation needed by a 48 kHz program source. */
 #define URP_PROGRAM_RING_MAX_SAMPLES                                                               \
@@ -186,33 +188,31 @@ struct urp_parrot_state {
 	unsigned int truncated : 1;
 };
 
-/** Measurements collected while preparing one native receiver block. */
-struct urp_receive_block_stats {
-	/** Largest observed absolute sample magnitude. */
-	unsigned int peak;
-	/** Count of samples at a signed 16-bit PCM rail. */
-	unsigned long rail_samples;
+/** Opaque fixed-rate portable radio-core context. */
+struct rptadv_radio;
+
+/**
+ * @brief Preallocated f32 boundary storage for one native transmitter block.
+ *
+ * The existing compatibility renderer presently owns PCM-code `double`
+ * workspace. This transient boundary converts only its program span to the
+ * portable core's canonical f32 representation without an
+ * allocation or a second DSP implementation in the native tick.
+ */
+struct urp_transmit_render_workspace {
+	/** Processed program audio normalized from PCM-code doubles. */
+	float program[URP_NATIVE_MAX_SAMPLES];
+	/** Unit-amplitude CTCSS waveform from the portable signal generator. */
+	float ctcss[URP_NATIVE_MAX_SAMPLES];
+	/** Normalized DCS source waveform supplied to the shared FFmpeg shaper. */
+	float dcs[URP_NATIVE_MAX_SAMPLES];
 };
 
-/** @brief Extract the left CM119 channel, collect ADC measurements, apply the optional squelch-tail
- * delay, and create the floating-point receiver working block.
- * @param stereo Interleaved signed 16-bit stereo samples.
- * @param pcm Receives the delayed signed 16-bit receiver block.
- * @param working Receives the floating-point receiver working block.
- * @param count Number of elements available in the supplied block.
- * @param delay Receiver squelch-tail delay ring.
- * @param delay_samples Delay-ring length in samples.
- * @param delay_index Delay-ring cursor, updated in place.
- * @param stats Receives raw ADC peak and rail counts.
- */
-void urp_prepare_receive_block(const short *stereo, short *pcm, double *working, size_t count,
-			       short *delay, size_t delay_samples, unsigned int *delay_index,
-			       struct urp_receive_block_stats *stats);
-
-/** @brief Quantize and route one native transmitter block to the CM119 channels.
+/** @brief Quantize and route one native transmitter block through the Rust core.
+ * @param radio Fixed-rate portable radio context created at renderer setup.
  * @param program Processed transmitter program audio.
  * @param ctcss Unit-amplitude native CTCSS samples.
- * @param dcs Native DCS samples already scaled in PCM codes.
+ * @param dcs Filtered normalized native DCS samples.
  * @param count Number of elements available in the supplied block.
  * @param output_a Output-A routing assignment.
  * @param output_b Output-B routing assignment.
@@ -220,16 +220,22 @@ void urp_prepare_receive_block(const short *stereo, short *pcm, double *working,
  * @param ctcss_bias_a CTCSS calibration bias in PCM codes for output A.
  * @param ctcss_peak_b CTCSS amplitude in PCM codes for output B.
  * @param ctcss_bias_b CTCSS calibration bias in PCM codes for output B.
+ * @param workspace Preallocated canonical-f32 boundary storage.
  * @param stereo Interleaved signed 16-bit stereo samples.
  * @param meter_stereo Optional unrouted program-audio buffer for transmitter metering.
- * @return Number of program samples outside signed 16-bit PCM range.
+ * @param rail_samples Receives program samples outside signed 16-bit PCM range.
+ * @return Zero on success, otherwise nonzero with no partial result committed.
+ *
+ * `program` and calibration values retain the PCM-code unit at this
+ * compatibility boundary. CTCSS and DCS remain F32 through generation,
+ * filtering, and routing without intermediate conversion or copying.
  */
-unsigned long urp_render_transmit_block(const double *program, const double *ctcss,
-					const double *dcs, size_t count,
-					enum urp_tx_output_mode output_a,
-					enum urp_tx_output_mode output_b, double ctcss_peak_a,
-					double ctcss_bias_a, double ctcss_peak_b,
-					double ctcss_bias_b, short *stereo, short *meter_stereo);
+int urp_render_transmit_block(const struct rptadv_radio *radio, const double *program,
+			      const float *ctcss, const float *dcs, size_t count,
+			      enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b,
+			      double ctcss_peak_a, double ctcss_bias_a, double ctcss_peak_b,
+			      double ctcss_bias_b, struct urp_transmit_render_workspace *workspace,
+			      short *stereo, short *meter_stereo, unsigned long *rail_samples);
 
 /** @brief Initialize an SPSC sample ring before either endpoint uses it.
  * @param queue Ring to initialize.
@@ -483,24 +489,6 @@ void urp_apply_ptt_outputs(int asserted, int inverted, int parallel_mask, int us
  * @return One when playback starts; zero otherwise.
  */
 int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int is_keyed);
-
-/** @brief Copy the next playback block and return its sample count.
- * @param state Processor or stream state owned by the caller.
- * @param output Destination sample buffer owned by the caller.
- * @param count Number of elements available in the supplied block.
- * @return Number of playback samples copied.
- */
-size_t urp_parrot_play(struct urp_parrot_state *state, double *output, size_t count);
-
-/** @brief Append a recording block within a configured sample limit.
- * @param state Processor or stream state owned by the caller.
- * @param input Input samples; the caller retains ownership.
- * @param count Number of elements available in the supplied block.
- * @param limit Maximum recording length in samples.
- * @return Number of samples appended to the recording.
- */
-size_t urp_parrot_record(struct urp_parrot_state *state, const double *input, size_t count,
-			 size_t limit);
 
 /** @brief Parse a receive audio source.
  * @param text Text to parse; mutable storage may be edited in place.

@@ -1,5 +1,10 @@
 /** @file
- * @brief Sample-rate conversion and receive-echo matching.
+ * @brief Transitional S16 compatibility sample-rate conversion.
+ *
+ * The established Asterisk-facing calls retain signed-16 buffers while their
+ * current mono sinc path delegates normalized F32 conversion to the released
+ * sample-rate adapter.  These S16 signatures are a compatibility boundary,
+ * not a new internal PCM contract.
  */
 
 #ifndef USBRADIOPLUS_DSP_H
@@ -26,44 +31,14 @@
  * bound while each tick receives its actual frame count explicitly.
  */
 #define URP_NATIVE_MAX_SAMPLES URP_NATIVE_SAMPLES
-
-#define URP_ECHO_HISTORY_FRAMES 32
+/** Maximum interleaved stereo samples in one bounded native callback. */
+#define URP_NATIVE_STEREO_SAMPLES (URP_NATIVE_MAX_SAMPLES * 2U)
 
 struct urp_src;
 
-/** Paired app_rpt-rate and native-rate receive blocks for echo correlation. */
-struct urp_echo_frame {
-	/** App_rpt-rate receiver PCM for this history frame. */
-	int16_t link[URP_LINK_SAMPLES];
-	/** Corresponding native-rate receiver PCM. */
-	int16_t native[URP_NATIVE_SAMPLES];
-	/** Monotonic receive-frame sequence number. */
-	uint64_t sequence;
-};
-
-/** Bounded receive history used to identify local audio in the app_rpt mix. */
-struct urp_echo_replacer {
-	/** Paired receive frames retained for correlation. */
-	struct urp_echo_frame history[URP_ECHO_HISTORY_FRAMES];
-	/** Next receive-history slot to replace. */
-	unsigned int write_index;
-	/** Monotonic receive-frame sequence number. */
-	uint64_t sequence;
-	/** Delay of the latest matched echo in app_rpt frames. */
-	int last_delay_frames;
-	/** Linear gain fitted to the latest matched receive echo. */
-	double last_scale;
-	/** Normalized correlation of the latest echo candidate. */
-	double last_correlation;
-	/** Number of successfully matched receive echoes. */
-	uint64_t matches;
-	/** Number of echo searches without a usable match. */
-	uint64_t misses;
-};
-
-/** @brief Allocate a streaming libsamplerate converter and reusable conversion workspace.
- * @param converter libsamplerate converter type.
- * @param channels Number of interleaved audio channels.
+/** @brief Allocate a streaming converter and reusable conversion workspace.
+ * @param converter Sinc quality selection from the shared sample-rate adapter.
+ * @param channels Must be one; both native compatibility converters are mono.
  * @return Owned converter state, or NULL on invalid arguments or allocation failure.
  */
 struct urp_src *urp_src_create(int converter, unsigned int channels);
@@ -82,20 +57,6 @@ void urp_src_reset(struct urp_src *src);
  * @return Zero on success; a nonzero status if storage could not be allocated.
  */
 int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_capacity);
-/** @brief Convert an interleaved PCM block using a caller-supplied rate ratio.
- * @param src Streaming sample-rate converter.
- * @param input Input samples; the caller retains ownership.
- * @param input_count Number of input samples available.
- * @param output Destination sample buffer owned by the caller.
- * @param output_capacity Number of samples the output buffer can hold.
- * @param ratio Output/input sample-rate ratio.
- * @param input_used Receives the number of input samples consumed.
- * @param output_generated Receives the number of output samples produced.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_count, int16_t *output,
-		    size_t output_capacity, double ratio, size_t *input_used,
-		    size_t *output_generated);
 /** @brief Convert through already reserved SRC workspaces without allocating.
  * @param src Converter prepared with urp_src_reserve().
  * @param input Input samples; the caller retains ownership.
@@ -108,26 +69,13 @@ int urp_src_process(struct urp_src *src, const int16_t *input, size_t input_coun
  * @return Zero on success; a nonzero status when the prepared capacity is insufficient.
  *
  * This prepared native-callback API never calls realloc; a changed block size
- * must be handled by the control plane before rendering begins.
+ * must be handled by the control plane before rendering begins. The current
+ * mono sinc path calls the released F32 adapter with these preallocated
+ * workspaces, then quantizes only at this legacy S16 boundary.
  */
 int urp_src_process_prepared(struct urp_src *src, const int16_t *input, size_t input_count,
 			     int16_t *output, size_t output_capacity, double ratio,
 			     size_t *input_used, size_t *output_generated);
-/** @brief Convert between sample rates, copying directly when the rates match.
- * @param src Streaming sample-rate converter.
- * @param input Input samples; the caller retains ownership.
- * @param input_count Number of input samples available.
- * @param input_rate Input sample rate in Hz.
- * @param output Destination sample buffer owned by the caller.
- * @param output_capacity Number of samples the output buffer can hold.
- * @param output_rate Output sample rate in Hz.
- * @param input_used Receives the number of input samples consumed.
- * @param output_generated Receives the number of output samples produced.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int urp_rate_convert(struct urp_src *src, const int16_t *input, size_t input_count,
-		     unsigned int input_rate, int16_t *output, size_t output_capacity,
-		     unsigned int output_rate, size_t *input_used, size_t *output_generated);
 /** @brief Convert a fixed-rate PCM block using only pre-reserved converter storage.
  * @param src Converter prepared with urp_src_reserve() for rate-changing paths.
  * @param input Input samples; the caller retains ownership.
@@ -144,43 +92,6 @@ int urp_rate_convert_prepared(struct urp_src *src, const int16_t *input, size_t 
 			      unsigned int input_rate, int16_t *output, size_t output_capacity,
 			      unsigned int output_rate, size_t *input_used,
 			      size_t *output_generated);
-
-/** @brief Extract one channel from interleaved stereo PCM.
- * @param stereo Interleaved signed 16-bit stereo samples.
- * @param mono Mono sample buffer.
- * @param frames Number of audio frames.
- * @param channel Interleaved stereo channel index: 0 or 1.
- */
-void urp_extract_mono(const int16_t *stereo, int16_t *mono, size_t frames, unsigned int channel);
-/** @brief Route mono PCM to both stereo outputs with separate linear gains.
- * @param mono Mono sample buffer.
- * @param stereo Interleaved signed 16-bit stereo samples.
- * @param frames Number of audio frames.
- * @param gain_a Linear gain for output A.
- * @param gain_b Linear gain for output B.
- */
-void urp_duplicate_mono(const int16_t *mono, int16_t *stereo, size_t frames, double gain_a,
-			double gain_b);
-
-/** @brief Clear the paired app_rpt/native receive history used for echo matching.
- * @param state Processor or stream state owned by the caller.
- */
-void urp_echo_init(struct urp_echo_replacer *state);
-/** @brief Store corresponding app_rpt and native receive frames in the echo history.
- * @param state Processor or stream state owned by the caller.
- * @param link One app_rpt-rate receive frame.
- * @param native Corresponding native-rate receive frame.
- */
-void urp_echo_push(struct urp_echo_replacer *state, const int16_t *link, const int16_t *native);
-/** @brief Subtract a correlated receive echo and return its matching native-rate frame.
- * @param state Processor or stream state owned by the caller.
- * @param mixed_link App_rpt mix from which correlated local audio is removed.
- * @param matched_native Receives the native frame corresponding to the removed echo.
- * @param minimum_correlation Minimum normalized correlation accepted as an echo match.
- * @return One when a qualifying echo was removed; zero when no match was usable.
- */
-int urp_echo_remove(struct urp_echo_replacer *state, int16_t *mixed_link, int16_t *matched_native,
-		    double minimum_correlation);
 
 #endif
 
@@ -200,8 +111,5 @@ int urp_echo_remove(struct urp_echo_replacer *state, int16_t *mixed_link, int16_
  */
 /** @def URP_NATIVE_SAMPLES
  * @brief Samples in one native 20 ms audio frame.
- */
-/** @def URP_ECHO_HISTORY_FRAMES
- * @brief Number of paired receive frames retained for correlation.
  */
 /** @} */

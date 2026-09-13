@@ -5,6 +5,7 @@
 /.test*/
 /.usbradioplus-tests.*/
 /.usbradioplus-radio-tests.*/
+/.poc-*-stage-*/
 *.o
 *.so
 *.gcov

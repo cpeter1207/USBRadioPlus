@@ -47,9 +47,8 @@ selector; and all remaining
 controls. The latter includes device identifier, serial number, interface
 type, EEPROM choice, fragment and queue sizes, PTT polarity, repeater
 signaling metadata, clipping LED, and GPIO or parallel-port assignments.
-The fragment request and playback queue limit apply only to the OSS adapter;
-they do not change the app_rpt program ring, and the PortAudio adapter ignores
-them.
+The compatibility fragment request and playback queue limit are accepted but
+do not change the audio adapter or app_rpt program ring.
 Automatic calibration changes live radio state; use the explicit
 .B Write live radio tuning and EEPROM values
 action to write those results to the configuration and, when enabled, the

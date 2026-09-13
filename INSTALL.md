@@ -37,8 +37,10 @@ sudo ./install.sh
 
 This verifies the shipped repository key, configures the signed project
 repository, and installs the required toolchain, development packages, and
-released `rate_adjusting_pcm_ring` ABI. It builds RNNoise when Debian does not
-provide it, runs the complete hardware-free test suite, and installs
+released `rate_adjusting_pcm_ring`, `rptadvradio`, `rptadv_samplerate_adapter`,
+`rptadv_ffmpeg_adapter`, `rptadv_portaudio_alsa_adapter`, and
+`rptadv_gpio_adapter` ABIs. It
+builds RNNoise when Debian does not provide it, runs the complete hardware-free test suite, and installs
 USBRadioPlus. It does not activate the module, restart Asterisk, or edit
 `modules.conf` or `rpt.conf`.
 
@@ -53,22 +55,25 @@ the libraries listed in `doc/packaging.md`. Developers with those dependencies
 already installed may use `sudo ./install.sh --skip-deps`.
 
 USBRadioPlus uses the released `rate_adjusting_pcm_ring` shared library for
-the lock-free native program FIFO. The source installer installs the matching development package and
-runtime dependency from the signed project repository. Direct Make users must
-install those packages first. A full Asterisk source tree is not required.
+the lock-free native program FIFO and the released `rptadv_samplerate_adapter`
+shared library for its mono sinc compatibility conversion. Native DCS shaping
+uses the `rptadv_ffmpeg_adapter` shared library. Every channel uses the
+`rptadv_portaudio_alsa_adapter` for audio and mixer control and
+`rptadv_gpio_adapter` for CM119 HID, EEPROM, and configured parallel I/O.
+The source installer
+installs matching development packages and runtime dependencies from the signed
+project repository. Direct Make users must install those packages first. A full
+Asterisk source tree is not required.
 
-The build selects the radio-device interface exposed by the installed ASL3
-headers. ASL 22.9/app_rpt 3.9 uses the original OSS and libusb-0.1 interface;
-ASL 22.10/app_rpt 3.10 uses the shared-device, PortAudio, and libusb-1.0
-interface. Run `make -s print-asl-radio-api` to report the selected interface.
-Repository packages include the interface and app_rpt generation in their
-version and require the exact ASL3 Asterisk build used to compile them. APT
-therefore cannot install a module built for the other interface generation.
-The bootstrap installer hides the ABI-specific package names from normal users.
-The repository names the modern package `usbradioplus-asl3105`; the
-`usbradioplus` package targets the earlier host interface. Installing the modern
-package replaces the earlier package but does not activate the module or alter
-Asterisk configuration.
+The build compiles one ASL3 channel implementation against the installed
+Asterisk headers. Both hardware adapter development packages are mandatory:
+`librptadv-portaudio-alsa-adapter-dev` version `0.1.0~alpha2` or newer and
+`librptadv-gpio-adapter-dev` version `0.1.0~alpha1` or newer. No backend build
+switches are required. The module
+does not require `res_usbradio.so`. The single `usbradioplus` Debian package
+declares the exact supported ASL3 runtime alternatives. Its release gate loads
+the same module under ASL3 3.9.3 and 3.10.5; the bootstrap installer verifies
+the installed host is one of those alternatives without changing ASL3.
 
 Build and test without changing the running node:
 

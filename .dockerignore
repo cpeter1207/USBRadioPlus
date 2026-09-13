@@ -1,4 +1,8 @@
 .git
+/.work/
+/.tmp/
+.coverage-inspect/
+outputs/
 third_party
 build
 dist
@@ -11,6 +15,7 @@ work
 .test*/
 .usbradioplus-tests.*/
 .usbradioplus-radio-tests.*/
+.poc-*-stage-*/
 **/*.gcda
 **/*.gcno
 **/*.gcov

@@ -25,11 +25,6 @@ void usbradioplus_interface_mode(struct chan_usbradio_pvt *channel, int advanced
  */
 void usbradioplus_configure_advanced(struct ast_channel *channel);
 
-/** Parallel outputs with active timed pulses. */
-extern int8_t pp_pulsemask;
-/** Previously applied parallel-port pulse mask. */
-extern int8_t pp_lastmask;
-
 int hidhdwconfig(struct chan_usbradio_pvt *o);
 
 /** @brief Return the first configured radio channel in module-list order.
@@ -75,13 +70,13 @@ struct usbradioplus_radio_program_request {
  * This operation uses atomics only. The HID worker must never modify the
  * signaling state directly.
  */
-void usbradioplus_audio_load_hardware_state(struct chan_usbradio_pvt *channel);
+void usbradioplus_audio_load_hardware_state(struct chan_usbradio_pvt *o);
 
 /** @brief Publish the signaling engine's immediate PTT request from the native callback.
- * @param channel Private channel whose callback completed the signaling tick.
+ * @param o Private channel whose callback completed the signaling tick.
  * @param asserted Nonzero requests physical PTT assertion.
  */
-void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *channel, int asserted);
+void usbradioplus_publish_hardware_ptt(struct chan_usbradio_pvt *o, int asserted);
 
 /** @brief Copy the current external key request into the owned radio state.
  * @param channel Channel whose active radio-reader lease protects the state.
@@ -219,22 +214,34 @@ void usbradioplus_native_output_stage_consume_reset_request(struct chan_usbradio
 int usbradioplus_pcm_has_audio(const short *samples, size_t count);
 
 /** @brief Publish a native-audio clipping indication for the HID worker.
- * @param channel Private channel whose clip LED should pulse.
+ * @param o Private channel whose clip LED should pulse.
  */
-void usbradioplus_request_clip_led(struct chan_usbradio_pvt *channel);
+void usbradioplus_request_clip_led(struct chan_usbradio_pvt *o);
+
+/** @brief Measure one raw hardware stereo PCM span before receiver processing.
+ * @param channel Channel retaining the established rolling measurement state.
+ * @param samples Interleaved native signed-16 PCM samples.
+ * @param sample_count Scalar sample count in @p samples.
+ *
+ * The shared Rust core owns the F32 measurement operation. Setup requires its
+ * capability; rejected spans retain the last valid meter snapshot and do not
+ * invoke a second implementation.
+ */
+void usbradioplus_measure_rx_audio(struct chan_usbradio_pvt *channel, const short *samples,
+				   size_t sample_count);
 
 /** @brief Publish a packed receiver-input snapshot from the HID worker.
- * @param channel Private channel whose hardware inputs were sampled.
+ * @param o Private channel whose hardware inputs were sampled.
  * @param inputs ORed usbradioplus_hardware_input_bits values.
  */
-void usbradioplus_publish_hardware_inputs(struct chan_usbradio_pvt *channel, unsigned int inputs);
+void usbradioplus_publish_hardware_inputs(struct chan_usbradio_pvt *o, unsigned int inputs);
 
 /** @brief Read a coherent radio-programming request without taking a lock.
- * @param channel Private channel providing the control-plane snapshot.
+ * @param o Private channel providing the control-plane snapshot.
  * @param request Receives a stable request on success.
  * @return Nonzero when a stable request was read; zero while a writer is active.
  */
-int usbradioplus_read_radio_program_request(const struct chan_usbradio_pvt *channel,
+int usbradioplus_read_radio_program_request(const struct chan_usbradio_pvt *o,
 					    struct usbradioplus_radio_program_request *request);
 
 /** @brief Accept the Asterisk start-of-DTMF notification.
@@ -410,11 +417,13 @@ void mult_set(struct chan_usbradio_pvt *o);
  */
 void usbradioplus_program_radio(struct chan_usbradio_pvt *o);
 
-/** @brief Write a synthesizer-programming byte under the parallel-port mutex.
- * @param opaque Caller-owned hardware callback context.
- * @param value Parallel-port output byte.
+/** @brief Return the worker currently owning the shared parallel-port facade.
+ * @return The owner with an open parallel transport, or NULL while none is open.
+ *
+ * Callers hold pp_lock until they finish accessing the returned owner's facade.
+ * Worker start, stop, and ownership transfer use the same lock.
  */
-void usbradioplus_parallel_program_write(void *opaque, uint8_t value);
+struct chan_usbradio_pvt *usbradioplus_parallel_owner(void);
 
 /** @brief Select a binary channel on the configured parallel-port interface.
  * @param channel Binary radio channel-select code.
@@ -455,6 +464,11 @@ int usbradioplus_test_native_graph_slot_contention_paths(void);
  * @param o Private state of the selected radio channel.
  * @param category Named radio configuration section.
  * @return Zero on success; a nonzero status if the operation cannot complete.
+ *
+ * Both controller protocols default to the released PortAudio/ALSA and CM119
+ * GPIO adapters. The historical portaudio_poc and cm119_poc names remain
+ * accepted aliases. Omitted identity is resolved automatically at startup;
+ * changing a live device identity or wiring requires a channel restart.
  */
 int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *category);
 /** @brief Resolve only clean-slate signaling controls without touching parser state.
@@ -554,6 +568,29 @@ int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o);
  */
 void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o);
 
+/**
+ * @brief Advance qualified receive state after one complete native audio span.
+ * @param o Channel whose native callback has refreshed detector state.
+ * @return Nonzero when the receiver is qualified for program audio delivery.
+ *
+ * The native audio owner calls this after the radio engine has processed the
+ * input span. It performs no allocation, locking, logging, or Asterisk calls.
+ */
+int usbradioplus_update_receive_state(struct chan_usbradio_pvt *o);
+
+/**
+ * @brief Refresh receiver indications and advance qualification in native sample time.
+ * @param o Channel whose detector state is current for this native callback.
+ * @param native_frame_count Native-rate PCM frames elapsed since the preceding call.
+ * @return Nonzero when the receiver is qualified for program audio delivery.
+ *
+ * The ASL compatibility qualification counters retain their 20 ms semantics.
+ * This helper accumulates arbitrary native callback spans and advances those
+ * counters only at their exact 960-frame boundaries, so partitioning a PCM
+ * stream into smaller callbacks cannot shorten a configured delay.
+ */
+int usbradioplus_update_receive_state_timed(struct chan_usbradio_pvt *o, size_t native_frame_count);
+
 /** @brief Wait until the HID worker completes a pending EEPROM operation.
  * @param o Private state of the selected radio channel.
  */
@@ -575,12 +612,6 @@ int load_config(int reload);
  * @return Zero on success; a nonzero status if the operation cannot complete.
  */
 int reload_module(void);
-
-/** @brief Drive timed pulses on configured parallel-port outputs.
- * @param arg Private radio state passed to the worker.
- * @return NULL when the pulse worker exits.
- */
-void *pulserthread(void *arg);
 
 /** @brief Allocate and populate one named radio channel from configuration.
  * @param ctg Named radio configuration category.

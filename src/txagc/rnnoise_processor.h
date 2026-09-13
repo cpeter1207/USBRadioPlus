@@ -1,5 +1,5 @@
 /** @file
- * @brief RNNoise frame buffering and rate adaptation for local receiver denoising.
+ * @brief RNNoise frame buffering for fixed-rate local receiver denoising.
  */
 
 #ifndef TXAGC_RNNOISE_PROCESSOR_H
@@ -9,32 +9,25 @@
 #include <stdint.h>
 
 #include <rnnoise.h>
-#include <samplerate.h>
 
 #define TXAGC_RNNOISE_RATE 48000
 
 #define TXAGC_RNNOISE_FRAME 480
 
-#define TXAGC_RNNOISE_FIFO 16384
-
-/** Owned RNNoise state, sample-rate converters, stream FIFOs, and denoiser counters. */
+/** Owned RNNoise state, one-frame PCM-code staging, and denoiser counters. */
 struct txagc_rnnoise {
 	/** Owned RNNoise denoiser instance. */
 	DenoiseState *denoise;
-	/** Owned converter into RNNoise's 48 kHz stream. */
-	SRC_STATE *upsampler;
-	/** Owned converter back to the caller's sample rate. */
-	SRC_STATE *downsampler;
-	/** Caller stream sample rate in Hz. */
-	unsigned int input_rate;
-	/** Samples waiting for a complete 480-sample RNNoise frame. */
-	float up_fifo[TXAGC_RNNOISE_FIFO];
-	/** Occupied samples in up_fifo. */
-	size_t up_count;
-	/** Denoised samples waiting for rate conversion or output. */
-	float down_fifo[TXAGC_RNNOISE_FIFO];
-	/** Occupied samples in down_fifo. */
-	size_t down_count;
+	/** PCM-code samples waiting for a complete RNNoise inference frame. */
+	float input_frame[TXAGC_RNNOISE_FRAME];
+	/** Occupied samples in input_frame. */
+	size_t input_count;
+	/** Denoised PCM-code samples from the preceding inference frame. */
+	float output_frame[TXAGC_RNNOISE_FRAME];
+	/** Next unread sample in output_frame. */
+	size_t output_index;
+	/** Occupied unread samples in output_frame. */
+	size_t output_count;
 	/** Speech probability from the most recent RNNoise frame. */
 	double vad_probability;
 	/** Sum of frame speech probabilities for cumulative reporting. */
@@ -45,11 +38,11 @@ struct txagc_rnnoise {
 	uint64_t output_samples;
 	/** Samples buffered before denoiser output was available. */
 	uint64_t startup_samples;
-	/** Cumulative denoiser or rate-conversion failures. */
+	/** Cumulative denoiser setup failures. */
 	uint64_t errors;
 	/** Nonzero while denoising is active. */
 	int active;
-	/** Nonzero after the control plane allocated the denoiser and converters. */
+	/** Nonzero after the control plane allocated the denoiser. */
 	int prepared;
 	/** Nonzero after startup buffering permits output. */
 	int primed;
@@ -59,45 +52,28 @@ struct txagc_rnnoise {
  * @param state Processor or stream state owned by the caller.
  */
 void txagc_rnnoise_init(struct txagc_rnnoise *state);
-/** @brief Release RNNoise and sample-rate-converter resources.
+/** @brief Release RNNoise resources.
  * @param state Processor or stream state owned by the caller.
  */
 void txagc_rnnoise_destroy(struct txagc_rnnoise *state);
-/** @brief Allocate or reconfigure RNNoise state before native callback processing.
+/** @brief Allocate and silently warm fixed-48 kHz RNNoise before callback processing.
  * @param state Processor state owned by the radio channel.
  * @param sample_rate Native input sample rate in Hz.
- * @return Zero when a reusable denoiser and converters are ready, otherwise nonzero.
+ * @return Zero when a reusable denoiser is ready, otherwise nonzero.
  *
- * A successful call makes txagc_rnnoise_process_prepared() allocation-free.
- * The native receiver uses a fixed 48 kHz rate and prepares this state before
- * its first native callback render.
+ * The native receiver and RNNoise both use 48 kHz.  Other rates are rejected
+ * rather than introducing a hidden conversion stage.  A successful call makes
+ * txagc_rnnoise_process_prepared() allocation-free. Two silent library frames
+ * exercise the retained denoiser without consuming live framing or meter state.
  */
 int txagc_rnnoise_prepare(struct txagc_rnnoise *state, unsigned int sample_rate);
 /** @brief Process an already prepared RNNoise stream without allocating or reconfiguring.
  * @param state Prepared processor state.
- * @param samples Audio samples; mutable buffers are updated in place.
+ * @param samples Mutable legacy PCM-code samples updated in place.
  * @param count Number of elements available in samples.
  * @return Zero on success; a nonzero status when the prepared state cannot process.
  */
 int txagc_rnnoise_process_prepared(struct txagc_rnnoise *state, double *samples, size_t count);
-/** @brief Denoise signed 16-bit receiver audio through the RNNoise stream adapter.
- * @param state Processor or stream state owned by the caller.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @param count Number of elements available in the supplied block.
- * @param sample_rate Audio sample rate in Hz.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int txagc_rnnoise_process(struct txagc_rnnoise *state, int16_t *samples, size_t count,
-			  unsigned int sample_rate);
-/** @brief Denoise floating-point receiver audio using 480-sample RNNoise frames.
- * @param state Processor or stream state owned by the caller.
- * @param samples Audio samples; mutable buffers are updated in place.
- * @param count Number of elements available in the supplied block.
- * @param sample_rate Audio sample rate in Hz.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-int txagc_rnnoise_process_double(struct txagc_rnnoise *state, double *samples, size_t count,
-				 unsigned int sample_rate);
 /** @brief Reset denoiser history when the local chain bypasses RNNoise.
  * @param state Processor or stream state owned by the caller.
  */
@@ -112,8 +88,5 @@ void txagc_rnnoise_bypass(struct txagc_rnnoise *state);
  */
 /** @def TXAGC_RNNOISE_FRAME
  * @brief Samples in one RNNoise inference frame.
- */
-/** @def TXAGC_RNNOISE_FIFO
- * @brief Capacity of each denoiser stream FIFO in samples.
  */
 /** @} */

@@ -1,5 +1,5 @@
 /** @file
- * @brief Native 48 kHz DCS (DPL/CDCSS) encoder and Golay decoder.
+ * @brief Native-rate DCS (DPL/CDCSS) receive decoder and configuration state.
  */
 
 #ifndef USBRADIOPLUS_DCS_H
@@ -14,61 +14,25 @@
 #define URP_DCS_TURNOFF_FREQUENCY_HZ 134.4
 /** @brief Minimum continuous DCS turn-off tone duration accepted by a receiver. */
 #define URP_DCS_TURNOFF_MINIMUM_MS 100U
-/** @brief Number of fixed receive timing hypotheses spanning one DCS symbol. */
-#define URP_DCS_RX_PHASE_COUNT 16U
+/** @brief Native DCS receiver supplied by the portable radio core.
+ * @param context Callback-local renderer context supplied at registration.
+ * @param samples First selected-channel signed-16 PCM sample.
+ * @param count Number of selected-channel frames.
+ * @param stride PCM-word distance between selected-channel samples.
+ * @param sample_rate Native input rate in hertz.
+ * @param valid Receives nonzero while the configured code qualifies.
+ * @return Zero when @p valid is authoritative; nonzero rejects this span.
+ *
+ * The compatibility radio state machine owns ordering and invokes this hook
+ * after its receive-switch blanking.  It therefore lets the Rust core replace
+ * decoding without moving or duplicating the established signaling sequence.
+ * The C compatibility state deliberately contains no decoder fallback.
+ */
+typedef int (*urp_dcs_receive_callback)(void *context, const int16_t *samples, size_t count,
+					size_t stride, unsigned int sample_rate, int *valid);
 
-/** @brief State for one fixed DCS receive-symbol timing hypothesis. */
-struct urp_dcs_receive_phase {
-	/** Sliding received 23-bit Golay word. */
-	uint32_t word;
-	/** Fractional receive symbol accumulator. */
-	uint32_t bit_accumulator;
-	/** Remaining one-word loss hold after qualification. */
-	uint32_t hold;
-	/** Number of emitted symbols since the last matching codeword. */
-	uint32_t symbols_since_match;
-	/** Consecutive correctly spaced matching codewords, saturated at two. */
-	uint8_t match_count;
-	/** Nonzero after two correctly spaced matching codewords. */
-	uint8_t qualified;
-	/** Sum of discriminator samples within this hypothesis's symbol. */
-	int64_t sample_accumulator;
-};
-
-/** DCS encoder and decoder state; it is wholly caller-owned and callback safe. */
+/** DCS configuration and portable-receiver binding; it is caller-owned and callback safe. */
 struct urp_dcs_state {
-	/** Fixed phase bank covering every possible callback-to-symbol alignment. */
-	struct urp_dcs_receive_phase receive_phase[URP_DCS_RX_PHASE_COUNT];
-	/** Sample rate used to initialize the receive phase bank. */
-	unsigned int receive_sample_rate;
-	/** Current transmitted 23-bit Golay word. */
-	uint32_t transmit_word;
-	/** Current transmitted symbol phase. */
-	uint32_t transmit_phase;
-	/** Fractional transmit symbol accumulator. */
-	uint32_t transmit_bit_accumulator;
-	/** Slow discriminator DC estimate in Q15 PCM-code units. */
-	int64_t dc_estimate_q15;
-	/** Goertzel coefficient for the native DCS turn-off detector. */
-	double receive_turnoff_coefficient;
-	/** Previous first-order Goertzel state for the DCS turn-off detector. */
-	double receive_turnoff_one;
-	/** Previous second-order Goertzel state for the DCS turn-off detector. */
-	double receive_turnoff_two;
-	/** Windowed input energy for DCS turn-off discrimination. */
-	double receive_turnoff_energy;
-	/** Selected-channel samples accumulated in the current detector window. */
-	uint32_t receive_turnoff_window_samples;
-	/** Fixed detector evaluation window in selected-channel samples. */
-	uint32_t receive_turnoff_window_length;
-	/** Consecutive coherent tail-tone samples. */
-	uint32_t receive_turnoff_consecutive_samples;
-	/** Required coherent tail-tone samples before receive qualification clears. */
-	uint32_t receive_turnoff_minimum_samples;
-	/** Nonzero while a qualified 134.4 Hz turn-off tail is present. */
-	int receive_turnoff_active;
-	/** Golay syndrome-to-error correction table. */
-	uint32_t syndrome[2048];
 	/** Configured nine-bit receive code. */
 	int receive_code;
 	/** Configured nine-bit transmit code. */
@@ -83,8 +47,10 @@ struct urp_dcs_state {
 	int enabled_transmit;
 	/** Nonzero while the configured receive code is qualified. */
 	int valid;
-	/** Tail-tone oscillator phase. */
-	double tail_phase;
+	/** Optional portable-core receiver invoked at the legacy decode point. */
+	urp_dcs_receive_callback receive_callback;
+	/** Opaque caller-owned context for @ref receive_callback. */
+	void *receive_callback_context;
 };
 
 /** @brief Test whether a value fits the three-digit octal DCS code field.
@@ -106,7 +72,7 @@ int urp_dcs_parse_code(const char *text, int *code, int *inverted);
  * @param inverted Nonzero selects inverse polarity.
  */
 void urp_dcs_format_code(char *text, size_t size, int code, int inverted);
-/** @brief Initialize a DCS state and its fixed Golay syndrome table.
+/** @brief Initialize a DCS configuration and portable-receiver binding.
  * @param state State to initialize.
  */
 void urp_dcs_init(struct urp_dcs_state *state);
@@ -119,6 +85,17 @@ void urp_dcs_init(struct urp_dcs_state *state);
  */
 void urp_dcs_configure(struct urp_dcs_state *state, int receive_code, int receive_inverted,
 		       int transmit_code, int transmit_inverted);
+/** @brief Install or remove the portable native DCS receive implementation.
+ * @param state DCS state that owns the decoder selection.
+ * @param callback Optional callback; NULL closes receive qualification.
+ * @param context Stable caller-owned context supplied to @p callback.
+ *
+ * This is a setup/teardown operation. It changes no DCS configuration. A
+ * missing or failed portable receiver is fail-closed rather than reviving a
+ * second decoder implementation in the C compatibility layer.
+ */
+void urp_dcs_set_receive_callback(struct urp_dcs_state *state, urp_dcs_receive_callback callback,
+				  void *context);
 /** @brief Process native-rate discriminator samples and update the qualified receive result.
  * @param state Decoder state.
  * @param samples First selected-channel discriminator PCM sample.
@@ -127,23 +104,10 @@ void urp_dcs_configure(struct urp_dcs_state *state, int receive_code, int receiv
  * @param sample_rate Input sample rate in Hz.
  * @return Nonzero when the configured receive DCS is currently decoded.
  *
- * A previously qualified receiver clears after
- * @ref URP_DCS_TURNOFF_MINIMUM_MS of a coherent 134.4 Hz DCS turn-off tone.
- * The detector is energy- and coherence-gated, so ordinary DCS data, silence,
- * and broadband discriminator noise do not constitute a turn-off tail.
+ * The bound portable object preserves the established 23-bit Golay correction,
+ * phase-bank qualification, DC removal, and DCS turn-off-tail behavior. A
+ * missing or rejected receiver clears @ref urp_dcs_state::valid safely.
  */
 int urp_dcs_process(struct urp_dcs_state *state, const int16_t *samples, size_t count,
 		    size_t stride, unsigned int sample_rate);
-/** @brief Render DCS NRZ modulation or its 134.4 Hz turn-off tone into PCM-domain doubles.
- * @param state Encoder state.
- * @param output Destination PCM-domain samples.
- * @param count Number of output samples.
- * @param sample_rate Output sample rate in Hz.
- * @param peak Requested peak amplitude in PCM codes.
- * @param enabled Nonzero enables normal DCS modulation.
- * @param turnoff Nonzero selects the turn-off tone.
- */
-void urp_dcs_generate(struct urp_dcs_state *state, double *output, size_t count,
-		      unsigned int sample_rate, double peak, int enabled, int turnoff);
-
 #endif

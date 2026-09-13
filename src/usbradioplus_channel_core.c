@@ -4,42 +4,12 @@
 
 #include "usbradioplus_channel_core.h"
 
+#include "usbradioplus_radio_core_adapter.h"
+
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-
-/** A symbolic configuration value and its internal enumeration value. */
-struct urp_named_value {
-	/** Symbolic name used to identify this entry. */
-	const char *name;
-	/** Numeric assignment corresponding to the symbolic name. */
-	int value;
-};
-
-/** @brief Resolve a symbolic option through a bounded name/value table.
- * @param text Symbolic assignment to resolve.
- * @param values Allowed symbolic names and their numeric values.
- * @param count Number of elements available in the supplied block.
- * @param result Receives the matching numeric assignment.
- * @return Zero on success; a nonzero status if the operation cannot complete.
- */
-static int parse_named_value(const char *text, const struct urp_named_value *values, size_t count,
-			     int *result)
-{
-	size_t i;
-
-	if (!text)
-		return -1;
-	for (i = 0; i < count; ++i) {
-		if (!strcasecmp(text, values[i].name)) {
-			*result = values[i].value;
-			return 0;
-		}
-	}
-	return -1;
-}
 
 void urp_sample_queue_init(struct urp_sample_queue *queue, short *samples, unsigned int capacity)
 {
@@ -127,7 +97,10 @@ void urp_sample_queue_reset_high_water(struct urp_sample_queue *queue)
 			      memory_order_relaxed);
 }
 
-/** @brief Clamp an adapter output-stage capacity to its preallocated storage. */
+/** @brief Clamp an adapter output-stage capacity to its preallocated storage.
+ * @param capacity Requested complete-block capacity.
+ * @return Capacity bounded to the preallocated block range.
+ */
 static unsigned int urp_native_output_stage_capacity(unsigned int capacity)
 {
 	if (capacity < 2U)
@@ -137,13 +110,18 @@ static unsigned int urp_native_output_stage_capacity(unsigned int capacity)
 	return capacity;
 }
 
-/** @brief Return the number of complete blocks retained by an output stage. */
+/** @brief Return the number of complete blocks retained by an output stage.
+ * @param stage Output stage to inspect.
+ * @return Number of current and pending blocks.
+ */
 static unsigned int urp_native_output_stage_count(const struct urp_native_output_stage *stage)
 {
 	return stage->pending_count + (stage->current_valid ? 1U : 0U);
 }
 
-/** @brief Promote the oldest complete pending block to the partial-write slot. */
+/** @brief Promote the oldest complete pending block to the partial-write slot.
+ * @param stage Output stage whose current slot may be replenished.
+ */
 static void urp_native_output_stage_promote(struct urp_native_output_stage *stage)
 {
 	if (stage->current_valid || !stage->pending_count)
@@ -193,7 +171,6 @@ int urp_native_output_stage_enqueue(struct urp_native_output_stage *stage, const
 {
 	struct urp_native_output_block *block;
 	unsigned int occupancy;
-	unsigned int tail;
 	int dropped = 0;
 
 	if (!stage || !pcm || !frame_count || frame_count > stage->maximum_frame_count ||
@@ -219,8 +196,8 @@ int urp_native_output_stage_enqueue(struct urp_native_output_stage *stage, const
 		block = &stage->current;
 		stage->current_valid = 1;
 	} else {
-		tail = (stage->pending_head + stage->pending_count) %
-		       URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+		const unsigned int tail = (stage->pending_head + stage->pending_count) %
+					  URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
 		block = &stage->pending[tail];
 		++stage->pending_count;
 	}
@@ -272,7 +249,6 @@ int urp_native_output_stage_commit(struct urp_native_output_stage *stage, size_t
 
 int urp_native_output_stage_has_ptt(const struct urp_native_output_stage *stage)
 {
-	unsigned int index;
 	unsigned int pending;
 
 	if (!stage)
@@ -280,7 +256,8 @@ int urp_native_output_stage_has_ptt(const struct urp_native_output_stage *stage)
 	if (stage->current_valid && stage->current.logical_ptt)
 		return 1;
 	for (pending = 0U; pending < stage->pending_count; ++pending) {
-		index = (stage->pending_head + pending) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
+		const unsigned int index =
+			(stage->pending_head + pending) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
 		if (stage->pending[index].logical_ptt)
 			return 1;
 	}
@@ -447,176 +424,173 @@ int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int 
 	return 0;
 }
 
-size_t urp_parrot_play(struct urp_parrot_state *state, double *output, size_t count)
+/** @brief Convert one compatibility output route to its portable ABI value.
+ * @param source Compatibility output route.
+ * @param destination Receives the matching portable ABI value.
+ * @return Zero on success, or minus one for an unsupported route or missing output.
+ */
+static int radio_core_output_route(enum urp_tx_output_mode source, uint32_t *destination)
 {
-	size_t remaining;
-
-	if (!state->playing)
+	if (!destination)
+		return -1;
+	switch (source) {
+	case URP_TX_OUTPUT_DISABLED:
+		*destination = RPTADV_RADIO_TX_OUTPUT_DISABLED;
 		return 0;
-	remaining = state->count - state->play;
-	if (count > remaining)
-		count = remaining;
-	memcpy(output, state->audio + state->play, count * sizeof(*output));
-	state->play += count;
-	if (state->play >= state->count)
-		state->playing = 0;
-	return count;
+	case URP_TX_OUTPUT_VOICE:
+		*destination = RPTADV_RADIO_TX_OUTPUT_VOICE;
+		return 0;
+	case URP_TX_OUTPUT_TONE:
+		*destination = RPTADV_RADIO_TX_OUTPUT_TONE;
+		return 0;
+	case URP_TX_OUTPUT_COMPOSITE:
+		*destination = RPTADV_RADIO_TX_OUTPUT_COMPOSITE;
+		return 0;
+	case URP_TX_OUTPUT_AUX_VOICE:
+		*destination = RPTADV_RADIO_TX_OUTPUT_AUX_VOICE;
+		return 0;
+	}
+	return -1;
 }
 
-size_t urp_parrot_record(struct urp_parrot_state *state, const double *input, size_t count,
-			 size_t limit)
+int urp_render_transmit_block(const struct rptadv_radio *radio, const double *program,
+			      const float *ctcss, const float *dcs, size_t count,
+			      enum urp_tx_output_mode output_a, enum urp_tx_output_mode output_b,
+			      double ctcss_peak_a, double ctcss_bias_a, double ctcss_peak_b,
+			      double ctcss_bias_b, struct urp_transmit_render_workspace *workspace,
+			      short *stereo, short *meter_stereo, unsigned long *rail_samples)
 {
-	size_t space = limit > state->count ? limit - state->count : 0;
-	size_t requested = count;
-	if (count > space)
-		count = space;
-	if (count)
-		memcpy(state->audio + state->count, input, count * sizeof(*input));
-	state->count += count;
-	if (count < requested)
-		state->truncated = 1;
-	return count;
-}
-
-void urp_prepare_receive_block(const short *stereo, short *pcm, double *working, size_t count,
-			       short *delay, size_t delay_samples, unsigned int *delay_index,
-			       struct urp_receive_block_stats *stats)
-{
+	const struct rptadv_radio_descriptor *descriptor = urp_radio_core_descriptor_get();
+	struct rptadv_radio_transmit_render_config config = {
+		.struct_size = sizeof(config),
+	};
+	uint64_t rendered_rails = 0;
 	size_t i;
 
-	stats->peak = 0;
-	stats->rail_samples = 0;
-	if (delay_samples && *delay_index >= delay_samples)
-		*delay_index = 0;
-	for (i = 0; i < count; ++i) {
-		unsigned int magnitude;
-		short sample = stereo[i * 2];
-
-		magnitude = sample == INT16_MIN ? 32768U : (unsigned int)abs(sample);
-		if (magnitude > stats->peak)
-			stats->peak = magnitude;
-		if (sample == INT16_MAX || sample == INT16_MIN)
-			stats->rail_samples++;
-		if (delay_samples) {
-			short delayed = delay[*delay_index];
-			delay[*delay_index] = sample;
-			sample = delayed;
-			if (++*delay_index == delay_samples)
-				*delay_index = 0;
-		}
-		pcm[i] = sample;
-		working[i] = sample;
-	}
-}
-
-unsigned long urp_render_transmit_block(const double *program, const double *ctcss,
-					const double *dcs, size_t count,
-					enum urp_tx_output_mode output_a,
-					enum urp_tx_output_mode output_b, double ctcss_peak_a,
-					double ctcss_bias_a, double ctcss_peak_b,
-					double ctcss_bias_b, short *stereo, short *meter_stereo)
-{
-	unsigned long rail_samples = 0;
-	size_t i;
-
-	for (i = 0; i < count; ++i) {
-		short output;
-
-		if (program[i] > INT16_MAX || program[i] < INT16_MIN)
-			rail_samples++;
-		output = (short)lrint(fmax(INT16_MIN, fmin(INT16_MAX, program[i])));
-		if (meter_stereo) {
-			meter_stereo[i * 2] = output;
-			meter_stereo[i * 2 + 1] = output;
-		}
-		if (urp_tx_output_has_program(output_a))
-			stereo[i * 2] = urp_saturating_add(stereo[i * 2], output);
-		if (urp_tx_output_has_program(output_b))
-			stereo[i * 2 + 1] = urp_saturating_add(stereo[i * 2 + 1], output);
-		if (output_a == URP_TX_OUTPUT_TONE || output_a == URP_TX_OUTPUT_COMPOSITE) {
-			short tone = (short)lrint(fmax(
-				INT16_MIN,
-				fmin(INT16_MAX, ctcss[i] * ctcss_peak_a + ctcss_bias_a + dcs[i])));
-			stereo[i * 2] = urp_saturating_add(stereo[i * 2], tone);
-		}
-		if (output_b == URP_TX_OUTPUT_TONE || output_b == URP_TX_OUTPUT_COMPOSITE) {
-			short tone = (short)lrint(fmax(
-				INT16_MIN,
-				fmin(INT16_MAX, ctcss[i] * ctcss_peak_b + ctcss_bias_b + dcs[i])));
-			stereo[i * 2 + 1] = urp_saturating_add(stereo[i * 2 + 1], tone);
-		}
-	}
-	return rail_samples;
+	if (!radio || !workspace || !rail_samples || count > URP_NATIVE_MAX_SAMPLES ||
+	    (count && (!program || !ctcss || !dcs || !stereo)) ||
+	    radio_core_output_route(output_a, &config.output_a_route) ||
+	    radio_core_output_route(output_b, &config.output_b_route) || !descriptor)
+		return -1;
+	/* Only the unmigrated program graph retains PCM-code doubles. */
+	for (i = 0; i < count; ++i)
+		workspace->program[i] = (float)(program[i] / 32767.0);
+	config.ctcss_peak_a = (float)(ctcss_peak_a / 32767.0);
+	config.ctcss_bias_a = (float)(ctcss_bias_a / 32767.0);
+	config.ctcss_peak_b = (float)(ctcss_peak_b / 32767.0);
+	config.ctcss_bias_b = (float)(ctcss_bias_b / 32767.0);
+	if (descriptor->radio_render_transmit_f32(
+		    radio, workspace->program, ctcss, dcs, (uint32_t)count, &config,
+		    (int16_t *)stereo, (int16_t *)meter_stereo, &rendered_rails) != RPTADV_RADIO_OK)
+		return -1;
+	*rail_samples = rendered_rails > ULONG_MAX ? ULONG_MAX : (unsigned long)rendered_rails;
+	return 0;
 }
 
 int urp_parse_rx_audio_mode(const char *text, enum urp_rx_audio_mode *mode)
 {
-	static const struct urp_named_value values[] = {
-		{"no", URP_RX_AUDIO_DISABLED},
-		{"speaker", URP_RX_AUDIO_SPEAKER},
-		{"flat", URP_RX_AUDIO_FLAT},
-	};
-	int result;
-	if (!mode)
+	uint32_t parsed = 0U;
+
+	if (!text || !mode || urp_radio_core_parse_rx_audio_mode(text, &parsed))
 		return -1;
-	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
+	switch (parsed) {
+	case RPTADV_RADIO_RX_AUDIO_DISABLED:
+		*mode = URP_RX_AUDIO_DISABLED;
+		return 0;
+	case RPTADV_RADIO_RX_AUDIO_SPEAKER:
+		*mode = URP_RX_AUDIO_SPEAKER;
+		return 0;
+	case RPTADV_RADIO_RX_AUDIO_FLAT:
+		*mode = URP_RX_AUDIO_FLAT;
+		return 0;
+	default:
 		return -1;
-	*mode = (enum urp_rx_audio_mode)result;
-	return 0;
+	}
 }
 
 int urp_parse_carrier_source(const char *text, enum urp_carrier_source *source)
 {
-	static const struct urp_named_value values[] = {
-		{"no", URP_CARRIER_DISABLED},
-		{"dsp", URP_CARRIER_DSP},
-		{"vox", URP_CARRIER_VOX},
-		{"usb", URP_CARRIER_USB},
-		{"usbinvert", URP_CARRIER_USB_INVERTED},
-		{"pp", URP_CARRIER_PARALLEL},
-		{"ppinvert", URP_CARRIER_PARALLEL_INVERTED},
-	};
-	int result;
-	if (!source)
+	uint32_t parsed = 0U;
+
+	if (!text || !source || urp_radio_core_parse_carrier_source(text, &parsed))
 		return -1;
-	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
+	switch (parsed) {
+	case RPTADV_RADIO_CARRIER_DISABLED:
+		*source = URP_CARRIER_DISABLED;
+		return 0;
+	case RPTADV_RADIO_CARRIER_DSP:
+		*source = URP_CARRIER_DSP;
+		return 0;
+	case RPTADV_RADIO_CARRIER_VOX:
+		*source = URP_CARRIER_VOX;
+		return 0;
+	case RPTADV_RADIO_CARRIER_USB:
+		*source = URP_CARRIER_USB;
+		return 0;
+	case RPTADV_RADIO_CARRIER_USB_INVERTED:
+		*source = URP_CARRIER_USB_INVERTED;
+		return 0;
+	case RPTADV_RADIO_CARRIER_PARALLEL:
+		*source = URP_CARRIER_PARALLEL;
+		return 0;
+	case RPTADV_RADIO_CARRIER_PARALLEL_INVERTED:
+		*source = URP_CARRIER_PARALLEL_INVERTED;
+		return 0;
+	default:
 		return -1;
-	*source = (enum urp_carrier_source)result;
-	return 0;
+	}
 }
 
 int urp_parse_ctcss_source(const char *text, enum urp_ctcss_source *source)
 {
-	static const struct urp_named_value values[] = {
-		{"no", URP_CTCSS_DISABLED},
-		{"usb", URP_CTCSS_USB},
-		{"usbinvert", URP_CTCSS_USB_INVERTED},
-		{"dsp", URP_CTCSS_DSP},
-		{"pp", URP_CTCSS_PARALLEL},
-		{"ppinvert", URP_CTCSS_PARALLEL_INVERTED},
-	};
-	int result;
-	if (!source)
+	uint32_t parsed = 0U;
+
+	if (!text || !source || urp_radio_core_parse_ctcss_source(text, &parsed))
 		return -1;
-	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
+	switch (parsed) {
+	case RPTADV_RADIO_CTCSS_DISABLED:
+		*source = URP_CTCSS_DISABLED;
+		return 0;
+	case RPTADV_RADIO_CTCSS_USB:
+		*source = URP_CTCSS_USB;
+		return 0;
+	case RPTADV_RADIO_CTCSS_USB_INVERTED:
+		*source = URP_CTCSS_USB_INVERTED;
+		return 0;
+	case RPTADV_RADIO_CTCSS_DSP:
+		*source = URP_CTCSS_DSP;
+		return 0;
+	case RPTADV_RADIO_CTCSS_PARALLEL:
+		*source = URP_CTCSS_PARALLEL;
+		return 0;
+	case RPTADV_RADIO_CTCSS_PARALLEL_INVERTED:
+		*source = URP_CTCSS_PARALLEL_INVERTED;
+		return 0;
+	default:
 		return -1;
-	*source = (enum urp_ctcss_source)result;
-	return 0;
+	}
 }
 
 int urp_parse_tone_off_mode(const char *text, enum urp_tone_off_mode *mode)
 {
-	static const struct urp_named_value values[] = {
-		{"no", URP_TONE_OFF_NONE},
-		{"ctcss_phase_shift", URP_TONE_OFF_PHASE_SHIFT},
-		{"ctcss_tone_remove", URP_TONE_OFF_TONE_REMOVE},
-		{"ctcss_tail_tone", URP_TONE_OFF_TAIL_TONE},
-	};
-	int result;
-	if (!mode)
+	uint32_t parsed = 0U;
+
+	if (!text || !mode || urp_radio_core_parse_tone_off_mode(text, &parsed))
 		return -1;
-	if (parse_named_value(text, values, sizeof(values) / sizeof(values[0]), &result))
+	switch (parsed) {
+	case RPTADV_RADIO_TONE_OFF_NONE:
+		*mode = URP_TONE_OFF_NONE;
+		return 0;
+	case RPTADV_RADIO_TONE_OFF_PHASE_SHIFT:
+		*mode = URP_TONE_OFF_PHASE_SHIFT;
+		return 0;
+	case RPTADV_RADIO_TONE_OFF_TONE_REMOVE:
+		*mode = URP_TONE_OFF_TONE_REMOVE;
+		return 0;
+	case RPTADV_RADIO_TONE_OFF_TAIL_TONE:
+		*mode = URP_TONE_OFF_TAIL_TONE;
+		return 0;
+	default:
 		return -1;
-	*mode = (enum urp_tone_off_mode)result;
-	return 0;
+	}
 }

@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <samplerate.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,20 +43,6 @@ void *urp_test_realloc(void *pointer, size_t size)
 	return allocation_count == allocation_to_fail ? NULL : realloc(pointer, size);
 }
 
-/** @brief Calculate sample RMS for an audio-result assertion.
- * @param x Sample buffer used by the test.
- * @param n Number of samples.
- * @return Measured level or response used by the caller's numerical assertions.
- */
-static double rms(const int16_t *x, size_t n)
-{
-	double sum = 0.0;
-	size_t i;
-	for (i = 0; i < n; ++i)
-		sum += (double)x[i] * x[i];
-	return sqrt(sum / n);
-}
-
 /** @brief Generate deterministic PCM tone samples for rate-conversion tests.
  * @param x Sample buffer used by the test.
  * @param n Number of samples.
@@ -79,16 +66,19 @@ static void test_src(void)
 	size_t used, made, total_up = 0, total_down = 0;
 	int frame;
 	assert(up && down);
+	assert(!urp_src_reserve(up, URP_LINK_SAMPLES, URP_NATIVE_SAMPLES));
+	assert(!urp_src_reserve(down, URP_NATIVE_SAMPLES, URP_LINK_SAMPLES));
 	tone(in, URP_LINK_SAMPLES, URP_RATE_LINK, 1000.0, 12000.0);
 	/* Sinc converters intentionally have startup latency. Verify steady-state
 	 * frame accounting rather than demanding a full first block. */
 	for (frame = 0; frame < 12; ++frame) {
-		assert(!urp_rate_convert(up, in, URP_LINK_SAMPLES, URP_RATE_LINK, native,
-					 URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used, &made));
+		assert(!urp_rate_convert_prepared(up, in, URP_LINK_SAMPLES, URP_RATE_LINK, native,
+						  URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used,
+						  &made));
 		assert(used == URP_LINK_SAMPLES);
 		total_up += made;
-		assert(!urp_rate_convert(down, native, made, URP_RATE_NATIVE, back,
-					 URP_LINK_SAMPLES, URP_RATE_LINK, &used, &made));
+		assert(!urp_rate_convert_prepared(down, native, made, URP_RATE_NATIVE, back,
+						  URP_LINK_SAMPLES, URP_RATE_LINK, &used, &made));
 		total_down += made;
 	}
 	assert(total_up > 9 * URP_NATIVE_SAMPLES);
@@ -97,14 +87,56 @@ static void test_src(void)
 	urp_src_destroy(down);
 }
 
+/** @brief Verify the released F32 adapter preserves legacy mono sinc output exactly. */
+static void test_adapter_matches_legacy_sinc(void)
+{
+	struct urp_src *adapter = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
+	SRC_DATA data;
+	SRC_STATE *legacy;
+	float legacy_input[URP_LINK_SAMPLES];
+	float legacy_output[URP_NATIVE_SAMPLES];
+	int16_t input[URP_LINK_SAMPLES], adapter_output[URP_NATIVE_SAMPLES];
+	int16_t legacy_pcm[URP_NATIVE_SAMPLES];
+	size_t used, made;
+	int error = 0;
+	int frame;
+
+	assert(adapter);
+	assert(!urp_src_reserve(adapter, URP_LINK_SAMPLES, URP_NATIVE_SAMPLES));
+	legacy = src_new(SRC_SINC_BEST_QUALITY, 1, &error);
+	assert(legacy && !error);
+	tone(input, URP_LINK_SAMPLES, URP_RATE_LINK, 997.0, 30000.0);
+	for (frame = 0; frame < 12; ++frame) {
+		src_short_to_float_array(input, legacy_input, URP_LINK_SAMPLES);
+		memset(&data, 0, sizeof(data));
+		data.data_in = legacy_input;
+		data.data_out = legacy_output;
+		data.input_frames = URP_LINK_SAMPLES;
+		data.output_frames = URP_NATIVE_SAMPLES;
+		data.src_ratio = (double)URP_RATE_NATIVE / URP_RATE_LINK;
+		assert(!src_process(legacy, &data));
+		src_float_to_short_array(legacy_output, legacy_pcm, (int)data.output_frames_gen);
+		memset(legacy_pcm + data.output_frames_gen, 0,
+		       (URP_NATIVE_SAMPLES - (size_t)data.output_frames_gen) * sizeof(*legacy_pcm));
+		assert(!urp_rate_convert_prepared(adapter, input, URP_LINK_SAMPLES, URP_RATE_LINK,
+						  adapter_output, URP_NATIVE_SAMPLES,
+						  URP_RATE_NATIVE, &used, &made));
+		assert(used == (size_t)data.input_frames_used);
+		assert(made == (size_t)data.output_frames_gen);
+		assert(!memcmp(adapter_output, legacy_pcm, sizeof(adapter_output)));
+	}
+	src_delete(legacy);
+	urp_src_destroy(adapter);
+}
+
 /** @brief Verify same rate bypass. */
 static void test_same_rate_bypass(void)
 {
 	int16_t input[URP_NATIVE_SAMPLES], output[URP_NATIVE_SAMPLES];
 	size_t used = 0, made = 0;
 	tone(input, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 1234.0, 9000.0);
-	assert(!urp_rate_convert(NULL, input, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, output,
-				 URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used, &made));
+	assert(!urp_rate_convert_prepared(NULL, input, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, output,
+					  URP_NATIVE_SAMPLES, URP_RATE_NATIVE, &used, &made));
 	assert(used == URP_NATIVE_SAMPLES && made == URP_NATIVE_SAMPLES);
 	assert(!memcmp(input, output, sizeof(input)));
 }
@@ -141,35 +173,13 @@ static void test_prepared_src_no_allocation(void)
 	urp_src_destroy(src);
 }
 
-/** @brief Verify echo. */
-static void test_echo(void)
-{
-	struct urp_echo_replacer e;
-	int16_t local8[URP_LINK_SAMPLES], local48[URP_NATIVE_SAMPLES];
-	int16_t mixed[URP_LINK_SAMPLES], recovered[URP_NATIVE_SAMPLES];
-	size_t i;
-	urp_echo_init(&e);
-	tone(local8, URP_LINK_SAMPLES, URP_RATE_LINK, 713.0, 8000.0);
-	tone(local48, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 713.0, 8000.0);
-	urp_echo_push(&e, local8, local48);
-	for (i = 0; i < URP_LINK_SAMPLES; ++i)
-		mixed[i] = local8[i] + (int16_t)(1500.0 * sin(2 * M_PI * 1300 * i / 8000));
-	assert(urp_echo_remove(&e, mixed, recovered, 0.75));
-	assert(e.last_correlation > 0.9);
-	assert(rms(mixed, URP_LINK_SAMPLES) < 2500.0);
-	assert(rms(recovered, URP_NATIVE_SAMPLES) > 5000.0);
-}
-
 /** @brief Verify defensive and boundary paths. */
 static void test_defensive_and_boundary_paths(void)
 {
-	struct urp_echo_replacer echo;
 	struct urp_src *src;
 	int16_t mono[] = {20000, -20000, 100};
 	int16_t oversized[] = {20000, -20000, 100, -100};
-	int16_t stereo[6], extracted[3], short_output[2];
-	int16_t silent_link[URP_LINK_SAMPLES] = {0};
-	int16_t silent_native[URP_NATIVE_SAMPLES] = {0};
+	int16_t extracted[3], short_output[2];
 	size_t used = 99, made = 99;
 
 	assert(!urp_src_create(0, 0));
@@ -183,10 +193,6 @@ static void test_defensive_and_boundary_paths(void)
 	assert(urp_src_reserve(src, 0, 1) < 0);
 	assert(urp_src_reserve(src, 1, 0) < 0);
 	assert(!urp_src_reserve(src, 3, 3));
-	assert(urp_src_process(NULL, mono, 3, extracted, 3, 1.0, &used, &made) < 0);
-	assert(urp_src_process(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
-	assert(urp_src_process(src, mono, 3, NULL, 3, 1.0, &used, &made) < 0);
-	assert(urp_src_process(src, mono, 3, extracted, 3, 0.0, &used, &made) < 0);
 	assert(urp_src_process_prepared(NULL, mono, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process_prepared(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process_prepared(src, mono, 3, NULL, 3, 1.0, &used, &made) < 0);
@@ -196,58 +202,24 @@ static void test_defensive_and_boundary_paths(void)
 	assert(urp_src_process_prepared(src, oversized, 4, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process_prepared(src, mono, 3, oversized, 4, 1.0, &used, &made) < 0);
 	urp_src_reset(src);
-	assert(!urp_src_process(src, mono, 3, extracted, 3, 1.0, NULL, NULL));
+	assert(!urp_src_process_prepared(src, mono, 3, extracted, 3, 1.0, NULL, NULL));
 	urp_src_destroy(src);
 
-	assert(urp_rate_convert(NULL, NULL, 3, 48000, extracted, 3, 48000, &used, &made) < 0);
-	assert(urp_rate_convert(NULL, mono, 3, 0, extracted, 3, 48000, &used, &made) < 0);
-	assert(urp_rate_convert(NULL, mono, 3, 48000, NULL, 3, 48000, &used, &made) < 0);
-	assert(urp_rate_convert(NULL, mono, 3, 48000, extracted, 3, 0, &used, &made) < 0);
-	assert(urp_rate_convert(NULL, mono, 3, 48000, short_output, 2, 48000, NULL, NULL) < 0);
+	assert(urp_rate_convert_prepared(NULL, NULL, 3, 48000, extracted, 3, 48000, &used, &made) <
+	       0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 0, extracted, 3, 48000, &used, &made) < 0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, NULL, 3, 48000, &used, &made) < 0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, extracted, 3, 0, &used, &made) < 0);
+	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, short_output, 2, 48000, NULL, NULL) <
+	       0);
 	assert(short_output[0] == mono[0] && short_output[1] == mono[1]);
-	assert(!urp_rate_convert(NULL, mono, 2, 48000, extracted, 3, 48000, &used, &made));
+	assert(!urp_rate_convert_prepared(NULL, mono, 2, 48000, extracted, 3, 48000, &used, &made));
 	assert(used == 2 && made == 2 && extracted[2] == 0);
 	assert(urp_rate_convert_prepared(NULL, NULL, 3, 48000, extracted, 3, 48000, &used, &made) <
 	       0);
 	assert(urp_rate_convert_prepared(NULL, mono, 3, 0, extracted, 3, 48000, &used, &made) < 0);
 	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, NULL, 3, 48000, &used, &made) < 0);
 	assert(urp_rate_convert_prepared(NULL, mono, 3, 48000, extracted, 3, 0, &used, &made) < 0);
-
-	urp_duplicate_mono(mono, stereo, 3, 2.0, 2.0);
-	assert(stereo[0] == 32767 && stereo[1] == 32767);
-	assert(stereo[2] == -32768 && stereo[3] == -32768);
-	urp_extract_mono(stereo, extracted, 3, 0);
-	assert(extracted[0] == stereo[0]);
-	urp_extract_mono(stereo, extracted, 3, 9);
-	assert(extracted[0] == stereo[1]);
-
-	urp_echo_init(NULL);
-	urp_echo_init(&echo);
-	urp_echo_push(NULL, silent_link, silent_native);
-	urp_echo_push(&echo, NULL, silent_native);
-	urp_echo_push(&echo, silent_link, NULL);
-	assert(!urp_echo_remove(NULL, silent_link, silent_native, 0.5));
-	assert(!urp_echo_remove(&echo, NULL, silent_native, 0.5));
-	assert(!urp_echo_remove(&echo, silent_link, NULL, 0.5));
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
-	assert(echo.misses == 1 && echo.last_correlation == 0.0);
-	urp_echo_push(&echo, silent_link, silent_native);
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
-
-	tone(echo.history[0].link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 8000.0);
-	tone(echo.history[0].native, URP_NATIVE_SAMPLES, URP_RATE_NATIVE, 700.0, 8000.0);
-	echo.history[0].sequence = 1;
-	memset(silent_link, 0, sizeof(silent_link));
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
-	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 800.0);
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
-	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 24000.0);
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 0.5));
-	tone(silent_link, URP_LINK_SAMPLES, URP_RATE_LINK, 700.0, 8000.0);
-	assert(!urp_echo_remove(&echo, silent_link, silent_native, 1.1));
-	tone(echo.history[1].link, URP_LINK_SAMPLES, URP_RATE_LINK, 1300.0, 8000.0);
-	echo.history[1].sequence = 2;
-	assert(urp_echo_remove(&echo, silent_link, silent_native, 0.5));
 }
 
 /** @brief Verify allocation and converter failures. */
@@ -266,29 +238,12 @@ static void test_allocation_and_converter_failures(void)
 	allocation_count = 0;
 	allocation_to_fail = 1;
 	assert(urp_src_reserve(src, 3, 3) < 0);
-	allocation_to_fail = 0;
-	assert(!urp_src_reserve(src, 3, 3));
-	urp_src_destroy(src);
-	src = urp_src_create(0, 1);
-	assert(src);
-	allocation_count = 0;
-	allocation_to_fail = 1;
-	assert(urp_src_process(src, input, 3, output, 3, 1.0, NULL, NULL) < 0);
 	allocation_count = 0;
 	allocation_to_fail = 2;
-	assert(urp_src_process(src, input, 3, output, 3, 1.0, NULL, NULL) < 0);
+	assert(urp_src_reserve(src, 3, 3) < 0);
 	allocation_to_fail = 0;
-	assert(urp_src_process(src, input, 3, output, 3, 1000.0, NULL, NULL) != 0);
-	urp_src_destroy(src);
-
-	/* The allocating wrapper must fail cleanly before the prepared callback path. */
-	src = urp_src_create(0, 1);
-	assert(src);
-	allocation_count = 0;
-	allocation_to_fail = 1;
-	assert(urp_rate_convert(src, input, 3, URP_RATE_LINK, output, 3, URP_RATE_NATIVE, NULL,
-				NULL) < 0);
-	allocation_to_fail = 0;
+	assert(!urp_src_reserve(src, 3, 3));
+	assert(urp_src_process_prepared(src, input, 3, output, 3, 1000.0, NULL, NULL) != 0);
 	urp_src_destroy(src);
 }
 
@@ -298,9 +253,9 @@ static void test_allocation_and_converter_failures(void)
 int main(void)
 {
 	test_src();
+	test_adapter_matches_legacy_sinc();
 	test_same_rate_bypass();
 	test_prepared_src_no_allocation();
-	test_echo();
 	test_defensive_and_boundary_paths();
 	test_allocation_and_converter_failures();
 	puts("usbradioplus DSP tests passed");

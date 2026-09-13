@@ -3,7 +3,6 @@
  */
 
 #include "asterisk.h"
-#include "asterisk/res_usbradio.h"
 
 #include <errno.h>
 #include <math.h>
@@ -14,10 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#ifdef HAVE_SYS_IO
-#include <sys/io.h>
-#endif
 
 #include "asterisk/abstract_jb.h"
 #include "asterisk/channel.h"
@@ -42,55 +37,8 @@
 #include "usbradioplus_radio.h"
 #include "usbradioplus_repeat.h"
 #include "usbradioplus_channel_common.h"
-
-/*! \brief Drive timed pulses on configured parallel-port outputs. */
-void *pulserthread(void *arg)
-{
-	(void)arg;
-	struct timeval now, then;
-	register int i, j, k;
-
-#ifdef HAVE_SYS_IO
-	if (haspp == 2) {
-		ioperm(pbase, 2, 1);
-	}
-#endif
-	stoppulser = 0;
-	pp_lastmask = 0;
-	ast_mutex_lock(&pp_lock);
-	ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
-	ast_mutex_unlock(&pp_lock);
-	then = ast_radio_tvnow();
-
-	while (!stoppulser) {
-		usleep(50000);
-		ast_mutex_lock(&pp_lock);
-		now = ast_radio_tvnow();
-		j = ast_tvdiff_ms(now, then);
-		then = now;
-		pp_lastmask = pp_pulsemask;
-		pp_pulsemask = 0;
-		for (i = 2; i <= 9; i++) {
-			k = pp_pulsetimer[i];
-			if (k) {
-				k -= j;
-				if (k < 0) {
-					k = 0;
-				}
-				pp_pulsetimer[i] = k;
-			}
-			if (k) {
-				pp_pulsemask |= 1 << (i - 2);
-			}
-		}
-		if (pp_pulsemask != pp_lastmask) {
-			pp_val ^= pp_lastmask ^ pp_pulsemask;
-			ast_radio_ppwrite(haspp, ppfd, pbase, pport, pp_val);
-		}
-		ast_mutex_unlock(&pp_lock);
-	}
-	return NULL;
-}
+#include "usbradioplus_host_util.h"
+#include "usbradioplus_radio_core_adapter.h"
 
 /*! \brief Release a channel that failed before it was linked into the active list. */
 void destroy_unlinked_channel(struct chan_usbradio_pvt *o)
@@ -576,6 +524,26 @@ void usbradioplus_request_clip_led(struct chan_usbradio_pvt *o)
 		atomic_store_explicit(&o->plus_clip_led_request, 1, memory_order_release);
 }
 
+/* Measure raw hardware audio through the stream's Rust core. The public
+ * declaration documents the PCM and persistent-meter ownership contract. */
+void usbradioplus_measure_rx_audio(struct chan_usbradio_pvt *channel, const short *samples,
+				   size_t sample_count)
+{
+	int clipping = 0;
+
+	if (!channel || !samples)
+		return;
+	/* Keep the shared object at the signed-16 hardware boundary. The portable
+	 * meter state is owned by this channel, so measurement needs no DTO bridge. */
+	if (!urp_radio_core_measure_audio_s16(samples, sample_count, 2U, &channel->rxaudiostats,
+					      channel->plus_rx_audio_meter_f32,
+					      sizeof(channel->plus_rx_audio_meter_f32) /
+						      sizeof(channel->plus_rx_audio_meter_f32[0]),
+					      &clipping) &&
+	    clipping)
+		usbradioplus_request_clip_led(channel);
+}
+
 void usbradioplus_publish_hardware_inputs(struct chan_usbradio_pvt *o, unsigned int inputs)
 {
 	if (o)
@@ -914,7 +882,7 @@ void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 		atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
 		atomic_store_explicit(&o->plus_test_tone_enabled, 1, memory_order_release);
 		if ((fd > 0) && intflag) {
-			if (ast_radio_wait_or_poll(fd, 1000, intflag)) {
+			if (usbradioplus_host_wait_or_poll(fd, 1000, intflag)) {
 				atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 				atomic_store_explicit(&o->plus_test_tone_enabled, 0,
 						      memory_order_release);
@@ -926,7 +894,7 @@ void tune_flash(int fd, struct chan_usbradio_pvt *o, int intflag)
 		atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
 		atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 		if (i < (NFLASH - 1) && (fd > 0) && intflag) {
-			if (ast_radio_wait_or_poll(fd, 1500, intflag)) {
+			if (usbradioplus_host_wait_or_poll(fd, 1500, intflag)) {
 				atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 				break;
 			}
@@ -967,7 +935,9 @@ int radio_tune(int fd, int argc, const char *const *argv)
 		return RESULT_SUCCESS;
 	}
 
-	if (!o->hasusb) {
+	if (!(o->plus_cm119_gpio_poc
+		      ? atomic_load_explicit(&o->plus_hardware_online, memory_order_acquire)
+		      : o->hasusb)) {
 		ast_cli(fd, USB_UNASSIGNED_FMT, o->name, o->devstr);
 		return RESULT_SUCCESS;
 	}
@@ -1324,7 +1294,7 @@ void tune_txoutput(struct chan_usbradio_pvt *o, int value, int fd, int intflag)
 	atomic_store_explicit(&o->plus_test_tone_enabled, 1, memory_order_release);
 	if (fd > 0) {
 		ast_cli(fd, "Tone output starting on channel %s...\n", o->name);
-		if (ast_radio_wait_or_poll(fd, 5000, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 5000, intflag)) {
 			atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 			atomic_store_explicit(&o->plus_test_tone_enabled, 0, memory_order_release);
 		}
@@ -1364,7 +1334,7 @@ void tune_rxdisplay(int fd, struct chan_usbradio_pvt *o)
 	waskeyed = !o->rxkeyed;
 	for (;;) {
 		o->radio->spsMeasure->amax = o->radio->spsMeasure->amin = 0;
-		if (ast_radio_poll_input(fd, 100)) {
+		if (usbradioplus_host_poll_input(fd, 100)) {
 			break;
 		}
 		if (o->rxkeyed != waskeyed) {
@@ -1409,7 +1379,7 @@ void tune_rxtx_status(int fd, struct chan_usbradio_pvt *o)
 
 	for (;;) {
 		/* If they press any key, exit live display */
-		if (ast_radio_poll_input(fd, 200)) {
+		if (usbradioplus_host_poll_input(fd, 200)) {
 			break;
 		}
 		ast_cli(fd, " %s  | %s  | %s | %s\r",
@@ -1588,7 +1558,7 @@ void _menu_txtone(int fd, struct chan_usbradio_pvt *o, const char *cstr)
 	if (dokey) {
 		ast_cli(fd, "Keying Radio and sending CTCSS tone for 5 seconds...\n");
 		atomic_store_explicit(&o->txtestkey, 1, memory_order_release);
-		ast_radio_wait_or_poll(fd, 5000, 1);
+		usbradioplus_host_wait_or_poll(fd, 5000, 1);
 		atomic_store_explicit(&o->txtestkey, 0, memory_order_release);
 		ast_cli(fd, "DONE.\n");
 	}
@@ -1631,12 +1601,12 @@ void tune_rxvoice(int fd, struct chan_usbradio_pvt *o, int intflag)
 
 	while (tries < maxtries) {
 		*(o->radio->prxVoiceAdjust) = setting * M_Q8;
-		if (ast_radio_wait_or_poll(fd, 10, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 10, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
 		o->radio->spsMeasure->amax = o->radio->spsMeasure->amin = 0;
-		if (ast_radio_wait_or_poll(fd, 1000, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 1000, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
@@ -1695,12 +1665,12 @@ void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 
 	while (tries < maxtries) {
 		*(o->radio->prxCtcssAdjust) = setting * M_Q8;
-		if (ast_radio_wait_or_poll(fd, 10, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 10, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
 		o->radio->spsMeasure->amax = o->radio->spsMeasure->amin = 0;
-		if (ast_radio_wait_or_poll(fd, 500, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 500, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
@@ -1733,7 +1703,7 @@ void tune_rxctcss(int fd, struct chan_usbradio_pvt *o, int intflag)
 	if (o->rxcdtype == CD_XPMR_NOISE) {
 		int normRssi;
 
-		if (ast_radio_wait_or_poll(fd, 200, intflag)) {
+		if (usbradioplus_host_wait_or_poll(fd, 200, intflag)) {
 			o->radio->b.tuning = 0;
 			return;
 		}
@@ -1784,24 +1754,17 @@ void usbradioplus_program_radio(struct chan_usbradio_pvt *o)
 	atomic_fetch_add_explicit(&o->plus_radio_program_generation, 1U, memory_order_release);
 }
 
-void usbradioplus_parallel_program_write(void *opaque, uint8_t value)
-{
-	(void)opaque;
-	pp_val = (int8_t)value;
-	ast_radio_ppwrite(haspp, ppfd, pbase, pport, value);
-}
-
 void usbradioplus_set_channel(uint8_t channel)
 {
-	struct urp_parallel_bus bus;
-	if (!haspp)
-		return;
+	struct chan_usbradio_pvt *owner;
+
 	ast_mutex_lock(&pp_lock);
-	bus.value = (uint8_t)pp_val;
-	bus.write = usbradioplus_parallel_program_write;
-	bus.opaque = NULL;
-	urp_hardware_set_channel(&bus, channel);
-	pp_val = (int8_t)bus.value;
+	owner = usbradioplus_parallel_owner();
+	if (owner) {
+		usbradioplus_parallel_adapter_poc_request_binary_channel(
+			&owner->plus_parallel_adapter_poc, channel);
+		kickptt(owner);
+	}
 	ast_mutex_unlock(&pp_lock);
 }
 
@@ -2032,7 +1995,7 @@ static int radio_config_locked(struct chan_usbradio_pvt *o)
 	/* Parsing resets the CTCSS filter gain.  Restore the selected decoder and
 	 * transmitter calibration before audio readers can observe this generation. */
 	if (o->radio->prxCtcssAdjust)
-		*o->radio->prxCtcssAdjust = (i32)lround(o->rxctcssadj * M_Q8);
+		*o->radio->prxCtcssAdjust = (i32)lround((double)(o->rxctcssadj * M_Q8));
 	if (o->radio->prxSquelchAdjust)
 		*o->radio->prxSquelchAdjust = ((999 - o->rxsquelchadj) * 32767) / AUDIO_ADJUSTMENT;
 	if (!receive_ctcss && o->radio->smode == SMODE_CTCSS) {
@@ -2615,9 +2578,33 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	char option[64];
 	char *end;
 	int i;
+	const int saved_portaudio_poc = o->plus_portaudio_poc;
+	const int saved_cm119_gpio_poc = o->plus_cm119_gpio_poc;
+	const int saved_portaudio_input_device_index = o->plus_portaudio_input_device_index;
+	const int saved_portaudio_output_device_index = o->plus_portaudio_output_device_index;
+	const enum radio_tx_mix saved_txmixa = o->txmixa;
+	const enum radio_tx_mix saved_txmixb = o->txmixb;
+	const int saved_rxcdtype = o->rxcdtype;
+	const int saved_hdwtype = o->hdwtype;
+	const unsigned int saved_wanteeprom = o->wanteeprom;
+	const unsigned int saved_invertptt = o->invertptt;
+	const int saved_frags = o->frags;
+	const int saved_queuesize = o->queuesize;
+	char saved_rxctcssfreqs[sizeof(o->rxctcssfreqs)];
+	char saved_txctcssfreqs[sizeof(o->txctcssfreqs)];
+	char saved_devstr[sizeof(o->devstr)];
+	char saved_serial[sizeof(o->serial)];
+	char saved_cm119_gpio_usb_port_path[sizeof(o->plus_cm119_gpio_usb_port_path)];
 	long number;
 	size_t option_index;
 	size_t tone_count;
+
+	ast_copy_string(saved_cm119_gpio_usb_port_path, o->plus_cm119_gpio_usb_port_path,
+			sizeof(saved_cm119_gpio_usb_port_path));
+	ast_copy_string(saved_rxctcssfreqs, o->rxctcssfreqs, sizeof(saved_rxctcssfreqs));
+	ast_copy_string(saved_txctcssfreqs, o->txctcssfreqs, sizeof(saved_txctcssfreqs));
+	ast_copy_string(saved_devstr, o->devstr, sizeof(saved_devstr));
+	ast_copy_string(saved_serial, o->serial, sizeof(saved_serial));
 	static const int parallel_pins[] = {2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 15};
 	static const char *const asterisk_jitter_options[] = {
 		"jbenable", "jbmaxsize", "jbresyncthreshold", "jbimpl",
@@ -2687,6 +2674,43 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	BOOLEAN("hardware", "hardware_eeprom_enabled", wanteeprom);
 	INTEGER("hardware", "hardware_audio_fragment_count", frags);
 	INTEGER("hardware", "hardware_audio_queue_size", queuesize);
+	/* Both controller interfaces use the same released hardware adapters.
+	 * The historical proof names remain accepted configuration aliases. */
+	o->plus_portaudio_poc = 1;
+	o->plus_cm119_gpio_poc = 1;
+	if (GET("hardware", "hardware_audio_backend")) {
+		if (strcasecmp(value, "portaudio") && strcasecmp(value, "portaudio_poc")) {
+			ast_log(LOG_ERROR,
+				"RadioPlus/%s: hardware_audio_backend must be portaudio\n",
+				category);
+			goto invalid;
+		}
+	}
+	INTEGER("hardware", "hardware_portaudio_input_device_index",
+		plus_portaudio_input_device_index);
+	INTEGER("hardware", "hardware_portaudio_output_device_index",
+		plus_portaudio_output_device_index);
+	if (GET("hardware", "hardware_gpio_backend")) {
+		if (strcasecmp(value, "cm119") && strcasecmp(value, "cm119_poc")) {
+			ast_log(LOG_ERROR, "RadioPlus/%s: hardware_gpio_backend must be cm119\n",
+				category);
+			goto invalid;
+		}
+	}
+	STRING("hardware", "hardware_gpio_usb_port_path", plus_cm119_gpio_usb_port_path);
+	/* Omitted identity selects the released adapter's automatic USB resolver.
+	 * A numeric pair can constrain that resolved CM119, but a partial pair is
+	 * never a valid composition. Startup proves the shared audio/GPIO identity. */
+	if (o->plus_portaudio_input_device_index < -1 ||
+	    o->plus_portaudio_output_device_index < -1 ||
+	    ((o->plus_portaudio_input_device_index >= 0) !=
+	     (o->plus_portaudio_output_device_index >= 0))) {
+		ast_log(LOG_ERROR,
+			"RadioPlus/%s: configure both PortAudio device indexes or leave both "
+			"automatic\n",
+			category);
+		goto invalid;
+	}
 	BOOLEAN("receive", "cpu_saver_enabled", rxcpusaver);
 	BOOLEAN("transmit", "cpu_saver_enabled", txcpusaver);
 	STRING("receive", "signaling_method", receive_signaling_method);
@@ -2908,12 +2932,51 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 		if (GET("asterisk", modern_jitter_options[option_index]) &&
 		    ast_jb_read_conf(&global_jbconf, asterisk_jitter_options[option_index], value))
 			goto invalid;
+	/* The adapter owns one CM119 interface for its complete lifetime.
+	 * Changing its identity or wiring while it is running would make
+	 * the config claim a handoff that never occurred. Require a clean channel
+	 * restart instead. */
+	if (o->radio && (saved_cm119_gpio_poc || o->plus_cm119_gpio_poc) &&
+	    (saved_cm119_gpio_poc != o->plus_cm119_gpio_poc ||
+	     saved_portaudio_poc != o->plus_portaudio_poc ||
+	     saved_portaudio_input_device_index != o->plus_portaudio_input_device_index ||
+	     saved_portaudio_output_device_index != o->plus_portaudio_output_device_index ||
+	     strcmp(saved_devstr, o->devstr) || strcmp(saved_serial, o->serial) ||
+	     saved_hdwtype != o->hdwtype || saved_invertptt != o->invertptt ||
+	     strcmp(saved_cm119_gpio_usb_port_path, o->plus_cm119_gpio_usb_port_path))) {
+		ast_log(LOG_ERROR,
+			"RadioPlus/%s: CM119 hardware settings require a channel "
+			"restart\n",
+			category);
+		goto invalid;
+	}
 #undef STRING
 #undef BOOLEAN
 #undef INTEGER
 #undef GET
 	return 0;
 invalid:
+	/* The selected composition is consulted by the HID retry loop. Preserve its
+	 * last known-good selection when its new configuration is incomplete, so a
+	 * rejected reload cannot turn into an endless direct-stream retry. */
+	o->plus_portaudio_poc = saved_portaudio_poc;
+	o->plus_cm119_gpio_poc = saved_cm119_gpio_poc;
+	o->plus_portaudio_input_device_index = saved_portaudio_input_device_index;
+	o->plus_portaudio_output_device_index = saved_portaudio_output_device_index;
+	o->txmixa = saved_txmixa;
+	o->txmixb = saved_txmixb;
+	o->rxcdtype = saved_rxcdtype;
+	o->hdwtype = saved_hdwtype;
+	o->wanteeprom = saved_wanteeprom;
+	o->invertptt = saved_invertptt;
+	o->frags = saved_frags;
+	o->queuesize = saved_queuesize;
+	ast_copy_string(o->rxctcssfreqs, saved_rxctcssfreqs, sizeof(o->rxctcssfreqs));
+	ast_copy_string(o->txctcssfreqs, saved_txctcssfreqs, sizeof(o->txctcssfreqs));
+	ast_copy_string(o->devstr, saved_devstr, sizeof(o->devstr));
+	ast_copy_string(o->serial, saved_serial, sizeof(o->serial));
+	ast_copy_string(o->plus_cm119_gpio_usb_port_path, saved_cm119_gpio_usb_port_path,
+			sizeof(o->plus_cm119_gpio_usb_port_path));
 	ast_log(LOG_ERROR, "RadioPlus/%s: invalid processing configuration override\n", category);
 #undef STRING
 #undef BOOLEAN
@@ -3118,10 +3181,6 @@ static void native_final_config(const struct chan_usbradio_pvt *o, const struct 
 	config->preemphasis_enabled = o->txpreemphasis;
 	config->emphasis_corner_hz = o->plus_preemphasis_corner_hz;
 	config->emphasis_reference_hz = 1000.0;
-	/* Voice/telemetry spectral shaping belongs to the configured processing
-	 * graph. The DCS-only shaper is built separately below. */
-	config->dcs_spectral_shaping_enabled = 0;
-	config->dcs_spectral_lowpass_hz = 0.0;
 }
 
 /** @brief Destroy a complete native graph generation outside the audio callback.
@@ -3137,8 +3196,8 @@ static void native_graph_set_destroy(struct usbradioplus_native_graph_set *graph
 	txagc_avfilter_destroy(&graphs->receive_filter);
 	txagc_avfilter_destroy(&graphs->local_dynamics);
 	txagc_avfilter_destroy(&graphs->final);
-	txagc_avfilter_destroy(&graphs->dcs);
-	txagc_avfilter_destroy(&graphs->dcs_turnoff);
+	usbradioplus_ffmpeg_adapter_close(&graphs->dcs);
+	usbradioplus_ffmpeg_adapter_close(&graphs->dcs_turnoff);
 	for (code = 0; code < CTCSS_NUM_CODES; ++code)
 		txagc_avfilter_destroy(&graphs->ctcss_notch[code]);
 	ast_free(graphs);
@@ -3155,8 +3214,6 @@ static void native_graph_set_init(struct usbradioplus_native_graph_set *graphs)
 	txagc_avfilter_init(&graphs->receive_filter);
 	txagc_avfilter_init(&graphs->local_dynamics);
 	txagc_avfilter_init(&graphs->final);
-	txagc_avfilter_init(&graphs->dcs);
-	txagc_avfilter_init(&graphs->dcs_turnoff);
 	for (code = 0; code < CTCSS_NUM_CODES; ++code)
 		txagc_avfilter_init(&graphs->ctcss_notch[code]);
 }
@@ -3326,7 +3383,61 @@ void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel)
 					  memory_order_seq_cst);
 }
 
-/** @brief Build every stage of a native graph generation before publication.
+/** @brief Exercise one configured voice graph before a callback can acquire it.
+ * @param filter Exclusively owned candidate graph, including its runtime buffers.
+ * @param silence Preallocated scratch space for one maximum native block.
+ * @return Zero on success, or nonzero when processing cannot complete.
+ */
+static int native_graph_warmup(struct txagc_avfilter *filter, double *silence)
+{
+	/* Rotate through every prepared source frame and run beyond the maximum
+	 * 80 ms lookahead. Keep the warmed graph and its silent delay history;
+	 * flushing with EOF or recreating it would undo the preparation. */
+	for (unsigned int block = 0; block < TXAGC_AVFILTER_INPUT_FRAME_COUNT; ++block) {
+		memset(silence, 0, URP_NATIVE_MAX_SAMPLES * sizeof(*silence));
+		if (txagc_avfilter_process_prepared(filter, silence, URP_NATIVE_MAX_SAMPLES) < 0)
+			return -1;
+	}
+	/* Preparation is not live audio. Retain delay/FIFO state but do not count
+	 * these discarded silent blocks as callback samples or underruns. */
+	filter->input_samples = 0;
+	filter->output_samples = 0;
+	filter->underrun_samples = 0;
+	filter->startup_fill_samples = 0;
+	filter->runtime_underrun_samples = 0;
+	return 0;
+}
+
+/** @brief Warm the complete unpublished graph generation with silence only.
+ * @param graphs Fully prepared generation which no callback can yet access.
+ * @return Zero on success; nonzero rejects this generation without publication.
+ */
+static int native_graph_set_warmup(struct usbradioplus_native_graph_set *graphs)
+{
+	double silence[URP_NATIVE_MAX_SAMPLES];
+	const float input[URP_NATIVE_MAX_SAMPLES] = {0};
+	float output[URP_NATIVE_MAX_SAMPLES];
+	struct txagc_avfilter *const voice[] = {&graphs->receive_deemphasis,
+						&graphs->receive_filter, &graphs->local_dynamics,
+						&graphs->final};
+
+	for (size_t index = 0; index < sizeof(voice) / sizeof(voice[0]); ++index)
+		if (native_graph_warmup(voice[index], silence))
+			return -1;
+	for (int code = 0; code < CTCSS_NUM_CODES; ++code)
+		if (graphs->ctcss_notch[code].configured &&
+		    native_graph_warmup(&graphs->ctcss_notch[code], silence))
+			return -1;
+	for (unsigned int block = 0; block < TXAGC_AVFILTER_INPUT_FRAME_COUNT; ++block)
+		if (usbradioplus_ffmpeg_adapter_process_block(
+			    &graphs->dcs, input, URP_NATIVE_MAX_SAMPLES, output) != 0 ||
+		    usbradioplus_ffmpeg_adapter_process_block(&graphs->dcs_turnoff, input,
+							      URP_NATIVE_MAX_SAMPLES, output) != 0)
+			return -1;
+	return 0;
+}
+
+/** @brief Build and silently warm every native graph stage before publication.
  * @param o Radio channel whose resolved settings are used.
  * @param graphs Receives a fully configured graph generation on success.
  * @return Zero on success; nonzero with no published graph touched on failure.
@@ -3334,22 +3445,6 @@ void usbradioplus_native_graphs_release(struct chan_usbradio_pvt *channel)
 static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 				  struct usbradioplus_native_graph_set **graphs)
 {
-	static const struct txagc_config dcs_shaping_config = {
-		.dcs_spectral_shaping_enabled = 1,
-		.dcs_spectral_lowpass_hz = 250.0,
-		/* The steep 250-Hz spectral filter has +3.41 dB passband gain at the
-		 * DCS/EOT fundamentals. Normalize that fixed response so dcs_peak_dbfs
-		 * remains the requested transmitter peak without a general limiter. */
-		.output_gain_db = -3.42,
-	};
-	static const struct txagc_config dcs_turnoff_shaping_config = {
-		.dcs_spectral_shaping_enabled = 1,
-		.dcs_spectral_lowpass_hz = 250.0,
-		/* The 134.4-Hz sine does not have the NRZ waveform's +3.41 dB
-		 * shaped passband rise. Keep its independently calibrated peak at
-		 * dcs_peak_dbfs without putting a limiter in the signaling path. */
-		.output_gain_db = 0.0,
-	};
 	struct txagc_chain local;
 	struct txagc_chain composite;
 	struct txagc_config receive_deemphasis;
@@ -3398,9 +3493,10 @@ static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 	    txagc_avfilter_prepare(&candidate->local_dynamics, &local_dynamics, URP_RATE_NATIVE) <
 		    0 ||
 	    txagc_avfilter_prepare(&candidate->final, &final, URP_RATE_NATIVE) < 0 ||
-	    txagc_avfilter_prepare(&candidate->dcs, &dcs_shaping_config, URP_RATE_NATIVE) < 0 ||
-	    txagc_avfilter_prepare(&candidate->dcs_turnoff, &dcs_turnoff_shaping_config,
-				   URP_RATE_NATIVE) < 0)
+	    usbradioplus_ffmpeg_adapter_prepare_dcs(&candidate->dcs, 0, URP_RATE_NATIVE,
+						    URP_NATIVE_MAX_SAMPLES) != 0 ||
+	    usbradioplus_ffmpeg_adapter_prepare_dcs(&candidate->dcs_turnoff, 1, URP_RATE_NATIVE,
+						    URP_NATIVE_MAX_SAMPLES) != 0)
 		goto failed;
 	if (receive_filter.ctcss_filter_mode == TXAGC_CTCSS_FILTER_NOTCH) {
 		for (code = 0; code < CTCSS_NUM_CODES; ++code) {
@@ -3415,6 +3511,8 @@ static int native_graph_set_build(const struct chan_usbradio_pvt *o,
 				goto failed;
 		}
 	}
+	if (native_graph_set_warmup(candidate))
+		goto failed;
 	*graphs = candidate;
 	return 0;
 
@@ -3593,6 +3691,8 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	atomic_init(&o->plus_native_output_reset_request, 0U);
 	o->plus_native_output_reset_seen = 0U;
 	atomic_init(&o->plus_hardware_ptt_request, 0);
+	atomic_init(&o->plus_hardware_stop_request, 0);
+	atomic_init(&o->plus_hardware_last_service_time, 0);
 	atomic_init(&o->plus_hardware_ptt_applied, 0);
 	atomic_init(&o->plus_hardware_online, 0);
 	atomic_init(&o->plus_hardware_inputs, 0U);
@@ -3612,6 +3712,14 @@ int usbradioplus_dsp_init(struct chan_usbradio_pvt *o)
 	atomic_init(&o->plus_applied_tx_output_gain_b, M_Q8);
 	atomic_init(&o->plus_hardware_generation, 0U);
 	atomic_init(&o->plus_test_tone_enabled, 0);
+
+	/* The direct PortAudio bridge starts after DSP initialization.
+	 * Initialize its fixed SPSC handoffs once; restart paths use atomic stores. */
+	atomic_init(&o->plus_portaudio_delivery_stop, 0);
+	atomic_init(&o->plus_portaudio_delivery_running, 0);
+	atomic_init(&o->plus_portaudio_delivered_keyed, 0);
+	usbradioplus_portaudio_poc_handoff_init(&o->plus_portaudio_rx_handoff);
+	usbradioplus_portaudio_poc_status_init(&o->plus_portaudio_status_handoff);
 	o->plus_adc_peak_dbfs = o->plus_adc_max_peak_dbfs = -INFINITY;
 	o->plus_deemphasis_peak_dbfs = o->plus_deemphasis_max_peak_dbfs = -INFINITY;
 	o->plus_preemphasis_input_peak_dbfs = o->plus_preemphasis_input_max_peak_dbfs = -INFINITY;
@@ -3686,15 +3794,135 @@ int usbradioplus_carrier_detected(const struct chan_usbradio_pvt *o,
 
 int usbradioplus_ctcss_detected(const struct chan_usbradio_pvt *o)
 {
+	if (!o || !o->radio)
+		return 0;
 	if (o->radio->dcs.enabled_receive)
 		return o->radio->dcs.valid && o->radio->smode == SMODE_DCS;
-	return !o->radio->b.ctcssRxEnable ||
-	       (o->radio->rxCtcss->decode > CTCSS_NULL && o->radio->smode == SMODE_CTCSS);
+	if (!o->radio->b.ctcssRxEnable)
+		return 1;
+	return o->radio->rxCtcss && o->radio->rxCtcss->decode > CTCSS_NULL &&
+	       o->radio->smode == SMODE_CTCSS;
+}
+
+/** @brief Refresh unqualified hardware and decoder receive indications.
+ * @param o Channel whose hardware and decoder state is sampled.
+ * @param carrier Receives the unqualified carrier indication.
+ * @param squelch Receives the unqualified tone-squelch indication.
+ */
+static void update_receive_indications(struct chan_usbradio_pvt *o, int *carrier, int *squelch)
+{
+	enum radio_carrier_detect rxcdtype;
+	int cd;
+	int sd;
+
+	rxcdtype = effective_rxcdtype(o);
+	cd = 0;
+	if (rxcdtype == CD_HID && (o->radio->rxExtCarrierDetect != o->rxhidsq))
+		o->radio->rxExtCarrierDetect = o->rxhidsq;
+	if (rxcdtype == CD_HID_INVERT && (o->radio->rxExtCarrierDetect == o->rxhidsq))
+		o->radio->rxExtCarrierDetect = !o->rxhidsq;
+	if (usbradioplus_carrier_detected(o, rxcdtype) &&
+	    (!o->radio->txPttOut || o->plus_advanced || o->radioduplex))
+		cd = 1;
+	/* This interval was re-armed at the true physical PTT release, after the
+	 * device queue drained. Do not admit hardware COR in that boundary. */
+	if (o->radio->txrxblankingtimer > 0)
+		cd = 0;
+	o->rxcarrierdetect = cd;
+	o->rx_cos_active = cd;
+
+	sd = usbradioplus_ctcss_detected(o);
+	if (o->rxsdtype == SD_HID)
+		sd = o->rxhidctcss;
+	else if (o->rxsdtype == SD_HID_INVERT)
+		sd = !o->rxhidctcss;
+	else if (o->rxsdtype == SD_PP)
+		sd = o->rxppctcss;
+	else if (o->rxsdtype == SD_PP_INVERT)
+		sd = !o->rxppctcss;
+	if (o->rxctcssoverride)
+		sd = 1;
+	o->rx_ctcss_active = sd;
+	if (rxcdtype == CD_IGNORE && o->rxsdtype == SD_IGNORE) {
+		cd = 0;
+		sd = 0;
+	}
+	*carrier = cd;
+	*squelch = sd;
+}
+
+/** @brief Advance the established 20 ms receiver-qualification state once.
+ * @param o Channel whose qualification timers advance.
+ * @param cd Current carrier indication.
+ * @param sd Current tone-squelch indication.
+ * @return Nonzero when receive audio is qualified.
+ */
+static int update_receive_qualification(struct chan_usbradio_pvt *o, int cd, int sd)
+{
+
+	if (o->txoffdelay) {
+		if (o->radio->txPttOut) {
+			o->txoffcnt = 0;
+		} else {
+			o->txoffcnt++;
+			if (o->txoffcnt > MS_TO_FRAMES(TX_OFF_DELAY_MAX))
+				o->txoffcnt = MS_TO_FRAMES(TX_OFF_DELAY_MAX);
+		}
+	}
+	if (cd && sd) {
+		if (o->rxkeyed ||
+		    ((o->txoffcnt >= o->txoffdelay) && (o->rxoncnt >= o->rxondelay))) {
+			o->rxkeyed = 1;
+		} else {
+			o->rxoncnt++;
+		}
+	} else {
+		o->rxkeyed = 0;
+		o->rxoncnt = 0;
+	}
+	return o->rxkeyed;
+}
+
+int usbradioplus_update_receive_state(struct chan_usbradio_pvt *o)
+{
+	int cd;
+	int sd;
+
+	if (!o || !o->radio)
+		return 0;
+	/* Fixed-frame ASL adapters continue to own complete 20 ms intervals. */
+	o->plus_receive_state_native_remainder = 0U;
+	update_receive_indications(o, &cd, &sd);
+	return update_receive_qualification(o, cd, sd);
+}
+
+int usbradioplus_update_receive_state_timed(struct chan_usbradio_pvt *o, size_t native_frame_count)
+{
+	int cd;
+	int sd;
+
+	if (!o || !o->radio)
+		return 0;
+	update_receive_indications(o, &cd, &sd);
+	while (native_frame_count) {
+		size_t until_boundary = URP_NATIVE_SAMPLES - o->plus_receive_state_native_remainder;
+		size_t elapsed =
+			native_frame_count < until_boundary ? native_frame_count : until_boundary;
+
+		o->plus_receive_state_native_remainder += elapsed;
+		native_frame_count -= elapsed;
+		if (o->plus_receive_state_native_remainder == URP_NATIVE_SAMPLES) {
+			o->plus_receive_state_native_remainder = 0U;
+			(void)update_receive_qualification(o, cd, sd);
+		}
+	}
+	return o->rxkeyed;
 }
 
 void usbradioplus_refresh_ctcss_decode(struct chan_usbradio_pvt *o)
 {
-	if (!o->radio->b.ctcssRxEnable || o->radio->rxCtcss->decode == o->rxctcssdecode)
+	if (!o || !o->radio || !o->radio->rxCtcss || !o->radio->b.ctcssRxEnable ||
+	    o->radio->rxCtcss->decode == o->rxctcssdecode)
 		return;
 	/* This runs in the hardware-paced audio callback. Publishing the transition
 	 * must remain a bounded copy; Asterisk logging can take locks. */
@@ -3767,6 +3995,8 @@ int load_config(int reload)
 	char *ctg = NULL;
 	const char *val;
 	char processing_value[64];
+	char parallel_path[sizeof(pport)];
+	unsigned int parallel_base = PP_IOPORT;
 	struct ast_flags zeroflag = {reload ? CONFIG_FLAG_FILEUNCHANGED : 0};
 
 	/* load config file */
@@ -3791,9 +4021,8 @@ int load_config(int reload)
 			store_config(ctg);
 	}
 
-	/* load parallel port information */
-	ppfd = -1;
-	pbase = 0;
+	/* Resolve parallel settings only. The shared GPIO owner opens and services
+	 * the transport after the channel's hardware composition is prepared. */
 	if (usbradio_active && !usbradioplus_processing_get_option(
 				       usbradio_active, "hardware", "hardware_parallel_port_device",
 				       processing_value, sizeof(processing_value)))
@@ -3801,9 +4030,9 @@ int load_config(int reload)
 	else
 		val = NULL;
 	if (val) {
-		ast_copy_string(pport, val, sizeof(pport));
+		ast_copy_string(parallel_path, val, sizeof(parallel_path));
 	} else {
-		ast_copy_string(pport, PP_PORT, sizeof(pport));
+		ast_copy_string(parallel_path, PP_PORT, sizeof(parallel_path));
 	}
 	if (usbradio_active &&
 	    !usbradioplus_processing_get_option(usbradio_active, "hardware",
@@ -3813,12 +4042,24 @@ int load_config(int reload)
 	else
 		val = NULL;
 	if (val) {
-		pbase = strtoul(val, NULL, 0);
+		parallel_base = strtoul(val, NULL, 0);
 	}
-	if (!pbase) {
-		pbase = PP_IOPORT;
+	if (!parallel_base) {
+		parallel_base = PP_IOPORT;
 	}
-	ast_radio_load_parallel_port(&haspp, &ppfd, &pbase, pport, reload);
+	ast_mutex_lock(&pp_lock);
+	if (usbradioplus_parallel_owner() &&
+	    (strcmp(parallel_path, pport) || parallel_base != (unsigned int)pbase)) {
+		ast_mutex_unlock(&pp_lock);
+		ast_log(LOG_ERROR, "Parallel hardware settings require a channel restart\n");
+		ast_config_destroy(cfg);
+		return -1;
+	}
+	ast_copy_string(pport, parallel_path, sizeof(pport));
+	pbase = (int)parallel_base;
+	if (haspp)
+		haspp = ast_strlen_zero(pport) ? 2 : 1;
+	ast_mutex_unlock(&pp_lock);
 	ast_config_destroy(cfg);
 	return 0;
 }

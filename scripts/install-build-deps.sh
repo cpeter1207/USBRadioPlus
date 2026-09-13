@@ -109,13 +109,25 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	asl3-asterisk-dev build-essential pkg-config python3 python3-pytest \
 	ca-certificates wget xz-utils patch \
-	libasound2-dev libusb-dev libusb-1.0-0-dev libsamplerate0-dev \
-	libavfilter-dev libavutil-dev ladspa-sdk portaudio19-dev
+	libsamplerate0-dev libavfilter-dev libavutil-dev ladspa-sdk \
+	librptadvradio-dev librptadv-samplerate-adapter-dev \
+	librptadv-ffmpeg-adapter-dev librptadv-portaudio-alsa-adapter-dev \
+	librptadv-gpio-adapter-dev
 
 install_released_shared_ring
 
 pkg-config --atleast-version=1.0.1 rate_adjusting_pcm_ring || \
 	die "rate_adjusting_pcm_ring 1.0.1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha1 rptadvradio || \
+	die "rptadvradio 0.1.0~alpha1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha1 rptadv_samplerate_adapter || \
+	die "rptadv_samplerate_adapter 0.1.0~alpha1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha1 rptadv_ffmpeg_adapter || \
+	die "rptadv_ffmpeg_adapter 0.1.0~alpha1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha2 rptadv_portaudio_alsa_adapter || \
+	die "rptadv_portaudio_alsa_adapter 0.1.0~alpha2 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha1 rptadv_gpio_adapter || \
+	die "rptadv_gpio_adapter 0.1.0~alpha1 or newer is unavailable"
 
 if ! pkg-config --exists rnnoise; then
 	sh "$(dirname -- "$0")/install-rnnoise.sh"

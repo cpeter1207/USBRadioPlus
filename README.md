@@ -5,6 +5,10 @@ is intended for operators who want to improve their node's audio quality with
 more configurable filtering and additional dynamics processing while retaining
 support for common CM108-, CM109-, and CM119-family USB radio interfaces.
 
+Every channel requires the released PortAudio/ALSA and GPIO adapters, bound
+to one USB identity. The single ASL3 implementation has no `res_usbradio.so`
+dependency.
+
 This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
 with suitable test equipment.
@@ -29,10 +33,8 @@ cd usbradioplus-VERSION
 sudo ./install.sh
 ```
 
-The installer verifies the shipped signing key, configures the project
-repository, installs build dependencies including the released shared library,
-builds and tests the module and utilities, and copies them into place. It does
-not load the module, restart Asterisk, or change `modules.conf` or `rpt.conf`.
+The installer verifies the signing key, installs dependencies, builds and tests
+the module, and copies files into place without activating Asterisk changes.
 
 Developers and package maintainers can use the standard Makefile directly. See
 [INSTALL.md](INSTALL.md) for build, test, staged-install, and source-archive
@@ -59,4 +61,4 @@ commands.
 - [Contributing](CONTRIBUTING.md) describes push checks, the PR gate, and
   reproducible test containers.
 
-After installation, start with `man 7 usbradioplus`.
+Start with `man 7 usbradioplus`.

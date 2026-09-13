@@ -82,11 +82,12 @@ def run_detection(tmp_path, suite, architecture, asl_version, *arguments):
         ("bookworm", "arm64", "2:22.9.0+asl3-3.9.3-1.deb12", "usbradioplus"),
         ("trixie", "amd64", "2:22.9.0+asl3-3.9.3-1.deb13", "usbradioplus"),
         ("trixie", "arm64", "2:22.9.0+asl3-3.9.3-1.deb13", "usbradioplus"),
+        ("trixie", "amd64", "2:22.10.1+asl3-3.10.5-1.deb13", "usbradioplus"),
         (
             "trixie",
             "arm64",
             "2:22.10.1+asl3-3.10.5-1.deb13",
-            "usbradioplus-asl3105",
+            "usbradioplus",
         ),
     ],
 )
@@ -110,7 +111,6 @@ def test_dry_run_selects_only_supported_package(tmp_path, suite, architecture, v
     [
         ("bullseye", "arm64", "2:22.9.0+asl3-3.9.3-1.deb11", "unsupported Debian"),
         ("trixie", "armhf", "2:22.9.0+asl3-3.9.3-1.deb13", "unsupported architecture"),
-        ("trixie", "amd64", "2:22.10.1+asl3-3.10.5-1.deb13", "no package is published"),
         ("trixie", "arm64", "2:99.0+asl3-99.0-1.deb13", "no package is published"),
     ],
 )
