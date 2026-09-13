@@ -207,6 +207,10 @@ static void test_code_syntax(void)
 	assert(urp_dcs_parse_code("88N", &code, &inverted));
 	assert(urp_dcs_parse_code(NULL, &code, &inverted));
 	assert(urp_dcs_parse_code("023N", NULL, &inverted));
+	assert(urp_dcs_parse_code("023N", &code, NULL));
+	const char *invalid_digits[] = {"/00N", "800N", "0/0N", "080N", "00/N", "008N"};
+	for (size_t index = 0; index < sizeof(invalid_digits) / sizeof(invalid_digits[0]); ++index)
+		assert(urp_dcs_parse_code(invalid_digits[index], &code, &inverted));
 	urp_dcs_format_code(text, sizeof(text), 023, 1);
 	assert(!strcmp(text, "023I"));
 	urp_dcs_format_code(text, sizeof(text), 023, 0);
@@ -230,6 +234,7 @@ static void test_configuration(void)
 	struct urp_dcs_state state;
 
 	urp_dcs_init(NULL);
+	urp_dcs_set_receive_callback(NULL, NULL, NULL);
 	urp_dcs_configure(NULL, 0, 0, 0, 0);
 	urp_dcs_init(&state);
 	urp_dcs_configure(&state, 023, 1, 0431, 0);
@@ -272,6 +277,9 @@ static void test_receive_callback_contract(void)
 	/* Invalid calls retain legacy no-mutation behavior. */
 	state.valid = 1;
 	assert(!urp_dcs_process(&state, NULL, probe.count, probe.stride, probe.sample_rate));
+	assert(!urp_dcs_process(NULL, stereo, probe.count, probe.stride, probe.sample_rate));
+	assert(!urp_dcs_process(&state, stereo, probe.count, 0, probe.sample_rate));
+	assert(!urp_dcs_process(&state, stereo, probe.count, probe.stride, 0));
 	assert(state.valid);
 
 	/* A missing receiver occurs only while a renderer is closed and fails safe. */

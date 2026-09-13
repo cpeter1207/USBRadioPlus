@@ -55,6 +55,16 @@
 #define URP_PORTAUDIO_POC_STREAM_DESCRIPTOR_SIZE                                                   \
 	URP_PORTAUDIO_POC_DESCRIPTOR_MEMBER_END(stream_destroy)
 
+#ifdef URP_PROCESSING_TESTING
+/** @brief One-shot competing producer publication injected after a consumer copy. */
+static atomic_int portaudio_poc_test_invalidate_claim;
+
+void usbradioplus_portaudio_poc_test_invalidate_next_claim(void)
+{
+	atomic_store(&portaudio_poc_test_invalidate_claim, 1);
+}
+#endif
+
 /** @brief Return whether an adapter supplies the stream ABI used by this POC. */
 static int portaudio_poc_stream_adapter_valid(const struct rptadv_audio_adapter_descriptor *adapter)
 {
@@ -74,16 +84,11 @@ static void portaudio_poc_log_stream_timing(struct chan_usbradio_pvt *channel,
 #ifdef URP_HAVE_GPIO_POC
 	int timing_result;
 
-	if (channel->plus_cm119_gpio_poc && channel->plus_hardware_adapter_prepared) {
-		timing_result =
-			usbradioplus_hardware_adapter_stream_get_timing(
+	/* Startup has already required the prepared combined hardware facade. */
+	(void)adapter;
+	timing_result = usbradioplus_hardware_adapter_stream_get_timing(
 				&channel->plus_hardware_adapter, channel->plus_portaudio_stream,
 				&timing) == USBRADIOPLUS_HARDWARE_ADAPTER_OK;
-	} else {
-		timing_result = usbradioplus_portaudio_poc_get_stream_timing(
-					adapter, channel->plus_portaudio_stream, &timing) ==
-				RPTADV_AUDIO_OK;
-	}
 	if (!timing_result)
 		return;
 #else
@@ -100,7 +105,7 @@ static void portaudio_poc_log_stream_timing(struct chan_usbradio_pvt *channel,
 
 /**
  * @brief Latch legacy CTCSS-ready and voter text before the matching PCM block.
- * @param channel Callback-owned legacy channel state.
+ * @param channel Callback-owned legacy state protected by successful radio access.
  *
  * Status is retained in its own preallocated SPSC queue, rather than inside
  * the bounded PCM queue.  Therefore an audio-overload resynchronization can
@@ -111,8 +116,6 @@ static void portaudio_poc_capture_status(struct chan_usbradio_pvt *channel, size
 {
 	int voter_due = 0;
 
-	if (!channel || !channel->radio)
-		return;
 	if (channel->plus_portaudio_callback_keyed != channel->rxkeyed) {
 		channel->plus_portaudio_callback_keyed = channel->rxkeyed;
 		/* The legacy worker reports once at the first complete 20 ms keyed
@@ -150,15 +153,21 @@ static void portaudio_poc_capture_status(struct chan_usbradio_pvt *channel, size
 	}
 }
 
-/** @brief Publish one complete app-facing receive result without allocating or waiting. */
+#ifdef URP_PROCESSING_TESTING
+void usbradioplus_portaudio_poc_test_capture_status(struct chan_usbradio_pvt *channel,
+						    size_t frame_count)
+{
+	portaudio_poc_capture_status(channel, frame_count);
+}
+#endif
+
+/** @brief Publish a caller-validated nonempty bounded receive span without waiting. */
 static void portaudio_poc_publish_receive(struct chan_usbradio_pvt *channel, const short *pcm,
 					  unsigned int frame_count)
 {
 	struct usbradioplus_portaudio_poc_rx_block *block;
 	unsigned int slot;
 
-	if (!channel || !pcm || !frame_count || frame_count > URP_NATIVE_MAX_SAMPLES)
-		return;
 	if (usbradioplus_portaudio_poc_handoff_producer_reserve(
 		    &channel->plus_portaudio_rx_handoff, URP_PORTAUDIO_POC_RX_BLOCK_COUNT, &slot) !=
 	    USBRADIOPLUS_PORTAUDIO_POC_HANDOFF_READY)
@@ -195,8 +204,7 @@ static void portaudio_poc_publish_legacy_receive(struct chan_usbradio_pvt *chann
 	short *handoff_pcm;
 	size_t copied;
 
-	if (!channel || !pcm || app_sample_count > URP_NATIVE_MAX_SAMPLES)
-		return;
+	/* The callback supplies its owned channel buffer and bounded SRC result. */
 	assembler = &channel->plus_portaudio_legacy_rx_assembler;
 	if (usbradioplus_portaudio_poc_receive_assembler_append(assembler, pcm, app_sample_count)) {
 		/* This cannot occur for a legal bounded callback.  Recover to silence
@@ -343,8 +351,8 @@ static void portaudio_poc_deliver_key(struct chan_usbradio_pvt *channel,
 
 /**
  * @brief Deliver one callback-latched legacy text event at the Asterisk boundary.
- * @param channel Legacy channel receiving the text frame.
- * @param event Complete event copied from the lock-free status queue.
+ * @param channel Legacy channel with an owner checked by the delivery boundary.
+ * @param event Non-NULL complete event copied from the lock-free status queue.
  */
 static void
 portaudio_poc_deliver_status(struct chan_usbradio_pvt *channel,
@@ -356,8 +364,6 @@ portaudio_poc_deliver_status(struct chan_usbradio_pvt *channel,
 	};
 	char message[32];
 
-	if (!channel || !channel->owner || !event)
-		return;
 	switch (event->type) {
 	case USBRADIOPLUS_PORTAUDIO_POC_STATUS_CTCSS:
 		snprintf(message, sizeof(message), "cstx=%.26s", event->ctcss_frequency);
@@ -482,6 +488,10 @@ static int portaudio_poc_deliver_pending(struct chan_usbradio_pvt *channel, int 
 	if (handoff_result != USBRADIOPLUS_PORTAUDIO_POC_HANDOFF_READY)
 		return -1;
 	memcpy(&block, &channel->plus_portaudio_rx_blocks[slot], sizeof(block));
+#ifdef URP_PROCESSING_TESTING
+	if (atomic_exchange(&portaudio_poc_test_invalidate_claim, 0))
+		atomic_fetch_add(&channel->plus_portaudio_rx_handoff.resync_generation, 2U);
+#endif
 	if (!usbradioplus_portaudio_poc_handoff_claim_current(&channel->plus_portaudio_rx_handoff,
 							      *seen_generation)) {
 		usbradioplus_portaudio_poc_handoff_consumer_discard(

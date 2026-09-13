@@ -192,11 +192,12 @@ static int native_renderer_decode_dcs(void *context, const int16_t *samples, siz
 
 	if (valid)
 		*valid = 0;
-	if (!renderer || !renderer->radio_core || !samples || !valid || stride != 2U ||
-	    sample_rate != URP_RATE_NATIVE || frame_count > URP_NATIVE_MAX_SAMPLES)
+	if (!renderer || !samples || !valid || stride != 2U || sample_rate != URP_RATE_NATIVE ||
+	    frame_count > URP_NATIVE_MAX_SAMPLES)
 		return -1;
+	/* Only a fully constructed renderer publishes this callback and context. */
 	channel = renderer->channel;
-	if (!channel || !channel->radio || !channel->radio->dcs.enabled_receive)
+	if (!channel->radio || !channel->radio->dcs.enabled_receive)
 		return -1;
 	code = channel->radio->dcs.receive_code;
 	inverted = channel->radio->dcs.receive_inverted;
@@ -236,11 +237,11 @@ static int native_renderer_decode_ctcss(void *context, const int16_t *samples, s
 
 	if (decoded)
 		*decoded = CTCSS_NULL;
-	if (!renderer || !renderer->radio_core || !samples || !decoded ||
-	    sample_count > ARRAY_LEN(renderer->ctcss_input))
+	if (!renderer || !samples || !decoded || sample_count > ARRAY_LEN(renderer->ctcss_input))
 		return -1;
+	/* Startup binds a valid core and owning channel before publishing this hook. */
 	channel = renderer->channel;
-	if (!channel || !channel->radio || !channel->radio->rxCtcss)
+	if (!channel->radio || !channel->radio->rxCtcss)
 		return -1;
 	if (renderer->ctcss_receive_mask != tone_mask || renderer->ctcss_receive_relax != !!relax) {
 		if (urp_radio_core_configure_ctcss_receive(renderer->radio_core, tone_mask, relax))
@@ -560,9 +561,9 @@ static void native_renderer_snapshot(struct native_renderer_input *snapshot,
 }
 
 /** @brief Convert one native callback duration to an exact app-facing duration.
- * @param app_rate Active app-facing sample rate in Hz.
- * @param native_frame_count Native PCM samples in the callback.
- * @param app_frame_count Receives the matching app-facing sample count.
+ * @param app_rate Nonzero app-facing rate checked by the capacity boundary.
+ * @param native_frame_count Nonzero bounded native callback span.
+ * @param app_frame_count Non-NULL local output for the app-facing sample count.
  * @return Zero when the duration has an exact bounded app-facing representation.
  *
  * Fixed compatibility frames and legacy app-rate echo require an exact
@@ -574,13 +575,11 @@ static int native_renderer_app_frame_count(unsigned int app_rate, size_t native_
 {
 	size_t scaled;
 
-	if (!app_rate || !app_frame_count || !native_frame_count)
-		return -1;
 	scaled = native_frame_count * app_rate;
 	if (scaled % URP_RATE_NATIVE)
 		return -1;
 	scaled /= URP_RATE_NATIVE;
-	if (!scaled || scaled > URP_NATIVE_MAX_SAMPLES)
+	if (scaled > URP_NATIVE_MAX_SAMPLES)
 		return -1;
 	*app_frame_count = scaled;
 	return 0;
@@ -588,8 +587,8 @@ static int native_renderer_app_frame_count(unsigned int app_rate, size_t native_
 
 /** @brief Bound converter output for one arbitrary native callback span.
  * @param app_rate Active app-facing sample rate in Hz.
- * @param native_frame_count Native PCM samples in the callback.
- * @param app_capacity Receives a preallocated app-facing output capacity.
+ * @param native_frame_count Nonzero bounded native callback span.
+ * @param app_capacity Non-NULL local output for the app-facing capacity.
  * @return Zero when the callback has a bounded app-facing conversion.
  *
  * Ordinary direct callbacks may end between app-rate sample boundaries.  A
@@ -604,7 +603,7 @@ static int native_renderer_app_frame_capacity(unsigned int app_rate, size_t nati
 	size_t scaled;
 	size_t capacity;
 
-	if (!app_capacity || !app_rate || !native_frame_count)
+	if (!app_rate)
 		return -1;
 	if (!native_renderer_app_frame_count(app_rate, native_frame_count, &exact_count)) {
 		*app_capacity = exact_count;

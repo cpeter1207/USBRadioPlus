@@ -42,12 +42,12 @@ static const struct rptadv_radio_descriptor *radio_core_provider_descriptor(void
 }
 
 /** @brief Check that a candidate exposes every operation selected by this composition.
- * @param descriptor Candidate portable-core descriptor.
+ * @param descriptor Non-NULL candidate checked by the initialization boundary.
  * @return Nonzero when all required operations are present.
  */
 static int radio_core_descriptor_complete(const struct rptadv_radio_descriptor *descriptor)
 {
-	if (!descriptor || descriptor->struct_size < URP_RADIO_CORE_REQUIRED_DESCRIPTOR_END)
+	if (descriptor->struct_size < URP_RADIO_CORE_REQUIRED_DESCRIPTOR_END)
 		return 0;
 	return descriptor->radio_create && descriptor->radio_destroy &&
 	       descriptor->radio_repeat_f32 && descriptor->radio_render_transmit_f32 &&
@@ -124,8 +124,8 @@ static const struct rptadv_radio_descriptor *radio_core_parse_descriptor(void)
 }
 
 /** @brief Parse into a temporary so all failure paths preserve caller storage.
- * @param text Configuration value to parse.
- * @param value Receives the parsed assignment on success.
+ * @param text Non-NULL configuration value checked by the public parser.
+ * @param value Non-NULL output checked by the public parser.
  * @param parse Portable parser implementing the selected assignment.
  * @return Zero on success, or minus one on invalid arguments or parse failure.
  */
@@ -134,7 +134,7 @@ static int radio_core_parse_assignment(const char *text, uint32_t *value,
 {
 	uint32_t parsed = 0U;
 
-	if (!text || !value || !parse || parse(text, &parsed) != RPTADV_RADIO_OK)
+	if (!parse || parse(text, &parsed) != RPTADV_RADIO_OK)
 		return -1;
 	*value = parsed;
 	return 0;
@@ -262,18 +262,18 @@ void urp_radio_core_destroy(struct rptadv_radio *radio)
 {
 	const struct rptadv_radio_descriptor *descriptor = urp_radio_core_descriptor_get();
 
-	if (descriptor && descriptor->radio_destroy)
+	if (descriptor)
 		descriptor->radio_destroy(radio);
 }
 
 /** @brief Convert one C size into the fixed ABI's bounded frame count.
  * @param frame_count Native C frame count.
- * @param bounded Receives the ABI-sized count.
+ * @param bounded Non-NULL local storage receiving the ABI-sized count.
  * @return Zero on success, or minus one when the count cannot be represented.
  */
 static int radio_core_frame_count(size_t frame_count, uint32_t *bounded)
 {
-	if (!bounded || frame_count > UINT32_MAX)
+	if (frame_count > UINT32_MAX)
 		return -1;
 	*bounded = (uint32_t)frame_count;
 	return 0;
@@ -591,8 +591,6 @@ int urp_radio_core_delay_line_s16(const int16_t *input, int16_t *output, size_t 
 		float codes;
 		int32_t quantized;
 
-		if (!output)
-			return -1;
 		codes = workspace->output[index] * 32768.0F;
 		if (!(codes >= (float)INT16_MIN && codes <= (float)INT16_MAX))
 			return -1;

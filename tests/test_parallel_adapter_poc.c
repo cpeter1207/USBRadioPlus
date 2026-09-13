@@ -24,6 +24,8 @@ struct fake_parallel {
 	enum rptadv_gpio_result publish_result;
 	enum rptadv_gpio_result service_result;
 	enum rptadv_gpio_result binary_result;
+	enum rptadv_gpio_result rtx_result;
+	enum rptadv_gpio_result clear_result;
 	struct rptadv_gpio_parallel_config config;
 	struct rptadv_gpio_parallel_output_action output;
 	struct rptadv_gpio_parallel_scheduled_inverting_pulse_action pulse;
@@ -51,6 +53,8 @@ static void fake_reset(void)
 	fake.publish_result = RPTADV_GPIO_OK;
 	fake.service_result = RPTADV_GPIO_OK;
 	fake.binary_result = RPTADV_GPIO_OK;
+	fake.rtx_result = RPTADV_GPIO_OK;
+	fake.clear_result = RPTADV_GPIO_OK;
 	fake.inputs.struct_size = sizeof(fake.inputs);
 	fake.inputs.abi_version = RPTADV_GPIO_ADAPTER_ABI_VERSION;
 	fake.inputs.online = 1U;
@@ -159,7 +163,7 @@ static enum rptadv_gpio_result fake_parallel_program_rtx(struct rptadv_gpio_para
 	fake.rtx_tx = tx_frequency_hz;
 	fake.rtx_transmitting = transmitting;
 	fake.rtx_high_power = high_power;
-	return RPTADV_GPIO_OK;
+	return fake.rtx_result;
 }
 
 /** @brief Capture one immediate RTX transmitter release. */
@@ -167,7 +171,7 @@ static enum rptadv_gpio_result fake_parallel_clear_rtx(struct rptadv_gpio_parall
 {
 	fake_capture_device(device);
 	++fake.clear_calls;
-	return RPTADV_GPIO_OK;
+	return fake.clear_result;
 }
 
 /** @brief Minimal released descriptor exposing every migrated parallel primitive. */
@@ -226,6 +230,8 @@ static void test_open_contract(void)
 						      0U) ==
 	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
 	assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 1, NULL, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 1, "", 0U, 0U) ==
 	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
 	assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 2, NULL, 0U, 0U) ==
 	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
@@ -594,6 +600,133 @@ static void test_input_translation(void)
 	assert(events.count == 1U);
 }
 
+/** @brief Exercise every nullable public boundary before facade publication. */
+static void test_null_and_closed_boundaries(void)
+{
+	struct usbradioplus_parallel_adapter_poc_state state;
+	struct usbradioplus_hardware_adapter adapter = fake_adapter();
+	struct usbradioplus_parallel_adapter_poc_service_request request = {0};
+	uint8_t applied = 99U;
+	unsigned int missing;
+	usbradioplus_parallel_adapter_poc_init(NULL);
+	usbradioplus_parallel_adapter_poc_request_binary_channel(NULL, 1U);
+	usbradioplus_parallel_adapter_poc_init(&state);
+	assert(!usbradioplus_parallel_adapter_poc_is_open(NULL));
+	assert(usbradioplus_parallel_adapter_poc_persistent_output(NULL) == 0U);
+	for (missing = 0U; missing < 2U; ++missing) {
+		assert(usbradioplus_parallel_adapter_poc_open(
+			       missing ? &state : NULL, missing ? NULL : &adapter, 0, NULL, 0U,
+			       0U) == USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(usbradioplus_parallel_adapter_poc_publish_output(
+			       missing ? &state : NULL, missing ? NULL : &adapter, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(usbradioplus_parallel_adapter_poc_schedule_pulse(
+			       missing ? &state : NULL, missing ? NULL : &adapter, 0U, 0U, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	}
+	assert(usbradioplus_parallel_adapter_poc_schedule_pulse(&state, &adapter, 0U, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	for (missing = 0U; missing < 5U; ++missing)
+		assert(usbradioplus_parallel_adapter_poc_service(
+			       missing == 0U ? NULL : &state, missing == 1U ? NULL : &adapter,
+			       missing == 2U ? NULL : &state, missing == 3U ? NULL : &request,
+			       missing == 4U ? NULL : &applied, NULL,
+			       NULL) == USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_parallel_adapter_poc_service(&state, &adapter, &state, &request,
+							 &applied, NULL,
+							 NULL) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(applied == 99U);
+}
+
+/** @brief Verify service errors latch faults and leave requested transitions retryable. */
+static void test_service_failure_boundaries(void)
+{
+	struct usbradioplus_parallel_adapter_poc_state state;
+	struct usbradioplus_hardware_adapter adapter;
+	struct usbradioplus_parallel_adapter_poc_service_request request;
+	uint8_t applied = 0U;
+	unsigned int failure;
+	for (failure = 0U; failure < 6U; ++failure) {
+		fake_reset();
+		adapter = fake_adapter();
+		usbradioplus_parallel_adapter_poc_init(&state);
+		assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 1, "/dev/parport0",
+							      0U, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+		assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 1, NULL, 0U, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+		request = (struct usbradioplus_parallel_adapter_poc_service_request){0};
+		if (failure == 0U) {
+			request.force_unkey = 1;
+			request.ptt_asserted = 1;
+		} else if (failure == 1U) {
+			request.have_program = 1;
+			request.rx_frequency_hz = 146520000U;
+			request.tx_frequency_hz = 146520000U;
+			fake.rtx_result = RPTADV_GPIO_IO_ERROR;
+		} else if (failure == 2U || failure == 3U) {
+			request.force_unkey = failure == 2U;
+			state.program_generation = 0U;
+			state.last_ptt_asserted = 1;
+			fake.clear_result = RPTADV_GPIO_IO_ERROR;
+		} else if (failure == 4U) {
+			request.ptt_asserted = 1;
+			request.ptt_mask = 1U;
+			fake.publish_result = RPTADV_GPIO_IO_ERROR;
+		} else {
+			atomic_store(&state.faulted, 1);
+		}
+		assert(usbradioplus_parallel_adapter_poc_service(&state, &adapter, &state, &request,
+								 &applied, NULL, NULL) ==
+		       (failure == 0U ? USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT
+				      : USBRADIOPLUS_HARDWARE_ADAPTER_GPIO_ERROR));
+		if (failure != 0U)
+			assert(atomic_load(&state.faulted));
+		usbradioplus_hardware_adapter_close(&adapter);
+	}
+	fake_reset();
+	adapter = fake_adapter();
+	usbradioplus_parallel_adapter_poc_init(&state);
+	assert(usbradioplus_parallel_adapter_poc_open(&state, &adapter, 1, "/dev/parport0", 0U,
+						      0U) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	request = (struct usbradioplus_parallel_adapter_poc_service_request){.have_program = 1};
+	assert(usbradioplus_parallel_adapter_poc_service(&state, &adapter, &state, &request,
+							 &applied, NULL,
+							 NULL) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(fake.rtx_calls == 0 && applied == 0U);
+	state.program_generation = 0U;
+	state.last_ptt_asserted = 1;
+	request.have_program = 0;
+	request.ptt_asserted = 1;
+	assert(usbradioplus_parallel_adapter_poc_service(&state, &adapter, &state, &request,
+							 &applied, NULL,
+							 NULL) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(fake.clear_calls == 0);
+	usbradioplus_hardware_adapter_close(&adapter);
+}
+
+/** @brief Preserve independent input bits, ignored assignments, and optional notifications. */
+static void test_input_notification_boundaries(void)
+{
+	char *assignments[16] = {0};
+	int had_input = 0, last_input = 0;
+	assert(usbradioplus_parallel_adapter_poc_translate_inputs(0U, NULL, &had_input, &last_input,
+								  NULL, NULL) == 0U);
+	assert(usbradioplus_parallel_adapter_poc_translate_inputs(0U, assignments, NULL,
+								  &last_input, NULL, NULL) == 0U);
+	assert(usbradioplus_parallel_adapter_poc_translate_inputs(0U, assignments, &had_input, NULL,
+								  NULL, NULL) == 0U);
+	assignments[10] = "in";
+	assignments[11] = "in";
+	assignments[12] = "cor";
+	assignments[15] = "ctcss";
+	(void)usbradioplus_parallel_adapter_poc_translate_inputs(0x80U, assignments, &had_input,
+								 &last_input, NULL, NULL);
+	(void)usbradioplus_parallel_adapter_poc_translate_inputs(0xc0U, assignments, &had_input,
+								 &last_input, NULL, NULL);
+	assert(had_input && last_input == 0x40);
+}
+
 int main(void)
 {
 	test_open_contract();
@@ -604,6 +737,9 @@ int main(void)
 	test_shared_channel_service();
 	test_shared_transport_transfer();
 	test_input_translation();
+	test_null_and_closed_boundaries();
+	test_service_failure_boundaries();
+	test_input_notification_boundaries();
 	puts("parallel adapter POC tests passed");
 	return 0;
 }

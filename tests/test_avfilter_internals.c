@@ -160,6 +160,7 @@ static void test_graph_stage_helpers(void)
 	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 0.0, 5000.0));
 	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 100.0, 0.0));
 	assert(!add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 0.0, 0.0));
+	assert(add_brickwall_bandpass(graph, sizeof(graph), "a", "b", "p", 0.0, -1.0) < 0);
 	assert(!add_emphasis(graph, sizeof(graph), "a", "b", 0, 300.0, 1000.0, 48000));
 	assert(!add_emphasis(graph, sizeof(graph), "a", "b", 1, 300.0, 1000.0, 48000));
 	graph[0] = '\0';
@@ -332,6 +333,9 @@ static void test_description_variants(void)
 	cfg.post_limiter_bandpass_enabled = 1;
 	cfg.post_limiter_bandpass_lowpass_hz = 5000.0;
 	expect_post_input_stage_overflow(&cfg);
+	cfg.post_limiter_bandpass_lowpass_hz = -1.0;
+	assert(build_description(graph, sizeof(graph), &cfg, 48000) < 0);
+	cfg.post_limiter_bandpass_lowpass_hz = 5000.0;
 	cfg.deemphasis_enabled = 1;
 	cfg.receive_bandpass_enabled = 1;
 	cfg.ctcss_filter_mode = TXAGC_CTCSS_FILTER_NOTCH;

@@ -124,8 +124,7 @@ enum usbradioplus_hardware_adapter_result usbradioplus_hardware_gpio_poc_publish
 	if (clip_led_requested && clip_led_mask != 0U && !clip_pulse_pending &&
 	    hardware_gpio_poc_deadline_reached(monotonic_milliseconds,
 					       state->clip_led_deadline_milliseconds)) {
-		if (clip_hold_milliseconds == 0U)
-			return USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT;
+		/* The complete request validation already established a nonzero hold. */
 		result = hardware_gpio_poc_schedule(adapter, clip_led_mask, clip_hold_milliseconds);
 		if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
 			return result;

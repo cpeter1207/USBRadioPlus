@@ -790,7 +790,9 @@ def test_shared_program_ring_uses_its_public_abi():
     assert "$(PKG_CONFIG) --libs rate_adjusting_pcm_ring" in makefile
     assert "RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring.so" in makefile
     assert "RPCR_ARCHIVE" not in makefile
-    assert "librate_adjusting_pcm_ring' /tmp/module-libraries" in text("containers/Dockerfile")
+    dockerfile = text("containers/Dockerfile")
+    assert "librate_adjusting_pcm_ring.so.1' /tmp/module-libraries" in dockerfile
+    assert "librate_adjusting_pcm_ring2.so.2' /tmp/module-libraries" in dockerfile
     assert "matching development package" in text("INSTALL.md")
     assert "librate-adjusting-pcm-ring-dev" in text("debian/control")
     runner = text("tests/run_c_tests.sh")
@@ -808,8 +810,11 @@ def test_shared_samplerate_adapter_uses_its_public_abi():
     assert "librptadv_samplerate_adapter.so" in makefile
     assert "src/usbradioplus_samplerate_adapter.c" in makefile
     dockerfile = text("containers/Dockerfile")
-    assert "FROM rptadv_samplerate_adapter AS rptadv-samplerate-adapter-source" in dockerfile
-    assert "librptadv_samplerate_adapter" in dockerfile
+    assert "FROM shared_packages AS released-shared-packages" in dockerfile
+    assert "COPY --from=released-shared-packages / /tmp/shared-packages/" in dockerfile
+    assert "/tmp/shared-packages/*.deb" in dockerfile
+    assert "FROM rptadv_samplerate_adapter" not in dockerfile
+    assert "librptadv_samplerate_adapter' /tmp/module-libraries" in dockerfile
     assert "librptadv-samplerate-adapter-dev" in text("debian/control")
     assert "librptadv-samplerate-adapter-dev" in text("scripts/install-build-deps.sh")
     assert "rptadv_samplerate_adapter" in text("doc/packaging.md")
@@ -826,9 +831,12 @@ def test_shared_ffmpeg_adapter_owns_dcs_graphs():
     assert "$(PKG_CONFIG) --libs rptadv_ffmpeg_adapter" in makefile
     assert "librptadv_ffmpeg_adapter.so" in makefile
     assert "src/usbradioplus_ffmpeg_adapter.c" in makefile
-    assert "FROM rptadv_ffmpeg_adapter AS rptadv-ffmpeg-adapter-source" in text(
-        "containers/Dockerfile"
-    )
+    dockerfile = text("containers/Dockerfile")
+    assert "FROM shared_packages AS released-shared-packages" in dockerfile
+    assert "COPY --from=released-shared-packages / /tmp/shared-packages/" in dockerfile
+    assert "/tmp/shared-packages/*.deb" in dockerfile
+    assert "FROM rptadv_ffmpeg_adapter" not in dockerfile
+    assert "librptadv_ffmpeg_adapter' /tmp/module-libraries" in dockerfile
     assert "librptadv-ffmpeg-adapter-dev" in text("debian/control")
     assert "librptadv-ffmpeg-adapter-dev" in text("scripts/install-build-deps.sh")
     assert "rptadv_ffmpeg_adapter" in text("doc/packaging.md")

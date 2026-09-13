@@ -190,6 +190,8 @@ static void test_debug_buffers(void)
 	strace(0, &debug, 3, 123);
 	assert(debug.buffer[3 * URP_RADIO_DEBUG_CHANNELS + 2] == 123);
 	debug.source[4] = source;
+	strace2(&debug, -1);
+	strace2(&debug, SAMPLES_PER_BLOCK + 1);
 	strace2(&debug, SAMPLES_PER_BLOCK);
 	assert(debug.buffer[7 * URP_RADIO_DEBUG_CHANNELS + 4] == 7);
 }
@@ -2706,6 +2708,9 @@ static void test_allocation_failures(void)
 	allocations_until_failure = -1;
 }
 
+#include "radio_processing_boundary_cases.h"
+#include "radio_primitive_boundary_cases.h"
+
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
@@ -2752,6 +2757,10 @@ int main(void)
 	RUN_TEST(test_cpu_saver_predicates);
 	RUN_TEST(test_lifecycle_edges);
 	RUN_TEST(test_allocation_failures);
+	RUN_TEST(test_processing_rejected_core_fallbacks);
+	RUN_TEST(test_processing_scalar_boundaries);
+	RUN_TEST(test_processing_runtime_edges);
+	RUN_TEST(test_radio_primitive_boundaries);
 #undef RUN_TEST
 	puts("native radio core tests passed");
 	return 0;

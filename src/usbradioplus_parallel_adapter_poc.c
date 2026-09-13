@@ -28,7 +28,7 @@
 static const uint8_t parallel_input_shift[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 5, 4, 0, 3};
 
 /** @brief Latch a failed facade publication so the worker fails closed.
- * @param state Parallel adapter whose fault latch is updated, when present.
+ * @param state Validated parallel adapter whose fault latch is updated.
  * @param result Publication result to inspect and retain.
  * @return The supplied publication result.
  */
@@ -36,7 +36,7 @@ static enum usbradioplus_hardware_adapter_result
 parallel_adapter_result(struct usbradioplus_parallel_adapter_poc_state *state,
 			enum usbradioplus_hardware_adapter_result result)
 {
-	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK && state)
+	if (result != USBRADIOPLUS_HARDWARE_ADAPTER_OK)
 		atomic_store_explicit(&state->faulted, 1, memory_order_release);
 	return result;
 }

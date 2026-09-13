@@ -58,6 +58,7 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
         # while copytree walks the shared working tree.
         ignore=shutil.ignore_patterns(
             ".git",
+            ".work",
             "build",
             "dist",
             "work",

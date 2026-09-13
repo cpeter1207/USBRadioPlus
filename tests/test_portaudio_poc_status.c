@@ -213,11 +213,47 @@ static void test_status_handoff_is_bounded(void)
 	assert(usbradioplus_portaudio_poc_status_published(&handoff) == 0U);
 }
 
+/** @brief Exercise public null guards and bounded optional frequency copies. */
+static void test_status_input_boundaries(void)
+{
+	struct usbradioplus_portaudio_poc_status_handoff handoff;
+	struct usbradioplus_portaudio_poc_status_event event;
+	uint64_t sequence = 0U;
+	char oversized[128];
+
+	usbradioplus_portaudio_poc_status_init(NULL);
+	usbradioplus_portaudio_poc_status_reset(NULL);
+	assert(usbradioplus_portaudio_poc_status_published(NULL) == 0U);
+	assert(usbradioplus_portaudio_poc_status_publish_voter(NULL, 1) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_INVALID);
+	usbradioplus_portaudio_poc_status_init(&handoff);
+	assert(usbradioplus_portaudio_poc_status_consume(NULL, &sequence, &event) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_INVALID);
+	assert(usbradioplus_portaudio_poc_status_consume(&handoff, NULL, &event) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_INVALID);
+	assert(usbradioplus_portaudio_poc_status_consume(&handoff, &sequence, NULL) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_INVALID);
+	assert(usbradioplus_portaudio_poc_status_publish_ctcss(&handoff, NULL) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_READY);
+	assert(usbradioplus_portaudio_poc_status_consume(&handoff, &sequence, &event) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_READY);
+	assert(event.ctcss_frequency[0] == '\0');
+	memset(oversized, '7', sizeof(oversized));
+	oversized[sizeof(oversized) - 1U] = '\0';
+	assert(usbradioplus_portaudio_poc_status_publish_ctcss(&handoff, oversized) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_READY);
+	assert(usbradioplus_portaudio_poc_status_consume(&handoff, &sequence, &event) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_STATUS_READY);
+	assert(strlen(event.ctcss_frequency) == sizeof(event.ctcss_frequency) - 1U);
+	assert(!strncmp(event.ctcss_frequency, oversized, sizeof(event.ctcss_frequency) - 1U));
+}
+
 int main(void)
 {
 	test_key_ctcss_voter_voice_order();
 	test_final_empty_ctcss_is_retained();
 	test_full_audio_handoff_preserves_pending_status();
 	test_status_handoff_is_bounded();
+	test_status_input_boundaries();
 	return 0;
 }

@@ -84,7 +84,7 @@ $root/src/txagc/agc_core.c $root/src/txagc/avfilter_processor.c \
 $root/src/txagc/rnnoise_processor.c"
 channel_variant_sources="$root/src/usbradioplus_channel_common.c \
 $root/src/usbradioplus_native_tick.c $root/src/usbradioplus_tune_menu.c"
-channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process -Wl,--wrap=rpcr_init \
+channel_wrap_flags="-Wl,--wrap=clock_gettime -Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_process -Wl,--wrap=rpcr_init \
 	-Wl,--wrap=usbradioplus_samplerate_adapter_prepare_released \
 	-Wl,--wrap=usbradioplus_samplerate_adapter_process \
 	-Wl,--wrap=txagc_avfilter_prepare -Wl,--wrap=txagc_avfilter_process_prepared \
@@ -100,6 +100,28 @@ channel_wrap_flags="-Wl,--wrap=av_frame_alloc -Wl,--wrap=src_new -Wl,--wrap=src_
 -Wl,--wrap=usbradioplus_host_time -Wl,--wrap=usbradioplus_host_tvnow \
 -Wl,--wrap=usbradioplus_host_wait_or_poll -Wl,--wrap=usbradioplus_host_poll_input \
 -Wl,--wrap=usbradioplus_host_print_audio_stats"
+
+# Native-renderer failures are injected only by its dedicated no-hardware harness.
+channel_wrap_flags="$channel_wrap_flags \
+-Wl,--wrap=urp_radio_core_create \
+-Wl,--wrap=urp_radio_core_generate_ctcss \
+-Wl,--wrap=urp_radio_core_generate_ctcss_tail \
+-Wl,--wrap=urp_radio_core_ctcss_phase \
+-Wl,--wrap=urp_radio_core_configure_dcs \
+-Wl,--wrap=urp_radio_core_generate_dcs \
+-Wl,--wrap=urp_radio_core_configure_dcs_receive \
+-Wl,--wrap=urp_radio_core_configure_ctcss_receive \
+-Wl,--wrap=urp_radio_core_extract_receive \
+-Wl,--wrap=urp_radio_core_render_calibrated_test_tone \
+-Wl,--wrap=urp_radio_core_calibrated_test_tone_phase \
+-Wl,--wrap=urp_radio_core_native_parrot_bind \
+-Wl,--wrap=urp_radio_core_native_parrot_rx_transition \
+-Wl,--wrap=urp_radio_core_native_parrot_play \
+-Wl,--wrap=urp_radio_core_native_parrot_status \
+-Wl,--wrap=urp_native_repeat_initialize \
+-Wl,--wrap=urp_render_transmit_block \
+-Wl,--wrap=urp_src_reserve \
+-Wl,--wrap=urp_radio_process_native_timed -Wl,--wrap=txagc_rnnoise_prepare"
 
 # The groups have disjoint output names and coverage-counter files, so compile
 # and execute them concurrently. C_TEST_PARALLEL=1 retains a serial diagnostic
@@ -307,7 +329,7 @@ completed=$((completed + 1))
 # current RF audio if the Asterisk delivery worker falls behind. It has no
 # hardware or Asterisk dependency, so test it in every C-test invocation.
 # shellcheck disable=SC2086
-cc $common "$root/tests/test_portaudio_poc_handoff.c" \
+cc $common -DURP_PORTAUDIO_POC_HANDOFF_TESTING "$root/tests/test_portaudio_poc_handoff.c" \
 	"$root/src/usbradioplus_portaudio_poc_handoff.c" -I"$root/src" \
 	-o "$out/portaudio-poc-handoff"
 "$out/portaudio-poc-handoff"
@@ -348,7 +370,7 @@ completed=$((completed + 1))
 # Transport-neutral channel queue policy is compiled independently so both
 # audio backends share one fully covered implementation.
 # shellcheck disable=SC2086
-cc $common "$root/tests/test_channel_shared_core.c" \
+cc $common -DURP_RADIO_CORE_ADAPTER_TESTING "$root/tests/test_channel_shared_core.c" \
 	"$root/src/usbradioplus_channel_core.c" \
 	"$root/src/usbradioplus_radio_core_adapter.c" -I"$root/src" \
 	-o "$out/channel-shared-core" -lm $rptadv_radio_libs
@@ -356,7 +378,7 @@ cc $common "$root/tests/test_channel_shared_core.c" \
 completed=$((completed + 1))
 
 # shellcheck disable=SC2086
-cc $common "$root/tests/test_native_repeat.c" \
+cc $common -DURP_RADIO_CORE_ADAPTER_TESTING "$root/tests/test_native_repeat.c" \
 	"$root/src/usbradioplus_repeat.c" \
 	"$root/src/usbradioplus_radio_core_adapter.c" -I"$root/src" \
 	-o "$out/native-repeat" $rptadv_radio_libs
@@ -559,7 +581,8 @@ fi
 if run_group validation; then
 # shellcheck disable=SC2086
 cc $common -Wno-unused-function -ffunction-sections -fdata-sections \
-	-DURP_PROCESSING_TESTING -DAST_MODULE_SELF_SYM=test_module_self \
+	-DURP_PROCESSING_TESTING -DURP_RADIO_CORE_ADAPTER_TESTING \
+	-DAST_MODULE_SELF_SYM=test_module_self \
 	"$root/tests/test_processing_validation.c" "$root/src/usbradioplus_processing.c" \
 	"$root/src/usbradioplus_radio_core_adapter.c" "$root/src/txagc/agc_core.c" \
 	-I/usr/include -I"$root/src" -Wl,--gc-sections \

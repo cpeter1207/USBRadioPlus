@@ -2936,7 +2936,8 @@ int apply_processing_config_overrides(struct chan_usbradio_pvt *o, const char *c
 	 * Changing its identity or wiring while it is running would make
 	 * the config claim a handoff that never occurred. Require a clean channel
 	 * restart instead. */
-	if (o->radio && (saved_cm119_gpio_poc || o->plus_cm119_gpio_poc) &&
+	/* The unified hardware composition above always enables the CM119 owner. */
+	if (o->radio &&
 	    (saved_cm119_gpio_poc != o->plus_cm119_gpio_poc ||
 	     saved_portaudio_poc != o->plus_portaudio_poc ||
 	     saved_portaudio_input_device_index != o->plus_portaudio_input_device_index ||

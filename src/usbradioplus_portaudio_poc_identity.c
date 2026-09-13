@@ -12,15 +12,13 @@
 
 /**
  * @brief Return the length of a USB physical-device component.
- * @param path USB topology or interface path.
+ * @param path Nonempty USB topology or interface path, checked by the public boundary.
  * @return Bytes through the physical-device component, excluding any `:` suffix.
  */
 static size_t portaudio_poc_physical_usb_path_length(const char *path)
 {
 	const char *separator;
 
-	if (!path || !*path)
-		return 0U;
 	separator = strchr(path, ':');
 	return separator ? (size_t)(separator - path) : strlen(path);
 }

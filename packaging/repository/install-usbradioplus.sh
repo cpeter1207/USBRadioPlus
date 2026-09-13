@@ -137,8 +137,8 @@ printf '%s\n' "$candidate_depends" | grep -F "asl3-asterisk (= $asl_version)" >/
 simulation=$temporary_directory/apt-simulation.txt
 apt-get -s install "$package=$candidate" > "$simulation"
 if grep -E '^(Remv|Inst asl3-asterisk |Conf asl3-asterisk )' "$simulation" | \
-	grep -v '^Remv usbradioplus-asl3105 ' >/dev/null; then
-	die "APT would change asl3-asterisk; installation refused"
+	grep -Ev '^Remv usbradioplus-asl3105(-dbgsym)? ' >/dev/null; then
+	die "APT would change asl3-asterisk or remove unrelated packages; installation refused"
 fi
 apt-get install -y --no-install-recommends "$package=$candidate"
 

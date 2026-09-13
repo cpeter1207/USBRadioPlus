@@ -50,7 +50,7 @@ commands.
   service-monitor procedure.
 - [The configuration example](examples/usbradioplus.conf.sample) is an annotated
   multi-channel-capable starting point.
-- [Packaging notes](doc/packaging.md) describe the upstream archive and future
+- [Packaging notes](doc/packaging.md) describe the upstream archive and current
   Debian packaging interface.
 - [Native radio notes](doc/native-radio.md) describe carrier detection,
   signaling, and their test boundary.

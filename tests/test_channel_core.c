@@ -79,6 +79,10 @@ int test_pthread_join(pthread_t thread, void **result);
 int __wrap_poll(struct pollfd *descriptors, nfds_t count, int timeout);
 int __wrap_pipe(int descriptors[2]);
 int __wrap_pipe2(int descriptors[2], int flags);
+/** @brief Linker forwarding target for the monotonic-clock failure injection. */
+int __real_clock_gettime(clockid_t clock, struct timespec *now);
+/** @brief Fail only the explicitly scripted monotonic-clock query. */
+int __wrap_clock_gettime(clockid_t clock, struct timespec *now);
 void test_ast_debug(int level, const char *format, ...);
 void test_ast_log(int level, const char *format, ...);
 #include "../src/txagc/avfilter_processor.h"
@@ -196,6 +200,18 @@ static short mock_poll_revents;
 /** Counts released adapter descriptor resolution attempts. */
 static unsigned int direct_audio_descriptor_queries;
 static unsigned int direct_gpio_descriptor_queries;
+/** Captured PortAudio delivery worker for deterministic threadless lifecycle tests. */
+static void *(*portaudio_test_worker_entry)(void *);
+/** Private channel passed to the captured PortAudio delivery worker. */
+static void *portaudio_test_worker_data;
+/** Stop the captured PortAudio worker at its next deterministic idle sleep. */
+static struct chan_usbradio_pvt *portaudio_stop_on_usleep;
+/** Scripted descriptors are enabled only by no-hardware lifecycle tests. */
+static int direct_adapter_fixtures_enabled;
+/** Optional descriptor overrides for ordered worker startup failures. */
+static const struct rptadv_audio_adapter_descriptor *direct_audio_descriptor_override;
+static const struct rptadv_gpio_adapter_descriptor *direct_gpio_descriptor_override;
+#include "hardware_adapter_fixture.h"
 
 /** Parallel descriptor fixture records actions without any port I/O. */
 static unsigned char direct_parallel_token;
@@ -267,22 +283,28 @@ void test_ast_log(int level, const char *format, ...)
 
 /**
  * @brief Keep the GPIO configuration gate independent of a physical HID device.
- * @return Null because this parser-only harness never starts the HID worker.
+ * @return Scripted descriptor during lifecycle tests, otherwise NULL.
  */
 const struct rptadv_gpio_adapter_descriptor *rptadv_gpio_adapter_descriptor(void)
 {
 	direct_gpio_descriptor_queries++;
-	return NULL;
+	return direct_adapter_fixtures_enabled
+		       ? (direct_gpio_descriptor_override ? direct_gpio_descriptor_override
+							  : &fake_gpio)
+		       : NULL;
 }
 
 /**
  * @brief Keep combined-facade resolution independent of a physical audio device.
- * @return Null because the parser-only channel harness never starts hardware.
+ * @return Scripted descriptor during lifecycle tests, otherwise NULL.
  */
 const struct rptadv_audio_adapter_descriptor *rptadv_portaudio_alsa_adapter_descriptor(void)
 {
 	direct_audio_descriptor_queries++;
-	return NULL;
+	return direct_adapter_fixtures_enabled
+		       ? (direct_audio_descriptor_override ? direct_audio_descriptor_override
+							   : &fake_audio)
+		       : NULL;
 }
 
 /** @brief Opaque stream identity used by the combined-POC statistics fake. */
@@ -552,6 +574,17 @@ static int mock_pipe_failure;
 static int mock_fcntl_calls;
 /** Positive call number that fails the wrapped fcntl operation. */
 static int mock_fcntl_fail_call;
+/** Script monotonic clock failure while preserving ordinary timing elsewhere. */
+static int mock_monotonic_clock_failure;
+
+int __wrap_clock_gettime(clockid_t clock, struct timespec *now)
+{
+	if (mock_monotonic_clock_failure && clock == CLOCK_MONOTONIC) {
+		errno = EIO;
+		return -1;
+	}
+	return __real_clock_gettime(clock, now);
+}
 
 /** @brief Test wrapper for pipe controlled by the harness's failure-injection state.
  * @param descriptors Test descriptor array.
@@ -1089,6 +1122,8 @@ int __wrap_pthread_join(pthread_t thread, void **result)
  */
 int __wrap_usleep(unsigned int microseconds)
 {
+	if (portaudio_stop_on_usleep)
+		atomic_store(&portaudio_stop_on_usleep->plus_portaudio_delivery_stop, 1);
 	(void)microseconds;
 	usleep_calls++;
 	if (clear_eeprom_on_usleep && usbradio_default.next)
@@ -2042,6 +2077,10 @@ int ast_pthread_create_stack(pthread_t *thread, pthread_attr_t *attributes,
 	(void)caller;
 	(void)line;
 	(void)start_function;
+	if (!strcmp(start_function, "portaudio_poc_delivery_worker")) {
+		portaudio_test_worker_entry = start_routine;
+		portaudio_test_worker_data = data;
+	}
 	pthread_create_calls++;
 	if (pthread_create_calls == fail_pthread_create_call)
 		return -1;
@@ -9028,6 +9067,11 @@ static void test_native_renderer_guard_paths(void)
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
+#include "channel_hardware_cases.h"
+#include "channel_portaudio_cases.h"
+#include "channel_native_tick_cases.h"
+#include "channel_common_boundary_cases.h"
+
 int main(void)
 {
 	const char *selected_test = getenv("URP_CHANNEL_TEST");
@@ -9044,6 +9088,9 @@ int main(void)
 		}                                                                                  \
 	} while (0)
 	RUN_TEST(test_clean_slate_signaling_defaults);
+	RUN_TEST(test_common_lifecycle_boundaries);
+	RUN_TEST(test_common_hardware_reload_boundaries);
+	RUN_TEST(test_common_parallel_reload_boundaries);
 	RUN_TEST(test_option_decoders);
 	RUN_TEST(test_channel_callbacks);
 	RUN_TEST(test_text_controls);
@@ -9077,6 +9124,17 @@ int main(void)
 	RUN_TEST(test_native_output_stage);
 	RUN_TEST(test_direct_tune_write_paths);
 	RUN_TEST(test_direct_hardware_worker_without_adapters);
+	RUN_TEST(test_hardware_identity_and_mixer_helpers);
+	RUN_TEST(test_hardware_wake_and_publication_helpers);
+	RUN_TEST(test_hardware_radio_and_service_helpers);
+	RUN_TEST(test_hardware_start_attempt_boundaries);
+	RUN_TEST(test_hardware_parallel_owner_service);
+	RUN_TEST(test_hardware_control_and_calibration_helpers);
+	RUN_TEST(test_hardware_routing_and_owner_eligibility);
+	RUN_TEST(test_hardware_swap_identity_boundaries);
+	RUN_TEST(test_hardware_sidetone_and_refresh_boundaries);
+	RUN_TEST(test_portaudio_lifecycle_boundaries);
+	RUN_TEST(test_native_tick_release_boundaries);
 	RUN_TEST(test_direct_channel_write_and_call);
 	RUN_TEST(test_direct_channel_hangup);
 	ast_set_flag64(&ast_options, AST_OPT_FLAG_DEBUG_MODULE);

@@ -164,6 +164,14 @@ int usbradioplus_portaudio_poc_start(struct chan_usbradio_pvt *channel);
 void usbradioplus_portaudio_poc_stop(struct chan_usbradio_pvt *channel);
 
 #ifdef URP_PROCESSING_TESTING
+/** @brief Inject one competing producer generation change after the next consumer copy. */
+void usbradioplus_portaudio_poc_test_invalidate_next_claim(void);
+/** @brief Capture status from valid callback-owned channel/radio state without processing PCM.
+ * @param channel Valid callback-owned channel with an initialized radio.
+ * @param frame_count Native sample span elapsed since the last status capture.
+ */
+void usbradioplus_portaudio_poc_test_capture_status(struct chan_usbradio_pvt *channel,
+						    size_t frame_count);
 /**
  * @brief Run one hardware-free direct PortAudio callback for deterministic tests.
  * @param channel Prepared adapter channel state.

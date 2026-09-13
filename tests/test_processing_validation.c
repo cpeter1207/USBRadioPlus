@@ -16,6 +16,14 @@ struct ast_category;
  * double must call the C allocator rather than recursively expanding itself. */
 #undef realloc
 
+/** Descriptor selected by this executable, before any processing starts. */
+static const struct rptadv_radio_descriptor *test_radio_descriptor;
+/** @brief Simulate missing shared-core metadata before normal lifecycle tests. */
+const struct rptadv_radio_descriptor *urp_radio_core_adapter_test_descriptor(void)
+{
+	return test_radio_descriptor;
+}
+
 /** @brief Host-API test double for ast_log; effects are recorded in this harness.
  * @param level Requested level or normalized tuning level, as declared.
  * @param file Source filename supplied by the host API's diagnostic wrapper.
@@ -4040,6 +4048,8 @@ int main(void)
 	/* Keep this large fixture out of the thread stack: boundary helpers also
 	 * construct complete settings snapshots while they exercise validation. */
 	static struct txagc_settings value;
+	assert(usbradioplus_processing_prime() < 0);
+	test_radio_descriptor = rptadv_radio_descriptor();
 	assert(urp_radio_core_initialize() == 0);
 	settings_defaults(&value);
 	assert(!validate_profile(&value.profiles[0]));

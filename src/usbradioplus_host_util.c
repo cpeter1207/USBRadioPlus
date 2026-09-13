@@ -63,7 +63,13 @@ int usbradioplus_host_wait_or_poll(int fd, int milliseconds, int interactive)
  */
 static double audio_power_dbfs(double power)
 {
-	return power > 0.0 ? 10.0 * log10(power / 1073741824.0) : -96.0;
+	const double normalized = power / 1073741824.0;
+
+	/* Integer-derived powers are zero or at least one unit per statistics window, so
+	 * normalization cannot underflow a positive value into the silence case. */
+	if (!(normalized > 0.0))
+		return -96.0;
+	return 10.0 * log10(normalized);
 }
 
 void usbradioplus_host_print_audio_stats(int fd,

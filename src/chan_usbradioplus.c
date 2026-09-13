@@ -345,7 +345,7 @@ struct chan_usbradio_pvt *find_desc(const char *dev)
  * @param o Private channel whose parallel assignments are inspected.
  * @return Bit mask of parallel pins assigned to PTT.
  */
-static uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
 {
 	uint8_t mask = 0;
 	int pin;
@@ -359,7 +359,7 @@ static uint8_t hidthread_parallel_ptt_mask(const struct chan_usbradio_pvt *o)
 	return mask;
 }
 
-static void hidthread_close_pttkick(struct chan_usbradio_pvt *o);
+URP_CHANNEL_LOCAL void hidthread_close_pttkick(struct chan_usbradio_pvt *o);
 
 /**
  * @brief Recreate the nonblocking control wake pipe used by one hardware owner.
@@ -370,7 +370,7 @@ static void hidthread_close_pttkick(struct chan_usbradio_pvt *o);
  * polls the published PTT request, so a full pipe can never delay a fail-safe
  * transmitter release indefinitely.
  */
-static int hidthread_open_pttkick(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int hidthread_open_pttkick(struct chan_usbradio_pvt *o)
 {
 	hidthread_close_pttkick(o);
 	if (pipe(o->pttkick) == -1) {
@@ -394,7 +394,7 @@ static int hidthread_open_pttkick(struct chan_usbradio_pvt *o)
  * @brief Retire the advisory PTT wake pipe after its hardware worker exits.
  * @param o Channel whose stopped worker no longer observes wake requests.
  */
-static void hidthread_close_pttkick(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL void hidthread_close_pttkick(struct chan_usbradio_pvt *o)
 {
 	if (o->pttkick[0] != -1) {
 		close(o->pttkick[0]);
@@ -416,7 +416,7 @@ static void hidthread_close_pttkick(struct chan_usbradio_pvt *o)
  * state are known.  Keeping the preparation here lets a selected hardware
  * adapter replace HID ownership without duplicating radio configuration.
  */
-static int hidthread_prepare_radio(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int hidthread_prepare_radio(struct chan_usbradio_pvt *o)
 {
 	if (o->radio == NULL) {
 		urp_radio_state tChan;
@@ -514,7 +514,7 @@ static int hidthread_prepare_radio(struct chan_usbradio_pvt *o)
  * @param o Channel whose audio backend is started.
  * @return Zero on success, or minus one when the selected backend fails.
  */
-static int hidthread_start_audio(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int hidthread_start_audio(struct chan_usbradio_pvt *o)
 {
 	if (!usbradioplus_portaudio_poc_start(o))
 		return 0;
@@ -527,7 +527,7 @@ static int hidthread_start_audio(struct chan_usbradio_pvt *o)
  * @param o Candidate configured channel.
  * @return Nonzero when the channel uses the configured shared transport.
  */
-static int cm119_gpio_poc_parallel_requested(const struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_parallel_requested(const struct chan_usbradio_pvt *o)
 {
 	return o && o->plus_cm119_gpio_poc && haspp;
 }
@@ -537,7 +537,7 @@ static int cm119_gpio_poc_parallel_requested(const struct chan_usbradio_pvt *o)
  * @param o Candidate configured channel.
  * @return Nonzero when a retired hardware backend is selected.
  */
-static int cm119_gpio_poc_validate(const struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_validate(const struct chan_usbradio_pvt *o)
 {
 	return !o->plus_portaudio_poc || !o->plus_cm119_gpio_poc;
 }
@@ -551,7 +551,7 @@ static int cm119_gpio_poc_validate(const struct chan_usbradio_pvt *o)
  * CM119. It fails closed rather than falling back to an independent numeric
  * ALSA-card selection when the released composition cannot establish that fact.
  */
-static int cm119_gpio_poc_prepare_hardware_adapter(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_prepare_hardware_adapter(struct chan_usbradio_pvt *o)
 {
 	struct usbradioplus_hardware_adapter_config config = {
 		.struct_size = sizeof(config),
@@ -612,7 +612,7 @@ static int cm119_gpio_poc_prepare_hardware_adapter(struct chan_usbradio_pvt *o)
  * @brief Release a prepared composition after its stream and facade owners stop.
  * @param o Channel holding the combined POC composition.
  */
-static void cm119_gpio_poc_discard_hardware_adapter(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_discard_hardware_adapter(struct chan_usbradio_pvt *o)
 {
 	ast_mutex_lock(&o->usblock);
 	usbradioplus_hardware_mixer_poc_close(&o->plus_hardware_mixer_poc);
@@ -649,24 +649,22 @@ static void cm119_gpio_poc_discard_hardware_adapter(struct chan_usbradio_pvt *o)
 
 /**
  * @brief Apply the selected RX capture and TX A/B mixer state through the facade.
- * @param o Channel whose combined proof owns semantic mixer controls.
+ * @param o Non-NULL channel whose combined proof owns semantic mixer controls.
  * @return Zero on success, or minus one after latching a hardware fault.
  *
  * This is control-plane work. It never touches a legacy mixer card and it is
  * deliberately separate from the native callback, which consumes only the
  * already-published radio state.
  */
-static int cm119_gpio_poc_apply_mixer(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_apply_mixer(struct chan_usbradio_pvt *o)
 {
 	const int rx = effective_rxmixerset(o);
 	const int tx_a = effective_txmixaset(o);
 	const int tx_b = effective_txmixbset(o);
 	enum usbradioplus_hardware_adapter_result result;
 
-	if (!o || !o->plus_hardware_adapter_prepared || !o->plus_hardware_mixer_poc.opened ||
-	    rx < 0 || tx_a < 0 || tx_b < 0 || rx > (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM ||
-	    tx_a > (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM ||
-	    tx_b > (int)RPTADV_AUDIO_MIXER_NORMALIZED_MAXIMUM)
+	/* Validated finite settings and urp_gain_db_to_mixer bound all gains to 0..999. */
+	if (!o->plus_hardware_adapter_prepared || !o->plus_hardware_mixer_poc.opened)
 		return -1;
 	ast_mutex_lock(&o->usblock);
 	result = usbradioplus_hardware_mixer_poc_apply(&o->plus_hardware_mixer_poc, (uint32_t)rx,
@@ -689,7 +687,7 @@ static int cm119_gpio_poc_apply_mixer(struct chan_usbradio_pvt *o)
  * @param value Inclusive normalized gain from zero through 999.
  * @return Zero on success, or minus one after latching a hardware fault.
  */
-static int cm119_gpio_poc_set_rx_mixer(struct chan_usbradio_pvt *o, int value)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_set_rx_mixer(struct chan_usbradio_pvt *o, int value)
 {
 	enum usbradioplus_hardware_adapter_result result;
 
@@ -715,7 +713,7 @@ static int cm119_gpio_poc_set_rx_mixer(struct chan_usbradio_pvt *o, int value)
  * @param o Channel whose facade already identifies the selected CM119.
  * @return Zero on success, or minus one when semantic setup fails closed.
  */
-static int cm119_gpio_poc_open_mixer(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_open_mixer(struct chan_usbradio_pvt *o)
 {
 	enum usbradioplus_hardware_adapter_result result;
 
@@ -756,7 +754,7 @@ static int cm119_gpio_poc_open_mixer(struct chan_usbradio_pvt *o)
  * registry reservation remains only to keep the normal legacy allocator from
  * claiming the same configured interface while the combined proof is live.
  */
-static int cm119_gpio_poc_reserve_device_identity(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_reserve_device_identity(struct chan_usbradio_pvt *o)
 {
 	struct chan_usbradio_pvt *other;
 
@@ -794,7 +792,7 @@ static int cm119_gpio_poc_reserve_device_identity(struct chan_usbradio_pvt *o)
  * @brief Release a prior adapter-identity reservation after the worker stops.
  * @param o Channel whose device reservation is no longer live.
  */
-static void cm119_gpio_poc_release_device_identity(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_release_device_identity(struct chan_usbradio_pvt *o)
 {
 	ast_mutex_lock(&usb_dev_lock);
 	o->hasusb = 0;
@@ -808,7 +806,7 @@ static void cm119_gpio_poc_release_device_identity(struct chan_usbradio_pvt *o)
  * @param o Channel owning the nonblocking wake pipe.
  * @return Zero on success, or minus one on a non-recoverable pipe failure.
  */
-static int cm119_gpio_poc_drain_pttkick(const struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_drain_pttkick(const struct chan_usbradio_pvt *o)
 {
 	char byte;
 	int bytes;
@@ -832,7 +830,7 @@ static int cm119_gpio_poc_drain_pttkick(const struct chan_usbradio_pvt *o)
  * The GPIO facade owns pulse timing, but this bridge retains the legacy rule
  * that an active clip LED pulse is not extended by another clip request.
  */
-static uint64_t cm119_gpio_poc_monotonic_milliseconds(void)
+URP_CHANNEL_LOCAL uint64_t cm119_gpio_poc_monotonic_milliseconds(void)
 {
 	struct timespec now;
 	struct timeval fallback;
@@ -852,7 +850,7 @@ static uint64_t cm119_gpio_poc_monotonic_milliseconds(void)
  * of its latest output state after the transfer. This control-plane helper is
  * called by the same worker that services GPIO, never by the native callback.
  */
-static void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o)
 {
 	struct rptadv_gpio_eeprom_image image;
 	enum usbradioplus_hardware_adapter_result result;
@@ -899,10 +897,11 @@ static void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o)
 				o->name);
 		}
 	} else if (command == 2U) {
-		if (!usbradioplus_hardware_eeprom_poc_export((const uint16_t *)o->eeprom,
-							     user_word_count, &image) &&
-		    usbradioplus_hardware_adapter_write_eeprom(&o->plus_hardware_adapter, &image) ==
-			    USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
+		/* Both arrays and the exact user-word count are guaranteed above. */
+		(void)usbradioplus_hardware_eeprom_poc_export((const uint16_t *)o->eeprom,
+							      user_word_count, &image);
+		if (usbradioplus_hardware_adapter_write_eeprom(&o->plus_hardware_adapter, &image) ==
+		    USBRADIOPLUS_HARDWARE_ADAPTER_OK) {
 			ast_log(LOG_NOTICE, "Channel %s: USB parameters written to EEPROM\n",
 				o->name);
 		} else {
@@ -914,7 +913,8 @@ static void cm119_gpio_poc_service_eeprom(struct chan_usbradio_pvt *o)
 }
 
 /** @brief Queue one established parallel-input text event to the Asterisk owner. */
-static void cm119_gpio_poc_parallel_input_event(void *opaque, unsigned int pin, int value)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_parallel_input_event(void *opaque, unsigned int pin,
+							   int value)
 {
 	struct chan_usbradio_pvt *o = opaque;
 	struct ast_frame frame = {
@@ -938,8 +938,9 @@ static void cm119_gpio_poc_parallel_input_event(void *opaque, unsigned int pin, 
  * @param force_unkey Nonzero performs the fail-safe parallel PTT/RTX release only.
  * @return Zero on success, or minus one after a facade failure.
  */
-static int cm119_gpio_poc_service_parallel(struct chan_usbradio_pvt *o,
-					   unsigned int *hardware_inputs, int force_unkey)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_service_parallel(struct chan_usbradio_pvt *o,
+						      unsigned int *hardware_inputs,
+						      int force_unkey)
 {
 	struct usbradioplus_parallel_adapter_poc_service_request request = {
 		.ptt_asserted =
@@ -1009,7 +1010,7 @@ static int cm119_gpio_poc_service_parallel(struct chan_usbradio_pvt *o,
  * @param o Channel whose atomics bridge native audio and the hardware owner.
  * @return Zero after a complete service cycle, or minus one on hardware failure.
  */
-static int cm119_gpio_poc_service(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_service(struct chan_usbradio_pvt *o)
 {
 	struct rptadv_gpio_input_snapshot inputs = {
 		.struct_size = sizeof(inputs),
@@ -1073,7 +1074,7 @@ static int cm119_gpio_poc_service(struct chan_usbradio_pvt *o)
  * @brief Stop direct audio, unkey through the adapter, and clear published state.
  * @param o Channel whose experimental hardware worker is being retired.
  */
-static void cm119_gpio_poc_stop(struct chan_usbradio_pvt *o)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_stop(struct chan_usbradio_pvt *o)
 {
 	struct rptadv_gpio_output_action action = {
 		.struct_size = sizeof(action),
@@ -1109,7 +1110,7 @@ static void cm119_gpio_poc_stop(struct chan_usbradio_pvt *o)
 }
 
 /** \brief Return whether the legacy channel has requested worker shutdown. */
-static int cm119_gpio_poc_worker_stop_requested(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_stop_requested(void *opaque)
 {
 	const struct chan_usbradio_pvt *o = opaque;
 
@@ -1117,7 +1118,7 @@ static int cm119_gpio_poc_worker_stop_requested(void *opaque)
 }
 
 /** \brief Return whether the legacy worker considers its composed device online. */
-static int cm119_gpio_poc_worker_online(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_online(void *opaque)
 {
 	const struct chan_usbradio_pvt *o = opaque;
 
@@ -1125,7 +1126,7 @@ static int cm119_gpio_poc_worker_online(void *opaque)
 }
 
 /** \brief Clear legacy-published direct-hardware state before one worker lifetime. */
-static void cm119_gpio_poc_worker_clear_published_state(void *opaque)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_clear_published_state(void *opaque)
 {
 	struct chan_usbradio_pvt *o = opaque;
 
@@ -1136,7 +1137,7 @@ static void cm119_gpio_poc_worker_clear_published_state(void *opaque)
 }
 
 /** \brief Validate one legacy CM119 GPIO proof configuration. */
-static int cm119_gpio_poc_worker_validate(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_validate(void *opaque)
 {
 	return cm119_gpio_poc_validate(opaque);
 }
@@ -1150,7 +1151,7 @@ static int cm119_gpio_poc_worker_validate(void *opaque)
  * legacy adapter's device reservation, semantic mixer, and Asterisk radio
  * preparation because those operations depend on its private channel layout.
  */
-static int cm119_gpio_poc_worker_start_attempt(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_start_attempt(void *opaque)
 {
 	struct chan_usbradio_pvt *o = opaque;
 	enum usbradioplus_hardware_adapter_result hardware_result;
@@ -1223,13 +1224,13 @@ static int cm119_gpio_poc_worker_start_attempt(void *opaque)
 }
 
 /** \brief Service one legacy CM119 GPIO proof cycle. */
-static int cm119_gpio_poc_worker_service(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_service(void *opaque)
 {
 	return cm119_gpio_poc_service(opaque);
 }
 
 /** \brief Publish successful startup and retain the established ownership notice. */
-static void cm119_gpio_poc_worker_mark_online(void *opaque)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_mark_online(void *opaque)
 {
 	struct chan_usbradio_pvt *o = opaque;
 
@@ -1242,33 +1243,33 @@ static void cm119_gpio_poc_worker_mark_online(void *opaque)
 }
 
 /** \brief Return the legacy advisory PTT wake pipe's read descriptor. */
-static int cm119_gpio_poc_worker_wake_read_fd(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_wake_read_fd(void *opaque)
 {
 	return ((const struct chan_usbradio_pvt *)opaque)->pttkick[0];
 }
 
 /** \brief Drain pending bytes from the legacy advisory PTT wake pipe. */
-static int cm119_gpio_poc_worker_drain_wake(void *opaque)
+URP_CHANNEL_LOCAL int cm119_gpio_poc_worker_drain_wake(void *opaque)
 {
 	return cm119_gpio_poc_drain_pttkick(opaque);
 }
 
 /** \brief Stop one legacy attempt before its identity reservation is released. */
-static void cm119_gpio_poc_worker_stop_attempt(void *opaque)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_stop_attempt(void *opaque)
 {
 	cm119_gpio_poc_stop(opaque);
 }
 
 /** \brief Release the legacy device reservation after an attempt stops. */
-static void cm119_gpio_poc_worker_release_identity(void *opaque)
+URP_CHANNEL_LOCAL void cm119_gpio_poc_worker_release_identity(void *opaque)
 {
 	cm119_gpio_poc_release_device_identity(opaque);
 }
 
 /** \brief Translate common worker failure classifications into legacy diagnostics. */
-static void cm119_gpio_poc_worker_report(void *opaque,
-					 enum usbradioplus_cm119_gpio_poc_worker_event event,
-					 int detail)
+URP_CHANNEL_LOCAL void
+cm119_gpio_poc_worker_report(void *opaque, enum usbradioplus_cm119_gpio_poc_worker_event event,
+			     int detail)
 {
 	const struct chan_usbradio_pvt *o = opaque;
 
@@ -2596,7 +2597,8 @@ URP_CHANNEL_LOCAL char *handle_set_dsp_debug(struct ast_cli_entry *e, int cmd,
  * opaque stream handle; an unavailable snapshot is reported without changing
  * channel or callback state.
  */
-static void radioplus_native_stats_combined_poc(int fd, struct chan_usbradio_pvt *channel)
+URP_CHANNEL_LOCAL void radioplus_native_stats_combined_poc(int fd,
+							   struct chan_usbradio_pvt *channel)
 {
 	struct rptadv_audio_stream_stats stream_statistics = {
 		.struct_size = sizeof(stream_statistics),

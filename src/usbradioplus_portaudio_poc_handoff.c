@@ -14,6 +14,18 @@
 /** @brief Consumer-state bits holding the ring index. */
 #define URP_PORTAUDIO_POC_HANDOFF_INDEX_MASK (UINT_MAX >> 1U)
 
+#ifdef URP_PORTAUDIO_POC_HANDOFF_TESTING
+/** @brief Inject one deterministic competing-actor step before an atomic boundary. */
+extern void usbradioplus_portaudio_poc_handoff_test_interleave(
+	struct usbradioplus_portaudio_poc_handoff *handoff, unsigned int boundary);
+/** @brief Test-only scheduling point, absent from the shipped callback. */
+#define URP_HANDOFF_INTERLEAVE(boundary)                                                           \
+	usbradioplus_portaudio_poc_handoff_test_interleave(handoff, boundary)
+#else
+/** @brief Production handoff scheduling remains entirely owned by its two actors. */
+#define URP_HANDOFF_INTERLEAVE(boundary) ((void)0)
+#endif
+
 /**
  * @brief Return whether a ring count can coexist with the consumer claim bit.
  * @param slot_count Requested bounded slot count.
@@ -118,6 +130,7 @@ enum usbradioplus_portaudio_poc_handoff_result usbradioplus_portaudio_poc_handof
 						  memory_order_release);
 			return USBRADIOPLUS_PORTAUDIO_POC_HANDOFF_DROPPED;
 		}
+		URP_HANDOFF_INTERLEAVE(1U);
 		if (atomic_compare_exchange_weak_explicit(
 			    &handoff->consumer_state, &consumer_state,
 			    portaudio_poc_handoff_next(consumer, slot_count), memory_order_acq_rel,
@@ -174,6 +187,7 @@ portaudio_poc_handoff_consumer_resynchronize(struct usbradioplus_portaudio_poc_h
 		if (consumer == newest)
 			return 0;
 		skipped = portaudio_poc_handoff_distance(consumer, newest, slot_count);
+		URP_HANDOFF_INTERLEAVE(2U);
 		if (atomic_compare_exchange_weak_explicit(&handoff->consumer_state, &consumer_state,
 							  newest, memory_order_acq_rel,
 							  memory_order_acquire)) {
@@ -218,6 +232,7 @@ enum usbradioplus_portaudio_poc_handoff_result usbradioplus_portaudio_poc_handof
 		producer = atomic_load_explicit(&handoff->producer, memory_order_acquire);
 		if (consumer == producer)
 			return USBRADIOPLUS_PORTAUDIO_POC_HANDOFF_EMPTY;
+		URP_HANDOFF_INTERLEAVE(3U);
 		if (!atomic_compare_exchange_weak_explicit(
 			    &handoff->consumer_state, &consumer_state,
 			    consumer | URP_PORTAUDIO_POC_HANDOFF_READING, memory_order_acq_rel,
@@ -225,6 +240,7 @@ enum usbradioplus_portaudio_poc_handoff_result usbradioplus_portaudio_poc_handof
 			continue;
 		/* If a full-ring marker arrived after the claim, discard this newly stale
 		 * block before copying it and let the next pass select the latest block. */
+		URP_HANDOFF_INTERLEAVE(4U);
 		if (atomic_load_explicit(&handoff->resync_generation, memory_order_acquire) !=
 		    *seen_generation) {
 			usbradioplus_portaudio_poc_handoff_consumer_discard(handoff, slot_count,

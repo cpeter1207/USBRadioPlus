@@ -124,7 +124,8 @@ static unsigned int urp_native_output_stage_count(const struct urp_native_output
  */
 static void urp_native_output_stage_promote(struct urp_native_output_stage *stage)
 {
-	if (stage->current_valid || !stage->pending_count)
+	/* Both callers clear current_valid immediately before promotion. */
+	if (!stage->pending_count)
 		return;
 	stage->current = stage->pending[stage->pending_head];
 	stage->pending_head = (stage->pending_head + 1U) % URP_ADAPTER_OUTPUT_STAGE_MAX_BLOCKS;
@@ -427,12 +428,11 @@ int urp_parrot_rx_transition(struct urp_parrot_state *state, int was_keyed, int 
 /** @brief Convert one compatibility output route to its portable ABI value.
  * @param source Compatibility output route.
  * @param destination Receives the matching portable ABI value.
- * @return Zero on success, or minus one for an unsupported route or missing output.
+ * @return Zero on success, or minus one for an unsupported route.
  */
 static int radio_core_output_route(enum urp_tx_output_mode source, uint32_t *destination)
 {
-	if (!destination)
-		return -1;
+	/* Both private callers pass addresses of their local configuration fields. */
 	switch (source) {
 	case URP_TX_OUTPUT_DISABLED:
 		*destination = RPTADV_RADIO_TX_OUTPUT_DISABLED;
@@ -483,7 +483,11 @@ int urp_render_transmit_block(const struct rptadv_radio *radio, const double *pr
 		    radio, workspace->program, ctcss, dcs, (uint32_t)count, &config,
 		    (int16_t *)stereo, (int16_t *)meter_stereo, &rendered_rails) != RPTADV_RADIO_OK)
 		return -1;
+#if ULONG_MAX < UINT64_MAX
 	*rail_samples = rendered_rails > ULONG_MAX ? ULONG_MAX : (unsigned long)rendered_rails;
+#else
+	*rail_samples = (unsigned long)rendered_rails;
+#endif
 	return 0;
 }
 

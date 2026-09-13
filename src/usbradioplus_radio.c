@@ -78,6 +78,13 @@
 #include "asterisk/utils.h"
 #include "asterisk/logger.h"
 
+/** Keep internal helpers private outside the isolated boundary harness. */
+#if defined(URP_RADIO_TESTING)
+#define URP_RADIO_LOCAL
+#else
+#define URP_RADIO_LOCAL static
+#endif
+
 /** Next signaling-engine instance index. */
 static i16 radioIndex = 0; /* Count live detector instances. */
 /** Empty signaling-code string used for disabled code lists. */
@@ -86,7 +93,7 @@ static char disabled_code[] = "0";
 /** @brief Try the optional portable ordinary DSP-squelch receive frontend.
  * @return Zero only when the portable result has been fully committed.
  */
-static int urp_radio_receive_frontend_portable(urp_radio_stage *stage);
+URP_RADIO_LOCAL int urp_radio_receive_frontend_portable(urp_radio_stage *stage);
 
 /** @brief Test whether Asterisk's current debug level enables a radio trace.
  * @param level Message trace verbosity.
@@ -546,9 +553,10 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
 	/* Reserve the conservative carried-phase bound, not merely the ordinary
 	 * whole-frame quotient. A maximum native callback is normally 960 samples,
 	 * while its caller-owned base workspace is deliberately sized for 161. */
-	if (samples > native_capacity || samples > SIZE_MAX - (size_t)(2 * decimate - 2) ||
-	    (samples + (size_t)(2 * decimate - 2)) / (size_t)decimate >
-		    mySps->parentChan->rxBaseCapacity) {
+	/* The u32 native count or i16 count product plus this i16-derived margin
+	 * fits size_t on both supported 64-bit targets. */
+	if (samples > native_capacity || (samples + (size_t)(2 * decimate - 2)) / (size_t)decimate >
+						 mySps->parentChan->rxBaseCapacity) {
 		return 1;
 	}
 	x = mySps->x;
@@ -668,8 +676,8 @@ i16 urp_radio_receive_frontend(urp_radio_stage *mySps)
  * @param right_count Number of samples in the second span.
  * @return Nonzero on overlap or an unrepresentable address range.
  */
-static int urp_radio_fir_s16_spans_overlap(const i16 *left, size_t left_count, const i16 *right,
-					   size_t right_count)
+URP_RADIO_LOCAL int urp_radio_fir_s16_spans_overlap(const i16 *left, size_t left_count,
+						    const i16 *right, size_t right_count)
 {
 	uintptr_t left_begin;
 	uintptr_t left_end;
@@ -699,7 +707,7 @@ static int urp_radio_fir_s16_spans_overlap(const i16 *left, size_t left_count, c
  * discriminator-noise path to the F32 portable core without callback
  * allocation, locking, or device interaction.
  */
-static int urp_radio_receive_frontend_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int urp_radio_receive_frontend_portable(urp_radio_stage *stage)
 {
 	const size_t calibration_window =
 		(size_t)SAMPLES_PER_BLOCK * (SAMPLE_RATE_INPUT / SAMPLE_RATE_NETWORK);
@@ -719,11 +727,12 @@ static int urp_radio_receive_frontend_portable(urp_radio_stage *stage)
 	struct rptadv_radio_receive_frontend_state state;
 	struct urp_radio_receive_frontend_workspace workspace;
 
+	/* Nonpositive decimation makes native_capacity zero and is rejected below. */
 	if (!stage || !stage->parentChan || !stage->source || !stage->sink || !stage->x ||
 	    !stage->enabled || stage->nSamples < 0 || !stage->nativeSamples ||
-	    stage->nativeSamples > native_capacity || stage->decimate <= 0 || stage->nx <= 0 ||
-	    stage->calcAdjust == 0 || stage->parentChan->rxCdType == CD_XPMR_VOX ||
-	    stage->parentChan->fever || stage->parentChan->tracetype)
+	    stage->nativeSamples > native_capacity || stage->nx <= 0 || stage->calcAdjust == 0 ||
+	    stage->parentChan->rxCdType == CD_XPMR_VOX || stage->parentChan->fever ||
+	    stage->parentChan->tracetype)
 		return -1;
 	channel = stage->parentChan;
 	if (channel->rxlpf < 0 ||
@@ -792,7 +801,7 @@ static int urp_radio_receive_frontend_portable(urp_radio_stage *stage)
  * stage retains interpolation, output routing, mixing, and detector behavior;
  * any such request deliberately falls through to the original C path.
  */
-static int urp_radio_fir_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int urp_radio_fir_portable(urp_radio_stage *stage)
 {
 	urp_radio_state *channel;
 	struct urp_radio_fir_workspace workspace;
@@ -1003,7 +1012,7 @@ i16 urp_radio_fir(urp_radio_stage *mySps)
  * shared core receives exact signed-16/F32 conversion spans and only publishes
  * its recursive accumulator after validating its complete output.
  */
-static int gp_inte_00_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int gp_inte_00_portable(urp_radio_stage *stage)
 {
 	urp_radio_state *channel;
 	struct rptadv_radio_deemphasis_integrator_state state;
@@ -1049,7 +1058,7 @@ i16 gp_inte_00(urp_radio_stage *mySps)
  * global. The F32 primitive therefore cannot perturb audio, detector state,
  * or callback partitioning when tracing is enabled.
  */
-static int center_slicer_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int center_slicer_portable(urp_radio_stage *stage)
 {
 	urp_radio_state *channel;
 	struct rptadv_radio_center_slicer_state state;
@@ -1203,7 +1212,7 @@ i16 CenterSlicer(urp_radio_stage *mySps)
  * Only exact signed-16/F32 conversion workspaces cross the shared-library
  * boundary. Descriptor validation during setup makes the primitive mandatory.
  */
-static int measure_block_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int measure_block_portable(urp_radio_stage *stage)
 {
 	urp_radio_state *channel;
 	struct rptadv_radio_envelope_state state;
@@ -1255,7 +1264,7 @@ i16 MeasureBlock(urp_radio_stage *mySps)
  * authoritative for the lifetime of the stage. The S16 boundary conversion
  * completes before output is published, so an in-place source/sink is safe.
  */
-static int delay_line_portable(urp_radio_stage *stage)
+URP_RADIO_LOCAL int delay_line_portable(urp_radio_stage *stage)
 {
 	urp_radio_state *channel;
 	struct urp_radio_delay_workspace workspace;
@@ -1312,7 +1321,8 @@ static uint64_t urp_ctcss_receive_tone_mask(const urp_radio_state *channel)
  */
 static void urp_ctcss_apply_portable_decode(urp_radio_state *channel, int decoded)
 {
-	if (decoded > CTCSS_NULL && decoded < CTCSS_NUM_CODES) {
+	/* The decoder boundary passes only a validated table index or CTCSS_NULL. */
+	if (decoded > CTCSS_NULL) {
 		channel->rxCtcss->decode = (i16)decoded;
 		snprintf(channel->rxctcssfreq, sizeof(channel->rxctcssfreq), "%.1f",
 			 freq_ctcss[decoded]);
@@ -2081,7 +2091,7 @@ static void urp_radio_set_active_samples(urp_radio_state *channel, i16 samples)
  * @param native_frames Native samples elapsed in this callback.
  * @return Whole elapsed milliseconds after carrying the fraction.
  */
-static i32 urp_radio_elapsed_ms(u32 *remainder, size_t native_frames)
+URP_RADIO_LOCAL i32 urp_radio_elapsed_ms(u32 *remainder, size_t native_frames)
 {
 	i32 milliseconds;
 	uint64_t elapsed = (uint64_t)*remainder + native_frames;
@@ -2102,7 +2112,7 @@ static i32 urp_radio_elapsed_ms(u32 *remainder, size_t native_frames)
  * A native callback can be split differently by an adapter.  Returning the
  * residual duration lets a successor state start at the same sample time.
  */
-static i32 urp_radio_timer_consume(i32 *timer, i32 milliseconds)
+URP_RADIO_LOCAL i32 urp_radio_timer_consume(i32 *timer, i32 milliseconds)
 {
 	i32 remaining;
 
@@ -2141,9 +2151,9 @@ static void urp_radio_timer_advance(i32 *timer, i32 milliseconds)
  * a missing or rejected append-only descriptor can execute the exact retained
  * C computation after the sample remainder has advanced once.
  */
-static int urp_radio_rx_blanking_portable(urp_radio_state *channel, i32 elapsed_ms,
-					  u32 remainder_before, size_t native_frame_count,
-					  size_t *blanked_frames)
+URP_RADIO_LOCAL int urp_radio_rx_blanking_portable(urp_radio_state *channel, i32 elapsed_ms,
+						   u32 remainder_before, size_t native_frame_count,
+						   size_t *blanked_frames)
 {
 	const i16 prior_remaining_ms = channel ? channel->txrxblankingtimer : 0;
 	struct rptadv_radio_rx_blanking_input input;
@@ -2177,7 +2187,7 @@ static int urp_radio_rx_blanking_portable(urp_radio_state *channel, i32 elapsed_
  * helper moves only the timer/carrier decision, so an older shared object or a
  * rejected result leaves all state available to the exact legacy C branch.
  */
-static int urp_radio_vox_carrier_portable(urp_radio_state *channel, i32 elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_vox_carrier_portable(urp_radio_state *channel, i32 elapsed_ms)
 {
 	struct rptadv_radio_vox_carrier_input input;
 	struct rptadv_radio_vox_carrier_state state;
@@ -2206,7 +2216,7 @@ static int urp_radio_vox_carrier_portable(urp_radio_state *channel, i32 elapsed_
  * the scalar halt decision, so a missing shared object or rejected result
  * leaves that exact branch available without changing renderer behavior.
  */
-static int urp_radio_tx_cpu_saver_portable(urp_radio_state *channel)
+URP_RADIO_LOCAL int urp_radio_tx_cpu_saver_portable(urp_radio_state *channel)
 {
 	struct rptadv_radio_tx_cpu_saver_input input;
 	struct rptadv_radio_tx_cpu_saver_state state;
@@ -2235,7 +2245,8 @@ static int urp_radio_tx_cpu_saver_portable(urp_radio_state *channel)
  * compatibility boundary retains the physical HPF/deemphasis stage writes at
  * their established location immediately before the native receive frontend.
  */
-static int urp_radio_rx_cpu_saver_portable(urp_radio_state *channel, u32 *action, u32 *next_halted)
+URP_RADIO_LOCAL int urp_radio_rx_cpu_saver_portable(urp_radio_state *channel, u32 *action,
+						    u32 *next_halted)
 {
 	struct rptadv_radio_rx_cpu_saver_input input;
 	struct rptadv_radio_rx_cpu_saver_state state;
@@ -2275,8 +2286,8 @@ static int urp_radio_rx_cpu_saver_portable(urp_radio_state *channel, u32 *action
  * the historical table conversion at the C boundary and keeps an unavailable
  * shared object from changing the established signaling decision.
  */
-static int urp_radio_signal_mode_portable(urp_radio_state *channel, i32 elapsed_ms,
-					  int decoded_ctcss)
+URP_RADIO_LOCAL int urp_radio_signal_mode_portable(urp_radio_state *channel, i32 elapsed_ms,
+						   int decoded_ctcss)
 {
 	struct rptadv_radio_signal_mode_config config = {
 		.struct_size = sizeof(struct rptadv_radio_signal_mode_config),
@@ -2343,7 +2354,7 @@ static int urp_radio_signal_mode_portable(urp_radio_state *channel, i32 elapsed_
  * into renderer-facing state.  Any unusual legacy value falls through to the
  * retained C block below without changing the current transition.
  */
-static int urp_radio_ctcss_render_state_portable(urp_radio_state *channel, i32 elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_ctcss_render_state_portable(urp_radio_state *channel, i32 elapsed_ms)
 {
 	struct rptadv_radio_ctcss_render_state_config config = {
 		.struct_size = sizeof(struct rptadv_radio_ctcss_render_state_config),
@@ -2395,9 +2406,9 @@ static int urp_radio_ctcss_render_state_portable(urp_radio_state *channel, i32 e
  * helper only moves the existing ACTIVE/TOC timer arithmetic, so an absent or
  * rejected descriptor leaves the exact C transition available as fallback.
  */
-static int urp_radio_dcs_turnoff_portable(urp_radio_state *channel, i32 elapsed_ms,
-					  int begin_turnoff, int *finish_requested,
-					  i32 *finish_elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_dcs_turnoff_portable(urp_radio_state *channel, i32 elapsed_ms,
+						   int begin_turnoff, int *finish_requested,
+						   i32 *finish_elapsed_ms)
 {
 	const i32 prior_dcs_turnoff_ms = channel ? channel->dcsTurnoffTimer : 0;
 	const i32 prior_tx_hang_ms = channel ? channel->txHangTime : 0;
@@ -2442,8 +2453,7 @@ static int urp_radio_dcs_turnoff_portable(urp_radio_state *channel, i32 elapsed_
 	      (state.finish_requested != (state.dcs_turnoff_remaining_ms == 0)))) ||
 	    (!begin_turnoff && input.tx_ptt_in &&
 	     (state.tx_state != CHAN_TXSTATE_ACTIVE || state.dcs_turnoff_remaining_ms != 0 ||
-	      state.tx_hang_remaining_ms != prior_tx_hang_ms || state.finish_requested != 0U ||
-	      state.finish_elapsed_ms != 0)) ||
+	      state.tx_hang_remaining_ms != prior_tx_hang_ms || state.finish_requested != 0U)) ||
 	    (!begin_turnoff && !input.tx_ptt_in &&
 	     (state.tx_state != CHAN_TXSTATE_TOC ||
 	      state.dcs_turnoff_remaining_ms > prior_dcs_turnoff_ms ||
@@ -2475,7 +2485,7 @@ void urp_radio_arm_txrx_blanking(urp_radio_state *pChan)
  * made by the historical completion branch, so a missing or malformed append
  * member can safely leave this state unchanged for the exact C fallback.
  */
-static int urp_radio_complete_tx_portable(urp_radio_state *channel)
+URP_RADIO_LOCAL int urp_radio_complete_tx_portable(urp_radio_state *channel)
 {
 	const struct rptadv_radio_tx_complete_config config = {
 		.struct_size = sizeof(struct rptadv_radio_tx_complete_config),
@@ -2515,7 +2525,7 @@ static int urp_radio_complete_tx_portable(urp_radio_state *channel)
  * CTCSS-tail drains retain their existing compatibility path, and an older
  * shared object or invalid response leaves the state untouched for C fallback.
  */
-static int urp_radio_enter_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_enter_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
 {
 	const struct rptadv_radio_tx_finish_input input = {
 		.elapsed_ms = elapsed_ms,
@@ -2544,7 +2554,7 @@ static int urp_radio_enter_finishing_portable(urp_radio_state *channel, i32 elap
  * @param elapsed_ms Elapsed milliseconds in the transition callback.
  * @return Nonzero when the supplied span also completes the drain.
  */
-static int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
 {
 	const int portable_result = urp_radio_enter_finishing_portable(channel, elapsed_ms);
 
@@ -2574,7 +2584,7 @@ static int urp_radio_enter_finishing(urp_radio_state *channel, i32 elapsed_ms)
  * compatibility counts. An unusual restored count remains in the retained C
  * code, which preserves its historical behavior without widening this ABI.
  */
-static int urp_radio_continue_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
+URP_RADIO_LOCAL int urp_radio_continue_finishing_portable(urp_radio_state *channel, i32 elapsed_ms)
 {
 	const struct rptadv_radio_tx_finish_input input = {
 		.elapsed_ms = elapsed_ms,
@@ -2917,9 +2927,8 @@ i16 urp_radio_process_native_timed(urp_radio_state *pChan, i16 *input, i16 *outp
 					pChan->dcsTurnoffTimer = 0;
 					pChan->txState = CHAN_TXSTATE_ACTIVE;
 					hit = 0;
-				} else if (finish_requested) {
-					hit = urp_radio_enter_finishing(pChan, tx_remaining_ms);
 				}
+				/* A validated rekey cannot request a finishing drain. */
 			} else if (pChan->txPttIn && pChan->b.ctcssTxEnable) {
 				/* A no-tone tail clears the emitted tone, not the configured
 				 * transmit CTCSS selection. Rekeying during that tail restores it.

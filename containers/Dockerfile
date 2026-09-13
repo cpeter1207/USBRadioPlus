@@ -34,9 +34,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
       coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0 ruff==0.16.5 && \
     /opt/usbradioplus-quality/bin/ruff --version >/dev/null
 
-# The portable Rust radio core is staged from a pinned source context during
-# consumer validation.  Install its exact build toolchain deterministically so
-# the UBR image never falls back to a distribution Rust version.
+# Retain the exact Rust toolchain for local shared-library diagnostics. Consumer
+# validation installs released Debian packages through shared_packages below;
+# it does not rebuild the portable Rust radio core.
 RUN case "${TARGETARCH}" in \
       amd64) rustup_host=x86_64-unknown-linux-gnu; rustup_sha=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c ;; \
       arm64) rustup_host=aarch64-unknown-linux-gnu; rustup_sha=e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c ;; \

@@ -8,9 +8,12 @@
 #include <string.h>
 
 #include "usbradioplus_radio_core_adapter.h"
+#include "radio_core_boundary_cases.h"
 
 /** Test-selected descriptor returned to the adapter's control-plane hook. */
 static const struct rptadv_radio_descriptor *test_descriptor;
+
+#include "radio_core_fault_cases.h"
 
 /** @brief Supply the descriptor candidate selected by this focused harness. */
 const struct rptadv_radio_descriptor *urp_radio_core_adapter_test_descriptor(void)
@@ -33,13 +36,13 @@ static struct rptadv_radio_descriptor descriptor_copy(void)
 /** @brief Reject each missing selected operation without replacing the live descriptor. */
 static void reject_missing_operations(const struct rptadv_radio_descriptor *published)
 {
-#define ASSERT_REQUIRED_MEMBER(member)                                                           \
-	do {                                                                                     \
-		struct rptadv_radio_descriptor candidate = *published;                            \
-		candidate.member = NULL;                                                         \
-		test_descriptor = &candidate;                                                    \
+#define ASSERT_REQUIRED_MEMBER(member)                                                             \
+	do {                                                                                       \
+		struct rptadv_radio_descriptor candidate = *published;                             \
+		candidate.member = NULL;                                                           \
+		test_descriptor = &candidate;                                                      \
 		assert(urp_radio_core_initialize() == URP_RADIO_CORE_INITIALIZE_INCOMPLETE);       \
-		assert(urp_radio_core_descriptor_get() == published);                             \
+		assert(urp_radio_core_descriptor_get() == published);                              \
 	} while (0)
 
 	ASSERT_REQUIRED_MEMBER(radio_create);
@@ -106,8 +109,12 @@ int main(void)
 	struct rptadv_radio_descriptor missing_meter = descriptor_copy();
 	struct rptadv_radio_descriptor complete = descriptor_copy();
 	struct rptadv_radio_descriptor incompatible = descriptor_copy();
+	uint32_t parsed = 99U;
 
 	test_descriptor = NULL;
+	test_radio_core_unavailable_boundaries();
+	test_radio_core_control_boundaries();
+	test_radio_core_workspace_boundaries();
 	assert(urp_radio_core_initialize() == URP_RADIO_CORE_INITIALIZE_UNAVAILABLE);
 	assert(!urp_radio_core_descriptor_get());
 
@@ -122,10 +129,14 @@ int main(void)
 	assert(!urp_radio_core_descriptor_get());
 
 	test_descriptor = &complete;
+	assert(!urp_radio_core_parse_rx_audio_mode("no", &parsed));
+	assert(parsed == 0U);
 	assert(urp_radio_core_initialize() == URP_RADIO_CORE_INITIALIZE_OK);
 	assert(urp_radio_core_descriptor_get() == &complete);
 
 	reject_missing_operations(&complete);
+	test_radio_core_opaque_boundaries();
+	test_radio_core_malformed_adapter();
 
 	test_descriptor = &missing_meter;
 	assert(urp_radio_core_initialize() == URP_RADIO_CORE_INITIALIZE_INCOMPLETE);

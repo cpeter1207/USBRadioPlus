@@ -3,18 +3,23 @@
  */
 
 #include <assert.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "../src/usbradioplus_channel_core.h"
 #include "../src/usbradioplus_radio_core_adapter.h"
+#include "channel_shared_boundary_cases.h"
 
 /** @brief Execute this harness's regression assertions and report any failures.
  * @return Zero when all checks pass; assertions or a nonzero result indicate failure.
  */
 int main(void)
 {
+	test_output_stage_boundaries();
+	test_shared_render_boundaries();
+	test_shared_parser_boundaries();
 	short sample;
 	size_t i;
 	enum urp_rx_audio_mode rx_audio;

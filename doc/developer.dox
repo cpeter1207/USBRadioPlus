@@ -277,8 +277,10 @@ For an affected channel test, select its exact C function name with
 `URP_CHANNEL_TEST=test_native_renderer_start_failures`. The linked channel
 harness rejects an unknown name. Leave the variable unset to run every test;
 the selector is for local diagnosis, not a substitute for the pull-request gate.
-`ASL_MODERN_INCLUDEDIR` must point to the ASL modern headers to include modern
-adapter harnesses; otherwise the channel group tests legacy variants only.
+The channel group always builds the single implementation with the installed
+ASL3 headers and the released audio and GPIO adapter development packages.
+No legacy/modern header selector is required. The package gate loads the same
+module under both supported ASL3 runtimes on each native architecture.
 
 Run `make docs` with Doxygen 1.9.8 or newer, Graphviz, and Python 3 installed.
 Generated HTML is written to `build/doxygen/html`; XML is written beside it. Doxygen checks

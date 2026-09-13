@@ -161,3 +161,54 @@ def test_installer_has_strict_repository_and_transaction_guards():
         assert required in source
     for forbidden in ("systemctl", "asterisk -rx", "modules.conf /", "rpt.conf /"):
         assert forbidden not in source
+
+
+@pytest.mark.parametrize(
+    ("simulation", "blocked"),
+    [
+        ("", False),
+        ("Inst usbradioplus [0.1.0~alpha17] (0.1.0~alpha18)\n", False),
+        ("Remv usbradioplus-asl3105 [0.1.0~alpha17]\n", False),
+        ("Remv usbradioplus-asl3105-dbgsym [0.1.0~alpha17]\n", False),
+        (
+            "Remv usbradioplus-asl3105 [0.1.0~alpha17]\n"
+            "Remv usbradioplus-asl3105-dbgsym [0.1.0~alpha17]\n"
+            "Inst usbradioplus (0.1.0~alpha18)\n",
+            False,
+        ),
+        ("Remv unrelated-radio-package [1.0]\n", True),
+        ("Remv usbradioplus-asl3105-extra [1.0]\n", True),
+        ("Remv usbradioplus-asl3105-dbgsym-extra [1.0]\n", True),
+        ("Remv asl3-asterisk [2:22.9.0]\n", True),
+        ("Inst asl3-asterisk [2:22.9.0] (2:22.10.1)\n", True),
+        ("Conf asl3-asterisk (2:22.10.1)\n", True),
+        (
+            "Remv usbradioplus-asl3105-dbgsym [0.1.0~alpha17]\n"
+            "Remv unrelated-radio-package [1.0]\n",
+            True,
+        ),
+    ],
+)
+def test_migration_removal_allowlist_is_exact(tmp_path, simulation, blocked):
+    """Execute the installer transaction guard without changing the test host.
+
+    @param tmp_path Isolated directory for the simulated APT transaction.
+    @param simulation APT simulation output supplied to the actual guard.
+    @param blocked Whether the transaction must be rejected.
+    """
+    if not shutil.which("sh"):
+        pytest.skip("POSIX shell is not available")
+    source = INSTALLER.read_text(encoding="utf-8")
+    start = source.index("if grep -E '^(Remv|")
+    end = source.index("\nfi", start) + len("\nfi")
+    guard = source[start:end]
+    report = tmp_path / "apt-simulation.txt"
+    report.write_text(simulation, encoding="utf-8")
+    result = subprocess.run(
+        ["sh", "-c", 'die() { printf "%s\\n" "$*" >&2; exit 42; };\n' + guard],
+        env=dict(os.environ, simulation=str(report)),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == (42 if blocked else 0), result.stderr

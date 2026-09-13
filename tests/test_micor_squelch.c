@@ -334,6 +334,14 @@ static void test_portable_core_matches_legacy_sample_sequence(void)
  */
 int main(void)
 {
+	struct rptadv_radio_micor_squelch_state boundary = {
+		.settling_samples = URP_MICOR_SETTLE_SAMPLES,
+		.idle_power = 1.0e12,
+		.hold_charge = 0.0,
+	};
+	assert(urp_micor_squelch_update(NULL, 1, 0.0, 0, 0));
+	assert(urp_micor_squelch_update(&boundary, 0, 0.0, 0, 0));
+	assert(boundary.noise_power == 0.0 && boundary.hold_charge == 0.0);
 	test_uninitialized_core_falls_back_to_legacy();
 	test_portable_core_matches_legacy_sample_sequence();
 	test_every_carrier_loss_alignment();

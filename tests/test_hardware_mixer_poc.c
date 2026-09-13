@@ -59,6 +59,8 @@ static unsigned int fake_fail_switch_at;
 static unsigned int fake_fail_normalized_at;
 /** @brief Semantic discovery mode used by one test. */
 static unsigned int fake_path_mode;
+/** @brief Mixer index whose read operations fail, or UINT32_MAX. */
+static unsigned int fake_fail_read_at;
 
 enum fake_path_mode {
 	FAKE_PATH_STANDARD = 0U,
@@ -233,6 +235,9 @@ static enum rptadv_audio_result fake_mixer_get_normalized(const struct rptadv_au
 {
 	if (!mixer || !value)
 		return RPTADV_AUDIO_INVALID_ARGUMENT;
+	if (fake_fail_read_at < 7U &&
+	    mixer == (const struct rptadv_audio_mixer *)&fake_mixers[fake_fail_read_at])
+		return RPTADV_AUDIO_ALSA_ERROR;
 	*value = ((const struct fake_mixer *)mixer)->normalized;
 	return RPTADV_AUDIO_OK;
 }
@@ -257,6 +262,9 @@ static enum rptadv_audio_result fake_mixer_get_switch(const struct rptadv_audio_
 {
 	if (!mixer || !enabled)
 		return RPTADV_AUDIO_INVALID_ARGUMENT;
+	if (fake_fail_read_at < 7U &&
+	    mixer == (const struct rptadv_audio_mixer *)&fake_mixers[fake_fail_read_at])
+		return RPTADV_AUDIO_ALSA_ERROR;
 	*enabled = ((const struct fake_mixer *)mixer)->enabled;
 	return RPTADV_AUDIO_OK;
 }
@@ -328,6 +336,7 @@ static void reset_fake_adapter(void)
 	fake_fail_open_at = sizeof(fake_mixers) / sizeof(fake_mixers[0]);
 	fake_fail_switch_at = UINT32_MAX;
 	fake_fail_normalized_at = UINT32_MAX;
+	fake_fail_read_at = UINT32_MAX;
 	fake_path_mode = FAKE_PATH_STANDARD;
 	fake_audio.struct_size = sizeof(fake_audio);
 }
@@ -750,6 +759,116 @@ static void test_sidetone_failures_and_retry(void)
 }
 
 /** @brief Run the direct semantic mixer bridge test suite. */
+static void test_public_control_boundaries(void)
+{
+	struct usbradioplus_hardware_adapter adapter = ready_adapter();
+	struct usbradioplus_hardware_mixer_poc mixer = {0}, saved;
+	const enum usbradioplus_hardware_mixer_poc_control rx =
+		USBRADIOPLUS_HARDWARE_MIXER_POC_RX_CAPTURE;
+	uint32_t value;
+	unsigned int invalid;
+	reset_fake_adapter();
+	usbradioplus_hardware_mixer_poc_close(NULL);
+	assert(usbradioplus_hardware_mixer_poc_open(NULL, &adapter) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_open(&mixer, NULL) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_apply(NULL, 0U, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_apply(&mixer, 0U, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_open(&mixer, &adapter) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(usbradioplus_hardware_mixer_poc_open(&mixer, &adapter) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	saved = mixer;
+	for (invalid = 0U; invalid < 5U; ++invalid) {
+		struct usbradioplus_hardware_mixer_poc *selected = invalid == 0U ? NULL : &mixer;
+		enum usbradioplus_hardware_mixer_poc_control control =
+			invalid == 2U ? USBRADIOPLUS_HARDWARE_MIXER_POC_CONTROL_COUNT : rx;
+		mixer = saved;
+		if (invalid == 1U)
+			mixer.opened = 0U;
+		if (invalid == 3U)
+			mixer.controls[rx].path_count = 0U;
+		if (invalid == 4U)
+			mixer.controls[rx].path_count = RPTADV_AUDIO_CM119_MIXER_PATH_CAPACITY + 1U;
+		assert(usbradioplus_hardware_mixer_poc_set_normalized(selected, control, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(usbradioplus_hardware_mixer_poc_get_normalized(selected, control, &value) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(usbradioplus_hardware_mixer_poc_set_switch(selected, control, 0U) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(usbradioplus_hardware_mixer_poc_get_switch(selected, control, &value) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	}
+	mixer = saved;
+	assert(usbradioplus_hardware_mixer_poc_get_normalized(&mixer, rx, NULL) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_get_switch(&mixer, rx, NULL) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_set_switch(&mixer, rx, 2U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_hardware_mixer_poc_get_switch(
+		       &mixer, USBRADIOPLUS_HARDWARE_MIXER_POC_TX_B, &value) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	for (invalid = 0U; invalid < 2U; ++invalid) {
+		fake_fail_read_at = invalid;
+		assert(usbradioplus_hardware_mixer_poc_get_normalized(&mixer, rx, &value) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+		assert(usbradioplus_hardware_mixer_poc_get_switch(&mixer, rx, &value) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	}
+	fake_fail_read_at = UINT32_MAX;
+	fake_mixers[0].enabled = 2U;
+	assert(usbradioplus_hardware_mixer_poc_get_switch(&mixer, rx, &value) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	fake_mixers[0].enabled = 0U;
+	fake_steps_result = RPTADV_AUDIO_ALSA_ERROR;
+	assert(usbradioplus_hardware_mixer_poc_apply(&mixer, 10U, 10U, 10U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	fake_steps_result = RPTADV_AUDIO_OK;
+	fake_fail_switch_at = fake_switch_set_calls;
+	assert(usbradioplus_hardware_mixer_poc_apply(&mixer, 10U, 10U, 10U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	mixer.sidetone.path_count = RPTADV_AUDIO_CM119_MIXER_PATH_CAPACITY + 1U;
+	assert(!usbradioplus_hardware_mixer_poc_sidetone_available(&mixer));
+	assert(usbradioplus_hardware_mixer_poc_set_sidetone(&mixer, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+	mixer = saved;
+	usbradioplus_hardware_mixer_poc_close(&mixer);
+}
+
+/** @brief Failures at each open stage and muting preserve cleanup and retry state. */
+static void test_open_stages_and_sidetone_mute_failure(void)
+{
+	struct usbradioplus_hardware_adapter adapter = ready_adapter();
+	struct usbradioplus_hardware_mixer_poc mixer = {0};
+	unsigned int failed;
+	for (failed = 0U; failed < 4U; ++failed) {
+		reset_fake_adapter();
+		fake_fail_open_at = failed;
+		assert(usbradioplus_hardware_mixer_poc_open(&mixer, &adapter) ==
+		       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+		assert(fake_close_calls == failed && !mixer.opened);
+	}
+	reset_fake_adapter();
+	fake_path_mode = FAKE_PATH_SIDETONE_PRESENT;
+	assert(usbradioplus_hardware_mixer_poc_open(&mixer, &adapter) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(usbradioplus_hardware_mixer_poc_set_sidetone(&mixer, 0U, 1U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	fake_fail_switch_at = fake_switch_set_calls;
+	assert(usbradioplus_hardware_mixer_poc_set_sidetone(&mixer, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_AUDIO_ERROR);
+	assert(!mixer.sidetone_state_valid);
+	fake_fail_switch_at = UINT32_MAX;
+	assert(usbradioplus_hardware_mixer_poc_set_sidetone(&mixer, 0U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	usbradioplus_hardware_mixer_poc_close(&mixer);
+}
+
+/** @brief Run the direct semantic mixer bridge test suite. */
 int main(void)
 {
 	test_semantic_open_and_controls();
@@ -765,6 +884,8 @@ int main(void)
 	test_sidetone_gain_switch_and_cache();
 	test_sidetone_unavailable_and_invalid_requests();
 	test_sidetone_failures_and_retry();
+	test_public_control_boundaries();
+	test_open_stages_and_sidetone_mute_failure();
 	puts("hardware mixer POC tests passed");
 	return 0;
 }

@@ -70,14 +70,14 @@ static int hardware_audio_descriptor_valid(const struct rptadv_audio_adapter_des
 
 /**
  * @brief Return whether an append-only audio descriptor member is available.
- * @param audio Candidate audio adapter descriptor.
+ * @param audio Non-NULL audio descriptor checked by the public entry point.
  * @param member_end End offset of the required descriptor member.
  * @return Nonzero when the descriptor contains the member.
  */
 static int hardware_audio_descriptor_has_member(const struct rptadv_audio_adapter_descriptor *audio,
 						size_t member_end)
 {
-	return audio && audio->struct_size >= member_end;
+	return audio->struct_size >= member_end;
 }
 
 /**
@@ -99,19 +99,19 @@ static int hardware_gpio_descriptor_valid(const struct rptadv_gpio_adapter_descr
 
 /**
  * @brief Return whether an append-only GPIO descriptor member is available.
- * @param gpio Candidate GPIO adapter descriptor.
+ * @param gpio Non-NULL GPIO descriptor checked by the public entry point.
  * @param member_end End offset of the required descriptor member.
  * @return Nonzero when the descriptor contains the member.
  */
 static int hardware_gpio_descriptor_has_member(const struct rptadv_gpio_adapter_descriptor *gpio,
 					       size_t member_end)
 {
-	return gpio && gpio->struct_size >= member_end;
+	return gpio->struct_size >= member_end;
 }
 
 /**
  * @brief Validate one semantic CM119 mixer path returned by the audio adapter.
- * @param path Candidate returned ALSA path.
+ * @param path Non-NULL element of the bounded returned ALSA path array.
  * @param direction Required capture or playback direction.
  * @param required_capabilities Capabilities required by the path class.
  * @return Nonzero when the path is complete and usable.
@@ -119,8 +119,7 @@ static int hardware_gpio_descriptor_has_member(const struct rptadv_gpio_adapter_
 static int hardware_cm119_mixer_path_valid(const struct rptadv_audio_cm119_mixer_path *path,
 					   uint32_t direction, uint32_t required_capabilities)
 {
-	return path && path->element[0] &&
-	       memchr(path->element, '\0', sizeof(path->element)) != NULL &&
+	return path->element[0] && memchr(path->element, '\0', sizeof(path->element)) != NULL &&
 	       path->channel <= RPTADV_AUDIO_MIXER_CHANNEL_RIGHT && path->direction == direction &&
 	       (path->capabilities & required_capabilities) == required_capabilities;
 }
@@ -151,12 +150,12 @@ static int hardware_cm119_mixer_path_group_valid(const struct rptadv_audio_cm119
 
 /**
  * @brief Validate all semantic CM119 mixer-path classes returned by an adapter.
- * @param paths Complete returned path classification.
+ * @param paths Non-NULL returned classification checked by the public entry point.
  * @return Nonzero when every populated class preserves its documented semantics.
  */
 static int hardware_cm119_mixer_paths_valid(const struct rptadv_audio_cm119_mixer_paths *paths)
 {
-	return paths && paths->struct_size >= sizeof(*paths) &&
+	return paths->struct_size >= sizeof(*paths) &&
 	       paths->abi_version == RPTADV_AUDIO_ADAPTER_ABI_VERSION &&
 	       paths->rx_capture_path_count != 0U && paths->tx_playback_path_count != 0U &&
 	       hardware_cm119_mixer_path_group_valid(
@@ -176,16 +175,16 @@ static int hardware_cm119_mixer_paths_valid(const struct rptadv_audio_cm119_mixe
 
 /**
  * @brief Copy a required NUL-terminated configuration string into fixed storage.
- * @param destination Fixed destination buffer.
- * @param capacity Size of @p destination in bytes.
- * @param source Required text to copy.
+ * @param destination Non-NULL fixed destination array.
+ * @param capacity Nonzero sizeof the destination array in bytes.
+ * @param source Non-NULL returned identity array containing the required text.
  * @return Nonzero on a complete bounded copy.
  */
 static int hardware_copy_required_text(char *destination, size_t capacity, const char *source)
 {
 	size_t length;
 
-	if (!destination || !capacity || !source || !*source)
+	if (!*source)
 		return 0;
 	length = strlen(source);
 	if (length >= capacity)
@@ -196,18 +195,16 @@ static int hardware_copy_required_text(char *destination, size_t capacity, const
 
 /**
  * @brief Copy an optional NUL-terminated configuration string into fixed storage.
- * @param destination Fixed destination buffer.
- * @param capacity Size of @p destination in bytes.
- * @param source Optional text to copy.
+ * @param destination Non-NULL fixed destination array.
+ * @param capacity Nonzero sizeof the destination array in bytes.
+ * @param source Non-NULL returned identity array, optionally empty.
  * @return Nonzero on a complete bounded copy or an accepted omission.
  */
 static int hardware_copy_optional_text(char *destination, size_t capacity, const char *source)
 {
 	size_t length;
 
-	if (!destination || !capacity)
-		return 0;
-	if (!source || !*source) {
+	if (!*source) {
 		destination[0] = '\0';
 		return 1;
 	}

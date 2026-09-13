@@ -130,6 +130,21 @@ static void test_invalid_and_failed_selection(void)
 	struct usbradioplus_portaudio_poc_device_selection selection;
 
 	reset_fake_selector();
+	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, -1, NULL) ==
+	       RPTADV_AUDIO_INVALID_ARGUMENT);
+	assert(usbradioplus_portaudio_poc_select_devices(NULL, "hw:4", NULL, -1, -1, &selection) ==
+	       RPTADV_AUDIO_UNSUPPORTED);
+	descriptor.abi_version++;
+	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, -1,
+							 &selection) == RPTADV_AUDIO_UNSUPPORTED);
+	descriptor = complete_descriptor();
+	descriptor.usb_device_select = NULL;
+	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, -1,
+							 &selection) == RPTADV_AUDIO_UNSUPPORTED);
+	descriptor = complete_descriptor();
+	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, 1,
+							 &selection) ==
+	       RPTADV_AUDIO_INVALID_ARGUMENT);
 	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, 1, -1,
 							 &selection) ==
 	       RPTADV_AUDIO_INVALID_ARGUMENT);
@@ -151,6 +166,10 @@ static void test_invalid_and_failed_selection(void)
 	assert(selector_calls == 1U);
 	selector_result = RPTADV_AUDIO_OK;
 	selector_input_index = -1;
+	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, -1,
+							 &selection) == RPTADV_AUDIO_UNSUPPORTED);
+	selector_input_index = 1;
+	selector_output_index = -1;
 	assert(usbradioplus_portaudio_poc_select_devices(&descriptor, "hw:4", NULL, -1, -1,
 							 &selection) == RPTADV_AUDIO_UNSUPPORTED);
 }

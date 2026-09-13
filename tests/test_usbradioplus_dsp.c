@@ -129,6 +129,31 @@ static void test_adapter_matches_legacy_sinc(void)
 	urp_src_destroy(adapter);
 }
 
+/** @brief Clamp sinc overshoot at the signed-16 boundary in both directions. */
+static void test_sinc_overshoot_saturates(void)
+{
+	struct urp_src *src = urp_src_create(SRC_SINC_BEST_QUALITY, 1);
+	int16_t input[URP_LINK_SAMPLES];
+	int16_t output[URP_NATIVE_SAMPLES];
+	size_t used, made;
+	unsigned int upper = 0, lower = 0;
+	assert(src);
+	assert(!urp_src_reserve(src, URP_LINK_SAMPLES, URP_NATIVE_SAMPLES));
+	for (size_t index = 0; index < URP_LINK_SAMPLES; ++index)
+		input[index] = index % 32 < 16 ? INT16_MAX : INT16_MIN;
+	for (unsigned int frame = 0; frame < 8; ++frame) {
+		assert(!urp_rate_convert_prepared(src, input, URP_LINK_SAMPLES, URP_RATE_LINK,
+						  output, URP_NATIVE_SAMPLES, URP_RATE_NATIVE,
+						  &used, &made));
+		for (size_t index = 0; index < made; ++index) {
+			upper += output[index] == INT16_MAX;
+			lower += output[index] == INT16_MIN;
+		}
+	}
+	assert(upper && lower);
+	urp_src_destroy(src);
+}
+
 /** @brief Verify same rate bypass. */
 static void test_same_rate_bypass(void)
 {
@@ -192,6 +217,9 @@ static void test_defensive_and_boundary_paths(void)
 	assert(src);
 	assert(urp_src_reserve(src, 0, 1) < 0);
 	assert(urp_src_reserve(src, 1, 0) < 0);
+	assert(urp_src_reserve(src, SIZE_MAX, 1) < 0);
+	assert(urp_src_reserve(src, 1, SIZE_MAX) < 0);
+	assert(!urp_src_reserve(src, 3, 3));
 	assert(!urp_src_reserve(src, 3, 3));
 	assert(urp_src_process_prepared(NULL, mono, 3, extracted, 3, 1.0, &used, &made) < 0);
 	assert(urp_src_process_prepared(src, NULL, 3, extracted, 3, 1.0, &used, &made) < 0);
@@ -254,6 +282,7 @@ int main(void)
 {
 	test_src();
 	test_adapter_matches_legacy_sinc();
+	test_sinc_overshoot_saturates();
 	test_same_rate_bypass();
 	test_prepared_src_no_allocation();
 	test_defensive_and_boundary_paths();

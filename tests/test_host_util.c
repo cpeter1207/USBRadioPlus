@@ -191,6 +191,15 @@ static void test_audio_statistics_text(void)
 	assert(!strcmp(cli_output,
 		       "RxAudioStats: Pk -96.0  Avg Pwr -96  Min -96  Max -96  dBFS  ClipCnt 0\n"));
 
+	/* A single unit of integer power gives the smallest positive averaged input. */
+	statistics.maxbuf[0] = 1U;
+	statistics.pwrbuf[0] = 1U;
+	reset_host();
+	usbradioplus_host_print_audio_stats(TEST_CLI_FD, &statistics, "Rx");
+	assert(!strcmp(
+		cli_output,
+		"RxAudioStats: Pk -90.3  Avg Pwr -107  Min -96  Max -90  dBFS  ClipCnt 0\n"));
+
 	for (index = 0U; index < RPTADV_RADIO_AUDIO_STATS_LEN; ++index) {
 		statistics.maxbuf[index] = 32768U;
 		statistics.pwrbuf[index] = 268435456U;

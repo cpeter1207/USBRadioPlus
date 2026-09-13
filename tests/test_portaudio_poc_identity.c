@@ -55,10 +55,40 @@ static void test_mismatched_gpio_topology_is_rejected(void)
 	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_TOPOLOGY_MISMATCH);
 }
 
+/** @brief Validate optional topology and every incomplete composition boundary. */
+static void test_identity_boundaries(void)
+{
+	struct usbradioplus_hardware_adapter adapter = prepared_adapter();
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(NULL, 1, "3-1") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_INVALID);
+	adapter.audio = NULL;
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "3-1") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_INVALID);
+	adapter = prepared_adapter();
+	adapter.gpio = NULL;
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "3-1") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_INVALID);
+	adapter = prepared_adapter();
+	adapter.usb_port_path[0] = '\0';
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "3-1") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_INVALID);
+	adapter = prepared_adapter();
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, NULL) ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_OK);
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_OK);
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "3-1.2") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_TOPOLOGY_MISMATCH);
+	strcpy(adapter.usb_port_path, ":1.0");
+	assert(usbradioplus_portaudio_poc_combined_facade_validate(&adapter, 1, "3-1") ==
+	       USBRADIOPLUS_PORTAUDIO_POC_IDENTITY_TOPOLOGY_MISMATCH);
+}
+
 int main(void)
 {
 	test_valid_combined_binding();
 	test_missing_prepared_facade_is_rejected();
 	test_mismatched_gpio_topology_is_rejected();
+	test_identity_boundaries();
 	return 0;
 }

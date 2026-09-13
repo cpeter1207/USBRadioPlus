@@ -32,7 +32,7 @@ portaudio_poc_status_copy_frequency(struct usbradioplus_portaudio_poc_status_eve
 /**
  * @brief Reserve and publish one already initialized status event.
  * @param handoff Shared callback-to-worker status handoff.
- * @param event Fully initialized event to copy into a bounded slot.
+ * @param event Non-NULL local event to copy into a bounded slot.
  * @return One \c usbradioplus_portaudio_poc_status_result value.
  */
 static enum usbradioplus_portaudio_poc_status_result
@@ -42,7 +42,7 @@ portaudio_poc_status_publish(struct usbradioplus_portaudio_poc_status_handoff *h
 	uint64_t produced;
 	uint64_t consumed;
 
-	if (!handoff || !event)
+	if (!handoff)
 		return USBRADIOPLUS_PORTAUDIO_POC_STATUS_INVALID;
 	produced = atomic_load_explicit(&handoff->produced, memory_order_relaxed);
 	consumed = atomic_load_explicit(&handoff->consumed, memory_order_acquire);

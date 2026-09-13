@@ -24,6 +24,8 @@ struct fake_graph_state {
 static struct fake_graph_state fake_graph_state;
 /** @brief Number of fake descriptor destroy calls observed by the test. */
 static unsigned int fake_destroy_calls;
+/** Simulate an incompatible provider returning success with no graph. */
+static int fake_empty_graph;
 
 /** @brief Return the stable opaque graph token used by this test. */
 static struct rptadv_ffmpeg_graph *fake_graph(void)
@@ -37,7 +39,7 @@ fake_create_ok(const struct rptadv_ffmpeg_graph_config *config, struct rptadv_ff
 {
 	assert(config != NULL);
 	assert(graph != NULL);
-	*graph = fake_graph();
+	*graph = fake_empty_graph ? NULL : fake_graph();
 	return RPTADV_FFMPEG_ADAPTER_OK;
 }
 
@@ -219,6 +221,29 @@ static void test_prepared_exact_block_lifecycle(void)
 /** @brief Execute focused FFmpeg-adapter facade tests. */
 int main(void)
 {
+	struct rptadv_ffmpeg_adapter_descriptor descriptor = fake_descriptor(fake_create_ok);
+	struct usbradioplus_ffmpeg_adapter adapter = {0};
+	float sample = 0.0F;
+	assert(usbradioplus_ffmpeg_adapter_prepare(&adapter, NULL, "anull", 48000, 1) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_INCOMPATIBLE_ADAPTER);
+	assert(usbradioplus_ffmpeg_adapter_process_block(&adapter, &sample, 1, &sample) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_ffmpeg_adapter_close(&adapter);
+	adapter.descriptor = &descriptor;
+	assert(usbradioplus_ffmpeg_adapter_process_block(&adapter, &sample, 1, &sample) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_ffmpeg_adapter_close(&adapter);
+	fake_empty_graph = 1;
+	assert(usbradioplus_ffmpeg_adapter_prepare(&adapter, &descriptor, "anull", 48000, 1) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_GRAPH_ERROR);
+	fake_empty_graph = 0;
+	assert(usbradioplus_ffmpeg_adapter_prepare(&adapter, &descriptor, "anull", 48000, 1) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_OK);
+	assert(usbradioplus_ffmpeg_adapter_process_block(&adapter, NULL, 1, &sample) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_ffmpeg_adapter_process_block(&adapter, &sample, 1, NULL) ==
+	       USBRADIOPLUS_FFMPEG_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_ffmpeg_adapter_close(&adapter);
 	test_descriptor_validation();
 	test_descriptor_member_validation();
 	test_facade_error_lifecycle();

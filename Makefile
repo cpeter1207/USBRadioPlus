@@ -38,8 +38,8 @@ WARNFLAGS ?= -Wall -Wextra -Werror -Wno-old-style-declaration
 ASTERISK_INCLUDEDIR ?= /usr/include
 BUILD_DIR ?= build
 DIST_DIR ?= dist
-# Use the released shared ring ABI. CI may stage a checked-out release source;
-# normal builds consume its installed pkg-config metadata and runtime SONAME.
+# Use the released shared ring ABI. CI and normal builds consume installed
+# pkg-config metadata and runtime SONAMEs; a source override is diagnostic-only.
 RPCR_SOURCE ?=
 ifneq ($(strip $(RPCR_SOURCE)),)
 RPCR_STAGE ?= $(CURDIR)/build/rpcr-stage
@@ -60,8 +60,8 @@ RPCR_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring) 
 RPCR_BUILD_DEP :=
 endif
 # USBRadioPlus consumes the portable Rust radio core through its released
-# versioned shared-object ABI. CI may stage a checked-out release source;
-# ordinary builds consume its installed development package.
+# versioned shared-object ABI. CI and ordinary builds consume its installed
+# development package; a source override is diagnostic-only.
 RPTADV_RADIO_SOURCE ?=
 ifneq ($(strip $(RPTADV_RADIO_SOURCE)),)
 RPTADV_RADIO_STAGE ?= $(CURDIR)/build/rptadvradio-stage
@@ -309,7 +309,7 @@ lint:
 	$(RUFF) check scripts tests_py tests_docs tools
 	$(RUFF) format --check scripts/usbradioplus-tune tests_py tests_docs tools
 	$(CLANG_FORMAT) --dry-run --Werror \
-		$(wildcard src/*.c src/*.h src/*.inc src/txagc/*.c src/txagc/*.h tests/*.c)
+		$(wildcard src/*.c src/*.h src/*.inc src/txagc/*.c src/txagc/*.h tests/*.c tests/*.h)
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 
@@ -334,7 +334,7 @@ static-analysis: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE
 		src/txagc/agc_core.c src/txagc/avfilter_processor.c \
 		src/txagc/rms_agc_ladspa.c \
 		src/txagc/rnnoise_processor.c \
-		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 \
+		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(DSP_CFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& shared_tidy_pid=$$!; \

@@ -279,6 +279,66 @@ static void test_invalid_clip_configuration_rejected(void)
 }
 
 /** @brief Run deterministic hardware-adapter POC GPIO regression checks. */
+static void test_invalid_arguments_and_transactional_failures(void)
+{
+	struct usbradioplus_hardware_adapter adapter = ready_adapter();
+	struct usbradioplus_hardware_gpio_poc_state state = {0};
+	int pulses[USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT] = {0};
+	uint32_t cancel_mask;
+	unsigned int invalid;
+
+	for (invalid = 0U; invalid < 7U; ++invalid) {
+		reset_fake_gpio();
+		cancel_mask = invalid == 5U ? 8U : 0U;
+		assert(usbradioplus_hardware_gpio_poc_publish(
+			       invalid == 0U ? NULL : &adapter, invalid == 1U ? NULL : &state, 0U,
+			       7U, 0U, invalid == 2U ? NULL : pulses,
+			       invalid == 4U ? 0U : USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+			       invalid == 3U ? NULL : &cancel_mask, invalid == 6U ? 3U : 0U, 0U,
+			       10U, 0U) == USBRADIOPLUS_HARDWARE_ADAPTER_INVALID_ARGUMENT);
+		assert(publish_calls == 0U && schedule_calls == 0U);
+	}
+	reset_fake_gpio();
+	cancel_mask = 1U;
+	publish_result = RPTADV_GPIO_IO_ERROR;
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 1U, 0U, 10U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_GPIO_ERROR);
+	assert(cancel_mask == 1U && schedule_calls == 0U);
+	reset_fake_gpio();
+	state.clip_led_deadline_milliseconds = 50U;
+	schedule_result = RPTADV_GPIO_IO_ERROR;
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 1U, 0U, 10U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_GPIO_ERROR);
+	assert(cancel_mask == 1U && state.clip_led_deadline_milliseconds == 50U);
+	reset_fake_gpio();
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 2U, 0U, 10U,
+						      0U) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(cancel_mask == 0U && state.clip_led_deadline_milliseconds == 50U);
+	cancel_mask = 1U;
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 1U, 0U, 10U,
+						      0U) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+	assert(cancel_mask == 0U && state.clip_led_deadline_milliseconds == 0U);
+	schedule_result = RPTADV_GPIO_IO_ERROR;
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 1U, 1U, 10U, 0U) ==
+	       USBRADIOPLUS_HARDWARE_ADAPTER_GPIO_ERROR);
+	assert(state.clip_led_deadline_milliseconds == 0U);
+	assert(usbradioplus_hardware_gpio_poc_publish(&adapter, &state, 0U, 3U, 0U, pulses,
+						      USBRADIOPLUS_HARDWARE_GPIO_POC_PIN_COUNT,
+						      &cancel_mask, 0U, 1U, 0U,
+						      0U) == USBRADIOPLUS_HARDWARE_ADAPTER_OK);
+}
+
+/** @brief Run deterministic hardware-adapter POC GPIO regression checks. */
 int main(void)
 {
 	test_persistent_outputs_and_pulses();
@@ -287,5 +347,6 @@ int main(void)
 	test_clip_led_defers_to_an_existing_gpio_pulse();
 	test_pending_pulses_survive_schedule_failure();
 	test_invalid_clip_configuration_rejected();
+	test_invalid_arguments_and_transactional_failures();
 	return 0;
 }

@@ -31,8 +31,8 @@ wrapper may download RNNoise; Make and Debian package builds never do.
 
 USBRadioPlus links dynamically to the separately released GPL-2.0-only
 `rate_adjusting_pcm_ring` library. Build packages require its development
-package; installed modules require its matching runtime package. CI stages the
-released library source only to test that public ABI deterministically.
+package; installed modules require its matching runtime package. CI installs
+digest-verified release packages to test that public ABI deterministically.
 
 The current mono sinc compatibility path also links dynamically to the
 separately released `rptadv_samplerate_adapter` library. It owns the
@@ -77,8 +77,9 @@ sources, dependencies, or installer path. A new package build
 is required when ASL3 Asterisk is updated; do not weaken this dependency unless
 ASL publishes a stable module ABI or a suitable virtual ABI package.
 The unified package conflicts with and replaces the retired
-`usbradioplus-asl3105` variant. The installer permits that specific package
-replacement while continuing to reject ASL changes and unrelated removals.
+`usbradioplus-asl3105` variant. The installer permits removal of that specific
+package and its `usbradioplus-asl3105-dbgsym` companion during replacement,
+while continuing to reject ASL changes and unrelated removals.
 
 Set `SOURCE_DATE_EPOCH` when producing the upstream archive. The `dist` target
 normalizes archive ownership, ordering, and timestamps. `distcheck` extracts
@@ -97,5 +98,5 @@ explicitly requested; it has no automatic test or staged-install matrix.
 integrated implementation components, not convenience copies selected in
 preference to packaged shared libraries. The radio code contains the native
 detectors and signaling state machine; txagc contains the audio-processing
-implementation. Record their provenance and license status in the eventual
-Debian `debian/copyright` file.
+implementation. Their provenance and license status are recorded in
+`debian/copyright`.

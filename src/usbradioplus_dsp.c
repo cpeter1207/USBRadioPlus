@@ -121,10 +121,11 @@ int urp_src_reserve(struct urp_src *src, size_t input_capacity, size_t output_ca
 {
 	float *input;
 	float *output;
+	const size_t capacity_limit =
+		SIZE_MAX / sizeof(*input) < UINT32_MAX ? SIZE_MAX / sizeof(*input) : UINT32_MAX;
 
-	if (!src || !input_capacity || !output_capacity || input_capacity > UINT32_MAX ||
-	    output_capacity > UINT32_MAX || input_capacity > SIZE_MAX / sizeof(*input) ||
-	    output_capacity > SIZE_MAX / sizeof(*output))
+	if (!src || !input_capacity || !output_capacity || input_capacity > capacity_limit ||
+	    output_capacity > capacity_limit)
 		return -1;
 	if (input_capacity > src->input_capacity) {
 		input = URP_REALLOC(src->input, input_capacity * sizeof(*input));

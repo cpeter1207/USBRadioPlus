@@ -21,6 +21,8 @@ static enum rptadv_samplerate_adapter_result fake_reset_result;
 static enum rptadv_samplerate_adapter_result fake_process_result;
 /** Whether a failed fake creation still returns owned storage for cleanup. */
 static int fake_create_returns_converter_on_error;
+/** Simulate a provider reporting success without returning its object. */
+static int fake_create_returns_null;
 /** Number of fake lifecycle calls observed by the harness. */
 static unsigned int fake_create_calls, fake_reset_calls, fake_process_calls, fake_destroy_calls;
 
@@ -31,6 +33,7 @@ static void reset_fake(void)
 	fake_reset_result = RPTADV_SAMPLERATE_ADAPTER_OK;
 	fake_process_result = RPTADV_SAMPLERATE_ADAPTER_OK;
 	fake_create_returns_converter_on_error = 0;
+	fake_create_returns_null = 0;
 	fake_create_calls = 0U;
 	fake_reset_calls = 0U;
 	fake_process_calls = 0U;
@@ -50,6 +53,8 @@ fake_create(enum rptadv_samplerate_quality quality, uint32_t channels,
 		      fake_create_returns_converter_on_error)
 			     ? (struct rptadv_samplerate_converter *)&fake_converter_storage
 			     : NULL;
+	if (fake_create_returns_null)
+		*converter = NULL;
 	return fake_create_result;
 }
 
@@ -246,6 +251,35 @@ static void test_adapter_failures(void)
 /** @brief Execute every sample-rate facade regression assertion. */
 int main(void)
 {
+	struct rptadv_samplerate_adapter_descriptor descriptor = fake_descriptor();
+	struct usbradioplus_samplerate_adapter adapter = {0};
+	uint32_t used = 0, made = 0;
+	reset_fake();
+	assert(usbradioplus_samplerate_adapter_prepare(&adapter, NULL,
+						       RPTADV_SAMPLERATE_QUALITY_SINC_BEST) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INCOMPATIBLE_ADAPTER);
+	assert(usbradioplus_samplerate_adapter_reset(&adapter) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_samplerate_adapter_process(&adapter, NULL, 0, NULL, 0, 1.0, &used,
+						       &made) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_samplerate_adapter_close(&adapter);
+	adapter.descriptor = &descriptor;
+	assert(usbradioplus_samplerate_adapter_reset(&adapter) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INVALID_ARGUMENT);
+	assert(usbradioplus_samplerate_adapter_process(&adapter, NULL, 0, NULL, 0, 1.0, &used,
+						       &made) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_samplerate_adapter_close(&adapter);
+	adapter.converter = (struct rptadv_samplerate_converter *)&fake_converter_storage;
+	assert(usbradioplus_samplerate_adapter_prepare(&adapter, &descriptor,
+						       RPTADV_SAMPLERATE_QUALITY_SINC_BEST) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_INVALID_ARGUMENT);
+	usbradioplus_samplerate_adapter_close(&adapter);
+	fake_create_returns_null = 1;
+	assert(usbradioplus_samplerate_adapter_prepare(&adapter, &descriptor,
+						       RPTADV_SAMPLERATE_QUALITY_SINC_BEST) ==
+	       USBRADIOPLUS_SAMPLERATE_ADAPTER_CONVERTER_ERROR);
 	test_descriptor_and_lifecycle();
 	test_invalid_inputs();
 	test_adapter_failures();

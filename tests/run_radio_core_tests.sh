@@ -11,7 +11,7 @@ if [ -z "${C_TEST_OUTPUT:-}" ]; then
 	trap 'rm -rf -- "$out"' EXIT HUP INT TERM
 fi
 mkdir -p "$out"
-common="-std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-}"
+common="-std=gnu11 -Wall -Wextra -Werror -DURP_RADIO_CORE_ADAPTER_TESTING -DURP_RADIO_TESTING ${C_TEST_CFLAGS:-}"
 if [ -z "${RPTADV_RADIO_CFLAGS:-}" ]; then
 	RPTADV_RADIO_CFLAGS=$(pkg-config --cflags rptadvradio)
 fi
