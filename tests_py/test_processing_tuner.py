@@ -158,8 +158,13 @@ def test_shipped_chains_document_every_applicable_processing_control():
             assert not (set(values) & transmitter_only)
     manual = (ROOT / "man/usbradioplus.conf.5").read_text(encoding="utf-8")
     assert ".B receive_bandpass_lowpass_hz = receive_bandpass_highpass_hz..6000" in manual
-    assert "The following OSS-device controls do not configure that program ring." in sample
-    assert "The PortAudio adapter ignores it." in manual
+    assert "Compatibility fragment/queue settings are accepted but have no effect." in sample
+    assert (
+        manual.count(
+            "Compatibility setting accepted without changing the audio adapter or program ring."
+        )
+        == 2
+    )
 
 
 def test_shipped_sample_comments_each_active_setting():

@@ -88,8 +88,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     rm -rf /var/lib/apt/lists/* /tmp/shared-packages
 COPY --from=staged /stage/ /
 COPY --chmod=0755 tests/container-smoke-test.sh /usr/local/libexec/usbradioplus/
-RUN ln -s librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
-    ln -s librnnoise.so.0 /usr/local/lib/librnnoise.so && \
+# Shared-package installation can already create the SONAME link via ldconfig.
+RUN ln -sf librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
+    ln -sf librnnoise.so.0 /usr/local/lib/librnnoise.so && \
     ldconfig && \
 	 test "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" != "" && \
 	 test -x /usr/sbin/usbradioplus-tune && \
