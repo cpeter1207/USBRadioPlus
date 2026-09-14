@@ -26,8 +26,18 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	$(MAKE) clean
 
+override_dh_dwz:
+	# Mixed C/Rust debug data shares only strings; do not emit a string-only
+	# multifile ELF. Keep per-object DWARF optimization and both debug files.
+	dh_dwz --no-dwz-multifile
+
+override_dh_makeshlibs:
+	# FFmpeg loads this private plugin by path, outside ldconfig's search path.
+	# dh_shlibdeps still scans its normal runtime dependencies.
+	dh_makeshlibs -Xusbradioplus_agc.so
+
 override_dh_installdocs:
-	dh_installdocs README.md CHANGELOG.md doc/native-radio.md doc/agc.md \
+	dh_installdocs README.md CHANGELOG.md doc/native-radio.md doc/native-mode-retirement.md doc/agc.md \
 		examples/usbradioplus.conf.sample
 
 override_dh_gencontrol:

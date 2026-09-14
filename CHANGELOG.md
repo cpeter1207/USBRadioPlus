@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Move radio, audio, hardware, configuration, and tuning behavior into Rust
+  behind the minimal Asterisk C boundary. Use the released versioned provider
+  shared objects without vendoring or static linking their implementations.
+- Remove driver-native software local repeat and native parrot. Silently ignore
+  the retired `duplexmode` and `duplex_local_repeat_mode` selectors; keep
+  hardware local repeat at its configured level. Preserve app_rpt audio and
+  legacy echo, native DSP, signaling, and the separate RadioPlusAdvanced
+  transport.
+- Migrate the FFmpeg-hosted RMS gain rider to Rust without changing its LADSPA
+  identity, controls, gain law, or audio output. Retain the former C algorithm
+  only as a test reference, not a production implementation.
+
 ## 0.1.0~alpha18 - 2026-09-13
 
 - Preserve the tested native-audio milestone with one PortAudio/ALSA and GPIO
@@ -30,7 +42,9 @@
 
 ## 0.1.0~alpha16 - 2026-09-11
 
-- Use the released, versioned rate-adjusting PCM ring shared object.\n- Verify the modern channel package against the matching official ASL3 runtime.\n- Keep automated validation and packages on Debian 13; Debian 12 packages are manual-only.
+- Use the released, versioned rate-adjusting PCM ring shared object.
+- Verify the modern channel package against the matching official ASL3 runtime.
+- Keep automated validation and packages on Debian 13; Debian 12 packages are manual-only.
 
 - Replace inherited radio-signaling options with clean-slate `[receive]`,
   `[transmit]`, `[ctcss]`, and `[dcs]` sections. Each direction now selects
@@ -129,7 +143,11 @@ Corrects local PL-filter ordering and mode handling; consolidates transmitter fi
 
 ## 0.1.0~alpha2 - 2026-08-31
 
-- Supports both ASL 22.9/app_rpt 3.9 OSS/libusb-0.1 and ASL 22.10/app_rpt 3.10 shared-device/PortAudio/libusb-1.0 host interfaces.\n- Automatically selects the matching source port from the installed ASL development headers.\n- Publishes generation-tagged Debian packages with an exact ASL runtime dependency so incompatible modules cannot be installed.\n- Retains the same native USBRadioPlus DSP, radio signaling, configuration, and tuning utilities on both host interfaces.\n- Adds strict dual-generation builds, package validation, archive checks, and regression tests.
+- Supports both ASL 22.9/app_rpt 3.9 OSS/libusb-0.1 and ASL 22.10/app_rpt 3.10 shared-device/PortAudio/libusb-1.0 host interfaces.
+- Automatically selects the matching source port from the installed ASL development headers.
+- Publishes generation-tagged Debian packages with an exact ASL runtime dependency so incompatible modules cannot be installed.
+- Retains the same native USBRadioPlus DSP, radio signaling, configuration, and tuning utilities on both host interfaces.
+- Adds strict dual-generation builds, package validation, archive checks, and regression tests.
 
 ## 0.1.0~alpha1 - 2026-08-31
 

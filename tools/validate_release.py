@@ -1,79 +1,89 @@
 #!/usr/bin/env python3
-## @file
-## @brief Hardware-independent release artifact validation.
-"""Static release checks that do not require Asterisk or radio hardware."""
+"""Validate the Rust implementation and minimal Asterisk shim release boundary."""
 
 import re
+import tomllib
 from pathlib import Path
 
-## Repository root used by artifact validation.
 ROOT = Path(__file__).resolve().parents[1]
 
+REQUIRED_ARTIFACTS = (
+    "Cargo.toml",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    "rust/asterisk/include/usbradioplus_asterisk.h",
+    "rust/asterisk/src/lib.rs",
+    "rust/rms-agc/src/lib.rs",
+    "rust/tune/src/main.rs",
+    "src/chan_usbradioplus_shim.c",
+    "examples/usbradioplus.conf.sample",
+    "README.md",
+    "CHANGELOG.md",
+    "Makefile",
+    "man/usbradioplus.7",
+    "man/usbradioplus.conf.5",
+    "man/usbradioplus-tune.8",
+    "COPYING",
+    "VERSION",
+    "doc/packaging.md",
+    "doc/agc.md",
+    "doc/native-radio.md",
+    "install.sh",
+    "scripts/install-build-deps.sh",
+)
 
-def validate(root=ROOT):
-    """Return release-artifact errors without requiring Asterisk or radio hardware.
 
-    @param root Repository root whose release artifacts are checked.
-    """
-    errors = []
+def validate(root: Path = ROOT) -> list[str]:
+    """Return all release-boundary defects found below ``root``."""
+    errors = [
+        f"missing artifact: {path}" for path in REQUIRED_ARTIFACTS if not (root / path).is_file()
+    ]
+    if (root / "Cargo.toml").is_file():
+        workspace = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))
+        for member in workspace.get("workspace", {}).get("members", []):
+            if not (root / member / "Cargo.toml").is_file():
+                errors.append(f"missing workspace member: {member}")
 
-    def require(path, text):
-        """Record an error when an existing artifact lacks a required marker.
+    sources = sorted(path.relative_to(root).as_posix() for path in (root / "src").rglob("*.*"))
+    if sources != ["src/chan_usbradioplus_shim.c"]:
+        errors.append(f"src contains superseded production files: {sources!r}")
 
-        @param path Repository-relative artifact path to read.
-        @param text Complete configuration text.
-        """
-        artifact = root / path
-        if not artifact.exists():
-            return
-        body = artifact.read_text(encoding="utf-8")
-        if text not in body:
-            errors.append(f"{path}: missing {text!r}")
+    if (root / "Makefile").is_file():
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        for marker in (
+            "CHANNEL_SOURCE := src/chan_usbradioplus_shim.c",
+            "RUST_TUNER := $(CARGO_TARGET_DIR)/release/usbradioplus-tune",
+            "ASTERISK_ADAPTER_SONAME := libusbradioplus_asterisk.so.1",
+            "Shared library: [librate_adjusting_pcm_ring2.so.2]",
+            "Shared library: [librptadvradio.so.3]",
+            "Shared library: [librptadv_samplerate_adapter.so.1]",
+            "Shared library: [librptadv_ffmpeg_adapter.so.1]",
+            "Shared library: [librptadv_portaudio_alsa_adapter.so.2]",
+            "Shared library: [librptadv_gpio_adapter.so.1]",
+            "Shared library: [librptadv_rnnoise_adapter.so.1]",
+        ):
+            if marker not in makefile:
+                errors.append(f"Makefile: missing {marker!r}")
 
-    for path in (
-        "src/chan_usbradioplus.c",
-        "src/txagc/rms_agc_ladspa.c",
-        "src/txagc/rms_agc_ladspa.h",
-        "examples/usbradioplus.conf.sample",
-        "README.md",
-        "CHANGELOG.md",
-        "Makefile",
-        "man/usbradioplus.7",
-        "man/usbradioplus.conf.5",
-        "man/usbradioplus-tune.8",
-        "scripts/usbradioplus-tune",
-        "COPYING",
-        "VERSION",
-        "doc/packaging.md",
-        "doc/agc.md",
-        "doc/native-radio.md",
-        "install.sh",
-        "scripts/install-build-deps.sh",
-    ):
-        if not (root / path).exists():
-            errors.append(f"missing artifact: {path}")
+        for pattern in (
+            r"sed\s+-i.*modules\.conf",
+            r"sed\s+-i.*rpt\.conf",
+            r"systemctl\s+(restart|reload)",
+            r"service\s+asterisk",
+        ):
+            if re.search(pattern, makefile):
+                errors.append(f"installer may alter runtime state: {pattern}")
 
-    installer = (root / "Makefile").read_text(encoding="utf-8")
-    for pattern in (
-        r"sed\s+-i.*modules\.conf",
-        r"sed\s+-i.*rpt\.conf",
-        r"systemctl\s+(restart|reload)",
-        r"service\s+asterisk",
-    ):
-        if re.search(pattern, installer):
-            errors.append(f"installer may alter runtime state: {pattern}")
-
-    require("src/usbradioplus_channel_common.c", "DUPLEX3_MODE_SOFTWARE")
-    require("src/usbradioplus_native_tick.c", "software_repeat_enabled")
-    require("examples/usbradioplus.conf.sample", "duplex_local_repeat_mode = hardware")
-    require("README.md", "replacement for the ASL3 `chan_usbradio` channel driver")
+    for retired in ("scripts/usbradioplus-tune", "src/chan_usbradioplus.c"):
+        if (root / retired).exists():
+            errors.append(f"retired artifact is still shipped: {retired}")
     if (root / "patches/app_rpt-radioplus-duplex.patch").exists():
         errors.append("obsolete app_rpt duplex patch is still shipped")
     return errors
 
 
-def main():
-    """Print release validation results and return the process exit status."""
+def main() -> int:
+    """Print release validation results and return a process status."""
     errors = validate(ROOT)
     if not errors:
         print("Release artifact validation passed.")

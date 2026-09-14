@@ -58,18 +58,28 @@ an omitted option resolves to the concrete value in the shipped configuration
 sample.  An inactive CTCSS or DCS section does not select that protocol; each
 direction selects its signaling method explicitly.
 .PP
-Audio graph settings and live-safe mixer or signaling controls take effect on a
-processing reload. Device selection, buffering, interface layout, and channel
-construction settings take effect when Asterisk loads the module.
+Each processing reload is staged before publication. Hardware identity and
+provider setup, media for every live channel, and every attached or newly
+eligible link graph are prepared before the new configuration becomes active.
+A failure restores the prior configuration, channels, and link processing.
+Removing a live named channel is rejected; an exceptional physical rollback
+failure is logged and leaves that station RF-safe and stopped. Ordinary control
+and service work pauses during the transaction. The latest transmitter key or
+unkey indication is replayed afterward, so an unkey is not lost. Service and
+jitter queries do not perform deferred reload work. Settings which cannot
+replace a live provider remain load-time-only.
 .PP
-Reload validation is strict. An unknown section, unknown option, repeated or
-unknown graph stage, option in an inapplicable chain, non-finite number, or
-out-of-range value rejects the new file and leaves the running configuration
-unchanged.
+Resolution is tolerant where a safe fallback exists. An unknown, inapplicable,
+or malformed setting produces a warning containing its file, section, option,
+supplied value, reason, and inherited or built-in fallback. A reload is rejected
+without changing the running configuration only when the complete result is
+structurally invalid or an effective combination is unsafe.
 .SH NAMED CHANNEL OPTIONS
 .TP
 .B channel_enabled = yes|no
-Enable this named radio channel. Default is yes.
+Select this named radio channel as the initial tuning target. All named channels
+remain available. If more than one channel selects yes, the last one in the
+file is selected. Default is yes.
 .TP
 .B asterisk_profile, hardware_profile, receive_profile, transmit_profile, ctcss_profile, dcs_profile, duplex_profile, diagnostics_profile
 Select the corresponding settings profiles.
@@ -137,10 +147,10 @@ greater than zero and no more than 500. The default is 300.0 Hz.
 .SS Device and buffering
 The app_rpt-to-hardware-callback program ring is the only audio queue that
 bridges the app_rpt and 48 kHz native-rendering clock domains. It renders from
-its first available sample; it has no source-audio startup fill or playback
-reserve. Its 110 ms occupancy target is used only by clock recovery, not as a
-fixed latency or keyed-transmit admission delay. These properties are separate
-from device-queue and IAX jitter-buffer settings. The ring is lock-free: its
+its first available sample. Its source-rate policy is a 20 ms protected
+reserve, 40 ms clock-recovery target, and 80 ms capacity; these are not a fixed
+startup delay or keyed-transmit admission delay. They are separate from
+device-queue and IAX jitter-buffer settings. The ring is lock-free: its
 Asterisk producer and native hardware-callback consumer never wait for one
 another. One persistent libsamplerate stream converts the active app_rpt rate
 to the 48 kHz hardware rate and gently adjusts that conversion ratio for
@@ -150,10 +160,8 @@ the callback conceals the shortfall smoothly rather than abruptly inserting
 silence.
 .PP
 App_rpt program frames, including idle silence, enter the stream regardless of
-PTT. A native-parrot implementation may be the sole external program-audio
-producer only while it supplies native-rate samples through that same lock-free
-program ring. Legacy app_rpt echo is distinct and is not an external producer
-under this exception. PTT transitions preserve the program-ring state. This
+PTT. Legacy app_rpt echo uses its separate callback-owned queue; there is no
+driver-native parrot producer. PTT transitions preserve the program-ring state. This
 PCM buffering does not request or release PTT; app_rpt and tuning retain
 ownership of the desired PTT state. After a complete non-silent DAC block is
 accepted, USBRadioPlus keeps physical PTT asserted until the device's measured
@@ -162,11 +170,12 @@ silence while that output drains and cancels the hold for a new key request.
 This is a best-effort guard against cutting off queued audio, not a second
 transmit-control source.
 .PP
-The native hardware callback directly performs local receive processing, final
-voice/telemetry processing, CTCSS/DCS rendering, and 48 kHz DAC rendering from
+The native capture and playback callbacks directly perform local receive
+processing and final voice/telemetry, CTCSS/DCS, and 48 kHz DAC rendering from
 preallocated state. There is no native worker thread or native input/output
 worker queue. Prepared filtering, RNNoise, and sample-rate conversion run in
-that callback when configured; graph construction and reconfiguration do not.
+the responsible callback when configured; graph construction and
+reconfiguration do not.
 .PP
 Sound-device output runs continuously at 48 kHz, carrying silence while idle.
 PTT, carrier detection, and CTCSS decode do not stop device writes. Existing
@@ -181,36 +190,17 @@ Select the supported interface wiring layout.
 .TP
 .B hardware_eeprom_enabled = yes|no
 Enable interface EEPROM tuning storage.
-.TP
-.B hardware_audio_fragment_count = integer
-Compatibility setting accepted without changing the audio adapter or program ring.
-.TP
-.B hardware_audio_queue_size = integer
-Compatibility setting accepted without changing the audio adapter or program ring.
-.TP
-.B hardware_audio_backend = portaudio
-Use the mandatory released PortAudio/ALSA shared adapter for capture, playback,
-mixer control, and raw-device statistics. The earlier \fBportaudio_poc\fR name
-is accepted as an alias. One ASL3 implementation serves the 8 kHz app_rpt
-boundary and the native 48 kHz RadioPlusAdvanced boundary.
-.TP
-.B hardware_portaudio_input_device_index = integer
-.TP
-.B hardware_portaudio_output_device_index = integer
-Select explicit capture and playback indexes as a matching nonnegative pair.
-The default for both is -1, which resolves endpoints from the selected USB
-identity. Any explicit selection must match that same CM119 interface.
-.TP
-.B hardware_gpio_backend = cm119
-Use the mandatory released GPIO adapter for CM119 PTT, input snapshots,
-EEPROM, and configured parallel I/O. The earlier \fBcm119_poc\fR name is
-accepted as an alias.
-.TP
 .B hardware_gpio_usb_port_path = path
 Optionally constrain selection to a stable physical USB topology, such as
 \fB3-1\fR. Audio and GPIO must resolve to the same interface. Selection by
 device identifier or serial is supported; an ambiguous automatic selection
 fails. Device-selection changes require a channel restart.
+.PP
+Every channel uses the mandatory released PortAudio/ALSA adapter for capture,
+playback, mixer control, and raw-device statistics, and the mandatory released
+GPIO adapter for CM119 PTT, input snapshots, EEPROM, and configured parallel
+I/O. One ASL3 implementation serves the 8 kHz app_rpt boundary and the native
+48 kHz RadioPlusAdvanced boundary.
 .SH RECEIVE OPTIONS
 The flat or scoped \fB[receive]\fR section controls receiver behavior.
 .TP
@@ -260,18 +250,12 @@ Set receive audio squelch-tail delay in milliseconds. Default is 0.
 .B on_delay_frames = 0..3000
 Set carrier acceptance delay in 20 ms frames. Default is 0.
 .TP
-.B polarity_inverted = yes|no
-Invert receive signaling polarity. Default is \fBno\fR.
-.TP
 .B squelch_level = 0..999
 Set the native carrier-squelch threshold. Default is 500.
 .TP
 .B frequency_hz = 0..2147483647
 Set the receiver frequency as an integral number of hertz for signaling, remote
 operation, and reporting. Default is 0.
-.TP
-.B lsd_polarity_inverted = yes|no
-Invert received low-speed-data polarity. Default is \fBno\fR.
 .SH TRANSMIT OPTIONS
 The flat or scoped \fB[transmit]\fR section controls transmit behavior.
 .TP
@@ -301,12 +285,6 @@ Set transmit/receive blanking time in milliseconds. Default is 0.
 .TP
 .B off_delay_frames = 0..3000
 Set post-transmit receive delay in 20 ms frames. Default is 0.
-.TP
-.B polarity_inverted = yes|no
-Invert transmitter radio-signaling polarity. Default is \fBno\fR.
-.TP
-.B lsd_polarity_inverted = yes|no
-Invert transmitter low-speed-data polarity. Default is \fBno\fR.
 .TP
 .B frequency_hz = 0..2147483647
 Set the transmitter frequency as an integral number of hertz for signaling,
@@ -406,13 +384,10 @@ the DAC. Default is -24 dBFS.
 USBRadioPlus renders DCS as a native shaped NRZ/Golay waveform. Its fixed
 spectral-shaping filter bypasses transmitter pre-emphasis and all speech
 processing controls.
-.SS Radio identity and auxiliary controls
+.SS Auxiliary controls
 .TP
-.B hardware_repeater_number, hardware_area, hardware_user_key
-Set the native signaling-system identity.
-.TP
-.B hardware_idle_interval, hardware_turnoff_count, hardware_voter_reporting
-Set signaling cadence, turn-off behavior, and voter reporting.
+.B hardware_voter_reporting
+Set the nonzero voter RSSI reporting selection.
 .TP
 .B hardware_clip_led_gpio = 0..8
 Select the optional clipping-indicator GPIO.
@@ -441,10 +416,9 @@ use their documented defaults.
 Select half- or full-duplex radio operation.
 .TP
 .B duplex_local_repeat_level = 0..999
-Set local receiver-to-transmitter audio level.
-.TP
-.B duplex_local_repeat_mode = hardware|software
-Select the CM119 mixer or native 48 kHz local repeat path.
+Set the hardware local receiver-to-transmitter audio level.
+Zero disables hardware local repeat. The device must provide the supported
+sidetone control. Software local repeat is no longer supported.
 .SH DIAGNOSTIC OPTIONS
 .SS Transmit timing trace
 For a short unkey test, enable Asterisk module debug level 5:
@@ -477,12 +451,13 @@ core set debug 0 chan_usbradioplus.so
 Tracing is off at normal debug levels. It changes no audio or PTT policy and
 records no audio samples. Per-frame logging adds load; use short captures.
 .TP
-.B diagnostics_trace_type, diagnostics_trace_level, diagnostics_fever
-Set native trace selection, verbosity, and low-level tuning diagnostics.
+.B diagnostics_status_publication_interval_ms = positive milliseconds
+Set the periodic meter and FIFO status publication interval. Default is 50 ms.
 .SH GENERAL CHANNEL OPTION
 .TP
 .B channel_enabled = yes|no
-Enable the configured radio channel.
+Select the initial active channel used by the tuning interface. This does not
+disable channels set to no.
 .SH CHAIN AND GRAPH OPTIONS
 .TP
 .B enabled = yes|no
@@ -911,8 +886,8 @@ preparation and reload occur outside the callback. A format or capacity
 mismatch, unavailable graph, or graph-processing error leaves the current
 frame unchanged rather than rebuilding the graph or replaying older audio.
 .B radioplus processing stats
-reports FFmpeg startup fill, runtime shortfall, synchronous graph errors, and
-level measurements. Link processing never asserts or releases PTT.
+reports processed, bypassed, and failed link blocks. Link processing never
+asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
 dynamics graph, and then applies its fixed filtering and peak-control tail.

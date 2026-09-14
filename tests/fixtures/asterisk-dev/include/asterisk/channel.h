@@ -1,1 +1,0 @@
-/* Installed-development-header fixture. */

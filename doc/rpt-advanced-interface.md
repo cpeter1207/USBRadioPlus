@@ -24,5 +24,7 @@ transmitter DSP remain in the shared engine.
 A subsequent `RadioPlus` reservation restores 8 kHz transport and its program
 ring. These interfaces cannot reserve the same radio concurrently.
 
-The adapter is under development. Existing channel tests and dedicated adapter
-fixtures do not constitute on-air or completed rpt_advanced integration testing.
+The interface is implemented by the shared Rust controller boundary and the
+`RadioPlusAdvanced` Asterisk technology. Automated fixtures cover its native
+frame assembly and channel lifecycle; on-air operation remains a release
+verification activity rather than a separate interface implementation stage.

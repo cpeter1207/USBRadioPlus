@@ -53,17 +53,6 @@ ROOT = Path(__file__).resolve().parents[1]
             "/** @file\n * @brief Broken cross-reference.\n * @ref nonexistent_radio_symbol\n */\n",
             "nonexistent_radio_symbol",
         ),
-        (
-            ".py",
-            '"""@file\nUndocumented Python entry point."""\n'
-            "def undocumented(value):\n    return value\n",
-            "not documented",
-        ),
-        (
-            ".sh",
-            "#!/bin/sh\n## @file\n## Undocumented shell entry point.\nundocumented() {\n    :\n}\n",
-            "not documented",
-        ),
     ],
 )
 def test_documentation_policy_rejects_defects(tmp_path, suffix, source, expected_diagnostic):

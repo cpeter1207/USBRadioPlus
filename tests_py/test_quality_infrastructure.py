@@ -1,5 +1,6 @@
 ## @file
 ## @brief Quality infrastructure regression checks.
+import subprocess
 from pathlib import Path
 
 ## Repository root containing the artifacts under test.
@@ -71,6 +72,16 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "FROM asl3-clean AS usbradioplus-installed" in dockerfile
     assert "COPY --from=staged /stage/ /" in dockerfile
     assert "container-smoke-test.sh" in dockerfile
+    for soname in (
+        "librate_adjusting_pcm_ring2.so.2",
+        "librptadvradio.so.3",
+        "librptadv_samplerate_adapter.so.1",
+        "librptadv_ffmpeg_adapter.so.1",
+        "librptadv_portaudio_alsa_adapter.so.2",
+        "librptadv_gpio_adapter.so.1",
+        "librptadv_rnnoise_adapter.so.1",
+    ):
+        assert f"grep -Fq '{soname}' /tmp/module-libraries" in dockerfile
     assert "/usr/local/libexec/usbradioplus/container-smoke-test.sh" in dockerfile
     smoke = read("tests/container-smoke-test.sh")
     assert "res_usbradio" not in smoke
@@ -81,9 +92,9 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "wait_for_module chan_usbradioplus" in smoke
     assert "fail_if_asterisk_exited" in smoke
     assert "require_asterisk_cli 'chan_usbradioplus module readiness'" in smoke
-    assert "require_asterisk_cli 'radioplus processing CLI check'" in smoke
+    assert "require_asterisk_cli 'radioplus channel-list CLI check'" in smoke
     assert "Asterisk exited unexpectedly after $phase (status $status)" in smoke
-    assert "radioplus processing show" in smoke
+    assert "radioplus channel list" in smoke
 
 
 def test_container_build_context_excludes_generated_quality_artifacts():
@@ -96,20 +107,41 @@ def test_container_build_context_excludes_generated_quality_artifacts():
         "**/*.gcda",
         "**/*.gcno",
         "**/*.gcov",
+        "target",
+        "**/*.profraw",
+        "**/*.profdata",
     ):
         assert pattern in ignore
 
 
-def test_coverage_gate_requires_python_and_c_line_and_branch_coverage():
-    """Verify coverage gate requires python and c line and branch coverage."""
+def test_coverage_gate_requires_production_line_and_branch_coverage():
+    """Require each production language's complete line and branch report."""
     makefile = read("Makefile")
     assert "pytest -q -n auto" in makefile
-    assert "--cov-branch --cov-fail-under=100" in makefile
+    assert "--cov=tools --cov-branch --cov-fail-under=100" in makefile
     assert "--fail-under-line 100 --fail-under-branch 100" in makefile
-    assert "find $(BUILD_DIR) -type f \\( -name '*.gcda' -o -name '*.gcno' \\" in makefile
+    assert "$(MAKE) rust-coverage" in makefile
+    assert "tools/validate_rust_coverage.py" in makefile
+    assert "--workspace --all-targets --locked --branch --json" in makefile
+    assert "--lcov" in makefile
+    assert "coverage.lcov" in makefile
+    validator = read("tools/validate_rust_coverage.py")
+    assert "missing_lines" in validator
+    assert "missing_branches" in validator
+    assert "--object-directory $(BUILD_DIR)" in makefile
     # The shared library owns its independent counters and coverage report;
     # the consumer gate must not reach into its installed or staged tree.
     assert "find $(RPCR_SOURCE)/build" not in makefile
+
+
+def test_complete_local_gate_runs_each_test_suite_once():
+    """Keep the complete gate on the deduplicated platform-verification path."""
+    makefile = read("Makefile")
+    recipe = makefile.split("\nci:\n", maxsplit=1)[1].split("\n\n", maxsplit=1)[0]
+    assert "$(MAKE) platform-verify" in recipe
+    assert "$(MAKE) check" not in recipe
+    assert "$(MAKE) coverage" not in recipe
+    assert "$(MAKE) distcheck" not in recipe
 
 
 def test_local_container_runner_cleans_only_labeled_test_containers():
@@ -121,3 +153,63 @@ def test_local_container_runner_cleans_only_labeled_test_containers():
     assert "trap 'exit 130' INT" in runner
     assert "trap 'exit 143' TERM" in runner
     assert 'docker run --rm --name "$name" --label "$label"' in runner
+    assert "--label rpt_advanced.test=true" in runner
+    assert "MSYS_NO_PATHCONV=1" in runner
+
+
+def test_rust_agc_retains_dynamic_ladspa_artifact_and_pinned_tools():
+    """Keep the owned Rust slice dynamic without introducing a runtime toolchain."""
+    makefile = read("Makefile")
+    crate = read("rust/rms-agc/Cargo.toml")
+    assert 'crate-type = ["cdylib"]' in crate
+    assert '"rust/rms-agc"' in read("Cargo.toml")
+    assert 'channel = "1.85.0"' in read("rust-toolchain.toml")
+    assert "AGC_PLUGIN_SONAME := usbradioplus_agc.so.1" in makefile
+    assert "$(CARGO) rustc --release --locked -p usbradioplus_agc" in makefile
+    assert "$(CARGO) fmt --all --check" in makefile
+    clippy = "$(CARGO) clippy --workspace --all-targets --all-features --locked -- -D warnings"
+    assert clippy in makefile
+    assert 'RUSTDOCFLAGS="-D warnings"' in makefile
+    assert "libstd-|RPATH|RUNPATH" in makefile
+    assert "src/txagc/rms_agc_ladspa.c" not in makefile
+    dockerfile = read("containers/Dockerfile")
+    assert "ARG RUST_NIGHTLY=nightly-2025-02-20" in dockerfile
+    assert "ARG CARGO_LLVM_COV_VERSION=0.6.21" in dockerfile
+    assert "--component llvm-tools-preview" in dockerfile
+
+
+def test_local_container_runner_preserves_parallel_running_checks(tmp_path, monkeypatch):
+    """Remove stopped tests without killing another invocation or a restarted test."""
+    log = tmp_path / "docker.log"
+    docker = tmp_path / "docker"
+    docker.write_text(
+        "#!/bin/sh\n"
+        'printf "%s\\n" "$*" >> "$DOCKER_TEST_LOG"\n'
+        'if [ "$1 $2" = "container ls" ]; then\n'
+        '  case "$*" in\n'
+        '    *status=exited*status=dead*) printf "stopped-id\\nrestarted-id\\n" ;;\n'
+        '    *) printf "stopped-id\\nrunning-id\\n" ;;\n'
+        "  esac\n"
+        'elif [ "$1 $2 $3" = "container rm restarted-id" ]; then\n'
+        "  exit 1\n"
+        "fi\n",
+        encoding="utf-8",
+    )
+    docker.chmod(0o755)
+    monkeypatch.setenv("DOCKER_TEST_LOG", str(log))
+    monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
+    subprocess.run(
+        ["sh", str(ROOT / "tests/run-in-quality-container.sh"), "test-image", "true"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    commands = log.read_text(encoding="utf-8").splitlines()
+    assert any("status=exited" in command and "status=dead" in command for command in commands)
+    assert "container rm stopped-id" in commands
+    assert "container rm restarted-id" in commands
+    assert not any("running-id" in command for command in commands)
+    assert not any(
+        "--force stopped-id" in command or "--force restarted-id" in command for command in commands
+    )
+    assert any(command.startswith("run --rm ") for command in commands)

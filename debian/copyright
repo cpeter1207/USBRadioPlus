@@ -10,8 +10,8 @@ License: GPL-2.0-only
  .
  On Debian systems, the complete text is in /usr/share/common-licenses/GPL-2.
 
-Files: src/txagc/rms_agc_ladspa.c src/txagc/rms_agc_ladspa.h
- tests/test_rms_agc_ladspa.c
+Files: rust/rms-agc/* tests/test_rms_agc_ladspa.c
+ tests/fixtures/rms_agc_ladspa.h tests/fixtures/rms_agc_reference.c
 Copyright: 2026 USBRadioPlus contributors
 License: MIT
  Permission is hereby granted, free of charge, to any person obtaining a copy

@@ -7,6 +7,13 @@ passes both to the packaged LADSPA stage. The same gain is applied across
 the program's full bandwidth. There is no extra audio queue, lookahead,
 limiter, clipping stage, or hardware gain adjustment.
 
+The packaged `usbradioplus_agc.so` effect is implemented in Rust. Its LADSPA
+identity, port order, ranges, defaults, and streaming gain law are unchanged.
+A small host adapter owns buffer pointers; the safe Rust gain-rider object
+owns the existing processing policy. The former C implementation is retained
+only as a test fixture for descriptor and sample-output comparisons, never as
+a second production processing path.
+
 The target is **filtered detector-band RMS after applied gain**, not a peak,
 full-band RMS, or LUFS target. The default detector covers 800–1500 Hz. A
 tone outside that band or a source with little energy in it will not produce

@@ -52,12 +52,12 @@ commands.
   multi-channel-capable starting point.
 - [Packaging notes](doc/packaging.md) describe the upstream archive and current
   Debian packaging interface.
-- [Native radio notes](doc/native-radio.md) describe carrier detection,
-  signaling, and their test boundary.
+- [Native radio notes](doc/native-radio.md) cover signaling;
+  [retired modes](doc/native-mode-retirement.md) explains why native DSP remains.
 - [The release checklist](RELEASE-CHECKLIST.md) lists the automated,
   service-monitor, activation, and rollback evidence required for an alpha.
 - [Generated source documentation](https://cpeter1207.github.io/USBRadioPlus/docs/)
-  provides the Doxygen API and call graphs.
+  provides Rustdoc for the implementation and Doxygen for the Asterisk C boundary.
 - [Contributing](CONTRIBUTING.md) describes push checks, the PR gate, and
   reproducible test containers.
 

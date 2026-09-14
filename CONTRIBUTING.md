@@ -13,16 +13,16 @@ builds are aspirational and are run manually only when explicitly requested.
 Releases use a merged main revision that has already passed that gate and run
 only release-artifact validation.
 
-Every function, structure, enumeration, macro, and externally meaningful data
-member must have a concise Doxygen comment. Tests must exercise every reachable
+Every Rust public item must have concise Rustdoc. Every function, structure,
+enumeration, macro, and externally meaningful data member in the C boundary
+must have a concise Doxygen comment. Tests must exercise every reachable
 production-code line and branch. Delete unreachable or unused code instead of
 excluding it from coverage or suppressing diagnostics.
 
-Run `make docs` with Doxygen 1.9.8 or newer after changing code comments. It checks
-the module, tuner, developer tools, shell entry points, and test harnesses. Keep parameter units,
-buffer ownership, return values, and locking requirements explicit where they
-matter. Python uses docstrings with Doxygen commands; shell helpers use `##`
-comments. The generated developer reference starts at
+Run `make docs` with Doxygen 1.9.8 or newer after changing code comments. It
+checks the C shim/header and the complete Rust workspace. Keep parameter units,
+buffer ownership, return values, and concurrency requirements explicit where
+they matter. The generated C developer reference starts at
 `build/doxygen/html/index.html`. Documentation warnings fail the pull-request
 quality gate before platform tests. Generated documentation is published after
 a pull request merges.

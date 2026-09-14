@@ -20,25 +20,48 @@ def read(path):
 def test_usbradioplus_debian_package_is_nonactivating():
     """Verify usbradioplus debian package is nonactivating."""
     control = read("debian/control")
+    binary_control = control.split("\nPackage: usbradioplus\n", maxsplit=1)[1]
+    makefile = read("Makefile")
     rules = read("debian/rules")
     assert "Architecture: amd64 arm64" in control
     assert "asl3-asterisk-dev" in control
     assert "librptadv-portaudio-alsa-adapter-dev" in control
     assert "librptadv-gpio-adapter-dev" in control
+    assert "librptadv-rnnoise-adapter-dev" in control
+    assert "librate-adjusting-pcm-ring2-dev" in control
+    assert "librptadvradio-dev (>= 0.1.0~alpha3)" in control
+    assert "--variable=abi_version rptadvradio),3" in makefile
+    for soname in (
+        "librate_adjusting_pcm_ring2.so.2",
+        "librptadvradio.so.3",
+        "librptadv_samplerate_adapter.so.1",
+        "librptadv_ffmpeg_adapter.so.1",
+        "librptadv_portaudio_alsa_adapter.so.2",
+        "librptadv_gpio_adapter.so.1",
+        "librptadv_rnnoise_adapter.so.1",
+    ):
+        assert f"Shared library: [{soname}]" in makefile
+    assert 'export PKG_CONFIG_PATH="$(RPTADV_RADIO_LIBDIR)/pkgconfig' in makefile
     assert "libusb-dev" not in control
     assert "portaudio19-dev" not in control
-    assert "librnnoise-dev" in control
     assert "ladspa-sdk" in control
     assert "dpkg-architecture -qDEB_HOST_MULTIARCH" in rules
     assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
     assert "${usbradioplus:ASLDepends}" in control
+    assert ", whiptail" in binary_control
     assert "ASL3_ASTERISK_VERSION" in rules
     assert "DEB_BINARY_PACKAGE" not in rules
     assert "debian/usbradioplus" in rules
     assert control.count("\nPackage: ") == 1
     assert "\nPackage: usbradioplus\n" in control
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
-    for document in ("README.md", "CHANGELOG.md", "doc/native-radio.md", "doc/agc.md"):
+    for document in (
+        "README.md",
+        "CHANGELOG.md",
+        "doc/native-radio.md",
+        "doc/native-mode-retirement.md",
+        "doc/agc.md",
+    ):
         assert document in rules
     for maintainer_script in ("*.preinst", "*.postinst", "*.prerm", "*.postrm"):
         assert not list((ROOT / "debian").glob(maintainer_script))
@@ -58,6 +81,9 @@ def test_debian_source_version_matches_the_release_archive_version():
         "gcda",
         "gcno",
         "gcov",
+        "target",
+        "profraw",
+        "profdata",
         "cap",
         "raw",
         "wav",
@@ -71,12 +97,20 @@ def test_private_agc_build_dependency_and_license_are_shipped():
     control = read("debian/control")
     source_control, binary_control = control.split("\nPackage: ", maxsplit=1)
     assert "ladspa-sdk" in source_control
+    assert "cargo (>= 1.85)" in source_control
+    assert "rustc (>= 1.85)" in source_control
     assert "ladspa-sdk" not in binary_control
+    assert "cargo" not in binary_control
+    assert "rustc" not in binary_control
     assert "${shlibs:Depends}" in binary_control
     assert "ladspa-sdk" in read("scripts/install-build-deps.sh")
     assert "ladspa-sdk" in read("containers/Dockerfile")
     copyright_text = read("debian/copyright")
-    for artifact in ("src/txagc/rms_agc_ladspa.c", "src/txagc/rms_agc_ladspa.h"):
+    for artifact in (
+        "rust/rms-agc/*",
+        "tests/fixtures/rms_agc_ladspa.h",
+        "tests/fixtures/rms_agc_reference.c",
+    ):
         assert artifact in copyright_text
     assert "License: MIT" in copyright_text
 
@@ -87,6 +121,43 @@ def test_rnnoise_is_a_companion_shared_library_package():
     assert "Package: librnnoise0" in control
     assert "Package: librnnoise-dev" in control
     assert control.count("Architecture: amd64 arm64") == 2
+
+
+def test_private_rust_plugin_keeps_debug_symbols_without_global_library_registration():
+    """Keep mixed-language debug objects complete and the private plugin private."""
+    rules = read("debian/rules")
+    assert "dh_dwz --no-dwz-multifile" in rules
+    assert "dh_makeshlibs -Xusbradioplus_agc.so" in rules
+    assert "override_dh_shlibdeps" not in rules
+    assert "override_dh_strip" not in rules
+    assert "nostrip" not in rules
+
+
+def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_path):
+    """Reject old or future core layouts before the compiler can select a DSO.
+
+    @param tmp_path Isolated filesystem directory supplied by pytest.
+    """
+    pkg_config = tmp_path / "pkg-config"
+    for incompatible_abi in ("", "1", "2", "4"):
+        pkg_config.write_text(
+            "#!/bin/sh\n"
+            'if [ "$*" = "--variable=abi_version rptadvradio" ]; then\n'
+            f"  printf '%s\\n' '{incompatible_abi}'\n"
+            "fi\n"
+            "exit 0\n",
+            encoding="utf-8",
+        )
+        pkg_config.chmod(0o755)
+        result = subprocess.run(
+            ["make", "-n", "lint", "RPTADV_RADIO_SOURCE=", f"PKG_CONFIG={pkg_config}"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode != 0
+        assert "requires librptadvradio descriptor ABI 3" in result.stderr
 
 
 def test_rnnoise_debhelper_install_lists_are_regular_data_files():

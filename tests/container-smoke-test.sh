@@ -116,28 +116,17 @@ if ! wait_for_module chan_usbradioplus 20; then
 	exit 1
 fi
 require_asterisk_cli 'chan_usbradioplus module readiness'
-if ! asterisk -rx 'radioplus processing show' | grep -F 'Chain local:'; then
-	require_asterisk_cli 'radioplus processing CLI check'
-	echo 'radioplus processing show did not report the local chain' >&2
+if ! asterisk -rx 'radioplus channel list' | grep -Fx 'usb'; then
+	require_asterisk_cli 'radioplus channel-list CLI check'
+	echo 'radioplus channel list did not report the shipped radio' >&2
 	tail -n 100 "$log" >&2
 	exit 1
 fi
 
 if [ "${URP_COVERAGE_INTEGRATION:-0}" = 1 ]; then
-	# Drive the module side of the tune protocol through a configured channel.
-	# Interactive meter and transmit-test commands are covered by the focused C
-	# harness. Keep this noninteractive sweep bounded so a regression cannot hang
-	# a coverage or release job indefinitely.
-	asterisk -rx 'radioplus active 1999' | grep -F '1999'
-	for command in \
-		0 0+9 0+10 1 2 3 \
-		a b c c500 d e e500 f f500 g g500 h h500 i \
-		k k0 k1 L L4999 L5000 L13000 L13001 \
-		D D0 D500 D999 D1000 M M0 M1 M2 \
-		o o0 p p0 q q10 q100000 r r10 r100000 \
-		s s0 s1 t t0 t1 u u2 w w1 x x2 Y Z unknown; do
-		timeout 10s asterisk -rx "radioplus tune menu-support $command" >/dev/null
-	done
+	# Exercise the non-hardware typed control surface in the real Asterisk host.
+	# Hardware operations remain in the deterministic host-stub shim harness.
+	asterisk -rx 'radioplus processing reload' | grep -F 'Configuration reloaded'
 fi
 
 cleanup

@@ -2,6 +2,8 @@
 ARG DEBIAN_VERSION=13
 ARG RUSTUP_INIT_VERSION=1.28.2
 ARG RUST_STABLE=1.85.0
+ARG RUST_NIGHTLY=nightly-2025-02-20
+ARG CARGO_LLVM_COV_VERSION=0.6.21
 FROM debian:${DEBIAN_VERSION} AS asl3-clean
 
 ARG DEBIAN_VERSION
@@ -19,6 +21,8 @@ ARG DEBIAN_VERSION
 ARG TARGETARCH
 ARG RUSTUP_INIT_VERSION
 ARG RUST_STABLE
+ARG RUST_NIGHTLY
+ARG CARGO_LLVM_COV_VERSION
 ENV RUSTUP_HOME=/opt/rustup
 ENV CARGO_HOME=/opt/cargo
 ENV PATH=/opt/cargo/bin:${PATH}
@@ -34,9 +38,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
       coverage==7.10.6 pytest==8.4.2 pytest-cov==7.0.0 pytest-xdist==3.8.0 ruff==0.16.5 && \
     /opt/usbradioplus-quality/bin/ruff --version >/dev/null
 
-# Retain the exact Rust toolchain for local shared-library diagnostics. Consumer
-# validation installs released Debian packages through shared_packages below;
-# it does not rebuild the portable Rust radio core.
+# Pin the toolchains for owned Rust code and native amd64 branch coverage.
+# Separately released components still enter only through shared_packages.
 RUN case "${TARGETARCH}" in \
       amd64) rustup_host=x86_64-unknown-linux-gnu; rustup_sha=20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c ;; \
       arm64) rustup_host=aarch64-unknown-linux-gnu; rustup_sha=e3853c5a252fca15252d07cb23a1bdd9377a8c6f3efa01531109281ae47f841c ;; \
@@ -50,7 +53,9 @@ RUN case "${TARGETARCH}" in \
     /tmp/rustup-init -y --no-modify-path --default-toolchain none; \
     rm -f /tmp/rustup-init && \
     rustup toolchain install "${RUST_STABLE}" --profile minimal --component clippy --component rustfmt && \
-    rustup default "${RUST_STABLE}"
+    rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component llvm-tools-preview && \
+    rustup default "${RUST_STABLE}" && \
+    cargo +"${RUST_NIGHTLY}" install cargo-llvm-cov --version "${CARGO_LLVM_COV_VERSION}" --locked
 
 ENV PATH="/opt/usbradioplus-quality/bin:${PATH}"
 
@@ -79,7 +84,7 @@ RUN if [ "$DEBIAN_VERSION" = 12 ]; then av_packages="libavfilter8 libavutil57"; 
     else av_packages="libavfilter10 libavutil59"; fi && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libasound2 $av_packages libportaudio2 libsamplerate0 \
-      libusb-1.0-0 python3 whiptail && \
+      libusb-1.0-0 whiptail && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=quality /usr/local/lib/librnnoise.so.0.4.1 /usr/local/lib/
 COPY --from=released-shared-packages / /tmp/shared-packages/
@@ -97,13 +102,13 @@ RUN ln -sf librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
 	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
       tee /tmp/module-libraries && \
 	! grep -q 'not found' /tmp/module-libraries && \
-	grep -q 'librate_adjusting_pcm_ring.so.1' /tmp/module-libraries && \
-	grep -q 'librate_adjusting_pcm_ring2.so.2' /tmp/module-libraries && \
-	grep -q 'librptadvradio' /tmp/module-libraries && \
-	grep -q 'librptadv_samplerate_adapter' /tmp/module-libraries && \
-	grep -q 'librptadv_ffmpeg_adapter' /tmp/module-libraries && \
-	grep -q 'librptadv_portaudio_alsa_adapter.so.1' /tmp/module-libraries && \
-	grep -q 'librptadv_gpio_adapter.so.1' /tmp/module-libraries && \
+	grep -Fq 'librate_adjusting_pcm_ring2.so.2' /tmp/module-libraries && \
+	grep -Fq 'librptadvradio.so.3' /tmp/module-libraries && \
+	grep -Fq 'librptadv_samplerate_adapter.so.1' /tmp/module-libraries && \
+	grep -Fq 'librptadv_ffmpeg_adapter.so.1' /tmp/module-libraries && \
+	grep -Fq 'librptadv_portaudio_alsa_adapter.so.2' /tmp/module-libraries && \
+	grep -Fq 'librptadv_gpio_adapter.so.1' /tmp/module-libraries && \
+	grep -Fq 'librptadv_rnnoise_adapter.so.1' /tmp/module-libraries && \
     if [ "$RUN_SMOKE_TEST" = 1 ]; then \
       /usr/local/libexec/usbradioplus/container-smoke-test.sh; \
     fi

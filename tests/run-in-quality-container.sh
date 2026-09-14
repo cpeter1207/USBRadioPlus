@@ -15,14 +15,21 @@ scope=$(printf '%s' "$root" | cksum | awk '{print $1}')
 label="org.usbradioplus.test.scope=$scope"
 name="usbradioplus-test-$scope-$$"
 
-## @brief Remove containers matching this workspace's exact test-scope label.
+## @brief Remove only stopped containers matching this workspace's test-scope label.
 cleanup_stale()
 {
-	stale=$(docker container ls --all --quiet --filter "label=$label")
+	stale=$(docker container ls --all --quiet --filter 'label=rpt_advanced.test=true' \
+		--filter "label=$label" \
+		--filter 'status=exited' --filter 'status=dead')
 	if [ -n "$stale" ]; then
-		# IDs come directly from Docker's exact-label query.
-		# shellcheck disable=SC2086
-		docker container rm --force $stale >/dev/null
+		# Do not force removal: a stopped container could have been restarted
+		# after discovery, and another parallel check owns that invocation.
+		while IFS= read -r container; do
+			[ -n "$container" ] || continue
+			docker container rm "$container" >/dev/null 2>&1 || true
+		done <<EOF
+$stale
+EOF
 	fi
 }
 
@@ -42,5 +49,14 @@ if [ "$#" -eq 0 ]; then
 	set -- make platform-verify
 fi
 
+host_root=$root
+case $(uname -s) in
+	MINGW*|MSYS*)
+		host_root=$(cd "$root" && pwd -W)
+		export MSYS_NO_PATHCONV=1
+		;;
+esac
+
 docker run --rm --name "$name" --label "$label" \
-	--volume "$root:/workspace" --workdir /workspace "$image" "$@"
+	--label rpt_advanced.test=true \
+	--volume "$host_root:/workspace" --workdir /workspace "$image" "$@"

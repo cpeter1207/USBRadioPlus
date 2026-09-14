@@ -65,11 +65,9 @@ Install `librptadv-portaudio-alsa-adapter-dev` and
 run `make`. The module links their versioned shared objects. Build or startup
 fails when a selected contract is absent or incompatible.
 
-The defaults are `hardware_audio_backend=portaudio` and
-`hardware_gpio_backend=cm119`. The earlier `portaudio_poc` and `cm119_poc`
-spellings are accepted aliases. Device-selection changes require a channel
-restart. Explicit PortAudio indexes must be supplied as a pair and must match
-the selected USB interface.
+Every channel uses the PortAudio/ALSA and CM119 GPIO adapters. Device-selection
+changes require a channel restart; audio and GPIO resolve from the same stable
+USB identity.
 
 The installed module does not require `res_usbradio.so`. The build rejects
 undefined `ast_radio_*` imports and the smoke check loads USBRadioPlus directly.

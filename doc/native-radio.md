@@ -21,6 +21,20 @@ silent delay history remain intact. A processing failure rejects the candidate
 and leaves the previous generation active. Warmup samples do not contribute to
 live sample or underrun counters.
 
+Reload stages the complete driver configuration privately, preflights hardware
+and prepares media for every live channel, and prepares every attached link
+graph before publishing anything. A newly eligible link is attached with a
+dormant prepared hook during this fallible phase; commit only publishes its
+Rust graph pointer. The channels are then adopted through their existing
+serialized control owners and link handles are swapped in place. A failure
+rejects the whole candidate and restores the prior channels and link
+processing; removing a live channel is also rejected. If a physical provider
+cannot restart during rollback, the error is logged and that station remains
+RF-safe and stopped. Ordinary service/control admission pauses for the
+transaction. A key or unkey indication records its latest intent for replay,
+so the pause cannot strand asserted PTT. Service and jitter queries only
+observe the adopted generation and never perform this work lazily.
+
 RNNoise similarly processes two silent library frames when its instance is
 created. The retained denoiser is warmed without consuming its live framing
 delay or statistics. Warmup never runs the radio tick, keys a transmitter,
@@ -66,7 +80,7 @@ detector closing should be under 10 ms, plus existing audio-filter delay.
 Reduce the RF level to a weak but usable signal and repeat: closing should
 be about 150 ms. A gradual fade must restore the long hold; brief weak-signal
 fades must not chatter. Repeat with CTCSS enabled and disabled to distinguish
-the two qualification paths. Verify link audio and software local repeat,
+the two qualification paths. Verify link audio and controller-owned repeating,
 with optional dynamics bypassed when measuring detector timing. Compare
 against a hardware MICOR before claiming identical analog performance.
 
@@ -114,7 +128,7 @@ reload may leave the CM119 unassigned even when USB enumeration is healthy.
 
 ## Callback timing and xruns
 
-`radioplus native stats` includes PortAudio input-overrun and output-underrun
+`radioplus channel status` includes PortAudio input-overrun and output-underrun
 counts. With a timing-capable adapter it also shows the last and maximum
 callback duration and start delay in milliseconds, late-start count, tolerance,
 and clock-read errors. Start delay is the positive excess of the interval
@@ -128,24 +142,17 @@ since boot, not UTC or wall-clock time; zero means no timestamp was recorded.
 Compare successive snapshots to distinguish startup events from ongoing
 failures. Older adapters retain their existing counters and show callback
 timing and xrun timestamps as unavailable rather than reporting false zeros.
-## Independent capture clock trial
+## Independent receive and transmit callbacks
 
-The PortAudio adapter can drain CM119 mono capture separately from playback.
-The input callback publishes raw normalized PCM to the released shared ring;
-the playback callback uses its clock-corrected output as native-tick input.
-This corrects capture/playback oscillator mismatch without altering receiver
-gain, filtering, or radio signaling. The experimental build accepts mono
-capture only; it is not a general stereo-capture release.
+The current Rust migration drains CM119 capture independently of playback.
+The PortAudio input callback invokes the receive worker directly, so squelch,
+CTCSS/DCS decoding, de-emphasis, and receive processing occur before audio is
+published to the controller. The output callback independently invokes the
+transmit worker, which consumes the controller program ring and renders
+directly into the PortAudio output buffer. No raw-capture clock-recovery ring
+or converter precedes receive DSP.
 
-For 960-frame callbacks, the trial uses a 1,536-frame clock target (32 ms),
-3,840-frame capacity, and two capture blocks for initial priming. The 96-frame
-reserve is a diagnostic working margin, not a hard playout gate. Conversion
-uses the shared ring's highest-quality setting. `radioplus native stats`
-reports capture callback count, occupancy, target, ratio correction, missing
-and discarded frames, and initial waiting separately. Callback execution and
-late-start statistics refer to the playback/native-tick callback; hardware
-input overruns are recorded by the capture callback.
-
-This target is selected for the measured capture-faster-than-playback mismatch
-on node 524950. It is not a universal reserve for arbitrary clock direction or
-host scheduling jitter; those combinations need separate qualification.
+The accepted local-receive, linked-peer, and telemetry inbound-ring topology,
+verified shared-clock fast path, and generational station-host lifecycle remain
+pending architecture work. The split callback entry points do not claim those
+later tranches are implemented.

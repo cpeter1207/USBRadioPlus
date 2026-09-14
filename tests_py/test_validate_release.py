@@ -1,27 +1,21 @@
-## @file
-## @brief Validate release regression checks.
+"""Release-boundary validator regression checks."""
+
 import importlib.util
 import runpy
 import shutil
+import tomllib
 from pathlib import Path
 
-## Repository root containing the artifacts under test.
 ROOT = Path(__file__).resolve().parents[1]
-## Spec fixture used by these tests.
 SPEC = importlib.util.spec_from_file_location(
     "validate_release", ROOT / "tools/validate_release.py"
 )
-## Validator fixture used by these tests.
 VALIDATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VALIDATOR)
 
 
 def test_validator_accepts_repository(capsys, monkeypatch):
-    """Verify validator accepts repository.
-
-    @param capsys Pytest fixture capturing terminal output.
-    @param monkeypatch Pytest fixture that restores patched process and module state.
-    """
+    """Accept the complete repository and its executable entry point."""
     assert VALIDATOR.validate(ROOT) == []
     monkeypatch.setattr(VALIDATOR, "ROOT", ROOT)
     assert VALIDATOR.main() == 0
@@ -29,10 +23,7 @@ def test_validator_accepts_repository(capsys, monkeypatch):
 
 
 def test_validator_executable_entry_point(capsys):
-    """Verify validator executable entry point.
-
-    @param capsys Pytest fixture capturing terminal output.
-    """
+    """Run the validator's executable entry point."""
     try:
         runpy.run_path(ROOT / "tools/validate_release.py", run_name="__main__")
     except SystemExit as error:
@@ -42,61 +33,44 @@ def test_validator_executable_entry_point(capsys):
     assert capsys.readouterr().out == "Release artifact validation passed.\n"
 
 
-def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
-    """Verify validator reports every failure class.
+def test_validator_reports_an_empty_source_tree(tmp_path):
+    """Report absent top-level metadata without attempting to parse it."""
+    errors = VALIDATOR.validate(tmp_path)
+    assert "missing artifact: Cargo.toml" in errors
+    assert "missing artifact: Makefile" in errors
+    assert any("src contains superseded production files" in error for error in errors)
 
-    @param tmp_path Isolated filesystem directory supplied by pytest.
-    @param capsys Pytest fixture capturing terminal output.
-    @param monkeypatch Pytest fixture that restores patched process and module state.
-    """
-    shutil.copytree(
-        ROOT,
-        tmp_path,
-        dirs_exist_ok=True,
-        # The test needs a source-artifact fixture, not concurrent local test
-        # output.  In particular, a short-lived test directory may disappear
-        # while copytree walks the shared working tree.
-        ignore=shutil.ignore_patterns(
-            ".git",
-            ".work",
-            "build",
-            "dist",
-            "work",
-            "outputs",
-            "__pycache__",
-            ".pytest_cache",
-            ".ruff_cache",
-            ".coverage*",
-            ".test*",
-            ".usbradioplus-tests.*",
-            "*.pyc",
-            "*.gcda",
-            "*.gcno",
-            "*.gcov",
-            "*.cap",
-            "*.raw",
-            "*.wav",
-            "*.au",
-        ),
-    )
+
+def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
+    """Report missing, extra, unsafe, and incomplete release artifacts together."""
+    artifacts = set(VALIDATOR.REQUIRED_ARTIFACTS)
+    workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+    artifacts.update(f"{member}/Cargo.toml" for member in workspace["workspace"]["members"])
+    for artifact in artifacts:
+        destination = tmp_path / artifact
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / artifact, destination)
     (tmp_path / "README.md").unlink()
-    (tmp_path / "man/usbradioplus.7").write_text("incomplete\n", encoding="utf-8")
+    missing_member = tmp_path / "rust/asterisk/Cargo.toml"
+    missing_member.unlink()
     (tmp_path / "Makefile").write_text(
         "sed -i foo modules.conf\nsed -i foo rpt.conf\nsystemctl restart asterisk\n"
         "service asterisk restart\n",
         encoding="utf-8",
     )
-    (tmp_path / "src/usbradioplus_channel_common.c").write_text("incomplete\n", encoding="utf-8")
-    (tmp_path / "src/usbradioplus_native_tick.c").write_text("incomplete\n", encoding="utf-8")
-    (tmp_path / "examples/usbradioplus.conf.sample").write_text("incomplete\n", encoding="utf-8")
+    (tmp_path / "src/retired.c").write_text("retired\n", encoding="utf-8")
+    retired = tmp_path / "scripts/usbradioplus-tune"
+    retired.write_text("retired\n", encoding="utf-8")
     patch = tmp_path / "patches/app_rpt-radioplus-duplex.patch"
     patch.parent.mkdir(exist_ok=True)
     patch.write_text("obsolete\n", encoding="utf-8")
 
     errors = VALIDATOR.validate(tmp_path)
     assert "missing artifact: README.md" in errors
+    assert "missing workspace member: rust/asterisk" in errors
+    assert any("src contains superseded production files" in error for error in errors)
     assert any("installer may alter runtime state" in error for error in errors)
-    assert any("missing 'DUPLEX3_MODE_SOFTWARE'" in error for error in errors)
+    assert "retired artifact is still shipped: scripts/usbradioplus-tune" in errors
     assert "obsolete app_rpt duplex patch is still shipped" in errors
 
     monkeypatch.setattr(VALIDATOR, "ROOT", tmp_path)

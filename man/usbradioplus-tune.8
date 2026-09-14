@@ -45,10 +45,8 @@ every named-channel
 selector; and all remaining
 .B [hardware]
 controls. The latter includes device identifier, serial number, interface
-type, EEPROM choice, fragment and queue sizes, PTT polarity, repeater
-signaling metadata, clipping LED, and GPIO or parallel-port assignments.
-The compatibility fragment request and playback queue limit are accepted but
-do not change the audio adapter or app_rpt program ring.
+type, EEPROM choice, PTT polarity, repeater signaling metadata, clipping LED,
+and GPIO or parallel-port assignments.
 Automatic calibration changes live radio state; use the explicit
 .B Write live radio tuning and EEPROM values
 action to write those results to the configuration and, when enabled, the
@@ -82,8 +80,10 @@ offers only existing scoped sections of that type. Use
 to remove the explicit selector and restore the documented implicit profile
 whose name matches the channel. A profile-selector edit restarts Asterisk.
 .SH CM119 AND SIGNALING MENUS
-The CM119 hardware menu provides USB-device selection and swapping, receiver,
-transmitter, CTCSS, DCS, Hardware signaling, GPIO, and parallel-port submenus.
+The CM119 hardware menu provides USB-device selection and swapping, audio and
+GPIO backend selection, explicit PortAudio device indexes, an optional GPIO USB
+port path, receiver, transmitter, CTCSS, DCS, Hardware signaling, GPIO, and
+parallel-port submenus.
 Hardware signaling contains repeater number, area, user key, idle interval,
 turn-off count, and voter-reporting controls. The receiver and
 transmitter submenus edit the corresponding
@@ -129,11 +129,27 @@ input gain. It does not change voice gain.
 Send three one-second PTT and calibrated 1 kHz tone bursts separated by
 1.5 seconds. Use it only into a dummy load or on an authorized test frequency.
 .TP
+.B Adjust TX voice output with a sustained 1 kHz tone
+Key the transmitter with the calibrated 1 kHz source while editing the hardware
+gain of the first output assigned to voice. The tone stops and PTT releases
+after the edit is applied or cancelled.
+.TP
+.B Adjust TX CTCSS deviation while transmitting
+Key the transmitter with the configured default CTCSS tone while editing
+.BR transmit_peak_dbfs .
+This requires CTCSS transmit signaling and an output assigned to CTCSS. The
+tone stops and PTT releases after the edit is applied or cancelled.
+.TP
+.B Adjust auxiliary output with a sustained 1 kHz tone
+Key the transmitter with the calibrated 1 kHz source while editing the hardware
+gain of the first output assigned to auxiliary voice. The tone stops and PTT
+releases after the edit is applied or cancelled.
+.TP
 .B Echo mode
-The Local receiver menu enables or disables echo playback. With a nonzero
-software local-repeat level, echo records and returns native 48 kHz audio.
-Otherwise it uses the 8 kHz Asterisk playback path. Disable echo when the test
-is complete.
+The Local receiver menu enables or disables legacy echo playback through the
+8 kHz Asterisk path. Driver-native parrot is no longer supported. Disable echo
+when the test is complete. Hardware local repeating (duplex3) remains a separate
+hardware mixer control, not a software echo route.
 .SH PROCESSING MENUS
 The Local receiver, Linked audio, and Voice + telemetry menus edit their
 separate processing chains. Each Stages menu enables or disables the available
@@ -167,7 +183,7 @@ Mark the current, already-applied configuration as the session restore point.
 .TP
 .B Write live radio tuning and EEPROM values
 Write live mixer, receiver calibration and squelch, CTCSS calibration, routing,
-local-repeat, and pre-emphasis values to the resolved configuration sections.
+hardware local-repeat level, and pre-emphasis values to the resolved configuration sections.
 Also write the interface EEPROM when EEPROM storage is enabled.
 .TP
 .B Discard live changes since the last save

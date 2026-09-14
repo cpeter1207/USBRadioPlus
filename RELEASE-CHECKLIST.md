@@ -21,7 +21,7 @@ remain manual operations described in `usbradioplus(7)`.
       only after its full quality and container gates pass.
 - [ ] Confirm the exact main revision selected for release has passed the full
       Debian 13 amd64/arm64 pull-request gate, including strict compilation,
-      Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy, Doxygen, all tests,
+      Ruff, ShellCheck, Clang-Format, Cppcheck, Clang-Tidy, Rustdoc, Doxygen, all tests,
       staged installation, and 100% production-code line and branch coverage on
       Debian 13 amd64. Debian 12 packages remain manual-only.
 - [ ] Dispatch the release workflow from that validated main revision. It runs
@@ -39,9 +39,11 @@ following checks pass.
 - [ ] Load the shipped sample through the parser and unified tuner. Confirm
       every displayed setting is a concrete current value, not a legacy
       fallback or an unspecified module default.
-- [ ] Verify scoped-profile precedence and strict rejection of an unknown
-      section, option, profile, value, or graph stage without replacing the
-      prior live configuration.
+- [ ] Verify scoped-profile precedence. Confirm unknown, inapplicable, and
+      malformed settings log their source, section, option, supplied value,
+      reason, and fallback. Confirm only structurally invalid or unsafe
+      effective configurations reject reload without replacing the prior
+      generation.
 - [ ] Verify each direction accepts exactly one `signaling_method`: `carrier`,
       `ctcss`, or `dcs`. Confirm invalid combinations are rejected, including
       missing CTCSS source/default tone, missing DCS code, invalid code spelling,
@@ -59,22 +61,21 @@ following checks pass.
 ## Real-time audio and distribution behavior
 
 - [ ] Confirm the app_rpt-to-hardware-callback bridge is the sole
-      sample-at-a-time, lock-free SPSC program ring. Its 110 ms occupancy
-      target is clock recovery only; it must not delay initial playout, gate
-      PTT, or reserve source audio before output.
+      lock-free single-producer/single-consumer program ring. Its source-rate policy is
+      a 20 ms protected reserve, 40 ms clock-recovery target, and 80 ms
+      capacity; it must not impose a fixed startup delay or gate PTT.
 - [ ] Confirm temporary program-source shortfalls use bounded smooth
       concealment, sustained shortfalls fade to silence, and counters expose
       both shortfalls and producer overflow.
 - [ ] Confirm app_rpt input and 48 kHz device output continue while idle with
-      silence. Native-parrot playback may be the sole external program-audio
-      producer only when it supplies native-rate samples through the lock-free
-      program ring; legacy app_rpt echo is distinct. PTT, COS, and CTCSS/DCS
-      decode must not alter device-write cadence.
-- [ ] Confirm the hardware callback directly performs local receive processing,
-      final voice/telemetry processing, CTCSS/DCS rendering, and native DAC
-      rendering from preallocated state. Confirm no native worker thread or
-      native input/output worker queues exist. No audio worker is permitted
-      other than the native-parrot producer described above.
+      silence. Legacy app_rpt echo uses its separate callback-owned path; no
+      driver-native parrot exists. PTT, COS, and CTCSS/DCS decode must not alter
+      device cadence.
+- [ ] Confirm the independent PortAudio capture and playback callbacks pass
+      their actual bounded frame counts through preallocated native state.
+      Capture performs receive processing and playback performs program-ring
+      consumption, final voice/telemetry processing, signaling rendering, and
+      DAC output without an intervening audio worker queue.
 - [ ] Confirm native carrier, CTCSS, DCS, RNNoise, FFmpeg, and sample-rate
       conversion callback paths make no Asterisk logging calls, take no locks,
       allocate no memory, or perform file I/O. Prepared graph execution is
@@ -90,10 +91,9 @@ following checks pass.
       20 ms native block, while silence drains. Exercise short, failed, and
       underflowed writes, a rekey during drain, a program-ring shortfall, and
       CTCSS/DCS turn-off tails.
-- [ ] Confirm native statistics are read as coherent renderer snapshots and that
-      meter reset and echo-clear requests are consumed only at complete callback
-      boundaries. Do not accept direct control-plane reads of mutable FFmpeg,
-      RNNoise, SRC, or parrot state as evidence.
+- [ ] Confirm native statistics are read as coherent callback snapshots. Do not
+      accept direct control-plane reads of mutable FFmpeg, RNNoise, or SRC state
+      as evidence.
 - [ ] Confirm each incoming-link audiohook synchronously applies its prepared
       FFmpeg graph in place to the current eligible frame using only its
       preallocated callback workspace. Confirm there is no deferred
@@ -131,9 +131,10 @@ measured results beside each completed item.
 - [ ] Verify carrier, CTCSS, and DCS transmit selections independently. Verify
       CTCSS phase shift, early tone removal, and replacement-tail tone; verify
       DCS's 134.4 Hz turn-off tone and its duration before PTT release.
-- [ ] Verify half duplex, normal app_rpt audio, and both local-repeat modes:
-      `duplex_local_repeat_mode=hardware` and `software` at zero, intermediate,
-      and full repeat levels. Confirm app_rpt, not the program FIFO, owns PTT.
+- [ ] Verify half and full duplex with `duplex_radio_mode=0` and `1`, normal
+      app_rpt audio, and hardware local repeat with `duplex_local_repeat_level`
+      at zero, intermediate, and full levels. Confirm app_rpt, not the program
+      FIFO, owns PTT.
 - [ ] Verify continuous DAC output: silence while idle and normal voice, link,
       telemetry, CTCSS, and DCS output while keyed. Check device errors,
       dropped frames, program-ring overflow/shortfall counters, and clock-ratio

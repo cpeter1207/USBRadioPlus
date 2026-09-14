@@ -37,9 +37,9 @@ sudo ./install.sh
 
 This verifies the shipped repository key, configures the signed project
 repository, and installs the required toolchain, development packages, and
-released `rate_adjusting_pcm_ring`, `rptadvradio`, `rptadv_samplerate_adapter`,
+released `rate_adjusting_pcm_ring2`, `rptadvradio`, `rptadv_samplerate_adapter`,
 `rptadv_ffmpeg_adapter`, `rptadv_portaudio_alsa_adapter`, and
-`rptadv_gpio_adapter` ABIs. It
+`rptadv_gpio_adapter`, and `rptadv_rnnoise_adapter` ABIs. It
 builds RNNoise when Debian does not provide it, runs the complete hardware-free test suite, and installs
 USBRadioPlus. It does not activate the module, restart Asterisk, or edit
 `modules.conf` or `rpt.conf`.
@@ -54,7 +54,7 @@ USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, and
 the libraries listed in `doc/packaging.md`. Developers with those dependencies
 already installed may use `sudo ./install.sh --skip-deps`.
 
-USBRadioPlus uses the released `rate_adjusting_pcm_ring` shared library for
+USBRadioPlus uses the released `rate_adjusting_pcm_ring2` shared library for
 the lock-free native program FIFO and the released `rptadv_samplerate_adapter`
 shared library for its mono sinc compatibility conversion. Native DCS shaping
 uses the `rptadv_ffmpeg_adapter` shared library. Every channel uses the

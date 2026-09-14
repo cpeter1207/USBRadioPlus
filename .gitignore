@@ -1,5 +1,6 @@
 /build/
 /dist/
+/target/
 /.work/
 /third_party/rate_adjusting_pcm_ring/build/
 /.test*/
@@ -9,6 +10,8 @@
 *.o
 *.so
 *.gcov
+*.profraw
+*.profdata
 __pycache__/
 .pytest_cache/
 .coverage

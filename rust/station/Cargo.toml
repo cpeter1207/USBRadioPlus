@@ -1,0 +1,29 @@
+[package]
+name = "usbradioplus-station"
+version = "0.1.0-alpha18"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+description = "USBRadioPlus station composition"
+publish = false
+
+[dependencies]
+usbradioplus-core = { path = "../core" }
+usbradioplus-asl3 = { path = "../asl3" }
+usbradioplus-audio = { path = "../audio" }
+usbradioplus-gpio = { path = "../gpio" }
+usbradioplus-radio = { path = "../radio" }
+usbradioplus-ring = { path = "../ring" }
+usbradioplus-runtime = { path = "../runtime" }
+
+[dev-dependencies]
+usbradioplus-ffmpeg = { path = "../ffmpeg" }
+usbradioplus-rnnoise = { path = "../rnnoise" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+unexpected_cfgs = { level = "deny", check-cfg = ["cfg(coverage)"] }
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"

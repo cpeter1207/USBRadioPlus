@@ -1,9 +1,9 @@
 ; USBRadioPlus audio processing defaults. Installation creates
 ; /etc/asterisk/usbradioplus.conf when it does not already exist.
 ;
-; Unknown sections, unknown options, invalid
-; ranges, and invalid stage orders reject a reload without changing the active
-; settings. See usbradioplus.conf(5) for complete rules.
+; Unknown, inapplicable, or malformed settings produce warnings naming their
+; source and effective fallback. Only a configuration that cannot resolve to a
+; safe complete channel is rejected. See usbradioplus.conf(5) for full rules.
 
 ; Flat sections provide shared defaults. A scoped section such as
 ; [hardware usb] overrides [hardware] for a radio named usb. A radio may also
@@ -14,6 +14,7 @@
 
 [usb]
 ; This named section creates RadioPlus/usb and inherits every flat section.
+; Select this channel as the initial target shown by the tuning utility.
 channel_enabled = yes
 
 [asterisk]
@@ -53,34 +54,19 @@ channel_enabled = yes
 ;hardware_serial =
 ;hardware_interface_type = 0
 ;hardware_eeprom_enabled = yes
-; Audio buffering.
+; Audio path and fixed buffering.
 ; App_rpt PCM enters one lock-free program ring. It renders from the first
-; queued sample; its 110 ms target is for clock recovery, not startup delay.
+; queued sample. Its 20 ms reserve, 40 ms clock-recovery target, and 80 ms
+; capacity are source-rate durations, not a fixed startup delay.
 ; Its persistent converter handles source-rate conversion and hardware-clock
 ; recovery across PTT transitions; a short producer gap is concealed smoothly.
-; Compatibility fragment/queue settings are accepted but have no effect.
-;hardware_audio_fragment_count = 196
-;hardware_audio_queue_size = 20
 ; Every channel uses the released PortAudio/ALSA audio and CM119 GPIO adapters.
 ; Audio and HID bind to one resolved USB identity. If no identifier or serial
 ; is configured, selection must find one unambiguous supported interface.
-; The earlier portaudio_poc and cm119_poc names remain accepted aliases.
-;hardware_audio_backend = portaudio
-;hardware_gpio_backend = cm119
-; Optional explicit endpoint indexes must be supplied as a matching pair.
-; Leave both at -1 to resolve capture/playback from the selected USB identity.
-;hardware_portaudio_input_device_index = -1
-;hardware_portaudio_output_device_index = -1
 ; Optional stable USB topology constraint, for example 3-1.
 ;hardware_gpio_usb_port_path =
 ; Device selection changes require a channel restart.
-; Radio identity and signaling metadata remains hardware-specific.
-;hardware_repeater_number = 0
-;hardware_area = 0
-;hardware_user_key =
-; Signaling cadence, voter reporting, and the optional clipping indicator.
-;hardware_idle_interval = 0
-;hardware_turnoff_count = 0
+; Voter reporting and the optional clipping indicator.
 ;hardware_voter_reporting = 0
 ;hardware_clip_led_gpio = 0
 ; Configure each available CM119 GPIO as an input or as an output with its
@@ -135,14 +121,10 @@ signaling_method = carrier
 ; delay in 20 ms frames (0--3000).
 ;squelch_delay_ms = 0
 ;on_delay_frames = 0
-; Invert receiver signaling polarity when the radio uses the opposite sense.
-;polarity_inverted = no
 ; DSP carrier-squelch threshold on the 0--999 tuning scale.
 ;squelch_level = 500
 ; Nonnegative integral receiver frequency in hertz for signaling and reporting.
 ;frequency_hz = 0
-; Invert low-speed-data signaling when the attached system requires it.
-;lsd_polarity_inverted = no
 
 [transmit]
 ; Select exactly one transmitted signaling method: carrier, ctcss, or dcs.
@@ -157,12 +139,8 @@ signaling_method = carrier
 ;settle_ms = 500
 ;rx_blanking_ms = 0
 ;off_delay_frames = 0
-; Invert transmitter radio-signaling polarity when the radio requires it.
-;polarity_inverted = no
 ; Nonnegative integral transmitter frequency in hertz for signaling and reporting.
 ;frequency_hz = 0
-; Invert low-speed-data signaling when the attached system requires it.
-;lsd_polarity_inverted = no
 
 [ctcss]
 ; Used only in a direction whose signaling_method is ctcss. Before selecting
@@ -219,21 +197,19 @@ signaling_method = carrier
 ; pre-emphasis and all speech-processing controls.
 
 [duplex]
-; Radio duplex mode and local 48 kHz repeat route. Scoped duplex profiles
+; Radio duplex mode and hardware local repeat level. Scoped duplex profiles
 ; inherit omitted values from this flat section.
 ;duplex_radio_mode = 0
 ;duplex_local_repeat_level = 0
-;duplex_local_repeat_mode = hardware
+; Local repeat uses the hardware mixer only; software local repeat is unsupported.
 
 ; Optional short TX timing captures use Asterisk module debug level 5, not
 ; these settings. See usbradioplus.conf(5), Transmit timing trace; turn debug
 ; off after the test to avoid continuous per-frame logging.
 [diagnostics]
-; Diagnostic controls. Scoped diagnostics profiles inherit omitted values from
-; this flat section.
-;diagnostics_trace_type = 0
-;diagnostics_trace_level = 0
-;diagnostics_fever = 0
+; Publish periodic meter and FIFO status at this positive millisecond interval.
+; Scoped diagnostics profiles inherit omitted values from this flat section.
+diagnostics_status_publication_interval_ms = 50
 
 [local]
 ; Enable the local receiver chain. The master switch must also be enabled.

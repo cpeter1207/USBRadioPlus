@@ -3,14 +3,11 @@ DOT_GRAPH_MAX_NODES    = 128
 PROJECT_NUMBER         =
 PROJECT_BRIEF          = "Enhanced AllStarLink USB radio channel driver"
 OUTPUT_DIRECTORY       = build/doxygen
-INPUT                  = src doc/developer.dox doc/rpt-advanced-interface.md
+INPUT                  = src/chan_usbradioplus_shim.c \
+                         rust/asterisk/include/usbradioplus_asterisk.h \
+                         doc/developer.dox
 FILE_PATTERNS           = *.c *.h *.dox
-# Upstream reference fixtures are test data, not maintained implementation.
-EXCLUDE                = tests/fixtures
-EXTENSION_MAPPING      = sh=Python no_extension=Python
-FILTER_PATTERNS        = "*.sh=python3 tools/doxygen_shell_filter.py"
-PYTHON_DOCSTRING       = NO
-RECURSIVE               = YES
+RECURSIVE               = NO
 MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = YES
 PREDEFINED             = "__attribute__(x)=" "_Alignas(x)=" \

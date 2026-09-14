@@ -3,7 +3,7 @@
  * @brief Streaming, gain-law, safety and real-time invariants for the RMS LADSPA gain rider.
  */
 
-#include "../src/txagc/rms_agc_ladspa.h"
+#include "fixtures/rms_agc_ladspa.h"
 
 #include <assert.h>
 #include <float.h>
@@ -17,6 +17,12 @@
 #define BLOCK 512
 /** @brief Number of scalar ports. */
 #define CONTROLS (USBRADIOPLUS_AGC_PORT_COUNT - USBRADIOPLUS_AGC_TARGET_DBFS)
+
+/** @brief Frozen C implementation, linked into tests only.
+ * @param index Plugin index.
+ * @return Reference descriptor, or NULL for a nonzero index.
+ */
+const LADSPA_Descriptor *rms_agc_reference_descriptor(unsigned long index);
 
 /** @brief Fail the next allocation to exercise host-visible initialization failure. */
 static int allocation_failure;
@@ -59,12 +65,14 @@ struct fixture {
 /** @brief Create a fully connected plugin using documented defaults.
  * @param fixture Fixture to initialize in place.
  * @param rate Sample rate.
+ * @param descriptor Production or frozen-reference host interface.
  */
-static void initialize(struct fixture *fixture, unsigned long rate)
+static void initialize_descriptor(struct fixture *fixture, unsigned long rate,
+				  const LADSPA_Descriptor *descriptor)
 {
 	static const float defaults[CONTROLS] = {-24, 200, 2, 6, 6, 6, -50, 3, 500, 1};
 	memset(fixture, 0, sizeof(*fixture));
-	fixture->descriptor = ladspa_descriptor(0);
+	fixture->descriptor = descriptor;
 	fixture->handle = fixture->descriptor->instantiate(fixture->descriptor, rate);
 	assert(fixture->handle);
 	fixture->rate = rate;
@@ -79,6 +87,15 @@ static void initialize(struct fixture *fixture, unsigned long rate)
 		fixture->descriptor->connect_port(fixture->handle,
 						  index + USBRADIOPLUS_AGC_TARGET_DBFS,
 						  fixture->control + index);
+}
+
+/** @brief Initialize the production Rust implementation with the published defaults.
+ * @param fixture Fixture to initialize.
+ * @param rate Sample rate.
+ */
+static void initialize(struct fixture *fixture, unsigned long rate)
+{
+	initialize_descriptor(fixture, rate, ladspa_descriptor(0));
 }
 
 /** @brief Set a scalar using its public port number.
@@ -130,7 +147,9 @@ static void test_host_contract(void)
 	assert(!descriptor->instantiate(descriptor, 0));
 	assert(!descriptor->instantiate(descriptor, 384001));
 	allocation_failure = 1;
-	assert(!descriptor->instantiate(descriptor, 8000));
+	/* Link-time calloc wrapping applies only to the frozen C reference. Rust's
+	 * fallible allocation and allocation-free run are covered by its unit tests. */
+	assert(!rms_agc_reference_descriptor(0)->instantiate(descriptor, 8000));
 	handle = descriptor->instantiate(descriptor, 8000);
 	assert(handle);
 	descriptor->run(handle, 1);
@@ -319,6 +338,107 @@ static void benchmark_processing(void)
 	fixture.descriptor->cleanup(fixture.handle);
 }
 
+/** @brief Compare every public descriptor field and streamed output to the frozen C plugin. */
+static void test_reference_parity(void)
+{
+	static const unsigned long rates[] = {1000, 1001, 8000, 16000, 44100, 48000, 384000};
+	static const float signals[] = {0.0F,  -0.0F,	     0.0001F,  0.0028F, 0.006F,
+					0.01F, 0.063095734F, 0.5F,     2.0F,	FLT_MAX,
+					NAN,   INFINITY,     -INFINITY};
+	const LADSPA_Descriptor *rust = ladspa_descriptor(0);
+	const LADSPA_Descriptor *reference = rms_agc_reference_descriptor(0);
+	unsigned long compared = 0, rounded = 0;
+	double maximum_error = 0.0;
+	assert(rust->UniqueID == reference->UniqueID);
+	assert(rust->Properties == reference->Properties);
+	assert(rust->PortCount == reference->PortCount);
+	assert(!strcmp(rust->Label, reference->Label));
+	assert(!strcmp(rust->Name, reference->Name));
+	assert(!strcmp(rust->Maker, reference->Maker));
+	assert(!strcmp(rust->Copyright, reference->Copyright));
+	assert(!rust->ImplementationData && !rust->run_adding && !rust->set_run_adding_gain &&
+	       !rust->deactivate);
+	for (unsigned long port = 0; port < rust->PortCount; ++port) {
+		assert(rust->PortDescriptors[port] == reference->PortDescriptors[port]);
+		assert(!strcmp(rust->PortNames[port], reference->PortNames[port]));
+		assert(rust->PortRangeHints[port].HintDescriptor ==
+		       reference->PortRangeHints[port].HintDescriptor);
+		assert(!memcmp(&rust->PortRangeHints[port].LowerBound,
+			       &reference->PortRangeHints[port].LowerBound, sizeof(float)));
+		assert(!memcmp(&rust->PortRangeHints[port].UpperBound,
+			       &reference->PortRangeHints[port].UpperBound, sizeof(float)));
+	}
+	for (unsigned int rate_index = 0; rate_index < sizeof(rates) / sizeof(rates[0]);
+	     ++rate_index) {
+		struct fixture actual, expected;
+		initialize_descriptor(&actual, rates[rate_index], rust);
+		initialize_descriptor(&expected, rates[rate_index], reference);
+		for (unsigned int phase = 0; phase < 20; ++phase) {
+			if (phase == 4) {
+				actual.control[8] = expected.control[8] = 0;
+			} else if (phase >= 8 && phase < 13) {
+				static const float values[] = {NAN, -FLT_MAX, FLT_MAX, 0.0F, -0.0F};
+				for (unsigned int control_index = 0; control_index < CONTROLS;
+				     ++control_index)
+					actual.control[control_index] =
+						expected.control[control_index] = values[phase - 8];
+			} else if (phase == 13) {
+				for (unsigned long port = 3; port < rust->PortCount; ++port) {
+					rust->connect_port(actual.handle, port, NULL);
+					reference->connect_port(expected.handle, port, NULL);
+				}
+			} else if (phase == 14) {
+				for (unsigned long port = 3; port < rust->PortCount; ++port) {
+					rust->connect_port(actual.handle, port,
+							   actual.control + port - 3);
+					reference->connect_port(expected.handle, port,
+								expected.control + port - 3);
+				}
+			} else if (phase == 15) {
+				rust->activate(actual.handle);
+				reference->activate(expected.handle);
+			}
+			for (unsigned int block = 0; block < 80; ++block) {
+				unsigned long count =
+					block % 7 == 0 ? 0 : (block % 3 == 0 ? 1 : BLOCK);
+				for (unsigned long index = 0; index < count; ++index) {
+					float input =
+						(float)(0.2 * sin((double)(block * BLOCK + index) *
+								  0.07));
+					if (phase >= 8)
+						input = signals[index % (sizeof(signals) /
+									 sizeof(signals[0]))];
+					actual.program[index] = expected.program[index] = input;
+					actual.detector[index] = expected.detector[index] =
+						phase < 8 ? signals[phase]
+							  : signals[(index + phase) %
+								    (sizeof(signals) /
+								     sizeof(signals[0]))];
+				}
+				rust->run(actual.handle, count);
+				reference->run(expected.handle, count);
+				for (unsigned long index = 0; index < count; ++index) {
+					double error = fabs((double)actual.output[index] -
+							    expected.output[index]);
+					assert(isfinite(actual.output[index]));
+					assert(error <=
+					       4 * FLT_EPSILON *
+						       fmax(1.0, fabs(expected.output[index])));
+					maximum_error = fmax(maximum_error, error);
+					rounded +=
+						memcmp(&actual.output[index],
+						       &expected.output[index], sizeof(float)) != 0;
+					compared++;
+				}
+			}
+		}
+		rust->cleanup(actual.handle);
+		reference->cleanup(expected.handle);
+	}
+	printf("Rust/C RMS AGC parity: %lu samples, %lu rounded differences, max error %.9g\n",
+	       compared, rounded, maximum_error);
+}
+
 /** @brief Run all standalone LADSPA gain-rider checks.
  * @return Zero after all assertions pass.
  */
@@ -332,6 +452,7 @@ int main(void)
 	test_hold_resets();
 	test_invalid_and_runtime_controls();
 	test_block_independence();
+	test_reference_parity();
 	benchmark_processing();
 	puts("RMS AGC LADSPA checks passed");
 	return 0;
