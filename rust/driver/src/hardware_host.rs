@@ -661,6 +661,9 @@ impl HardwareStation {
     }
 
     /// Publish controller PTT and audio-admission intent atomically.
+    ///
+    /// DAC admission remains independent of PTT so an unkeyed callback can
+    /// finish transmitter signaling and release the hardware.
     pub fn set_transmit_request(
         &self,
         transmit: bool,
@@ -708,7 +711,9 @@ impl HardwareStation {
                 keyed,
                 forced_ctcss,
             } => {
-                self.set_transmit_request(keyed, keyed, forced_ctcss);
+                // A live DAC callback remains admitted while the radio core
+                // finishes its tone-off sequence and releases logical PTT.
+                self.set_transmit_request(keyed, true, forced_ctcss);
             }
             ControlAction::SelectChannel(channel) => self.select_channel(channel)?,
             ControlAction::SetReceiveCtcss(enabled) => self.set_subaudible_override(!enabled),

@@ -976,11 +976,7 @@ impl RetainedControllerState {
             .control()
             .controller()
             .restore_reload_state(self.controller);
-        hardware.set_transmit_request(
-            self.control.transmit_keyed,
-            self.control.transmit_keyed,
-            self.control.forced_ctcss,
-        );
+        hardware.set_transmit_request(self.control.transmit_keyed, true, self.control.forced_ctcss);
         hardware.set_subaudible_override(!self.control.receive_ctcss_enabled);
         hardware.set_ctcss_inhibited(!self.control.transmit_ctcss_enabled);
     }
