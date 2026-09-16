@@ -6,11 +6,13 @@ rust-version = "1.85"
 license = "GPL-2.0-only"
 description = "USBRadioPlus adapter for the Asterisk C ABI"
 publish = false
+build = "build.rs"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+libc = "0.2"
 usbradioplus-asl3 = { path = "../asl3" }
 usbradioplus-audio = { path = "../audio" }
 usbradioplus-core = { path = "../core" }
@@ -22,6 +24,9 @@ usbradioplus-ring = { path = "../ring" }
 usbradioplus-rnnoise = { path = "../rnnoise" }
 usbradioplus-samplerate = { path = "../samplerate" }
 usbradioplus-station = { path = "../station" }
+
+[build-dependencies]
+bindgen = "0.72.1"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

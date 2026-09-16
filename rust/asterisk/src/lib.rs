@@ -6,6 +6,13 @@
 
 #![deny(warnings)]
 
+#[allow(warnings, missing_docs, unsafe_op_in_unsafe_fn, clippy::all)]
+mod ffi {
+    include!(concat!(env!("OUT_DIR"), "/asterisk.rs"));
+}
+
+mod host;
+
 use std::cell::UnsafeCell;
 use std::collections::HashSet;
 use std::ffi::{c_char, c_int, c_void};

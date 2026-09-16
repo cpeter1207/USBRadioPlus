@@ -19,9 +19,11 @@ Package builds declare their dependencies and never run `install.sh` or
 USBRadioPlus repository and installs the same development packages used by the
 Debian build.
 
-The only production C source is `src/chan_usbradioplus_shim.c`. It builds
-against `asl3-asterisk-dev` and links the Rust Asterisk adapter and the released
-provider libraries. The module must retain these versioned dynamic dependencies:
+The only production C source is `src/chan_usbradioplus_shim.c`. It declares
+Asterisk metadata, composes the provider manifest, and forwards load, reload,
+and unload through the versioned Rust lifecycle descriptor. It builds against
+`asl3-asterisk-dev` and links the Rust Asterisk host and the released provider
+libraries. The module must retain these versioned dynamic dependencies:
 
 - `libusbradioplus_asterisk.so.1`
 - `librate_adjusting_pcm_ring2.so.2`
@@ -32,6 +34,12 @@ The corresponding build packages are `librate-adjusting-pcm-ring2-dev`,
 `librptadvradio-dev`, `librptadv-samplerate-adapter-dev`,
 `librptadv-ffmpeg-adapter-dev`, `librptadv-portaudio-alsa-adapter-dev`,
 `librptadv-gpio-adapter-dev`, and `librptadv-rnnoise-adapter-dev`.
+
+`chan_usbradioplus.so` and `libusbradioplus_asterisk.so.1` are private,
+co-packaged artifacts. Apt therefore installs them as one versioned
+transaction. The metadata shim validates the lifecycle descriptor size and ABI
+before Rust registers either channel technology, so manually mixed artifacts
+fail safely instead of partially loading.
 
 The build rejects undefined `ast_radio_*` imports. `res_usbradio.so` is not a
 runtime dependency.

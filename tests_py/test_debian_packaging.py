@@ -67,6 +67,20 @@ def test_usbradioplus_debian_package_is_nonactivating():
         assert not list((ROOT / "debian").glob(maintainer_script))
 
 
+def test_private_rust_host_and_module_are_one_package_transaction():
+    """Prevent apt from installing mismatched loader and module revisions."""
+    control = read("debian/control")
+    makefile = read("Makefile")
+    rules = read("debian/rules")
+    assert control.count("\nPackage: ") == 1
+    module_install = "$(INSTALL_DATA) $(MODULE) "
+    module_path = "$(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so"
+    assert module_install + module_path in makefile
+    assert "$(INSTALL_PROGRAM) $(ASTERISK_ADAPTER_VERSIONED)" in makefile
+    assert "$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME)" in makefile
+    assert "debian/usbradioplus" in rules
+
+
 def test_debian_source_version_matches_the_release_archive_version():
     """Keep Debian source-package metadata aligned with the upstream archive."""
     version = read("VERSION").strip()

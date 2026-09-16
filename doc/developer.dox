@@ -15,19 +15,21 @@ changing a component boundary.
 - `rust/driver` owns configured stations and their lifecycle.
 - `rust/asl3` owns the Asterisk-compatible 8 kHz and rate-aware 48 kHz media
   adapters.
-- `rust/asterisk` publishes the stable C descriptor consumed by the module.
+- `rust/asterisk` owns Asterisk channel hosting, delivery, link audiohooks,
+  reload, CLI commands, and module lifecycle behind a versioned loader table.
 - `rust/tune` builds the installed `usbradioplus-tune` utility.
 - `rust/rms-agc` builds the private LADSPA gain-rider plugin used by FFmpeg.
-- `src/chan_usbradioplus_shim.c` is the only production C source. It translates
-  Asterisk objects, frames, DSP DTMF events, jitter-buffer settings, MOH, CLI
-  calls, and module registration to the Rust descriptor.
+- `src/chan_usbradioplus_shim.c` is the only production C source. It composes
+  provider metadata, forwards load, reload, and unload to Rust, and declares
+  the Asterisk module metadata.
 
 @section boundary Asterisk boundary
 
 `RadioPlus` exchanges fixed 8 kHz signed-linear Asterisk frames.
 `RadioPlusAdvanced` exchanges 48 kHz signed-linear frames. Rust owns all
 configuration, audio processing, radio hardware, control semantics, and station
-lifecycle. The shim must not duplicate those decisions.
+lifecycle and Asterisk host behavior. The shim must not duplicate those
+decisions.
 
 The driver descriptor must outlive every channel. A reserved channel is started
 once, stopped before destruction, and destroyed before the driver. Voice writes
@@ -43,7 +45,7 @@ every attached link builds a replacement graph before publication. Eligible
 links discovered during staging receive a fully attached dormant hook before
 publication, so commit only swaps prepared pointers. Reload entries retain the
 hook itself rather than an Asterisk channel, allowing a channel masquerade
-during staging. The shim then adopts every channel, publishes the driver
+during staging. The Rust host then adopts every channel, publishes the driver
 generation, swaps link graphs in place, and retires rollback ownership.
 Request, hangup, link-scan membership, and ordinary taskprocessor admission are
 frozen for that interval. Transmit key/unkey indications remain nonblocking:
@@ -55,7 +57,7 @@ queries and ordinary service never trigger a lazy refresh.
 
 @section providers Dynamic providers
 
-The shim passes the installed descriptors for the rate-adjusting PCM ring,
+The loader passes the installed descriptors for the rate-adjusting PCM ring,
 radio core, sample-rate adapter, FFmpeg adapter, RNNoise adapter,
 PortAudio/ALSA adapter, and GPIO adapter to Rust. The module and Rust adapter
 link to their released, versioned shared objects. No provider implementation is
