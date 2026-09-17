@@ -99,6 +99,7 @@
     "rust/asterisk/Cargo.toml",
     "rust/asterisk/include/usbradioplus_asterisk.h",
     "rust/asterisk/src/host/channel.rs",
+    "rust/asterisk/src/host/channel_tests.rs",
     "rust/asterisk/src/host/cli_tests.rs",
     "rust/asterisk/src/host/cli.rs",
     "rust/asterisk/src/host/control.rs",

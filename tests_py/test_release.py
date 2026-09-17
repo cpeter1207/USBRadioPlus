@@ -57,6 +57,7 @@ def test_rust_host_exports_only_the_loader_descriptor():
     rust_host = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (ROOT / "rust/asterisk/src").rglob("*.rs")
+        if "tests" not in path.parts and not path.stem.endswith("_tests")
     )
     assert rust_host.count("#[unsafe(no_mangle)]") == 1
     assert "fn usbradioplus_asterisk_loader_descriptor" in rust_host

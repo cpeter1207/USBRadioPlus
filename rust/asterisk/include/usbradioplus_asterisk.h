@@ -23,7 +23,7 @@ extern "C" {
 /** Private initial-alpha Asterisk option ID; call ast_channel_setoption with block=0. */
 #define URP_AST_OPTION_DIRECT_CALLBACKS 0x52504144
 /** Exact direct callback descriptor ABI. */
-#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(1)
+#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(2)
 
 /**
  * @brief Borrowed direct RadioPlusAdvanced PCM endpoints, copied before call().
@@ -45,6 +45,7 @@ struct urp_ast_direct_callbacks {
 	void *transmit_context; /**< Caller-owned TX context. */
 	int (*transmit)(void *context, float *samples, uint32_t frame_count,
 			uint32_t *keyed); /**< Fill program audio and write zero/one PTT. */
+	uint32_t accepted_abi_version; /**< Initialize to zero; host acknowledges retained ABI. */
 };
 
 /** @brief Process-lifetime providers selected by the Asterisk module. */

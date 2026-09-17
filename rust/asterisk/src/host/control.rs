@@ -56,115 +56,110 @@ unsafe fn execute(
     channel: *mut c_void,
     operation: ControlOperation,
 ) -> ControlResult {
-    // SAFETY: installation validates the process-lifetime descriptor before a
-    // channel can submit work.
-    let descriptor = unsafe { &*descriptor };
-    match operation {
-        ControlOperation::Start => ControlResult::Status(status(
-            descriptor
-                .channel_start
-                .map(|call| unsafe { call(channel) }),
-        )),
-        ControlOperation::Stop => ControlResult::Status(status(
-            descriptor.channel_stop.map(|call| unsafe { call(channel) }),
-        )),
-        ControlOperation::ReloadPrepare => ControlResult::Status(status(
-            descriptor
-                .channel_reload_prepare
-                .map(|call| unsafe { call(channel) }),
-        )),
-        ControlOperation::ReloadActivate => ControlResult::Status(status(
-            descriptor
-                .channel_reload_activate
-                .map(|call| unsafe { call(channel) }),
-        )),
-        ControlOperation::ReloadFinish(commit) => ControlResult::Status(status(
-            descriptor
-                .channel_reload_finish
-                .map(|call| unsafe { call(channel, u32::from(commit)) }),
-        )),
-        ControlOperation::Text(text) => ControlResult::Status(status(
-            descriptor
-                .channel_write_text
-                .map(|call| unsafe { call(channel, text.as_ptr(), text.len() as u32) }),
-        )),
-        ControlOperation::Transmit {
-            keyed,
-            ctcss_tenths_hz,
-        } => ControlResult::Status(status(
-            descriptor
-                .channel_set_transmit
-                .map(|call| unsafe { call(channel, u32::from(keyed), ctcss_tenths_hz) }),
-        )),
-        ControlOperation::Dtmf(enabled) => ControlResult::Status(status(
-            descriptor
-                .channel_set_dtmf
-                .map(|call| unsafe { call(channel, u32::from(enabled)) }),
-        )),
-        ControlOperation::Echo(enabled) => ControlResult::Status(status(
-            descriptor
-                .channel_set_echo
-                .map(|call| unsafe { call(channel, u32::from(enabled)) }),
-        )),
-        ControlOperation::Direct(callbacks) => ControlResult::Status(status(
-            descriptor
-                .channel_set_direct_callbacks
-                .map(|call| unsafe { call(channel, &callbacks) }),
-        )),
-        ControlOperation::Jitter => {
-            let mut output = UrpAstJitterConfig {
-                struct_size: size_of::<UrpAstJitterConfig>() as u32,
-                abi_version: super::super::ABI_VERSION,
-                enabled: 0,
-                maximum_size_ms: 0,
-                resync_threshold_ms: 0,
-                implementation: 0,
-                logging_enabled: 0,
-                force_enabled: 0,
-                target_extra_ms: 0,
-                video_sync_enabled: 0,
-            };
-            let result = status(
+    // SAFETY: the caller keeps the validated descriptor and channel live while
+    // its taskprocessor serializes every operation, with Destroy the final use.
+    // Owned text/callback values and initialized output buffers remain valid for
+    // each synchronous call. The attaching owner retains callback contexts/code
+    // until synchronous stream shutdown; this dispatch only copies the binding.
+    unsafe {
+        let descriptor = &*descriptor;
+        match operation {
+            ControlOperation::Start => {
+                ControlResult::Status(status(descriptor.channel_start.map(|call| call(channel))))
+            }
+            ControlOperation::Stop => {
+                ControlResult::Status(status(descriptor.channel_stop.map(|call| call(channel))))
+            }
+            ControlOperation::ReloadPrepare => ControlResult::Status(status(
+                descriptor.channel_reload_prepare.map(|call| call(channel)),
+            )),
+            ControlOperation::ReloadActivate => ControlResult::Status(status(
+                descriptor.channel_reload_activate.map(|call| call(channel)),
+            )),
+            ControlOperation::ReloadFinish(commit) => ControlResult::Status(status(
                 descriptor
-                    .channel_get_jitter_config
-                    .map(|call| unsafe { call(channel, &raw mut output) }),
-            );
-            ControlResult::Jitter(result, output)
-        }
-        ControlOperation::Command(mut command) => {
-            let result = status(
+                    .channel_reload_finish
+                    .map(|call| call(channel, u32::from(commit))),
+            )),
+            ControlOperation::Text(text) => ControlResult::Status(status(
                 descriptor
-                    .channel_command
-                    .map(|call| unsafe { call(channel, &raw mut command) }),
-            );
-            ControlResult::Command(result, command)
-        }
-        ControlOperation::Status => {
-            let mut output = UrpAstChannelStatus {
-                struct_size: size_of::<UrpAstChannelStatus>() as u32,
-                abi_version: super::super::ABI_VERSION,
-                ..UrpAstChannelStatus::default()
-            };
-            let result = status(
+                    .channel_write_text
+                    .map(|call| call(channel, text.as_ptr(), text.len() as u32)),
+            )),
+            ControlOperation::Transmit {
+                keyed,
+                ctcss_tenths_hz,
+            } => ControlResult::Status(status(
                 descriptor
-                    .channel_get_status
-                    .map(|call| unsafe { call(channel, &raw mut output) }),
-            );
-            ControlResult::ChannelStatus(result, output)
-        }
-        ControlOperation::Service => ControlResult::Status(status(
-            descriptor
-                .channel_service
-                .map(|call| unsafe { call(channel) }),
-        )),
-        ControlOperation::Destroy => {
-            if let Some(call) = descriptor.channel_destroy {
-                // SAFETY: the serialized destroy is the final use of this
-                // Rust-owned channel handle.
-                unsafe { call(channel) };
-                ControlResult::Status(URP_AST_OK)
-            } else {
-                ControlResult::Status(URP_AST_ASTERISK_FAILURE)
+                    .channel_set_transmit
+                    .map(|call| call(channel, u32::from(keyed), ctcss_tenths_hz)),
+            )),
+            ControlOperation::Dtmf(enabled) => ControlResult::Status(status(
+                descriptor
+                    .channel_set_dtmf
+                    .map(|call| call(channel, u32::from(enabled))),
+            )),
+            ControlOperation::Echo(enabled) => ControlResult::Status(status(
+                descriptor
+                    .channel_set_echo
+                    .map(|call| call(channel, u32::from(enabled))),
+            )),
+            ControlOperation::Direct(callbacks) => ControlResult::Status(status(
+                descriptor
+                    .channel_set_direct_callbacks
+                    .map(|call| call(channel, &callbacks)),
+            )),
+            ControlOperation::Jitter => {
+                let mut output = UrpAstJitterConfig {
+                    struct_size: size_of::<UrpAstJitterConfig>() as u32,
+                    abi_version: super::super::ABI_VERSION,
+                    enabled: 0,
+                    maximum_size_ms: 0,
+                    resync_threshold_ms: 0,
+                    implementation: 0,
+                    logging_enabled: 0,
+                    force_enabled: 0,
+                    target_extra_ms: 0,
+                    video_sync_enabled: 0,
+                };
+                let result = status(
+                    descriptor
+                        .channel_get_jitter_config
+                        .map(|call| call(channel, &raw mut output)),
+                );
+                ControlResult::Jitter(result, output)
+            }
+            ControlOperation::Command(mut command) => {
+                let result = status(
+                    descriptor
+                        .channel_command
+                        .map(|call| call(channel, &raw mut command)),
+                );
+                ControlResult::Command(result, command)
+            }
+            ControlOperation::Status => {
+                let mut output = UrpAstChannelStatus {
+                    struct_size: size_of::<UrpAstChannelStatus>() as u32,
+                    abi_version: super::super::ABI_VERSION,
+                    ..UrpAstChannelStatus::default()
+                };
+                let result = status(
+                    descriptor
+                        .channel_get_status
+                        .map(|call| call(channel, &raw mut output)),
+                );
+                ControlResult::ChannelStatus(result, output)
+            }
+            ControlOperation::Service => {
+                ControlResult::Status(status(descriptor.channel_service.map(|call| call(channel))))
+            }
+            ControlOperation::Destroy => {
+                if let Some(call) = descriptor.channel_destroy {
+                    call(channel);
+                    ControlResult::Status(URP_AST_OK)
+                } else {
+                    ControlResult::Status(URP_AST_ASTERISK_FAILURE)
+                }
             }
         }
     }
@@ -173,6 +168,8 @@ unsafe fn execute(
 unsafe extern "C" fn execute_task(opaque: *mut c_void) -> i32 {
     // SAFETY: run_control transfers exactly one Box<Task> to this callback.
     let task = unsafe { Box::from_raw(opaque.cast::<Task>()) };
+    // SAFETY: run_control waits for this task before releasing its live channel
+    // and descriptor; the taskprocessor serializes access to the owned operation.
     let result = unsafe {
         execute(
             task.descriptor as *const UrpAstDescriptor,
@@ -251,6 +248,8 @@ mod tests {
     #[test]
     fn operation_dispatch_uses_the_selected_descriptor_entry() {
         let descriptor = descriptor();
+        // SAFETY: this live fixture descriptor's Start callback ignores the
+        // channel pointer and is invoked synchronously on this test thread.
         let result = unsafe {
             execute(
                 &raw const descriptor,
@@ -260,6 +259,8 @@ mod tests {
         };
         assert!(matches!(result, ControlResult::Status(17)));
 
+        // SAFETY: the live fixture's Transmit callback ignores the channel
+        // pointer and only writes the test atomic from this synchronous call.
         let result = unsafe {
             execute(
                 &raw const descriptor,
@@ -277,6 +278,8 @@ mod tests {
     #[test]
     fn missing_descriptor_entry_reports_host_failure() {
         let descriptor = descriptor();
+        // SAFETY: the descriptor remains live and its missing Echo entry is
+        // rejected without dereferencing or invoking the null channel pointer.
         let result = unsafe {
             execute(
                 &raw const descriptor,

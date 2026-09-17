@@ -201,9 +201,11 @@ unsafe extern "C" fn queue_text(
     };
     let mut terminated = Vec::with_capacity(text_length as usize + 1);
     if text_length != 0 {
-        // SAFETY: the ABI promises text_length readable bytes.
-        terminated
-            .extend_from_slice(unsafe { std::slice::from_raw_parts(text, text_length as usize) });
+        terminated.extend_from_slice(
+            // SAFETY: the ABI promises text_length readable bytes; the nonempty
+            // span was checked non-null above and remains live for this call.
+            unsafe { std::slice::from_raw_parts(text, text_length as usize) },
+        );
     }
     terminated.push(0);
     // SAFETY: zero is the documented empty initialization for an ast_frame.

@@ -23,11 +23,12 @@ unsafe extern "C" fn direct_transmit_noop(
 pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
     UrpAstDirectCallbacks {
         struct_size: size_of::<UrpAstDirectCallbacks>() as u32,
-        abi_version: 1,
+        abi_version: UrpAstDirectCallbacks::ABI_VERSION,
         receive_context: NonNull::<u8>::dangling().as_ptr().cast(),
         receive: Some(direct_receive_noop),
         transmit_context: NonNull::<u8>::dangling().as_ptr().cast(),
         transmit: Some(direct_transmit_noop),
+        accepted_abi_version: 0,
     }
 }
 
@@ -54,7 +55,7 @@ fn direct_attachment_validates_boundary_and_survives_prepared_reload() {
             let mut invalid = direct_callbacks();
             match field {
                 0 => invalid.struct_size -= 1,
-                1 => invalid.abi_version = 2,
+                1 => invalid.abi_version = 1,
                 2 => invalid.receive = None,
                 3 => invalid.transmit = None,
                 4 => invalid.receive_context = ptr::null_mut(),

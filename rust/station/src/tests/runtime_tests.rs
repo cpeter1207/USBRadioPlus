@@ -583,11 +583,12 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
             media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
         let callbacks = crate::DirectCallbacks {
             struct_size: size_of::<crate::DirectCallbacks>() as u32,
-            abi_version: 1,
+            abi_version: crate::DirectCallbacks::ABI_VERSION,
             receive_context: ptr::from_mut(&mut capture).cast(),
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
             transmit: Some(direct_transmit),
+            accepted_abi_version: 0,
         };
         // SAFETY: the context outlives the runtime and calls below are serial.
         unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
@@ -643,11 +644,12 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
         media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
     let callbacks = crate::DirectCallbacks {
         struct_size: size_of::<crate::DirectCallbacks>() as u32,
-        abi_version: 1,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
         receive_context: ptr::from_mut(&mut capture).cast(),
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
     };
     // SAFETY: capture outlives the stopped runtime and calls below are serial.
     unsafe { media.set_direct_callbacks(callbacks) }.unwrap();

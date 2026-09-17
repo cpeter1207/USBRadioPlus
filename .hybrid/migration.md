@@ -11,7 +11,10 @@ C remains only for Asterisk-required module metadata and forwarding exports.
 Reuse the station, radio, ring, FFmpeg, hardware and audio adapters. Shared public
 components remain versioned dynamic dependencies. The architecture source of
 truth is rpt_advanced/doc/architecture, particularly ADRs 0013, 0020, 0022 and 0040.
-No wishlist features, push, release or node deployment belong to this resume.
+No wishlist features, push, or public release belong to this resume. The owner
+approved completing the migration, then native build, installation, and testing
+on node 524950. Preserve a matched recovery set and existing radio settings;
+do not initiate external link connections for the tests.
 
 ## Acceptance
 

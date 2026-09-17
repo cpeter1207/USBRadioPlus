@@ -137,6 +137,7 @@ fn empty_cli_argument_array_does_not_require_a_nonnull_pointer() {
     assert!(empty.is_empty());
     // SAFETY: these invalid shapes are rejected before any pointer is read.
     assert!(unsafe { argument_pointers(std::ptr::null(), 1) }.is_none());
+    // SAFETY: negative count is rejected before the deliberately null pointer is read.
     assert!(unsafe { argument_pointers(std::ptr::null(), -1) }.is_none());
     let pointer = std::ptr::null();
     // SAFETY: pointer is one initialized argv entry.

@@ -6,7 +6,16 @@
 
 #![deny(warnings)]
 
-#[allow(warnings, missing_docs, unsafe_op_in_unsafe_fn, clippy::all)]
+// These are generated declarations/bitfield accessors for external Asterisk
+// headers, not owned implementation. Safety obligations are documented at our
+// call sites; bindgen does not generate Clippy's per-block safety comments.
+#[allow(
+    warnings,
+    missing_docs,
+    unsafe_op_in_unsafe_fn,
+    clippy::all,
+    clippy::undocumented_unsafe_blocks
+)]
 mod ffi {
     include!(concat!(env!("OUT_DIR"), "/asterisk.rs"));
 }

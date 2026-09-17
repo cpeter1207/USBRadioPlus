@@ -45,7 +45,12 @@ The direct native POC attaches `struct urp_ast_direct_callbacks` from
 `ast_channel_setoption(channel, URP_AST_OPTION_DIRECT_CALLBACKS, &callbacks,
 sizeof(callbacks), 0)` before `call()`. Only `RadioPlusAdvanced` accepts this
 private initial-alpha option (RPAD, `0x52504144`); exact descriptor size, version
-one, both contexts and both functions are required. Repeated or late attachment
+two, both contexts and both functions are required. The caller provides a writable
+descriptor with `accepted_abi_version = 0` and checks both the return status and
+acknowledgment before starting the channel. The host writes version two only after
+successful retention. Revision-one controllers must be rebuilt with this contract;
+the paired USBRadioPlus and rpt_advanced artifacts must be installed together.
+Repeated or late attachment
 fails. The taskprocessor copies the descriptor; its owner retains both contexts
 and their executable code until synchronous stop/hangup quiesces PortAudio, and
 must keep them valid if the channel will restart.
