@@ -1,4 +1,4 @@
-//! Safe ownership for the ABI-3 whole-session radio core.
+//! Safe ownership for the ABI-4 whole-session radio core.
 //!
 //! Product composition validates the process-lifetime descriptor and prepares
 //! all borrowed processing ports on its control plane. A prepared session then
@@ -26,7 +26,7 @@ pub const CTCSS_TONE_COUNT: usize = 38;
 /// Normalized receive CTCSS decoder peak used by the calibration procedure.
 pub const CTCSS_CALIBRATION_TARGET: f32 = 2_400.0 / 32_768.0;
 
-const ABI_VERSION: u32 = 3;
+const ABI_VERSION: u32 = 4;
 const CAPABILITY: &CStr = c"rptadv.radio-core";
 const RESULT_OK: c_int = 0;
 const RESULT_INVALID_ARGUMENT: c_int = -1;
@@ -693,6 +693,8 @@ pub struct SessionPorts<'a> {
     pub transmit_dcs_turnoff_filter: ProcessorPort<'a>,
     /// Program-ring consumer.
     pub program_ring: ProgramRingPort<'a>,
+    /// Fixed 55 Hz tail-notch processor selected by the radio core after tail detection.
+    pub receive_ctcss_tail_notch: ProcessorPort<'a>,
 }
 
 impl Default for SessionPorts<'_> {
@@ -707,6 +709,7 @@ impl Default for SessionPorts<'_> {
             transmit_dcs_normal_filter: ProcessorPort::passthrough(),
             transmit_dcs_turnoff_filter: ProcessorPort::passthrough(),
             program_ring: ProgramRingPort::silence(),
+            receive_ctcss_tail_notch: ProcessorPort::passthrough(),
         }
     }
 }

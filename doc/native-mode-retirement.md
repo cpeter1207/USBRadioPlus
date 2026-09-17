@@ -28,7 +28,7 @@ The same rule applies on initial load and reload; tuning saves the hardware leve
 USBRadioPlus no longer calls or requires shared native-repeat/parrot operations.
 Initial-alpha backward compatibility is not required (rpt_advanced ADR 0040).
 The shared library removes those operations without compatibility-only
-descriptor slots. It uses descriptor ABI 3 and `librptadvradio.so.3`; current
+descriptor slots. It uses descriptor ABI 4 and `librptadvradio.so.4`; current
 consumers and dependency metadata reject mismatched artifacts.
 
 The authoritative architecture decision is rpt_advanced ADR 0039,

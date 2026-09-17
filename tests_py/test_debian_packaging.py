@@ -29,11 +29,11 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
     assert "librate-adjusting-pcm-ring2-dev" in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha3)" in control
-    assert "--variable=abi_version rptadvradio),3" in makefile
+    assert "librptadvradio-dev (>= 0.1.0~alpha4)" in control
+    assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",
-        "librptadvradio.so.3",
+        "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
@@ -139,7 +139,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
     @param tmp_path Isolated filesystem directory supplied by pytest.
     """
     pkg_config = tmp_path / "pkg-config"
-    for incompatible_abi in ("", "1", "2", "4"):
+    for incompatible_abi in ("", "1", "2", "3", "5"):
         pkg_config.write_text(
             "#!/bin/sh\n"
             'if [ "$*" = "--variable=abi_version rptadvradio" ]; then\n'
@@ -157,7 +157,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
             check=False,
         )
         assert result.returncode != 0
-        assert "requires librptadvradio descriptor ABI 3" in result.stderr
+        assert "requires librptadvradio descriptor ABI 4" in result.stderr
 
 
 def test_rnnoise_debhelper_install_lists_are_regular_data_files():

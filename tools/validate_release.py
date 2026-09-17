@@ -55,7 +55,7 @@ def validate(root: Path = ROOT) -> list[str]:
             "RUST_TUNER := $(CARGO_TARGET_DIR)/release/usbradioplus-tune",
             "ASTERISK_ADAPTER_SONAME := libusbradioplus_asterisk.so.1",
             "Shared library: [librate_adjusting_pcm_ring2.so.2]",
-            "Shared library: [librptadvradio.so.3]",
+            "Shared library: [librptadvradio.so.4]",
             "Shared library: [librptadv_samplerate_adapter.so.1]",
             "Shared library: [librptadv_ffmpeg_adapter.so.1]",
             "Shared library: [librptadv_portaudio_alsa_adapter.so.2]",

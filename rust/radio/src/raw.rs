@@ -90,6 +90,7 @@ pub(super) struct RawSessionPorts {
     pub(super) transmit_dcs_normal_filter: RawProcessorPort,
     pub(super) transmit_dcs_turnoff_filter: RawProcessorPort,
     pub(super) program_ring: RawProgramRingPort,
+    pub(super) receive_ctcss_tail_notch: RawProcessorPort,
 }
 
 #[repr(C)]
@@ -388,6 +389,7 @@ impl SessionPorts<'_> {
             transmit_dcs_normal_filter: self.transmit_dcs_normal_filter.raw,
             transmit_dcs_turnoff_filter: self.transmit_dcs_turnoff_filter.raw,
             program_ring: self.program_ring.raw,
+            receive_ctcss_tail_notch: self.receive_ctcss_tail_notch.raw,
         }
     }
 }

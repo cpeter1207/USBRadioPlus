@@ -74,7 +74,7 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "container-smoke-test.sh" in dockerfile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",
-        "librptadvradio.so.3",
+        "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",

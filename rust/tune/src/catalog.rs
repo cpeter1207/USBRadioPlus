@@ -333,7 +333,7 @@ fn receive_filter_section(section_name: &str, chain: &ProcessingChain) -> Sectio
                 "ctcss_notch_width_hz",
                 "CTCSS notch width",
                 receive.notch_width_hz,
-                0.2,
+                10.0,
                 10.0,
                 "Hz",
             ),
@@ -2137,6 +2137,17 @@ mod tests {
         let notch = receive_filter_section("local", &chain);
         assert!(notch.settings.iter().any(|setting| {
             setting.key == "ctcss_filter_mode" && setting.default_value == "notch"
+        }));
+        assert!(notch.settings.iter().any(|setting| {
+            setting.key == "ctcss_notch_width_hz"
+                && matches!(
+                    &setting.kind,
+                    SettingKind::Float(FloatEditor {
+                        minimum: Some(10.0),
+                        maximum: Some(10.0),
+                        ..
+                    })
+                )
         }));
 
         let mut station = StationConfig::default();

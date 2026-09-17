@@ -61,8 +61,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 pkg-config --exists rate_adjusting_pcm_ring2 || \
 	die "rate_adjusting_pcm_ring2 is unavailable"
-[ "$(pkg-config --variable=abi_version rptadvradio)" = 3 ] || \
-	die "rptadvradio descriptor ABI 3 (alpha.3 or newer) is unavailable"
+[ "$(pkg-config --variable=abi_version rptadvradio)" = 4 ] || \
+	die "rptadvradio descriptor ABI 4 (alpha.4 or newer) is unavailable"
 pkg-config --atleast-version=0.1.0~alpha1 rptadv_samplerate_adapter || \
 	die "rptadv_samplerate_adapter 0.1.0~alpha1 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha1 rptadv_ffmpeg_adapter || \
