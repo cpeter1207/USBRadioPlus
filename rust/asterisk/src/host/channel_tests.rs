@@ -67,6 +67,19 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         pending_transmit: AtomicU64::new(0),
         direct: AtomicBool::new(false),
     };
+    let mut value = 0u8;
+    // SAFETY: the fake owner and its writable byte remain live through the call.
+    let unsupported = unsafe {
+        setoption(
+            ptr::from_mut(&mut channel).cast(),
+            12345,
+            ptr::from_mut(&mut value).cast(),
+            1,
+        )
+    };
+    assert_eq!(unsupported, -1, "unsupported option must fail");
+    // SAFETY: Linux provides a valid pointer to this thread's errno.
+    assert_eq!(unsafe { *libc::__errno_location() }, libc::ENOSYS);
     for case in 0..9 {
         retention = if case == 7 { -1 } else { URP_AST_OK };
         channel

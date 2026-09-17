@@ -1304,7 +1304,9 @@ unsafe extern "C" fn setoption(
         return 0;
     }
     if option as u32 != ffi::AST_OPTION_TONE_VERIFY {
-        return 0;
+        // SAFETY: errno is thread-local on supported Linux targets.
+        unsafe { *libc::__errno_location() = libc::ENOSYS };
+        return -1;
     }
     // SAFETY: data_length guarantees at least one readable byte.
     let enabled = unsafe { *data.cast::<u8>() } != 3;

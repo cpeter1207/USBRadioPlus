@@ -192,7 +192,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     pkg_config.write_text(
         "#!/bin/sh\n"
         'case "$1" in\n'
-        '  --variable=abi_version) echo 4;;\n'
+        "  --variable=abi_version) echo 4;;\n"
         '  --variable=libdir) echo /selected/"$2";;\n'
         '  --libs-only-other) printf "%s " -pthread -Wl,--as-needed;;\n'
         '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
@@ -201,7 +201,13 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     )
     pkg_config.chmod(0o755)
     result = subprocess.run(
-        ["make", "-n", "build/chan_usbradioplus.so", f"PKG_CONFIG={pkg_config}", "LDFLAGS=-L/stale/lib"],
+        [
+            "make",
+            "-n",
+            "build/chan_usbradioplus.so",
+            f"PKG_CONFIG={pkg_config}",
+            "LDFLAGS=-L/stale/lib",
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,

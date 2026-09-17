@@ -78,8 +78,7 @@ static int load_module(void)
 	if (result == URP_AST_LOADER_OK)
 		return AST_MODULE_LOAD_SUCCESS;
 	rust_loader = NULL;
-	return result == URP_AST_LOADER_DECLINE ? AST_MODULE_LOAD_DECLINE
-						: AST_MODULE_LOAD_FAILURE;
+	return result == URP_AST_LOADER_DECLINE ? AST_MODULE_LOAD_DECLINE : AST_MODULE_LOAD_FAILURE;
 }
 
 /**
