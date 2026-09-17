@@ -970,7 +970,8 @@ impl ResolvedStationConfig {
         )?;
 
         for (kind, apply) in PROFILE_KINDS {
-            let resolved_section = document.resolved_section(channel, kind)?;
+            let resolved_section =
+                document.profile_section(channel, kind, &source, &mut warnings)?;
             apply_overlay(
                 &mut config,
                 apply,

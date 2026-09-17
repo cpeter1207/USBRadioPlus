@@ -161,6 +161,44 @@ impl ConfigDocument {
         }
     }
 
+    /// Resolve a selected profile, warning before normal scoped/flat inheritance.
+    pub(crate) fn profile_section(
+        &self,
+        channel: &str,
+        kind: &str,
+        source: &str,
+        warnings: &mut Vec<crate::ResolutionWarning>,
+    ) -> Result<String, ConfigError> {
+        match self.resolved_section(channel, kind) {
+            Ok(section) => Ok(section),
+            Err(crate::ConfigError::MissingProfile(_)) => {
+                let selector = format!("{kind}_profile");
+                let supplied_value = self
+                    .explicit_values(channel)
+                    .into_iter()
+                    .find(|(name, _)| name.eq_ignore_ascii_case(&selector))
+                    .map(|(_, value)| value)
+                    .unwrap_or_else(|| channel.to_owned());
+                let fallback = if self.has_section(&format!("{kind} {channel}")) {
+                    format!("{kind} {channel}")
+                } else {
+                    kind.to_owned()
+                };
+                warnings.push(crate::ResolutionWarning {
+                    kind: crate::ResolutionWarningKind::InvalidValue,
+                    source: source.to_owned(),
+                    section: channel.to_owned(),
+                    name: selector,
+                    supplied_value,
+                    fallback: fallback.clone(),
+                    reason: "missing profile".to_owned(),
+                });
+                Ok(fallback)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
     /// Merge flat defaults with one channel's selected profile values.
     pub fn resolved_values(
         &self,
