@@ -186,14 +186,15 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
         assert "requires librptadvradio descriptor ABI 4" in result.stderr
 
 
-def test_module_link_uses_exact_provider_sonames_from_selected_libdirs(tmp_path):
-    """Do not resolve stale unversioned providers earlier in the search path."""
+def test_module_link_uses_selected_provider_paths(tmp_path):
+    """Link every released provider by its selected full shared-object path."""
     pkg_config = tmp_path / "pkg-config"
     pkg_config.write_text(
         "#!/bin/sh\n"
         'case "$1" in\n'
         '  --variable=abi_version) echo 4;;\n'
         '  --variable=libdir) echo /selected/"$2";;\n'
+        '  --libs-only-other) printf "%s " -pthread -Wl,--as-needed;;\n'
         '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
         "esac\n",
         encoding="utf-8",
@@ -207,11 +208,17 @@ def test_module_link_uses_exact_provider_sonames_from_selected_libdirs(tmp_path)
         check=True,
     )
     for provider, soname in (
+        ("rate_adjusting_pcm_ring2", "librate_adjusting_pcm_ring2.so.2"),
         ("rptadvradio", "librptadvradio.so.4"),
+        ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.1"),
+        ("rptadv_ffmpeg_adapter", "librptadv_ffmpeg_adapter.so.1"),
         ("rptadv_portaudio_alsa_adapter", "librptadv_portaudio_alsa_adapter.so.2"),
+        ("rptadv_gpio_adapter", "librptadv_gpio_adapter.so.1"),
+        ("rptadv_rnnoise_adapter", "librptadv_rnnoise_adapter.so.1"),
     ):
-        assert f"-L/selected/{provider} -Wl,-l:{soname}" in result.stdout
+        assert f"/selected/{provider}/{soname}" in result.stdout
         assert f"-l{provider} " not in result.stdout
+    assert "-pthread -Wl,--as-needed" in result.stdout
 
 
 def test_rnnoise_debhelper_install_lists_are_regular_data_files():

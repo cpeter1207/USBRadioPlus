@@ -62,10 +62,8 @@ ifeq ($(shell $(PKG_CONFIG) --exists rate_adjusting_pcm_ring2 && echo yes),)
 $(error USBRadioPlus requires the librate-adjusting-pcm-ring2 development package)
 endif
 RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring2)
-# pkg-config suppresses the standard multiarch -L path. Keep it explicitly so
-# a stale /usr/local development symlink cannot select an older ring SONAME.
-RPCR_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring2) \
-	$(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring2)
+# Link the exact selected shared object: an earlier -L path must not override it.
+RPCR_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring2)/librate_adjusting_pcm_ring2.so.2
 RPCR_BUILD_DEP :=
 endif
 # USBRadioPlus consumes the portable Rust radio core through its released
@@ -93,8 +91,7 @@ ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),4)
 $(error USBRadioPlus requires librptadvradio descriptor ABI 4 from alpha.4 or newer)
 endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
-RPTADV_RADIO_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadvradio) \
-	$(shell $(PKG_CONFIG) --libs rptadvradio)
+RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.4
 RPTADV_RADIO_BUILD_DEP :=
 endif
 # USBRadioPlus routes its current mono sinc compatibility conversion through
@@ -118,8 +115,7 @@ ifeq ($(shell $(PKG_CONFIG) --exists rptadv_samplerate_adapter && echo yes),)
 $(error USBRadioPlus requires the librptadv-samplerate-adapter development package)
 endif
 RPTADV_SAMPLERATE_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_samplerate_adapter)
-RPTADV_SAMPLERATE_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter) \
-	$(shell $(PKG_CONFIG) --libs rptadv_samplerate_adapter)
+RPTADV_SAMPLERATE_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter)/librptadv_samplerate_adapter.so.1
 RPTADV_SAMPLERATE_BUILD_DEP :=
 endif
 # Native signaling graphs use the released dynamic FFmpeg adapter.
@@ -142,8 +138,7 @@ ifeq ($(shell $(PKG_CONFIG) --exists rptadv_ffmpeg_adapter && echo yes),)
 $(error USBRadioPlus requires the librptadv-ffmpeg-adapter development package)
 endif
 RPTADV_FFMPEG_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_ffmpeg_adapter)
-RPTADV_FFMPEG_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter) \
-	$(shell $(PKG_CONFIG) --libs rptadv_ffmpeg_adapter)
+RPTADV_FFMPEG_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter)/librptadv_ffmpeg_adapter.so.1
 RPTADV_FFMPEG_BUILD_DEP :=
 endif
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
@@ -161,7 +156,12 @@ ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.1.0~alpha2 rptadv_portaudio_alsa
 $(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.1.0~alpha2 or newer)
 endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
-RADIO_LIBS := $(shell $(PKG_CONFIG) --libs $(RADIO_PACKAGES))
+# Keep non-library transitive flags while pinning each direct DSO to its provider.
+RADIO_LIBS := \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_portaudio_alsa_adapter)/librptadv_portaudio_alsa_adapter.so.2 \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_gpio_adapter)/librptadv_gpio_adapter.so.1 \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_rnnoise_adapter)/librptadv_rnnoise_adapter.so.1 \
+	$(shell $(PKG_CONFIG) --libs-only-other $(RADIO_PACKAGES))
 # External Asterisk headers use GNU pthread declarations before autoconfig.h
 # can request them, so make that feature set explicit for every module build.
 COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc -Irust/asterisk/include $(RPCR_CFLAGS) \
