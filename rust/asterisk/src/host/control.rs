@@ -6,9 +6,10 @@ use std::sync::mpsc::{SyncSender, sync_channel};
 use std::mem::size_of;
 
 use super::super::{
-    URP_AST_ASTERISK_FAILURE, URP_AST_OK, UrpAstChannelCommand, UrpAstChannelStatus,
-    UrpAstDescriptor, UrpAstJitterConfig, ffi,
+    URP_AST_ASTERISK_FAILURE, URP_AST_OK, UrpAstDescriptor, UrpAstJitterConfig, ffi,
 };
+#[cfg(not(test))]
+use super::super::{UrpAstChannelCommand, UrpAstChannelStatus};
 
 const SOURCE_FILE: &std::ffi::CStr = c"usbradioplus-rust-host";
 const SOURCE_FUNCTION: &std::ffi::CStr = c"run_control";
@@ -17,15 +18,24 @@ const SOURCE_FUNCTION: &std::ffi::CStr = c"run_control";
 pub(super) enum ControlOperation {
     Start,
     Stop,
+    #[cfg(not(test))]
     ReloadPrepare,
+    #[cfg(not(test))]
     ReloadActivate,
+    #[cfg(not(test))]
     ReloadFinish(bool),
     Text(Vec<u8>),
-    Transmit { keyed: bool, ctcss_tenths_hz: u32 },
+    Transmit {
+        keyed: bool,
+        ctcss_tenths_hz: u32,
+    },
     Dtmf(bool),
     Echo(bool),
+    Direct(super::super::UrpAstDirectCallbacks),
     Jitter,
+    #[cfg(not(test))]
     Command(UrpAstChannelCommand),
+    #[cfg(not(test))]
     Status,
     Service,
     Destroy,
@@ -35,7 +45,9 @@ pub(super) enum ControlOperation {
 pub(super) enum ControlResult {
     Status(i32),
     Jitter(i32, UrpAstJitterConfig),
+    #[cfg(not(test))]
     Command(i32, UrpAstChannelCommand),
+    #[cfg(not(test))]
     ChannelStatus(i32, UrpAstChannelStatus),
 }
 
@@ -67,16 +79,19 @@ unsafe fn execute(
         ControlOperation::Stop => ControlResult::Status(status(
             descriptor.channel_stop.map(|call| unsafe { call(channel) }),
         )),
+        #[cfg(not(test))]
         ControlOperation::ReloadPrepare => ControlResult::Status(status(
             descriptor
                 .channel_reload_prepare
                 .map(|call| unsafe { call(channel) }),
         )),
+        #[cfg(not(test))]
         ControlOperation::ReloadActivate => ControlResult::Status(status(
             descriptor
                 .channel_reload_activate
                 .map(|call| unsafe { call(channel) }),
         )),
+        #[cfg(not(test))]
         ControlOperation::ReloadFinish(commit) => ControlResult::Status(status(
             descriptor
                 .channel_reload_finish
@@ -105,6 +120,11 @@ unsafe fn execute(
                 .channel_set_echo
                 .map(|call| unsafe { call(channel, u32::from(enabled)) }),
         )),
+        ControlOperation::Direct(callbacks) => ControlResult::Status(status(
+            descriptor
+                .channel_set_direct_callbacks
+                .map(|call| unsafe { call(channel, &callbacks) }),
+        )),
         ControlOperation::Jitter => {
             let mut output = UrpAstJitterConfig {
                 struct_size: size_of::<UrpAstJitterConfig>() as u32,
@@ -125,6 +145,7 @@ unsafe fn execute(
             );
             ControlResult::Jitter(result, output)
         }
+        #[cfg(not(test))]
         ControlOperation::Command(mut command) => {
             let result = status(
                 descriptor
@@ -133,6 +154,7 @@ unsafe fn execute(
             );
             ControlResult::Command(result, command)
         }
+        #[cfg(not(test))]
         ControlOperation::Status => {
             let mut output = UrpAstChannelStatus {
                 struct_size: size_of::<UrpAstChannelStatus>() as u32,

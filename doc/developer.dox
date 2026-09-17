@@ -1,7 +1,8 @@
 /**
 @mainpage USBRadioPlus developer reference
 
-USBRadioPlus is a Rust radio driver behind a minimal Asterisk channel shim.
+USBRadioPlus is a Rust radio driver with a Rust Asterisk host and a
+metadata-only C module entry point.
 Review the accepted architecture and ADRs in the rpt_advanced repository before
 changing a component boundary.
 
@@ -26,10 +27,10 @@ changing a component boundary.
 @section boundary Asterisk boundary
 
 `RadioPlus` exchanges fixed 8 kHz signed-linear Asterisk frames.
-`RadioPlusAdvanced` exchanges 48 kHz signed-linear frames. Rust owns all
+Unattached `RadioPlusAdvanced` exchanges 48 kHz signed-linear frames. Rust owns all
 configuration, audio processing, radio hardware, control semantics, and station
-lifecycle and Asterisk host behavior. The shim must not duplicate those
-decisions.
+lifecycle, plus all Asterisk host behavior. The C entry point must not duplicate
+those decisions.
 
 The driver descriptor must outlive every channel. A reserved channel is started
 once, stopped before destruction, and destroyed before the driver. Voice writes
@@ -38,6 +39,37 @@ the sole owner of all other Rust channel operations. The delivery worker queues
 voice, text, and control frames back to Asterisk without holding a Rust audio
 lock. Hangup clears ownership and joins the worker before destroying the Rust
 channel.
+
+The direct native POC attaches `struct urp_ast_direct_callbacks` from
+`rust/asterisk/include/usbradioplus_asterisk.h` using public
+`ast_channel_setoption(channel, URP_AST_OPTION_DIRECT_CALLBACKS, &callbacks,
+sizeof(callbacks), 0)` before `call()`. Only `RadioPlusAdvanced` accepts this
+private initial-alpha option (RPAD, `0x52504144`); exact descriptor size, version
+one, both contexts and both functions are required. Repeated or late attachment
+fails. The taskprocessor copies the descriptor; its owner retains both contexts
+and their executable code until synchronous stop/hangup quiesces PortAudio, and
+must keep them valid if the channel will restart.
+
+Attached channels start no Asterisk delivery worker. USB receive DSP runs first,
+publishes hardware observations and latest receive qualification, then calls the
+direct receive endpoint with mutable normalized mono F32. The transmit endpoint
+fills preallocated mono scratch; those exact samples bypass the rate-adjusting
+program ring and feed the same radio render. Its key result is ORed with local
+PTT before rendering. These native callbacks must not allocate, lock, block, log,
+call Asterisk, perform filesystem/network I/O or change reference counts. Reload
+copies the same attachment into the replacement before opening/starting it and
+stops the previous PortAudio stream first. `RadioPlus` and unattached Advanced
+retain their existing controller, ring and delivery paths. The private internal
+Rust host descriptor is version four; the loader ABI remains four. This POC
+changes no released shared-provider SONAME or external provider ABI.
+
+A failed direct TX callback or invalid key immediately publishes hardware unkey,
+stages silence, and advances the radio with external PTT/test-tone requests
+disabled. Returned signaling-tail audio/PTT is suppressed for that failed block.
+The preallocated staged source has separate shared ownership and interior
+mutability; staging never reborrows the consumer retained by the radio port.
+Preparation, staging and rendering are serialized by the sole TX owner, with no
+overlapping source access or callback reference-count changes.
 
 A reload is one serialized transaction. Rust stages a private configuration;
 every live channel preflights its hardware and builds its media generation, and

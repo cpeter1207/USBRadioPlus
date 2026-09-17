@@ -52,7 +52,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates gnupg
 configure_project_repository
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
-	asl3-asterisk-dev build-essential cargo rustc pkg-config python3 python3-pytest \
+	asl3-asterisk-dev build-essential cargo rustc libclang-dev pkg-config python3 python3-pytest \
 	ca-certificates wget xz-utils patch \
 	ladspa-sdk librate-adjusting-pcm-ring2-dev \
 	librptadvradio-dev librptadv-samplerate-adapter-dev \

@@ -180,8 +180,8 @@ AGC_PLUGIN_SONAME := usbradioplus_agc.so.1
 AGC_PLUGIN_VERSIONED := $(BUILD_DIR)/$(AGC_PLUGIN_SONAME)
 RUST_AGC_LIBRARY := $(CARGO_TARGET_DIR)/release/libusbradioplus_agc.so
 RUST_SOURCES := $(shell find rust -type f \( -name '*.rs' -o -name Cargo.toml \))
+RUST_BINDGEN_INPUTS := rust/asterisk/wrapper.h
 RUST_BUILD_STAMP := $(BUILD_DIR)/.rust-release
-AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
 BUILD_CONFIG_STAMP := $(BUILD_DIR)/.module-build-config
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
@@ -256,21 +256,19 @@ $(RPTADV_FFMPEG_LIBRARY): $(RPTADV_FFMPEG_SOURCE_FILES)
 endif
 
 # A later staged install may select a different prefix from the initial build.
-# Track it so the module cannot retain a stale private-plugin location.
+# Track it so the Rust host cannot retain a stale private-plugin location.
 $(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
 	@printf '%s\n' '$(agcplugindir)/usbradioplus_agc.so' > $@.tmp
 	@if cmp -s $@.tmp $@; then \
 		rm -f $@.tmp; \
 	else \
 		mv $@.tmp $@; \
-		rm -f $(CHANNEL_OBJECT); \
+		rm -f $(RUST_BUILD_STAMP); \
 	fi
-
-$(CHANNEL_OBJECT): $(BUILD_DIR)/agc-plugin-path
 
 $(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(BUILD_CONFIG_STAMP) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(AGC_PLUGIN_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
+	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
@@ -296,9 +294,13 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 
 # Build each Rust artifact once so distinct linker flags cannot race through a
 # shared Cargo target directory under parallel make.
-$(RUST_BUILD_STAMP): Cargo.toml Cargo.lock rust-toolchain.toml $(RUST_SOURCES) $(BUILD_CONFIG_STAMP)
+$(RUST_BUILD_STAMP): Cargo.toml Cargo.lock rust-toolchain.toml $(RUST_SOURCES) \
+	$(RUST_BINDGEN_INPUTS) \
+	$(BUILD_CONFIG_STAMP) $(BUILD_DIR)/agc-plugin-path
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" $(CARGO) build --release --locked -p usbradioplus-tune
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \
+		USBRADIOPLUS_ASTERISK_INCLUDEDIR="$(ASTERISK_INCLUDEDIR)" \
+		USBRADIOPLUS_AGC_PLUGIN_PATH="$(agcplugindir)/usbradioplus_agc.so" \
 		$(CARGO) rustc --release --locked -p usbradioplus-asterisk -- \
 		-C link-arg=-Wl,-soname,$(ASTERISK_ADAPTER_SONAME)
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \

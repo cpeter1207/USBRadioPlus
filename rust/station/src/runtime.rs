@@ -284,6 +284,13 @@ impl SharedHardwareState {
         }
     }
 
+    fn publish_transmit_fault(&self) {
+        // A failed controller callback must release hardware PTT immediately,
+        // independently of the radio renderer's tone-off or drain state.
+        self.0.outputs.store(0, Ordering::Release);
+        self.0.transmit_ctcss_ready.store(0, Ordering::Release);
+    }
+
     fn publish_receiver_keyed(&self, receiver_keyed: bool) {
         self.0
             .receiver_keyed
@@ -382,6 +389,7 @@ struct ReceiveContext {
 struct TransmitContext {
     station: StationTransmit,
     maximum_frames: usize,
+    mono: Box<[f32]>,
     hardware: SharedHardwareState,
 }
 
@@ -474,6 +482,7 @@ impl StationRuntime {
         let transmit_context = Box::new(UnsafeCell::new(TransmitContext {
             station: transmit,
             maximum_frames: stream.maximum_transmit_frame_count as usize,
+            mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
         }));
         // SAFETY: both boxed UnsafeCell contexts have stable addresses and are
@@ -590,6 +599,25 @@ unsafe extern "C" fn receive_callback(
         .hardware
         .publish_receive_clipping(result.input_rail_samples);
     context.hardware.publish_receive_observation(result);
+    if let Some(direct) = station.direct {
+        station.publish_qualification(metadata.qualification);
+        // SAFETY: attachment validated and retained these endpoints until stream
+        // shutdown; mono is the exact processed span owned by this callback.
+        let status = unsafe {
+            (direct.receive.expect("validated direct receive"))(
+                direct.receive_context,
+                u32::from(result.receiver_keyed),
+                context.mono.as_mut_ptr(),
+                frame_count,
+            )
+        };
+        context.hardware.note_receive(status != CALLBACK_OK);
+        return if status == CALLBACK_OK {
+            CALLBACK_OK
+        } else {
+            CALLBACK_FAILED
+        };
+    }
     if station
         .controller()
         .publish(&context.mono[..frames], metadata)
@@ -624,11 +652,47 @@ unsafe extern "C" fn transmit_callback(
     let output = unsafe { std::slice::from_raw_parts_mut(output, frames * 2) };
     output.fill(0.0);
     let station = &mut context.station;
-    match station
-        .radio()
-        .render(output, context.hardware.transmit_controls())
-    {
+    let mut controls = context.hardware.transmit_controls();
+    let mut direct_failed = false;
+    if let Some(direct) = station.direct {
+        let mono = &mut context.mono[..frames];
+        mono.fill(0.0);
+        let mut keyed = 0;
+        // SAFETY: attachment keeps the endpoint live and uniquely TX-owned;
+        // scratch and key are writable only for this synchronous invocation.
+        let status = unsafe {
+            (direct.transmit.expect("validated direct transmit"))(
+                direct.transmit_context,
+                mono.as_mut_ptr(),
+                frame_count,
+                &mut keyed,
+            )
+        };
+        if status != CALLBACK_OK || keyed > 1 {
+            direct_failed = true;
+            mono.fill(0.0);
+            controls.external_ptt_request = false;
+            controls.calibrated_test_tone = false;
+            controls.forced_ctcss_tenths_hz = 0;
+            controls.ctcss_inhibit = true;
+            context.hardware.publish_transmit_fault();
+        } else {
+            controls.external_ptt_request |= keyed != 0;
+        }
+        station.stage_direct(mono);
+        // The direct source is already staged for this hardware callback, so no
+        // Asterisk playout admission is needed (including during signaling tails).
+        controls.render_admitted = true;
+    }
+    match station.radio().render(output, controls) {
         Ok(result) => {
+            if direct_failed {
+                // Advance the radio with silent, unkeyed program above, but do
+                // not let its retained signaling tail reassert PTT or PCM.
+                output.fill(0.0);
+                context.hardware.note_transmit(true);
+                return CALLBACK_FAILED;
+            }
             context.hardware.publish_transmit_result(result);
             context.hardware.note_transmit(false);
             CALLBACK_OK

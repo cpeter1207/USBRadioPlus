@@ -11,6 +11,9 @@ static TEST_LOCK: Mutex<()> = Mutex::new(());
 #[derive(Default)]
 struct FakeState {
     events: Vec<&'static str>,
+    notices: Vec<String>,
+    diagnostics: Vec<String>,
+    prepare_profiles: Vec<(&'static str, String)>,
     graphs: HashMap<usize, FakeGraph>,
     next_graph: usize,
     prepare_result: i32,
@@ -136,12 +139,31 @@ fn fake_asterisk_operations() -> AsteriskOperations {
         iterator_next: fake_iterator_next,
         iterator_destroy: fake_iterator_destroy,
         channel_unref: fake_channel_unref,
+        log_notice: fake_log_notice,
+        log_error: fake_log_error,
     }
 }
 
-unsafe fn fake_prepare_common(output: *mut *mut c_void, event: &'static str) -> i32 {
+fn fake_log_notice(message: &str) {
+    with_state(|state| state.notices.push(message.to_owned()));
+}
+
+fn fake_log_error(message: &str) {
+    with_state(|state| state.diagnostics.push(message.to_owned()));
+}
+
+unsafe fn fake_prepare_common(
+    profile: *const u8,
+    profile_length: u32,
+    output: *mut *mut c_void,
+    event: &'static str,
+) -> i32 {
+    // SAFETY: the host supplies a readable byte-counted profile.
+    let profile = unsafe { std::slice::from_raw_parts(profile, profile_length as usize) };
+    let profile = String::from_utf8(profile.to_vec()).expect("profile must be UTF-8");
     with_state(|state| {
         state.events.push(event);
+        state.prepare_profiles.push((event, profile));
         if state.prepare_result != URP_AST_OK {
             return state.prepare_result;
         }
@@ -167,26 +189,33 @@ unsafe fn fake_prepare_common(output: *mut *mut c_void, event: &'static str) -> 
 
 unsafe extern "C" fn fake_prepare(
     _driver: *mut c_void,
-    _channel_name: *const u8,
-    _channel_name_length: u32,
+    channel_name: *const u8,
+    channel_name_length: u32,
     _sample_rate_hz: u32,
     _maximum_frame_count: u32,
     output: *mut *mut c_void,
 ) -> i32 {
     // SAFETY: forwarded test fixture storage follows the product ABI.
-    unsafe { fake_prepare_common(output, "prepare") }
+    unsafe { fake_prepare_common(channel_name, channel_name_length, output, "prepare") }
 }
 
 unsafe extern "C" fn fake_prepare_reload(
     _driver: *mut c_void,
-    _channel_name: *const u8,
-    _channel_name_length: u32,
+    channel_name: *const u8,
+    channel_name_length: u32,
     _sample_rate_hz: u32,
     _maximum_frame_count: u32,
     output: *mut *mut c_void,
 ) -> i32 {
     // SAFETY: forwarded test fixture storage follows the product ABI.
-    unsafe { fake_prepare_common(output, "prepare_reload") }
+    unsafe {
+        fake_prepare_common(
+            channel_name,
+            channel_name_length,
+            output,
+            "prepare_reload",
+        )
+    }
 }
 
 unsafe extern "C" fn fake_process(
@@ -210,7 +239,15 @@ unsafe extern "C" fn fake_process(
 }
 
 unsafe extern "C" fn fake_observe(graph: *mut c_void, output: *mut UrpAstLinkObservation) -> i32 {
-    let observation = with_state(|state| state.graphs[&(graph as usize)].observation);
+    let outside_link_control = LINK_CONTROL.try_lock().is_ok();
+    let observation = with_state(|state| {
+        state.events.push(if outside_link_control {
+            "observe_outside_link_control"
+        } else {
+            "observe_under_link_control"
+        });
+        state.graphs[&(graph as usize)].observation
+    });
     // SAFETY: the caller supplies writable observation storage.
     unsafe { output.write(observation) };
     URP_AST_OK
@@ -454,6 +491,10 @@ fn fake_profile() -> Option<Box<str>> {
     Some("alpha".into())
 }
 
+fn missing_profile() -> Option<Box<str>> {
+    None
+}
+
 fn ordered_fake_profile() -> Option<Box<str>> {
     let outside_link_control = LINK_CONTROL.try_lock().is_ok();
     with_state(|state| {
@@ -511,6 +552,10 @@ fn graph_is_prepared_before_hook_publication() {
 
     assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
     assert_eq!(
+        with_state(|state| state.notices.clone()),
+        ["USBRadioPlus link processing attached to IAX2/506316-1"]
+    );
+    assert_eq!(
         with_state(|state| state.events.clone()),
         vec![
             "prepare",
@@ -523,6 +568,46 @@ fn graph_is_prepared_before_hook_publication() {
     // A duplicate scan neither prepares nor publishes another graph.
     assert_eq!(attach(&host, &mut channel, "alpha"), Ok(false));
     assert_eq!(with_state(|state| state.graphs.len()), 1);
+}
+
+#[test]
+fn newly_staged_hook_reports_the_staged_attachment_notice() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/506316-staged", 8_000);
+    let mut reload = LinkReload::default();
+
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    assert_eq!(
+        with_state(|state| state.notices.clone()),
+        ["USBRadioPlus link processing attached to IAX2/506316-staged for staged reload"]
+    );
+    reload.finish(false);
+}
+
+#[test]
+fn dormant_hook_reactivation_uses_the_current_profile() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/506316-current-profile", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    let mut reload = LinkReload::default();
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    reload.finish(true);
+
+    with_state(|state| {
+        state.prepare_result = URP_AST_OK;
+        state.prepare_profiles.clear();
+    });
+    assert_eq!(attach(&host, &mut channel, "beta"), Ok(false));
+    assert_eq!(
+        with_state(|state| state.prepare_profiles.clone()),
+        vec![("prepare", "beta".to_owned())]
+    );
 }
 
 #[test]
@@ -695,6 +780,46 @@ fn failed_attachment_destroys_unpublished_graph() {
 }
 
 #[test]
+fn scanner_logs_failed_attachment_channel_and_product_status() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    with_state(|state| state.prepare_result = -7);
+    let mut channel = FakeChannel::eligible("IAX2/506316-log", 8_000);
+    register(&mut channel);
+    assert_eq!(start_with(fake_host(), fake_profile), URP_AST_OK);
+    wait_until(|| !with_state(|state| state.diagnostics.is_empty()));
+
+    assert_eq!(
+        with_state(|state| state.diagnostics[0].clone()),
+        "Unable to attach USBRadioPlus link processing to IAX2/506316-log (-7)"
+    );
+    stop();
+}
+
+#[test]
+fn staged_reload_logs_failed_link_channel_and_product_status() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/506316-reload-log", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    with_state(|state| {
+        state.prepare_result = -8;
+        state.diagnostics.clear();
+    });
+    let mut reload = LinkReload::default();
+
+    assert_eq!(
+        stage(&host, &mut channel, Some("alpha"), &mut reload),
+        Err(LinkHostError::Product(-8))
+    );
+    assert_eq!(
+        with_state(|state| state.diagnostics[0].clone()),
+        "Unable to prepare replacement USBRadioPlus link processing for IAX2/506316-reload-log (-8)"
+    );
+}
+
+#[test]
 fn ineligible_and_disabled_links_are_clean_no_ops() {
     let _guard = TEST_LOCK.lock().unwrap();
     reset();
@@ -740,7 +865,7 @@ fn process_reload_retains_hooks_and_statistics_until_finish() {
     assert_eq!(start_with(fake_host(), fake_profile), URP_AST_OK);
     wait_until(|| attachment_count() == 1);
 
-    let reload = reload_prepare().unwrap();
+    let reload = reload_prepare(Some("alpha")).unwrap();
     assert_eq!(with_state(|state| state.graphs.len()), 2);
     let before = statistics();
     assert_eq!(before.len(), 1);
@@ -750,5 +875,42 @@ fn process_reload_retains_hooks_and_statistics_until_finish() {
 
     let after = statistics();
     assert_eq!(after[0].observation.processed_blocks, 14);
+    stop();
+}
+
+#[test]
+fn reload_uses_frozen_profile_before_scanner_observes_it() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let mut channel = FakeChannel::eligible("IAX2/506316-between-scans", 8_000);
+    register(&mut channel);
+    assert_eq!(start_with(fake_host(), missing_profile), URP_AST_OK);
+    wait_until(|| iterator_count() == 1);
+    assert_eq!(attachment_count(), 0);
+
+    let reload = reload_prepare(Some("alpha")).unwrap();
+    assert_eq!(attachment_count(), 1);
+    reload.finish(true);
+
+    assert_eq!(statistics().len(), 1);
+    stop();
+}
+
+#[test]
+fn process_statistics_holds_link_control_through_graph_observation() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let mut channel = FakeChannel::eligible("IAX2/506316-statistics", 8_000);
+    register(&mut channel);
+    assert_eq!(start_with(fake_host(), fake_profile), URP_AST_OK);
+    wait_until(|| attachment_count() == 1);
+    with_state(|state| state.events.clear());
+
+    assert_eq!(statistics().len(), 1);
+    assert!(with_state(|state| {
+        state.events.contains(&"observe_under_link_control")
+            && !state.events.contains(&"observe_outside_link_control")
+    }));
+
     stop();
 }

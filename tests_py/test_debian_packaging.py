@@ -81,6 +81,18 @@ def test_private_rust_host_and_module_are_one_package_transaction():
     assert "debian/usbradioplus" in rules
 
 
+def test_rust_bindgen_build_dependency_is_declared():
+    """Keep generated Asterisk bindings reproducible outside the CI image."""
+    control = read("debian/control")
+    source_control, binary_control = control.split("\nPackage: ", maxsplit=1)
+    dependency_installer = read("scripts/install-build-deps.sh")
+    assert 'bindgen = "0.72.1"' in read("rust/asterisk/Cargo.toml")
+    assert "libclang-dev" in source_control
+    assert "libclang-dev" not in binary_control
+    assert "libclang-dev" in dependency_installer
+    assert "`libclang-dev`" in read("doc/packaging.md")
+
+
 def test_debian_source_version_matches_the_release_archive_version():
     """Keep Debian source-package metadata aligned with the upstream archive."""
     version = read("VERSION").strip()
@@ -172,6 +184,34 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
         )
         assert result.returncode != 0
         assert "requires librptadvradio descriptor ABI 3" in result.stderr
+
+
+def test_module_link_uses_exact_provider_sonames_from_selected_libdirs(tmp_path):
+    """Do not resolve stale unversioned providers earlier in the search path."""
+    pkg_config = tmp_path / "pkg-config"
+    pkg_config.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        '  --variable=abi_version) echo 3;;\n'
+        '  --variable=libdir) echo /selected/"$2";;\n'
+        '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    pkg_config.chmod(0o755)
+    result = subprocess.run(
+        ["make", "-n", "build/chan_usbradioplus.so", f"PKG_CONFIG={pkg_config}", "LDFLAGS=-L/stale/lib"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    for provider, soname in (
+        ("rptadvradio", "librptadvradio.so.3"),
+        ("rptadv_portaudio_alsa_adapter", "librptadv_portaudio_alsa_adapter.so.2"),
+    ):
+        assert f"-L/selected/{provider} -Wl,-l:{soname}" in result.stdout
+        assert f"-l{provider} " not in result.stdout
 
 
 def test_rnnoise_debhelper_install_lists_are_regular_data_files():

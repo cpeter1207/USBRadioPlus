@@ -178,6 +178,12 @@ def test_rust_agc_retains_dynamic_ladspa_artifact_and_pinned_tools():
     assert "--component llvm-tools-preview" in dockerfile
 
 
+def test_rust_asterisk_bindgen_uses_the_configured_public_header_directory():
+    """Forward the Make include override to the Rust binding generator."""
+    makefile = read("Makefile")
+    assert 'USBRADIOPLUS_ASTERISK_INCLUDEDIR="$(ASTERISK_INCLUDEDIR)"' in makefile
+
+
 def test_local_container_runner_preserves_parallel_running_checks(tmp_path, monkeypatch):
     """Remove stopped tests without killing another invocation or a restarted test."""
     log = tmp_path / "docker.log"

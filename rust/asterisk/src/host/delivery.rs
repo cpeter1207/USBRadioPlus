@@ -59,8 +59,7 @@ pub(super) fn control_frame(kind: u32, value: i32, duration_ms: u64) -> Result<C
 }
 
 /// Return the Asterisk operations table which must be injected at driver creation.
-#[unsafe(no_mangle)]
-pub extern "C" fn usbradioplus_asterisk_channel_host_operations() -> *const UrpAstOperations {
+pub(super) fn usbradioplus_asterisk_channel_host_operations() -> *const UrpAstOperations {
     let address = OPERATIONS.get_or_init(|| {
         Box::into_raw(Box::new(UrpAstOperations {
             struct_size: size_of::<UrpAstOperations>() as u32,

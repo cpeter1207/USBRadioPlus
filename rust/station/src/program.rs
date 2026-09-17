@@ -1,5 +1,6 @@
 //! Sole transmitter program-ring composition.
 
+use std::cell::UnsafeCell;
 use std::ffi::{c_int, c_void};
 use std::fmt;
 use std::ptr::NonNull;
@@ -112,6 +113,7 @@ pub fn prepare_program_ring(
             reserve_samples: plan.reserve_samples,
             target_samples: plan.target_samples,
             nominal_ratio: f64::from(plan.output_rate_hz) / f64::from(plan.input_rate_hz),
+            direct: Arc::new(DirectProgram::default()),
         },
     ))
 }
@@ -139,13 +141,61 @@ impl ProgramProducer for ControllerProgramProducer {
 /// Hardware-paced consumer for the sole transmitter program ring.
 pub struct ProgramRingConsumer {
     ring: RingConsumer,
-    qualification: Arc<AtomicU32>,
+    pub(crate) qualification: Arc<AtomicU32>,
     reserve_samples: u64,
     target_samples: u64,
     nominal_ratio: f64,
+    direct: Arc<DirectProgram>,
+}
+
+/// Separate allocation shared by the serial TX staging owner and its radio port.
+/// The consumer remains exclusively borrowed by the radio session. All source
+/// access uses shared references; only this cell's contents are mutated. Clones
+/// are made during preparation, never from an audio callback.
+#[derive(Default)]
+pub(crate) struct DirectProgram {
+    block: UnsafeCell<Option<(Box<[f32]>, usize)>>,
+}
+
+// SAFETY: all content access is unsafe and requires the sole TX owner's serial
+// staging/render contract. No borrow survives a call or overlaps another access.
+unsafe impl Sync for DirectProgram {}
+
+impl DirectProgram {
+    /// Allocate before callbacks begin, with no concurrent source access.
+    pub(crate) unsafe fn prepare(&self, maximum_frames: usize) {
+        // SAFETY: the caller owns the quiescent preparation phase.
+        unsafe {
+            *self.block.get() = Some((vec![0.0; maximum_frames].into_boxed_slice(), 0));
+        }
+    }
+
+    /// Stage within the sole TX owner, without overlapping any source render.
+    pub(crate) unsafe fn stage(&self, samples: &[f32]) {
+        // SAFETY: the caller serializes staging against all source access.
+        let block = unsafe { &mut *self.block.get() };
+        let (buffer, count) = block.as_mut().expect("direct source was prepared");
+        buffer[..samples.len()].copy_from_slice(samples);
+        *count = samples.len();
+    }
+
+    unsafe fn render(&self, output: &mut [f32]) -> Option<Result<(), RingError>> {
+        // SAFETY: the radio's sole TX owner calls this after staging has returned.
+        let (samples, count) = unsafe { &*self.block.get() }.as_ref()?;
+        Some(if *count == output.len() {
+            output.copy_from_slice(&samples[..*count]);
+            Ok(())
+        } else {
+            Err(RingError::InvalidArgument)
+        })
+    }
 }
 
 impl ProgramRingConsumer {
+    pub(crate) fn direct_source(&self) -> Arc<DirectProgram> {
+        Arc::clone(&self.direct)
+    }
+
     /// Borrow this stable consumer as a prepared radio-core callback port.
     ///
     /// The returned port prevents safe movement or destruction of this owner
@@ -161,6 +211,15 @@ impl ProgramRingConsumer {
         &mut self,
         output: &mut [f32],
     ) -> Result<(RingObservation, ReceiveQualification), RingError> {
+        // SAFETY: the radio owns this consumer exclusively; staging uses its
+        // independent source allocation and must finish before radio rendering.
+        if let Some(result) = unsafe { self.direct.render(output) } {
+            result?;
+            return Ok((
+                RingObservation::default(),
+                unpack_qualification(self.qualification.load(Ordering::Acquire)),
+            ));
+        }
         self.ring
             .render(output, self.reserve_samples, self.target_samples)?;
         let observation = self.ring.observe()?;
@@ -227,7 +286,7 @@ fn saturating_u32(value: u64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
-fn pack_qualification(value: ReceiveQualification) -> u32 {
+pub(crate) fn pack_qualification(value: ReceiveQualification) -> u32 {
     let mut packed = 0;
     if value.carrier_active {
         packed |= CARRIER_BIT;

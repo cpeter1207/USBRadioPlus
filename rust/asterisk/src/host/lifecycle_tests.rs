@@ -141,9 +141,9 @@ fn load_validates_then_constructs_in_dependency_order() {
         [
             "validate providers",
             "create driver",
-            "register channels",
             "register cli",
             "start links",
+            "register channels",
         ]
     );
 }
@@ -188,22 +188,11 @@ fn provider_and_configuration_failures_publish_nothing() {
 fn failed_load_rolls_back_only_completed_stages_in_reverse_order() {
     for (failure, expected) in [
         (
-            "register channels",
-            vec![
-                "validate providers",
-                "create driver",
-                "register channels",
-                "destroy driver",
-            ],
-        ),
-        (
             "register cli",
             vec![
                 "validate providers",
                 "create driver",
-                "register channels",
                 "register cli",
-                "unregister channels",
                 "destroy driver",
             ],
         ),
@@ -212,11 +201,22 @@ fn failed_load_rolls_back_only_completed_stages_in_reverse_order() {
             vec![
                 "validate providers",
                 "create driver",
-                "register channels",
                 "register cli",
                 "start links",
                 "unregister cli",
-                "unregister channels",
+                "destroy driver",
+            ],
+        ),
+        (
+            "register channels",
+            vec![
+                "validate providers",
+                "create driver",
+                "register cli",
+                "start links",
+                "register channels",
+                "stop links",
+                "unregister cli",
                 "destroy driver",
             ],
         ),

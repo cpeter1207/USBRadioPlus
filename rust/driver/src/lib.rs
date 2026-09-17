@@ -1,7 +1,7 @@
 //! USBRadioPlus channel-driver ownership and lifecycle.
 //!
-//! This crate owns product configuration and station lifetimes. The eventual
-//! Asterisk shim translates only Asterisk objects and operations at the edge.
+//! This crate owns product configuration and station lifetimes. The Rust
+//! Asterisk host translates only Asterisk objects and operations at the edge.
 
 mod configuration;
 mod conversion;

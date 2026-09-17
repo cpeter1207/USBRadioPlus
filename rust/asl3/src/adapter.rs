@@ -433,7 +433,7 @@ struct PendingDelivery {
     phase: DeliveryPhase,
 }
 
-/// One typed operation for the thin Asterisk shim.
+/// One typed operation for the Rust Asterisk host.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DeliveryAction {
     /// Queue an Asterisk radio-key control frame.
@@ -478,10 +478,10 @@ pub struct DtmfEvent {
     pub digit: u8,
 }
 
-/// Compatibility decision returned to the Asterisk shim.
+/// Compatibility decision returned to the Rust Asterisk host.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DtmfAction {
-    /// The shim should not run the legacy detector for this interface or mode.
+    /// The host should not run the legacy detector for this interface or mode.
     PassVoice,
     /// Forward the first begin frame for this digit.
     ForwardBegin(u8),
@@ -871,7 +871,7 @@ impl ControllerState {
         }
     }
 
-    /// Whether the C shim should invoke its unavoidable Asterisk DTMF detector.
+    /// Whether the Rust host should invoke Asterisk's unavoidable DTMF detector.
     pub const fn dtmf_detection_enabled(&self) -> bool {
         self.dtmf.enabled
     }

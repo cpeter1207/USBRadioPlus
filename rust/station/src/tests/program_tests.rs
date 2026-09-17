@@ -325,6 +325,98 @@ fn prepared_owner_pair_moves_audio_and_latest_accepted_state() {
 }
 
 #[test]
+fn direct_program_uses_current_block_and_preserves_ring_and_receive_qualification() {
+    let (mut producer, mut consumer) = prepare_program_ring(
+        provider(),
+        program_ring_plan(ControllerTransport::RptAdvanced),
+    )
+    .unwrap();
+    producer
+        .push(&[0.9, 0.8], ReceiveQualification::default())
+        .unwrap();
+    let source = consumer.direct_source();
+    // SAFETY: this test serializes all accesses to the stopped direct source.
+    unsafe {
+        source.prepare(2);
+    }
+    let qualification = ReceiveQualification {
+        receiver_keyed: true,
+        ctcss_decoded: AslCtcssToneIndex::new(5),
+        dcs_valid: true,
+        ..ReceiveQualification::default()
+    };
+    consumer
+        .qualification
+        .store(pack_qualification(qualification), Ordering::Release);
+    // SAFETY: no source render overlaps this staging call.
+    unsafe {
+        source.stage(&[0.125, -0.25]);
+    }
+    let mut output = [0.0; 2];
+    OBSERVE_FAILS.set(true);
+    let (_, actual) = consumer.render(&mut output).unwrap();
+    OBSERVE_FAILS.set(false);
+    assert_eq!(output, [0.125, -0.25]);
+    assert_eq!(actual, qualification);
+    // Direct rendering must not advance or even observe the rate-adjusting ring.
+    assert_eq!(consumer.ring.observe().unwrap().available_samples, 2);
+    // SAFETY: no source render overlaps this staging call.
+    unsafe {
+        source.stage(&[-0.5, 0.75]);
+    }
+    consumer.render(&mut output).unwrap();
+    assert_eq!(output, [-0.5, 0.75]);
+    assert_eq!(consumer.ring.observe().unwrap().available_samples, 2);
+}
+
+#[test]
+fn direct_source_stages_while_radio_exclusively_owns_the_consumer() {
+    let (_, mut consumer) = prepare_program_ring(
+        provider(),
+        program_ring_plan(ControllerTransport::RptAdvanced),
+    )
+    .unwrap();
+    let source = consumer.direct_source();
+    let prepared = crate::media::tests::prepared(ControllerTransport::RptAdvanced, 24);
+    let ports = usbradioplus_radio::SessionPorts {
+        program_ring: consumer.radio_port(),
+        ..usbradioplus_radio::SessionPorts::default()
+    };
+    let (_, mut transmit, _) = crate::media::tests::radio_provider()
+        .prepare(prepared.plan().radio(), ports)
+        .unwrap()
+        .split();
+    // No further borrow of consumer is possible while transmit retains its port.
+    // SAFETY: this stopped, single-threaded test serializes preparation, staging
+    // and radio rendering; the separately owned source stays alive throughout.
+    unsafe {
+        source.prepare(4);
+    }
+    for block in [[0.1, 0.2, 0.3, 0.4], [-0.1, -0.2, -0.3, -0.4]] {
+        // SAFETY: no radio render overlaps this source mutation.
+        unsafe {
+            source.stage(&block);
+        }
+        let mut output = [0.0; 8];
+        transmit
+            .render(
+                &mut output,
+                usbradioplus_radio::TransmitControls {
+                    render_admitted: true,
+                    ..usbradioplus_radio::TransmitControls::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            output,
+            [
+                block[0], block[0], block[1], block[1], block[2], block[2], block[3], block[3]
+            ]
+        );
+    }
+}
+
+#[test]
 fn rejected_write_does_not_replace_the_latest_accepted_state() {
     let plan = ProgramRingPlan {
         capacity_samples: 512,

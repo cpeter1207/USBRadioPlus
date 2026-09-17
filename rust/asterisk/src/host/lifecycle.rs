@@ -140,21 +140,21 @@ impl LifecycleCoordinator {
         if status != URP_AST_OK {
             return status;
         }
-        let status = operations.register_channels();
-        if status != URP_AST_OK {
-            operations.destroy_driver();
-            return status;
-        }
         let status = operations.register_cli();
         if status != URP_AST_OK {
-            let _ = operations.unregister_channels();
             operations.destroy_driver();
             return status;
         }
         let status = operations.start_links();
         if status != URP_AST_OK {
             operations.unregister_cli();
-            let _ = operations.unregister_channels();
+            operations.destroy_driver();
+            return status;
+        }
+        let status = operations.register_channels();
+        if status != URP_AST_OK {
+            operations.stop_links();
+            operations.unregister_cli();
             operations.destroy_driver();
             return status;
         }
@@ -349,7 +349,7 @@ impl LifecycleOperations for ProductionOperations {
 
     fn register_cli(&mut self) -> i32 {
         self.phase = LoadPhase::Register;
-        cli::register()
+        cli::register(self.module as *mut crate::ffi::ast_module)
     }
 
     fn unregister_cli(&mut self) {

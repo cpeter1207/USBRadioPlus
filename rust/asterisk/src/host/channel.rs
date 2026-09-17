@@ -3,15 +3,19 @@
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::{size_of, zeroed};
 use std::ptr;
+#[cfg(not(test))]
+use std::sync::RwLockWriteGuard;
 use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Mutex, MutexGuard, OnceLock, RwLock, RwLockWriteGuard, TryLockError};
+use std::sync::{Mutex, MutexGuard, OnceLock, RwLock, TryLockError};
 use std::thread::JoinHandle;
 
 use super::super::{
-    URP_AST_ASTERISK_FAILURE, URP_AST_CHANNEL_BUSY, URP_AST_JITTER_FIXED, URP_AST_OK,
-    URP_AST_TRANSPORT_APP_RPT, URP_AST_TRANSPORT_RPT_ADVANCED, UrpAstChannelCommand,
-    UrpAstChannelReserveArgs, UrpAstChannelStatus, UrpAstDescriptor, UrpAstJitterConfig, ffi,
+    URP_AST_ASTERISK_FAILURE, URP_AST_CHANNEL_BUSY, URP_AST_CHANNEL_NOT_FOUND,
+    URP_AST_JITTER_FIXED, URP_AST_OK, URP_AST_TRANSPORT_APP_RPT, URP_AST_TRANSPORT_RPT_ADVANCED,
+    UrpAstChannelReserveArgs, UrpAstDescriptor, UrpAstJitterConfig, ffi,
 };
+#[cfg(not(test))]
+use super::super::{UrpAstChannelCommand, UrpAstChannelStatus};
 use super::control::{ControlOperation, ControlResult, run_control};
 use super::delivery;
 
@@ -54,7 +58,7 @@ struct HostSnapshot {
 
 /// A pinned channel wrapper referenced by Asterisk and injected Rust callbacks.
 pub(super) struct Channel {
-    name: Box<str>,
+    _name: Box<str>,
     descriptor: *const UrpAstDescriptor,
     rust_channel: AtomicPtr<c_void>,
     control: *mut ffi::ast_taskprocessor,
@@ -68,6 +72,7 @@ pub(super) struct Channel {
     pub(super) service_failed: AtomicBool,
     jitter_pending: AtomicBool,
     pending_transmit: AtomicU64,
+    direct: AtomicBool,
 }
 
 // SAFETY: opaque Asterisk pointers are accessed only through Asterisk's public
@@ -113,7 +118,9 @@ impl Channel {
         match self.control(operation) {
             ControlResult::Status(status) => status,
             ControlResult::Jitter(status, _) => status,
+            #[cfg(not(test))]
             ControlResult::Command(status, _) => status,
+            #[cfg(not(test))]
             ControlResult::ChannelStatus(status, _) => status,
         }
     }
@@ -122,13 +129,16 @@ impl Channel {
         match self.control_admitted(operation) {
             ControlResult::Status(status) => status,
             ControlResult::Jitter(status, _) => status,
+            #[cfg(not(test))]
             ControlResult::Command(status, _) => status,
+            #[cfg(not(test))]
             ControlResult::ChannelStatus(status, _) => status,
         }
     }
 
+    #[cfg(not(test))]
     pub(super) fn name(&self) -> &str {
-        &self.name
+        &self._name
     }
 
     fn stop_worker(&self) {
@@ -161,9 +171,73 @@ pub(super) fn technology_contract(name: &str) -> Option<TechnologyContract> {
     }
 }
 
+fn channel_name_length(name: &[u8]) -> Option<u32> {
+    if name.is_empty() {
+        None
+    } else {
+        u32::try_from(name.len()).ok()
+    }
+}
+
+fn reservation_failure_diagnostic(
+    technology: &str,
+    channel: &[u8],
+    status: c_int,
+) -> (c_int, String) {
+    let channel = String::from_utf8_lossy(channel);
+    if status == URP_AST_CHANNEL_NOT_FOUND {
+        (
+            ffi::__LOG_WARNING as c_int,
+            format!("{technology}/{channel}: Rust channel was not configured"),
+        )
+    } else {
+        (
+            ffi::__LOG_ERROR as c_int,
+            format!("{technology}/{channel}: Rust channel reservation failed ({status})"),
+        )
+    }
+}
+
+fn log_reservation_failure(technology: &str, channel: &[u8], status: c_int) {
+    let (level, message) = reservation_failure_diagnostic(technology, channel, status);
+    // SAFETY: the precision bounds the readable byte span and every variadic
+    // argument matches Asterisk's public logger declaration.
+    unsafe {
+        ffi::ast_log(
+            level,
+            SOURCE_FILE.as_ptr(),
+            0,
+            SOURCE_FUNCTION.as_ptr(),
+            c"%.*s\n".as_ptr(),
+            message.len().min(c_int::MAX as usize) as c_int,
+            message.as_ptr().cast::<c_char>(),
+        )
+    };
+}
+
+fn format_has_rate<T>(format: *mut T, expected: u32, rate: impl FnOnce(*mut T) -> u32) -> bool {
+    !format.is_null() && rate(format) == expected
+}
+
+fn apply_pending_jitter(
+    pending: &AtomicBool,
+    configure: impl FnOnce() -> Result<(), ()>,
+) -> Result<(), ()> {
+    if !pending.load(Ordering::Acquire) {
+        return Ok(());
+    }
+    configure()?;
+    pending.store(false, Ordering::Release);
+    Ok(())
+}
+
 pub(super) fn forced_ctcss_tenths_hz(payload: &[u8]) -> Result<u32, ()> {
     if payload.is_empty() {
         return Ok(0);
+    }
+    let payload = payload.strip_suffix(b"\0").unwrap_or(payload);
+    if payload.is_empty() || payload.contains(&0) {
+        return Err(());
     }
     let text = std::str::from_utf8(payload).map_err(|_| ())?;
     let frequency = text.parse::<f64>().map_err(|_| ())?;
@@ -215,6 +289,28 @@ impl PendingTransmit {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TransmitAttempt {
+    Deferred,
+    Completed(i32),
+    Failed,
+}
+
+fn finish_transmit_attempt(
+    pending: &AtomicU64,
+    intent: PendingTransmit,
+    attempt: TransmitAttempt,
+) -> c_int {
+    match attempt {
+        TransmitAttempt::Deferred => {
+            pending.store(intent.raw(), Ordering::Release);
+            0
+        }
+        TransmitAttempt::Completed(URP_AST_OK) => 0,
+        TransmitAttempt::Completed(_) | TransmitAttempt::Failed => -1,
+    }
+}
+
 pub(super) fn jitter_configuration(resolved: UrpAstJitterConfig) -> ffi::ast_jb_conf {
     let mut config = ffi::ast_jb_conf {
         flags: 0,
@@ -254,17 +350,32 @@ fn live_channels() -> &'static Mutex<Vec<usize>> {
     LIVE_CHANNELS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
+fn lock_idle_membership<'a, T>(
+    membership: &'a Mutex<T>,
+    active: &AtomicUsize,
+) -> Result<MutexGuard<'a, T>, c_int> {
+    let membership = membership
+        .lock()
+        .expect("live channel membership lock poisoned");
+    if active.load(Ordering::Acquire) != 0 {
+        return Err(URP_AST_CHANNEL_BUSY);
+    }
+    Ok(membership)
+}
+
 fn control_gate() -> &'static RwLock<()> {
     CONTROL_GATE.get_or_init(|| RwLock::new(()))
 }
 
 /// Stable driver access shared by reload and CLI host modules.
+#[cfg(not(test))]
 #[derive(Clone, Copy)]
 pub(super) struct DriverContext {
     pub(super) descriptor: *const UrpAstDescriptor,
     pub(super) driver: *mut c_void,
 }
 
+#[cfg(not(test))]
 pub(super) fn driver_context() -> Option<DriverContext> {
     let installed = host().lock().expect("channel host lock poisoned");
     let state = installed.as_ref()?;
@@ -274,12 +385,83 @@ pub(super) fn driver_context() -> Option<DriverContext> {
     })
 }
 
-/// Frozen live membership plus exclusive admission to channel control.
-pub(super) struct LiveChannelsGuard {
-    channels: MutexGuard<'static, Vec<usize>>,
-    _control: RwLockWriteGuard<'static, ()>,
+/// Find the first configured profile which currently has a live channel.
+#[cfg(not(test))]
+pub(super) fn first_live_profile() -> Option<Box<str>> {
+    let context = driver_context()?;
+    let channels = live_channels()
+        .lock()
+        .expect("live channel membership lock poisoned");
+    first_profile(context, &channels)
 }
 
+#[cfg(not(test))]
+fn first_profile(context: DriverContext, channels: &[usize]) -> Option<Box<str>> {
+    // SAFETY: registration validated this process-lifetime descriptor.
+    let query = unsafe { (*context.descriptor).driver_channel_name? };
+    for index in 0..u32::MAX {
+        let mut length = 0;
+        // SAFETY: the driver remains installed while channel membership is live.
+        if unsafe { query(context.driver, index, ptr::null_mut(), 0, &raw mut length) }
+            != URP_AST_OK
+            || length == 0
+        {
+            return None;
+        }
+        let mut name = vec![0_u8; length as usize];
+        // SAFETY: name advertises exactly length writable bytes.
+        if unsafe {
+            query(
+                context.driver,
+                index,
+                name.as_mut_ptr(),
+                length,
+                &raw mut length,
+            )
+        } != URP_AST_OK
+        {
+            return None;
+        }
+        name.truncate(length as usize);
+        let name = std::str::from_utf8(&name).ok()?;
+        if channels
+            .iter()
+            .map(|address| {
+                // SAFETY: the membership lock keeps each pinned allocation live.
+                unsafe { &*(*address as *const Channel) }
+            })
+            .any(|channel| channel.name().eq_ignore_ascii_case(name))
+        {
+            return Some(name.to_owned().into_boxed_str());
+        }
+    }
+    None
+}
+
+/// Run one CLI operation while teardown of the selected channel is excluded.
+#[cfg(not(test))]
+pub(super) fn with_live_channel<T>(name: &str, operation: impl FnOnce(&Channel) -> T) -> Option<T> {
+    let channels = live_channels()
+        .lock()
+        .expect("live channel membership lock poisoned");
+    let channel = channels
+        .iter()
+        .map(|address| {
+            // SAFETY: the membership lock keeps each pinned allocation live.
+            unsafe { &*(*address as *const Channel) }
+        })
+        .find(|channel| channel.name().eq_ignore_ascii_case(name))?;
+    Some(operation(channel))
+}
+
+/// Frozen live membership plus exclusive admission to channel control.
+#[cfg(not(test))]
+pub(super) struct LiveChannelsGuard {
+    channels: MutexGuard<'static, Vec<usize>>,
+    control: Option<RwLockWriteGuard<'static, ()>>,
+}
+
+#[cfg(not(test))]
 impl LiveChannelsGuard {
     pub(super) fn iter(&self) -> impl Iterator<Item = &Channel> {
         self.channels.iter().map(|address| {
@@ -287,8 +469,19 @@ impl LiveChannelsGuard {
             unsafe { &*(*address as *const Channel) }
         })
     }
+
+    /// Reopen ordinary control admission while retaining stable membership.
+    pub(super) fn reopen_control(&mut self) {
+        self.control.take();
+    }
+
+    /// Resolve the first configured profile present in this frozen membership.
+    pub(super) fn first_profile(&self, context: DriverContext) -> Option<Box<str>> {
+        first_profile(context, &self.channels)
+    }
 }
 
+#[cfg(not(test))]
 pub(super) fn lock_live_channels() -> LiveChannelsGuard {
     let channels = live_channels()
         .lock()
@@ -298,21 +491,33 @@ pub(super) fn lock_live_channels() -> LiveChannelsGuard {
         .expect("channel control admission lock poisoned");
     LiveChannelsGuard {
         channels,
-        _control: control,
+        control: Some(control),
     }
 }
 
 fn descriptor_is_valid(descriptor: &UrpAstDescriptor) -> bool {
     descriptor.struct_size as usize >= size_of::<UrpAstDescriptor>()
         && descriptor.abi_version == super::super::ABI_VERSION
+        && descriptor.driver_reload.is_some()
+        && descriptor.driver_reload_finish.is_some()
+        && descriptor.driver_channel_name.is_some()
+        && descriptor.driver_active_channel.is_some()
+        && descriptor.driver_set_active_channel.is_some()
         && descriptor.channel_reserve.is_some()
         && descriptor.channel_start.is_some()
         && descriptor.channel_stop.is_some()
+        && descriptor.channel_reload_prepare.is_some()
+        && descriptor.channel_reload_activate.is_some()
+        && descriptor.channel_reload_finish.is_some()
         && descriptor.channel_write_voice.is_some()
         && descriptor.channel_write_text.is_some()
         && descriptor.channel_set_transmit.is_some()
         && descriptor.channel_set_dtmf.is_some()
+        && descriptor.channel_set_echo.is_some()
+        && descriptor.channel_set_direct_callbacks.is_some()
         && descriptor.channel_get_jitter_config.is_some()
+        && descriptor.channel_command.is_some()
+        && descriptor.channel_get_status.is_some()
         && descriptor.channel_service.is_some()
         && descriptor.channel_destroy.is_some()
 }
@@ -402,8 +607,7 @@ unsafe fn technology(
 ///
 /// `descriptor`, `driver`, and `module` must remain valid until successful
 /// unregistration, after every hosted channel has hung up.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn usbradioplus_asterisk_channel_host_register(
+pub(super) unsafe fn usbradioplus_asterisk_channel_host_register(
     descriptor: *const UrpAstDescriptor,
     driver: *mut c_void,
     module: *mut c_void,
@@ -415,6 +619,9 @@ pub unsafe extern "C" fn usbradioplus_asterisk_channel_host_register(
     if !descriptor_is_valid(unsafe { &*descriptor }) {
         return super::super::URP_AST_INCOMPATIBLE_ABI;
     }
+    let Ok(_membership) = lock_idle_membership(live_channels(), &ACTIVE_CHANNELS) else {
+        return URP_AST_CHANNEL_BUSY;
+    };
     let mut installed = host().lock().expect("channel host lock poisoned");
     if installed.is_some() {
         return URP_AST_CHANNEL_BUSY;
@@ -423,7 +630,12 @@ pub unsafe extern "C" fn usbradioplus_asterisk_channel_host_register(
     let app_format = unsafe { ffi::ast_format_slin };
     // SAFETY: the public format cache returns a process-lifetime object.
     let advanced_format = unsafe { ffi::ast_format_cache_get_slin_by_rate(ADVANCED_RATE_HZ) };
-    if app_format.is_null() || advanced_format.is_null() {
+    if app_format.is_null()
+        || !format_has_rate(advanced_format, ADVANCED_RATE_HZ, |format| {
+            // SAFETY: the public format cache returned this live format.
+            unsafe { ffi::ast_format_get_sample_rate(format) }
+        })
+    {
         return URP_AST_ASTERISK_FAILURE;
     }
     // SAFETY: the formats are live Asterisk objects.
@@ -508,11 +720,10 @@ unsafe fn discard_host(state: HostState, app_registered: bool, advanced_register
 /// Unregister the Rust-owned channel technologies.
 ///
 /// Returns busy while an Asterisk channel is still hosted.
-#[unsafe(no_mangle)]
-pub extern "C" fn usbradioplus_asterisk_channel_host_unregister() -> c_int {
-    if ACTIVE_CHANNELS.load(Ordering::Acquire) != 0 {
+pub(super) fn usbradioplus_asterisk_channel_host_unregister() -> c_int {
+    let Ok(_membership) = lock_idle_membership(live_channels(), &ACTIVE_CHANNELS) else {
         return URP_AST_CHANNEL_BUSY;
-    }
+    };
     let mut installed = host().lock().expect("channel host lock poisoned");
     let Some(state) = installed.take() else {
         return URP_AST_OK;
@@ -583,6 +794,9 @@ unsafe extern "C" fn request(
     let Some(contract) = technology_contract(type_name) else {
         return ptr::null_mut();
     };
+    let mut membership = live_channels()
+        .lock()
+        .expect("live channel membership lock poisoned");
     let Some(host) = snapshot(contract) else {
         return ptr::null_mut();
     };
@@ -594,12 +808,9 @@ unsafe extern "C" fn request(
     }
     // SAFETY: Asterisk supplies a valid NUL-terminated channel name.
     let channel_name = unsafe { CStr::from_ptr(data) }.to_bytes();
-    let Ok(channel_name_length) = u32::try_from(channel_name.len()) else {
+    let Some(channel_name_length) = channel_name_length(channel_name) else {
         return ptr::null_mut();
     };
-    let mut membership = live_channels()
-        .lock()
-        .expect("live channel membership lock poisoned");
     let sequence = TASKPROCESSOR_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let Ok(taskprocessor_name) = std::ffi::CString::new(format!("usbradioplus/channel/{sequence}"))
     else {
@@ -634,7 +845,7 @@ unsafe extern "C" fn request(
         ptr::null_mut()
     };
     let channel = Box::new(Channel {
-        name: String::from_utf8_lossy(channel_name)
+        _name: String::from_utf8_lossy(channel_name)
             .into_owned()
             .into_boxed_str(),
         descriptor: host.descriptor,
@@ -650,6 +861,7 @@ unsafe extern "C" fn request(
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
         pending_transmit: AtomicU64::new(PendingTransmit::NONE.raw()),
+        direct: AtomicBool::new(false),
     });
     let channel = Box::into_raw(channel);
     let reserve = UrpAstChannelReserveArgs {
@@ -677,6 +889,7 @@ unsafe extern "C" fn request(
             // SAFETY: cause is optional writable caller storage.
             unsafe { *cause = ffi::AST_CAUSE_BUSY as c_int };
         }
+        log_reservation_failure(type_name, channel_name, result);
         // SAFETY: channel has not escaped to Asterisk.
         unsafe { abandon(channel) };
         return ptr::null_mut();
@@ -732,16 +945,55 @@ unsafe extern "C" fn request(
     }
     ACTIVE_CHANNELS.fetch_add(1, Ordering::AcqRel);
     membership.push(channel as usize);
-    drop(membership);
-    // SAFETY: owner and channel are now mutually attached.
-    if unsafe { configure_jitter(&*channel) }.is_err() {
-        // SAFETY: Asterisk invokes hangup and releases the owner.
-        unsafe { ffi::ast_hangup(owner) };
+    if !finish_request_jitter(
+        || {
+            // SAFETY: owner and channel are now mutually attached. Membership
+            // remains frozen so reload cannot close control admission between
+            // reservation and this initial configuration.
+            unsafe { configure_jitter(&*channel) }
+        },
+        || {
+            // SAFETY: requester callbacks must release the allocation lock.
+            unsafe { unlock_owner(owner) };
+        },
+        || drop(membership),
+        || {
+            // SAFETY: owner and membership are unlocked before Asterisk
+            // consumes the failed channel through its hangup callback.
+            unsafe { ffi::ast_hangup(owner) };
+        },
+    ) {
         return ptr::null_mut();
     }
-    // SAFETY: requester callbacks return an unlocked channel.
-    unsafe { unlock_owner(owner) };
     owner
+}
+
+fn finish_request_jitter(
+    configure: impl FnOnce() -> Result<(), ()>,
+    unlock: impl FnOnce(),
+    release_membership: impl FnOnce(),
+    hangup: impl FnOnce(),
+) -> bool {
+    let configured = configure().is_ok();
+    unlock();
+    release_membership();
+    if !configured {
+        hangup();
+    }
+    configured
+}
+
+fn handoff_hangup_lock<T>(
+    unpublish: impl FnOnce(),
+    unlock_owner: impl FnOnce(),
+    lock_membership: impl FnOnce() -> T,
+    relock_owner: impl FnOnce(),
+) -> T {
+    unpublish();
+    unlock_owner();
+    let membership = lock_membership();
+    relock_owner();
+    membership
 }
 
 unsafe extern "C" fn call(
@@ -752,31 +1004,57 @@ unsafe extern "C" fn call(
     // SAFETY: Asterisk owns owner and its technology-private pointer.
     let channel = unsafe { channel_from_owner(owner) };
     let Some(channel) = channel else { return -1 };
-    if channel.jitter_pending.swap(false, Ordering::AcqRel)
-        && unsafe { configure_jitter(channel) }.is_err()
+    if apply_pending_jitter(&channel.jitter_pending, || unsafe {
+        configure_jitter(channel)
+    })
+    .is_err()
     {
         return -1;
     }
-    if channel.control_status(ControlOperation::Start) != URP_AST_OK {
+    if start_media(
+        channel.direct.load(Ordering::Acquire),
+        || channel.control_status(ControlOperation::Start),
+        || {
+            channel.delivery_stop.store(false, Ordering::Release);
+            channel.service_failed.store(false, Ordering::Release);
+            let pointer = ptr::from_ref(channel) as usize;
+            let worker = std::thread::Builder::new()
+                .name("usbradioplus-delivery".into())
+                .spawn(move || {
+                    // SAFETY: hangup joins this worker before freeing the channel.
+                    unsafe { delivery::run_worker(pointer as *const Channel) };
+                })
+                .map_err(|_| ())?;
+            *channel.worker.lock().expect("worker lock poisoned") = Some(worker);
+            Ok(())
+        },
+        || {
+            let _ = channel.control_status(ControlOperation::Stop);
+        },
+    )
+    .is_err()
+    {
         return -1;
     }
-    channel.delivery_stop.store(false, Ordering::Release);
-    channel.service_failed.store(false, Ordering::Release);
-    let pointer = ptr::from_ref(channel) as usize;
-    let worker = std::thread::Builder::new()
-        .name("usbradioplus-delivery".into())
-        .spawn(move || {
-            // SAFETY: hangup joins this worker before freeing the channel.
-            unsafe { delivery::run_worker(pointer as *const Channel) };
-        });
-    let Ok(worker) = worker else {
-        let _ = channel.control_status(ControlOperation::Stop);
-        return -1;
-    };
-    *channel.worker.lock().expect("worker lock poisoned") = Some(worker);
     // SAFETY: owner is live for this callback.
     unsafe { ffi::ast_setstate(owner, ffi::AST_STATE_UP) };
     0
+}
+
+fn start_media(
+    direct: bool,
+    start: impl FnOnce() -> c_int,
+    delivery: impl FnOnce() -> Result<(), ()>,
+    stop: impl FnOnce(),
+) -> Result<(), ()> {
+    if start() != URP_AST_OK {
+        return Err(());
+    }
+    if !direct && delivery().is_err() {
+        stop();
+        return Err(());
+    }
+    Ok(())
 }
 
 unsafe extern "C" fn hangup(owner: *mut ffi::ast_channel) -> c_int {
@@ -785,9 +1063,25 @@ unsafe extern "C" fn hangup(owner: *mut ffi::ast_channel) -> c_int {
     if pointer.is_null() {
         return 0;
     }
-    let mut membership = live_channels()
-        .lock()
-        .expect("live channel membership lock poisoned");
+    // SAFETY: tech_pvt keeps the pinned wrapper live through this callback.
+    let channel = unsafe { &*pointer };
+    let mut membership = handoff_hangup_lock(
+        || channel.owner.store(ptr::null_mut(), Ordering::Release),
+        || {
+            // SAFETY: Asterisk invokes hangup with the owner locked.
+            unsafe { unlock_owner(owner) };
+        },
+        || {
+            live_channels()
+                .lock()
+                .expect("live channel membership lock poisoned")
+        },
+        || {
+            // SAFETY: membership now excludes reload and CLI users before the
+            // Asterisk owner is reacquired for the remainder of hangup.
+            unsafe { relock_owner(owner) };
+        },
+    );
     if let Some(position) = membership
         .iter()
         .position(|address| *address == pointer as usize)
@@ -797,7 +1091,6 @@ unsafe extern "C" fn hangup(owner: *mut ffi::ast_channel) -> c_int {
     // SAFETY: hangup has exclusive final ownership of the wrapper after
     // removing it from frozen membership.
     let channel = unsafe { Box::from_raw(pointer) };
-    channel.owner.store(ptr::null_mut(), Ordering::Release);
     channel.stop_worker();
     let result = channel.control_status(ControlOperation::Stop);
     let _ = channel.control_status(ControlOperation::Destroy);
@@ -956,20 +1249,19 @@ fn transmit(channel: &Channel, keyed: bool, ctcss_tenths_hz: u32) -> c_int {
             .store(pending.raw(), Ordering::Release);
         return 0;
     }
-    let result = channel.control_status(ControlOperation::Transmit {
-        keyed,
-        ctcss_tenths_hz,
-    });
-    if result == URP_AST_CHANNEL_BUSY {
-        channel
-            .pending_transmit
-            .store(pending.raw(), Ordering::Release);
-        0
-    } else if result == URP_AST_OK {
-        0
-    } else {
-        -1
-    }
+    let attempt = match control_gate().try_read() {
+        Ok(gate) => {
+            let status = channel.control_status_admitted(ControlOperation::Transmit {
+                keyed,
+                ctcss_tenths_hz,
+            });
+            drop(gate);
+            TransmitAttempt::Completed(status)
+        }
+        Err(TryLockError::WouldBlock) => TransmitAttempt::Deferred,
+        Err(TryLockError::Poisoned(_)) => TransmitAttempt::Failed,
+    };
+    finish_transmit_attempt(&channel.pending_transmit, pending, attempt)
 }
 
 unsafe extern "C" fn fixup(
@@ -1001,6 +1293,20 @@ unsafe extern "C" fn setoption(
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
     }
+    if option == super::super::URP_AST_OPTION_DIRECT_CALLBACKS {
+        // SAFETY: Asterisk supplies data_length readable bytes for this option.
+        let callbacks = unsafe { direct_option(channel.sample_rate_hz, data, data_length) };
+        let Ok(callbacks) = callbacks else {
+            // SAFETY: errno is thread-local on supported Linux targets.
+            unsafe { *libc::__errno_location() = libc::EINVAL };
+            return -1;
+        };
+        if channel.control_status(ControlOperation::Direct(callbacks)) != URP_AST_OK {
+            return -1;
+        }
+        channel.direct.store(true, Ordering::Release);
+        return 0;
+    }
     if option as u32 != ffi::AST_OPTION_TONE_VERIFY {
         return 0;
     }
@@ -1011,6 +1317,26 @@ unsafe extern "C" fn setoption(
     } else {
         -1
     }
+}
+
+unsafe fn direct_option(
+    sample_rate_hz: u32,
+    data: *mut c_void,
+    length: c_int,
+) -> Result<super::super::UrpAstDirectCallbacks, ()> {
+    if sample_rate_hz != ADVANCED_RATE_HZ
+        || data.is_null()
+        || length as usize != size_of::<super::super::UrpAstDirectCallbacks>()
+    {
+        return Err(());
+    }
+    // SAFETY: exact size is checked above; the public option supplies this readable
+    // descriptor for the synchronous call, without requiring pointer alignment.
+    let callbacks = unsafe {
+        data.cast::<super::super::UrpAstDirectCallbacks>()
+            .read_unaligned()
+    };
+    callbacks.is_valid().then_some(callbacks).ok_or(())
 }
 
 unsafe extern "C" fn digit_begin(_owner: *mut ffi::ast_channel, _digit: c_char) -> c_int {
@@ -1088,6 +1414,31 @@ pub(super) unsafe fn unlock_owner(owner: *mut ffi::ast_channel) {
     };
 }
 
+unsafe fn relock_owner(owner: *mut ffi::ast_channel) {
+    // SAFETY: owner remains live throughout its Asterisk hangup callback.
+    let _ = unsafe {
+        __ao2_lock(
+            owner.cast(),
+            ffi::AO2_LOCK_REQ_MUTEX,
+            SOURCE_FILE.as_ptr(),
+            SOURCE_FUNCTION.as_ptr(),
+            0,
+            c"owner".as_ptr(),
+        )
+    };
+}
+
+unsafe extern "C" {
+    fn __ao2_lock(
+        object: *mut c_void,
+        lock_how: ffi::ao2_lock_req,
+        file: *const c_char,
+        function: *const c_char,
+        line: c_int,
+        variable: *const c_char,
+    ) -> c_int;
+}
+
 unsafe fn configure_jitter(channel: &Channel) -> Result<(), ()> {
     // SAFETY: owner remains locked through configuration.
     let owner = unsafe { lock_owner(channel) }.ok_or(())?;
@@ -1130,22 +1481,27 @@ pub(super) fn service(channel: &Channel) -> i32 {
     channel.control_status(ControlOperation::Service)
 }
 
+#[cfg(not(test))]
 pub(super) fn reload_prepare(channel: &Channel) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadPrepare)
 }
 
+#[cfg(not(test))]
 pub(super) fn reload_activate(channel: &Channel) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadActivate)
 }
 
+#[cfg(not(test))]
 pub(super) fn reload_finish(channel: &Channel, commit: bool) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadFinish(commit))
 }
 
+#[cfg(not(test))]
 pub(super) fn mark_jitter_pending(channel: &Channel) {
     channel.jitter_pending.store(true, Ordering::Release);
 }
 
+#[cfg(not(test))]
 pub(super) fn set_transmit(channel: &Channel, keyed: bool, ctcss_tenths_hz: u32) -> i32 {
     channel.control_status(ControlOperation::Transmit {
         keyed,
@@ -1153,10 +1509,12 @@ pub(super) fn set_transmit(channel: &Channel, keyed: bool, ctcss_tenths_hz: u32)
     })
 }
 
+#[cfg(not(test))]
 pub(super) fn set_echo(channel: &Channel, enabled: bool) -> i32 {
     channel.control_status(ControlOperation::Echo(enabled))
 }
 
+#[cfg(not(test))]
 pub(super) fn run_command(channel: &Channel, command: &mut UrpAstChannelCommand) -> i32 {
     match channel.control(ControlOperation::Command(*command)) {
         ControlResult::Command(status, output) => {
@@ -1167,6 +1525,7 @@ pub(super) fn run_command(channel: &Channel, command: &mut UrpAstChannelCommand)
     }
 }
 
+#[cfg(not(test))]
 pub(super) fn read_status(channel: &Channel, output: &mut UrpAstChannelStatus) -> i32 {
     match channel.control(ControlOperation::Status) {
         ControlResult::ChannelStatus(status, status_output) => {
@@ -1178,18 +1537,182 @@ pub(super) fn read_status(channel: &Channel, output: &mut UrpAstChannelStatus) -
 }
 
 pub(super) fn configure_pending_jitter(channel: &Channel) {
-    if channel.jitter_pending.load(Ordering::Acquire)
-        && unsafe { configure_jitter(channel) }.is_ok()
-    {
-        channel.jitter_pending.store(false, Ordering::Release);
-    }
+    let _ = apply_pending_jitter(&channel.jitter_pending, || unsafe {
+        configure_jitter(channel)
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{ABI_VERSION, URP_AST_JITTER_ADAPTIVE};
+    use std::cell::RefCell;
+    use std::sync::Arc;
+    use std::sync::mpsc::sync_channel;
 
+    #[repr(C)]
+    struct DirectV2 {
+        struct_size: u32,
+        abi_version: u32,
+        receive_context: *mut c_void,
+        receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
+        transmit_context: *mut c_void,
+        transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32) -> c_int>,
+        accepted_abi_version: u32,
+    }
+
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn ast_channel_tech_pvt(owner: *const ffi::ast_channel) -> *mut c_void {
+        owner.cast_mut().cast()
+    }
+
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn __ast_taskprocessor_push(
+        _: *mut ffi::ast_taskprocessor,
+        callback: unsafe extern "C" fn(*mut c_void) -> c_int,
+        data: *mut c_void,
+        _: *const c_char,
+        _: c_int,
+        _: *const c_char,
+    ) -> c_int {
+        let data = data as usize;
+        std::thread::spawn(move || unsafe { callback(data as *mut c_void) });
+        0
+    }
+
+    unsafe extern "C" fn retain_direct(
+        channel: *mut c_void,
+        _: *const crate::UrpAstDirectCallbacks,
+    ) -> c_int {
+        unsafe { *channel.cast::<c_int>() }
+    }
+
+    #[test]
+    fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
+        let callbacks = crate::tests::direct_callbacks();
+        let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
+        descriptor.channel_set_direct_callbacks = Some(retain_direct);
+        let mut retention = URP_AST_OK;
+        let mut channel = Channel {
+            _name: "usb".into(),
+            descriptor: &descriptor,
+            rust_channel: AtomicPtr::new(ptr::from_mut(&mut retention).cast()),
+            control: ptr::null_mut(),
+            dsp: ptr::null_mut(),
+            format: ptr::null_mut(),
+            sample_rate_hz: ADVANCED_RATE_HZ,
+            frame_samples: 960,
+            owner: AtomicPtr::new(ptr::null_mut()),
+            worker: Mutex::new(None),
+            delivery_stop: AtomicBool::new(false),
+            service_failed: AtomicBool::new(false),
+            jitter_pending: AtomicBool::new(false),
+            pending_transmit: AtomicU64::new(0),
+            direct: AtomicBool::new(false),
+        };
+        for case in 0..9 {
+            retention = if case == 7 { -1 } else { URP_AST_OK };
+            channel.rust_channel.store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
+            let mut direct = DirectV2 {
+                struct_size: size_of::<DirectV2>() as u32,
+                abi_version: 2,
+                receive_context: callbacks.receive_context,
+                receive: callbacks.receive,
+                transmit_context: callbacks.transmit_context,
+                transmit: callbacks.transmit,
+                accepted_abi_version: 0,
+            };
+            let mut length = size_of::<DirectV2>() as c_int;
+            match case {
+                0 => direct.struct_size -= 1,
+                1 => direct.abi_version = 1,
+                2 => direct.receive = None,
+                3 => direct.transmit = None,
+                4 => direct.receive_context = ptr::null_mut(),
+                5 => direct.transmit_context = ptr::null_mut(),
+                6 => length -= 1,
+                _ => {}
+            }
+            // The host option must also accept byte-aligned Asterisk payloads.
+            let mut storage = vec![0u8; size_of::<DirectV2>() + 1];
+            let data = unsafe { storage.as_mut_ptr().add(1).cast::<DirectV2>() };
+            unsafe { data.write_unaligned(direct) };
+            let result = unsafe {
+                setoption(ptr::from_mut(&mut channel).cast(), crate::URP_AST_OPTION_DIRECT_CALLBACKS, data.cast(), length)
+            };
+            let accepted = unsafe { data.read_unaligned().accepted_abi_version };
+            assert_eq!(accepted, if case == 8 { 2 } else { 0 }, "case {case}");
+            assert_eq!(result == 0, case == 8, "case {case}");
+        }
+    }
+
+    #[test]
+    fn direct_call_starts_station_without_delivery_worker() {
+        for direct in [true, false] {
+            let events = RefCell::new(Vec::new());
+            assert!(
+                start_media(
+                    direct,
+                    || {
+                        events.borrow_mut().push("start");
+                        URP_AST_OK
+                    },
+                    || {
+                        events.borrow_mut().push("delivery");
+                        Ok(())
+                    },
+                    || {
+                        events.borrow_mut().push("stop");
+                    },
+                )
+                .is_ok()
+            );
+            let expected: &[&str] = if direct {
+                &["start"]
+            } else {
+                &["start", "delivery"]
+            };
+            assert_eq!(*events.borrow(), expected);
+        }
+    }
+
+    #[test]
+    fn failed_delivery_start_stops_the_station() {
+        let events = RefCell::new(Vec::new());
+        assert!(
+            start_media(
+                false,
+                || {
+                    events.borrow_mut().push("start");
+                    URP_AST_OK
+                },
+                || {
+                    events.borrow_mut().push("delivery");
+                    Err(())
+                },
+                || {
+                    events.borrow_mut().push("stop");
+                },
+            )
+            .is_err()
+        );
+        assert_eq!(*events.borrow(), ["start", "delivery", "stop"]);
+    }
+
+    #[test]
+    fn direct_option_rejects_wrong_technology_and_payload_length() {
+        let callbacks = crate::tests::direct_callbacks();
+        let data = ptr::from_ref(&callbacks).cast_mut().cast();
+        let length = size_of::<super::super::super::UrpAstDirectCallbacks>() as c_int;
+        // SAFETY: complete copied descriptor remains live throughout validation.
+        unsafe {
+            assert!(direct_option(APP_RPT_RATE_HZ, data, length).is_err());
+            assert!(direct_option(ADVANCED_RATE_HZ, data, length - 1).is_err());
+            assert!(direct_option(ADVANCED_RATE_HZ, data, length + 1).is_err());
+            assert!(direct_option(ADVANCED_RATE_HZ, ptr::null_mut(), length).is_err());
+            assert!(direct_option(ADVANCED_RATE_HZ, data, length).is_ok());
+        }
+    }
     #[test]
     fn technologies_keep_existing_rates_and_transports() {
         assert_eq!(
@@ -1210,6 +1733,49 @@ mod tests {
     }
 
     #[test]
+    fn channel_names_must_be_nonempty_and_fit_the_adapter_abi() {
+        assert_eq!(channel_name_length(b""), None);
+        assert_eq!(channel_name_length(b"alpha"), Some(5));
+    }
+
+    #[test]
+    fn reservation_failures_keep_the_existing_operator_diagnostics() {
+        assert_eq!(
+            reservation_failure_diagnostic("RadioPlus", b"alpha", URP_AST_CHANNEL_NOT_FOUND),
+            (
+                ffi::__LOG_WARNING as c_int,
+                "RadioPlus/alpha: Rust channel was not configured".into()
+            )
+        );
+        assert_eq!(
+            reservation_failure_diagnostic("RadioPlusAdvanced", b"bravo", -6),
+            (
+                ffi::__LOG_ERROR as c_int,
+                "RadioPlusAdvanced/bravo: Rust channel reservation failed (-6)".into()
+            )
+        );
+    }
+
+    #[test]
+    fn native_format_must_have_the_exact_required_rate() {
+        let format = std::ptr::dangling_mut::<u8>();
+
+        assert!(format_has_rate(format, 48_000, |_| 48_000));
+        assert!(!format_has_rate(format, 48_000, |_| 44_100));
+        assert!(!format_has_rate(ptr::null_mut::<u8>(), 48_000, |_| 48_000));
+    }
+
+    #[test]
+    fn failed_jitter_configuration_remains_pending_for_retry() {
+        let pending = AtomicBool::new(true);
+        assert_eq!(apply_pending_jitter(&pending, || Err(())), Err(()));
+        assert!(pending.load(Ordering::Acquire));
+
+        assert_eq!(apply_pending_jitter(&pending, || Ok(())), Ok(()));
+        assert!(!pending.load(Ordering::Acquire));
+    }
+
+    #[test]
     fn forced_ctcss_matches_decimal_boundary_contract() {
         assert_eq!(forced_ctcss_tenths_hz(b""), Ok(0));
         assert_eq!(forced_ctcss_tenths_hz(b"100.04"), Ok(1_000));
@@ -1218,6 +1784,15 @@ mod tests {
         assert_eq!(forced_ctcss_tenths_hz(b"nan"), Err(()));
         assert_eq!(forced_ctcss_tenths_hz(b"not-a-tone"), Err(()));
         assert_eq!(forced_ctcss_tenths_hz(b"429496729.6"), Err(()));
+    }
+
+    #[test]
+    fn forced_ctcss_accepts_only_one_optional_trailing_nul() {
+        assert_eq!(forced_ctcss_tenths_hz(b"100.0\0"), Ok(1_000));
+        assert_eq!(forced_ctcss_tenths_hz(b"100\0.0"), Err(()));
+        assert_eq!(forced_ctcss_tenths_hz(b"100.0\0x"), Err(()));
+        assert_eq!(forced_ctcss_tenths_hz(b"100.0\0\0"), Err(()));
+        assert_eq!(forced_ctcss_tenths_hz(b"\0"), Err(()));
     }
 
     #[test]
@@ -1266,6 +1841,180 @@ mod tests {
         let unkeyed = PendingTransmit::new(false, 0);
         assert_eq!(unkeyed.decode(), Some((false, 0)));
         assert_eq!(PendingTransmit::NONE.decode(), None);
+    }
+
+    #[test]
+    fn only_reload_admission_contention_defers_transmit() {
+        let pending = AtomicU64::new(PendingTransmit::NONE.raw());
+        let intent = PendingTransmit::new(true, 1_230);
+
+        assert_eq!(
+            finish_transmit_attempt(&pending, intent, TransmitAttempt::Deferred),
+            0
+        );
+        assert_eq!(pending.load(Ordering::Acquire), intent.raw());
+
+        pending.store(PendingTransmit::NONE.raw(), Ordering::Release);
+        assert_eq!(
+            finish_transmit_attempt(
+                &pending,
+                intent,
+                TransmitAttempt::Completed(URP_AST_CHANNEL_BUSY)
+            ),
+            -1
+        );
+        assert_eq!(pending.load(Ordering::Acquire), PendingTransmit::NONE.raw());
+    }
+
+    #[test]
+    fn request_keeps_membership_frozen_through_initial_jitter_setup() {
+        let events = RefCell::new(Vec::new());
+
+        let succeeded = finish_request_jitter(
+            || {
+                events.borrow_mut().push("configure");
+                Err(())
+            },
+            || events.borrow_mut().push("unlock"),
+            || events.borrow_mut().push("release-membership"),
+            || events.borrow_mut().push("hangup"),
+        );
+
+        assert!(!succeeded);
+        assert_eq!(
+            *events.borrow(),
+            ["configure", "unlock", "release-membership", "hangup"]
+        );
+    }
+
+    #[test]
+    fn hangup_releases_owner_before_waiting_for_membership() {
+        let events = RefCell::new(Vec::new());
+
+        let membership = handoff_hangup_lock(
+            || events.borrow_mut().push("unpublish"),
+            || events.borrow_mut().push("unlock-owner"),
+            || {
+                events.borrow_mut().push("lock-membership");
+                17
+            },
+            || events.borrow_mut().push("relock-owner"),
+        );
+
+        assert_eq!(membership, 17);
+        assert_eq!(
+            *events.borrow(),
+            [
+                "unpublish",
+                "unlock-owner",
+                "lock-membership",
+                "relock-owner"
+            ]
+        );
+    }
+
+    #[test]
+    fn unregister_rechecks_activity_after_request_construction_finishes() {
+        let membership = Arc::new(Mutex::new(()));
+        let active = Arc::new(AtomicUsize::new(0));
+        let construction = membership.lock().expect("membership lock poisoned");
+        let (started_sender, started_receiver) = sync_channel(0);
+        let (result_sender, result_receiver) = sync_channel(0);
+        let worker_membership = Arc::clone(&membership);
+        let worker_active = Arc::clone(&active);
+
+        let worker = std::thread::spawn(move || {
+            started_sender.send(()).expect("start signal failed");
+            let result = match lock_idle_membership(&worker_membership, &worker_active) {
+                Ok(membership) => {
+                    drop(membership);
+                    Ok(())
+                }
+                Err(status) => Err(status),
+            };
+            result_sender.send(result).expect("result signal failed");
+        });
+        started_receiver.recv().expect("start signal failed");
+        active.store(1, Ordering::Release);
+        drop(construction);
+
+        assert_eq!(
+            result_receiver.recv().expect("result signal failed"),
+            Err(URP_AST_CHANNEL_BUSY)
+        );
+        worker.join().expect("worker panicked");
+    }
+
+    #[test]
+    fn registration_gate_blocks_requests_until_rollback_finishes() {
+        let membership = Arc::new(Mutex::new(()));
+        let active = AtomicUsize::new(0);
+        let registration =
+            lock_idle_membership(&membership, &active).expect("registration gate failed");
+        let (started_sender, started_receiver) = sync_channel(0);
+        let (acquired_sender, acquired_receiver) = sync_channel(0);
+        let request_membership = Arc::clone(&membership);
+
+        let request = std::thread::spawn(move || {
+            started_sender.send(()).expect("start signal failed");
+            let _request = request_membership.lock().expect("membership lock poisoned");
+            acquired_sender.send(()).expect("acquired signal failed");
+        });
+        started_receiver.recv().expect("start signal failed");
+        assert_eq!(
+            acquired_receiver.try_recv(),
+            Err(std::sync::mpsc::TryRecvError::Empty)
+        );
+
+        drop(registration);
+        acquired_receiver.recv().expect("acquired signal failed");
+        request.join().expect("request panicked");
+    }
+
+    #[test]
+    fn channel_host_requires_every_operation_it_invokes() {
+        assert!(descriptor_is_valid(crate::product_descriptor()));
+        macro_rules! reject_missing {
+            ($field:ident) => {{
+                // SAFETY: the descriptor contains only plain ABI fields and
+                // function pointers, so this copy owns no dropped resource.
+                let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+                incomplete.$field = None;
+                assert!(!descriptor_is_valid(&incomplete));
+            }};
+        }
+        for corrupt in [0_u8, 1] {
+            // SAFETY: see the macro comment above.
+            let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+            if corrupt == 0 {
+                incomplete.struct_size = 0;
+            } else {
+                incomplete.abi_version = 0;
+            }
+            assert!(!descriptor_is_valid(&incomplete));
+        }
+        reject_missing!(driver_reload);
+        reject_missing!(driver_reload_finish);
+        reject_missing!(driver_channel_name);
+        reject_missing!(driver_active_channel);
+        reject_missing!(driver_set_active_channel);
+        reject_missing!(channel_reserve);
+        reject_missing!(channel_start);
+        reject_missing!(channel_stop);
+        reject_missing!(channel_reload_prepare);
+        reject_missing!(channel_reload_activate);
+        reject_missing!(channel_reload_finish);
+        reject_missing!(channel_write_voice);
+        reject_missing!(channel_write_text);
+        reject_missing!(channel_set_transmit);
+        reject_missing!(channel_set_dtmf);
+        reject_missing!(channel_set_echo);
+        reject_missing!(channel_set_direct_callbacks);
+        reject_missing!(channel_get_jitter_config);
+        reject_missing!(channel_command);
+        reject_missing!(channel_get_status);
+        reject_missing!(channel_service);
+        reject_missing!(channel_destroy);
     }
 
     #[test]

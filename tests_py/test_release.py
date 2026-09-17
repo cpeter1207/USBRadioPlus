@@ -20,23 +20,74 @@ def test_only_the_asterisk_shim_remains_in_the_c_production_tree():
     assert '#include ".c"' not in read("src/chan_usbradioplus_shim.c")
 
 
-def test_shim_exposes_both_rates_through_the_typed_rust_boundary():
-    """Retain the two Asterisk technologies without reintroducing radio logic in C."""
+def test_shim_is_only_the_versioned_rust_lifecycle_loader():
+    """Keep every substantive Asterisk host operation in Rust."""
     shim = read("src/chan_usbradioplus_shim.c")
     header = read("rust/asterisk/include/usbradioplus_asterisk.h")
-    for marker in (
-        '"RadioPlus"',
-        '"RadioPlusAdvanced"',
-        "ast_format_slin",
-        "ast_format_cache_get_slin_by_rate",
-        "URP_ADVANCED_RATE",
-        "usbradioplus_asterisk_descriptor",
+    assert "usbradioplus_asterisk_loader_descriptor" in shim
+    assert "struct urp_asterisk_loader_descriptor" in header
+    for callback in ("load", "reload", "unload"):
+        assert f"urp_ast_loader_{callback}_fn {callback};" in header
+    for retired in (
+        "ast_channel_tech",
+        "ast_audiohook",
+        "ast_cli_entry",
+        "ast_taskprocessor",
+        "urp_ast_operations",
+        "urp_ast_channel_status",
+        "urp_ast_descriptor",
         "channel_reserve",
-        "channel_start",
-        "channel_stop",
         "channel_service",
     ):
-        assert marker in shim or marker in header
+        assert retired not in shim
+        assert retired not in header
+
+
+def test_loader_descriptor_version_is_independent_of_provider_abis():
+    """Reject incompatible module/adapter pairs before Rust host startup."""
+    header = read("rust/asterisk/include/usbradioplus_asterisk.h")
+    assert "URP_AST_LOADER_ABI_VERSION" in header
+    assert "struct_size" in header
+    assert "abi_version" in header
+    assert "capability" in header
+
+
+def test_rust_host_exports_only_the_loader_descriptor():
+    """Keep channel, delivery, and control ownership private to the Rust DSO."""
+    rust_host = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (ROOT / "rust/asterisk/src").rglob("*.rs")
+    )
+    assert rust_host.count("#[unsafe(no_mangle)]") == 1
+    assert "fn usbradioplus_asterisk_loader_descriptor" in rust_host
+
+
+def test_rust_cli_uses_the_generated_asterisk_abi_constants():
+    """Keep CLI callbacks aligned with the installed Asterisk public ABI."""
+    build = read("rust/asterisk/build.rs")
+    cli = read("rust/asterisk/src/host/cli.rs")
+    assert "cli_command" in build
+    for constant in (
+        "CLI_INIT",
+        "CLI_GENERATE",
+        "RESULT_SUCCESS",
+        "RESULT_SHOWUSAGE",
+        "RESULT_FAILURE",
+    ):
+        assert f"ffi::{constant}" in cli
+    assert "const CLI_INIT" not in cli
+    assert "const CLI_GENERATE" not in cli
+    assert "const CLI_FAILURE" not in cli
+    assert "const CLI_SHOWUSAGE" not in cli
+
+
+def test_rust_reload_uses_the_generated_asterisk_allocator():
+    """Release text returned by Asterisk through Asterisk's allocator."""
+    build = read("rust/asterisk/build.rs")
+    reload = read("rust/asterisk/src/host/reload.rs")
+    assert "free_ptr" in build
+    assert "ffi::ast_free_ptr" in reload
+    assert "libc::free" not in reload
 
 
 def test_build_and_install_use_dynamic_rust_artifacts():
@@ -59,6 +110,13 @@ def test_build_and_install_use_dynamic_rust_artifacts():
     control = read("debian/control")
     binary = control.split("\nPackage: usbradioplus\n", maxsplit=1)[1]
     assert "python3" not in binary
+
+
+def test_bindgen_header_invalidates_the_rust_build_stamp():
+    """Rebuild generated Asterisk bindings whenever their wrapper changes."""
+    makefile = read("Makefile")
+    assert "RUST_BINDGEN_INPUTS := rust/asterisk/wrapper.h" in makefile
+    assert "$(RUST_SOURCES) \\\n\t$(RUST_BINDGEN_INPUTS) \\" in makefile
 
 
 def test_source_archive_boundary_excludes_generated_files():

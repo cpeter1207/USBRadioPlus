@@ -79,6 +79,8 @@ pub(super) struct AsteriskOperations {
     pub(super) iterator_next: unsafe fn(*mut ffi::ast_channel_iterator) -> *mut ffi::ast_channel,
     pub(super) iterator_destroy: unsafe fn(*mut ffi::ast_channel_iterator),
     pub(super) channel_unref: unsafe fn(*mut ffi::ast_channel),
+    pub(super) log_notice: fn(&str),
+    pub(super) log_error: fn(&str),
 }
 
 /// Rust owner for link attachment and staged graph replacement.
@@ -99,7 +101,7 @@ unsafe impl Sync for LinkHost {}
 
 struct RunningLinkHost {
     host: LinkHost,
-    profile: Arc<Mutex<Option<Box<str>>>>,
+    generation: Arc<()>,
     stop: Arc<(Mutex<bool>, Condvar)>,
     scanner: JoinHandle<()>,
 }
@@ -133,20 +135,19 @@ fn start_with(host: LinkHost, profile: ProfileResolver) -> c_int {
         return URP_AST_ASTERISK_FAILURE;
     }
 
+    let generation = Arc::new(());
     let stop = Arc::new((Mutex::new(false), Condvar::new()));
-    let current_profile = Arc::new(Mutex::new(None));
     let scanner_stop = Arc::clone(&stop);
-    let scanner_profile = Arc::clone(&current_profile);
     let scanner = match thread::Builder::new()
         .name("usbradioplus-link-scanner".into())
-        .spawn(move || scan_loop(host, profile, scanner_profile, scanner_stop))
+        .spawn(move || scan_loop(host, profile, scanner_stop))
     {
         Ok(scanner) => scanner,
         Err(_) => return URP_AST_ASTERISK_FAILURE,
     };
     *running = Some(RunningLinkHost {
         host,
-        profile: current_profile,
+        generation,
         stop,
         scanner,
     });
@@ -156,7 +157,6 @@ fn start_with(host: LinkHost, profile: ProfileResolver) -> c_int {
 fn scan_loop(
     host: LinkHost,
     resolve_profile: ProfileResolver,
-    current_profile: Arc<Mutex<Option<Box<str>>>>,
     stop: Arc<(Mutex<bool>, Condvar)>,
 ) {
     loop {
@@ -164,7 +164,6 @@ fn scan_loop(
             break;
         }
         let profile = resolve_profile();
-        *lock(&current_profile) = profile.clone();
         {
             let _control = lock(&LINK_CONTROL);
             if !*lock(&stop.0) {
@@ -204,18 +203,17 @@ pub(super) fn stop() {
 }
 
 /// Prepare replacement graphs for every currently attached or eligible link.
-pub(super) fn reload_prepare() -> Result<LinkReload, LinkHostError> {
-    let profile_source = {
+pub(super) fn reload_prepare(profile: Option<&str>) -> Result<LinkReload, LinkHostError> {
+    let generation = {
         let running = lock(running_host());
         let running = running.as_ref().ok_or(LinkHostError::Asterisk)?;
-        Arc::clone(&running.profile)
+        Arc::clone(&running.generation)
     };
-    let profile = lock(&profile_source).clone();
     let control = lock(&LINK_CONTROL);
     let host = {
         let running = lock(running_host());
         let running = running.as_ref().ok_or(LinkHostError::Asterisk)?;
-        if !Arc::ptr_eq(&profile_source, &running.profile) {
+        if !Arc::ptr_eq(&generation, &running.generation) {
             return Err(LinkHostError::Asterisk);
         }
         running.host
@@ -227,12 +225,13 @@ pub(super) fn reload_prepare() -> Result<LinkReload, LinkHostError> {
     };
     // SAFETY: the reload transaction owns LINK_CONTROL until finish/drop, and
     // the process host remains installed for the serialized operation.
-    unsafe { host.stage_all(profile.as_deref(), &mut reload) }?;
+    unsafe { host.stage_all(profile, &mut reload) }?;
     Ok(reload)
 }
 
 /// Snapshot every active incoming-link graph for status presentation.
 pub(super) fn statistics() -> Vec<LinkStatistics> {
+    let _control = lock(&LINK_CONTROL);
     let host = lock(running_host()).as_ref().map(|running| running.host);
     let Some(host) = host else {
         return Vec::new();
@@ -296,28 +295,26 @@ impl LinkHost {
         if !snapshot.eligible {
             return Ok(false);
         }
-        if let Some(hook) = snapshot.hook {
-            hook.prepare_active_if_missing(self.driver, snapshot.sample_rate_hz)?;
-            return Ok(false);
-        }
-        // SAFETY: the snapshot was captured from this same referenced channel.
-        unsafe {
-            self.install(
-                channel,
-                profile,
-                &snapshot.name,
-                snapshot.sample_rate_hz,
-                false,
-            )
-        }
-        .map(|hook| {
-            if let Some(hook) = hook {
-                drop(hook);
-                true
-            } else {
-                false
+        let result = if let Some(hook) = snapshot.hook {
+            hook.prepare_active_if_missing(self.driver, profile, snapshot.sample_rate_hz)
+                .map(|()| false)
+        } else {
+            // SAFETY: the snapshot was captured from this same referenced channel.
+            unsafe {
+                self.install(
+                    channel,
+                    profile,
+                    &snapshot.name,
+                    snapshot.sample_rate_hz,
+                    false,
+                )
             }
-        })
+            .map(|hook| hook.is_some())
+        };
+        if let Err(error) = result {
+            (self.asterisk.log_error)(&link_attachment_diagnostic(&snapshot.name, error));
+        }
+        result
     }
 
     /// Stage a replacement for an existing hook, or attach a new dormant hook.
@@ -333,25 +330,30 @@ impl LinkHost {
     ) -> Result<(), LinkHostError> {
         // SAFETY: the caller holds one live Asterisk channel reference.
         let snapshot = unsafe { self.snapshot(channel) };
-        if let Some(hook) = snapshot.hook {
-            hook.prepare_reload(self.driver, snapshot.sample_rate_hz)?;
-            reload.hooks.push(hook);
-            return Ok(());
-        }
-        let Some(profile) = profile.filter(|_| snapshot.eligible) else {
-            return Ok(());
+        let result = if let Some(hook) = snapshot.hook {
+            hook.prepare_reload(self.driver, snapshot.sample_rate_hz)
+                .map(|()| Some(hook))
+        } else if let Some(profile) = profile.filter(|_| snapshot.eligible) {
+            // SAFETY: the snapshot was captured from this same referenced channel.
+            unsafe {
+                self.install(
+                    channel,
+                    profile,
+                    &snapshot.name,
+                    snapshot.sample_rate_hz,
+                    true,
+                )
+            }
+        } else {
+            Ok(None)
         };
-        // SAFETY: the snapshot was captured from this same referenced channel.
-        if let Some(hook) = unsafe {
-            self.install(
-                channel,
-                profile,
-                &snapshot.name,
-                snapshot.sample_rate_hz,
-                true,
-            )
-        }? {
-            reload.hooks.push(hook);
+        match result {
+            Ok(Some(hook)) => reload.hooks.push(hook),
+            Ok(None) => {}
+            Err(error) => {
+                (self.asterisk.log_error)(&link_reload_diagnostic(&snapshot.name, error));
+                return Err(error);
+            }
         }
         Ok(())
     }
@@ -613,6 +615,7 @@ impl LinkHost {
             unsafe { LinkHook::release(raw) };
             return Err(LinkHostError::Asterisk);
         }
+        (self.asterisk.log_notice)(&link_attached_diagnostic(channel_name, staged));
         // SAFETY: the builder reference transfers to this RAII owner. Active
         // callers drop it immediately; staged callers retain it through commit.
         Ok(Some(unsafe { LinkHookRef::from_owned(raw) }))
@@ -756,6 +759,7 @@ impl LinkHook {
     fn prepare_active_if_missing(
         &self,
         driver: *mut c_void,
+        profile: &str,
         sample_rate_hz: u32,
     ) -> Result<(), LinkHostError> {
         if self.attachment.load(Ordering::Acquire) != LINK_ATTACHED
@@ -765,12 +769,12 @@ impl LinkHook {
             return Ok(());
         }
         let mut candidate = ptr::null_mut();
-        // SAFETY: profile storage and driver remain live for this synchronous call.
+        // SAFETY: profile and driver remain live for this synchronous call.
         let result = unsafe {
             (self.product.prepare)(
                 driver,
-                self.profile.as_ptr(),
-                self.profile.len() as u32,
+                profile.as_ptr(),
+                profile.len() as u32,
                 sample_rate_hz,
                 MAXIMUM_LINK_FRAME_COUNT,
                 ptr::from_mut(&mut candidate),
@@ -926,10 +930,11 @@ impl LinkHookRef {
     fn prepare_active_if_missing(
         &self,
         driver: *mut c_void,
+        profile: &str,
         sample_rate_hz: u32,
     ) -> Result<(), LinkHostError> {
         // SAFETY: this RAII reference keeps the hook alive.
-        unsafe { self.raw.as_ref() }.prepare_active_if_missing(driver, sample_rate_hz)
+        unsafe { self.raw.as_ref() }.prepare_active_if_missing(driver, profile, sample_rate_hz)
     }
 
     fn prepare_reload(
@@ -1109,7 +1114,70 @@ fn production_asterisk_operations() -> AsteriskOperations {
         iterator_next: production_iterator_next,
         iterator_destroy: production_iterator_destroy,
         channel_unref: production_channel_unref,
+        log_notice: production_log_notice,
+        log_error: production_log_error,
     }
+}
+
+fn link_attached_diagnostic(channel: &str, staged: bool) -> String {
+    let suffix = if staged { " for staged reload" } else { "" };
+    format!("USBRadioPlus link processing attached to {channel}{suffix}")
+}
+
+fn link_attachment_diagnostic(channel: &str, error: LinkHostError) -> String {
+    match error {
+        LinkHostError::Asterisk => {
+            format!("Unable to attach USBRadioPlus link processing to {channel} (Asterisk failure)")
+        }
+        LinkHostError::Product(status) => {
+            format!("Unable to attach USBRadioPlus link processing to {channel} ({status})")
+        }
+    }
+}
+
+fn link_reload_diagnostic(channel: &str, error: LinkHostError) -> String {
+    match error {
+        LinkHostError::Asterisk => format!(
+            "Unable to prepare replacement USBRadioPlus link processing for {channel} (Asterisk failure)"
+        ),
+        LinkHostError::Product(status) => format!(
+            "Unable to prepare replacement USBRadioPlus link processing for {channel} ({status})"
+        ),
+    }
+}
+
+#[cfg(not(test))]
+fn production_log_notice(message: &str) {
+    // SAFETY: message length bounds the readable byte span and all variadic
+    // arguments match Asterisk's public logging declaration.
+    unsafe {
+        ffi::ast_log(
+            ffi::__LOG_NOTICE as c_int,
+            c"usbradioplus-rust-host".as_ptr(),
+            0,
+            c"link".as_ptr(),
+            c"%.*s\n".as_ptr(),
+            message.len().min(c_int::MAX as usize) as c_int,
+            message.as_ptr().cast::<c_char>(),
+        )
+    };
+}
+
+#[cfg(not(test))]
+fn production_log_error(message: &str) {
+    // SAFETY: message length bounds the readable byte span and all variadic
+    // arguments match Asterisk's public logging declaration.
+    unsafe {
+        ffi::ast_log(
+            ffi::__LOG_ERROR as c_int,
+            c"usbradioplus-rust-host".as_ptr(),
+            0,
+            c"link".as_ptr(),
+            c"%.*s\n".as_ptr(),
+            message.len().min(c_int::MAX as usize) as c_int,
+            message.as_ptr().cast::<c_char>(),
+        )
+    };
 }
 
 #[cfg(not(test))]

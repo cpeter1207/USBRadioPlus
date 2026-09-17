@@ -175,11 +175,36 @@ struct FakeSession {
     maximum_transmit: u32,
     receive_frames: u64,
     transmit_frames: u64,
+    program: FakeProgramPort,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct FakeProcessorPort {
+    context: *mut c_void,
+    process: Option<usbradioplus_radio::ProcessF32>,
+    bypass: Option<usbradioplus_radio::Bypass>,
+    warm: Option<usbradioplus_radio::Warm>,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct FakeProgramPort {
+    context: *mut c_void,
+    render: Option<usbradioplus_radio::ProgramRingRenderF32>,
+    warm: Option<usbradioplus_radio::Warm>,
+}
+
+#[repr(C)]
+struct FakePorts {
+    struct_size: u32,
+    processors: [FakeProcessorPort; usbradioplus_radio::CTCSS_TONE_COUNT + 7],
+    program: FakeProgramPort,
 }
 
 unsafe extern "C" fn create(
     config: *const FakeConfigPrefix,
-    _ports: *const c_void,
+    ports: *const c_void,
     output: *mut *mut c_void,
 ) -> c_int {
     // SAFETY: the wrapper supplies a complete config prefix and handle destination.
@@ -193,6 +218,8 @@ unsafe extern "C" fn create(
         maximum_transmit: config.maximum_transmit_frame_count,
         receive_frames: 0,
         transmit_frames: 0,
+        // SAFETY: the radio wrapper supplies the complete session-port ABI.
+        program: unsafe { (*ports.cast::<FakePorts>()).program },
     });
     *output = Box::into_raw(session).cast();
     if config.generation_id == FAILING_GENERATION {
@@ -296,11 +323,48 @@ unsafe extern "C" fn transmit(
     unsafe {
         std::slice::from_raw_parts_mut(output, frame_count as usize * CHANNELS).fill(0.25);
     }
+    if session.generation_id == 24 {
+        let mut mono = [0.0; ADVANCED_FRAME_SAMPLES];
+        let mut program = usbradioplus_radio::ProgramRingResult::default();
+        // SAFETY: create copied the session's live program port and these buffers
+        // meet its exact frame bound. This fixture exercises the real source.
+        let status = unsafe {
+            session.program.render.unwrap()(
+                session.program.context,
+                mono.as_mut_ptr(),
+                frame_count,
+                &mut program,
+            )
+        };
+        if status != RADIO_OK {
+            return status;
+        }
+        if controls.render_admitted == 0 {
+            mono.fill(0.0);
+        }
+        // SAFETY: caller supplied exactly frame_count writable stereo frames.
+        let output =
+            unsafe { std::slice::from_raw_parts_mut(output, frame_count as usize * CHANNELS) };
+        for (frame, sample) in output.chunks_exact_mut(CHANNELS).zip(mono.iter()) {
+            frame.fill(*sample);
+        }
+        if controls.ctcss_inhibit != 0 {
+            // A retained radio signaling tail can generate audio after program
+            // unkey; a failed direct callback must suppress it at the host.
+            output.fill(0.5);
+        }
+    }
     *result = FakeTransmitResult {
         generation_id: session.generation_id,
         first_sample_index: session.transmit_frames,
         frame_count,
-        logical_ptt: controls.external_ptt_request,
+        // Model a retained signaling tail during the direct failure path: the
+        // host must suppress this PTT result instead of relatching hardware.
+        logical_ptt: if session.generation_id == 24 && controls.ctcss_inhibit != 0 {
+            1
+        } else {
+            controls.external_ptt_request
+        },
         transmitter_state: 1,
         selected_ctcss_tenths_hz: if controls.external_ptt_request != 0 {
             1_000

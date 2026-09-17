@@ -8,6 +8,107 @@ mod provider_support;
 
 static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
+unsafe extern "C" fn direct_receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
+    0
+}
+unsafe extern "C" fn direct_transmit_noop(
+    _: *mut c_void,
+    _: *mut f32,
+    _: u32,
+    _: *mut u32,
+) -> c_int {
+    0
+}
+
+pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
+    UrpAstDirectCallbacks {
+        struct_size: size_of::<UrpAstDirectCallbacks>() as u32,
+        abi_version: 1,
+        receive_context: NonNull::<u8>::dangling().as_ptr().cast(),
+        receive: Some(direct_receive_noop),
+        transmit_context: NonNull::<u8>::dangling().as_ptr().cast(),
+        transmit: Some(direct_transmit_noop),
+    }
+}
+
+#[test]
+fn direct_attachment_validates_boundary_and_survives_prepared_reload() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    // SAFETY: the test owns all handles and no-op callbacks never dereference contexts.
+    unsafe {
+        let app = reserve_channel(driver, URP_AST_TRANSPORT_APP_RPT);
+        assert_ne!(
+            channel_set_direct_callbacks(app, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(app);
+        let advanced = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, ptr::null()),
+            URP_AST_OK
+        );
+        for field in 0..6 {
+            let mut invalid = direct_callbacks();
+            match field {
+                0 => invalid.struct_size -= 1,
+                1 => invalid.abi_version = 2,
+                2 => invalid.receive = None,
+                3 => invalid.transmit = None,
+                4 => invalid.receive_context = ptr::null_mut(),
+                _ => invalid.transmit_context = ptr::null_mut(),
+            }
+            assert_ne!(channel_set_direct_callbacks(advanced, &invalid), URP_AST_OK);
+        }
+        assert_eq!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_eq!(stage_reload(driver, b"[usb]\n"), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(advanced), URP_AST_OK);
+        let (_, control) = channel_control(advanced).unwrap();
+        // Duplicate rejection proves the replacement already carries its direct binding.
+        assert!(
+            control
+                .reload
+                .as_mut()
+                .unwrap()
+                .media
+                .set_direct_callbacks(direct_callbacks())
+                .is_err()
+        );
+        assert_eq!(channel_reload_activate(advanced), URP_AST_OK);
+        assert_eq!(channel_reload_finish(advanced, 1), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
+        assert_eq!(channel_start(advanced), URP_AST_OK);
+        assert_eq!(channel_stop(advanced), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(advanced);
+        let late = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(channel_start(late), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(late, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_eq!(channel_stop(late), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(late, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(late);
+        driver_destroy(driver);
+    }
+}
+
 #[derive(Default)]
 struct Calls {
     voice: Vec<(usize, u32)>,
@@ -210,7 +311,7 @@ unsafe fn stage_reload(driver: *mut c_void, config: &[u8]) -> c_int {
 }
 
 unsafe fn reload_channels(driver: *mut c_void, channels: &[*mut c_void], config: &[u8]) -> c_int {
-    // SAFETY: the caller supplies live handles serialized exactly as the C shim does.
+    // SAFETY: the caller supplies live handles serialized exactly as the Rust host does.
     let mut status = unsafe { stage_reload(driver, config) };
     if status != URP_AST_OK {
         return status;
@@ -265,8 +366,7 @@ fn command(kind: u32, target: u32, value: i64) -> UrpAstChannelCommand {
 
 #[test]
 fn descriptor_exposes_one_complete_versioned_boundary() {
-    // SAFETY: the exported function returns the documented static descriptor.
-    let descriptor = unsafe { &*usbradioplus_asterisk_descriptor() };
+    let descriptor = product_descriptor();
     assert_eq!(
         descriptor.struct_size as usize,
         size_of::<UrpAstDescriptor>()
@@ -671,21 +771,22 @@ fn operations_require_every_callback() {
 #[test]
 fn transport_configuration_is_explicit_and_bounded() {
     let app = reserve_args(URP_AST_TRANSPORT_APP_RPT);
+    let (mode, configuration) = controller_configuration(app.transport).unwrap();
+    assert_eq!(mode, AsteriskPcmMode::AppRpt);
     assert!(matches!(
-        controller_configuration(app.transport).unwrap(),
-        (
-            AsteriskPcmMode::AppRpt,
-            ControllerConfiguration::AppRpt { .. }
-        )
+        configuration,
+        ControllerConfiguration::AppRpt {
+            handoff_slots: 3,
+            ..
+        }
     ));
     let advanced = reserve_args(URP_AST_TRANSPORT_RPT_ADVANCED);
-    assert!(matches!(
-        controller_configuration(advanced.transport).unwrap(),
-        (
-            AsteriskPcmMode::Advanced,
-            ControllerConfiguration::RptAdvanced { .. }
-        )
-    ));
+    let (mode, configuration) = controller_configuration(advanced.transport).unwrap();
+    assert_eq!(mode, AsteriskPcmMode::Advanced);
+    assert_eq!(
+        configuration,
+        ControllerConfiguration::RptAdvanced { handoff_slots: 3 }
+    );
     let unknown = reserve_args(99);
     assert!(matches!(
         controller_configuration(unknown.transport),

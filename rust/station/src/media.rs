@@ -1,7 +1,9 @@
 //! Owned binding between prepared station media and released runtime providers.
 
+use std::ffi::{c_int, c_void};
 use std::fmt;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use usbradioplus_asl3::{
     AdapterSetupError, AppRptConverter, ControllerState, EchoConfiguration, ReceivePublisher,
@@ -16,6 +18,46 @@ use crate::{
     ControllerTransport, PreparedStation, ProgramRingConsumer, ProgramRingSetupError, StationPlan,
     prepare_program_ring,
 };
+
+/// Borrowed native 48 kHz mono F32 callback pair for the private initial-alpha POC.
+/// Each callback processes exactly `frame_count` mutable samples and returns zero
+/// on success. Context ownership stays with the attaching controller.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct DirectCallbacks {
+    /// Exact byte size of this descriptor.
+    pub struct_size: u32,
+    /// Exact direct-callback contract version, currently one.
+    pub abi_version: u32,
+    /// Borrowed receive context, valid until synchronous stream shutdown.
+    pub receive_context: *mut c_void,
+    /// Process USB receive DSP output and its qualified receiver key.
+    pub receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
+    /// Borrowed transmit context, valid until synchronous stream shutdown.
+    pub transmit_context: *mut c_void,
+    /// Fill program PCM and write zero/one to the transmitter key result.
+    pub transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32) -> c_int>,
+}
+
+// SAFETY: attaching requires independently serialized, thread-movable callback
+// contexts that support concurrent RX/TX calls until synchronous shutdown.
+unsafe impl Send for DirectCallbacks {}
+// SAFETY: shared descriptor copies are immutable; the attaching contract assigns
+// exclusive RX and TX owners and requires disjoint or synchronized context data.
+unsafe impl Sync for DirectCallbacks {}
+
+impl DirectCallbacks {
+    /// Validate the exact initial-alpha boundary before copying callback pointers.
+    #[must_use]
+    pub fn is_valid(&self) -> bool {
+        self.struct_size as usize == std::mem::size_of::<Self>()
+            && self.abi_version == 1
+            && !self.receive_context.is_null()
+            && self.receive.is_some()
+            && !self.transmit_context.is_null()
+            && self.transmit.is_some()
+    }
+}
 
 /// ASL3 controller resources selected for one prepared station.
 pub enum ControllerSetup {
@@ -129,14 +171,59 @@ pub struct StationMedia {
     pub controller: ControllerState,
 }
 
+impl StationMedia {
+    /// Attach borrowed direct endpoints before opening the station stream.
+    ///
+    /// # Safety
+    /// Contexts and executable callbacks must outlive this media and every runtime
+    /// made from it, until synchronous shutdown. RX and TX may run concurrently;
+    /// each endpoint must be nonblocking, allocation-free, lock-free and must not
+    /// unwind or mutate reference counts. No Asterisk calls are permitted there.
+    ///
+    /// # Errors
+    /// Rejects incompatible transport, malformed descriptors and repeat attachment.
+    pub unsafe fn set_direct_callbacks(
+        &mut self,
+        callbacks: DirectCallbacks,
+    ) -> Result<(), StationMediaError> {
+        if self.plan.transport() != ControllerTransport::RptAdvanced
+            || !callbacks.is_valid()
+            || self.receive.direct.is_some()
+        {
+            return Err(StationMediaError::ControllerTransportMismatch);
+        }
+        // SAFETY: media has not been opened; its sole TX owner has no live callback.
+        unsafe {
+            self.transmit
+                .program
+                .prepare(self.plan.radio().maximum_transmit_frame_count as usize);
+        }
+        self.receive.direct = Some(callbacks);
+        self.transmit.direct = Some(callbacks);
+        Ok(())
+    }
+}
+
 /// Sole local receive callback owner and its ASL3 publication endpoint.
 pub struct StationReceive {
     radio: ReceiveEndpoint<'static>,
     controller: ReceivePublisher,
+    pub(crate) direct: Option<DirectCallbacks>,
+    qualification: Arc<AtomicU32>,
     _resources: Arc<MediaResources>,
 }
 
 impl StationReceive {
+    pub(crate) fn publish_qualification(
+        &self,
+        qualification: usbradioplus_asl3::ReceiveQualification,
+    ) {
+        self.qualification.store(
+            crate::program::pack_qualification(qualification),
+            Ordering::Release,
+        );
+    }
+
     /// Borrow the released radio receive endpoint for one bounded callback.
     pub fn radio(&mut self) -> &mut ReceiveEndpoint<'static> {
         &mut self.radio
@@ -151,10 +238,20 @@ impl StationReceive {
 /// Sole hardware-paced radio transmit callback owner.
 pub struct StationTransmit {
     radio: TransmitEndpoint<'static>,
+    pub(crate) direct: Option<DirectCallbacks>,
+    program: Arc<crate::program::DirectProgram>,
     _resources: Arc<MediaResources>,
 }
 
 impl StationTransmit {
+    pub(crate) fn stage_direct(&mut self, samples: &[f32]) {
+        // SAFETY: this sole TX owner stages before invoking radio.render(). The
+        // separate source cell is shared; the borrowed consumer is never accessed.
+        unsafe {
+            self.program.stage(samples);
+        }
+    }
+
     /// Borrow the released radio transmit endpoint for one bounded callback.
     pub fn radio(&mut self) -> &mut TransmitEndpoint<'static> {
         &mut self.radio
@@ -211,6 +308,8 @@ impl PreparedStation {
         }
         let (program, program_ring) =
             prepare_program_ring(ring_provider, self.plan().program_ring())?;
+        let qualification = Arc::clone(&program_ring.qualification);
+        let direct_program = program_ring.direct_source();
         let (controller_publisher, controller) = controller_setup.prepare(program)?;
         let (plan, processing) = self.into_parts();
         let mut resources = Arc::new(MediaResources {
@@ -228,10 +327,14 @@ impl PreparedStation {
             receive: StationReceive {
                 radio: receive,
                 controller: controller_publisher,
+                direct: None,
+                qualification,
                 _resources: Arc::clone(&resources),
             },
             transmit: StationTransmit {
                 radio: transmit,
+                direct: None,
+                program: direct_program,
                 _resources: Arc::clone(&resources),
             },
             control: StationControl {

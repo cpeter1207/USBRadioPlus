@@ -59,6 +59,21 @@ fn producer_drops_when_full_slot_is_claimed() {
 }
 
 #[test]
+fn spare_slot_preserves_the_next_value_while_the_consumer_reads() {
+    let (mut producer, mut consumer) = LatestHandoff::<u32>::split(3).unwrap();
+    assert_eq!(producer.push(1), PublishOutcome::Published);
+    consumer
+        .shared
+        .consumer_state
+        .store(READING, Ordering::Release);
+    assert_eq!(producer.push(2), PublishOutcome::Published);
+    consumer.shared.consumer_state.store(0, Ordering::Release);
+    assert_eq!(consumer.pop(), Some(1));
+    assert_eq!(consumer.pop(), Some(2));
+    assert_eq!(consumer.observe().discarded, 0);
+}
+
+#[test]
 fn endpoints_transfer_across_threads() {
     let (mut producer, mut consumer) = LatestHandoff::<u32>::split(8).unwrap();
     let start = Arc::new(Barrier::new(2));

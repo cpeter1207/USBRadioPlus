@@ -19,6 +19,10 @@ Package builds declare their dependencies and never run `install.sh` or
 USBRadioPlus repository and installs the same development packages used by the
 Debian build.
 
+The Rust Asterisk host generates its narrow bindings from the installed public
+Asterisk headers. `libclang-dev` is therefore a build-only dependency; it is
+not installed with the binary package.
+
 The only production C source is `src/chan_usbradioplus_shim.c`. It declares
 Asterisk metadata, composes the provider manifest, and forwards load, reload,
 and unload through the versioned Rust lifecycle descriptor. It builds against
