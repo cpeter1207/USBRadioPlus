@@ -1,0 +1,22 @@
+.TH USBRADIOPLUS-MIGRATION 7
+.\" source-sha256 .hybrid/migration.md c99e425535baf8d0cb90176d5619d40737c113ddaf9bfb4cd29e1714b367044a
+.SH NAME
+usbradioplus-migration \- targeted Rust host migration checks
+.SH SYNOPSIS
+.B cargo test --offline --locked -p usbradioplus-core --lib
+.SH DESCRIPTION
+Run targeted checks in the container described by
+.I .hybrid/workflows.json
+using the maintained project-owned, labeled container launcher.
+.PP
+The migration plan and acceptance criteria are in .hybrid/migration.md.
+This developer workflow does not approve deployment or replace the full PR gate.
+.SH OPTIONS
+.B --offline --locked
+Use the dependency cache and exact Cargo.lock resolution.
+.SH EXAMPLES
+.B cargo fmt --all -- --check
+.PP
+Run the command inside the selected image without rewriting source.
+.SH EXIT STATUS
+Zero means the selected check passed. Nonzero requires diagnosis.

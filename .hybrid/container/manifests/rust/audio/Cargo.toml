@@ -1,0 +1,15 @@
+[package]
+name = "usbradioplus-audio"
+version = "0.1.0-alpha18"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+description = "USBRadioPlus client for the PortAudio/ALSA adapter"
+publish = false
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"

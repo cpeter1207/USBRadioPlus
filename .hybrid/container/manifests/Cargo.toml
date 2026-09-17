@@ -1,0 +1,10 @@
+[workspace]
+members = ["rust/asl3", "rust/asterisk", "rust/audio", "rust/core", "rust/driver", "rust/ffmpeg", "rust/gpio", "rust/radio", "rust/ring", "rust/rms-agc", "rust/rnnoise", "rust/runtime", "rust/samplerate", "rust/station", "rust/tune"]
+resolver = "3"
+
+[profile.release]
+opt-level = 2
+codegen-units = 1
+debug = 1
+lto = "thin"
+panic = "abort"

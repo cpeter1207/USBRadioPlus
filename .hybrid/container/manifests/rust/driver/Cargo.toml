@@ -1,0 +1,28 @@
+[package]
+name = "usbradioplus-driver"
+version = "0.1.0-alpha18"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+description = "USBRadioPlus channel-driver ownership and lifecycle"
+publish = false
+
+[dependencies]
+usbradioplus-asl3 = { path = "../asl3" }
+usbradioplus-audio = { path = "../audio" }
+usbradioplus-core = { path = "../core" }
+usbradioplus-ffmpeg = { path = "../ffmpeg" }
+usbradioplus-gpio = { path = "../gpio" }
+usbradioplus-radio = { path = "../radio" }
+usbradioplus-ring = { path = "../ring" }
+usbradioplus-rnnoise = { path = "../rnnoise" }
+usbradioplus-runtime = { path = "../runtime" }
+usbradioplus-samplerate = { path = "../samplerate" }
+usbradioplus-station = { path = "../station" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"
