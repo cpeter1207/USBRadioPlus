@@ -58,3 +58,32 @@ documentation before a PR, and require the full gate before merging to main.
 The Hybrid recipe supports targeted development checks, not a replacement release
 system. The maintained companion-repository workflows remain authoritative.
 Update developer docs with code; defer operator documentation until a PR.
+
+## ADR alignment — 2026-09-17
+
+The owner authorized closing the audited ADR 0001/0002/0019/0023/0025/0026/0027
+gaps. ADR 0023 is authoritative for telemetry: local commands reply to local
+RF, peer commands reply only to their source, and CLI replies stay on the CLI.
+ADR 0025's all-local telemetry rule was an intermediate implementation.
+This work does not authorize node deployment, publication, or new wishlist features.
+
+Reuse the existing released ring, prepared radio contexts, bounded SPSC queues,
+control executor, and generation/hazard ownership. Do not add parallel DSP or
+replace released dynamic components. Work through independently tested parts:
+
+- [ ] Resolve missing profile selectors through defaults with useful warnings;
+  preserve structural-error rejection and existing lower-level editing contracts.
+- [ ] Latch local and peer DTMF muting until command termination and gate delayed
+  inbound PCM at the output, using the existing shared ring and command policy.
+- [ ] Own local rings, qualification metadata and delay settings in each RPT
+  operating generation so same-device reload adopts all three together.
+- [ ] Retain USB device leases across normal reload; prepare/warm replacement DSP
+  off callback, adopt RX/TX independently, reclaim only after quiescence.
+- [ ] Move telemetry policy to station control, original-rate file/speech PCM to
+  the single telemetry producer/ring, and route replies according to ADR 0023.
+- [ ] Reconcile architecture status, add focused regression tests and Rustdoc,
+  run affected checks, and leave the full hosted PR gate explicitly pending.
+
+The sample-associated qualification wording conflicts with immediate queued-tail
+suppression. The owner has been asked to resolve this before implementing that
+boundary; independent configuration work can proceed meanwhile.
