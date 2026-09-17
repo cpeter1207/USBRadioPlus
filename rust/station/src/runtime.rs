@@ -11,8 +11,8 @@ use usbradioplus_asl3::{
     ReceiveStatus,
 };
 use usbradioplus_audio::{
-    AudioError, AudioProvider, AudioStream, ReceiveWorkerEndpoint, StreamStatistics, StreamTiming,
-    TransmitWorkerEndpoint,
+    AudioError, AudioProvider, AudioStream, ReceiveWorkerEndpoint, StreamConfig, StreamStatistics,
+    StreamTiming, TransmitWorkerEndpoint,
 };
 use usbradioplus_radio::{
     CTCSS_TONE_COUNT, ReceiveControls, ReceiveResult, TransmitControls, TransmitResult,
@@ -393,14 +393,16 @@ struct TransmitContext {
     hardware: SharedHardwareState,
 }
 
-/// One stopped or running direct PortAudio station composition.
+/// One stopped, running, or reload-suspended direct PortAudio station composition.
 ///
 /// The stream is declared first so its destructor stops and destroys both
 /// callbacks before their contexts or the boxed station media are released.
 pub struct StationRuntime {
-    stream: AudioStream<'static, 'static>,
+    stream: Option<AudioStream<'static, 'static>>,
     _receive_context: Box<UnsafeCell<ReceiveContext>>,
     _transmit_context: Box<UnsafeCell<TransmitContext>>,
+    provider: AudioProvider,
+    stream_config: StreamConfig,
     hardware: SharedHardwareState,
 }
 
@@ -485,31 +487,17 @@ impl StationRuntime {
             mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
         }));
-        // SAFETY: both boxed UnsafeCell contexts have stable addresses and are
-        // retained until the stream is stopped and destroyed. Each callback is
-        // the sole serial mutator of its disjoint context.
-        let receive = unsafe {
-            ReceiveWorkerEndpoint::from_raw(
-                receive_callback,
-                NonNull::new_unchecked(receive_context.get()).cast(),
-            )
+        let mut runtime = Self {
+            stream: None,
+            _receive_context: receive_context,
+            _transmit_context: transmit_context,
+            provider,
+            stream_config: stream,
+            hardware: hardware.clone(),
         };
-        // SAFETY: the transmit context is disjoint from the receive context and
-        // obeys the same stream-before-context teardown contract.
-        let transmit = unsafe {
-            TransmitWorkerEndpoint::from_raw(
-                transmit_callback,
-                NonNull::new_unchecked(transmit_context.get()).cast(),
-            )
-        };
-        let stream = provider.open_stream(stream, receive, transmit)?;
+        runtime.reopen()?;
         Ok((
-            Self {
-                stream,
-                _receive_context: receive_context,
-                _transmit_context: transmit_context,
-                hardware: hardware.clone(),
-            },
+            runtime,
             StationControlHost {
                 plan,
                 control,
@@ -519,27 +507,82 @@ impl StationRuntime {
         ))
     }
 
-    /// Start capture and playback callbacks.
+    /// Reopen a reload-suspended stream without starting its callbacks.
+    ///
+    /// The immutable configuration and stable callback boxes survive suspension;
+    /// reopening therefore restores device ownership without replacing media.
+    pub fn reopen(&mut self) -> Result<(), AudioError> {
+        if self.stream.is_some() {
+            return Ok(());
+        }
+        // SAFETY: no stream owns these endpoints while suspended. Both boxed
+        // UnsafeCell contexts keep stable addresses until the reopened stream
+        // is stopped and destroyed, with one serial mutator per disjoint context.
+        let receive = unsafe {
+            ReceiveWorkerEndpoint::from_raw(
+                receive_callback,
+                NonNull::new_unchecked(self._receive_context.get()).cast(),
+            )
+        };
+        // SAFETY: the transmit context is disjoint from the receive context and
+        // obeys the same stream-before-context teardown contract.
+        let transmit = unsafe {
+            TransmitWorkerEndpoint::from_raw(
+                transmit_callback,
+                NonNull::new_unchecked(self._transmit_context.get()).cast(),
+            )
+        };
+        self.stream = Some(
+            self.provider
+                .open_stream(self.stream_config, receive, transmit)?,
+        );
+        Ok(())
+    }
+
+    /// Reopen if reload-suspended, then start capture and playback callbacks.
     pub fn start(&mut self) -> Result<(), AudioError> {
-        self.stream.start()
+        self.reopen()?;
+        self.stream
+            .as_mut()
+            .expect("successful reopen owns a stream")
+            .start()
     }
 
     /// Stop capture and playback callbacks; repeated calls are harmless.
     pub fn stop(&mut self) -> Result<(), AudioError> {
-        self.stream.stop()
+        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)
+    }
+
+    /// Stop callbacks and release the exclusive device lease for reload.
+    ///
+    /// A stop failure retains the stream because callback quiescence is not
+    /// established. Successful suspension preserves media for rollback.
+    pub fn suspend(&mut self) -> Result<(), AudioError> {
+        self.stop()?;
+        drop(self.stream.take());
+        Ok(())
     }
 
     /// Read current audio and station callback statistics.
+    /// Returns `InvalidArgument` while reload-suspended, without an open stream.
     pub fn statistics(&self) -> Result<StationRuntimeStatistics, AudioError> {
         Ok(StationRuntimeStatistics {
-            audio: self.stream.statistics()?,
+            audio: self
+                .stream
+                .as_ref()
+                .ok_or(AudioError::InvalidArgument)?
+                .statistics()?,
             callbacks: self.hardware.callback_statistics(),
         })
     }
 
     /// Read immutable PortAudio stream timing.
+    /// Returns `InvalidArgument` while reload-suspended, without an open stream.
     pub fn timing(&self) -> Result<StreamTiming, AudioError> {
-        self.stream.timing()
+        self.stream
+            .as_ref()
+            .ok_or(AudioError::InvalidArgument)?
+            .timing()
     }
 
     /// Clone the lock-free state handle used by the hardware/control owner.
@@ -551,7 +594,7 @@ impl StationRuntime {
 
 impl Drop for StationRuntime {
     fn drop(&mut self) {
-        let _ = self.stream.stop();
+        let _ = self.stop();
     }
 }
 

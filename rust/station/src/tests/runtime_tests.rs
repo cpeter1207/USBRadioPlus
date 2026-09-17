@@ -521,8 +521,26 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     runtime.stop().unwrap();
     runtime.stop().unwrap();
     assert_eq!(STOPS.get(), 1);
-    drop(runtime);
+    runtime.suspend().unwrap();
+    runtime.suspend().unwrap();
     assert_eq!(DESTROYS.get(), 1);
+    assert_eq!(runtime.statistics(), Err(AudioError::InvalidArgument));
+    assert_eq!(runtime.timing(), Err(AudioError::InvalidArgument));
+    CREATE_FAILS.set(true);
+    assert_eq!(runtime.reopen(), Err(AudioError::InvalidArgument));
+    CREATE_FAILS.set(false);
+    runtime.reopen().unwrap();
+    runtime.reopen().unwrap();
+    assert_eq!(STARTS.get(), 1, "reopening leaves callbacks stopped");
+    runtime.start().unwrap();
+    assert_eq!(STARTS.get(), 2);
+    assert_eq!(hardware.callback_statistics().receive_calls, 2);
+    assert_eq!(hardware.callback_statistics().transmit_calls, 2);
+    assert!(runtime.statistics().is_ok());
+    assert!(runtime.timing().is_ok());
+    drop(runtime);
+    assert_eq!(STOPS.get(), 2);
+    assert_eq!(DESTROYS.get(), 2);
 }
 
 #[derive(Default)]

@@ -20,7 +20,32 @@ pub(super) const FAIL_MIXER: u32 = 9;
 pub(super) const FAIL_EEPROM: u32 = 10;
 pub(super) const PUBLISH_ON_STOP: u32 = 11;
 pub(super) const FAIL_START_ONCE: u32 = 12;
+pub(super) const FAIL_OPEN_ONCE: u32 = 13;
 static FAILURE: AtomicU32 = AtomicU32::new(0);
+static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
+static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
+static AUDIO_CREATES: AtomicU32 = AtomicU32::new(0);
+static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
+
+pub(super) fn exclusive_audio(enabled: bool) {
+    assert_eq!(AUDIO_STREAMS.load(Ordering::Acquire), 0);
+    if enabled {
+        AUDIO_CREATES.store(0, Ordering::Release);
+        AUDIO_DESTROYS.store(0, Ordering::Release);
+    }
+    EXCLUSIVE_AUDIO.store(u32::from(enabled), Ordering::Release);
+}
+
+pub(super) fn audio_streams() -> u32 {
+    AUDIO_STREAMS.load(Ordering::Acquire)
+}
+
+pub(super) fn audio_lifecycle() -> (u32, u32) {
+    (
+        AUDIO_CREATES.load(Ordering::Acquire),
+        AUDIO_DESTROYS.load(Ordering::Acquire),
+    )
+}
 
 fn failed(stage: u32) -> bool {
     FAILURE.load(Ordering::Acquire) == stage
@@ -839,6 +864,7 @@ struct AudioDescriptor {
 unsafe impl Sync for AudioDescriptor {}
 
 struct FakeStream {
+    exclusive: bool,
     receive: unsafe extern "C" fn(*mut c_void, *const f32, u32) -> i32,
     receive_context: *mut c_void,
     transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
@@ -854,12 +880,24 @@ unsafe extern "C" fn audio_stream_create(
     config: *const AudioStreamConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    if failed(FAIL_OPEN_ONCE) {
+        clear_failure();
+        return -1;
+    }
     if failed(FAIL_OPEN) {
         return -1;
+    }
+    let exclusive = EXCLUSIVE_AUDIO.load(Ordering::Acquire) != 0;
+    if exclusive && AUDIO_STREAMS.swap(1, Ordering::AcqRel) != 0 {
+        return -6;
+    }
+    if exclusive {
+        AUDIO_CREATES.fetch_add(1, Ordering::AcqRel);
     }
     // SAFETY: the validated wrapper supplies complete live objects.
     let (config, output) = unsafe { (&*config, &mut *output) };
     *output = Box::into_raw(Box::new(FakeStream {
+        exclusive,
         receive: config.receive_worker.unwrap(),
         receive_context: config.receive_context,
         transmit: config.transmit_worker.unwrap(),
@@ -940,7 +978,12 @@ unsafe extern "C" fn audio_stream_timing(
 
 unsafe extern "C" fn audio_stream_destroy(stream: *mut c_void) {
     // SAFETY: the handle is the unique allocation returned by create.
-    drop(unsafe { Box::from_raw(stream.cast::<FakeStream>()) });
+    let stream = unsafe { Box::from_raw(stream.cast::<FakeStream>()) };
+    if stream.exclusive {
+        AUDIO_STREAMS.fetch_sub(1, Ordering::AcqRel);
+        AUDIO_DESTROYS.fetch_add(1, Ordering::AcqRel);
+    }
+    drop(stream);
 }
 
 unsafe extern "C" fn unused_audio_mixer_create(

@@ -1688,32 +1688,33 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
         } else {
             None
         };
-        if let Err(error) = control.hardware.as_mut().ok_or(Status::NotReady)?.stop() {
+        // A stopped stream still owns its exclusive device lease. Suspend closes
+        // it while retaining the media and callback boxes needed for rollback.
+        if let Err(error) = control.hardware.as_mut().ok_or(Status::NotReady)?.suspend() {
             channel.log_error(&error.to_string());
             if let Some(state) = transient {
-                control.running = restart_previous(
+                control.running = restore_previous(
                     channel,
                     control
                         .hardware
                         .as_mut()
                         .expect("the previous generation remains owned after stop failure"),
-                    state,
+                    Some(state),
                 );
             }
             control.reload = Some(prepared);
             return Err(Status::SetupFailed);
         }
         if let Err(status) = drain_receive(channel, control) {
-            if let Some(state) = transient {
-                control.running = restart_previous(
-                    channel,
-                    control
-                        .hardware
-                        .as_mut()
-                        .expect("the stopped previous generation remains owned"),
-                    state,
-                );
-            }
+            let restored = restore_previous(
+                channel,
+                control
+                    .hardware
+                    .as_mut()
+                    .expect("the suspended previous generation remains owned"),
+                transient,
+            );
+            control.running = restored && transient.is_some();
             control.reload = Some(prepared);
             return Err(status);
         }
@@ -1730,9 +1731,8 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             Ok(replacement) => replacement,
             Err(error) => {
                 channel.log_error(&error.to_string());
-                if let Some(state) = transient {
-                    control.running = restart_previous(channel, &mut previous, state);
-                }
+                let restored = restore_previous(channel, &mut previous, transient);
+                control.running = restored && transient.is_some();
                 control.hardware = Some(previous);
                 return Err(Status::SetupFailed);
             }
@@ -1741,7 +1741,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             if let Err(error) = replacement.restore_transient_state(state) {
                 channel.log_error(&error.to_string());
                 drop(replacement);
-                control.running = restart_previous(channel, &mut previous, state);
+                control.running = restore_previous(channel, &mut previous, Some(state));
                 control.hardware = Some(previous);
                 return Err(Status::SetupFailed);
             }
@@ -1751,11 +1751,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             if let Err(error) = replacement.start() {
                 channel.log_error(&error.to_string());
                 drop(replacement);
-                control.running = restart_previous(
-                    channel,
-                    &mut previous,
-                    transient.expect("running hardware has retained transient state"),
-                );
+                control.running = restore_previous(channel, &mut previous, transient);
                 control.hardware = Some(previous);
                 return Err(Status::SetupFailed);
             }
@@ -1828,10 +1824,9 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                 } else {
                     degraded = true;
                 }
-                if let Some(state) = transient {
-                    control.running = restart_previous(channel, &mut hardware, state);
-                    degraded |= !control.running;
-                }
+                let restored = restore_previous(channel, &mut hardware, transient);
+                control.running = restored && transient.is_some();
+                degraded |= !restored;
                 control.hardware = Some(hardware);
                 if degraded {
                     Err(Status::SetupFailed)
@@ -2265,11 +2260,21 @@ fn apply_control(
         })
 }
 
-fn restart_previous(
+/// Restore the previous device lease, preserving its original running/stopped state.
+fn restore_previous(
     channel: &ChannelHandle,
     previous: &mut HardwareStation,
-    hardware_state: HardwareTransientState,
+    hardware_state: Option<HardwareTransientState>,
 ) -> bool {
+    if let Err(error) = previous.reopen() {
+        channel.log_error(&format!(
+            "configuration reload rollback failed; prior generation remains RF-safe and stopped: {error}"
+        ));
+        return false;
+    }
+    let Some(hardware_state) = hardware_state else {
+        return true;
+    };
     if let Err(error) = previous.restore_transient_state(hardware_state) {
         channel.log_error(&format!(
             "configuration reload rollback failed; prior generation remains RF-safe and stopped: {error}"

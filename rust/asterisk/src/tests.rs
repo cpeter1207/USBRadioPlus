@@ -1692,7 +1692,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
     for (configuration, failure) in reloads.iter().zip([
         provider_support::FAIL_PREFLIGHT,
         provider_support::FAIL_GRAPH,
-        provider_support::FAIL_OPEN,
+        provider_support::FAIL_OPEN_ONCE,
         provider_support::FAIL_START_ONCE,
     ]) {
         // SAFETY: staging is private until the channel successfully adopts it.
@@ -1814,7 +1814,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
     // SAFETY: no lazy reload is attempted here.
     assert_eq!(unsafe { channel_service(channel) }, URP_AST_OK);
 
-    // A stopped hardware generation reloads without restoring or restarting it.
+    // A stopped hardware generation reacquires its lease without restarting it.
     // SAFETY: the running channel is stopped normally.
     assert_eq!(unsafe { channel_stop(channel) }, URP_AST_OK);
     let stopped_reload = [CONFIG, b"[diagnostics]\ndiagnostic_trace_level = 6\n"].concat();
@@ -1828,7 +1828,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
         unsafe { channel_reload_prepare(channel) },
         URP_AST_OK
     );
-    provider_support::set_failure(provider_support::FAIL_OPEN);
+    provider_support::set_failure(provider_support::FAIL_OPEN_ONCE);
     // SAFETY: stopped-generation open failure does not restart the old generation.
     assert_eq!(
         // SAFETY: the channel is live and this test owns its control endpoint.
@@ -1929,6 +1929,90 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
 }
 
 #[test]
+fn same_device_reload_releases_exclusive_audio_and_reopens_on_rollback() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (running, failure, commit) in [
+        (true, 0, true),
+        (false, 0, true),
+        (true, 0, false),
+        (false, 0, false),
+        (true, provider_support::FAIL_OPEN_ONCE, false),
+        (false, provider_support::FAIL_OPEN_ONCE, false),
+        (true, provider_support::FAIL_START_ONCE, false),
+    ] {
+        let expected_creates = if failure == provider_support::FAIL_OPEN_ONCE || commit {
+            2
+        } else {
+            3
+        };
+        provider_support::clear_failure();
+        provider_support::exclusive_audio(true);
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: this test serializes all live handles and destroys the channel first.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(
+                channel_set_direct_callbacks(channel, &direct_callbacks()),
+                URP_AST_OK
+            );
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            if !running {
+                assert_eq!(channel_stop(channel), URP_AST_OK);
+            }
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            provider_support::set_failure(failure);
+            let activation = channel_reload_activate(channel);
+            let commit = u32::from(commit && activation == URP_AST_OK);
+            let finish = channel_reload_finish(channel, commit);
+            let driver_finish = driver_reload_finish(driver, commit);
+            let mut status = UrpAstChannelStatus {
+                struct_size: size_of::<UrpAstChannelStatus>() as u32,
+                abi_version: ABI_VERSION,
+                ..UrpAstChannelStatus::default()
+            };
+            let observed = channel_get_status(channel, &mut status);
+            let streams = provider_support::audio_streams();
+            let restarted = if running {
+                URP_AST_OK
+            } else {
+                channel_start(channel)
+            };
+            channel_destroy(channel);
+            driver_destroy(driver);
+            provider_support::exclusive_audio(false);
+            assert_eq!(
+                activation,
+                if failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                },
+                "same-device reload must release the old device lease: running={running}, failure={failure}"
+            );
+            assert_eq!(finish, URP_AST_OK);
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(
+                observed, URP_AST_OK,
+                "rollback restores an open stream even when stopped"
+            );
+            assert_eq!(status.running, u32::from(running));
+            assert_eq!(streams, 1);
+            assert_eq!(
+                restarted, URP_AST_OK,
+                "restored stopped stream remains startable"
+            );
+            assert_eq!(
+                provider_support::audio_lifecycle(),
+                (expected_creates, expected_creates)
+            );
+        }
+    }
+}
+
+#[test]
 fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     provider_support::clear_failure();
@@ -1973,7 +2057,7 @@ fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() 
         unsafe { channel_reload_activate(one) },
         URP_AST_OK
     );
-    provider_support::set_failure(provider_support::FAIL_OPEN);
+    provider_support::set_failure(provider_support::FAIL_OPEN_ONCE);
     assert_eq!(
         // SAFETY: the second prepared channel is exclusively serialized here.
         unsafe { channel_reload_activate(two) },
