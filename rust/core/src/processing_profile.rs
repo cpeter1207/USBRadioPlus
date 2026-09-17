@@ -342,7 +342,7 @@ pub struct ReceiveConditioning {
     pub bandpass_lowpass_hz: f64,
     /// PL rejection mode.
     pub pl_filter: PlFilter,
-    /// Width of a decoded-tone notch in Hz.
+    /// Fixed width of decoded-tone and 55 Hz tail notches in Hz.
     pub notch_width_hz: f64,
     /// High-pass edge used in high-pass mode.
     pub highpass_hz: f64,
@@ -355,7 +355,7 @@ impl Default for ReceiveConditioning {
             bandpass_highpass_hz: 20.0,
             bandpass_lowpass_hz: 5_000.0,
             pl_filter: PlFilter::HighPass,
-            notch_width_hz: 5.0,
+            notch_width_hz: 10.0,
             highpass_hz: 300.0,
         }
     }
@@ -529,7 +529,7 @@ impl ProcessingChain {
         finite_range(
             "ctcss_notch_width_hz",
             self.receive.notch_width_hz,
-            0.2,
+            10.0,
             10.0,
         )?;
         finite_range("ctcss_highpass_hz", self.receive.highpass_hz, 50.0, 500.0)

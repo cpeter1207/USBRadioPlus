@@ -605,7 +605,7 @@ fn apply_setting(
             pl_filter(&mut chain.receive.pl_filter, warnings, overlay, setting)
         }
         "ctcss_notch_width_hz" if chain.role == ChainRole::LocalReceive => {
-            number!(chain.receive.notch_width_hz, 0.2, 10.0)
+            number!(chain.receive.notch_width_hz, 10.0, 10.0)
         }
         "ctcss_highpass_hz" if chain.role == ChainRole::LocalReceive => {
             number!(chain.receive.highpass_hz, 50.0, 500.0)

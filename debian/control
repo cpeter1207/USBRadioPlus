@@ -5,7 +5,7 @@ Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  libclang-dev, pkg-config, asl3-asterisk-dev,
  librate-adjusting-pcm-ring2-dev (>= 2.0.0~alpha1),
- librptadvradio-dev (>= 0.1.0~alpha3),
+ librptadvradio-dev (>= 0.1.0~alpha4),
  librptadv-samplerate-adapter-dev (>= 0.1.0~alpha1),
  librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha1),
  librptadv-portaudio-alsa-adapter-dev (>= 0.1.0~alpha2),

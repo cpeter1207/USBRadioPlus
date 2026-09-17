@@ -96,7 +96,7 @@ def test_build_and_install_use_dynamic_rust_artifacts():
     assert "ASTERISK_ADAPTER_SONAME := libusbradioplus_asterisk.so.1" in makefile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",
-        "librptadvradio.so.3",
+        "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",

@@ -89,8 +89,8 @@ else
 ifeq ($(shell $(PKG_CONFIG) --exists rptadvradio && echo yes),)
 $(error USBRadioPlus requires the librptadvradio development package)
 endif
-ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),3)
-$(error USBRadioPlus requires librptadvradio descriptor ABI 3 from alpha.3 or newer)
+ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),4)
+$(error USBRadioPlus requires librptadvradio descriptor ABI 4 from alpha.4 or newer)
 endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
 RPTADV_RADIO_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadvradio) \
@@ -280,7 +280,7 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 		$(RPTADV_FFMPEG_LIBS) $(RADIO_LIBS) -lm
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring2.so.2]'
-	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.3]'
+	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_ffmpeg_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_portaudio_alsa_adapter.so.2]'

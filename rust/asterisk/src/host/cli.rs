@@ -4,17 +4,12 @@ use std::ffi::{CStr, c_char, c_int};
 use std::fmt::Write;
 use std::mem::size_of;
 
-#[cfg(not(test))]
 use std::ffi::CString;
-#[cfg(not(test))]
 use std::ptr;
-#[cfg(not(test))]
 use std::sync::atomic::{AtomicPtr, Ordering};
 
-#[cfg(not(test))]
 use super::{channel, link, reload};
 use crate::ffi;
-#[cfg(not(test))]
 use crate::{URP_AST_ASTERISK_FAILURE, URP_AST_CHANNEL_NOT_FOUND, URP_AST_NOT_READY};
 
 use crate::{
@@ -671,12 +666,10 @@ fn c_float(value: f64, precision: u32) -> String {
         .into_owned()
 }
 
-#[cfg(not(test))]
 struct ProductionBackend {
     fd: c_int,
 }
 
-#[cfg(not(test))]
 impl ProductionBackend {
     fn driver(&self) -> Result<channel::DriverContext, i32> {
         channel::driver_context().ok_or(URP_AST_NOT_READY)
@@ -714,7 +707,6 @@ impl ProductionBackend {
     }
 }
 
-#[cfg(not(test))]
 impl CliBackend for ProductionBackend {
     fn configured_channels(&mut self) -> (Vec<String>, i32) {
         let mut channels = Vec::new();
@@ -820,7 +812,6 @@ impl CliBackend for ProductionBackend {
     }
 }
 
-#[cfg(not(test))]
 fn copy_driver_name(call: impl Fn(*mut u8, u32, *mut u32) -> i32) -> Result<String, i32> {
     let mut length = 0;
     let status = call(ptr::null_mut(), 0, &raw mut length);
@@ -839,7 +830,6 @@ fn copy_driver_name(call: impl Fn(*mut u8, u32, *mut u32) -> i32) -> Result<Stri
     String::from_utf8(name).map_err(|_| URP_AST_ASTERISK_FAILURE)
 }
 
-#[cfg(not(test))]
 static COMMANDS: [&CStr; 9] = [
     c"radioplus active",
     c"radioplus channel list",
@@ -852,7 +842,6 @@ static COMMANDS: [&CStr; 9] = [
     c"radioplus processing reload",
 ];
 
-#[cfg(not(test))]
 static USAGES: [&CStr; 9] = [
     c"Usage: radioplus active [channel-name]\n",
     c"Usage: radioplus channel list\n",
@@ -865,7 +854,6 @@ static USAGES: [&CStr; 9] = [
     c"Usage: radioplus processing reload\n",
 ];
 
-#[cfg(not(test))]
 static SUMMARIES: [&CStr; 9] = [
     c"Select the USBRadioPlus tuning channel",
     c"List configured USBRadioPlus channels",
@@ -878,15 +866,12 @@ static SUMMARIES: [&CStr; 9] = [
     c"Reload USBRadioPlus configuration",
 ];
 
-#[cfg(not(test))]
 static REGISTERED: AtomicPtr<ffi::ast_cli_entry> = AtomicPtr::new(ptr::null_mut());
 
-#[cfg(not(test))]
 unsafe extern "C" {
     fn ast_cli_unregister_multiple(entries: *mut ffi::ast_cli_entry, count: c_int) -> c_int;
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn active_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -896,7 +881,6 @@ unsafe extern "C" fn active_callback(
     unsafe { callback(0, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn list_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -906,7 +890,6 @@ unsafe extern "C" fn list_callback(
     unsafe { callback(1, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn status_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -916,7 +899,6 @@ unsafe extern "C" fn status_callback(
     unsafe { callback(2, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn echo_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -926,7 +908,6 @@ unsafe extern "C" fn echo_callback(
     unsafe { callback(3, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn transmit_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -936,7 +917,6 @@ unsafe extern "C" fn transmit_callback(
     unsafe { callback(4, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn flash_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -946,7 +926,6 @@ unsafe extern "C" fn flash_callback(
     unsafe { callback(5, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn command_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -956,7 +935,6 @@ unsafe extern "C" fn command_callback(
     unsafe { callback(6, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn stats_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -966,7 +944,6 @@ unsafe extern "C" fn stats_callback(
     unsafe { callback(7, entry, command, args) }
 }
 
-#[cfg(not(test))]
 unsafe extern "C" fn reload_callback(
     entry: *mut ffi::ast_cli_entry,
     command: c_int,
@@ -976,7 +953,6 @@ unsafe extern "C" fn reload_callback(
     unsafe { callback(8, entry, command, args) }
 }
 
-#[cfg(not(test))]
 const HANDLERS: [unsafe extern "C" fn(
     *mut ffi::ast_cli_entry,
     c_int,
@@ -993,7 +969,6 @@ const HANDLERS: [unsafe extern "C" fn(
     reload_callback,
 ];
 
-#[cfg(not(test))]
 unsafe fn callback(
     index: usize,
     entry: *mut ffi::ast_cli_entry,
@@ -1086,7 +1061,6 @@ pub(super) unsafe fn rollback_registration<T>(entries: *mut T, unregister: impl 
 }
 
 /// Register every USBRadioPlus CLI entry as one all-or-nothing group.
-#[cfg(not(test))]
 pub(super) fn register(module_self: *mut ffi::ast_module) -> i32 {
     if !REGISTERED.load(Ordering::Acquire).is_null() {
         return URP_AST_OK;
@@ -1121,7 +1095,6 @@ pub(super) fn register(module_self: *mut ffi::ast_module) -> i32 {
 }
 
 /// Unregister and release every CLI entry registered by [`register`].
-#[cfg(not(test))]
 pub(super) fn unregister() {
     let entries = REGISTERED.swap(ptr::null_mut(), Ordering::AcqRel);
     if entries.is_null() {

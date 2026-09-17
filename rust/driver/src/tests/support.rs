@@ -526,7 +526,7 @@ unsafe extern "C" fn radio_pop(_handle: *const c_void, _output: *mut c_void) -> 
 
 static RADIO: RadioDescriptor = RadioDescriptor {
     struct_size: size_of::<RadioDescriptor>() as u32,
-    abi_version: 3,
+    abi_version: 4,
     capability_name: c"rptadv.radio-core".as_ptr(),
     create: Some(radio_create),
     warm: Some(radio_warm),

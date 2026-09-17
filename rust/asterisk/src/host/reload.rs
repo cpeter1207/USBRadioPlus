@@ -4,14 +4,10 @@ use std::sync::Mutex;
 
 use crate::URP_AST_OK;
 
-#[cfg(not(test))]
 use std::ffi::{CStr, CString, c_int};
-#[cfg(not(test))]
 use std::path::PathBuf;
 
-#[cfg(not(test))]
 use super::{channel, link};
-#[cfg(not(test))]
 use crate::{URP_AST_ASTERISK_FAILURE, ffi};
 
 /// Complete configuration input selected before a reload transaction begins.
@@ -118,11 +114,19 @@ impl ReloadCoordinator {
 
         let result = (|| {
             for index in 0..channels {
-                check("channel prepare", operations.channel_prepare(index), Some(index))?;
+                check(
+                    "channel prepare",
+                    operations.channel_prepare(index),
+                    Some(index),
+                )?;
             }
             check("link prepare", operations.link_prepare(), None)?;
             for index in 0..channels {
-                check("channel activate", operations.channel_activate(index), Some(index))?;
+                check(
+                    "channel activate",
+                    operations.channel_activate(index),
+                    Some(index),
+                )?;
             }
             check("driver commit", operations.driver_finish(true), None)
         })();
@@ -168,17 +172,14 @@ fn check(phase: &'static str, status: i32, channel: Option<usize>) -> Result<(),
     }
 }
 
-#[cfg(not(test))]
 static RELOAD_COORDINATOR: ReloadCoordinator = ReloadCoordinator::new();
 
-#[cfg(not(test))]
 struct ProductionOperations {
     driver: channel::DriverContext,
     channels: Option<channel::LiveChannelsGuard>,
     links: Option<link::LinkReload>,
 }
 
-#[cfg(not(test))]
 impl ProductionOperations {
     fn new(driver: channel::DriverContext) -> Self {
         Self {
@@ -203,7 +204,6 @@ impl ProductionOperations {
     }
 }
 
-#[cfg(not(test))]
 impl ReloadOperations for ProductionOperations {
     fn read_configuration(&mut self) -> Result<ReloadConfiguration, i32> {
         read_configuration()
@@ -300,7 +300,6 @@ impl ReloadOperations for ProductionOperations {
 }
 
 /// Read the complete selected configuration through Asterisk's path policy.
-#[cfg(not(test))]
 pub(super) fn read_configuration() -> Result<ReloadConfiguration, i32> {
     // SAFETY: Asterisk initializes its immutable configuration-directory
     // pointer before loading channel modules.
@@ -342,7 +341,6 @@ pub(super) fn read_configuration() -> Result<ReloadConfiguration, i32> {
 }
 
 /// Atomically replace the active configuration generation.
-#[cfg(not(test))]
 pub(super) fn reload() -> i32 {
     let Some(driver) = channel::driver_context() else {
         return URP_AST_ASTERISK_FAILURE;
@@ -366,7 +364,6 @@ pub(super) fn reload_failure_diagnostic(phase: &str, status: i32, channel: Optio
     }
 }
 
-#[cfg(not(test))]
 fn log_error(message: &str) {
     // SAFETY: message length bounds the readable byte span and all variadic
     // arguments match Asterisk's public logging declaration.

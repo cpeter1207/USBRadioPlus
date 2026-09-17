@@ -208,14 +208,7 @@ unsafe extern "C" fn fake_prepare_reload(
     output: *mut *mut c_void,
 ) -> i32 {
     // SAFETY: forwarded test fixture storage follows the product ABI.
-    unsafe {
-        fake_prepare_common(
-            channel_name,
-            channel_name_length,
-            output,
-            "prepare_reload",
-        )
-    }
+    unsafe { fake_prepare_common(channel_name, channel_name_length, output, "prepare_reload") }
 }
 
 unsafe extern "C" fn fake_process(
@@ -492,6 +485,7 @@ fn fake_profile() -> Option<Box<str>> {
 }
 
 fn missing_profile() -> Option<Box<str>> {
+    with_state(|state| state.events.push("missing_profile_resolved"));
     None
 }
 
@@ -756,10 +750,14 @@ fn observation_reads_the_active_graph_while_quiesced() {
     assert_eq!(statistics.observation.bypassed_blocks, 2);
     assert_eq!(statistics.observation.failed_blocks, 1);
     assert!(with_state(|state| {
-        state
-            .events
-            .windows(2)
-            .any(|events| events == ["audiohook_lock", "audiohook_unlock"])
+        state.events.windows(3).any(|events| {
+            events
+                == [
+                    "audiohook_lock",
+                    "observe_outside_link_control",
+                    "audiohook_unlock",
+                ]
+        })
     }));
 }
 
@@ -783,7 +781,7 @@ fn failed_attachment_destroys_unpublished_graph() {
 fn scanner_logs_failed_attachment_channel_and_product_status() {
     let _guard = TEST_LOCK.lock().unwrap();
     reset();
-    with_state(|state| state.prepare_result = -7);
+    with_state(|state| state.prepare_result = URP_AST_ASTERISK_FAILURE);
     let mut channel = FakeChannel::eligible("IAX2/506316-log", 8_000);
     register(&mut channel);
     assert_eq!(start_with(fake_host(), fake_profile), URP_AST_OK);
@@ -791,7 +789,7 @@ fn scanner_logs_failed_attachment_channel_and_product_status() {
 
     assert_eq!(
         with_state(|state| state.diagnostics[0].clone()),
-        "Unable to attach USBRadioPlus link processing to IAX2/506316-log (-7)"
+        "Unable to attach USBRadioPlus link processing to IAX2/506316-log (-8)"
     );
     stop();
 }
@@ -865,12 +863,14 @@ fn process_reload_retains_hooks_and_statistics_until_finish() {
     assert_eq!(start_with(fake_host(), fake_profile), URP_AST_OK);
     wait_until(|| attachment_count() == 1);
 
-    let reload = reload_prepare(Some("alpha")).unwrap();
-    assert_eq!(with_state(|state| state.graphs.len()), 2);
     let before = statistics();
     assert_eq!(before.len(), 1);
     assert_eq!(&*before[0].asterisk_channel, "IAX2/506316-reload");
     assert_eq!(before[0].observation.processed_blocks, 7);
+
+    // The reload owns LINK_CONTROL until finish; public statistics also takes it.
+    let reload = reload_prepare(Some("alpha")).unwrap();
+    assert_eq!(with_state(|state| state.graphs.len()), 2);
     reload.finish(true);
 
     let after = statistics();
@@ -885,7 +885,7 @@ fn reload_uses_frozen_profile_before_scanner_observes_it() {
     let mut channel = FakeChannel::eligible("IAX2/506316-between-scans", 8_000);
     register(&mut channel);
     assert_eq!(start_with(fake_host(), missing_profile), URP_AST_OK);
-    wait_until(|| iterator_count() == 1);
+    wait_until(|| with_state(|state| state.events.contains(&"missing_profile_resolved")));
     assert_eq!(attachment_count(), 0);
 
     let reload = reload_prepare(Some("alpha")).unwrap();

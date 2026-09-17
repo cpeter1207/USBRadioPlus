@@ -3,18 +3,13 @@
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
 
-#[cfg(not(test))]
 use std::panic::{AssertUnwindSafe, catch_unwind};
-#[cfg(not(test))]
 use std::ptr;
-#[cfg(not(test))]
 use std::sync::Mutex;
 
 use crate::{URP_AST_CHANNEL_BUSY, URP_AST_NOT_READY, URP_AST_OK};
 
-#[cfg(not(test))]
 use super::{channel, cli, delivery, link, reload};
-#[cfg(not(test))]
 use crate::{
     ABI_VERSION, URP_AST_ASTERISK_FAILURE, URP_AST_INCOMPATIBLE_ABI, UrpAstDriverCreateArgs,
     UrpAstProviderManifest,
@@ -23,13 +18,9 @@ use crate::{
 /// Loader ABI implemented by this Rust-owned Asterisk host.
 pub(super) const LOADER_ABI_VERSION: u32 = 4;
 
-#[cfg(not(test))]
 const LOADER_OK: c_int = 0;
-#[cfg(not(test))]
 const LOADER_DECLINE: c_int = 1;
-#[cfg(not(test))]
 const LOADER_FAILURE: c_int = 2;
-#[cfg(not(test))]
 const LOADER_CAPABILITY: &std::ffi::CStr = c"usbradioplus.asterisk-loader";
 
 /// Process-lifetime provider composition supplied by the metadata-only module.
@@ -188,7 +179,6 @@ impl LifecycleCoordinator {
     }
 }
 
-#[cfg(not(test))]
 #[derive(Clone, Copy)]
 struct ProviderAddresses {
     ffmpeg: usize,
@@ -200,7 +190,6 @@ struct ProviderAddresses {
     gpio: usize,
 }
 
-#[cfg(not(test))]
 impl ProviderAddresses {
     fn from_manifest(manifest: &LoaderProviderManifest) -> Self {
         Self {
@@ -243,7 +232,6 @@ impl ProviderAddresses {
     }
 }
 
-#[cfg(not(test))]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum LoadPhase {
     Validate,
@@ -251,7 +239,6 @@ enum LoadPhase {
     Register,
 }
 
-#[cfg(not(test))]
 struct ProductionOperations {
     providers: ProviderAddresses,
     module: usize,
@@ -260,7 +247,6 @@ struct ProductionOperations {
     phase: LoadPhase,
 }
 
-#[cfg(not(test))]
 impl ProductionOperations {
     fn new(providers: ProviderAddresses, module: *mut c_void) -> Self {
         Self {
@@ -273,7 +259,6 @@ impl ProductionOperations {
     }
 }
 
-#[cfg(not(test))]
 impl LifecycleOperations for ProductionOperations {
     fn validate_providers(&mut self) -> i32 {
         self.phase = LoadPhase::Validate;
@@ -373,19 +358,16 @@ impl LifecycleOperations for ProductionOperations {
     }
 }
 
-#[cfg(not(test))]
 struct LifecycleHost {
     coordinator: LifecycleCoordinator,
     operations: Option<ProductionOperations>,
 }
 
-#[cfg(not(test))]
 static LIFECYCLE: Mutex<LifecycleHost> = Mutex::new(LifecycleHost {
     coordinator: LifecycleCoordinator::new(),
     operations: None,
 });
 
-#[cfg(not(test))]
 unsafe extern "C" fn loader_load(
     providers: *const LoaderProviderManifest,
     module: *mut c_void,
@@ -421,7 +403,6 @@ unsafe extern "C" fn loader_load(
     .unwrap_or(LOADER_FAILURE)
 }
 
-#[cfg(not(test))]
 extern "C" fn loader_reload() -> c_int {
     catch_unwind(AssertUnwindSafe(|| {
         let mut host = LIFECYCLE
@@ -439,7 +420,6 @@ extern "C" fn loader_reload() -> c_int {
     .unwrap_or(URP_AST_ASTERISK_FAILURE)
 }
 
-#[cfg(not(test))]
 extern "C" fn loader_unload() -> c_int {
     catch_unwind(AssertUnwindSafe(|| {
         let mut host = LIFECYCLE
@@ -461,7 +441,6 @@ extern "C" fn loader_unload() -> c_int {
     .unwrap_or(URP_AST_ASTERISK_FAILURE)
 }
 
-#[cfg(not(test))]
 static LOADER_DESCRIPTOR: AsteriskLoaderDescriptor = AsteriskLoaderDescriptor {
     struct_size: size_of::<AsteriskLoaderDescriptor>() as u32,
     abi_version: LOADER_ABI_VERSION,
@@ -472,7 +451,6 @@ static LOADER_DESCRIPTOR: AsteriskLoaderDescriptor = AsteriskLoaderDescriptor {
 };
 
 /// Return the immutable Rust-owned Asterisk lifecycle descriptor.
-#[cfg(not(test))]
 #[unsafe(no_mangle)]
 pub extern "C" fn usbradioplus_asterisk_loader_descriptor() -> *const AsteriskLoaderDescriptor {
     ptr::from_ref(&LOADER_DESCRIPTOR)

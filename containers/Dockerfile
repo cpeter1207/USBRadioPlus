@@ -103,7 +103,7 @@ RUN ln -sf librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
       tee /tmp/module-libraries && \
 	! grep -q 'not found' /tmp/module-libraries && \
 	grep -Fq 'librate_adjusting_pcm_ring2.so.2' /tmp/module-libraries && \
-	grep -Fq 'librptadvradio.so.3' /tmp/module-libraries && \
+	grep -Fq 'librptadvradio.so.4' /tmp/module-libraries && \
 	grep -Fq 'librptadv_samplerate_adapter.so.1' /tmp/module-libraries && \
 	grep -Fq 'librptadv_ffmpeg_adapter.so.1' /tmp/module-libraries && \
 	grep -Fq 'librptadv_portaudio_alsa_adapter.so.2' /tmp/module-libraries && \

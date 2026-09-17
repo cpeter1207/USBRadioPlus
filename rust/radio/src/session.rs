@@ -1,6 +1,6 @@
 use super::*;
 
-/// Validated process-lifetime ABI-3 radio capability.
+/// Validated process-lifetime ABI-4 radio capability.
 #[derive(Clone, Copy)]
 pub struct RadioProvider {
     functions: Functions,
@@ -37,7 +37,7 @@ impl RadioProvider {
         if unsafe { CStr::from_ptr(header.capability_name) } != CAPABILITY {
             return Err(RadioError::IncompatibleAdapter);
         }
-        // SAFETY: the validated size covers the complete ABI-3 prefix.
+        // SAFETY: the validated size covers the complete ABI-4 prefix.
         let descriptor = unsafe { ptr::read(raw_descriptor.cast::<RawDescriptor>()) };
         let (
             Some(create),
@@ -138,7 +138,7 @@ impl Drop for SessionInner<'_> {
 // SAFETY: the ABI permits the complete session ownership group to move between
 // threads; borrowed-port Send requirements are part of their unsafe binding.
 unsafe impl Send for SessionInner<'_> {}
-// SAFETY: ABI 3 explicitly permits one receive owner, one transmit owner, and
+// SAFETY: ABI 4 explicitly permits one receive owner, one transmit owner, and
 // lock-free control observation concurrently; safe construction creates only
 // those owners, and their mutable operations require exclusive endpoint access.
 unsafe impl Sync for SessionInner<'_> {}

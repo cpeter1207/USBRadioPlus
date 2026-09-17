@@ -79,7 +79,8 @@ impl CliBackend for Fixture {
         self.echo_result
     }
     fn set_transmit(&mut self, keyed: bool, ctcss_tenths_hz: u32) -> i32 {
-        self.events.push(if keyed { "transmit on" } else { "transmit off" });
+        self.events
+            .push(if keyed { "transmit on" } else { "transmit off" });
         self.transmit.push((keyed, ctcss_tenths_hz));
         self.transmit_result
     }
@@ -146,9 +147,9 @@ fn empty_cli_argument_array_does_not_require_a_nonnull_pointer() {
 #[test]
 fn cli_registration_rejects_a_null_module_owner() {
     assert!(!registration_owner_is_valid(std::ptr::null_mut()));
-    assert!(registration_owner_is_valid(
-        std::ptr::dangling_mut::<crate::ffi::ast_module>()
-    ));
+    assert!(registration_owner_is_valid(std::ptr::dangling_mut::<
+        crate::ffi::ast_module,
+    >()));
 }
 
 #[test]
@@ -407,10 +408,7 @@ fn flash_uses_three_one_second_bursts_with_established_spacing_and_cleanup() {
         CliCommand::ChannelFlash,
         &["radioplus", "channel", "flash"],
     );
-    assert_eq!(
-        result,
-        CliResult::success("USB Device Flash completed.\n")
-    );
+    assert_eq!(result, CliResult::success("USB Device Flash completed.\n"));
     assert_eq!(fixture.emitted, "USB Device Flash starting.\n");
     assert_eq!(fixture.events.first(), Some(&"emit"));
     assert_eq!(fixture.events.get(1), Some(&"tone on"));

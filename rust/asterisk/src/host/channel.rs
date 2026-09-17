@@ -3,7 +3,6 @@
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::{size_of, zeroed};
 use std::ptr;
-#[cfg(not(test))]
 use std::sync::RwLockWriteGuard;
 use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock, RwLock, TryLockError};
@@ -14,7 +13,6 @@ use super::super::{
     URP_AST_JITTER_FIXED, URP_AST_OK, URP_AST_TRANSPORT_APP_RPT, URP_AST_TRANSPORT_RPT_ADVANCED,
     UrpAstChannelReserveArgs, UrpAstDescriptor, UrpAstJitterConfig, ffi,
 };
-#[cfg(not(test))]
 use super::super::{UrpAstChannelCommand, UrpAstChannelStatus};
 use super::control::{ControlOperation, ControlResult, run_control};
 use super::delivery;
@@ -118,9 +116,7 @@ impl Channel {
         match self.control(operation) {
             ControlResult::Status(status) => status,
             ControlResult::Jitter(status, _) => status,
-            #[cfg(not(test))]
             ControlResult::Command(status, _) => status,
-            #[cfg(not(test))]
             ControlResult::ChannelStatus(status, _) => status,
         }
     }
@@ -129,14 +125,11 @@ impl Channel {
         match self.control_admitted(operation) {
             ControlResult::Status(status) => status,
             ControlResult::Jitter(status, _) => status,
-            #[cfg(not(test))]
             ControlResult::Command(status, _) => status,
-            #[cfg(not(test))]
             ControlResult::ChannelStatus(status, _) => status,
         }
     }
 
-    #[cfg(not(test))]
     pub(super) fn name(&self) -> &str {
         &self._name
     }
@@ -368,14 +361,12 @@ fn control_gate() -> &'static RwLock<()> {
 }
 
 /// Stable driver access shared by reload and CLI host modules.
-#[cfg(not(test))]
 #[derive(Clone, Copy)]
 pub(super) struct DriverContext {
     pub(super) descriptor: *const UrpAstDescriptor,
     pub(super) driver: *mut c_void,
 }
 
-#[cfg(not(test))]
 pub(super) fn driver_context() -> Option<DriverContext> {
     let installed = host().lock().expect("channel host lock poisoned");
     let state = installed.as_ref()?;
@@ -386,7 +377,6 @@ pub(super) fn driver_context() -> Option<DriverContext> {
 }
 
 /// Find the first configured profile which currently has a live channel.
-#[cfg(not(test))]
 pub(super) fn first_live_profile() -> Option<Box<str>> {
     let context = driver_context()?;
     let channels = live_channels()
@@ -395,7 +385,6 @@ pub(super) fn first_live_profile() -> Option<Box<str>> {
     first_profile(context, &channels)
 }
 
-#[cfg(not(test))]
 fn first_profile(context: DriverContext, channels: &[usize]) -> Option<Box<str>> {
     // SAFETY: registration validated this process-lifetime descriptor.
     let query = unsafe { (*context.descriptor).driver_channel_name? };
@@ -439,7 +428,6 @@ fn first_profile(context: DriverContext, channels: &[usize]) -> Option<Box<str>>
 }
 
 /// Run one CLI operation while teardown of the selected channel is excluded.
-#[cfg(not(test))]
 pub(super) fn with_live_channel<T>(name: &str, operation: impl FnOnce(&Channel) -> T) -> Option<T> {
     let channels = live_channels()
         .lock()
@@ -455,13 +443,11 @@ pub(super) fn with_live_channel<T>(name: &str, operation: impl FnOnce(&Channel) 
 }
 
 /// Frozen live membership plus exclusive admission to channel control.
-#[cfg(not(test))]
 pub(super) struct LiveChannelsGuard {
     channels: MutexGuard<'static, Vec<usize>>,
     control: Option<RwLockWriteGuard<'static, ()>>,
 }
 
-#[cfg(not(test))]
 impl LiveChannelsGuard {
     pub(super) fn iter(&self) -> impl Iterator<Item = &Channel> {
         self.channels.iter().map(|address| {
@@ -481,7 +467,6 @@ impl LiveChannelsGuard {
     }
 }
 
-#[cfg(not(test))]
 pub(super) fn lock_live_channels() -> LiveChannelsGuard {
     let channels = live_channels()
         .lock()
@@ -1481,27 +1466,22 @@ pub(super) fn service(channel: &Channel) -> i32 {
     channel.control_status(ControlOperation::Service)
 }
 
-#[cfg(not(test))]
 pub(super) fn reload_prepare(channel: &Channel) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadPrepare)
 }
 
-#[cfg(not(test))]
 pub(super) fn reload_activate(channel: &Channel) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadActivate)
 }
 
-#[cfg(not(test))]
 pub(super) fn reload_finish(channel: &Channel, commit: bool) -> i32 {
     channel.control_status_admitted(ControlOperation::ReloadFinish(commit))
 }
 
-#[cfg(not(test))]
 pub(super) fn mark_jitter_pending(channel: &Channel) {
     channel.jitter_pending.store(true, Ordering::Release);
 }
 
-#[cfg(not(test))]
 pub(super) fn set_transmit(channel: &Channel, keyed: bool, ctcss_tenths_hz: u32) -> i32 {
     channel.control_status(ControlOperation::Transmit {
         keyed,
@@ -1509,12 +1489,10 @@ pub(super) fn set_transmit(channel: &Channel, keyed: bool, ctcss_tenths_hz: u32)
     })
 }
 
-#[cfg(not(test))]
 pub(super) fn set_echo(channel: &Channel, enabled: bool) -> i32 {
     channel.control_status(ControlOperation::Echo(enabled))
 }
 
-#[cfg(not(test))]
 pub(super) fn run_command(channel: &Channel, command: &mut UrpAstChannelCommand) -> i32 {
     match channel.control(ControlOperation::Command(*command)) {
         ControlResult::Command(status, output) => {
@@ -1525,7 +1503,6 @@ pub(super) fn run_command(channel: &Channel, command: &mut UrpAstChannelCommand)
     }
 }
 
-#[cfg(not(test))]
 pub(super) fn read_status(channel: &Channel, output: &mut UrpAstChannelStatus) -> i32 {
     match channel.control(ControlOperation::Status) {
         ControlResult::ChannelStatus(status, status_output) => {
@@ -1612,7 +1589,9 @@ mod tests {
         };
         for case in 0..9 {
             retention = if case == 7 { -1 } else { URP_AST_OK };
-            channel.rust_channel.store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
+            channel
+                .rust_channel
+                .store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
             let mut direct = DirectV2 {
                 struct_size: size_of::<DirectV2>() as u32,
                 abi_version: 2,
@@ -1638,7 +1617,12 @@ mod tests {
             let data = unsafe { storage.as_mut_ptr().add(1).cast::<DirectV2>() };
             unsafe { data.write_unaligned(direct) };
             let result = unsafe {
-                setoption(ptr::from_mut(&mut channel).cast(), crate::URP_AST_OPTION_DIRECT_CALLBACKS, data.cast(), length)
+                setoption(
+                    ptr::from_mut(&mut channel).cast(),
+                    crate::URP_AST_OPTION_DIRECT_CALLBACKS,
+                    data.cast(),
+                    length,
+                )
             };
             let accepted = unsafe { data.read_unaligned().accepted_abi_version };
             assert_eq!(accepted, if case == 8 { 2 } else { 0 }, "case {case}");

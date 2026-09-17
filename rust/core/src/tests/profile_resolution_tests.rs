@@ -151,7 +151,7 @@ fn every_common_and_source_specific_schema_field_is_applied() {
         ("receive_bandpass_highpass_hz", "30"),
         ("receive_bandpass_lowpass_hz", "4800"),
         ("ctcss_filter_mode", "disabled"),
-        ("ctcss_notch_width_hz", "4"),
+        ("ctcss_notch_width_hz", "10"),
         ("ctcss_highpass_hz", "200"),
     ]));
     let local = RawOverlay::flat(ChainRole::LocalReceive, "radio.conf", local_values);
@@ -179,6 +179,24 @@ fn every_common_and_source_specific_schema_field_is_applied() {
     assert!(voice.chain().transmit_tail.limiter_enabled);
     assert!(voice.chain().transmit_tail.bandpass_enabled);
     assert_eq!(voice.chain().transmit_tail.ceiling_dbfs, -2.0);
+}
+
+#[test]
+fn ctcss_notch_width_below_ten_hz_falls_back_to_the_fixed_width() {
+    let flat = RawOverlay::flat(
+        ChainRole::LocalReceive,
+        "radio.conf",
+        values(&[
+            ("ctcss_filter_mode", "notch"),
+            ("ctcss_notch_width_hz", "9.9"),
+        ]),
+    );
+    let resolved = ResolvedProfile::resolve(ChainRole::LocalReceive, &flat, None).unwrap();
+    assert_eq!(resolved.chain().receive.notch_width_hz, 10.0);
+    assert!(resolved.warnings().iter().any(|warning| {
+        warning.kind == ResolutionWarningKind::InvalidValue
+            && warning.name == "ctcss_notch_width_hz"
+    }));
 }
 
 #[test]
@@ -492,7 +510,7 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
             ("receive_bandpass_highpass_hz", "100"),
             ("receive_bandpass_lowpass_hz", "5000"),
             ("ctcss_filter_mode", "notch"),
-            ("ctcss_notch_width_hz", "4"),
+            ("ctcss_notch_width_hz", "10"),
             ("ctcss_highpass_hz", "200"),
         ]),
     );

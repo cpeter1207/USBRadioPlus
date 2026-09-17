@@ -10,9 +10,7 @@ use super::super::{
     UrpAstLinkObservation, UrpAstLinkObserve, UrpAstLinkPrepare, UrpAstLinkProcess, ffi,
 };
 
-#[cfg(not(test))]
 use super::super::{link_destroy, link_observe, link_prepare, link_prepare_reload, link_process};
-#[cfg(not(test))]
 use super::channel;
 
 use std::ffi::{CStr, c_char, c_int, c_void};
@@ -118,7 +116,6 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 /// Start periodic discovery of eligible incoming AllStarLink channels.
-#[cfg(not(test))]
 pub(super) fn start(driver: *mut c_void, module_self: *mut ffi::ast_module) -> c_int {
     if driver.is_null() {
         return super::super::URP_AST_INVALID_ARGUMENT;
@@ -154,11 +151,7 @@ fn start_with(host: LinkHost, profile: ProfileResolver) -> c_int {
     URP_AST_OK
 }
 
-fn scan_loop(
-    host: LinkHost,
-    resolve_profile: ProfileResolver,
-    stop: Arc<(Mutex<bool>, Condvar)>,
-) {
+fn scan_loop(host: LinkHost, resolve_profile: ProfileResolver, stop: Arc<(Mutex<bool>, Condvar)>) {
     loop {
         if *lock(&stop.0) {
             break;
@@ -251,7 +244,6 @@ pub(super) struct LinkStatistics {
 
 impl LinkHost {
     /// Construct the production host around one live Rust driver generation.
-    #[cfg(not(test))]
     pub(super) fn new(driver: *mut c_void, module_self: *mut ffi::ast_module) -> Self {
         Self::with_operations(
             driver,
@@ -1089,7 +1081,6 @@ unsafe fn c_text(raw: *const c_char) -> String {
     String::from_utf8_lossy(&unsafe { c_bytes(raw) }).into_owned()
 }
 
-#[cfg(not(test))]
 fn production_asterisk_operations() -> AsteriskOperations {
     AsteriskOperations {
         audiohook_init: production_audiohook_init,
@@ -1146,7 +1137,6 @@ fn link_reload_diagnostic(channel: &str, error: LinkHostError) -> String {
     }
 }
 
-#[cfg(not(test))]
 fn production_log_notice(message: &str) {
     // SAFETY: message length bounds the readable byte span and all variadic
     // arguments match Asterisk's public logging declaration.
@@ -1163,7 +1153,6 @@ fn production_log_notice(message: &str) {
     };
 }
 
-#[cfg(not(test))]
 fn production_log_error(message: &str) {
     // SAFETY: message length bounds the readable byte span and all variadic
     // arguments match Asterisk's public logging declaration.
@@ -1180,7 +1169,6 @@ fn production_log_error(message: &str) {
     };
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_init(audiohook: *mut ffi::ast_audiohook) -> c_int {
     // SAFETY: caller supplies pinned writable audiohook storage.
     unsafe {
@@ -1193,7 +1181,6 @@ unsafe fn production_audiohook_init(audiohook: *mut ffi::ast_audiohook) -> c_int
     }
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_attach(
     channel: *mut ffi::ast_channel,
     audiohook: *mut ffi::ast_audiohook,
@@ -1202,19 +1189,16 @@ unsafe fn production_audiohook_attach(
     unsafe { ffi::ast_audiohook_attach(channel, audiohook) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_detach(audiohook: *mut ffi::ast_audiohook) {
     // SAFETY: caller supplies one initialized attached or detached hook.
     let _ = unsafe { ffi::ast_audiohook_detach(audiohook) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_destroy(audiohook: *mut ffi::ast_audiohook) {
     // SAFETY: caller balances one successful audiohook initialization.
     let _ = unsafe { ffi::ast_audiohook_destroy(audiohook) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_lock(audiohook: *mut ffi::ast_audiohook) {
     // SAFETY: caller supplies the mutex embedded in a live initialized hook.
     let _ = unsafe {
@@ -1228,7 +1212,6 @@ unsafe fn production_audiohook_lock(audiohook: *mut ffi::ast_audiohook) {
     };
 }
 
-#[cfg(not(test))]
 unsafe fn production_audiohook_unlock(audiohook: *mut ffi::ast_audiohook) {
     // SAFETY: caller balances a successful audiohook lock.
     let _ = unsafe {
@@ -1242,7 +1225,6 @@ unsafe fn production_audiohook_unlock(audiohook: *mut ffi::ast_audiohook) {
     };
 }
 
-#[cfg(not(test))]
 unsafe fn production_datastore_alloc(
     info: *const ffi::ast_datastore_info,
     module: *mut ffi::ast_module,
@@ -1260,13 +1242,11 @@ unsafe fn production_datastore_alloc(
     }
 }
 
-#[cfg(not(test))]
 unsafe fn production_datastore_free(datastore: *mut ffi::ast_datastore) {
     // SAFETY: caller transfers one removed or unpublished datastore.
     let _ = unsafe { ffi::ast_datastore_free(datastore) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_lock(channel: *mut ffi::ast_channel) {
     // SAFETY: caller holds a live Asterisk channel reference.
     let _ = unsafe {
@@ -1281,7 +1261,6 @@ unsafe fn production_channel_lock(channel: *mut ffi::ast_channel) {
     };
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_unlock(channel: *mut ffi::ast_channel) {
     // SAFETY: caller balances a successful channel lock.
     let _ = unsafe {
@@ -1295,7 +1274,6 @@ unsafe fn production_channel_unlock(channel: *mut ffi::ast_channel) {
     };
 }
 
-#[cfg(not(test))]
 unsafe fn production_datastore_find(
     channel: *mut ffi::ast_channel,
     info: *const ffi::ast_datastore_info,
@@ -1304,7 +1282,6 @@ unsafe fn production_datastore_find(
     unsafe { ffi::ast_channel_datastore_find(channel, info, ptr::null()) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_datastore_add(
     channel: *mut ffi::ast_channel,
     datastore: *mut ffi::ast_datastore,
@@ -1313,7 +1290,6 @@ unsafe fn production_datastore_add(
     let _ = unsafe { ffi::ast_channel_datastore_add(channel, datastore) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_datastore_remove(
     channel: *mut ffi::ast_channel,
     datastore: *mut ffi::ast_datastore,
@@ -1322,25 +1298,21 @@ unsafe fn production_datastore_remove(
     let _ = unsafe { ffi::ast_channel_datastore_remove(channel, datastore) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_name(channel: *mut ffi::ast_channel) -> *const c_char {
     // SAFETY: caller holds the channel lock.
     unsafe { ffi::ast_channel_name(channel) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_application(channel: *mut ffi::ast_channel) -> *const c_char {
     // SAFETY: caller holds the channel lock.
     unsafe { ffi::ast_channel_appl(channel) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_data(channel: *mut ffi::ast_channel) -> *const c_char {
     // SAFETY: caller holds the channel lock.
     unsafe { ffi::ast_channel_data(channel) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_sample_rate(channel: *mut ffi::ast_channel) -> u32 {
     // SAFETY: caller holds the channel lock.
     let format = unsafe { ffi::ast_channel_rawreadformat(channel) };
@@ -1352,19 +1324,16 @@ unsafe fn production_channel_sample_rate(channel: *mut ffi::ast_channel) -> u32 
     }
 }
 
-#[cfg(not(test))]
 unsafe fn production_format_sample_rate(format: *mut ffi::ast_format) -> u32 {
     // SAFETY: caller supplies a live frame format pointer.
     unsafe { ffi::ast_format_get_sample_rate(format) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_iterator_new() -> *mut ffi::ast_channel_iterator {
     // SAFETY: creates one owned Asterisk channel iterator.
     unsafe { ffi::ast_channel_iterator_all_new() }
 }
 
-#[cfg(not(test))]
 unsafe fn production_iterator_next(
     iterator: *mut ffi::ast_channel_iterator,
 ) -> *mut ffi::ast_channel {
@@ -1372,13 +1341,11 @@ unsafe fn production_iterator_next(
     unsafe { ffi::ast_channel_iterator_next(iterator) }
 }
 
-#[cfg(not(test))]
 unsafe fn production_iterator_destroy(iterator: *mut ffi::ast_channel_iterator) {
     // SAFETY: consumes the iterator returned by ast_channel_iterator_all_new.
     let _ = unsafe { ffi::ast_channel_iterator_destroy(iterator) };
 }
 
-#[cfg(not(test))]
 unsafe fn production_channel_unref(channel: *mut ffi::ast_channel) {
     // SAFETY: iterator_next returned one owned AO2 channel reference.
     unsafe {
@@ -1393,7 +1360,6 @@ unsafe fn production_channel_unref(channel: *mut ffi::ast_channel) {
     };
 }
 
-#[cfg(not(test))]
 unsafe extern "C" {
     fn __ast_datastore_alloc(
         info: *const ffi::ast_datastore_info,
