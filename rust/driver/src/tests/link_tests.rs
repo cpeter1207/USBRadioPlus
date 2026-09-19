@@ -10,7 +10,10 @@ use crate::test_support::{
 
 #[test]
 fn factory_prepares_warms_and_processes_at_the_link_rate() {
-    let factory = LinkProcessingFactory::new(graph_provider(), "/usr/lib/agc.so").unwrap();
+    let factory = LinkProcessingFactory::new(
+        graph_provider(),
+        GraphDescriptionFactory::new("/usr/lib/agc.so").unwrap(),
+    );
     let profile = ProcessingChain::shipped(ChainRole::Link);
     let mut link = factory.prepare(&profile, 8_000, 4).unwrap();
     let mut pcm = [8_000_i16, -8_000];
@@ -24,7 +27,10 @@ fn factory_prepares_warms_and_processes_at_the_link_rate() {
 #[test]
 fn preparation_reports_role_description_and_adapter_failures() {
     let profile = ProcessingChain::shipped(ChainRole::LocalReceive);
-    let factory = LinkProcessingFactory::new(graph_provider(), "ok").unwrap();
+    let factory = LinkProcessingFactory::new(
+        graph_provider(),
+        GraphDescriptionFactory::new("ok").unwrap(),
+    );
     assert_eq!(
         factory.prepare(&profile, 8_000, 160).err(),
         Some(LinkPreparationError::IncorrectRole)
@@ -32,39 +38,55 @@ fn preparation_reports_role_description_and_adapter_failures() {
     let mut profile = ProcessingChain::shipped(ChainRole::Link);
     profile.enabled = true;
     profile.agc.enabled = true;
-    let factory = LinkProcessingFactory::new(graph_provider(), "bad\0path").unwrap();
+    let mut invalid_crossover = profile.clone();
+    invalid_crossover.compressor.enabled = true;
+    invalid_crossover.compressor.layout = usbradioplus_core::BandLayout::ThreeBand;
+    invalid_crossover.compressor.high_crossover_hz = 24_000.0;
+    assert_eq!(
+        factory.prepare(&invalid_crossover, 8_000, 160).err(),
+        Some(LinkPreparationError::Description(
+            GraphDescriptionError::CrossoverAboveNyquist
+        ))
+    );
+    let factory = LinkProcessingFactory::new(
+        graph_provider(),
+        GraphDescriptionFactory::new("bad\0path").unwrap(),
+    );
     assert_eq!(
         factory.prepare(&profile, 8_000, 160).err(),
         Some(LinkPreparationError::InvalidDescription)
     );
-    assert_eq!(
-        LinkProcessingFactory::new(graph_provider(), "bad\npath").err(),
-        Some(LinkPreparationError::Description(
-            GraphDescriptionError::InvalidAgcPluginPath
-        ))
+    let factory = LinkProcessingFactory::new(
+        failing_graph_create_provider(),
+        GraphDescriptionFactory::new("ok").unwrap(),
     );
-
-    let factory = LinkProcessingFactory::new(failing_graph_create_provider(), "ok").unwrap();
     assert_eq!(
         factory.prepare(&profile, 8_000, 160).err(),
         Some(LinkPreparationError::Graph(GraphError::AdapterFailure))
     );
     assert_eq!(
-        LinkProcessingFactory::new(graph_provider(), "ok")
-            .unwrap()
-            .prepare(&profile, 0, 160)
-            .err(),
+        LinkProcessingFactory::new(
+            graph_provider(),
+            GraphDescriptionFactory::new("ok").unwrap(),
+        )
+        .prepare(&profile, 0, 160)
+        .err(),
         Some(LinkPreparationError::Link(LinkError::InvalidConfiguration))
     );
     assert_eq!(
-        LinkProcessingFactory::new(graph_provider(), "ok")
-            .unwrap()
-            .prepare(&profile, 8_000, 0)
-            .err(),
+        LinkProcessingFactory::new(
+            graph_provider(),
+            GraphDescriptionFactory::new("ok").unwrap(),
+        )
+        .prepare(&profile, 8_000, 0)
+        .err(),
         Some(LinkPreparationError::Link(LinkError::InvalidConfiguration))
     );
 
-    let factory = LinkProcessingFactory::new(live_failing_graph_provider(), "ok").unwrap();
+    let factory = LinkProcessingFactory::new(
+        live_failing_graph_provider(),
+        GraphDescriptionFactory::new("ok").unwrap(),
+    );
     let mut link = factory.prepare(&profile, 8_000, 160).unwrap();
     assert_eq!(
         link.process_s16(LinkDirection::Read, 8_000, &mut [1]),

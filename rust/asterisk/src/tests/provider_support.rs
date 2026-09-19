@@ -21,6 +21,7 @@ pub(super) const FAIL_EEPROM: u32 = 10;
 pub(super) const PUBLISH_ON_STOP: u32 = 11;
 pub(super) const FAIL_START_ONCE: u32 = 12;
 pub(super) const FAIL_OPEN_ONCE: u32 = 13;
+pub(super) const PUBLISH_ON_STOP_FAIL_OPEN: u32 = 14;
 static FAILURE: AtomicU32 = AtomicU32::new(0);
 static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
@@ -934,12 +935,15 @@ unsafe extern "C" fn audio_stream_control(stream: *mut c_void) -> c_int {
     if failed(FAIL_STOP) {
         return -1;
     }
-    if failed(PUBLISH_ON_STOP) {
+    if failed(PUBLISH_ON_STOP) || failed(PUBLISH_ON_STOP_FAIL_OPEN) {
         // SAFETY: the handle originates from audio_stream_create and its receive context is live.
         let stream = unsafe { &mut *stream.cast::<FakeStream>() };
         let input = [0.25_f32; 1_920];
         // SAFETY: the receive context and canonical input are live for this call.
         let _ = unsafe { (stream.receive)(stream.receive_context, input.as_ptr(), 960) };
+        if failed(PUBLISH_ON_STOP_FAIL_OPEN) {
+            set_failure(FAIL_OPEN);
+        }
     }
     OK
 }

@@ -875,6 +875,14 @@ impl HardwareStation {
         self.service.transient_state()
     }
 
+    /// Stage persistent state for the next hardware-service start.
+    ///
+    /// Reload calls this on a stopped generation before [`Self::start`]. It
+    /// only replaces pending state; it never queues work to a running service.
+    pub fn stage_transient_state(&mut self, state: HardwareTransientState) {
+        self.service.pending_transient = Some(state);
+    }
+
     /// Apply persistent state captured from the station being replaced.
     ///
     /// This may be called before [`Self::start`], avoiding an initial-output

@@ -429,13 +429,15 @@ fn setup_errors_remain_specific_and_human_readable() {
 
     let mut notch_plan = plan();
     notch_plan.local.receive.pl_filter = PlFilter::DecodedToneNotch;
-    GRAPH_CREATES.set(0);
-    GRAPH_CREATE_FAIL_AT.set(1);
-    assert!(matches!(
-        factory().prepare(&notch_plan),
-        Err(ProcessingRuntimeError::GraphAdapter(_))
-    ));
-    GRAPH_CREATE_FAIL_AT.set(0);
+    for ordinal in [1, CTCSS_TONE_COUNT + 1] {
+        GRAPH_CREATES.set(0);
+        GRAPH_CREATE_FAIL_AT.set(ordinal);
+        assert!(matches!(
+            factory().prepare(&notch_plan),
+            Err(ProcessingRuntimeError::GraphAdapter(_))
+        ));
+        GRAPH_CREATE_FAIL_AT.set(0);
+    }
 
     GRAPH_PROCESS_FAILS.set(true);
     assert!(matches!(

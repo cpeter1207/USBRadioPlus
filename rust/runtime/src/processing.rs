@@ -128,6 +128,11 @@ impl NativeProcessingFactory {
         })
     }
 
+    /// Borrow the validated graph-description factory for related processing setup.
+    pub fn graph_descriptions(&self) -> &GraphDescriptionFactory {
+        &self.descriptions
+    }
+
     /// Prepare and warm every processor before publication to audio owners.
     pub fn prepare(
         &self,

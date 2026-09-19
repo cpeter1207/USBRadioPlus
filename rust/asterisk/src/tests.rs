@@ -110,6 +110,48 @@ fn direct_attachment_validates_boundary_and_survives_prepared_reload() {
     }
 }
 
+#[test]
+fn prepared_reload_rejects_overlap_and_restores_the_original_generation() {
+    const CONFIG: &[u8] = b"[usb]\n[link]\nenabled = yes\n";
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, CONFIG);
+    // SAFETY: this test serializes live handles and destroys each before its driver.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(stage_reload(driver, CONFIG), URP_AST_OK);
+        assert_eq!(stage_reload(driver, CONFIG), URP_AST_CHANNEL_BUSY);
+        let mut busy = ptr::null_mut();
+        assert_eq!(
+            channel_reserve(driver, &reserve_args(URP_AST_TRANSPORT_APP_RPT), &mut busy),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert!(busy.is_null());
+        let mut link = ptr::null_mut();
+        assert_eq!(
+            link_prepare_reload(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link),
+            URP_AST_OK
+        );
+        assert!(!link.is_null());
+        link_destroy(link);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_CHANNEL_BUSY);
+        assert_eq!(
+            channel_set_direct_callbacks(channel, &direct_callbacks()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(channel_reload_finish(channel, 2), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(driver_reload_finish(driver, 2), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(channel_reload_activate(channel), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_CHANNEL_BUSY);
+        assert_eq!(channel_reload_finish(channel, 0), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}
+
 #[derive(Default)]
 struct Calls {
     voice: Vec<(usize, u32)>,
@@ -2008,6 +2050,118 @@ fn same_device_reload_releases_exclusive_audio_and_reopens_on_rollback() {
                 provider_support::audio_lifecycle(),
                 (expected_creates, expected_creates)
             );
+        }
+    }
+}
+
+#[test]
+fn reload_recovery_failures_report_degradation_and_remain_restartable() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (activation_failure, rollback_failure, expected_running) in [
+        (provider_support::FAIL_OPEN, 0, false),
+        (provider_support::FAIL_START, 0, false),
+        (0, provider_support::FAIL_STOP, true),
+        (0, provider_support::FAIL_OPEN, false),
+        (0, provider_support::FAIL_START, false),
+    ] {
+        provider_support::clear_failure();
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: this test exclusively owns live handles and destroys the channel first.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(
+                channel_set_direct_callbacks(channel, &direct_callbacks()),
+                URP_AST_OK
+            );
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            provider_support::set_failure(activation_failure);
+            let activation = channel_reload_activate(channel);
+            provider_support::set_failure(rollback_failure);
+            let finish = channel_reload_finish(channel, 0);
+            let driver_finish = driver_reload_finish(driver, 0);
+            let running = channel_control(channel).unwrap().1.running;
+            provider_support::clear_failure();
+            let restarted = channel_start(channel);
+            channel_destroy(channel);
+            driver_destroy(driver);
+            assert_eq!(
+                activation,
+                if activation_failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                }
+            );
+            assert_eq!(
+                finish,
+                if rollback_failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                }
+            );
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(running, expected_running);
+            assert_eq!(restarted, URP_AST_OK);
+            assert!(
+                context
+                    .borrow()
+                    .logs
+                    .iter()
+                    .any(|(_, message)| message.contains("rollback"))
+            );
+        }
+    }
+}
+
+#[test]
+fn reload_delivery_failures_preserve_the_previous_generation() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (before_stop, failure) in [
+        (true, provider_support::PUBLISH_ON_STOP),
+        (false, provider_support::PUBLISH_ON_STOP),
+        (false, provider_support::PUBLISH_ON_STOP_FAIL_OPEN),
+    ] {
+        provider_support::clear_failure();
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: all callbacks are synchronous fakes and this test owns every live handle.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(channel_service(channel), URP_AST_OK);
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            if before_stop {
+                assert_eq!(channel_stop(channel), URP_AST_OK);
+                assert_eq!(channel_start(channel), URP_AST_OK);
+            }
+            context.borrow_mut().fail_queue = true;
+            provider_support::set_failure(failure);
+            let activation = channel_reload_activate(channel);
+            let running = channel_control(channel).unwrap().1.running;
+            context.borrow_mut().fail_queue = false;
+            provider_support::clear_failure();
+            let finish = channel_reload_finish(channel, 0);
+            let driver_finish = driver_reload_finish(driver, 0);
+            let restarted = channel_start(channel);
+            let serviced = channel_service(channel);
+            channel_destroy(channel);
+            driver_destroy(driver);
+            assert_eq!(activation, URP_AST_ASTERISK_FAILURE);
+            assert_eq!(
+                running,
+                failure != provider_support::PUBLISH_ON_STOP_FAIL_OPEN
+            );
+            assert_eq!(finish, URP_AST_OK);
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(restarted, URP_AST_OK);
+            assert_eq!(serviced, URP_AST_OK);
         }
     }
 }

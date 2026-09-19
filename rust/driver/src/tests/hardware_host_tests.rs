@@ -2529,10 +2529,11 @@ fn hardware_station_preflights_runs_controls_and_stops_cleanly() {
         .preflight_replacement(&plan, false, audio_provider(), gpio_provider())
         .unwrap();
     assert!(!stopped_replacement.apply_startup_tuning(&mut replacement_configuration));
-    station.restore_transient_state(transient).unwrap();
+    station.stage_transient_state(transient);
     station.start().unwrap();
     std::thread::sleep(Duration::from_millis(20));
     assert_eq!(station.transient_state().unwrap(), transient);
+    station.restore_transient_state(transient).unwrap();
     station.stop().unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 0);
     assert!(matches!(
