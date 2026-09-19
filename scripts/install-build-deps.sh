@@ -59,18 +59,22 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	librptadv-ffmpeg-adapter-dev librptadv-portaudio-alsa-adapter-dev \
 	librptadv-gpio-adapter-dev librptadv-rnnoise-adapter-dev
 
-pkg-config --exists rate_adjusting_pcm_ring2 || \
-	die "rate_adjusting_pcm_ring2 is unavailable"
+pkg-config --atleast-version=2.0.0~alpha3 rate_adjusting_pcm_ring2 || \
+	die "rate_adjusting_pcm_ring2 2.0.0~alpha3 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha5 rptadvradio || \
+	die "rptadvradio 0.1.0~alpha5 or newer is unavailable"
 [ "$(pkg-config --variable=abi_version rptadvradio)" = 4 ] || \
 	die "rptadvradio descriptor ABI 4 (alpha.4 or newer) is unavailable"
-pkg-config --atleast-version=0.1.0~alpha1 rptadv_samplerate_adapter || \
-	die "rptadv_samplerate_adapter 0.1.0~alpha1 or newer is unavailable"
-pkg-config --atleast-version=0.1.0~alpha1 rptadv_ffmpeg_adapter || \
-	die "rptadv_ffmpeg_adapter 0.1.0~alpha1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha2 rptadv_samplerate_adapter || \
+	die "rptadv_samplerate_adapter 0.1.0~alpha2 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha2 rptadv_ffmpeg_adapter || \
+	die "rptadv_ffmpeg_adapter 0.1.0~alpha2 or newer is unavailable"
 pkg-config --atleast-version=0.2.0~alpha2 rptadv_portaudio_alsa_adapter || \
 	die "rptadv_portaudio_alsa_adapter 0.2.0~alpha2 or newer is unavailable"
-pkg-config --atleast-version=0.1.0~alpha1 rptadv_gpio_adapter || \
-	die "rptadv_gpio_adapter 0.1.0~alpha1 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha2 rptadv_gpio_adapter || \
+	die "rptadv_gpio_adapter 0.1.0~alpha2 or newer is unavailable"
+pkg-config --atleast-version=0.1.0~alpha2 rptadv_rnnoise_adapter || \
+	die "rptadv_rnnoise_adapter 0.1.0~alpha2 or newer is unavailable"
 
 if ! pkg-config --exists rnnoise; then
 	sh "$(dirname -- "$0")/install-rnnoise.sh"

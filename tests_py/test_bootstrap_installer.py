@@ -12,6 +12,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 ## Installer fixture used by these tests.
 INSTALLER = ROOT / "packaging/repository/install-usbradioplus.sh"
+## Released provider minimums required by the Debian source package.
+BUILD_PROVIDER_MINIMUMS = (
+    ("rate_adjusting_pcm_ring2", "2.0.0~alpha3"),
+    ("rptadvradio", "0.1.0~alpha5"),
+    ("rptadv_samplerate_adapter", "0.1.0~alpha2"),
+    ("rptadv_ffmpeg_adapter", "0.1.0~alpha2"),
+    ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha2"),
+    ("rptadv_gpio_adapter", "0.1.0~alpha2"),
+    ("rptadv_rnnoise_adapter", "0.1.0~alpha2"),
+)
 
 
 def write_command(directory, name, body):
@@ -212,3 +222,37 @@ def test_migration_removal_allowlist_is_exact(tmp_path, simulation, blocked):
         check=False,
     )
     assert result.returncode == (42 if blocked else 0), result.stderr
+
+
+@pytest.mark.parametrize(("adapter", "minimum"), BUILD_PROVIDER_MINIMUMS)
+@pytest.mark.parametrize("offset", (-1, 0, 1))
+def test_build_dependency_guards_require_released_adapter_minimum(
+    tmp_path, adapter, minimum, offset
+):
+    """Reject obsolete provider releases through the installer's actual guards."""
+    source = (ROOT / "scripts/install-build-deps.sh").read_text(encoding="utf-8")
+    start = source.index("\npkg-config ") + 1
+    end = source.index("\nif ! pkg-config --exists rnnoise", start)
+    prefix, alpha = minimum.rsplit("alpha", maxsplit=1)
+    version = f"{prefix}alpha{int(alpha) + offset}"
+    for package, current in BUILD_PROVIDER_MINIMUMS:
+        (tmp_path / f"{package}.pc").write_text(
+            f"abi_version=4\nName: {package}\nDescription: installer fixture\n"
+            f"Version: {version if package == adapter else current}\n",
+            encoding="utf-8",
+        )
+    result = subprocess.run(
+        [
+            "sh",
+            "-c",
+            'die() { printf "%s\\n" "$*" >&2; exit 42; };\n' + source[start:end],
+        ],
+        env=dict(os.environ, PKG_CONFIG_LIBDIR=str(tmp_path), PKG_CONFIG_PATH=""),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    rejected = offset < 0
+    assert result.returncode == (42 if rejected else 0), result.stderr
+    if rejected:
+        assert f"{adapter} {minimum} or newer is unavailable" in result.stderr
