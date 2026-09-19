@@ -4,9 +4,153 @@ use std::cell::RefCell;
 use std::ffi::CStr;
 
 #[path = "tests/provider_support.rs"]
-mod provider_support;
+pub(crate) mod provider_support;
 
-static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
+pub(crate) static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+unsafe extern "C" fn direct_receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
+    0
+}
+unsafe extern "C" fn direct_transmit_noop(
+    _: *mut c_void,
+    _: *mut f32,
+    _: u32,
+    _: *mut u32,
+) -> c_int {
+    0
+}
+
+pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
+    UrpAstDirectCallbacks {
+        struct_size: size_of::<UrpAstDirectCallbacks>() as u32,
+        abi_version: UrpAstDirectCallbacks::ABI_VERSION,
+        receive_context: NonNull::<u8>::dangling().as_ptr().cast(),
+        receive: Some(direct_receive_noop),
+        transmit_context: NonNull::<u8>::dangling().as_ptr().cast(),
+        transmit: Some(direct_transmit_noop),
+        accepted_abi_version: 0,
+    }
+}
+
+#[test]
+fn direct_attachment_validates_boundary_and_survives_prepared_reload() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    // SAFETY: the test owns all handles and no-op callbacks never dereference contexts.
+    unsafe {
+        let app = reserve_channel(driver, URP_AST_TRANSPORT_APP_RPT);
+        assert_ne!(
+            channel_set_direct_callbacks(app, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(app);
+        let advanced = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, ptr::null()),
+            URP_AST_OK
+        );
+        for field in 0..6 {
+            let mut invalid = direct_callbacks();
+            match field {
+                0 => invalid.struct_size -= 1,
+                1 => invalid.abi_version = 1,
+                2 => invalid.receive = None,
+                3 => invalid.transmit = None,
+                4 => invalid.receive_context = ptr::null_mut(),
+                _ => invalid.transmit_context = ptr::null_mut(),
+            }
+            assert_ne!(channel_set_direct_callbacks(advanced, &invalid), URP_AST_OK);
+        }
+        assert_eq!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_eq!(stage_reload(driver, b"[usb]\n"), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(advanced), URP_AST_OK);
+        let (_, control) = channel_control(advanced).unwrap();
+        // Duplicate rejection proves the replacement already carries its direct binding.
+        assert!(
+            control
+                .reload
+                .as_mut()
+                .unwrap()
+                .media
+                .set_direct_callbacks(direct_callbacks())
+                .is_err()
+        );
+        assert_eq!(channel_reload_activate(advanced), URP_AST_OK);
+        assert_eq!(channel_reload_finish(advanced, 1), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
+        assert_eq!(channel_start(advanced), URP_AST_OK);
+        assert_eq!(channel_stop(advanced), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(advanced, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(advanced);
+        let late = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(channel_start(late), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(late, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_eq!(channel_stop(late), URP_AST_OK);
+        assert_ne!(
+            channel_set_direct_callbacks(late, &direct_callbacks()),
+            URP_AST_OK
+        );
+        channel_destroy(late);
+        driver_destroy(driver);
+    }
+}
+
+#[test]
+fn prepared_reload_rejects_overlap_and_restores_the_original_generation() {
+    const CONFIG: &[u8] = b"[usb]\n[link]\nenabled = yes\n";
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, CONFIG);
+    // SAFETY: this test serializes live handles and destroys each before its driver.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(stage_reload(driver, CONFIG), URP_AST_OK);
+        assert_eq!(stage_reload(driver, CONFIG), URP_AST_CHANNEL_BUSY);
+        let mut busy = ptr::null_mut();
+        assert_eq!(
+            channel_reserve(driver, &reserve_args(URP_AST_TRANSPORT_APP_RPT), &mut busy),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert!(busy.is_null());
+        let mut link = ptr::null_mut();
+        assert_eq!(
+            link_prepare_reload(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link),
+            URP_AST_OK
+        );
+        assert!(!link.is_null());
+        link_destroy(link);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_CHANNEL_BUSY);
+        assert_eq!(
+            channel_set_direct_callbacks(channel, &direct_callbacks()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(channel_reload_finish(channel, 2), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(driver_reload_finish(driver, 2), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(channel_reload_activate(channel), URP_AST_OK);
+        assert_eq!(channel_reload_prepare(channel), URP_AST_CHANNEL_BUSY);
+        assert_eq!(channel_reload_finish(channel, 0), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}
 
 #[derive(Default)]
 struct Calls {
@@ -210,7 +354,7 @@ unsafe fn stage_reload(driver: *mut c_void, config: &[u8]) -> c_int {
 }
 
 unsafe fn reload_channels(driver: *mut c_void, channels: &[*mut c_void], config: &[u8]) -> c_int {
-    // SAFETY: the caller supplies live handles serialized exactly as the C shim does.
+    // SAFETY: the caller supplies live handles serialized exactly as the Rust host does.
     let mut status = unsafe { stage_reload(driver, config) };
     if status != URP_AST_OK {
         return status;
@@ -265,8 +409,7 @@ fn command(kind: u32, target: u32, value: i64) -> UrpAstChannelCommand {
 
 #[test]
 fn descriptor_exposes_one_complete_versioned_boundary() {
-    // SAFETY: the exported function returns the documented static descriptor.
-    let descriptor = unsafe { &*usbradioplus_asterisk_descriptor() };
+    let descriptor = product_descriptor();
     assert_eq!(
         descriptor.struct_size as usize,
         size_of::<UrpAstDescriptor>()
@@ -671,21 +814,22 @@ fn operations_require_every_callback() {
 #[test]
 fn transport_configuration_is_explicit_and_bounded() {
     let app = reserve_args(URP_AST_TRANSPORT_APP_RPT);
+    let (mode, configuration) = controller_configuration(app.transport).unwrap();
+    assert_eq!(mode, AsteriskPcmMode::AppRpt);
     assert!(matches!(
-        controller_configuration(app.transport).unwrap(),
-        (
-            AsteriskPcmMode::AppRpt,
-            ControllerConfiguration::AppRpt { .. }
-        )
+        configuration,
+        ControllerConfiguration::AppRpt {
+            handoff_slots: 3,
+            ..
+        }
     ));
     let advanced = reserve_args(URP_AST_TRANSPORT_RPT_ADVANCED);
-    assert!(matches!(
-        controller_configuration(advanced.transport).unwrap(),
-        (
-            AsteriskPcmMode::Advanced,
-            ControllerConfiguration::RptAdvanced { .. }
-        )
-    ));
+    let (mode, configuration) = controller_configuration(advanced.transport).unwrap();
+    assert_eq!(mode, AsteriskPcmMode::Advanced);
+    assert_eq!(
+        configuration,
+        ControllerConfiguration::RptAdvanced { handoff_slots: 3 }
+    );
     let unknown = reserve_args(99);
     assert!(matches!(
         controller_configuration(unknown.transport),
@@ -1590,7 +1734,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
     for (configuration, failure) in reloads.iter().zip([
         provider_support::FAIL_PREFLIGHT,
         provider_support::FAIL_GRAPH,
-        provider_support::FAIL_OPEN,
+        provider_support::FAIL_OPEN_ONCE,
         provider_support::FAIL_START_ONCE,
     ]) {
         // SAFETY: staging is private until the channel successfully adopts it.
@@ -1712,7 +1856,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
     // SAFETY: no lazy reload is attempted here.
     assert_eq!(unsafe { channel_service(channel) }, URP_AST_OK);
 
-    // A stopped hardware generation reloads without restoring or restarting it.
+    // A stopped hardware generation reacquires its lease without restarting it.
     // SAFETY: the running channel is stopped normally.
     assert_eq!(unsafe { channel_stop(channel) }, URP_AST_OK);
     let stopped_reload = [CONFIG, b"[diagnostics]\ndiagnostic_trace_level = 6\n"].concat();
@@ -1726,7 +1870,7 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
         unsafe { channel_reload_prepare(channel) },
         URP_AST_OK
     );
-    provider_support::set_failure(provider_support::FAIL_OPEN);
+    provider_support::set_failure(provider_support::FAIL_OPEN_ONCE);
     // SAFETY: stopped-generation open failure does not restart the old generation.
     assert_eq!(
         // SAFETY: the channel is live and this test owns its control endpoint.
@@ -1827,6 +1971,202 @@ fn provider_failures_are_reported_and_reload_keeps_the_live_generation() {
 }
 
 #[test]
+fn same_device_reload_releases_exclusive_audio_and_reopens_on_rollback() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (running, failure, commit) in [
+        (true, 0, true),
+        (false, 0, true),
+        (true, 0, false),
+        (false, 0, false),
+        (true, provider_support::FAIL_OPEN_ONCE, false),
+        (false, provider_support::FAIL_OPEN_ONCE, false),
+        (true, provider_support::FAIL_START_ONCE, false),
+    ] {
+        let expected_creates = if failure == provider_support::FAIL_OPEN_ONCE || commit {
+            2
+        } else {
+            3
+        };
+        provider_support::clear_failure();
+        provider_support::exclusive_audio(true);
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: this test serializes all live handles and destroys the channel first.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(
+                channel_set_direct_callbacks(channel, &direct_callbacks()),
+                URP_AST_OK
+            );
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            if !running {
+                assert_eq!(channel_stop(channel), URP_AST_OK);
+            }
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            provider_support::set_failure(failure);
+            let activation = channel_reload_activate(channel);
+            let commit = u32::from(commit && activation == URP_AST_OK);
+            let finish = channel_reload_finish(channel, commit);
+            let driver_finish = driver_reload_finish(driver, commit);
+            let mut status = UrpAstChannelStatus {
+                struct_size: size_of::<UrpAstChannelStatus>() as u32,
+                abi_version: ABI_VERSION,
+                ..UrpAstChannelStatus::default()
+            };
+            let observed = channel_get_status(channel, &mut status);
+            let streams = provider_support::audio_streams();
+            let restarted = if running {
+                URP_AST_OK
+            } else {
+                channel_start(channel)
+            };
+            channel_destroy(channel);
+            driver_destroy(driver);
+            provider_support::exclusive_audio(false);
+            assert_eq!(
+                activation,
+                if failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                },
+                "same-device reload must release the old device lease: running={running}, failure={failure}"
+            );
+            assert_eq!(finish, URP_AST_OK);
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(
+                observed, URP_AST_OK,
+                "rollback restores an open stream even when stopped"
+            );
+            assert_eq!(status.running, u32::from(running));
+            assert_eq!(streams, 1);
+            assert_eq!(
+                restarted, URP_AST_OK,
+                "restored stopped stream remains startable"
+            );
+            assert_eq!(
+                provider_support::audio_lifecycle(),
+                (expected_creates, expected_creates)
+            );
+        }
+    }
+}
+
+#[test]
+fn reload_recovery_failures_report_degradation_and_remain_restartable() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (activation_failure, rollback_failure, expected_running) in [
+        (provider_support::FAIL_OPEN, 0, false),
+        (provider_support::FAIL_START, 0, false),
+        (0, provider_support::FAIL_STOP, true),
+        (0, provider_support::FAIL_OPEN, false),
+        (0, provider_support::FAIL_START, false),
+    ] {
+        provider_support::clear_failure();
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: this test exclusively owns live handles and destroys the channel first.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(
+                channel_set_direct_callbacks(channel, &direct_callbacks()),
+                URP_AST_OK
+            );
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            provider_support::set_failure(activation_failure);
+            let activation = channel_reload_activate(channel);
+            provider_support::set_failure(rollback_failure);
+            let finish = channel_reload_finish(channel, 0);
+            let driver_finish = driver_reload_finish(driver, 0);
+            let running = channel_control(channel).unwrap().1.running;
+            provider_support::clear_failure();
+            let restarted = channel_start(channel);
+            channel_destroy(channel);
+            driver_destroy(driver);
+            assert_eq!(
+                activation,
+                if activation_failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                }
+            );
+            assert_eq!(
+                finish,
+                if rollback_failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                }
+            );
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(running, expected_running);
+            assert_eq!(restarted, URP_AST_OK);
+            assert!(
+                context
+                    .borrow()
+                    .logs
+                    .iter()
+                    .any(|(_, message)| message.contains("rollback"))
+            );
+        }
+    }
+}
+
+#[test]
+fn reload_delivery_failures_preserve_the_previous_generation() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for (before_stop, failure) in [
+        (true, provider_support::PUBLISH_ON_STOP),
+        (false, provider_support::PUBLISH_ON_STOP),
+        (false, provider_support::PUBLISH_ON_STOP_FAIL_OPEN),
+    ] {
+        provider_support::clear_failure();
+        let context = RefCell::new(Calls::default());
+        let config = b"[usb]\n";
+        let driver = create_driver(&context, config);
+        // SAFETY: all callbacks are synchronous fakes and this test owns every live handle.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(channel_service(channel), URP_AST_OK);
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(channel_reload_prepare(channel), URP_AST_OK);
+            if before_stop {
+                assert_eq!(channel_stop(channel), URP_AST_OK);
+                assert_eq!(channel_start(channel), URP_AST_OK);
+            }
+            context.borrow_mut().fail_queue = true;
+            provider_support::set_failure(failure);
+            let activation = channel_reload_activate(channel);
+            let running = channel_control(channel).unwrap().1.running;
+            context.borrow_mut().fail_queue = false;
+            provider_support::clear_failure();
+            let finish = channel_reload_finish(channel, 0);
+            let driver_finish = driver_reload_finish(driver, 0);
+            let restarted = channel_start(channel);
+            let serviced = channel_service(channel);
+            channel_destroy(channel);
+            driver_destroy(driver);
+            assert_eq!(activation, URP_AST_ASTERISK_FAILURE);
+            assert_eq!(
+                running,
+                failure != provider_support::PUBLISH_ON_STOP_FAIL_OPEN
+            );
+            assert_eq!(finish, URP_AST_OK);
+            assert_eq!(driver_finish, URP_AST_OK);
+            assert_eq!(restarted, URP_AST_OK);
+            assert_eq!(serviced, URP_AST_OK);
+        }
+    }
+}
+
+#[test]
 fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     provider_support::clear_failure();
@@ -1871,7 +2211,7 @@ fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() 
         unsafe { channel_reload_activate(one) },
         URP_AST_OK
     );
-    provider_support::set_failure(provider_support::FAIL_OPEN);
+    provider_support::set_failure(provider_support::FAIL_OPEN_ONCE);
     assert_eq!(
         // SAFETY: the second prepared channel is exclusively serialized here.
         unsafe { channel_reload_activate(two) },

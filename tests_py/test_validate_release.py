@@ -14,6 +14,17 @@ VALIDATOR = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(VALIDATOR)
 
 
+def copy_release_boundary(destination):
+    """Copy validator inputs into an isolated release tree."""
+    artifacts = set(VALIDATOR.REQUIRED_ARTIFACTS)
+    workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+    artifacts.update(f"{member}/Cargo.toml" for member in workspace["workspace"]["members"])
+    for artifact in artifacts:
+        target = destination / artifact
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / artifact, target)
+
+
 def test_validator_accepts_repository(capsys, monkeypatch):
     """Accept the complete repository and its executable entry point."""
     assert VALIDATOR.validate(ROOT) == []
@@ -43,13 +54,7 @@ def test_validator_reports_an_empty_source_tree(tmp_path):
 
 def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
     """Report missing, extra, unsafe, and incomplete release artifacts together."""
-    artifacts = set(VALIDATOR.REQUIRED_ARTIFACTS)
-    workspace = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
-    artifacts.update(f"{member}/Cargo.toml" for member in workspace["workspace"]["members"])
-    for artifact in artifacts:
-        destination = tmp_path / artifact
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / artifact, destination)
+    copy_release_boundary(tmp_path)
     (tmp_path / "README.md").unlink()
     missing_member = tmp_path / "rust/asterisk/Cargo.toml"
     missing_member.unlink()
@@ -78,3 +83,44 @@ def test_validator_reports_every_failure_class(tmp_path, capsys, monkeypatch):
     output = capsys.readouterr().out
     assert output.startswith("RELEASE VALIDATION FAILED\n")
     assert "missing artifact: README.md" in output
+
+
+def test_validator_rejects_a_substantive_c_host_boundary(tmp_path):
+    """Reject retired Asterisk hosting operations in the metadata shim."""
+    copy_release_boundary(tmp_path)
+
+    shim = tmp_path / "src/chan_usbradioplus_shim.c"
+    shim.write_text(
+        shim.read_text(encoding="utf-8") + "\nstatic struct ast_channel_tech retired_host;\n",
+        encoding="utf-8",
+    )
+
+    errors = VALIDATOR.validate(tmp_path)
+    assert "Asterisk shim retains substantive host symbol: ast_channel_tech" in errors
+
+
+def test_validator_requires_the_rust_lifecycle_loader(tmp_path):
+    """Reject a shim that no longer resolves the Rust lifecycle descriptor."""
+    copy_release_boundary(tmp_path)
+    shim = tmp_path / "src/chan_usbradioplus_shim.c"
+    shim.write_text(
+        shim.read_text(encoding="utf-8").replace(
+            "usbradioplus_asterisk_loader_descriptor", "retired_loader"
+        ),
+        encoding="utf-8",
+    )
+    assert "Asterisk shim does not resolve the Rust lifecycle loader" in VALIDATOR.validate(
+        tmp_path
+    )
+
+
+def test_validator_rejects_an_incomplete_loader_descriptor(tmp_path):
+    """Require the complete versioned lifecycle table in release archives."""
+    copy_release_boundary(tmp_path)
+
+    header = tmp_path / "rust/asterisk/include/usbradioplus_asterisk.h"
+    header.write_text("struct urp_asterisk_loader_descriptor;\n", encoding="utf-8")
+
+    errors = VALIDATOR.validate(tmp_path)
+    assert "Asterisk loader header: missing 'URP_AST_LOADER_ABI_VERSION'" in errors
+    assert "Asterisk loader header: missing 'load' callback" in errors

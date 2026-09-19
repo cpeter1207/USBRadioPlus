@@ -75,20 +75,12 @@ pub struct LinkProcessingFactory {
 }
 
 impl LinkProcessingFactory {
-    /// Construct a factory using the installed Rust AGC LADSPA effect.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the plug-in path cannot be represented safely in
-    /// an FFmpeg graph description.
-    pub fn new(
-        provider: GraphProvider,
-        agc_plugin_path: impl Into<String>,
-    ) -> Result<Self, LinkPreparationError> {
-        Ok(Self {
-            descriptions: GraphDescriptionFactory::new(agc_plugin_path)?,
+    /// Reuse validated graph configuration without repeating plug-in path validation.
+    pub fn new(provider: GraphProvider, descriptions: GraphDescriptionFactory) -> Self {
+        Self {
+            descriptions,
             provider,
-        })
+        }
     }
 
     /// Prepare and warm one graph at the negotiated Asterisk link rate.

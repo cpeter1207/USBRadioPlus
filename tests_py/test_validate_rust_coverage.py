@@ -87,6 +87,15 @@ def test_branch_only_production_source_requires_line_coverage(tmp_path):
     ]
 
 
+def test_cargo_build_scripts_are_not_runtime_production_sources(tmp_path):
+    """Exclude Cargo build scripts that cargo-llvm-cov does not instrument."""
+    build_script = tmp_path / "crate" / "build.rs"
+    build_script.parent.mkdir()
+    build_script.write_text("fn main() {}\n", encoding="utf-8")
+    assert not validate_rust_coverage.production_source(build_script, tmp_path)
+    assert build_script.resolve() not in validate_rust_coverage.coverable_sources(tmp_path)
+
+
 def test_main_reports_success_and_failure(tmp_path, monkeypatch, capsys):
     root, json_report, lcov_report = write_reports(tmp_path)
     complete_json = json_report.read_text(encoding="utf-8")

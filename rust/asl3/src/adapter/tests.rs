@@ -1,6 +1,19 @@
 use super::*;
 use std::sync::{Arc, Mutex};
 
+impl EchoConfiguration {
+    const fn new(enabled: bool, maximum_frames: u16) -> Option<Self> {
+        if maximum_frames <= MAX_ECHO_FRAMES {
+            Some(Self {
+                enabled,
+                maximum_frames,
+            })
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 enum ConverterBehavior {
     Downsample,

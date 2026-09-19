@@ -521,8 +521,276 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     runtime.stop().unwrap();
     runtime.stop().unwrap();
     assert_eq!(STOPS.get(), 1);
+    runtime.suspend().unwrap();
+    runtime.suspend().unwrap();
+    assert_eq!(DESTROYS.get(), 1);
+    assert_eq!(runtime.statistics(), Err(AudioError::InvalidArgument));
+    assert_eq!(runtime.timing(), Err(AudioError::InvalidArgument));
+    CREATE_FAILS.set(true);
+    assert_eq!(runtime.reopen(), Err(AudioError::InvalidArgument));
+    CREATE_FAILS.set(false);
+    runtime.reopen().unwrap();
+    runtime.reopen().unwrap();
+    assert_eq!(STARTS.get(), 1, "reopening leaves callbacks stopped");
+    runtime.start().unwrap();
+    assert_eq!(STARTS.get(), 2);
+    assert_eq!(hardware.callback_statistics().receive_calls, 2);
+    assert_eq!(hardware.callback_statistics().transmit_calls, 2);
+    assert!(runtime.statistics().is_ok());
+    assert!(runtime.timing().is_ok());
+    drop(runtime);
+    assert_eq!(STOPS.get(), 2);
+    assert_eq!(DESTROYS.get(), 2);
+}
+
+#[derive(Default)]
+struct DirectCapture {
+    samples: [f32; 4],
+    keyed: u32,
+    rx_status: c_int,
+    tx_keyed: u32,
+    tx_status: c_int,
+    receive_calls: u32,
+    transmit_calls: u32,
+}
+
+unsafe extern "C" fn direct_receive(
+    context: *mut c_void,
+    keyed: u32,
+    samples: *mut f32,
+    count: u32,
+) -> c_int {
+    // SAFETY: the test owns the context and exact mono span for this call.
+    let (capture, samples) = unsafe {
+        (
+            &mut *context.cast::<DirectCapture>(),
+            std::slice::from_raw_parts_mut(samples, count as usize),
+        )
+    };
+    capture.samples.copy_from_slice(&samples[..4]);
+    capture.keyed = keyed;
+    capture.receive_calls += 1;
+    samples.fill(0.0);
+    capture.rx_status
+}
+
+unsafe extern "C" fn direct_transmit(
+    context: *mut c_void,
+    samples: *mut f32,
+    count: u32,
+    keyed: *mut u32,
+) -> c_int {
+    // SAFETY: the test owns the context, output key and exact mono span.
+    let capture = unsafe { &mut *context.cast::<DirectCapture>() };
+    // SAFETY: the callback contract supplies count writable samples and a key result.
+    unsafe {
+        std::slice::from_raw_parts_mut(samples, count as usize).fill(-0.375);
+        *keyed = capture.tx_keyed;
+    }
+    capture.transmit_calls += 1;
+    capture.tx_status
+}
+
+#[test]
+fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
+    for (status, keyed) in [(-1, 1), (0, 2)] {
+        let mut capture = DirectCapture {
+            tx_keyed: 1,
+            ..DirectCapture::default()
+        };
+        let (mut media, selected) =
+            media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
+        let callbacks = crate::DirectCallbacks {
+            struct_size: size_of::<crate::DirectCallbacks>() as u32,
+            abi_version: crate::DirectCallbacks::ABI_VERSION,
+            receive_context: ptr::from_mut(&mut capture).cast(),
+            receive: Some(direct_receive),
+            transmit_context: ptr::from_mut(&mut capture).cast(),
+            transmit: Some(direct_transmit),
+            accepted_abi_version: 0,
+        };
+        // SAFETY: the context outlives the runtime and calls below are serial.
+        unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
+        let (runtime, mut control) =
+            StationRuntime::open(media, &selected, audio_provider()).unwrap();
+        runtime.hardware.publish_requests(ControllerRequests {
+            transmit: true,
+            calibrated_test_tone: true,
+            ..ControllerRequests::default()
+        });
+        let mut output = [0.0; 8];
+        // SAFETY: the stopped stream owns this context and exact stereo span.
+        let success = unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        };
+        assert_eq!(success, CALLBACK_OK);
+        assert!(runtime.hardware.outputs().logical_ptt);
+        assert_eq!(output, [-0.375; 8]);
+        capture.tx_status = status;
+        capture.tx_keyed = keyed;
+        assert_eq!((capture.tx_status, capture.tx_keyed), (status, keyed));
+        // SAFETY: the stopped stream owns this context and exact stereo span.
+        let failure = unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        };
+        assert_eq!(failure, CALLBACK_FAILED);
+        assert_eq!(output, [0.0; 8]);
+        assert!(!runtime.hardware.outputs().logical_ptt);
+        assert_eq!(runtime.hardware.outputs().selected_ctcss_tenths_hz, None);
+        assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
+        assert_eq!(
+            control.radio().radio().snapshot().unwrap().transmit_frames,
+            8
+        );
+    }
+}
+
+#[test]
+fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render() {
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ..DirectCapture::default()
+    };
+    let (mut media, selected) =
+        media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    let mut legacy = prepared(crate::ControllerTransport::AppRpt, 25)
+        .bind_media(
+            ring_provider(),
+            radio_provider(),
+            ControllerSetup::AppRpt {
+                converter: Box::new(FailingConverter),
+                handoff_slots: 2,
+                echo: EchoConfiguration::disabled(),
+            },
+        )
+        .unwrap();
+    assert!(matches!(
+        // SAFETY: capture outlives these stopped owners; rejection cannot invoke callbacks.
+        unsafe { legacy.set_direct_callbacks(callbacks) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+    drop(legacy);
+    let mut invalid = callbacks;
+    invalid.abi_version = 0;
+    assert!(matches!(
+        // SAFETY: capture outlives these stopped owners; the descriptor is rejected.
+        unsafe { media.set_direct_callbacks(invalid) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+    // SAFETY: capture outlives the stopped runtime and calls below are serial.
+    unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
+    assert!(matches!(
+        // SAFETY: the same live contexts remain owned here; attachment is already complete.
+        unsafe { media.set_direct_callbacks(callbacks) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+    let (mut runtime, mut control) =
+        StationRuntime::open(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        ..HardwareInputs::default()
+    });
+    let input = [0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6];
+    assert_eq!(
+        // SAFETY: stopped runtime uniquely owns these contexts and spans are exact.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        0
+    );
+    assert_eq!(capture.samples, [0.1, 0.2, 0.3, 0.4]);
+    assert_eq!(capture.keyed, 1);
+    assert_eq!(capture.receive_calls, 1);
+    assert!(runtime.hardware.outputs().receiver_keyed);
+    capture.rx_status = -7;
+    assert_eq!(capture.rx_status, -7);
+    assert_eq!(
+        // SAFETY: the stopped runtime retains this live context and exact stereo span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_FAILED
+    );
+    assert_eq!(capture.receive_calls, 2);
+    assert_eq!(runtime.hardware.callback_statistics().receive_calls, 2);
+    assert_eq!(runtime.hardware.callback_statistics().receive_failures, 1);
+    capture.rx_status = 0;
+    assert_eq!(capture.rx_status, 0);
+    let mut voice = ControllerPcmFrame::silence(AsteriskPcmMode::Advanced);
+    assert!(control.controller().next_action(&mut voice).is_none());
+    let mut output = [0.0; 8];
+    assert_eq!(
+        // SAFETY: stopped runtime uniquely owns these contexts and spans are exact.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        0
+    );
+    assert_eq!(capture.transmit_calls, 1);
+    assert!(runtime.hardware.outputs().logical_ptt);
+    // The radio fixture exercises the actual bound program port for generation 24.
+    assert_eq!(output, [-0.375; 8]);
+    capture.tx_keyed = 0;
+    assert_eq!(capture.tx_keyed, 0);
+    runtime.hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        ..ControllerRequests::default()
+    });
+    assert_eq!(
+        // SAFETY: same stopped contexts and exact writable span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        0
+    );
+    assert!(runtime.hardware.outputs().logical_ptt);
+    runtime
+        .hardware
+        .publish_requests(ControllerRequests::default());
+    assert_eq!(
+        // SAFETY: same stopped contexts and exact writable span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        0
+    );
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    STOPS.set(0);
+    DESTROYS.set(0);
+    runtime.start().unwrap();
+    runtime.stop().unwrap();
+    assert_eq!(STOPS.get(), 1);
     drop(runtime);
     assert_eq!(DESTROYS.get(), 1);
+    // Context remains owned here until both callback owners have been destroyed.
+    assert_eq!(capture.receive_calls, 3);
+    assert_eq!(capture.transmit_calls, 4);
 }
 
 #[test]

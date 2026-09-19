@@ -389,7 +389,7 @@ fn prepare(
 }
 
 #[test]
-fn descriptor_validation_requires_the_complete_abi3_table() {
+fn descriptor_validation_requires_the_complete_abi4_table() {
     // SAFETY: null is explicitly accepted as an incompatible descriptor.
     let null_result = unsafe { RadioProvider::from_raw_descriptor(ptr::null()) };
     assert_eq!(null_result.err(), Some(RadioError::IncompatibleAdapter));
@@ -476,7 +476,7 @@ fn high_level_configuration_maps_to_the_flat_abi() {
 }
 
 #[test]
-fn rust_layout_matches_the_abi3_c_header() {
+fn rust_layout_matches_the_abi4_c_header() {
     assert_eq!(
         (
             size_of::<RawReceiveConfig>(),
@@ -513,7 +513,7 @@ fn rust_layout_matches_the_abi3_c_header() {
     assert_eq!(offset_of!(RawSessionConfig, receive), 48);
     assert_eq!(offset_of!(RawSessionConfig, qualification), 112);
     assert_eq!(offset_of!(RawSessionConfig, transmit), 144);
-    assert_eq!(size_of::<RawSessionPorts>(), 1_472);
+    assert_eq!(size_of::<RawSessionPorts>(), 1_504);
     assert_eq!(offset_of!(RawSessionPorts, receive_ctcss_notch), 72);
     assert_eq!(offset_of!(RawSessionPorts, receive_noise_reduction), 1_288);
     assert_eq!(offset_of!(RawSessionPorts, transmit_program), 1_352);
@@ -526,6 +526,7 @@ fn rust_layout_matches_the_abi3_c_header() {
         1_416
     );
     assert_eq!(offset_of!(RawSessionPorts, program_ring), 1_448);
+    assert_eq!(offset_of!(RawSessionPorts, receive_ctcss_tail_notch), 1_472);
     assert_eq!(size_of::<RawDescriptor>(), 80);
     assert_eq!(size_of::<RawReceiveInput>(), 20);
     assert_eq!(size_of::<RawTransmitInput>(), 24);
@@ -878,9 +879,11 @@ fn typed_values_and_borrowed_ports_cover_the_narrow_public_surface() {
     let mut context = 0_u8;
     let mut normal_dcs_context = 0_u8;
     let mut turnoff_dcs_context = 0_u8;
+    let mut tail_notch_context = 0_u8;
     let context = NonNull::from(&mut context).cast::<c_void>();
     let normal_dcs_context = NonNull::from(&mut normal_dcs_context).cast::<c_void>();
     let turnoff_dcs_context = NonNull::from(&mut turnoff_dcs_context).cast::<c_void>();
+    let tail_notch_context = NonNull::from(&mut tail_notch_context).cast::<c_void>();
     // SAFETY: the local context outlives these unexecuted test bindings and
     // the callbacks accept its opaque address without dereferencing it.
     let processor = unsafe { ProcessorPort::from_raw(context, process, Some(bypass), Some(warm)) };
@@ -890,6 +893,8 @@ fn typed_values_and_borrowed_ports_cover_the_narrow_public_surface() {
     let normal_dcs = unsafe { ProcessorPort::from_raw(normal_dcs_context, process, None, None) };
     // SAFETY: the local context outlives this unexecuted test binding.
     let turnoff_dcs = unsafe { ProcessorPort::from_raw(turnoff_dcs_context, process, None, None) };
+    // SAFETY: the local context outlives this unexecuted test binding.
+    let tail_notch = unsafe { ProcessorPort::from_raw(tail_notch_context, process, None, None) };
     assert_eq!(processor.raw.context, context.as_ptr());
     assert!(processor.raw.process_f32.is_some());
     assert!(processor.raw.bypass.is_some());
@@ -904,6 +909,7 @@ fn typed_values_and_borrowed_ports_cover_the_narrow_public_surface() {
     ports.transmit_dcs_normal_filter = normal_dcs;
     ports.transmit_dcs_turnoff_filter = turnoff_dcs;
     ports.program_ring = program_ring;
+    ports.receive_ctcss_tail_notch = tail_notch;
     let raw = ports.as_raw();
     assert!(raw.receive_ctcss_notch[5].process_f32.is_some());
     assert!(raw.receive_ctcss_notch[4].process_f32.is_none());
@@ -916,6 +922,10 @@ fn typed_values_and_borrowed_ports_cover_the_narrow_public_surface() {
         turnoff_dcs_context.as_ptr()
     );
     assert!(raw.program_ring.render_f32.is_some());
+    assert_eq!(
+        raw.receive_ctcss_tail_notch.context,
+        tail_notch_context.as_ptr()
+    );
 }
 
 #[test]

@@ -29,11 +29,11 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
     assert "librate-adjusting-pcm-ring2-dev" in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha3)" in control
-    assert "--variable=abi_version rptadvradio),3" in makefile
+    assert "librptadvradio-dev (>= 0.1.0~alpha5)" in control
+    assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",
-        "librptadvradio.so.3",
+        "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
@@ -65,6 +65,32 @@ def test_usbradioplus_debian_package_is_nonactivating():
         assert document in rules
     for maintainer_script in ("*.preinst", "*.postinst", "*.prerm", "*.postrm"):
         assert not list((ROOT / "debian").glob(maintainer_script))
+
+
+def test_private_rust_host_and_module_are_one_package_transaction():
+    """Prevent apt from installing mismatched loader and module revisions."""
+    control = read("debian/control")
+    makefile = read("Makefile")
+    rules = read("debian/rules")
+    assert control.count("\nPackage: ") == 1
+    module_install = "$(INSTALL_DATA) $(MODULE) "
+    module_path = "$(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so"
+    assert module_install + module_path in makefile
+    assert "$(INSTALL_PROGRAM) $(ASTERISK_ADAPTER_VERSIONED)" in makefile
+    assert "$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME)" in makefile
+    assert "debian/usbradioplus" in rules
+
+
+def test_rust_bindgen_build_dependency_is_declared():
+    """Keep generated Asterisk bindings reproducible outside the CI image."""
+    control = read("debian/control")
+    source_control, binary_control = control.split("\nPackage: ", maxsplit=1)
+    dependency_installer = read("scripts/install-build-deps.sh")
+    assert 'bindgen = "0.72.1"' in read("rust/asterisk/Cargo.toml")
+    assert "libclang-dev" in source_control
+    assert "libclang-dev" not in binary_control
+    assert "libclang-dev" in dependency_installer
+    assert "`libclang-dev`" in read("doc/packaging.md")
 
 
 def test_debian_source_version_matches_the_release_archive_version():
@@ -139,7 +165,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
     @param tmp_path Isolated filesystem directory supplied by pytest.
     """
     pkg_config = tmp_path / "pkg-config"
-    for incompatible_abi in ("", "1", "2", "4"):
+    for incompatible_abi in ("", "1", "2", "3", "5"):
         pkg_config.write_text(
             "#!/bin/sh\n"
             'if [ "$*" = "--variable=abi_version rptadvradio" ]; then\n'
@@ -157,7 +183,48 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
             check=False,
         )
         assert result.returncode != 0
-        assert "requires librptadvradio descriptor ABI 3" in result.stderr
+        assert "requires librptadvradio descriptor ABI 4" in result.stderr
+
+
+def test_module_link_uses_selected_provider_paths(tmp_path):
+    """Link every released provider by its selected full shared-object path."""
+    pkg_config = tmp_path / "pkg-config"
+    pkg_config.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        "  --variable=abi_version) echo 4;;\n"
+        '  --variable=libdir) echo /selected/"$2";;\n'
+        '  --libs-only-other) printf "%s " -pthread -Wl,--as-needed;;\n'
+        '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    pkg_config.chmod(0o755)
+    result = subprocess.run(
+        [
+            "make",
+            "-n",
+            "build/chan_usbradioplus.so",
+            f"PKG_CONFIG={pkg_config}",
+            "LDFLAGS=-L/stale/lib",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    for provider, soname in (
+        ("rate_adjusting_pcm_ring2", "librate_adjusting_pcm_ring2.so.2"),
+        ("rptadvradio", "librptadvradio.so.4"),
+        ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.1"),
+        ("rptadv_ffmpeg_adapter", "librptadv_ffmpeg_adapter.so.1"),
+        ("rptadv_portaudio_alsa_adapter", "librptadv_portaudio_alsa_adapter.so.2"),
+        ("rptadv_gpio_adapter", "librptadv_gpio_adapter.so.1"),
+        ("rptadv_rnnoise_adapter", "librptadv_rnnoise_adapter.so.1"),
+    ):
+        assert f"/selected/{provider}/{soname}" in result.stdout
+        assert f"-l{provider} " not in result.stdout
+    assert "-pthread -Wl,--as-needed" in result.stdout
 
 
 def test_rnnoise_debhelper_install_lists_are_regular_data_files():

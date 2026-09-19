@@ -3603,6 +3603,45 @@ mod tests {
     }
 
     #[test]
+    fn failed_ctcss_keying_does_not_start_voice_tone_or_write_configuration() {
+        let channels = SharedChannels::default();
+        channels
+            .0
+            .borrow_mut()
+            .transmit_results
+            .push_back(Err("key failed".to_owned()));
+        let store = SharedStore::with_text(
+            "[one]\n[hardware]\nhardware_output_a_assignment = ctcss\n\
+             [transmit]\nsignaling_method = ctcss\n\
+             [ctcss]\ntransmit_default_hz = 100.0\n",
+        );
+        let applier = SharedApplier::default();
+        let backend = ScriptedBackend::new([DialogResponse::Accepted(String::new())]);
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            applier.clone(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+
+        app.adjust_transmit(TransmitCalibration::Ctcss).unwrap();
+
+        assert!(channels.0.borrow().test_tone_changes.is_empty());
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [(true, Some(CtcssTone::from_tenths_hz(1_000).unwrap()))]
+        );
+        assert!(store.0.borrow().writes.is_empty());
+        assert!(applier.0.borrow().calls.is_empty());
+        assert!(backend.0.borrow().requests.iter().any(|request| matches!(
+            request,
+            DialogRequest::Message { title, body }
+                if title == "Calibration unavailable" && body == "key failed"
+        )));
+    }
+
+    #[test]
     fn calibration_rejects_wrong_source_and_restores_after_runtime_failure() {
         let speaker = SharedStore::with_text("[one]\n[receive]\naudio_source = speaker\n");
         let mut app = TunerApp::new(
@@ -3922,6 +3961,45 @@ mod tests {
             &requests[3],
             DialogRequest::Selection { default_item, .. } if default_item == "no"
         ));
+    }
+
+    #[test]
+    fn usb_swap_rejects_invalid_station_before_writing_or_restarting() {
+        let backend = ScriptedBackend::new([
+            DialogResponse::Accepted("two".to_owned()),
+            DialogResponse::Accepted(String::new()),
+        ]);
+        let store = SharedStore::with_text(
+            "[one]\nhardware_profile = one\n[hardware one]\n\
+             hardware_device_identifier = first\n\
+             [two]\nhardware_profile = two\n[hardware two]\n\
+             hardware_device_identifier = second\n\
+             [receive]\nsignaling_method = ctcss\n\
+             [ctcss]\nreceive_source = no\n",
+        );
+        let original = store.0.borrow().text.clone();
+        let applier = SharedApplier::default();
+        let channels = SharedChannels::default();
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            applier.clone(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+
+        app.swap_usb_device().unwrap();
+
+        assert_eq!(store.0.borrow().text, original);
+        assert!(store.0.borrow().writes.is_empty());
+        assert!(applier.0.borrow().calls.is_empty());
+        assert!(channels.0.borrow().selections.is_empty());
+        assert!(backend.0.borrow().requests.iter().any(|request| matches!(
+            request,
+            DialogRequest::Message { title, body }
+                if title == "USB-device swap failed"
+                    && body.contains("non-disabled CTCSS receive source")
+        )));
     }
 
     #[test]

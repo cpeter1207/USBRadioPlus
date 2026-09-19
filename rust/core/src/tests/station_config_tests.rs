@@ -520,10 +520,12 @@ fn structural_profile_ambiguity_and_missing_sections_remain_errors() {
         resolve("[other]\n").unwrap_err(),
         StationConfigError::Document(ConfigError::MissingChannel("usb".to_owned()))
     );
-    assert_eq!(
-        resolve("[usb]\nhardware_profile = absent\n").unwrap_err(),
-        StationConfigError::Document(ConfigError::MissingProfile("hardware absent".to_owned()))
-    );
+    let resolved = resolve("[usb]\nhardware_profile = absent\n").unwrap();
+    assert_eq!(resolved.config(), &StationConfig::default());
+    assert_eq!(resolved.warnings().len(), 1);
+    assert_eq!(resolved.warnings()[0].name, "hardware_profile");
+    assert_eq!(resolved.warnings()[0].supplied_value, "absent");
+    assert_eq!(resolved.warnings()[0].fallback, "hardware");
 }
 
 #[test]

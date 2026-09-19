@@ -7,6 +7,7 @@ fn shipped_profiles_match_each_source_role() {
     let transmit = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
     assert!(local.receive.bandpass_enabled);
     assert_eq!(local.receive.pl_filter, PlFilter::HighPass);
+    assert_eq!(local.receive.notch_width_hz, 10.0);
     assert_eq!(local.output_gain_db, -6.2);
     assert!(!link.receive.bandpass_enabled);
     assert_eq!(link.receive.pl_filter, PlFilter::Disabled);
@@ -15,6 +16,23 @@ fn shipped_profiles_match_each_source_role() {
     assert!(local.validate().is_ok());
     assert!(link.validate().is_ok());
     assert!(transmit.validate().is_ok());
+}
+
+#[test]
+fn ctcss_notch_width_is_fixed_at_ten_hz() {
+    let mut chain = ProcessingChain::shipped(ChainRole::LocalReceive);
+    chain.receive.pl_filter = PlFilter::DecodedToneNotch;
+    assert!(chain.validate().is_ok());
+
+    chain.receive.notch_width_hz = 9.9;
+    assert!(matches!(
+        chain.validate(),
+        Err(ProcessingConfigError::Range {
+            field: "ctcss_notch_width_hz",
+            minimum: 10.0,
+            maximum: 10.0,
+        })
+    ));
 }
 
 #[test]

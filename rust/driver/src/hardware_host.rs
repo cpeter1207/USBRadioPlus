@@ -618,6 +618,28 @@ impl HardwareStation {
         audio.and(hardware)
     }
 
+    /// Quiesce audio and hardware, then release the audio device for reload.
+    ///
+    /// The service is joined and GPIO fail-safe unkeyed before stream destruction.
+    /// Media and callback contexts remain owned here for transaction rollback.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stop failure without releasing a possibly active stream.
+    pub fn suspend(&mut self) -> Result<(), HardwareStationError> {
+        self.stop()?;
+        self.runtime.suspend().map_err(HardwareStationError::Audio)
+    }
+
+    /// Reacquire a suspended audio device without starting callbacks or GPIO.
+    ///
+    /// # Errors
+    ///
+    /// Returns an audio open failure, leaving the station suspended and RF-safe.
+    pub fn reopen(&mut self) -> Result<(), HardwareStationError> {
+        self.runtime.reopen().map_err(HardwareStationError::Audio)
+    }
+
     /// Borrow serialized controller and radio-observer ownership.
     pub fn control(&mut self) -> &mut StationControlHost {
         &mut self.control
@@ -661,6 +683,9 @@ impl HardwareStation {
     }
 
     /// Publish controller PTT and audio-admission intent atomically.
+    ///
+    /// DAC admission remains independent of PTT so an unkeyed callback can
+    /// finish transmitter signaling and release the hardware.
     pub fn set_transmit_request(
         &self,
         transmit: bool,
@@ -708,7 +733,9 @@ impl HardwareStation {
                 keyed,
                 forced_ctcss,
             } => {
-                self.set_transmit_request(keyed, keyed, forced_ctcss);
+                // A live DAC callback remains admitted while the radio core
+                // finishes its tone-off sequence and releases logical PTT.
+                self.set_transmit_request(keyed, true, forced_ctcss);
             }
             ControlAction::SelectChannel(channel) => self.select_channel(channel)?,
             ControlAction::SetReceiveCtcss(enabled) => self.set_subaudible_override(!enabled),
@@ -846,6 +873,14 @@ impl HardwareStation {
     /// Returns an error when the service is stopped, busy, or unavailable.
     pub fn transient_state(&self) -> Result<HardwareTransientState, HardwareStationError> {
         self.service.transient_state()
+    }
+
+    /// Stage persistent state for the next hardware-service start.
+    ///
+    /// Reload calls this on a stopped generation before [`Self::start`]. It
+    /// only replaces pending state; it never queues work to a running service.
+    pub fn stage_transient_state(&mut self, state: HardwareTransientState) {
+        self.service.pending_transient = Some(state);
     }
 
     /// Apply persistent state captured from the station being replaced.

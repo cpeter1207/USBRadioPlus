@@ -128,6 +128,11 @@ impl NativeProcessingFactory {
         })
     }
 
+    /// Borrow the validated graph-description factory for related processing setup.
+    pub fn graph_descriptions(&self) -> &GraphDescriptionFactory {
+        &self.descriptions
+    }
+
     /// Prepare and warm every processor before publication to audio owners.
     pub fn prepare(
         &self,
@@ -136,6 +141,7 @@ impl NativeProcessingFactory {
         validate_plan(plan)?;
         let maximum = self.stream.maximum_frame_count();
         let mut notches: [Option<PreparedGraph>; CTCSS_TONE_COUNT] = std::array::from_fn(|_| None);
+        let mut tail_notch = None;
         if plan.local.receive.pl_filter == PlFilter::DecodedToneNotch {
             for tone in CtcssTone::supported() {
                 notches[tone.table_index()] = Some(self.prepare_graph(
@@ -146,6 +152,15 @@ impl NativeProcessingFactory {
                     maximum,
                 )?);
             }
+            // A 55 Hz tail closes CTCSS decode before the regular decoded-tone
+            // port can be selected, so prepare its fixed rejection graph here.
+            tail_notch = Some(
+                self.prepare_graph(
+                    self.descriptions
+                        .decoded_tone_notch(55.0, plan.local.receive.notch_width_hz)?,
+                    maximum,
+                )?,
+            );
         }
 
         Ok(ProcessingGeneration {
@@ -157,6 +172,7 @@ impl NativeProcessingFactory {
             receive_filter: self
                 .prepare_graph(self.descriptions.receive_filter(&plan.local)?, maximum)?,
             receive_ctcss_notch: notches,
+            receive_ctcss_tail_notch: tail_notch,
             receive_noise_reduction: plan
                 .local
                 .rnnoise_enabled
@@ -201,6 +217,7 @@ pub struct ProcessingGeneration {
     receive_deemphasis: PreparedGraph,
     receive_filter: PreparedGraph,
     receive_ctcss_notch: [Option<PreparedGraph>; CTCSS_TONE_COUNT],
+    receive_ctcss_tail_notch: Option<PreparedGraph>,
     receive_noise_reduction: Option<DenoiseStream>,
     receive_dynamics: PreparedGraph,
     transmit_program: PreparedGraph,
@@ -218,6 +235,7 @@ impl ProcessingGeneration {
             receive_deemphasis,
             receive_filter,
             receive_ctcss_notch,
+            receive_ctcss_tail_notch,
             receive_noise_reduction,
             receive_dynamics,
             transmit_program,
@@ -230,6 +248,9 @@ impl ProcessingGeneration {
                 *port = graph_port(graph);
             }
         }
+        let tail_notch_port = receive_ctcss_tail_notch
+            .as_mut()
+            .map_or_else(ProcessorPort::passthrough, graph_port);
         SessionPorts {
             receive_deemphasis: graph_port(receive_deemphasis),
             receive_filter: graph_port(receive_filter),
@@ -242,6 +263,7 @@ impl ProcessingGeneration {
             transmit_dcs_normal_filter: graph_port(transmit_dcs_normal_filter),
             transmit_dcs_turnoff_filter: graph_port(transmit_dcs_turnoff_filter),
             program_ring,
+            receive_ctcss_tail_notch: tail_notch_port,
         }
     }
 }

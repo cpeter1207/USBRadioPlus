@@ -1,5 +1,7 @@
 //! Callback-partition assembly around the fixed-frame `RNNoise` adapter.
 
+#![cfg_attr(coverage, feature(coverage_attribute))]
+
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::fmt;
 use std::mem::{offset_of, size_of};

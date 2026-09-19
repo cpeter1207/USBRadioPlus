@@ -74,7 +74,7 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "container-smoke-test.sh" in dockerfile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",
-        "librptadvradio.so.3",
+        "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
@@ -176,6 +176,12 @@ def test_rust_agc_retains_dynamic_ladspa_artifact_and_pinned_tools():
     assert "ARG RUST_NIGHTLY=nightly-2025-02-20" in dockerfile
     assert "ARG CARGO_LLVM_COV_VERSION=0.6.21" in dockerfile
     assert "--component llvm-tools-preview" in dockerfile
+
+
+def test_rust_asterisk_bindgen_uses_the_configured_public_header_directory():
+    """Forward the Make include override to the Rust binding generator."""
+    makefile = read("Makefile")
+    assert 'USBRADIOPLUS_ASTERISK_INCLUDEDIR="$(ASTERISK_INCLUDEDIR)"' in makefile
 
 
 def test_local_container_runner_preserves_parallel_running_checks(tmp_path, monkeypatch):

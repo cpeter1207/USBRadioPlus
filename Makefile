@@ -62,10 +62,8 @@ ifeq ($(shell $(PKG_CONFIG) --exists rate_adjusting_pcm_ring2 && echo yes),)
 $(error USBRadioPlus requires the librate-adjusting-pcm-ring2 development package)
 endif
 RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring2)
-# pkg-config suppresses the standard multiarch -L path. Keep it explicitly so
-# a stale /usr/local development symlink cannot select an older ring SONAME.
-RPCR_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring2) \
-	$(shell $(PKG_CONFIG) --libs rate_adjusting_pcm_ring2)
+# Link the exact selected shared object: an earlier -L path must not override it.
+RPCR_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring2)/librate_adjusting_pcm_ring2.so.2
 RPCR_BUILD_DEP :=
 endif
 # USBRadioPlus consumes the portable Rust radio core through its released
@@ -89,12 +87,11 @@ else
 ifeq ($(shell $(PKG_CONFIG) --exists rptadvradio && echo yes),)
 $(error USBRadioPlus requires the librptadvradio development package)
 endif
-ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),3)
-$(error USBRadioPlus requires librptadvradio descriptor ABI 3 from alpha.3 or newer)
+ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),4)
+$(error USBRadioPlus requires librptadvradio descriptor ABI 4 from alpha.4 or newer)
 endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
-RPTADV_RADIO_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadvradio) \
-	$(shell $(PKG_CONFIG) --libs rptadvradio)
+RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.4
 RPTADV_RADIO_BUILD_DEP :=
 endif
 # USBRadioPlus routes its current mono sinc compatibility conversion through
@@ -118,8 +115,7 @@ ifeq ($(shell $(PKG_CONFIG) --exists rptadv_samplerate_adapter && echo yes),)
 $(error USBRadioPlus requires the librptadv-samplerate-adapter development package)
 endif
 RPTADV_SAMPLERATE_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_samplerate_adapter)
-RPTADV_SAMPLERATE_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter) \
-	$(shell $(PKG_CONFIG) --libs rptadv_samplerate_adapter)
+RPTADV_SAMPLERATE_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter)/librptadv_samplerate_adapter.so.1
 RPTADV_SAMPLERATE_BUILD_DEP :=
 endif
 # Native signaling graphs use the released dynamic FFmpeg adapter.
@@ -142,8 +138,7 @@ ifeq ($(shell $(PKG_CONFIG) --exists rptadv_ffmpeg_adapter && echo yes),)
 $(error USBRadioPlus requires the librptadv-ffmpeg-adapter development package)
 endif
 RPTADV_FFMPEG_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_ffmpeg_adapter)
-RPTADV_FFMPEG_LIBS := -L$(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter) \
-	$(shell $(PKG_CONFIG) --libs rptadv_ffmpeg_adapter)
+RPTADV_FFMPEG_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter)/librptadv_ffmpeg_adapter.so.1
 RPTADV_FFMPEG_BUILD_DEP :=
 endif
 PARALLEL_JOBS ?= $(strip $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2))
@@ -157,11 +152,16 @@ RADIO_PACKAGES := rptadv_portaudio_alsa_adapter rptadv_gpio_adapter rptadv_rnnoi
 ifeq ($(shell $(PKG_CONFIG) --exists $(RADIO_PACKAGES) && echo yes),)
 $(error USBRadioPlus requires the released audio, GPIO, and RNNoise adapter development packages)
 endif
-ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.1.0~alpha2 rptadv_portaudio_alsa_adapter && echo yes),)
-$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.1.0~alpha2 or newer)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.2.0~alpha2 rptadv_portaudio_alsa_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha2 or newer)
 endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
-RADIO_LIBS := $(shell $(PKG_CONFIG) --libs $(RADIO_PACKAGES))
+# Keep non-library transitive flags while pinning each direct DSO to its provider.
+RADIO_LIBS := \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_portaudio_alsa_adapter)/librptadv_portaudio_alsa_adapter.so.2 \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_gpio_adapter)/librptadv_gpio_adapter.so.1 \
+	$(shell $(PKG_CONFIG) --variable=libdir rptadv_rnnoise_adapter)/librptadv_rnnoise_adapter.so.1 \
+	$(shell $(PKG_CONFIG) --libs-only-other $(RADIO_PACKAGES))
 # External Asterisk headers use GNU pthread declarations before autoconfig.h
 # can request them, so make that feature set explicit for every module build.
 COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc -Irust/asterisk/include $(RPCR_CFLAGS) \
@@ -180,8 +180,8 @@ AGC_PLUGIN_SONAME := usbradioplus_agc.so.1
 AGC_PLUGIN_VERSIONED := $(BUILD_DIR)/$(AGC_PLUGIN_SONAME)
 RUST_AGC_LIBRARY := $(CARGO_TARGET_DIR)/release/libusbradioplus_agc.so
 RUST_SOURCES := $(shell find rust -type f \( -name '*.rs' -o -name Cargo.toml \))
+RUST_BINDGEN_INPUTS := rust/asterisk/wrapper.h
 RUST_BUILD_STAMP := $(BUILD_DIR)/.rust-release
-AGC_PLUGIN_CPPFLAGS := -DURP_AGC_PLUGIN_PATH='"$(agcplugindir)/usbradioplus_agc.so"'
 BUILD_CONFIG_STAMP := $(BUILD_DIR)/.module-build-config
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 
@@ -256,21 +256,19 @@ $(RPTADV_FFMPEG_LIBRARY): $(RPTADV_FFMPEG_SOURCE_FILES)
 endif
 
 # A later staged install may select a different prefix from the initial build.
-# Track it so the module cannot retain a stale private-plugin location.
+# Track it so the Rust host cannot retain a stale private-plugin location.
 $(BUILD_DIR)/agc-plugin-path: force-agc-path | $(BUILD_DIR)
 	@printf '%s\n' '$(agcplugindir)/usbradioplus_agc.so' > $@.tmp
 	@if cmp -s $@.tmp $@; then \
 		rm -f $@.tmp; \
 	else \
 		mv $@.tmp $@; \
-		rm -f $(CHANNEL_OBJECT); \
+		rm -f $(RUST_BUILD_STAMP); \
 	fi
-
-$(CHANNEL_OBJECT): $(BUILD_DIR)/agc-plugin-path
 
 $(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(BUILD_CONFIG_STAMP) | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(AGC_PLUGIN_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
+	$(CC) $(CPPFLAGS) $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) $(CFLAGS) $(WARNFLAGS) \
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
@@ -282,7 +280,7 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 		$(RPTADV_FFMPEG_LIBS) $(RADIO_LIBS) -lm
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring2.so.2]'
-	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.3]'
+	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_ffmpeg_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_portaudio_alsa_adapter.so.2]'
@@ -296,9 +294,13 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 
 # Build each Rust artifact once so distinct linker flags cannot race through a
 # shared Cargo target directory under parallel make.
-$(RUST_BUILD_STAMP): Cargo.toml Cargo.lock rust-toolchain.toml $(RUST_SOURCES) $(BUILD_CONFIG_STAMP)
+$(RUST_BUILD_STAMP): Cargo.toml Cargo.lock rust-toolchain.toml $(RUST_SOURCES) \
+	$(RUST_BINDGEN_INPUTS) \
+	$(BUILD_CONFIG_STAMP) $(BUILD_DIR)/agc-plugin-path
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" $(CARGO) build --release --locked -p usbradioplus-tune
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \
+		USBRADIOPLUS_ASTERISK_INCLUDEDIR="$(ASTERISK_INCLUDEDIR)" \
+		USBRADIOPLUS_AGC_PLUGIN_PATH="$(agcplugindir)/usbradioplus_agc.so" \
 		$(CARGO) rustc --release --locked -p usbradioplus-asterisk -- \
 		-C link-arg=-Wl,-soname,$(ASTERISK_ADAPTER_SONAME)
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \
@@ -345,6 +347,7 @@ lint:
 	$(RUFF) format --check tests_py tests_docs tools
 	$(CLANG_FORMAT) --dry-run --Werror \
 		$(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER) \
+		rust/asterisk/src/host/tests/variadic.c \
 		tests/test_chan_usbradioplus_shim.c \
 		$(shell find tests/fixtures/shim-host -type f -name '*.h') \
 		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h \
@@ -365,13 +368,16 @@ static-analysis: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE
 		--suppress=normalCheckLevelMaxBranches --suppress=constParameterCallback \
 		-Itests/fixtures/shim-host/include -Irust/asterisk/include \
 		$(CHANNEL_SOURCE) & cppcheck_pid=$$!; \
+	$(CPPCHECK) --std=c11 --enable=warning,style,performance,portability \
+		--error-exitcode=1 --suppress=missingIncludeSystem \
+		rust/asterisk/src/host/tests/variadic.c & test_ffi_cppcheck_pid=$$!; \
 	clang-tidy $(CHANNEL_SOURCE) \
 		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& channel_tidy_pid=$$!; \
 	status=0; \
-	for pid in $$rust_clippy_pid $$cppcheck_pid $$channel_tidy_pid; do \
+	for pid in $$rust_clippy_pid $$cppcheck_pid $$test_ffi_cppcheck_pid $$channel_tidy_pid; do \
 		wait $$pid || status=1; \
 	done; \
 	exit $$status

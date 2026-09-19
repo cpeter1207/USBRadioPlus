@@ -25,10 +25,12 @@ Only the selected composition owns the device.
 | Complete app_rpt/RadioPlusAdvanced frame assembly | Single ASL3 adapter |
 
 The PortAudio callback processes its actual bounded frame count using
-preallocated state. A bounded handoff moves resulting PCM to the
-non-real-time Asterisk delivery worker. The app_rpt interface stays at 8 kHz;
-RadioPlusAdvanced stays at 48 kHz. No PCM callback opens a device, allocates,
-logs, or calls Asterisk frame APIs.
+preallocated state. The app_rpt frame path hands PCM to a non-real-time Asterisk
+delivery worker and stays at 8 kHz. The current rpt_advanced controller instead
+attaches direct 48 kHz normalized F32 callbacks: receive delivers processed PCM
+and keyed state, while independently paced transmit fills the current block and
+returns PTT. No PCM callback opens a device, allocates, logs, or calls Asterisk
+frame APIs. See [the controller interface](rpt-advanced-interface.md).
 
 The control-plane GPIO worker owns PTT output and publishes input snapshots.
 The channel coordinates setup, failure, and ordered cleanup with the shared

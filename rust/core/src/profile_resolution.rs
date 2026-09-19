@@ -267,7 +267,8 @@ impl ResolvedProfile {
         let source = source.into();
         let kind = role_section(role);
         reject_ambiguous_selector(document, channel, kind)?;
-        let resolved_section = document.resolved_section(channel, kind)?;
+        let mut warnings = Vec::new();
+        let resolved_section = document.profile_section(channel, kind, &source, &mut warnings)?;
         let flat = RawOverlay::flat(role, source.clone(), document.explicit_values(kind));
         let scoped = (!resolved_section.eq_ignore_ascii_case(kind)).then(|| {
             RawOverlay::scoped(
@@ -277,7 +278,10 @@ impl ResolvedProfile {
                 document.explicit_values(&resolved_section),
             )
         });
-        Self::resolve(role, &flat, scoped.as_ref())
+        let mut result = Self::resolve(role, &flat, scoped.as_ref())?;
+        warnings.append(&mut result.warnings);
+        result.warnings = warnings;
+        Ok(result)
     }
 
     /// Consume the result and return its validated effective source chain.
@@ -605,7 +609,7 @@ fn apply_setting(
             pl_filter(&mut chain.receive.pl_filter, warnings, overlay, setting)
         }
         "ctcss_notch_width_hz" if chain.role == ChainRole::LocalReceive => {
-            number!(chain.receive.notch_width_hz, 0.2, 10.0)
+            number!(chain.receive.notch_width_hz, 10.0, 10.0)
         }
         "ctcss_highpass_hz" if chain.role == ChainRole::LocalReceive => {
             number!(chain.receive.highpass_hz, 50.0, 500.0)

@@ -11,8 +11,8 @@ use usbradioplus_asl3::{
     ReceiveStatus,
 };
 use usbradioplus_audio::{
-    AudioError, AudioProvider, AudioStream, ReceiveWorkerEndpoint, StreamStatistics, StreamTiming,
-    TransmitWorkerEndpoint,
+    AudioError, AudioProvider, AudioStream, ReceiveWorkerEndpoint, StreamConfig, StreamStatistics,
+    StreamTiming, TransmitWorkerEndpoint,
 };
 use usbradioplus_radio::{
     CTCSS_TONE_COUNT, ReceiveControls, ReceiveResult, TransmitControls, TransmitResult,
@@ -284,6 +284,13 @@ impl SharedHardwareState {
         }
     }
 
+    fn publish_transmit_fault(&self) {
+        // A failed controller callback must release hardware PTT immediately,
+        // independently of the radio renderer's tone-off or drain state.
+        self.0.outputs.store(0, Ordering::Release);
+        self.0.transmit_ctcss_ready.store(0, Ordering::Release);
+    }
+
     fn publish_receiver_keyed(&self, receiver_keyed: bool) {
         self.0
             .receiver_keyed
@@ -382,17 +389,20 @@ struct ReceiveContext {
 struct TransmitContext {
     station: StationTransmit,
     maximum_frames: usize,
+    mono: Box<[f32]>,
     hardware: SharedHardwareState,
 }
 
-/// One stopped or running direct PortAudio station composition.
+/// One stopped, running, or reload-suspended direct PortAudio station composition.
 ///
 /// The stream is declared first so its destructor stops and destroys both
 /// callbacks before their contexts or the boxed station media are released.
 pub struct StationRuntime {
-    stream: AudioStream<'static, 'static>,
+    stream: Option<AudioStream<'static, 'static>>,
     _receive_context: Box<UnsafeCell<ReceiveContext>>,
     _transmit_context: Box<UnsafeCell<TransmitContext>>,
+    provider: AudioProvider,
+    stream_config: StreamConfig,
     hardware: SharedHardwareState,
 }
 
@@ -474,33 +484,20 @@ impl StationRuntime {
         let transmit_context = Box::new(UnsafeCell::new(TransmitContext {
             station: transmit,
             maximum_frames: stream.maximum_transmit_frame_count as usize,
+            mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
         }));
-        // SAFETY: both boxed UnsafeCell contexts have stable addresses and are
-        // retained until the stream is stopped and destroyed. Each callback is
-        // the sole serial mutator of its disjoint context.
-        let receive = unsafe {
-            ReceiveWorkerEndpoint::from_raw(
-                receive_callback,
-                NonNull::new_unchecked(receive_context.get()).cast(),
-            )
+        let mut runtime = Self {
+            stream: None,
+            _receive_context: receive_context,
+            _transmit_context: transmit_context,
+            provider,
+            stream_config: stream,
+            hardware: hardware.clone(),
         };
-        // SAFETY: the transmit context is disjoint from the receive context and
-        // obeys the same stream-before-context teardown contract.
-        let transmit = unsafe {
-            TransmitWorkerEndpoint::from_raw(
-                transmit_callback,
-                NonNull::new_unchecked(transmit_context.get()).cast(),
-            )
-        };
-        let stream = provider.open_stream(stream, receive, transmit)?;
+        runtime.reopen()?;
         Ok((
-            Self {
-                stream,
-                _receive_context: receive_context,
-                _transmit_context: transmit_context,
-                hardware: hardware.clone(),
-            },
+            runtime,
             StationControlHost {
                 plan,
                 control,
@@ -510,27 +507,82 @@ impl StationRuntime {
         ))
     }
 
-    /// Start capture and playback callbacks.
+    /// Reopen a reload-suspended stream without starting its callbacks.
+    ///
+    /// The immutable configuration and stable callback boxes survive suspension;
+    /// reopening therefore restores device ownership without replacing media.
+    pub fn reopen(&mut self) -> Result<(), AudioError> {
+        if self.stream.is_some() {
+            return Ok(());
+        }
+        // SAFETY: no stream owns these endpoints while suspended. Both boxed
+        // UnsafeCell contexts keep stable addresses until the reopened stream
+        // is stopped and destroyed, with one serial mutator per disjoint context.
+        let receive = unsafe {
+            ReceiveWorkerEndpoint::from_raw(
+                receive_callback,
+                NonNull::new_unchecked(self._receive_context.get()).cast(),
+            )
+        };
+        // SAFETY: the transmit context is disjoint from the receive context and
+        // obeys the same stream-before-context teardown contract.
+        let transmit = unsafe {
+            TransmitWorkerEndpoint::from_raw(
+                transmit_callback,
+                NonNull::new_unchecked(self._transmit_context.get()).cast(),
+            )
+        };
+        self.stream = Some(
+            self.provider
+                .open_stream(self.stream_config, receive, transmit)?,
+        );
+        Ok(())
+    }
+
+    /// Reopen if reload-suspended, then start capture and playback callbacks.
     pub fn start(&mut self) -> Result<(), AudioError> {
-        self.stream.start()
+        self.reopen()?;
+        self.stream
+            .as_mut()
+            .expect("successful reopen owns a stream")
+            .start()
     }
 
     /// Stop capture and playback callbacks; repeated calls are harmless.
     pub fn stop(&mut self) -> Result<(), AudioError> {
-        self.stream.stop()
+        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)
+    }
+
+    /// Stop callbacks and release the exclusive device lease for reload.
+    ///
+    /// A stop failure retains the stream because callback quiescence is not
+    /// established. Successful suspension preserves media for rollback.
+    pub fn suspend(&mut self) -> Result<(), AudioError> {
+        self.stop()?;
+        drop(self.stream.take());
+        Ok(())
     }
 
     /// Read current audio and station callback statistics.
+    /// Returns `InvalidArgument` while reload-suspended, without an open stream.
     pub fn statistics(&self) -> Result<StationRuntimeStatistics, AudioError> {
         Ok(StationRuntimeStatistics {
-            audio: self.stream.statistics()?,
+            audio: self
+                .stream
+                .as_ref()
+                .ok_or(AudioError::InvalidArgument)?
+                .statistics()?,
             callbacks: self.hardware.callback_statistics(),
         })
     }
 
     /// Read immutable PortAudio stream timing.
+    /// Returns `InvalidArgument` while reload-suspended, without an open stream.
     pub fn timing(&self) -> Result<StreamTiming, AudioError> {
-        self.stream.timing()
+        self.stream
+            .as_ref()
+            .ok_or(AudioError::InvalidArgument)?
+            .timing()
     }
 
     /// Clone the lock-free state handle used by the hardware/control owner.
@@ -542,7 +594,7 @@ impl StationRuntime {
 
 impl Drop for StationRuntime {
     fn drop(&mut self) {
-        let _ = self.stream.stop();
+        let _ = self.stop();
     }
 }
 
@@ -590,6 +642,25 @@ unsafe extern "C" fn receive_callback(
         .hardware
         .publish_receive_clipping(result.input_rail_samples);
     context.hardware.publish_receive_observation(result);
+    if let Some(direct) = station.direct {
+        station.publish_qualification(metadata.qualification);
+        // SAFETY: attachment validated and retained these endpoints until stream
+        // shutdown; mono is the exact processed span owned by this callback.
+        let status = unsafe {
+            (direct.receive.expect("validated direct receive"))(
+                direct.receive_context,
+                u32::from(result.receiver_keyed),
+                context.mono.as_mut_ptr(),
+                frame_count,
+            )
+        };
+        context.hardware.note_receive(status != CALLBACK_OK);
+        return if status == CALLBACK_OK {
+            CALLBACK_OK
+        } else {
+            CALLBACK_FAILED
+        };
+    }
     if station
         .controller()
         .publish(&context.mono[..frames], metadata)
@@ -624,11 +695,47 @@ unsafe extern "C" fn transmit_callback(
     let output = unsafe { std::slice::from_raw_parts_mut(output, frames * 2) };
     output.fill(0.0);
     let station = &mut context.station;
-    match station
-        .radio()
-        .render(output, context.hardware.transmit_controls())
-    {
+    let mut controls = context.hardware.transmit_controls();
+    let mut direct_failed = false;
+    if let Some(direct) = station.direct {
+        let mono = &mut context.mono[..frames];
+        mono.fill(0.0);
+        let mut keyed = 0;
+        // SAFETY: attachment keeps the endpoint live and uniquely TX-owned;
+        // scratch and key are writable only for this synchronous invocation.
+        let status = unsafe {
+            (direct.transmit.expect("validated direct transmit"))(
+                direct.transmit_context,
+                mono.as_mut_ptr(),
+                frame_count,
+                &mut keyed,
+            )
+        };
+        if status != CALLBACK_OK || keyed > 1 {
+            direct_failed = true;
+            mono.fill(0.0);
+            controls.external_ptt_request = false;
+            controls.calibrated_test_tone = false;
+            controls.forced_ctcss_tenths_hz = 0;
+            controls.ctcss_inhibit = true;
+            context.hardware.publish_transmit_fault();
+        } else {
+            controls.external_ptt_request |= keyed != 0;
+        }
+        station.stage_direct(mono);
+        // The direct source is already staged for this hardware callback, so no
+        // Asterisk playout admission is needed (including during signaling tails).
+        controls.render_admitted = true;
+    }
+    match station.radio().render(output, controls) {
         Ok(result) => {
+            if direct_failed {
+                // Advance the radio with silent, unkeyed program above, but do
+                // not let its retained signaling tail reassert PTT or PCM.
+                output.fill(0.0);
+                context.hardware.note_transmit(true);
+                return CALLBACK_FAILED;
+            }
             context.hardware.publish_transmit_result(result);
             context.hardware.note_transmit(false);
             CALLBACK_OK

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require complete source coverage without counting Rust test modules."""
+"""Require complete runtime-source coverage without tests or Cargo build scripts."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ def production_source(path: Path, root: Path) -> bool:
     return (
         path.suffix == ".rs"
         and "tests" not in relative.parts
+        and path.name != "build.rs"
         and path.name != "tests.rs"
         and not path.name.endswith("_tests.rs")
     )

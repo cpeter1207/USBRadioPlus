@@ -3,7 +3,7 @@
 use std::fmt;
 
 use usbradioplus_asl3::EchoConfiguration;
-use usbradioplus_core::ResolvedChannelConfiguration;
+use usbradioplus_core::{GraphDescriptionFactory, ResolvedChannelConfiguration};
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_radio::RadioProvider;
 use usbradioplus_ring::RingProvider;
@@ -143,6 +143,11 @@ impl StationFactory {
             providers,
             maximum_frame_count,
         })
+    }
+
+    /// Share the station's validated graph configuration with link processing.
+    pub fn graph_descriptions(&self) -> &GraphDescriptionFactory {
+        self.processing.graph_descriptions()
     }
 
     /// Plan, prepare, warm, and bind one resolved station generation.

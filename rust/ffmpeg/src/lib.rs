@@ -4,6 +4,8 @@
 //! external adapter's C layout. The adapter-neutral core supplies graph text
 //! and normalized F32 buffers without importing any FFmpeg or adapter type.
 
+#![cfg_attr(coverage, feature(coverage_attribute))]
+
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::fmt;
 use std::mem::{offset_of, size_of};

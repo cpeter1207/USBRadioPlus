@@ -235,6 +235,9 @@ fn bracketed_value(output: &str) -> Option<&str> {
 }
 
 /// Held, nonblocking advisory lock for one interactive tuning session.
+///
+/// Dropping the owner explicitly unlocks even if a child or duplicate retains
+/// the open file description.
 #[derive(Debug)]
 pub struct SessionLock {
     _file: File,
@@ -276,6 +279,17 @@ impl SessionLock {
     #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+#[cfg(unix)]
+impl Drop for SessionLock {
+    fn drop(&mut self) {
+        const LOCK_UN: i32 = 8;
+        // Destructors cannot report unlock errors; closing the file remains the fallback.
+        // SAFETY: the owned descriptor is valid until this call returns; flock
+        // neither retains it nor dereferences process memory.
+        let _ = unsafe { flock(self._file.as_raw_fd(), LOCK_UN) };
     }
 }
 
@@ -331,12 +345,14 @@ impl std::error::Error for SessionLockError {
 }
 
 #[cfg(unix)]
+unsafe extern "C" {
+    fn flock(fd: i32, operation: i32) -> i32;
+}
+
+#[cfg(unix)]
 fn lock_file(file: &File) -> io::Result<()> {
     const LOCK_EX: i32 = 2;
     const LOCK_NB: i32 = 4;
-    unsafe extern "C" {
-        fn flock(fd: i32, operation: i32) -> i32;
-    }
     // SAFETY: `file` owns a valid open descriptor for this call's duration;
     // `flock` neither retains the descriptor nor dereferences process memory.
     let result = unsafe { flock(file.as_raw_fd(), LOCK_EX | LOCK_NB) };
@@ -568,8 +584,16 @@ mod tests {
             "another USBRadioPlus tuning menu is already running"
         );
         assert!(std::error::Error::source(&error).is_none());
+        let inherited_file = lock._file.try_clone().unwrap();
         drop(lock);
-        assert!(SessionLock::acquire(&path).is_ok());
+        let replacement = SessionLock::acquire(&path)
+            .expect("dropping the session owner must release even an inherited lock");
+        drop(inherited_file);
+        assert!(matches!(
+            SessionLock::acquire(&path),
+            Err(SessionLockError::AlreadyRunning(_))
+        ));
+        drop(replacement);
         fs::remove_file(path).expect("test lock cleanup must succeed");
     }
 

@@ -1,4 +1,6 @@
 .TH USBRADIOPLUS-TUNE 8 "September 2026" "USBRadioPlus alpha" "System Administration"
+.\" source-sha256 rust/tune/src/catalog.rs e42bcffa767dd6c5643246968e0ea1c36b9702712078f818a1bb2408414f73d3
+.\" source-sha256 rust/tune/src/control.rs 3e3dc8b3df362246cde7a882bdf3c82c702c7b6c25586d429efffd4a95b633ba
 .SH NAME
 usbradioplus-tune \- tune and monitor a USBRadioPlus radio interface
 .SH SYNOPSIS
@@ -20,8 +22,9 @@ graph settings; all
 .BR [receive] ,
 .BR [transmit] ,
 .BR [ctcss] ,
+.BR [dcs] ,
 and
-.B [dcs]
+.B [diagnostics]
 settings; and
 .BR hardware_input_gain_db ,
 .BR hardware_output_a_gain_db ,
@@ -34,10 +37,9 @@ and
 .PP
 The utility restarts Asterisk for every other edit that changes channel or
 hardware construction: all
-.BR [asterisk] ,
-.BR [duplex] ,
+.B [asterisk]
 and
-.B [diagnostics]
+.B [duplex]
 controls;
 .BR channel_enabled ;
 every named-channel

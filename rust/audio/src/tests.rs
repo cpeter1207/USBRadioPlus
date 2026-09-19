@@ -270,11 +270,11 @@ unsafe extern "C" fn device_select(
         b"unterminated-interface" => output.usb_interface_path.fill(b'x' as c_char),
         b"invalid-interface-utf8" => {
             output.usb_interface_path.fill(0);
-            output.usb_interface_path[0] = -1;
+            output.usb_interface_path[0] = u8::MAX as c_char;
         }
         b"invalid-serial-utf8" => {
             output.usb_serial.fill(0);
-            output.usb_serial[0] = -1;
+            output.usb_serial[0] = u8::MAX as c_char;
         }
         _ => {}
     }
@@ -852,7 +852,7 @@ fn mixer_path_conversion_rejects_malformed_adapter_data() {
     let no_nul = [b'x' as c_char; MIXER_ELEMENT_CAPACITY];
     assert_eq!(fixed_c_string(&no_nul), Err(AudioError::AdapterFailure));
     let mut invalid_utf8 = [0; MIXER_ELEMENT_CAPACITY];
-    invalid_utf8[0] = -1;
+    invalid_utf8[0] = u8::MAX as c_char;
     assert_eq!(
         fixed_c_string(&invalid_utf8),
         Err(AudioError::AdapterFailure)

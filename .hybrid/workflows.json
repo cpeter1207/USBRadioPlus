@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "workflows": {
+    "rust-targeted": {
+      "languages": ["rust", "c"],
+      "purpose": "Targeted Rust migration checks using the maintained Debian 13 image and locked dependency cache; not the full release gate",
+      "dockerfile": ".hybrid/container/Dockerfile",
+      "context": ".hybrid/container",
+      "platform": "linux/amd64",
+      "tools": [["cargo", "--version"], ["rustc", "--version"], ["cppcheck", "--version"], ["clang-tidy", "--version"], ["doxygen", "--version"]],
+      "checks": {
+        "core": ["cargo", "test", "--offline", "--locked", "-p", "usbradioplus-core", "--lib"],
+        "format": ["cargo", "fmt", "--all", "--", "--check"]
+      }
+    }
+  }
+}

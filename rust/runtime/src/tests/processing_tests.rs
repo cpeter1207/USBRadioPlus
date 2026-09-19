@@ -1,6 +1,6 @@
 use super::*;
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char};
 use std::mem::size_of;
 use std::ptr;
@@ -11,6 +11,7 @@ thread_local! {
     static GRAPH_DESTROYS: Cell<usize> = const { Cell::new(0) };
     static GRAPH_PROCESS_FAILS: Cell<bool> = const { Cell::new(false) };
     static GRAPH_CREATE_FAIL_AT: Cell<usize> = const { Cell::new(0) };
+    static GRAPH_DESCRIPTIONS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     static DENOISE_PROCESSES: Cell<usize> = const { Cell::new(0) };
     static DENOISE_PROCESS_FAILS: Cell<bool> = const { Cell::new(false) };
 }
@@ -56,7 +57,13 @@ unsafe extern "C" fn graph_create(
     let config = unsafe { &*config };
     assert_eq!(config.sample_rate_hz, 48_000);
     // SAFETY: The setup wrapper supplies a live NUL-terminated description.
-    assert!(!unsafe { CStr::from_ptr(config.filter_description) }.is_empty());
+    let description = unsafe { CStr::from_ptr(config.filter_description) };
+    assert!(!description.is_empty());
+    GRAPH_DESCRIPTIONS.with(|descriptions| {
+        descriptions
+            .borrow_mut()
+            .push(description.to_string_lossy().into_owned());
+    });
     let ordinal = GRAPH_CREATES.get() + 1;
     GRAPH_CREATES.set(ordinal);
     // SAFETY: The wrapper supplies writable handle storage.
@@ -252,6 +259,7 @@ fn preparation_owns_only_the_processors_selected_by_the_plan() {
     GRAPH_DESTROYS.set(0);
     let mut generation = factory().prepare(&plan()).unwrap();
     assert!(generation.receive_ctcss_notch.iter().all(Option::is_none));
+    assert!(generation.receive_ctcss_tail_notch.is_none());
     assert!(generation.receive_noise_reduction.is_none());
     assert_eq!(GRAPH_CREATES.get(), 6);
     assert_eq!(GRAPH_PROCESSES.get(), 6 * GRAPH_WARMUP_BLOCKS);
@@ -265,14 +273,22 @@ fn preparation_owns_only_the_processors_selected_by_the_plan() {
 #[test]
 fn notch_mode_prepares_every_supported_tone_and_rnnoise_once() {
     GRAPH_CREATES.set(0);
+    GRAPH_DESCRIPTIONS.with(|descriptions| descriptions.borrow_mut().clear());
     DENOISE_PROCESSES.set(0);
     let mut selected = plan();
     selected.local.receive.pl_filter = PlFilter::DecodedToneNotch;
     selected.local.rnnoise_enabled = true;
     let mut generation = factory().prepare(&selected).unwrap();
     assert!(generation.receive_ctcss_notch.iter().all(Option::is_some));
+    assert!(generation.receive_ctcss_tail_notch.is_some());
     assert!(generation.receive_noise_reduction.is_some());
-    assert_eq!(GRAPH_CREATES.get(), 6 + CTCSS_TONE_COUNT);
+    assert_eq!(GRAPH_CREATES.get(), 7 + CTCSS_TONE_COUNT);
+    assert!(GRAPH_DESCRIPTIONS.with(|descriptions| {
+        descriptions
+            .borrow()
+            .iter()
+            .any(|description| description.contains("bandreject=f=55.000000000"))
+    }));
 
     let _ports = generation.session_ports(ProgramRingPort::silence());
 }
@@ -413,13 +429,15 @@ fn setup_errors_remain_specific_and_human_readable() {
 
     let mut notch_plan = plan();
     notch_plan.local.receive.pl_filter = PlFilter::DecodedToneNotch;
-    GRAPH_CREATES.set(0);
-    GRAPH_CREATE_FAIL_AT.set(1);
-    assert!(matches!(
-        factory().prepare(&notch_plan),
-        Err(ProcessingRuntimeError::GraphAdapter(_))
-    ));
-    GRAPH_CREATE_FAIL_AT.set(0);
+    for ordinal in [1, CTCSS_TONE_COUNT + 1] {
+        GRAPH_CREATES.set(0);
+        GRAPH_CREATE_FAIL_AT.set(ordinal);
+        assert!(matches!(
+            factory().prepare(&notch_plan),
+            Err(ProcessingRuntimeError::GraphAdapter(_))
+        ));
+        GRAPH_CREATE_FAIL_AT.set(0);
+    }
 
     GRAPH_PROCESS_FAILS.set(true);
     assert!(matches!(

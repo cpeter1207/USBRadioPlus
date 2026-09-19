@@ -1,10 +1,26 @@
-//! Narrow C ABI between Asterisk and the Rust-owned USBRadioPlus driver.
+//! Rust-owned USBRadioPlus host for Asterisk.
 //!
-//! Asterisk objects never cross this boundary. The C shim supplies opaque
-//! channel contexts and a small operations table; Rust owns configuration,
-//! channel reservation, media state, and controller policy.
+//! The metadata-only C module selects released provider descriptors and
+//! forwards load, reload, and unload. This crate owns Asterisk channel,
+//! audiohook, CLI, configuration, media, and controller lifecycles.
 
 #![deny(warnings)]
+
+// These are generated declarations/bitfield accessors for external Asterisk
+// headers, not owned implementation. Safety obligations are documented at our
+// call sites; bindgen does not generate Clippy's per-block safety comments.
+#[allow(
+    warnings,
+    missing_docs,
+    unsafe_op_in_unsafe_fn,
+    clippy::all,
+    clippy::undocumented_unsafe_blocks
+)]
+mod ffi {
+    include!(concat!(env!("OUT_DIR"), "/asterisk.rs"));
+}
+
+mod host;
 
 use std::cell::UnsafeCell;
 use std::collections::HashSet;
@@ -24,8 +40,8 @@ use usbradioplus_audio::AudioProvider;
 use usbradioplus_core::{AsteriskConfig, JitterBufferImplementation};
 use usbradioplus_driver::{
     ConfigurationRegistry, ControllerConfiguration, DriverConfiguration, HardwareInput,
-    HardwareInputEvent, HardwareMixer, HardwarePreflight, HardwareStation, HardwareTransientState,
-    LinkProcessingFactory, StationFactory, StationProviders,
+    HardwareInputEvent, HardwareMixer, HardwarePreflight, HardwareStation, HardwareStationError,
+    HardwareTransientState, LinkProcessingFactory, StationFactory, StationProviders,
 };
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_gpio::{EepromImage, GpioAdapter};
@@ -33,11 +49,15 @@ use usbradioplus_radio::RadioProvider;
 use usbradioplus_ring::RingProvider;
 use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_samplerate::SampleRateAdapter;
+/// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
+pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
 use usbradioplus_station::{StationMedia, hardware_plan};
 
-const ABI_VERSION: u32 = 3;
+const ABI_VERSION: u32 = 4;
+/// Private positive Asterisk setoption ID (ASCII RPAD), passed with block zero.
+pub const URP_AST_OPTION_DIRECT_CALLBACKS: c_int = 0x5250_4144;
 const MAXIMUM_FRAME_COUNT: u32 = 960;
-const HANDOFF_SLOTS: usize = 2;
+const HANDOFF_SLOTS: usize = 3;
 const CAPABILITY: &std::ffi::CStr = c"usbradioplus.asterisk";
 
 /// Successful C ABI operation.
@@ -552,6 +572,9 @@ pub type UrpAstChannelReserve = unsafe extern "C" fn(
 ) -> c_int;
 /// Start one fully bound channel.
 pub type UrpAstChannelStart = unsafe extern "C" fn(channel: *mut c_void) -> c_int;
+/// Copy borrowed native callbacks into a reserved, not-yet-started Advanced channel.
+pub type UrpAstChannelSetDirectCallbacks =
+    unsafe extern "C" fn(channel: *mut c_void, callbacks: *const UrpAstDirectCallbacks) -> c_int;
 /// Stop one channel; repeated calls are harmless.
 pub type UrpAstChannelStop = unsafe extern "C" fn(channel: *mut c_void) -> c_int;
 /// Prepare one live channel against the staged driver generation.
@@ -644,6 +667,8 @@ pub struct UrpAstDescriptor {
     pub channel_set_dtmf: Option<UrpAstChannelSetDtmf>,
     /// Configure retained legacy echo.
     pub channel_set_echo: Option<UrpAstChannelSetEcho>,
+    /// Attach direct native callbacks before the first station start.
+    pub channel_set_direct_callbacks: Option<UrpAstChannelSetDirectCallbacks>,
     /// Read resolved jitter-buffer settings.
     pub channel_get_jitter_config: Option<UrpAstChannelGetJitterConfig>,
     /// Execute one typed tuning or hardware primitive.
@@ -686,6 +711,7 @@ static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
     channel_set_transmit: Some(channel_set_transmit),
     channel_set_dtmf: Some(channel_set_dtmf),
     channel_set_echo: Some(channel_set_echo),
+    channel_set_direct_callbacks: Some(channel_set_direct_callbacks),
     channel_get_jitter_config: Some(channel_get_jitter_config),
     channel_command: Some(channel_command),
     channel_get_status: Some(channel_get_status),
@@ -693,10 +719,9 @@ static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
     channel_destroy: Some(channel_destroy),
 };
 
-/// Return the process-lifetime Asterisk-entry descriptor.
-#[unsafe(no_mangle)]
-pub extern "C" fn usbradioplus_asterisk_descriptor() -> *const UrpAstDescriptor {
-    ptr::from_ref(&DESCRIPTOR)
+/// Return the process-lifetime product operations used by the Rust host.
+pub(crate) fn product_descriptor() -> &'static UrpAstDescriptor {
+    &DESCRIPTOR
 }
 
 #[derive(Clone, Copy)]
@@ -897,6 +922,7 @@ struct ChannelControl {
     jitter: UrpAstJitterConfig,
     reload: Option<PreparedChannelReload>,
     running: bool,
+    direct: Option<UrpAstDirectCallbacks>,
 }
 
 struct PreparedChannelReload {
@@ -945,6 +971,10 @@ impl ChannelHandle {
 }
 
 impl ChannelControl {
+    fn stop_hardware(&mut self) -> Result<(), HardwareStationError> {
+        self.hardware.as_mut().map_or(Ok(()), HardwareStation::stop)
+    }
+
     fn controller(&mut self) -> Result<&mut usbradioplus_asl3::ControllerState, Status> {
         if let Some(hardware) = self.hardware.as_mut() {
             Ok(hardware.control().controller())
@@ -976,11 +1006,7 @@ impl RetainedControllerState {
             .control()
             .controller()
             .restore_reload_state(self.controller);
-        hardware.set_transmit_request(
-            self.control.transmit_keyed,
-            self.control.transmit_keyed,
-            self.control.forced_ctcss,
-        );
+        hardware.set_transmit_request(self.control.transmit_keyed, true, self.control.forced_ctcss);
         hardware.set_subaudible_override(!self.control.receive_ctcss_enabled);
         hardware.set_ctcss_inhibited(!self.control.transmit_ctcss_enabled);
     }
@@ -1097,11 +1123,10 @@ unsafe extern "C" fn driver_create(
                 operations.log(URP_AST_LOG_ERROR, &error.to_string());
                 Status::SetupFailed
             })?;
-        let link_factory =
-            LinkProcessingFactory::new(providers.station.graph, agc).map_err(|error| {
-                operations.log(URP_AST_LOG_ERROR, &error.to_string());
-                Status::SetupFailed
-            })?;
+        let link_factory = LinkProcessingFactory::new(
+            providers.station.graph,
+            factory.graph_descriptions().clone(),
+        );
         let configured_active = configured_active_channel(&configuration);
         let handle = Box::new(DriverHandle(DriverInner {
             configuration: ConfigurationRegistry::new(configuration),
@@ -1128,7 +1153,7 @@ unsafe extern "C" fn driver_reload(
     text_length: u32,
 ) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         // SAFETY: these byte spans are readable for this synchronous call.
         let source = unsafe { required_utf8(source, source_length)? };
@@ -1157,7 +1182,7 @@ unsafe extern "C" fn driver_reload(
 
 unsafe extern "C" fn driver_reload_finish(driver: *mut c_void, commit: u32) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         let commit = boolean(commit)?;
         let configuration = driver
@@ -1195,7 +1220,7 @@ unsafe extern "C" fn driver_channel_name(
     output_length: *mut u32,
 ) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         let snapshot = driver.0.configuration.snapshot();
         let channel = snapshot
@@ -1221,7 +1246,7 @@ unsafe extern "C" fn driver_active_channel(
     output_length: *mut u32,
 ) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         let selected = driver
             .0
@@ -1251,7 +1276,7 @@ unsafe extern "C" fn driver_set_active_channel(
     channel_name_length: u32,
 ) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         // SAFETY: the byte span is readable for this synchronous call.
         let name = unsafe { required_utf8(channel_name, channel_name_length)? };
@@ -1288,7 +1313,7 @@ unsafe extern "C" fn link_prepare(
 ) -> c_int {
     ffi_status(|| {
         let output = output_pointer(output)?;
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         // SAFETY: the byte span is readable for this synchronous setup call.
         let name = unsafe { required_utf8(channel_name, channel_name_length)? };
@@ -1316,7 +1341,7 @@ unsafe extern "C" fn link_prepare_reload(
 ) -> c_int {
     ffi_status(|| {
         let output = output_pointer(output)?;
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         // SAFETY: the byte span is readable for this synchronous setup call.
         let name = unsafe { required_utf8(channel_name, channel_name_length)? };
@@ -1410,7 +1435,7 @@ unsafe extern "C" fn channel_reserve(
 ) -> c_int {
     ffi_status(|| {
         let output = output_pointer(output)?;
-        // SAFETY: the C shim owns a live handle returned by driver_create.
+        // SAFETY: the Rust host owns a live handle returned by driver_create.
         let driver = unsafe { driver_ref(driver)? };
         if driver
             .0
@@ -1482,6 +1507,7 @@ unsafe extern "C" fn channel_reserve(
                 jitter,
                 reload: None,
                 running: false,
+                direct: None,
             }),
             rollback: Mutex::new(None),
         });
@@ -1534,11 +1560,9 @@ unsafe extern "C" fn channel_stop(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
-        let result = control.hardware.as_mut().map_or(Ok(()), |hardware| {
-            hardware.stop().map_err(|error| {
-                channel.log_error(&error.to_string());
-                Status::SetupFailed
-            })
+        let result = control.stop_hardware().map_err(|error| {
+            channel.log_error(&error.to_string());
+            Status::SetupFailed
         });
         if result.is_ok() {
             control.running = false;
@@ -1596,13 +1620,18 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
             Status::SetupFailed
         })?;
         preflight.apply_startup_tuning(configuration.config_mut());
-        let media = driver
+        let mut media = driver
             .factory
             .prepare(configuration, station_generation, controller)
             .map_err(|error| {
                 channel.log_error(&error.to_string());
                 Status::SetupFailed
             })?;
+        if let Some(direct) = control.direct {
+            // SAFETY: reload retains the original attachment lifetime and stops
+            // the previous PortAudio generation before starting its replacement.
+            unsafe { media.set_direct_callbacks(direct) }.map_err(|_| Status::SetupFailed)?;
+        }
         control.reload = Some(PreparedChannelReload {
             media,
             preflight,
@@ -1660,32 +1689,32 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
         } else {
             None
         };
-        if let Err(error) = control.hardware.as_mut().ok_or(Status::NotReady)?.stop() {
+        // A stopped stream still owns its exclusive device lease. Suspend closes
+        // it while retaining the media and callback boxes needed for rollback.
+        if let Err(error) = control.hardware.as_mut().ok_or(Status::NotReady)?.suspend() {
             channel.log_error(&error.to_string());
-            if let Some(state) = transient {
-                control.running = restart_previous(
-                    channel,
-                    control
-                        .hardware
-                        .as_mut()
-                        .expect("the previous generation remains owned after stop failure"),
-                    state,
-                );
-            }
+            control.running = restore_previous(
+                channel,
+                control
+                    .hardware
+                    .as_mut()
+                    .expect("the previous generation remains owned after stop failure"),
+                transient,
+            )
+            .unwrap_or(false);
             control.reload = Some(prepared);
             return Err(Status::SetupFailed);
         }
         if let Err(status) = drain_receive(channel, control) {
-            if let Some(state) = transient {
-                control.running = restart_previous(
-                    channel,
-                    control
-                        .hardware
-                        .as_mut()
-                        .expect("the stopped previous generation remains owned"),
-                    state,
-                );
-            }
+            control.running = restore_previous(
+                channel,
+                control
+                    .hardware
+                    .as_mut()
+                    .expect("the suspended previous generation remains owned"),
+                transient,
+            )
+            .unwrap_or(false);
             control.reload = Some(prepared);
             return Err(status);
         }
@@ -1702,32 +1731,22 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             Ok(replacement) => replacement,
             Err(error) => {
                 channel.log_error(&error.to_string());
-                if let Some(state) = transient {
-                    control.running = restart_previous(channel, &mut previous, state);
-                }
+                control.running =
+                    restore_previous(channel, &mut previous, transient).unwrap_or(false);
                 control.hardware = Some(previous);
                 return Err(Status::SetupFailed);
             }
         };
         if let Some(state) = transient {
-            if let Err(error) = replacement.restore_transient_state(state) {
-                channel.log_error(&error.to_string());
-                drop(replacement);
-                control.running = restart_previous(channel, &mut previous, state);
-                control.hardware = Some(previous);
-                return Err(Status::SetupFailed);
-            }
+            replacement.stage_transient_state(state);
         }
         retained.apply_to_hardware(&mut replacement);
         if control.running {
             if let Err(error) = replacement.start() {
                 channel.log_error(&error.to_string());
                 drop(replacement);
-                control.running = restart_previous(
-                    channel,
-                    &mut previous,
-                    transient.expect("running hardware has retained transient state"),
-                );
+                control.running =
+                    restore_previous(channel, &mut previous, transient).unwrap_or(false);
                 control.hardware = Some(previous);
                 return Err(Status::SetupFailed);
             }
@@ -1790,20 +1809,16 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                 transient,
             } => {
                 let mut degraded = false;
-                if let Some(mut replacement) = control.hardware.take() {
-                    if let Err(error) = replacement.stop() {
-                        channel.log_error(&format!(
-                            "configuration reload rollback could not stop the candidate generation: {error}"
-                        ));
-                        degraded = true;
-                    }
-                } else {
+                if let Err(error) = control.stop_hardware() {
+                    channel.log_error(&format!(
+                        "configuration reload rollback could not stop the candidate generation: {error}"
+                    ));
                     degraded = true;
                 }
-                if let Some(state) = transient {
-                    control.running = restart_previous(channel, &mut hardware, state);
-                    degraded |= !control.running;
-                }
+                drop(control.hardware.take());
+                let restored = restore_previous(channel, &mut hardware, transient);
+                degraded |= restored.is_err();
+                control.running = restored.unwrap_or(false);
                 control.hardware = Some(hardware);
                 if degraded {
                     Err(Status::SetupFailed)
@@ -1821,7 +1836,7 @@ unsafe extern "C" fn channel_write_voice(
     sample_count: u32,
 ) -> c_int {
     ffi_status(|| {
-        // SAFETY: the C shim owns a live handle returned by channel_reserve.
+        // SAFETY: the Rust host owns a live handle returned by channel_reserve.
         let channel = unsafe { channel_ref(channel)? };
         let expected = channel.mode.frame_samples();
         if sample_count as usize != expected || samples.is_null() {
@@ -1859,6 +1874,39 @@ unsafe extern "C" fn channel_write_text(
         let message =
             usbradioplus_asl3::parse_controller_text(text).map_err(|_| Status::InvalidArgument)?;
         apply_control(channel, control, message)
+    })
+}
+
+unsafe extern "C" fn channel_set_direct_callbacks(
+    channel: *mut c_void,
+    callbacks: *const UrpAstDirectCallbacks,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: this serialized task owns the live channel control endpoint.
+        let (channel, control) = unsafe { channel_control(channel)? };
+        if channel.mode != AsteriskPcmMode::Advanced
+            || control.running
+            || control.hardware.is_some()
+            || control.direct.is_some()
+            || control.reload.is_some()
+        {
+            return Err(Status::InvalidArgument);
+        }
+        if callbacks.is_null() {
+            return Err(Status::InvalidArgument);
+        }
+        // SAFETY: the internal operation accepts a complete readable descriptor;
+        // the public setoption validates its byte length before submitting it.
+        let callbacks = unsafe { callbacks.read_unaligned() };
+        if !callbacks.is_valid() {
+            return Err(Status::InvalidArgument);
+        }
+        let media = control.media.as_mut().ok_or(Status::NotReady)?;
+        // SAFETY: the attaching controller retains both contexts through synchronous
+        // station shutdown; this operation only copies their addresses.
+        unsafe { media.set_direct_callbacks(callbacks) }.map_err(|_| Status::InvalidArgument)?;
+        control.direct = Some(callbacks);
+        Ok(())
     })
 }
 
@@ -2204,24 +2252,25 @@ fn apply_control(
         })
 }
 
-fn restart_previous(
+/// Restore the previous lease and return its running state, logging any failure once.
+fn restore_previous(
     channel: &ChannelHandle,
     previous: &mut HardwareStation,
-    hardware_state: HardwareTransientState,
-) -> bool {
-    if let Err(error) = previous.restore_transient_state(hardware_state) {
+    hardware_state: Option<HardwareTransientState>,
+) -> Result<bool, ()> {
+    let restored = (|| {
+        previous.reopen()?;
+        let Some(hardware_state) = hardware_state else {
+            return Ok(false);
+        };
+        previous.stage_transient_state(hardware_state);
+        previous.start().map(|()| true)
+    })();
+    restored.map_err(|error| {
         channel.log_error(&format!(
             "configuration reload rollback failed; prior generation remains RF-safe and stopped: {error}"
         ));
-        return false;
-    }
-    if let Err(error) = previous.start() {
-        channel.log_error(&format!(
-            "configuration reload rollback failed; prior generation remains RF-safe and stopped: {error}"
-        ));
-        return false;
-    }
-    true
+    })
 }
 
 fn reservation_setup_failure(

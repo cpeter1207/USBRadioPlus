@@ -1,6 +1,32 @@
 use super::*;
 
 #[test]
+fn missing_profile_selectors_inherit() {
+    let document = ConfigDocument::new(
+        "[hardware]\nhardware_input_gain_db = -6\n\
+         [local]\ninput_gain_db = 2\n\
+         [usb]\nhardware_profile = absent\nreceive_profile = absent\nlocal_profile = absent\n",
+    );
+    let resolved = ResolvedChannelConfiguration::from_document(&document, "radio.conf", "usb")
+        .expect("missing selectors must inherit");
+    assert_eq!(
+        resolved.config().station.hardware.input_gain_db,
+        -6.0,
+        "missing selectors must inherit"
+    );
+    assert_eq!(
+        resolved.config().local.input_gain_db,
+        2.0,
+        "missing selectors must inherit"
+    );
+    assert_eq!(
+        resolved.warnings().len(),
+        3,
+        "missing selectors must inherit"
+    );
+}
+
+#[test]
 fn complete_channel_uses_flat_and_selected_profiles() {
     let document = ConfigDocument::new(
         "[hardware]\nhardware_input_gain_db = -3\n\
