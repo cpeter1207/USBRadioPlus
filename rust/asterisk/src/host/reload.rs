@@ -379,3 +379,7 @@ fn log_error(message: &str) {
         )
     };
 }
+
+#[cfg(test)]
+#[path = "reload_tests.rs"]
+mod tests;

@@ -40,6 +40,18 @@ pub(super) enum ControlResult {
     ChannelStatus(i32, UrpAstChannelStatus),
 }
 
+impl ControlResult {
+    /// Return the operation status without discarding its typed output payload.
+    pub(super) fn status(&self) -> i32 {
+        match self {
+            Self::Status(status)
+            | Self::Jitter(status, _)
+            | Self::Command(status, _)
+            | Self::ChannelStatus(status, _) => *status,
+        }
+    }
+}
+
 struct Task {
     descriptor: usize,
     channel: usize,
@@ -219,77 +231,5 @@ pub(super) unsafe fn run_control(
 }
 
 #[cfg(test)]
-mod tests {
-    use std::ptr;
-    use std::sync::atomic::{AtomicU32, Ordering};
-
-    use super::*;
-
-    static TRANSMIT: AtomicU32 = AtomicU32::new(0);
-
-    unsafe extern "C" fn start(_channel: *mut c_void) -> i32 {
-        17
-    }
-
-    unsafe extern "C" fn transmit(_channel: *mut c_void, keyed: u32, ctcss_tenths_hz: u32) -> i32 {
-        TRANSMIT.store((keyed << 31) | ctcss_tenths_hz, Ordering::Release);
-        URP_AST_OK
-    }
-
-    fn descriptor() -> UrpAstDescriptor {
-        // SAFETY: a zero function-pointer option is None, and all raw-pointer
-        // fields may be null in this focused dispatch fixture.
-        let mut descriptor: UrpAstDescriptor = unsafe { std::mem::zeroed() };
-        descriptor.channel_start = Some(start);
-        descriptor.channel_set_transmit = Some(transmit);
-        descriptor
-    }
-
-    #[test]
-    fn operation_dispatch_uses_the_selected_descriptor_entry() {
-        let descriptor = descriptor();
-        // SAFETY: this live fixture descriptor's Start callback ignores the
-        // channel pointer and is invoked synchronously on this test thread.
-        let result = unsafe {
-            execute(
-                &raw const descriptor,
-                ptr::null_mut(),
-                ControlOperation::Start,
-            )
-        };
-        assert!(matches!(result, ControlResult::Status(17)));
-
-        // SAFETY: the live fixture's Transmit callback ignores the channel
-        // pointer and only writes the test atomic from this synchronous call.
-        let result = unsafe {
-            execute(
-                &raw const descriptor,
-                ptr::null_mut(),
-                ControlOperation::Transmit {
-                    keyed: true,
-                    ctcss_tenths_hz: 1_230,
-                },
-            )
-        };
-        assert!(matches!(result, ControlResult::Status(URP_AST_OK)));
-        assert_eq!(TRANSMIT.load(Ordering::Acquire), (1 << 31) | 1_230);
-    }
-
-    #[test]
-    fn missing_descriptor_entry_reports_host_failure() {
-        let descriptor = descriptor();
-        // SAFETY: the descriptor remains live and its missing Echo entry is
-        // rejected without dereferencing or invoking the null channel pointer.
-        let result = unsafe {
-            execute(
-                &raw const descriptor,
-                ptr::null_mut(),
-                ControlOperation::Echo(true),
-            )
-        };
-        assert!(matches!(
-            result,
-            ControlResult::Status(URP_AST_ASTERISK_FAILURE)
-        ));
-    }
-}
+#[path = "control_tests.rs"]
+mod tests;

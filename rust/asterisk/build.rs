@@ -1,6 +1,44 @@
 //! Generates the narrow public-Asterisk binding used by the Rust host.
 
+use std::process::Command;
 use std::{env, path::PathBuf};
+
+/// Build test boundary symbols without adding them to production link inputs.
+fn build_test_ffi(include_dir: &str) {
+    const SOURCE: &str = "src/host/tests/variadic.c";
+    println!("cargo:rerun-if-changed={SOURCE}");
+    println!("cargo:rerun-if-env-changed=CC");
+    println!("cargo:rerun-if-env-changed=AR");
+    let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo OUT_DIR"));
+    let object = output.join("urp_ast_test_ffi.o");
+    let archive = output.join("liburp_ast_test_ffi.a");
+    let compiler = env::var_os("CC").unwrap_or_else(|| "cc".into());
+    let archiver = env::var_os("AR").unwrap_or_else(|| "ar".into());
+    let compiled = Command::new(compiler)
+        .args([
+            "-std=gnu11",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fPIC",
+            "-D_GNU_SOURCE",
+            "-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self",
+        ])
+        .arg(format!("-I{include_dir}"))
+        .args(["-c", SOURCE, "-o"])
+        .arg(&object)
+        .status()
+        .expect("run native C compiler for Asterisk test boundary");
+    assert!(compiled.success(), "compile Asterisk test boundary");
+    let archived = Command::new(archiver)
+        .arg("crs")
+        .arg(&archive)
+        .arg(&object)
+        .status()
+        .expect("run native archiver for Asterisk test boundary");
+    assert!(archived.success(), "archive Asterisk test boundary");
+    println!("cargo:rustc-link-search=native={}", output.display());
+}
 
 fn main() {
     println!("cargo:rerun-if-changed=wrapper.h");
@@ -13,6 +51,7 @@ fn main() {
 
     let include_dir =
         env::var("USBRADIOPLUS_ASTERISK_INCLUDEDIR").unwrap_or_else(|_| "/usr/include".to_owned());
+    build_test_ffi(&include_dir);
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
         .clang_arg(format!("-I{include_dir}"))

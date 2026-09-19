@@ -1406,4 +1406,4 @@ unsafe extern "C" {
 
 #[cfg(test)]
 #[path = "link_tests.rs"]
-mod tests;
+pub(super) mod tests;

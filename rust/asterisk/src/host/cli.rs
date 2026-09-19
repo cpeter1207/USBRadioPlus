@@ -710,14 +710,17 @@ impl ProductionBackend {
 impl CliBackend for ProductionBackend {
     fn configured_channels(&mut self) -> (Vec<String>, i32) {
         let mut channels = Vec::new();
-        for index in 0..u32::MAX {
+        // Each named section consumes multiple bytes of the project's u32-sized
+        // configuration, so the installed driver reaches END before index overflow.
+        let mut index = 0_u32;
+        loop {
             match self.channel_name(index) {
                 Ok(name) => channels.push(name),
                 Err(URP_AST_CHANNEL_NOT_FOUND) => return (channels, URP_AST_OK),
                 Err(status) => return (channels, status),
             }
+            index += 1;
         }
-        (channels, URP_AST_ASTERISK_FAILURE)
     }
 
     fn active_channel(&mut self) -> Result<String, i32> {
@@ -1107,3 +1110,7 @@ pub(super) fn unregister() {
         drop(Box::from_raw(entries.cast::<[ffi::ast_cli_entry; 9]>()));
     }
 }
+
+#[cfg(test)]
+#[path = "cli_tests.rs"]
+pub(in crate::host) mod tests;

@@ -347,6 +347,7 @@ lint:
 	$(RUFF) format --check tests_py tests_docs tools
 	$(CLANG_FORMAT) --dry-run --Werror \
 		$(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER) \
+		rust/asterisk/src/host/tests/variadic.c \
 		tests/test_chan_usbradioplus_shim.c \
 		$(shell find tests/fixtures/shim-host -type f -name '*.h') \
 		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h \
@@ -367,13 +368,16 @@ static-analysis: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE
 		--suppress=normalCheckLevelMaxBranches --suppress=constParameterCallback \
 		-Itests/fixtures/shim-host/include -Irust/asterisk/include \
 		$(CHANNEL_SOURCE) & cppcheck_pid=$$!; \
+	$(CPPCHECK) --std=c11 --enable=warning,style,performance,portability \
+		--error-exitcode=1 --suppress=missingIncludeSystem \
+		rust/asterisk/src/host/tests/variadic.c & test_ffi_cppcheck_pid=$$!; \
 	clang-tidy $(CHANNEL_SOURCE) \
 		-- $(CHANNEL_CPPFLAGS) $(COMMON_CPPFLAGS) $(RADIO_CFLAGS) -std=gnu11 -fblocks \
 		-DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self \
 		& channel_tidy_pid=$$!; \
 	status=0; \
-	for pid in $$rust_clippy_pid $$cppcheck_pid $$channel_tidy_pid; do \
+	for pid in $$rust_clippy_pid $$cppcheck_pid $$test_ffi_cppcheck_pid $$channel_tidy_pid; do \
 		wait $$pid || status=1; \
 	done; \
 	exit $$status

@@ -6,7 +6,7 @@ use std::ptr;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-static TEST_LOCK: Mutex<()> = Mutex::new(());
+use crate::host::support::Fixture as HostFixture;
 
 #[derive(Default)]
 struct FakeState {
@@ -58,6 +58,34 @@ fn reset() {
         next_graph: 1,
         ..FakeState::default()
     };
+}
+
+/// Retain the existing injected link fixture for concrete reload integration.
+/// The caller holds HostFixture's process-state serialization guard.
+pub(in crate::host) struct RunningFixture {
+    _channel: Option<Box<FakeChannel>>,
+}
+
+impl RunningFixture {
+    pub(in crate::host) fn new(with_channel: bool) -> Self {
+        reset();
+        let mut channel = with_channel.then(|| FakeChannel::eligible("IAX2/reload", 8_000));
+        if let Some(channel) = channel.as_mut() {
+            register(channel);
+        }
+        assert_eq!(start_with(fake_host(), missing_profile), URP_AST_OK);
+        Self { _channel: channel }
+    }
+
+    pub(in crate::host) fn preparation_result(&self, result: i32) {
+        with_state(|state| state.prepare_result = result);
+    }
+}
+
+impl Drop for RunningFixture {
+    fn drop(&mut self) {
+        stop();
+    }
 }
 
 impl FakeChannel {
@@ -539,7 +567,7 @@ fn audiohook_is_the_first_pinned_member() {
 
 #[test]
 fn graph_is_prepared_before_hook_publication() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-1", 8_000);
@@ -566,7 +594,7 @@ fn graph_is_prepared_before_hook_publication() {
 
 #[test]
 fn newly_staged_hook_reports_the_staged_attachment_notice() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-staged", 8_000);
@@ -582,7 +610,7 @@ fn newly_staged_hook_reports_the_staged_attachment_notice() {
 
 #[test]
 fn dormant_hook_reactivation_uses_the_current_profile() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-current-profile", 8_000);
@@ -606,7 +634,7 @@ fn dormant_hook_reactivation_uses_the_current_profile() {
 
 #[test]
 fn callback_processes_voice_without_control_plane_work() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-2", 8_000);
@@ -650,7 +678,7 @@ fn callback_processes_voice_without_control_plane_work() {
 
 #[test]
 fn retained_hook_survives_datastore_destruction_until_callback_is_quiescent() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-3", 8_000);
@@ -671,7 +699,7 @@ fn retained_hook_survives_datastore_destruction_until_callback_is_quiescent() {
 
 #[test]
 fn explicit_detach_removes_and_frees_the_datastore() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-detach", 8_000);
@@ -685,7 +713,7 @@ fn explicit_detach_removes_and_frees_the_datastore() {
 
 #[test]
 fn staged_reload_survives_channel_masquerade_and_swaps_in_place() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut original = FakeChannel::eligible("IAX2/506316-before", 8_000);
@@ -717,7 +745,7 @@ fn staged_reload_survives_channel_masquerade_and_swaps_in_place() {
 
 #[test]
 fn rollback_discards_candidate_and_keeps_active_graph() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-4", 8_000);
@@ -739,7 +767,7 @@ fn rollback_discards_candidate_and_keeps_active_graph() {
 
 #[test]
 fn observation_reads_the_active_graph_while_quiesced() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-5", 8_000);
@@ -763,7 +791,7 @@ fn observation_reads_the_active_graph_while_quiesced() {
 
 #[test]
 fn failed_attachment_destroys_unpublished_graph() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     with_state(|state| state.attach_result = -1);
     let host = fake_host();
@@ -779,7 +807,7 @@ fn failed_attachment_destroys_unpublished_graph() {
 
 #[test]
 fn scanner_logs_failed_attachment_channel_and_product_status() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     with_state(|state| state.prepare_result = URP_AST_ASTERISK_FAILURE);
     let mut channel = FakeChannel::eligible("IAX2/506316-log", 8_000);
@@ -796,7 +824,7 @@ fn scanner_logs_failed_attachment_channel_and_product_status() {
 
 #[test]
 fn staged_reload_logs_failed_link_channel_and_product_status() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("IAX2/506316-reload-log", 8_000);
@@ -819,7 +847,7 @@ fn staged_reload_logs_failed_link_channel_and_product_status() {
 
 #[test]
 fn ineligible_and_disabled_links_are_clean_no_ops() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let host = fake_host();
     let mut channel = FakeChannel::eligible("Local/console", 8_000);
@@ -832,7 +860,7 @@ fn ineligible_and_disabled_links_are_clean_no_ops() {
 
 #[test]
 fn process_host_scans_periodically_and_stop_detaches_every_hook() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let mut eligible = FakeChannel::eligible("IAX2/506316-global", 8_000);
     let mut ineligible = FakeChannel::eligible("Local/console", 8_000);
@@ -856,7 +884,7 @@ fn process_host_scans_periodically_and_stop_detaches_every_hook() {
 
 #[test]
 fn process_reload_retains_hooks_and_statistics_until_finish() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let mut channel = FakeChannel::eligible("IAX2/506316-reload", 8_000);
     register(&mut channel);
@@ -867,6 +895,7 @@ fn process_reload_retains_hooks_and_statistics_until_finish() {
     assert_eq!(before.len(), 1);
     assert_eq!(&*before[0].asterisk_channel, "IAX2/506316-reload");
     assert_eq!(before[0].observation.processed_blocks, 7);
+    crate::host::cli::tests::assert_link_snapshot("IAX2/506316-reload", 7, 2, 1);
 
     // The reload owns LINK_CONTROL until finish; public statistics also takes it.
     let reload = reload_prepare(Some("alpha")).unwrap();
@@ -880,7 +909,7 @@ fn process_reload_retains_hooks_and_statistics_until_finish() {
 
 #[test]
 fn reload_uses_frozen_profile_before_scanner_observes_it() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let mut channel = FakeChannel::eligible("IAX2/506316-between-scans", 8_000);
     register(&mut channel);
@@ -898,7 +927,7 @@ fn reload_uses_frozen_profile_before_scanner_observes_it() {
 
 #[test]
 fn process_statistics_holds_link_control_through_graph_observation() {
-    let _guard = TEST_LOCK.lock().unwrap();
+    let _guard = HostFixture::new();
     reset();
     let mut channel = FakeChannel::eligible("IAX2/506316-statistics", 8_000);
     register(&mut channel);

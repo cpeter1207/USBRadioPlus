@@ -9,8 +9,8 @@ mod link;
 mod reload;
 
 #[cfg(test)]
-mod cli_tests;
+#[path = "tests/support.rs"]
+pub(crate) mod support;
+
 #[cfg(test)]
 mod lifecycle_tests;
-#[cfg(test)]
-mod reload_tests;

@@ -1,4 +1,4 @@
-FROM ghcr.io/cpeter1207/usbradioplus-quality-debian13@sha256:788c966667e156c7c89762a2fe87547cc104d6b681dc2a1f27574274e5811835
+FROM ghcr.io/cpeter1207/usbradioplus-quality-debian13@sha256:29b4e2111b8d8e48b4ec63a12902428405828cad546e45c2df1a99402e752328
 
 RUN apt-get update && apt-get install -y --no-install-recommends libclang-dev cppcheck clang-tidy doxygen shellcheck groff jq && rm -rf /var/lib/apt/lists/*
 

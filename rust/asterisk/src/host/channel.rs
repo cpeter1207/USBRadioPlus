@@ -113,21 +113,11 @@ impl Channel {
     }
 
     fn control_status(&self, operation: ControlOperation) -> i32 {
-        match self.control(operation) {
-            ControlResult::Status(status) => status,
-            ControlResult::Jitter(status, _) => status,
-            ControlResult::Command(status, _) => status,
-            ControlResult::ChannelStatus(status, _) => status,
-        }
+        self.control(operation).status()
     }
 
     fn control_status_admitted(&self, operation: ControlOperation) -> i32 {
-        match self.control_admitted(operation) {
-            ControlResult::Status(status) => status,
-            ControlResult::Jitter(status, _) => status,
-            ControlResult::Command(status, _) => status,
-            ControlResult::ChannelStatus(status, _) => status,
-        }
+        self.control_admitted(operation).status()
     }
 
     pub(super) fn name(&self) -> &str {
@@ -388,7 +378,10 @@ pub(super) fn first_live_profile() -> Option<Box<str>> {
 fn first_profile(context: DriverContext, channels: &[usize]) -> Option<Box<str>> {
     // SAFETY: registration validated this process-lifetime descriptor.
     let query = unsafe { (*context.descriptor).driver_channel_name? };
-    for index in 0..u32::MAX {
+    // The product descriptor enumerates nonempty names parsed from u32-sized
+    // configuration input, so it reports exhaustion before the index can wrap.
+    let mut index = 0_u32;
+    loop {
         let mut length = 0;
         // SAFETY: the driver remains installed while channel membership is live.
         if unsafe { query(context.driver, index, ptr::null_mut(), 0, &raw mut length) }
@@ -423,8 +416,8 @@ fn first_profile(context: DriverContext, channels: &[usize]) -> Option<Box<str>>
         {
             return Some(name.to_owned().into_boxed_str());
         }
+        index += 1;
     }
-    None
 }
 
 /// Run one CLI operation while teardown of the selected channel is excluded.
@@ -753,10 +746,8 @@ unsafe fn abandon(channel: *mut Channel) {
             .rust_channel
             .store(ptr::null_mut(), Ordering::Release);
     }
-    if !channel.control.is_null() {
-        // SAFETY: this channel owns one taskprocessor reference.
-        unsafe { ffi::ast_taskprocessor_unreference(channel.control) };
-    }
+    // SAFETY: request constructs Channel only after acquiring a taskprocessor.
+    unsafe { ffi::ast_taskprocessor_unreference(channel.control) };
     if !channel.dsp.is_null() {
         // SAFETY: this channel owns the DSP.
         unsafe { ffi::ast_dsp_free(channel.dsp) };
@@ -799,10 +790,8 @@ unsafe extern "C" fn request(
         return ptr::null_mut();
     };
     let sequence = TASKPROCESSOR_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    let Ok(taskprocessor_name) = std::ffi::CString::new(format!("usbradioplus/channel/{sequence}"))
-    else {
-        return ptr::null_mut();
-    };
+    let taskprocessor_name = std::ffi::CString::new(format!("usbradioplus/channel/{sequence}"))
+        .expect("decimal taskprocessor name cannot contain NUL");
     // SAFETY: Asterisk copies the taskprocessor name.
     let control =
         unsafe { ffi::ast_taskprocessor_get(taskprocessor_name.as_ptr(), ffi::TPS_REF_DEFAULT) };
@@ -1070,12 +1059,11 @@ unsafe extern "C" fn hangup(owner: *mut ffi::ast_channel) -> c_int {
             unsafe { relock_owner(owner) };
         },
     );
-    if let Some(position) = membership
+    let position = membership
         .iter()
         .position(|address| *address == pointer as usize)
-    {
-        membership.swap_remove(position);
-    }
+        .expect("live channel missing from membership");
+    membership.swap_remove(position);
     // SAFETY: hangup has exclusive final ownership of the wrapper after
     // removing it from frozen membership.
     let channel = unsafe { Box::from_raw(pointer) };
@@ -1098,14 +1086,11 @@ unsafe extern "C" fn hangup(owner: *mut ffi::ast_channel) -> c_int {
         .lock()
         .expect("channel host lock poisoned")
         .as_ref()
-        .map(|state| state.module as *mut ffi::ast_module)
-        .unwrap_or(ptr::null_mut());
-    if !module.is_null() {
-        // SAFETY: request took one module reference for this channel.
-        unsafe {
-            ffi::__ast_module_unref(module, SOURCE_FILE.as_ptr(), 0, SOURCE_FUNCTION.as_ptr())
-        };
-    }
+        .expect("active channel host missing")
+        .module as *mut ffi::ast_module;
+    // SAFETY: request took one nonnull module reference; unregister cannot
+    // remove the host while membership contains an active channel.
+    unsafe { ffi::__ast_module_unref(module, SOURCE_FILE.as_ptr(), 0, SOURCE_FUNCTION.as_ptr()) };
     ACTIVE_CHANNELS.fetch_sub(1, Ordering::AcqRel);
     drop(membership);
     if result == URP_AST_OK { 0 } else { -1 }
@@ -1535,4 +1520,4 @@ pub(super) fn configure_pending_jitter(channel: &Channel) {
 
 #[cfg(test)]
 #[path = "channel_tests.rs"]
-mod tests;
+pub(super) mod tests;

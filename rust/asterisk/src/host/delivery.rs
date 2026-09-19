@@ -361,42 +361,5 @@ pub(super) unsafe fn run_worker(channel: *const Channel) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn control_events_keep_the_existing_asterisk_frame_contract() {
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_RECEIVER_KEY, 1_000, 0),
-            Ok(ControlFrame::ReceiverKey(Some("100.0".into())))
-        );
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_RECEIVER_KEY, 0, 0),
-            Ok(ControlFrame::ReceiverKey(None))
-        );
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_RECEIVER_UNKEY, 0, 0),
-            Ok(ControlFrame::ReceiverUnkey)
-        );
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_DTMF_BEGIN, i32::from(b'1'), 20),
-            Ok(ControlFrame::DtmfBegin {
-                digit: b'1',
-                duration_ms: 20,
-            })
-        );
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_DTMF_END, i32::from(b'#'), u64::MAX),
-            Ok(ControlFrame::DtmfEnd {
-                digit: b'#',
-                duration_ms: libc::c_long::MAX,
-            })
-        );
-        assert_eq!(
-            control_frame(URP_AST_CONTROL_NULL, 0, 0),
-            Ok(ControlFrame::Null)
-        );
-        assert_eq!(control_frame(URP_AST_CONTROL_DTMF_BEGIN, 0, 0), Err(()));
-        assert_eq!(control_frame(999, 0, 0), Err(()));
-    }
-}
+#[path = "delivery_tests.rs"]
+mod tests;
