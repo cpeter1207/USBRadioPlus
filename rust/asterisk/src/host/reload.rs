@@ -313,11 +313,9 @@ pub(super) fn read_configuration() -> Result<ReloadConfiguration, i32> {
         .join("usbradioplus.conf")
         .to_string_lossy()
         .into_owned();
-    if source.len() > u32::MAX as usize {
-        log_error("USBRadioPlus configuration path exceeds the adapter ABI");
-        return Err(URP_AST_ASTERISK_FAILURE);
-    }
-    let path = CString::new(source.as_bytes()).map_err(|_| URP_AST_ASTERISK_FAILURE)?;
+    validate_configuration_length(source.len(), "USBRadioPlus configuration path")?;
+    let path = CString::new(source.as_bytes())
+        .expect("CStr directory and fixed configuration basename cannot contain NUL");
     // SAFETY: path is NUL terminated and Asterisk returns either null or one
     // allocation owned by Asterisk.
     let text = unsafe { ffi::ast_read_textfile(path.as_ptr()) };
@@ -330,14 +328,21 @@ pub(super) fn read_configuration() -> Result<ReloadConfiguration, i32> {
     // SAFETY: this is the allocation returned by ast_read_textfile and it is
     // no longer borrowed after copying its contents.
     unsafe { ffi::ast_free_ptr(text.cast()) };
-    if bytes.len() > u32::MAX as usize {
-        log_error(&format!("{source} exceeds the adapter ABI"));
-        return Err(URP_AST_ASTERISK_FAILURE);
-    }
+    validate_configuration_length(bytes.len(), &source)?;
     Ok(ReloadConfiguration {
         source,
         text: bytes,
     })
+}
+
+/// Apply the ABI byte-count bound to both configuration paths and contents.
+fn validate_configuration_length(length: usize, subject: &str) -> Result<(), i32> {
+    if length > u32::MAX as usize {
+        log_error(&format!("{subject} exceeds the adapter ABI"));
+        Err(URP_AST_ASTERISK_FAILURE)
+    } else {
+        Ok(())
+    }
 }
 
 /// Atomically replace the active configuration generation.

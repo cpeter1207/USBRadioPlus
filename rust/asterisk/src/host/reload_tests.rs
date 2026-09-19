@@ -76,6 +76,34 @@ unsafe extern "C" fn channel_finish(_: *mut c_void, commit: u32) -> i32 {
 }
 
 #[test]
+fn configuration_lengths_share_the_complete_abi_bound_and_diagnostics() {
+    let _fixture = HostFixture::new();
+    for subject in [
+        "USBRadioPlus configuration path",
+        "/test-config/usbradioplus.conf",
+    ] {
+        for length in [0, u32::MAX as usize] {
+            assert_eq!(validate_configuration_length(length, subject), Ok(()));
+        }
+        assert_eq!(
+            validate_configuration_length(u32::MAX as usize + 1, subject),
+            Err(URP_AST_ASTERISK_FAILURE)
+        );
+    }
+    with_state(|state| {
+        assert_eq!(state.messages.len(), 2);
+        assert_eq!(
+            state.messages[0].2,
+            "USBRadioPlus configuration path exceeds the adapter ABI\n"
+        );
+        assert_eq!(
+            state.messages[1].2,
+            "/test-config/usbradioplus.conf exceeds the adapter ABI\n"
+        );
+    });
+}
+
+#[test]
 fn configuration_read_uses_asterisk_directory_and_frees_owned_text() {
     let _fixture = HostFixture::new();
     // SAFETY: this test owns the shared host guard and restores the global immediately.
