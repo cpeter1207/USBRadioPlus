@@ -189,6 +189,11 @@ static void test_invalid_descriptors_are_rejected_before_load(void)
 	assert(ast_module_entry_points.load() == AST_MODULE_LOAD_DECLINE);
 
 	reset_fixture();
+	fake_loader.capability = NULL;
+	assert(ast_module_entry_points.load() == AST_MODULE_LOAD_DECLINE);
+	assert(load_calls == 0);
+
+	reset_fixture();
 	fake_loader.capability = "wrong";
 	assert(ast_module_entry_points.load() == AST_MODULE_LOAD_DECLINE);
 
