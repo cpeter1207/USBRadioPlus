@@ -1,3 +1,4 @@
+use super::link_support::*;
 use super::*;
 
 #[test]
@@ -46,6 +47,24 @@ fn fixed_signature_exports_match_installed_asterisk_bindings() {
     check!(ast_frame_free(_, _));
     check!(ast_read_textfile(_));
     check!(ast_free_ptr(_));
+    check!(ast_channel_iterator_all_new());
+    check!(ast_channel_iterator_next(_));
+    check!(ast_channel_iterator_destroy(_));
+    check!(ast_channel_appl(_));
+    check!(ast_channel_name(_));
+    check!(ast_channel_data(_));
+    check!(ast_channel_rawreadformat(_));
+    check!(__ast_datastore_alloc(_, _, _, _, _, _));
+    check!(ast_datastore_free(_));
+    check!(ast_channel_datastore_find(_, _, _));
+    check!(ast_channel_datastore_add(_, _));
+    check!(ast_channel_datastore_remove(_, _));
+    check!(ast_audiohook_init(_, _, _, _));
+    check!(ast_audiohook_attach(_, _));
+    check!(ast_audiohook_detach(_));
+    check!(ast_audiohook_destroy(_));
+    check!(__ast_pthread_mutex_lock(_, _, _, _, _));
+    check!(__ast_pthread_mutex_unlock(_, _, _, _, _));
     // SAFETY: both static declarations name the same immutable directory pointer.
     unsafe {
         identical(ffi::ast_config_AST_CONFIG_DIR, ast_config_AST_CONFIG_DIR);

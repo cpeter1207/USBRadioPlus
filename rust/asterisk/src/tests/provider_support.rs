@@ -56,7 +56,7 @@ pub(super) fn set_failure(stage: u32) {
     FAILURE.store(stage, Ordering::Release);
 }
 
-pub(super) fn clear_failure() {
+pub(crate) fn clear_failure() {
     set_failure(0);
 }
 
@@ -1512,7 +1512,7 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     clear_rtx: Some(parallel_control),
 };
 
-pub(super) fn manifest() -> UrpAstProviderManifest {
+pub(crate) fn manifest() -> UrpAstProviderManifest {
     UrpAstProviderManifest {
         struct_size: size_of::<UrpAstProviderManifest>() as u32,
         abi_version: ABI_VERSION,
@@ -1523,5 +1523,16 @@ pub(super) fn manifest() -> UrpAstProviderManifest {
         samplerate: ptr::from_ref(&CONVERTER).cast(),
         audio: ptr::from_ref(&AUDIO).cast(),
         gpio: ptr::from_ref(&GPIO).cast(),
+    }
+}
+
+pub(crate) fn incompatible_manifest() -> UrpAstProviderManifest {
+    static INCOMPATIBLE_GRAPH: GraphDescriptor = GraphDescriptor {
+        abi_version: 0,
+        ..GRAPH
+    };
+    UrpAstProviderManifest {
+        ffmpeg: ptr::from_ref(&INCOMPATIBLE_GRAPH).cast(),
+        ..manifest()
     }
 }

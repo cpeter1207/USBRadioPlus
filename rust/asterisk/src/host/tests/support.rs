@@ -11,6 +11,9 @@ use std::collections::HashMap;
 #[path = "abi_tests.rs"]
 mod abi_tests;
 
+#[path = "link_support.rs"]
+mod link_support;
+
 #[path = "large_cstr.rs"]
 mod large_cstr;
 pub(crate) use large_cstr::OversizedCString;
@@ -36,6 +39,10 @@ pub(crate) struct FakeChannel {
     pub technology: usize,
     pub formats: [usize; 3],
     pub fd: (c_int, c_int),
+    pub application: CString,
+    pub data: CString,
+    pub datastore: usize,
+    pub audiohook: usize,
 }
 
 impl FakeChannel {
@@ -47,6 +54,10 @@ impl FakeChannel {
             technology: 0,
             formats: [0; 3],
             fd: (0, 0),
+            application: CString::default(),
+            data: CString::default(),
+            datastore: 0,
+            audiohook: 0,
         })
     }
 
@@ -79,12 +90,25 @@ pub(crate) enum DspOutput {
 /// Mutable external results shared only by serialized host tests.
 #[derive(Default)]
 pub(crate) struct State {
+    pub iterator_allocation_fails: bool,
+    pub iterator_allocations: usize,
+    pub iterator_frees: usize,
+    pub channel_unrefs: Vec<usize>,
+    pub audiohook_init_result: c_int,
+    pub audiohook_attach_result: c_int,
+    pub audiohook_calls: Vec<(&'static str, usize)>,
+    pub datastore_allocation_fails: bool,
+    pub datastore_allocations: usize,
+    pub datastore_frees: usize,
     pub taskprocessor_push_result: c_int,
     pub taskprocessor_push_calls: usize,
     pub channel_allocation_fails: bool,
     /// (kind: log=0, CLI=1, verbose=2, level or fd, rendered message).
     pub messages: Vec<(c_int, c_int, String)>,
     pub channels: HashMap<usize, Box<FakeChannel>>,
+    // Iterator snapshots can outlive hangup; the fixture frees these owners
+    // only after the lifecycle guard has stopped the scanner.
+    pub retired_channels: HashMap<usize, Box<FakeChannel>>,
     pub moh_result: c_int,
     pub moh_started: Vec<(String, String)>,
     pub moh_stopped: usize,
@@ -256,7 +280,13 @@ unsafe extern "C" fn __ao2_ref(
 ) -> c_int {
     with_state(|state| {
         assert_eq!(delta, -1);
-        assert!(state.capabilities.remove(&(object as usize)).is_some());
+        if state.channels.contains_key(&(object as usize))
+            || state.retired_channels.contains_key(&(object as usize))
+        {
+            state.channel_unrefs.push(object as usize);
+        } else {
+            assert!(state.capabilities.remove(&(object as usize)).is_some());
+        }
     });
     1
 }
@@ -432,7 +462,8 @@ unsafe extern "C" fn ast_hangup(owner: *mut ffi::ast_channel) {
     // SAFETY: this is the real registered hangup callback for this live owner.
     unsafe { (*technology).hangup.unwrap()(owner) };
     with_state(|state| {
-        state.channels.remove(&(owner as usize));
+        let channel = state.channels.remove(&(owner as usize)).unwrap();
+        state.retired_channels.insert(owner as usize, channel);
     });
 }
 

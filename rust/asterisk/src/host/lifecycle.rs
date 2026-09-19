@@ -11,8 +11,7 @@ use crate::{URP_AST_CHANNEL_BUSY, URP_AST_NOT_READY, URP_AST_OK};
 
 use super::{channel, cli, delivery, link, reload};
 use crate::{
-    ABI_VERSION, URP_AST_ASTERISK_FAILURE, URP_AST_INCOMPATIBLE_ABI, UrpAstDriverCreateArgs,
-    UrpAstProviderManifest,
+    ABI_VERSION, URP_AST_ASTERISK_FAILURE, UrpAstDriverCreateArgs, UrpAstProviderManifest,
 };
 
 /// Loader ABI implemented by this Rust-owned Asterisk host.
@@ -203,20 +202,6 @@ impl ProviderAddresses {
         }
     }
 
-    fn loader_manifest(self) -> LoaderProviderManifest {
-        LoaderProviderManifest {
-            struct_size: size_of::<LoaderProviderManifest>() as u32,
-            abi_version: LOADER_ABI_VERSION,
-            ffmpeg: self.ffmpeg as *const c_void,
-            rnnoise: self.rnnoise as *const c_void,
-            ring: self.ring as *const c_void,
-            radio: self.radio as *const c_void,
-            samplerate: self.samplerate as *const c_void,
-            audio: self.audio as *const c_void,
-            gpio: self.gpio as *const c_void,
-        }
-    }
-
     fn product_manifest(self) -> UrpAstProviderManifest {
         UrpAstProviderManifest {
             struct_size: size_of::<UrpAstProviderManifest>() as u32,
@@ -262,11 +247,8 @@ impl ProductionOperations {
 impl LifecycleOperations for ProductionOperations {
     fn validate_providers(&mut self) -> i32 {
         self.phase = LoadPhase::Validate;
-        if manifest_is_valid(&self.providers.loader_manifest()) {
-            URP_AST_OK
-        } else {
-            URP_AST_INCOMPATIBLE_ABI
-        }
+        // loader_load validated these immutable addresses before construction.
+        URP_AST_OK
     }
 
     fn create_driver(&mut self) -> i32 {
@@ -276,9 +258,9 @@ impl LifecycleOperations for ProductionOperations {
         };
         // SAFETY: the internal descriptor has process lifetime.
         let descriptor = unsafe { &*(self.descriptor as *const crate::UrpAstDescriptor) };
-        let Some(create) = descriptor.driver_create else {
-            return URP_AST_INCOMPATIBLE_ABI;
-        };
+        let create = descriptor
+            .driver_create
+            .expect("product driver_create missing");
         let providers = self.providers.product_manifest();
         let operations = delivery::usbradioplus_asterisk_channel_host_operations();
         let agc = env!("USBRADIOPLUS_AGC_PLUGIN_PATH").as_bytes();
@@ -304,15 +286,13 @@ impl LifecycleOperations for ProductionOperations {
     }
 
     fn destroy_driver(&mut self) {
-        if self.driver == 0 {
-            return;
-        }
         // SAFETY: the internal descriptor has process lifetime.
         let descriptor = unsafe { &*(self.descriptor as *const crate::UrpAstDescriptor) };
-        if let Some(destroy) = descriptor.driver_destroy {
-            // SAFETY: this is the one live driver handle returned by driver_create.
-            unsafe { destroy(self.driver as *mut c_void) };
-        }
+        let destroy = descriptor
+            .driver_destroy
+            .expect("product driver_destroy missing");
+        // SAFETY: the coordinator calls destruction only after successful create.
+        unsafe { destroy(self.driver as *mut c_void) };
         self.driver = 0;
     }
 
@@ -455,3 +435,7 @@ static LOADER_DESCRIPTOR: AsteriskLoaderDescriptor = AsteriskLoaderDescriptor {
 pub extern "C" fn usbradioplus_asterisk_loader_descriptor() -> *const AsteriskLoaderDescriptor {
     ptr::from_ref(&LOADER_DESCRIPTOR)
 }
+
+#[cfg(test)]
+#[path = "lifecycle_production_tests.rs"]
+mod production_tests;

@@ -4,9 +4,9 @@ use std::cell::RefCell;
 use std::ffi::CStr;
 
 #[path = "tests/provider_support.rs"]
-mod provider_support;
+pub(crate) mod provider_support;
 
-static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
+pub(crate) static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 unsafe extern "C" fn direct_receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
     0

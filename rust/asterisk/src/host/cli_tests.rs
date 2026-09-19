@@ -22,6 +22,10 @@ unsafe extern "C" {
     fn urp_test_float_format_result(result: c_int);
 }
 
+pub(in crate::host) fn set_registration_result(result: c_int) {
+    CLI_CALLS.lock().unwrap().register_result = result;
+}
+
 #[test]
 fn float_format_failures_preserve_the_fatal_buffer_guard() {
     for (result, precision) in [(-1, 9), (64, 17)] {

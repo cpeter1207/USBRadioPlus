@@ -60,6 +60,7 @@ fn main() {
         .allowlist_function("ast_(audiohook_.*|channel_.*|cli|config_.*|datastore_.*|dsp_.*|format_.*|frame_free|free_ptr|hangup|jb_.*|log|module_.*|moh_.*|pthread_.*|queue_frame|read_textfile|sem_.*|setstate|taskprocessor_.*|verbose)")
         .allowlist_function("__ast_(channel_alloc|format_cap_.*|cli_register_multiple|module_(ref|unref)|taskprocessor_push|verbose)")
         .allowlist_function("__ao2_(lock|trylock|unlock|ref)")
+        .allowlist_function("__ast_(datastore_alloc|pthread_mutex_(lock|unlock))")
         .allowlist_type("(ao2_lock_req|ast_(assigned_ids|audiohook|audiohook_direction|channel|channel_iterator|channel_tech|cli_args|cli_command|cli_entry|control_frame_type|datastore|datastore_info|dsp|format|format_cap|frame|jb_conf|module|sem|taskprocessor))")
         .allowlist_var("(AO2_.*|AST_.*|CLI_.*|DSP_.*|LOG_.*|RESULT_.*|ast_config_AST_CONFIG_DIR|ast_format_slin|ast_null_frame|__LOG_.*)")
         .opaque_type("ast_(assigned_ids|channel|channel_iterator|dsp|format|format_cap|module|taskprocessor)")
