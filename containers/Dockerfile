@@ -31,7 +31,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
       gcovr pkg-config python3 python3-pytest python3-venv shellcheck \
       libasound2-dev libusb-1.0-0-dev libsamplerate0-dev \
       libavfilter-dev libavutil-dev ladspa-sdk portaudio19-dev autoconf automake libtool \
-      ca-certificates cargo curl patch rustc xz-utils && \
+      ca-certificates cargo curl libclang-dev patch rustc xz-utils && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/usbradioplus-quality && \
     /opt/usbradioplus-quality/bin/pip install --no-cache-dir \
@@ -86,17 +86,14 @@ RUN if [ "$DEBIAN_VERSION" = 12 ]; then av_packages="libavfilter8 libavutil57"; 
       libasound2 $av_packages libportaudio2 libsamplerate0 \
       libusb-1.0-0 whiptail && \
     rm -rf /var/lib/apt/lists/*
-COPY --from=quality /usr/local/lib/librnnoise.so.0.4.1 /usr/local/lib/
 COPY --from=released-shared-packages / /tmp/shared-packages/
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
       /tmp/shared-packages/*[0-9]_*.deb && \
     rm -rf /var/lib/apt/lists/* /tmp/shared-packages
 COPY --from=staged /stage/ /
 COPY --chmod=0755 tests/container-smoke-test.sh /usr/local/libexec/usbradioplus/
-# Shared-package installation can already create the SONAME link via ldconfig.
-RUN ln -sf librnnoise.so.0.4.1 /usr/local/lib/librnnoise.so.0 && \
-    ln -sf librnnoise.so.0 /usr/local/lib/librnnoise.so && \
-    ldconfig && \
+# Runtime dependencies, including RNNoise, come from the released packages.
+RUN ldconfig && \
 	 test "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" != "" && \
 	 test -x /usr/sbin/usbradioplus-tune && \
 	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \

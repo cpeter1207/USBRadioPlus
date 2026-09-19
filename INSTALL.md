@@ -67,8 +67,8 @@ Asterisk source tree is not required.
 
 The build compiles one ASL3 channel implementation against the installed
 Asterisk headers. Both hardware adapter development packages are mandatory:
-`librptadv-portaudio-alsa-adapter-dev` version `0.1.0~alpha2` or newer and
-`librptadv-gpio-adapter-dev` version `0.1.0~alpha1` or newer. No backend build
+`librptadv-portaudio-alsa-adapter-dev` version `0.2.0~alpha2` or newer and
+`librptadv-gpio-adapter-dev` version `0.1.0~alpha2` or newer. No backend build
 switches are required. The module
 does not require `res_usbradio.so`. The single `usbradioplus` Debian package
 declares the exact supported ASL3 runtime alternatives. Its release gate loads

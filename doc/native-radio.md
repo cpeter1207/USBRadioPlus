@@ -152,7 +152,9 @@ transmit worker, which consumes the controller program ring and renders
 directly into the PortAudio output buffer. No raw-capture clock-recovery ring
 or converter precedes receive DSP.
 
-The accepted local-receive, linked-peer, and telemetry inbound-ring topology,
-verified shared-clock fast path, and generational station-host lifecycle remain
-pending architecture work. The split callback entry points do not claim those
-later tranches are implemented.
+The direct rpt_advanced attachment supplies the current transmit block without
+the driver's legacy program-ring conversion. Prepared generations and
+transactional reload/rollback are implemented as described above. The broader
+accepted inbound-ring topology and verified shared-clock optimization remain
+separate architecture work; these callbacks do not establish completion of
+those ADRs.

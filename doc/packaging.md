@@ -31,7 +31,7 @@ libraries. The module must retain these versioned dynamic dependencies:
 
 - `libusbradioplus_asterisk.so.1`
 - `librate_adjusting_pcm_ring2.so.2`
-- `librptadvradio.so.3`
+- `librptadvradio.so.4`
 - the released samplerate, FFmpeg, PortAudio/ALSA, GPIO, and RNNoise adapters
 
 The corresponding build packages are `librate-adjusting-pcm-ring2-dev`,

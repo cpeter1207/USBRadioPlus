@@ -1,30 +1,31 @@
 # rpt_advanced channel interface
 
-`RadioPlusAdvanced/<channel>` reserves the same configured radio as
-`RadioPlus/<channel>`. The existing hardware backend owns USB access, signaling,
-and the shared FFmpeg processing graphs. The separate adapter exposes the
-hardware engine's native signed-linear format. The current CM119 engine uses
-48,000 samples per second; Asterisk supplies conversions for the controller's
-negotiated format.
+`RadioPlusAdvanced/<channel>` and `RadioPlus/<channel>` reserve the same
+configured radio exclusively. The hardware adapters and shared radio engine
+own USB access, signaling, and FFmpeg processing. Ordinary `RadioPlus` uses the
+8 kHz Asterisk frame path and its program ring.
 
-Every native receive block produces a voice frame, including silence while
-squelched. Carrier indications are separate frames. The adapter does not run
-the app_rpt DTMF detector, which can replace a voice frame with a digit event.
-The controller responds with transmit audio using this receive cadence, without
-an independent periodic audio timer.
+The current rpt_advanced controller attaches direct callbacks through
+`ast_channel_setoption` before channel startup. The descriptor must match
+`URP_AST_DIRECT_CALLBACKS_ABI_VERSION` 2; the host acknowledges the retained
+attachment by setting `accepted_abi_version` to 2. Channel availability alone
+does not prove that a provider supports this contract.
 
-Transmit frames enter the same lock-free program ring used by the legacy
-adapter. Its persistent conversion stream uses a one-to-one nominal ratio for
-the native controller format and still corrects independent controller and
-hardware clock drift. Scheduling stalls can still cause underruns; sharing a
-format does not remove that possibility. The driver's local-repeat and echo
-paths are bypassed so controller audio is not repeated twice. Receiver and
-transmitter DSP remain in the shared engine.
+Direct callbacks exchange mutable normalized mono F32 at 48,000 samples per
+second. Hardware capture paces receive processing and delivers processed PCM
+with the receiver-keyed state. Hardware playback independently asks the
+controller to fill the current transmit block and return its PTT request.
+RX and TX may run concurrently; transmit does not wait for a receive voice
+frame. This path bypasses Asterisk voice-frame delivery and the driver's
+legacy program clock-recovery ring. Receiver and transmitter DSP remain in
+the shared engine.
 
-A subsequent `RadioPlus` reservation restores 8 kHz transport and its program
-ring. These interfaces cannot reserve the same radio concurrently.
+Callbacks must remain bounded, nonblocking, allocation-free, and lock-free.
+The controller retains callback contexts and executable code until synchronous
+channel stop or hangup returns. A prepared reload copies the attachment into
+the replacement generation before its stream starts. A failed transmit
+callback produces silence and releases PTT.
 
-The interface is implemented by the shared Rust controller boundary and the
-`RadioPlusAdvanced` Asterisk technology. Automated fixtures cover its native
-frame assembly and channel lifecycle; on-air operation remains a release
-verification activity rather than a separate interface implementation stage.
+Automated fixtures cover attachment acknowledgement, independent callback
+execution, failure behavior, and channel lifecycle. On-air operation remains
+part of release verification.
