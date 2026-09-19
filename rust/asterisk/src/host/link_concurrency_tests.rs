@@ -1,8 +1,63 @@
-//! Reload must revalidate its captured host after waiting for control ownership.
+//! Scanner shutdown and reload synchronize with control ownership.
 
 use super::*;
 use crate::host::support::Fixture;
+use std::cell::RefCell;
+use std::sync::mpsc;
 use std::time::Instant;
+
+thread_local! {
+    static PROFILE_GATE: RefCell<Option<(mpsc::Sender<()>, mpsc::Receiver<()>)>> =
+        const { RefCell::new(None) };
+}
+
+fn wait_for_stop_request() -> Option<Box<str>> {
+    PROFILE_GATE.with(|gate| {
+        let gate = gate.borrow();
+        let (entered, resume) = gate.as_ref().unwrap();
+        entered.send(()).unwrap();
+        resume.recv_timeout(Duration::from_secs(2)).unwrap();
+    });
+    None
+}
+
+#[test]
+fn scanner_stops_after_profile_resolution_without_scanning_or_waiting() {
+    let _fixture = Fixture::new();
+    let host = LinkHost::new(ptr::dangling_mut(), ptr::dangling_mut());
+    let stop = Arc::new((Mutex::new(false), Condvar::new()));
+    let worker_stop = Arc::clone(&stop);
+    let (entered, reached) = mpsc::channel();
+    let (resume, released) = mpsc::channel();
+    let control = lock(&LINK_CONTROL);
+    let worker = thread::spawn(move || {
+        PROFILE_GATE.with(|gate| *gate.borrow_mut() = Some((entered, released)));
+        scan_loop(host, wait_for_stop_request, worker_stop);
+    });
+    let reached = reached.recv_timeout(Duration::from_secs(2));
+    *lock(&stop.0) = true;
+    let released = resume.send(());
+    drop(control);
+    let joined = worker.join();
+    assert!(reached.is_ok(), "scanner must enter profile resolution");
+    assert!(
+        released.is_ok(),
+        "profile resolver must await the stop request"
+    );
+    assert!(
+        joined.is_ok(),
+        "stopped scanner must return without waiting"
+    );
+    scan_loop(
+        host,
+        || panic!("stopped scanner must not resolve a profile"),
+        stop,
+    );
+    crate::host::support::with_state(|state| {
+        assert_eq!(state.iterator_allocations, 0);
+        assert!(state.audiohook_calls.is_empty());
+    });
+}
 
 struct StopGuard;
 
