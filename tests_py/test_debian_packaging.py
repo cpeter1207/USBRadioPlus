@@ -29,7 +29,7 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
     assert "librate-adjusting-pcm-ring2-dev" in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha4)" in control
+    assert "librptadvradio-dev (>= 0.1.0~alpha5)" in control
     assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
         "librate_adjusting_pcm_ring2.so.2",

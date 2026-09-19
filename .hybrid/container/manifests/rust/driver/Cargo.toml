@@ -1,6 +1,6 @@
 [package]
 name = "usbradioplus-driver"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-2.0-only"

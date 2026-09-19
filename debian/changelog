@@ -1,3 +1,11 @@
+usbradioplus (0.1.0~alpha19-1) unstable; urgency=medium
+
+  * Release the Rust channel host, configuration, tuning, and LADSPA implementation.
+  * Require the matching released radio, audio, GPIO, DSP, and PCM-ring libraries.
+  * Preserve exclusive device ownership during reload and inherit omitted profiles.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sat, 19 Sep 2026 10:00:00 -0500
+
 usbradioplus (0.1.0~alpha18-1) unstable; urgency=medium
 
   * Ship one ASL3 channel and package using released shared audio, GPIO, and DSP adapters.

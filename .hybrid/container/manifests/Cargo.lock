@@ -216,11 +216,11 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
 name = "usbradioplus-asl3"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-asterisk"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 dependencies = [
  "bindgen",
  "libc",
@@ -239,15 +239,15 @@ dependencies = [
 
 [[package]]
 name = "usbradioplus-audio"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-core"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-driver"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 dependencies = [
  "usbradioplus-asl3",
  "usbradioplus-audio",
@@ -264,27 +264,27 @@ dependencies = [
 
 [[package]]
 name = "usbradioplus-ffmpeg"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-gpio"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-radio"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-ring"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-rnnoise"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-runtime"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 dependencies = [
  "usbradioplus-core",
  "usbradioplus-ffmpeg",
@@ -294,11 +294,11 @@ dependencies = [
 
 [[package]]
 name = "usbradioplus-samplerate"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "usbradioplus-station"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 dependencies = [
  "usbradioplus-asl3",
  "usbradioplus-audio",
@@ -313,14 +313,14 @@ dependencies = [
 
 [[package]]
 name = "usbradioplus-tune"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 dependencies = [
  "usbradioplus-core",
 ]
 
 [[package]]
 name = "usbradioplus_agc"
-version = "0.1.0-alpha18"
+version = "0.1.0-alpha19"
 
 [[package]]
 name = "windows-link"

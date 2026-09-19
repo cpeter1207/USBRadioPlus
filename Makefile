@@ -152,8 +152,8 @@ RADIO_PACKAGES := rptadv_portaudio_alsa_adapter rptadv_gpio_adapter rptadv_rnnoi
 ifeq ($(shell $(PKG_CONFIG) --exists $(RADIO_PACKAGES) && echo yes),)
 $(error USBRadioPlus requires the released audio, GPIO, and RNNoise adapter development packages)
 endif
-ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.1.0~alpha2 rptadv_portaudio_alsa_adapter && echo yes),)
-$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.1.0~alpha2 or newer)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.2.0~alpha2 rptadv_portaudio_alsa_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha2 or newer)
 endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
 # Keep non-library transitive flags while pinning each direct DSO to its provider.
