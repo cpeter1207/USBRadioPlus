@@ -277,6 +277,8 @@ impl LinkHost {
     ///
     /// Returns `true` only when this call published a new hook. An ineligible,
     /// disabled, or already attached channel is a successful no-op.
+    /// The caller retains the channel and serializes graph changes with
+    /// `LINK_CONTROL`; Asterisk datastore teardown can still run concurrently.
     pub(super) unsafe fn attach_channel(
         &self,
         channel: *mut ffi::ast_channel,
@@ -675,19 +677,20 @@ impl LinkReload {
             let audiohook = unsafe { ptr::addr_of_mut!((*raw).audiohook) };
             // SAFETY: control-plane replacement quiesces the Asterisk callback.
             unsafe { ((*raw).asterisk.audiohook_lock)(audiohook) };
-            // SAFETY: retained ownership protects every field read below.
-            let retired = if unsafe { (*raw).reload_pending.swap(false, Ordering::AcqRel) } {
-                // SAFETY: the pending flag exclusively grants candidate consumption.
-                let candidate = unsafe { (*raw).staged.swap(ptr::null_mut(), Ordering::AcqRel) };
+            // Only successfully staged hooks enter this transaction, and drain
+            // consumes each once while LINK_CONTROL excludes another reload.
+            // SAFETY: retained ownership protects the pending flag and candidate.
+            unsafe { (*raw).reload_pending.store(false, Ordering::Release) };
+            // SAFETY: this transaction exclusively owns candidate consumption.
+            let candidate = unsafe { (*raw).staged.swap(ptr::null_mut(), Ordering::AcqRel) };
+            let retired = if commit
                 // SAFETY: attachment is atomically published by install/teardown.
-                if commit && unsafe { (*raw).attachment.load(Ordering::Acquire) } == LINK_ATTACHED {
-                    // SAFETY: callback is quiesced by the audiohook lock.
-                    unsafe { (*raw).active.swap(candidate, Ordering::AcqRel) }
-                } else {
-                    candidate
-                }
+                && unsafe { (*raw).attachment.load(Ordering::Acquire) } == LINK_ATTACHED
+            {
+                // SAFETY: callback is quiesced by the audiohook lock.
+                unsafe { (*raw).active.swap(candidate, Ordering::AcqRel) }
             } else {
-                ptr::null_mut()
+                candidate
             };
             // SAFETY: balances audiohook_lock above.
             unsafe { ((*raw).asterisk.audiohook_unlock)(audiohook) };
@@ -779,10 +782,9 @@ impl LinkHook {
         let audiohook = ptr::from_ref(&self.audiohook).cast_mut();
         // SAFETY: control-plane update quiesces the callback.
         unsafe { (self.asterisk.audiohook_lock)(audiohook) };
-        if self.attachment.load(Ordering::Acquire) == LINK_ATTACHED
-            && self.active.load(Ordering::Acquire).is_null()
-            && !self.reload_pending.load(Ordering::Acquire)
-        {
+        // LINK_CONTROL keeps active/pending unchanged during preparation, but
+        // external datastore destruction may have detached the retained hook.
+        if self.attachment.load(Ordering::Acquire) == LINK_ATTACHED {
             self.active.store(candidate, Ordering::Release);
             candidate = ptr::null_mut();
         }
