@@ -7,13 +7,16 @@ ARG CARGO_LLVM_COV_VERSION=0.6.21
 FROM debian:${DEBIAN_VERSION} AS asl3-clean
 
 ARG DEBIAN_VERSION
+# Keep the runtime's exact config/modules dependencies on the same baseline.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       ca-certificates wget && \
     wget -qO /tmp/asl-repo.deb \
       "https://repo.allstarlink.org/public/asl-apt-repos.deb${DEBIAN_VERSION}_all.deb" && \
     dpkg -i /tmp/asl-repo.deb && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      "asl3-asterisk=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" && \
+      "asl3-asterisk=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" \
+      "asl3-asterisk-config=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" \
+      "asl3-asterisk-modules=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" && \
     rm -rf /var/lib/apt/lists/* /tmp/asl-repo.deb
 
 FROM asl3-clean AS quality
