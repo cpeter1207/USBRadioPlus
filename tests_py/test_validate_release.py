@@ -99,6 +99,21 @@ def test_validator_rejects_a_substantive_c_host_boundary(tmp_path):
     assert "Asterisk shim retains substantive host symbol: ast_channel_tech" in errors
 
 
+def test_validator_requires_the_rust_lifecycle_loader(tmp_path):
+    """Reject a shim that no longer resolves the Rust lifecycle descriptor."""
+    copy_release_boundary(tmp_path)
+    shim = tmp_path / "src/chan_usbradioplus_shim.c"
+    shim.write_text(
+        shim.read_text(encoding="utf-8").replace(
+            "usbradioplus_asterisk_loader_descriptor", "retired_loader"
+        ),
+        encoding="utf-8",
+    )
+    assert "Asterisk shim does not resolve the Rust lifecycle loader" in VALIDATOR.validate(
+        tmp_path
+    )
+
+
 def test_validator_rejects_an_incomplete_loader_descriptor(tmp_path):
     """Require the complete versioned lifecycle table in release archives."""
     copy_release_boundary(tmp_path)
