@@ -366,6 +366,12 @@ fn direct_program_uses_current_block_and_preserves_ring_and_receive_qualificatio
     }
     consumer.render(&mut output).unwrap();
     assert_eq!(output, [-0.5, 0.75]);
+    let mut mismatched = [9.0; 1];
+    assert!(matches!(
+        consumer.render(&mut mismatched),
+        Err(RingError::InvalidArgument)
+    ));
+    assert_eq!(mismatched, [9.0; 1]);
     assert_eq!(consumer.ring.observe().unwrap().available_samples, 2);
 }
 

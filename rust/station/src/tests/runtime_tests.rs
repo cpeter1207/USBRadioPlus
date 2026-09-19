@@ -547,6 +547,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
 struct DirectCapture {
     samples: [f32; 4],
     keyed: u32,
+    rx_status: c_int,
     tx_keyed: u32,
     tx_status: c_int,
     receive_calls: u32,
@@ -570,7 +571,7 @@ unsafe extern "C" fn direct_receive(
     capture.keyed = keyed;
     capture.receive_calls += 1;
     samples.fill(0.0);
-    0
+    capture.rx_status
 }
 
 unsafe extern "C" fn direct_transmit(
@@ -669,8 +670,37 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
         transmit: Some(direct_transmit),
         accepted_abi_version: 0,
     };
+    let mut legacy = prepared(crate::ControllerTransport::AppRpt, 25)
+        .bind_media(
+            ring_provider(),
+            radio_provider(),
+            ControllerSetup::AppRpt {
+                converter: Box::new(FailingConverter),
+                handoff_slots: 2,
+                echo: EchoConfiguration::disabled(),
+            },
+        )
+        .unwrap();
+    assert!(matches!(
+        // SAFETY: capture outlives these stopped owners; rejection cannot invoke callbacks.
+        unsafe { legacy.set_direct_callbacks(callbacks) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+    drop(legacy);
+    let mut invalid = callbacks;
+    invalid.abi_version = 0;
+    assert!(matches!(
+        // SAFETY: capture outlives these stopped owners; the descriptor is rejected.
+        unsafe { media.set_direct_callbacks(invalid) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
     // SAFETY: capture outlives the stopped runtime and calls below are serial.
     unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
+    assert!(matches!(
+        // SAFETY: the same live contexts remain owned here; attachment is already complete.
+        unsafe { media.set_direct_callbacks(callbacks) },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
     let (mut runtime, mut control) =
         StationRuntime::open(media, &selected, audio_provider()).unwrap();
     runtime.hardware.publish_inputs(HardwareInputs {
@@ -688,6 +718,18 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert_eq!(capture.keyed, 1);
     assert_eq!(capture.receive_calls, 1);
     assert!(runtime.hardware.outputs().receiver_keyed);
+    capture.rx_status = -7;
+    assert_eq!(capture.rx_status, -7);
+    assert_eq!(
+        // SAFETY: the stopped runtime retains this live context and exact stereo span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_FAILED
+    );
+    assert_eq!(capture.receive_calls, 2);
+    assert_eq!(runtime.hardware.callback_statistics().receive_calls, 2);
+    assert_eq!(runtime.hardware.callback_statistics().receive_failures, 1);
+    capture.rx_status = 0;
+    assert_eq!(capture.rx_status, 0);
     let mut voice = ControllerPcmFrame::silence(AsteriskPcmMode::Advanced);
     assert!(control.controller().next_action(&mut voice).is_none());
     let mut output = [0.0; 8];
@@ -747,7 +789,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     drop(runtime);
     assert_eq!(DESTROYS.get(), 1);
     // Context remains owned here until both callback owners have been destroyed.
-    assert_eq!(capture.receive_calls, 2);
+    assert_eq!(capture.receive_calls, 3);
     assert_eq!(capture.transmit_calls, 4);
 }
 

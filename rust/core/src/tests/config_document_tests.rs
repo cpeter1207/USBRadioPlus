@@ -33,6 +33,30 @@ fn channels_and_profiles_resolve_without_losing_flat_defaults() {
 }
 
 #[test]
+fn missing_selected_profile_falls_back_to_channel_scope_with_warning() {
+    let document = ConfigDocument::new("[usb]\nhardware_profile = absent\n[hardware usb]\n");
+    let mut warnings = Vec::new();
+    assert_eq!(
+        document
+            .profile_section("usb", "hardware", "radio.conf", &mut warnings)
+            .unwrap(),
+        "hardware usb"
+    );
+    assert_eq!(
+        warnings,
+        [crate::ResolutionWarning {
+            kind: crate::ResolutionWarningKind::InvalidValue,
+            source: "radio.conf".into(),
+            section: "usb".into(),
+            name: "hardware_profile".into(),
+            supplied_value: "absent".into(),
+            fallback: "hardware usb".into(),
+            reason: "missing profile".into(),
+        }]
+    );
+}
+
+#[test]
 fn explicit_values_ignore_comments_and_keep_last_assignment() {
     let document = ConfigDocument::new(
         "[hardware]\n; gain = 7\ngain = 1 # note\ninvalid-name = 2\ngain = 3\n",

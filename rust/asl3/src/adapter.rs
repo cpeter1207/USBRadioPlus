@@ -125,18 +125,6 @@ pub struct EchoConfiguration {
 }
 
 impl EchoConfiguration {
-    #[cfg(test)]
-    const fn new(enabled: bool, maximum_frames: u16) -> Option<Self> {
-        if maximum_frames <= MAX_ECHO_FRAMES {
-            Some(Self {
-                enabled,
-                maximum_frames,
-            })
-        } else {
-            None
-        }
-    }
-
     /// Disable echo without retaining audio storage.
     pub const fn disabled() -> Self {
         Self {
