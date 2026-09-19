@@ -1407,3 +1407,7 @@ unsafe extern "C" {
 #[cfg(test)]
 #[path = "link_tests.rs"]
 pub(super) mod tests;
+
+#[cfg(test)]
+#[path = "link_concurrency_tests.rs"]
+mod concurrency_tests;
