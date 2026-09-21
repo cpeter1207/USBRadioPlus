@@ -1,3 +1,9 @@
+usbradioplus (0.1.0~alpha20-1) unstable; urgency=medium
+
+  * Match the ASL3 voice-frame contract while retaining strict PCM validation.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Mon, 21 Sep 2026 15:15:00 -0500
+
 usbradioplus (0.1.0~alpha19-1) unstable; urgency=medium
 
   * Release the Rust channel host, configuration, tuning, and LADSPA implementation.
