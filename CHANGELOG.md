@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0~alpha20 - 2026-09-21
+
+- Match the ASL3 voice-frame contract by treating the advisory sample count as
+  non-authoritative while retaining strict PCM payload validation.
+
 ## 0.1.0~alpha19 - 2026-09-19
 
 - Move radio, audio, hardware, configuration, and tuning behavior into Rust
