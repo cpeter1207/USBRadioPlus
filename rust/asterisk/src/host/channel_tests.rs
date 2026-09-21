@@ -895,7 +895,7 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
         channel.service_failed.store(true, Ordering::Release);
         assert!(read(owner.as_ptr()).is_null());
         assert_eq!(write(owner.as_ptr(), ptr::null_mut()), -1);
-        for case in 0..6 {
+        for case in 0..5 {
             let mut invalid = frame;
             match case {
                 0 => invalid.frametype = ffi::AST_FRAME_TEXT,
@@ -908,6 +908,10 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
             assert_eq!(write(owner.as_ptr(), &mut invalid), -1);
         }
         assert!(calls.lock().unwrap().voice.is_empty());
+        let mut stale_count = frame;
+        stale_count.samples = 159;
+        assert_eq!(write(owner.as_ptr(), &mut stale_count), 0);
+        assert_eq!(calls.lock().unwrap().voice, [23; 160]);
         for result in [URP_AST_OK, -6] {
             calls.lock().unwrap().result = result;
             assert_eq!(
@@ -1468,15 +1472,33 @@ fn voice_frames_must_match_the_fixed_technology_contract() {
     assert!(!voice_frame_is_valid(
         ffi::AST_FRAME_VOICE,
         320,
-        159,
-        false,
         160,
+        false,
+        161,
     ));
     assert!(!voice_frame_is_valid(
         ffi::AST_FRAME_VOICE,
         320,
         160,
         true,
+        160,
+    ));
+}
+
+#[test]
+fn app_rpt_voice_contract_ignores_the_advisory_sample_count() {
+    assert!(voice_frame_is_valid(
+        ffi::AST_FRAME_VOICE,
+        320,
+        0,
+        false,
+        160,
+    ));
+    assert!(voice_frame_is_valid(
+        ffi::AST_FRAME_VOICE,
+        320,
+        -1,
+        false,
         160,
     ));
 }
