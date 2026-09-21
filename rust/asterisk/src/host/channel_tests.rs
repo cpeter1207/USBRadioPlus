@@ -895,7 +895,7 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
         channel.service_failed.store(true, Ordering::Release);
         assert!(read(owner.as_ptr()).is_null());
         assert_eq!(write(owner.as_ptr(), ptr::null_mut()), -1);
-        for case in 0..6 {
+        for case in 0..5 {
             let mut invalid = frame;
             match case {
                 0 => invalid.frametype = ffi::AST_FRAME_TEXT,
@@ -908,6 +908,10 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
             assert_eq!(write(owner.as_ptr(), &mut invalid), -1);
         }
         assert!(calls.lock().unwrap().voice.is_empty());
+        let mut stale_count = frame;
+        stale_count.samples = 159;
+        assert_eq!(write(owner.as_ptr(), &mut stale_count), 0);
+        assert_eq!(calls.lock().unwrap().voice, [23; 160]);
         for result in [URP_AST_OK, -6] {
             calls.lock().unwrap().result = result;
             assert_eq!(
@@ -1497,36 +1501,6 @@ fn app_rpt_voice_contract_ignores_the_advisory_sample_count() {
         false,
         160,
     ));
-}
-
-#[test]
-fn unsupported_app_rpt_frames_are_accepted_as_noops() {
-    let mut channel = Channel {
-        _name: "usb".into(),
-        descriptor: ptr::null(),
-        rust_channel: AtomicPtr::new(ptr::null_mut()),
-        control: ptr::null_mut(),
-        dsp: ptr::null_mut(),
-        format: ptr::null_mut(),
-        sample_rate_hz: APP_RPT_RATE_HZ,
-        frame_samples: 160,
-        owner: AtomicPtr::new(ptr::null_mut()),
-        worker: Mutex::new(None),
-        delivery_stop: AtomicBool::new(false),
-        service_failed: AtomicBool::new(false),
-        jitter_pending: AtomicBool::new(false),
-        pending_transmit: AtomicU64::new(0),
-        direct: AtomicBool::new(false),
-    };
-    let owner = ptr::from_mut(&mut channel).cast::<ffi::ast_channel>();
-    // SAFETY: the zeroed frame is populated only with the discriminant needed
-    // by the no-op path and is never dereferenced as a voice payload.
-    let mut frame = unsafe { zeroed::<ffi::ast_frame>() };
-    frame.frametype = ffi::AST_FRAME_NULL;
-    // SAFETY: the fixture returns the pinned Channel for this owner pointer.
-    assert_eq!(unsafe { write(owner, &mut frame) }, 0);
-    // SAFETY: legacy drivers treat a null frame as an accepted no-op.
-    assert_eq!(unsafe { write(owner, ptr::null_mut()) }, 0);
 }
 
 #[test]

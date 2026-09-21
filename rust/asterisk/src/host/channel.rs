@@ -1125,7 +1125,7 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         return -1;
     };
     if frame.is_null() {
-        return 0;
+        return -1;
     }
     // SAFETY: Asterisk supplies a readable frame for this callback.
     let frame = unsafe { &*frame };
@@ -1138,8 +1138,7 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         data.is_null(),
         channel.frame_samples,
     ) {
-        // The legacy drivers treat unsupported frames as an accepted no-op.
-        return 0;
+        return -1;
     }
     // SAFETY: descriptor was validated and frame holds exactly frame_samples i16 values.
     let result = unsafe {
