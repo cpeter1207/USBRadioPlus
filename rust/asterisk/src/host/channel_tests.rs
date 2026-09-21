@@ -1468,9 +1468,9 @@ fn voice_frames_must_match_the_fixed_technology_contract() {
     assert!(!voice_frame_is_valid(
         ffi::AST_FRAME_VOICE,
         320,
-        159,
-        false,
         160,
+        false,
+        161,
     ));
     assert!(!voice_frame_is_valid(
         ffi::AST_FRAME_VOICE,
@@ -1479,6 +1479,54 @@ fn voice_frames_must_match_the_fixed_technology_contract() {
         true,
         160,
     ));
+}
+
+#[test]
+fn app_rpt_voice_contract_ignores_the_advisory_sample_count() {
+    assert!(voice_frame_is_valid(
+        ffi::AST_FRAME_VOICE,
+        320,
+        0,
+        false,
+        160,
+    ));
+    assert!(voice_frame_is_valid(
+        ffi::AST_FRAME_VOICE,
+        320,
+        -1,
+        false,
+        160,
+    ));
+}
+
+#[test]
+fn unsupported_app_rpt_frames_are_accepted_as_noops() {
+    let mut channel = Channel {
+        _name: "usb".into(),
+        descriptor: ptr::null(),
+        rust_channel: AtomicPtr::new(ptr::null_mut()),
+        control: ptr::null_mut(),
+        dsp: ptr::null_mut(),
+        format: ptr::null_mut(),
+        sample_rate_hz: APP_RPT_RATE_HZ,
+        frame_samples: 160,
+        owner: AtomicPtr::new(ptr::null_mut()),
+        worker: Mutex::new(None),
+        delivery_stop: AtomicBool::new(false),
+        service_failed: AtomicBool::new(false),
+        jitter_pending: AtomicBool::new(false),
+        pending_transmit: AtomicU64::new(0),
+        direct: AtomicBool::new(false),
+    };
+    let owner = ptr::from_mut(&mut channel).cast::<ffi::ast_channel>();
+    // SAFETY: the zeroed frame is populated only with the discriminant needed
+    // by the no-op path and is never dereferenced as a voice payload.
+    let mut frame = unsafe { zeroed::<ffi::ast_frame>() };
+    frame.frametype = ffi::AST_FRAME_NULL;
+    // SAFETY: the fixture returns the pinned Channel for this owner pointer.
+    assert_eq!(unsafe { write(owner, &mut frame) }, 0);
+    // SAFETY: legacy drivers treat a null frame as an accepted no-op.
+    assert_eq!(unsafe { write(owner, ptr::null_mut()) }, 0);
 }
 
 #[test]

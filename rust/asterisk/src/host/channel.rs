@@ -230,10 +230,15 @@ pub(super) fn forced_ctcss_tenths_hz(payload: &[u8]) -> Result<u32, ()> {
     Ok((frequency.mul_add(10.0, 0.5).floor()) as u32)
 }
 
+/// Check the payload fields that the legacy ASL3 radio drivers require.
+///
+/// `ast_frame.samples` is advisory at this boundary: `chan_usbradio` accepts
+/// a frame when its signed-16 payload has the expected length and does not
+/// reject it because the duplicate sample-count field is unset or stale.
 pub(super) fn voice_frame_is_valid(
     frame_type: ffi::ast_frame_type,
     data_length: i32,
-    sample_count: i32,
+    _sample_count: i32,
     data_is_null: bool,
     expected_samples: u32,
 ) -> bool {
@@ -242,7 +247,6 @@ pub(super) fn voice_frame_is_valid(
         && data_length >= 0
         && data_length % size_of::<i16>() as i32 == 0
         && u32::try_from(data_length / size_of::<i16>() as i32) == Ok(expected_samples)
-        && u32::try_from(sample_count) == Ok(expected_samples)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1121,7 +1125,7 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         return -1;
     };
     if frame.is_null() {
-        return -1;
+        return 0;
     }
     // SAFETY: Asterisk supplies a readable frame for this callback.
     let frame = unsafe { &*frame };
@@ -1134,7 +1138,8 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         data.is_null(),
         channel.frame_samples,
     ) {
-        return -1;
+        // The legacy drivers treat unsupported frames as an accepted no-op.
+        return 0;
     }
     // SAFETY: descriptor was validated and frame holds exactly frame_samples i16 values.
     let result = unsafe {
