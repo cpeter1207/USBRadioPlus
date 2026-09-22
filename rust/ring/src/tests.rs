@@ -155,6 +155,10 @@ unsafe extern "C" fn render(
     RESULT_OK
 }
 
+unsafe extern "C" fn reset(_handle: *mut c_void) -> c_int {
+    RESULT_OK
+}
+
 unsafe extern "C" fn observe(handle: *const c_void, output: *mut RawObservation) -> c_int {
     // SAFETY: Wrapper supplies a live fake handle and writable snapshot.
     let ring = unsafe { &*handle.cast::<FakeRing>() };
@@ -226,6 +230,7 @@ fn valid_descriptor() -> Descriptor {
         push: Some(push),
         render_sample: Some(render_sample),
         render: Some(render),
+        reset: Some(reset),
         observe: Some(observe),
     }
 }
@@ -281,6 +286,10 @@ fn descriptor_validation_rejects_incompatible_prefixes() {
         },
         Descriptor {
             render: None,
+            ..valid_descriptor()
+        },
+        Descriptor {
+            reset: None,
             ..valid_descriptor()
         },
         Descriptor {

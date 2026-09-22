@@ -225,6 +225,7 @@ struct RingDescriptor {
     push: Option<unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int>,
     render_sample: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int>,
     render: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int>,
+    reset: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     observe: Option<unsafe extern "C" fn(*const c_void, *mut RingObservation) -> c_int>,
 }
 
@@ -294,6 +295,10 @@ unsafe extern "C" fn ring_observe(_handle: *const c_void, output: *mut RingObser
     OK
 }
 
+unsafe extern "C" fn ring_reset(_handle: *mut c_void) -> c_int {
+    OK
+}
+
 static RING: RingDescriptor = RingDescriptor {
     struct_size: size_of::<RingDescriptor>() as u32,
     abi_version: 2,
@@ -304,6 +309,7 @@ static RING: RingDescriptor = RingDescriptor {
     push: Some(ring_push),
     render_sample: Some(ring_render_sample),
     render: Some(ring_render),
+    reset: Some(ring_reset),
     observe: Some(ring_observe),
 };
 

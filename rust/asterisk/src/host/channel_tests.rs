@@ -894,7 +894,7 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
         assert_eq!(read(owner.as_ptr()), &raw mut ffi::ast_null_frame);
         channel.service_failed.store(true, Ordering::Release);
         assert!(read(owner.as_ptr()).is_null());
-        assert_eq!(write(owner.as_ptr(), ptr::null_mut()), -1);
+        assert_eq!(write(owner.as_ptr(), ptr::null_mut()), 0);
         for case in 0..5 {
             let mut invalid = frame;
             match case {
@@ -905,7 +905,7 @@ fn voice_callbacks_validate_frames_and_propagate_driver_results() {
                 4 => invalid.datalen = 318,
                 _ => invalid.samples = 159,
             }
-            assert_eq!(write(owner.as_ptr(), &mut invalid), -1);
+            assert_eq!(write(owner.as_ptr(), &mut invalid), 0);
         }
         assert!(calls.lock().unwrap().voice.is_empty());
         let mut stale_count = frame;

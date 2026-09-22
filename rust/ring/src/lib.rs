@@ -68,6 +68,7 @@ type PushSampleFn = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type PushFn = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
 type RenderSampleFn = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
 type RenderFn = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type ResetFn = unsafe extern "C" fn(*mut c_void) -> c_int;
 type ObserveFn = unsafe extern "C" fn(*const c_void, *mut RawObservation) -> c_int;
 
 #[repr(C)]
@@ -82,6 +83,7 @@ struct Descriptor {
     push: Option<PushFn>,
     render_sample: Option<RenderSampleFn>,
     render: Option<RenderFn>,
+    reset: Option<ResetFn>,
     observe: Option<ObserveFn>,
 }
 
@@ -192,6 +194,7 @@ impl RingProvider {
             Some(push),
             Some(_),
             Some(render),
+            Some(_reset),
             Some(observe),
         ) = (
             descriptor.create,
@@ -200,6 +203,7 @@ impl RingProvider {
             descriptor.push,
             descriptor.render_sample,
             descriptor.render,
+            descriptor.reset,
             descriptor.observe,
         )
         else {

@@ -1125,7 +1125,10 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         return -1;
     };
     if frame.is_null() {
-        return -1;
+        // app_rpt uses a null frame as an accepted control-path no-op.
+        // Keep the channel-driver contract used by chan_usbradio and
+        // chan_simpleusb: only a failed voice write is an error.
+        return 0;
     }
     // SAFETY: Asterisk supplies a readable frame for this callback.
     let frame = unsafe { &*frame };
@@ -1138,7 +1141,9 @@ unsafe extern "C" fn write(owner: *mut ffi::ast_channel, frame: *mut ffi::ast_fr
         data.is_null(),
         channel.frame_samples,
     ) {
-        return -1;
+        // Asterisk may send non-voice and advisory-metadata frames while it
+        // is pacing/controlling the radio.  They carry no PCM for this driver.
+        return 0;
     }
     // SAFETY: descriptor was validated and frame holds exactly frame_samples i16 values.
     let result = unsafe {
