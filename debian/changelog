@@ -1,3 +1,9 @@
+usbradioplus (0.1.0~alpha21-1) unstable; urgency=medium
+
+  * Fix the shared PCM ring ABI binding and preserve the ASL3 voice-frame contract.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Tue, 22 Sep 2026 06:30:00 -0500
+
 usbradioplus (0.1.0~alpha20-1) unstable; urgency=medium
 
   * Match the ASL3 voice-frame contract while retaining strict PCM validation.
