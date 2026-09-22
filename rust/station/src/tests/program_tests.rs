@@ -47,6 +47,7 @@ type PushSample = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type Push = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
 type RenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
 type Render = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type Reset = unsafe extern "C" fn(*mut c_void) -> c_int;
 type Observe = unsafe extern "C" fn(*const c_void, *mut FakeObservation) -> c_int;
 
 #[repr(C)]
@@ -60,6 +61,7 @@ struct FakeDescriptor {
     push: Option<Push>,
     render_sample: Option<RenderSample>,
     render: Option<Render>,
+    reset: Option<Reset>,
     observe: Option<Observe>,
 }
 
@@ -221,6 +223,10 @@ unsafe extern "C" fn fake_observe(ring: *const c_void, output: *mut FakeObservat
     OK
 }
 
+unsafe extern "C" fn fake_reset(_ring: *mut c_void) -> c_int {
+    OK
+}
+
 static FAKE_DESCRIPTOR: FakeDescriptor = FakeDescriptor {
     struct_size: size_of::<FakeDescriptor>() as u32,
     abi_version: 2,
@@ -231,6 +237,7 @@ static FAKE_DESCRIPTOR: FakeDescriptor = FakeDescriptor {
     push: Some(fake_push),
     render_sample: Some(fake_render_sample),
     render: Some(fake_render),
+    reset: Some(fake_reset),
     observe: Some(fake_observe),
 };
 

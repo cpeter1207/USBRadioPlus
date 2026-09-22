@@ -257,6 +257,7 @@ type RingPushSample = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int
 type RingPush = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
 type RingRenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
 type RingRender = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type RingReset = unsafe extern "C" fn(*mut c_void) -> c_int;
 type RingObserve = unsafe extern "C" fn(*const c_void, *mut RingObservation) -> c_int;
 
 #[repr(C)]
@@ -270,6 +271,7 @@ struct RingDescriptor {
     push: Option<RingPush>,
     render_sample: Option<RingRenderSample>,
     render: Option<RingRender>,
+    reset: Option<RingReset>,
     observe: Option<RingObserve>,
 }
 
@@ -326,6 +328,10 @@ unsafe extern "C" fn ring_observe(
     OK
 }
 
+unsafe extern "C" fn ring_reset(_handle: *mut c_void) -> c_int {
+    OK
+}
+
 static RING: RingDescriptor = RingDescriptor {
     struct_size: size_of::<RingDescriptor>() as u32,
     abi_version: 2,
@@ -336,6 +342,7 @@ static RING: RingDescriptor = RingDescriptor {
     push: Some(ring_push),
     render_sample: Some(ring_render_sample),
     render: Some(ring_render),
+    reset: Some(ring_reset),
     observe: Some(ring_observe),
 };
 
