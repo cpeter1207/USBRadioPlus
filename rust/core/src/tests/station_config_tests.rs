@@ -229,6 +229,66 @@ fn every_current_non_processing_option_is_typed() {
 }
 
 #[test]
+fn hardware_output_extra_buffer_setting_is_recognized() {
+    let resolved = resolve(
+        "[usb]\n\
+             [hardware]\n\
+             hardware_output_extra_buffer_ms = 20\n",
+    )
+    .unwrap();
+
+    assert!(resolved.warnings().is_empty());
+    assert_eq!(resolved.config().hardware.output_extra_buffer_ms, 20);
+}
+
+#[test]
+fn hardware_input_extra_buffer_setting_is_recognized() {
+    let resolved = resolve(
+        "[usb]\n\
+             [hardware]\n\
+             hardware_input_extra_buffer_ms = 20\n",
+    )
+    .unwrap();
+
+    assert!(resolved.warnings().is_empty());
+    assert_eq!(resolved.config().hardware.input_extra_buffer_ms, 20);
+}
+
+#[test]
+fn hardware_input_extra_buffer_rejects_values_over_500() {
+    let resolved = resolve(
+        "[usb]\n\
+             [hardware]\n\
+             hardware_input_extra_buffer_ms = 501\n",
+    )
+    .unwrap();
+
+    assert_eq!(resolved.warnings().len(), 1);
+    assert_eq!(
+        resolved.warnings()[0].kind,
+        ResolutionWarningKind::InvalidValue
+    );
+    assert_eq!(resolved.warnings()[0].fallback, "0");
+}
+
+#[test]
+fn hardware_output_extra_buffer_rejects_values_over_500() {
+    let resolved = resolve(
+        "[usb]\n\
+             [hardware]\n\
+             hardware_output_extra_buffer_ms = 501\n",
+    )
+    .unwrap();
+
+    assert_eq!(resolved.warnings().len(), 1);
+    assert_eq!(
+        resolved.warnings()[0].kind,
+        ResolutionWarningKind::InvalidValue
+    );
+    assert_eq!(resolved.warnings()[0].fallback, "0");
+}
+
+#[test]
 fn flat_values_then_selected_scoped_values_preserve_inheritance() {
     let resolved = resolve(
         "[general]\n\
@@ -238,9 +298,13 @@ fn flat_values_then_selected_scoped_values_preserve_inheritance() {
              hardware_profile = hill\n\
              [hardware]\n\
              hardware_input_gain_db = 3\n\
+             hardware_input_extra_buffer_ms = 10\n\
+             hardware_output_extra_buffer_ms = 15\n\
              hardware_output_a_gain_db = 4\n\
              [hardware hill]\n\
              hardware_input_gain_db = bad\n\
+             hardware_input_extra_buffer_ms = 20\n\
+             hardware_output_extra_buffer_ms = 25\n\
              hardware_output_b_gain_db = 5\n\
              future_hardware_knob = on\n\
              [receive usb]\n\
@@ -250,6 +314,8 @@ fn flat_values_then_selected_scoped_values_preserve_inheritance() {
     let config = resolved.config();
     assert!(config.channel_enabled);
     assert_eq!(config.hardware.input_gain_db, 3.0);
+    assert_eq!(config.hardware.input_extra_buffer_ms, 20);
+    assert_eq!(config.hardware.output_extra_buffer_ms, 25);
     assert_eq!(config.hardware.output_a_gain_db, 4.0);
     assert_eq!(config.hardware.output_b_gain_db, 5.0);
     assert_eq!(config.receive.squelch_level, 450);

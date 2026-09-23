@@ -87,3 +87,42 @@ replace released dynamic components. Work through independently tested parts:
 The sample-associated qualification wording conflicts with immediate queued-tail
 suppression. The owner has been asked to resolve this before implementing that
 boundary; independent configuration work can proceed meanwhile.
+
+## COP 4 output buffering — 2026-09-23
+
+**Scope:** Address UCI80's intermittent pulsed COP 4 tone by adding one
+per-radio, optional PortAudio output-buffer cushion. Do not change tone
+generation, DSP, callback scheduling, or other nodes' settings.
+
+**Decision:** The owner approved 20 ms additional output buffering on UCI80
+only, accepting approximately 20 ms more total latency. An unset/zero value
+continues to use PortAudio's device `defaultLowOutputLatency`. Append the
+optional field to adapter ABI 2; old ABI-2 callers that provide the prior
+structure size keep the old low-latency behavior. Preserve the SONAME.
+
+The owner also approved an independent per-radio input buffer setting. Its
+zero default preserves PortAudio's `defaultLowInputLatency`; positive values
+add only to capture buffering and do not change playback buffering. UCI80's
+input remains at zero unless separately configured.
+
+**Acceptance:**
+
+- [x] Zero/unset retains both device low-latency requests. Changing input
+  buffering does not affect output latency, and vice versa.
+- [x] A 20 ms per-radio value requests 20 ms more output buffering, without
+  changing audio samples, tone generation, or callbacks.
+- [x] A positive input value requests additional capture buffering only.
+- [x] Old shorter ABI-2 callers remain valid; invalid new values fail safely.
+- [x] USBRadioPlus unit tests prove default, override, and per-channel behavior.
+- [ ] Release packages contain the adapter and consumer built against the
+  same ABI; UCI80 alone receives the 20 ms setting.
+- [ ] After install and restart, COP 4 is continuous and output-underflow/late
+  callback counters do not increase during the verification interval.
+
+**Focused verification:** The adapter quality, unit, descriptor-smoke, Debian
+package, and staged-install checks passed in the pinned Debian 13 amd64 image.
+USBRadioPlus core/audio/station tests passed (124 tests), formatting, Clippy,
+Rustdoc, docs/installer tests (50 tests) passed. The USBRadioPlus `make quality`
+entrypoint could not start because its quality image lacks the required released
+shared-ring development package; this remains an image/dependency blocker for a
+full local gate. The full Debian 13 amd64/arm64 gate remains assigned to GitHub.

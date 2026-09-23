@@ -47,6 +47,8 @@ struct RawStreamConfig {
     receive_worker_context: *mut c_void,
     transmit_worker: Option<TransmitWorker>,
     transmit_worker_context: *mut c_void,
+    extra_output_buffer_milliseconds: u32,
+    extra_input_buffer_milliseconds: u32,
 }
 
 #[repr(C)]
@@ -151,6 +153,8 @@ unsafe extern "C" fn stream_create(
     assert_eq!(config.native_sample_rate_hz, 48_000);
     assert_eq!(config.input_device_channels, 1);
     assert_eq!(config.output_device_channels, 2);
+    assert_eq!(config.extra_input_buffer_milliseconds, 0);
+    assert_eq!(config.extra_output_buffer_milliseconds, 0);
     let Some(receive) = config.receive_worker else {
         return -1;
     };

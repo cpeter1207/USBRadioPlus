@@ -27,6 +27,10 @@ const PARALLEL_STATUS_BITS: [u8; 4] = [1 << 6, 1 << 5, 1 << 4, 1 << 3];
 pub struct HardwarePlan {
     /// Exact or automatic request for the channel's single USB audio device.
     pub audio_selector: DeviceSelector,
+    /// Extra capture latency requested from PortAudio, in milliseconds.
+    pub input_extra_buffer_ms: u32,
+    /// Extra playback latency requested from PortAudio, in milliseconds.
+    pub output_extra_buffer_ms: u32,
     /// CM119 settings which do not depend on the resolved USB topology.
     pub cm119: Cm119Plan,
     /// Optional parallel-port settings and signal assignments.
@@ -151,6 +155,8 @@ impl HardwarePlan {
                 output_device_index: selected.output_device_index,
                 input_channels: ChannelCount::Mono,
                 output_channels: ChannelCount::Stereo,
+                extra_input_buffer_milliseconds: self.input_extra_buffer_ms,
+                extra_output_buffer_milliseconds: self.output_extra_buffer_ms,
             },
             cm119: Cm119Config {
                 usb_port_path: selected.interface_path.clone(),
@@ -197,6 +203,8 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
             input_channels: ChannelCount::Mono,
             output_channels: ChannelCount::Stereo,
         },
+        input_extra_buffer_ms: hardware.input_extra_buffer_ms,
+        output_extra_buffer_ms: hardware.output_extra_buffer_ms,
         cm119: Cm119Plan {
             required_usb_port_path: gpio_usb_port_path,
             required_serial: serial,

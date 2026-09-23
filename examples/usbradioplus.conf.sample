@@ -38,6 +38,12 @@ channel_enabled = yes
 ;hardware_input_gain_db = 0.0
 ;hardware_output_a_gain_db = 0.0
 ;hardware_output_b_gain_db = 0.0
+; Request additional PortAudio input or output buffering independently.
+; Zero retains the device's default-low latency request. A positive integer
+; adds 0-500 ms beyond the selected callback/device baseline; this is a host
+; hint, not a guaranteed latency. Leave at zero unless testing shows a need.
+;hardware_input_extra_buffer_ms = 0
+;hardware_output_extra_buffer_ms = 0
 ; Route voice, transmit signaling (CTCSS or DCS), both, auxiliary voice, or
 ; nothing to each CM119 playback channel. Selected CTCSS or DCS transmission
 ; requires ctcss or voice_ctcss on at least one output.

@@ -69,8 +69,8 @@ pkg-config --atleast-version=0.1.0~alpha2 rptadv_samplerate_adapter || \
 	die "rptadv_samplerate_adapter 0.1.0~alpha2 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_ffmpeg_adapter || \
 	die "rptadv_ffmpeg_adapter 0.1.0~alpha2 or newer is unavailable"
-pkg-config --atleast-version=0.2.0~alpha2 rptadv_portaudio_alsa_adapter || \
-	die "rptadv_portaudio_alsa_adapter 0.2.0~alpha2 or newer is unavailable"
+pkg-config --atleast-version=0.2.0~alpha3 rptadv_portaudio_alsa_adapter || \
+	die "rptadv_portaudio_alsa_adapter 0.2.0~alpha3 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_gpio_adapter || \
 	die "rptadv_gpio_adapter 0.1.0~alpha2 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_rnnoise_adapter || \
