@@ -18,7 +18,7 @@ BUILD_PROVIDER_MINIMUMS = (
     ("rptadvradio", "0.1.0~alpha5"),
     ("rptadv_samplerate_adapter", "0.1.0~alpha2"),
     ("rptadv_ffmpeg_adapter", "0.1.0~alpha2"),
-    ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha2"),
+    ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha3"),
     ("rptadv_gpio_adapter", "0.1.0~alpha2"),
     ("rptadv_rnnoise_adapter", "0.1.0~alpha2"),
 )

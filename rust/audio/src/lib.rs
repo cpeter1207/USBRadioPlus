@@ -51,6 +51,8 @@ struct RawStreamConfig {
     receive_worker_context: *mut c_void,
     transmit_worker: Option<TransmitWorker>,
     transmit_worker_context: *mut c_void,
+    extra_output_buffer_milliseconds: u32,
+    extra_input_buffer_milliseconds: u32,
 }
 
 #[repr(C)]
@@ -362,6 +364,10 @@ pub struct StreamConfig {
     pub input_channels: ChannelCount,
     /// Selected physical output channel count.
     pub output_channels: ChannelCount,
+    /// Additional PortAudio capture-buffer request in milliseconds (0-500).
+    pub extra_input_buffer_milliseconds: u32,
+    /// Additional PortAudio playback-buffer request in milliseconds (0-500).
+    pub extra_output_buffer_milliseconds: u32,
 }
 
 /// Borrowed receive-worker endpoint retained until its stream is destroyed.
@@ -652,6 +658,8 @@ impl AudioProvider {
             receive_worker_context: receive.context.as_ptr(),
             transmit_worker: Some(transmit.function),
             transmit_worker_context: transmit.context.as_ptr(),
+            extra_output_buffer_milliseconds: config.extra_output_buffer_milliseconds,
+            extra_input_buffer_milliseconds: config.extra_input_buffer_milliseconds,
         };
         let create = self
             .descriptor

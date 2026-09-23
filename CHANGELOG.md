@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0~alpha22 - 2026-09-23
+
+- Add independently configurable per-radio PortAudio input and output buffer
+  cushions. Both default to zero; UCI80's playback cushion remains an operator
+  setting.
+
 ## 0.1.0~alpha20 - 2026-09-21
 
 - Match the ASL3 voice-frame contract by treating the advisory sample count as

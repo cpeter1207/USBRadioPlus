@@ -1,6 +1,10 @@
 use super::*;
 use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
+thread_local! {
+    static BUFFER_REQUESTS: std::cell::Cell<(u32, u32)> = const { std::cell::Cell::new((0, 0)) };
+}
+
 static STARTS: AtomicU32 = AtomicU32::new(0);
 static STOPS: AtomicU32 = AtomicU32::new(0);
 static DESTROYS: AtomicU32 = AtomicU32::new(0);
@@ -16,6 +20,12 @@ unsafe extern "C" fn stream_create(
 ) -> c_int {
     // SAFETY: Tests call through the validated wrapper with live storage.
     let config = unsafe { &*config };
+    BUFFER_REQUESTS.with(|requests| {
+        requests.set((
+            config.extra_input_buffer_milliseconds,
+            config.extra_output_buffer_milliseconds,
+        ));
+    });
     assert_eq!(config.native_sample_rate_hz, NATIVE_RATE_HZ);
     assert_eq!(config.input_device_channels, 1);
     assert_eq!(config.output_device_channels, 2);
@@ -373,6 +383,22 @@ fn selector() -> DeviceSelector {
     }
 }
 
+#[test]
+fn stream_forwards_independent_input_and_output_buffer_requests() {
+    let mut config = stream_config(480, 960);
+    config.extra_input_buffer_milliseconds = 20;
+    config.extra_output_buffer_milliseconds = 35;
+    let (mut receive_context, mut transmit_context) = (0_u8, 0_u8);
+    let (receive, transmit) = endpoints(&mut receive_context, &mut transmit_context);
+
+    let stream = provider(&VALID)
+        .unwrap()
+        .open_stream(config, receive, transmit)
+        .unwrap();
+    BUFFER_REQUESTS.with(|requests| assert_eq!(requests.get(), (20, 35)));
+    drop(stream);
+}
+
 fn endpoints<'receive, 'transmit>(
     receive_context: &'receive mut u8,
     transmit_context: &'transmit mut u8,
@@ -399,6 +425,8 @@ fn stream_config(receive_maximum: u32, transmit_maximum: u32) -> StreamConfig {
         output_device_index: 5,
         input_channels: ChannelCount::Mono,
         output_channels: ChannelCount::Stereo,
+        extra_input_buffer_milliseconds: 0,
+        extra_output_buffer_milliseconds: 0,
     }
 }
 

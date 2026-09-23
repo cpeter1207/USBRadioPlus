@@ -1,3 +1,11 @@
+usbradioplus (0.1.0~alpha22-1) unstable; urgency=medium
+
+  * Add per-radio PortAudio input and output extra-buffer settings; default both
+    directions to the device low-latency request.
+  * Require the ABI-2 audio adapter release that supports both settings.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Wed, 23 Sep 2026 16:06:00 -0500
+
 usbradioplus (0.1.0~alpha21-1) unstable; urgency=medium
 
   * Fix the shared PCM ring ABI binding and preserve the ASL3 voice-frame contract.

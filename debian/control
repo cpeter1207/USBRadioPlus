@@ -8,7 +8,7 @@ Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  librptadvradio-dev (>= 0.1.0~alpha5),
  librptadv-samplerate-adapter-dev (>= 0.1.0~alpha2),
  librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha2),
- librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha2),
+ librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha3),
  librptadv-gpio-adapter-dev (>= 0.1.0~alpha2),
  librptadv-rnnoise-adapter-dev (>= 0.1.0~alpha2),
  ladspa-sdk, python3, python3-pytest
@@ -20,7 +20,8 @@ Package: usbradioplus
 Architecture: amd64 arm64
 Conflicts: usbradioplus-asl3105
 Replaces: usbradioplus-asl3105
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${usbradioplus:ASLDepends}, whiptail
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${usbradioplus:ASLDepends},
+ librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3), whiptail
 Description: enhanced USB radio channel driver for AllStarLink
  USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
  filtering and dynamics processing for amateur-radio and land-mobile interfaces

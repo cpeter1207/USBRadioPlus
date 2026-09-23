@@ -237,6 +237,10 @@ pub struct HardwareConfig {
     pub output_a_gain_db: f64,
     /// CM119 output-B gain in dB relative to the normalized midpoint.
     pub output_b_gain_db: f64,
+    /// Additional PortAudio capture-buffer request in milliseconds (0-500).
+    pub input_extra_buffer_ms: u32,
+    /// Additional PortAudio playback-buffer request in milliseconds (0-500).
+    pub output_extra_buffer_ms: u32,
     /// Signal routed to output A.
     pub output_a_assignment: HardwareOutputAssignment,
     /// Signal routed to output B.
@@ -273,6 +277,8 @@ impl Default for HardwareConfig {
             input_gain_db: 0.0,
             output_a_gain_db: 0.0,
             output_b_gain_db: 0.0,
+            input_extra_buffer_ms: 0,
+            output_extra_buffer_ms: 0,
             output_a_assignment: HardwareOutputAssignment::VoiceCtcss,
             output_b_assignment: HardwareOutputAssignment::Off,
             ptt_inverted: false,
@@ -1223,6 +1229,16 @@ fn apply_hardware(
         "hardware_output_b_gain_db" => {
             assign_f64(&mut target.output_b_gain_db, -30.0, 30.0, setting, warnings);
         }
+        "hardware_input_extra_buffer_ms" => {
+            assign_u32(&mut target.input_extra_buffer_ms, 0, 500, setting, warnings)
+        }
+        "hardware_output_extra_buffer_ms" => assign_u32(
+            &mut target.output_extra_buffer_ms,
+            0,
+            500,
+            setting,
+            warnings,
+        ),
         "hardware_output_a_assignment" => assign_display(
             &mut target.output_a_assignment,
             setting,

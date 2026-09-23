@@ -27,7 +27,10 @@ fn selected_device() -> SelectedDevice {
 
 #[test]
 fn defaults_select_automatically_and_prepare_no_optional_outputs() {
-    let plan = hardware_plan(&channel(HardwareConfig::default()));
+    let config = HardwareConfig::default();
+    assert_eq!(config.input_extra_buffer_ms, 0);
+    assert_eq!(config.output_extra_buffer_ms, 0);
+    let plan = hardware_plan(&channel(config));
 
     assert_eq!(plan.audio_selector.policy, SelectionPolicy::Automatic);
     assert_eq!(plan.audio_selector.identifier, None);
@@ -46,6 +49,8 @@ fn identity_uses_audio_identifier_then_checks_gpio_path_and_serial() {
         device_identifier: "hw:2,0".to_owned(),
         serial: "CM119".to_owned(),
         gpio_usb_port_path: "3-1".to_owned(),
+        input_extra_buffer_ms: 20,
+        output_extra_buffer_ms: 35,
         ..HardwareConfig::default()
     };
     let plan = hardware_plan(&channel(config));
@@ -61,6 +66,8 @@ fn identity_uses_audio_identifier_then_checks_gpio_path_and_serial() {
     assert_eq!(bound.stream.maximum_transmit_frame_count, 960);
     assert_eq!(bound.stream.input_device_index, 4);
     assert_eq!(bound.stream.output_device_index, 5);
+    assert_eq!(bound.stream.extra_input_buffer_milliseconds, 20);
+    assert_eq!(bound.stream.extra_output_buffer_milliseconds, 35);
     assert_eq!(bound.cm119.usb_port_path, "3-1");
     assert_eq!(bound.cm119.vendor_id, 0);
     assert_eq!(bound.cm119.product_id, 0);

@@ -128,6 +128,13 @@ Set CM119 capture gain. Zero dB is the normalized mixer midpoint, 500 on the
 Set playback gain for CM119 output A or B. Zero dB is the normalized mixer
 midpoint.
 .TP
+.B hardware_input_extra_buffer_ms, hardware_output_extra_buffer_ms = 0..500
+Request additional PortAudio/ALSA buffering independently for capture or
+playback. Zero keeps the device's default-low latency request. A positive
+integer adds the requested milliseconds beyond the callback/device baseline.
+This is a host hint, not a guaranteed latency. The default is zero for both
+directions.
+.TP
 .B hardware_output_a_assignment, hardware_output_b_assignment = off|voice|ctcss|voice_ctcss|auxvoice
 Route no signal, voice, transmit signaling, voice mixed with transmit
 signaling, or auxiliary voice to the corresponding CM119 output. A selected
