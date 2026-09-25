@@ -1,0 +1,6 @@
+Archive: trixie
+Component: main
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Architecture: arm64
+Description: USBRadioPlus alpha packages for ASL3

@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.9.8" xml:lang="en-US">
+  <compound refid="structurp__ast__direct__callbacks" kind="struct"><name>urp_ast_direct_callbacks</name>
+    <member refid="structurp__ast__direct__callbacks_1a9a63d0f0966db3dece323f7a3e998678" kind="variable"><name>struct_size</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a43a5894465f6496512f7dfc3e46d845c" kind="variable"><name>abi_version</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a95ca6b5ed7dedbb92d19c6800080f399" kind="variable"><name>receive_context</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a8bb597245c72d730c329f5b4e83f4b0a" kind="variable"><name>receive</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a833a7412cc8bea9623563bcf36bab3b8" kind="variable"><name>transmit_context</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a87736a5911039f382152a022a4f6d93b" kind="variable"><name>transmit</name></member>
+    <member refid="structurp__ast__direct__callbacks_1a83a96c4d59ba2271041123f291d0199a" kind="variable"><name>accepted_abi_version</name></member>
+  </compound>
+  <compound refid="structurp__ast__provider__manifest" kind="struct"><name>urp_ast_provider_manifest</name>
+    <member refid="structurp__ast__provider__manifest_1a674c94f5187ea151039a50740943efa6" kind="variable"><name>struct_size</name></member>
+    <member refid="structurp__ast__provider__manifest_1a9874c717da1c82bea12b081f3448757f" kind="variable"><name>abi_version</name></member>
+    <member refid="structurp__ast__provider__manifest_1ae638969afe791415c8e553ad5630258b" kind="variable"><name>ffmpeg</name></member>
+    <member refid="structurp__ast__provider__manifest_1a53afcb22fa62f8891ff583113db590ac" kind="variable"><name>rnnoise</name></member>
+    <member refid="structurp__ast__provider__manifest_1abe6726cdb9300eddd345a5dcc7197657" kind="variable"><name>ring</name></member>
+    <member refid="structurp__ast__provider__manifest_1a1db75d68e818907bf151bdc462fd2778" kind="variable"><name>radio</name></member>
+    <member refid="structurp__ast__provider__manifest_1a95ab8b18a88d84347282ac7175717c0d" kind="variable"><name>samplerate</name></member>
+    <member refid="structurp__ast__provider__manifest_1a7cdd455bd868b047d09e8feca83dfb26" kind="variable"><name>audio</name></member>
+    <member refid="structurp__ast__provider__manifest_1a971533d0eed97634c9dda6800d7d04f8" kind="variable"><name>gpio</name></member>
+  </compound>
+  <compound refid="structurp__asterisk__loader__descriptor" kind="struct"><name>urp_asterisk_loader_descriptor</name>
+    <member refid="structurp__asterisk__loader__descriptor_1a2cea0570821c7a704ed551032763c342" kind="variable"><name>struct_size</name></member>
+    <member refid="structurp__asterisk__loader__descriptor_1aa9bbb2f70991b670a261fcc0509068ca" kind="variable"><name>abi_version</name></member>
+    <member refid="structurp__asterisk__loader__descriptor_1a53d2d8ff5c63096105952b3db28fe5ce" kind="variable"><name>capability</name></member>
+    <member refid="structurp__asterisk__loader__descriptor_1a61f991ca9b6d12721a7a14b53f9a8c19" kind="variable"><name>load</name></member>
+    <member refid="structurp__asterisk__loader__descriptor_1a08a68168c2de33f2188951bf509cf1a6" kind="variable"><name>reload</name></member>
+    <member refid="structurp__asterisk__loader__descriptor_1a542032d531d92f54f89f61f7d96ac8a7" kind="variable"><name>unload</name></member>
+  </compound>
+  <compound refid="developer_8dox" kind="file"><name>developer.dox</name>
+  </compound>
+  <compound refid="usbradioplus__asterisk_8h" kind="file"><name>usbradioplus_asterisk.h</name>
+    <member refid="usbradioplus__asterisk_8h_1a6759e1d71eeaca12c4464cf431a7acda" kind="define"><name>URP_AST_LOADER_ABI_VERSION</name></member>
+    <member refid="usbradioplus__asterisk_8h_1ad08a7d64b7254aaa085d97b024fab64c" kind="define"><name>URP_AST_LOADER_OK</name></member>
+    <member refid="usbradioplus__asterisk_8h_1ad5cc699bf038114727f85da5ee7aa71d" kind="define"><name>URP_AST_LOADER_DECLINE</name></member>
+    <member refid="usbradioplus__asterisk_8h_1a848d8685519fcbe7309604556e7d2f97" kind="define"><name>URP_AST_LOADER_FAILURE</name></member>
+    <member refid="usbradioplus__asterisk_8h_1a40e7e3eea79e743761ab4bf8ad919133" kind="define"><name>URP_AST_OPTION_DIRECT_CALLBACKS</name></member>
+    <member refid="usbradioplus__asterisk_8h_1aee9dfcada09a0f4a16aed4a38477f77b" kind="define"><name>URP_AST_DIRECT_CALLBACKS_ABI_VERSION</name></member>
+    <member refid="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" kind="typedef"><name>urp_ast_loader_load_fn</name></member>
+    <member refid="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" kind="typedef"><name>urp_ast_loader_reload_fn</name></member>
+    <member refid="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" kind="typedef"><name>urp_ast_loader_unload_fn</name></member>
+    <member refid="usbradioplus__asterisk_8h_1a4707173299fe3ba962e964adc89443ef" kind="function"><name>usbradioplus_asterisk_loader_descriptor</name></member>
+  </compound>
+  <compound refid="chan__usbradioplus__shim_8c" kind="file"><name>chan_usbradioplus_shim.c</name>
+    <member refid="chan__usbradioplus__shim_8c_1a76c4e5a6c24620cc9daed004d3e58d0b" kind="define"><name>URP_AST_LOADER_CAPABILITY</name></member>
+    <member refid="chan__usbradioplus__shim_8c_1a31c61ab5cd977a11c4b9cbb89ce4ca6d" kind="variable"><name>rust_loader</name></member>
+    <member refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" kind="function"><name>urp_loader_valid</name></member>
+    <member refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" kind="function"><name>load_module</name></member>
+    <member refid="chan__usbradioplus__shim_8c_1ad09fa931f468002152a3cc2d5ce25eae" kind="function"><name>unload_module</name></member>
+    <member refid="chan__usbradioplus__shim_8c_1a7c6ac25ea7536c0bc9ed18cbcf917527" kind="function"><name>reload_module</name></member>
+  </compound>
+  <compound refid="dir_2a636aeda82b183ed3c4f577fdbe1edb" kind="dir"><name>rust/asterisk</name>
+  </compound>
+  <compound refid="dir_e68e8157741866f444e17edd764ebbae" kind="dir"><name>doc</name>
+  </compound>
+  <compound refid="dir_d77f3a53d16ac355570f336744676102" kind="dir"><name>rust/asterisk/include</name>
+  </compound>
+  <compound refid="dir_7e773064cf276d0ac5411cb45d4b39e9" kind="dir"><name>rust</name>
+  </compound>
+  <compound refid="dir_68267d1309a1af8e8297ef4c3efbcdba" kind="dir"><name>src</name>
+  </compound>
+  <compound refid="indexpage" kind="page"><name>index</name>
+  </compound>
+</doxygenindex>

@@ -1,0 +1,7 @@
+<map id="load_module" name="load_module">
+<area shape="rect" id="Node000001" title="Load the complete Rust&#45;owned USBRadioPlus Asterisk host." alt="" coords="5,35,112,60"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__shim_8c.html#a55985c2ce7d0b32395db61b3bd9d1548" title="Validate the complete lifecycle descriptor before starting Rust." alt="" coords="177,5,307,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="112,36,162,28,163,33,113,41"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__asterisk_8h.html#a4707173299fe3ba962e964adc89443ef" title="Return the immutable process&#45;lifetime loader descriptor." alt="" coords="160,55,324,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="113,53,147,58,146,63,112,58"/>
+</map>

@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__asterisk__loader__descriptor" kind="struct" language="C++" prot="public">
+    <compoundname>urp_asterisk_loader_descriptor</compoundname>
+    <includes refid="usbradioplus__asterisk_8h" local="no">usbradioplus_asterisk.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1a2cea0570821c7a704ed551032763c342" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_asterisk_loader_descriptor::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="74" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="74" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1aa9bbb2f70991b670a261fcc0509068ca" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_asterisk_loader_descriptor::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para><computeroutput>URP_AST_LOADER_ABI_VERSION</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="75" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="75" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1a53d2d8ff5c63096105952b3db28fe5ce" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* urp_asterisk_loader_descriptor::capability</definition>
+        <argsstring></argsstring>
+        <name>capability</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::capability</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stable NUL-terminated capability name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="76" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="76" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1a61f991ca9b6d12721a7a14b53f9a8c19" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" kindref="member">urp_ast_loader_load_fn</ref></type>
+        <definition>urp_ast_loader_load_fn urp_asterisk_loader_descriptor::load</definition>
+        <argsstring></argsstring>
+        <name>load</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::load</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Load and register the Rust host. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="77" column="24" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="77" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="56" endline="82">load_module</referencedby>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1a08a68168c2de33f2188951bf509cf1a6" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" kindref="member">urp_ast_loader_reload_fn</ref></type>
+        <definition>urp_ast_loader_reload_fn urp_asterisk_loader_descriptor::reload</definition>
+        <argsstring></argsstring>
+        <name>reload</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::reload</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Reload the active Rust host. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="78" column="26" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="78" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a7c6ac25ea7536c0bc9ed18cbcf917527" compoundref="chan__usbradioplus__shim_8c" startline="104" endline="107">reload_module</referencedby>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__asterisk__loader__descriptor_1a542032d531d92f54f89f61f7d96ac8a7" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" kindref="member">urp_ast_loader_unload_fn</ref></type>
+        <definition>urp_ast_loader_unload_fn urp_asterisk_loader_descriptor::unload</definition>
+        <argsstring></argsstring>
+        <name>unload</name>
+        <qualifiedname>urp_asterisk_loader_descriptor::unload</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Unregister and destroy the Rust host. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="79" column="26" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="79" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ad09fa931f468002152a3cc2d5ce25eae" compoundref="chan__usbradioplus__shim_8c" startline="88" endline="98">unload_module</referencedby>
+        <referencedby refid="chan__usbradioplus__shim_8c_1a55985c2ce7d0b32395db61b3bd9d1548" compoundref="chan__usbradioplus__shim_8c" startline="44" endline="50">urp_loader_valid</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Versioned lifecycle table consumed by the metadata-only C module. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>urp_ast_provider_manifest</label>
+        <link refid="structurp__ast__provider__manifest"/>
+      </node>
+      <node id="1">
+        <label>urp_asterisk_loader_descriptor</label>
+        <link refid="structurp__asterisk__loader__descriptor"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>load</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="73" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="73" bodyend="80"/>
+    <listofallmembers>
+      <member refid="structurp__asterisk__loader__descriptor_1aa9bbb2f70991b670a261fcc0509068ca" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>abi_version</name></member>
+      <member refid="structurp__asterisk__loader__descriptor_1a53d2d8ff5c63096105952b3db28fe5ce" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>capability</name></member>
+      <member refid="structurp__asterisk__loader__descriptor_1a61f991ca9b6d12721a7a14b53f9a8c19" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>load</name></member>
+      <member refid="structurp__asterisk__loader__descriptor_1a08a68168c2de33f2188951bf509cf1a6" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>reload</name></member>
+      <member refid="structurp__asterisk__loader__descriptor_1a2cea0570821c7a704ed551032763c342" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>struct_size</name></member>
+      <member refid="structurp__asterisk__loader__descriptor_1a542032d531d92f54f89f61f7d96ac8a7" prot="public" virt="non-virtual"><scope>urp_asterisk_loader_descriptor</scope><name>unload</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

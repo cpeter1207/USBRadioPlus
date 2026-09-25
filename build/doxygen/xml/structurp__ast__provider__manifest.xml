@@ -1,0 +1,164 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__ast__provider__manifest" kind="struct" language="C++" prot="public">
+    <compoundname>urp_ast_provider_manifest</compoundname>
+    <includes refid="usbradioplus__asterisk_8h" local="no">usbradioplus_asterisk.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a674c94f5187ea151039a50740943efa6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_provider_manifest::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>urp_ast_provider_manifest::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="53" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="53" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="56" endline="82">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a9874c717da1c82bea12b081f3448757f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_provider_manifest::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>urp_ast_provider_manifest::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para><computeroutput>URP_AST_LOADER_ABI_VERSION</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="54" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="54" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="56" endline="82">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1ae638969afe791415c8e553ad5630258b" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::ffmpeg</definition>
+        <argsstring></argsstring>
+        <name>ffmpeg</name>
+        <qualifiedname>urp_ast_provider_manifest::ffmpeg</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released FFmpeg-graph descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="55" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="55" bodyend="-1"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="56" endline="82">load_module</referencedby>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a53afcb22fa62f8891ff583113db590ac" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::rnnoise</definition>
+        <argsstring></argsstring>
+        <name>rnnoise</name>
+        <qualifiedname>urp_ast_provider_manifest::rnnoise</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released RNNoise descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="56" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1abe6726cdb9300eddd345a5dcc7197657" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::ring</definition>
+        <argsstring></argsstring>
+        <name>ring</name>
+        <qualifiedname>urp_ast_provider_manifest::ring</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released rate-adjusting-ring descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="57" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="57" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a1db75d68e818907bf151bdc462fd2778" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::radio</definition>
+        <argsstring></argsstring>
+        <name>radio</name>
+        <qualifiedname>urp_ast_provider_manifest::radio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released radio-core descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="58" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a95ab8b18a88d84347282ac7175717c0d" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::samplerate</definition>
+        <argsstring></argsstring>
+        <name>samplerate</name>
+        <qualifiedname>urp_ast_provider_manifest::samplerate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released sample-rate-adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="59" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a7cdd455bd868b047d09e8feca83dfb26" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::audio</definition>
+        <argsstring></argsstring>
+        <name>audio</name>
+        <qualifiedname>urp_ast_provider_manifest::audio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released audio-adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="60" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__provider__manifest_1a971533d0eed97634c9dda6800d7d04f8" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* urp_ast_provider_manifest::gpio</definition>
+        <argsstring></argsstring>
+        <name>gpio</name>
+        <qualifiedname>urp_ast_provider_manifest::gpio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released GPIO-adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="61" column="12" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="61" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Process-lifetime providers selected by the Asterisk module. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="52" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="52" bodyend="62"/>
+    <listofallmembers>
+      <member refid="structurp__ast__provider__manifest_1a9874c717da1c82bea12b081f3448757f" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>abi_version</name></member>
+      <member refid="structurp__ast__provider__manifest_1a7cdd455bd868b047d09e8feca83dfb26" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>audio</name></member>
+      <member refid="structurp__ast__provider__manifest_1ae638969afe791415c8e553ad5630258b" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>ffmpeg</name></member>
+      <member refid="structurp__ast__provider__manifest_1a971533d0eed97634c9dda6800d7d04f8" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>gpio</name></member>
+      <member refid="structurp__ast__provider__manifest_1a1db75d68e818907bf151bdc462fd2778" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>radio</name></member>
+      <member refid="structurp__ast__provider__manifest_1abe6726cdb9300eddd345a5dcc7197657" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>ring</name></member>
+      <member refid="structurp__ast__provider__manifest_1a53afcb22fa62f8891ff583113db590ac" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>rnnoise</name></member>
+      <member refid="structurp__ast__provider__manifest_1a95ab8b18a88d84347282ac7175717c0d" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>samplerate</name></member>
+      <member refid="structurp__ast__provider__manifest_1a674c94f5187ea151039a50740943efa6" prot="public" virt="non-virtual"><scope>urp_ast_provider_manifest</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__ast__direct__callbacks" kind="struct" language="C++" prot="public">
+    <compoundname>urp_ast_direct_callbacks</compoundname>
+    <includes refid="usbradioplus__asterisk_8h" local="no">usbradioplus_asterisk.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a9a63d0f0966db3dece323f7a3e998678" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_direct_callbacks::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>urp_ast_direct_callbacks::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact sizeof(struct urp_ast_direct_callbacks). </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="40" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="40" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a43a5894465f6496512f7dfc3e46d845c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_direct_callbacks::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>urp_ast_direct_callbacks::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact URP_AST_DIRECT_CALLBACKS_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="41" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a95ca6b5ed7dedbb92d19c6800080f399" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_ast_direct_callbacks::receive_context</definition>
+        <argsstring></argsstring>
+        <name>receive_context</name>
+        <qualifiedname>urp_ast_direct_callbacks::receive_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Caller-owned RX context. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="42" column="6" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a8bb597245c72d730c329f5b4e83f4b0a" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* urp_ast_direct_callbacks::receive) (void *context, uint32_t receiver_keyed, float *samples, uint32_t frame_count)</definition>
+        <argsstring>)(void *context, uint32_t receiver_keyed, float *samples, uint32_t frame_count)</argsstring>
+        <name>receive</name>
+        <qualifiedname>urp_ast_direct_callbacks::receive</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Process qualified USB receive output. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="43" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a833a7412cc8bea9623563bcf36bab3b8" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_ast_direct_callbacks::transmit_context</definition>
+        <argsstring></argsstring>
+        <name>transmit_context</name>
+        <qualifiedname>urp_ast_direct_callbacks::transmit_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Caller-owned TX context. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="45" column="6" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a87736a5911039f382152a022a4f6d93b" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* urp_ast_direct_callbacks::transmit) (void *context, float *samples, uint32_t frame_count, uint32_t *keyed)</definition>
+        <argsstring>)(void *context, float *samples, uint32_t frame_count, uint32_t *keyed)</argsstring>
+        <name>transmit</name>
+        <qualifiedname>urp_ast_direct_callbacks::transmit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fill program audio and write zero/one PTT. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="46" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__direct__callbacks_1a83a96c4d59ba2271041123f291d0199a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_direct_callbacks::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>urp_ast_direct_callbacks::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize to zero; host acknowledges retained ABI. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="48" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="48" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Borrowed direct RadioPlusAdvanced PCM endpoints, copied before call(). </para>
+    </briefdescription>
+    <detaileddescription>
+<para>Mutable normalized mono F32 at native 48000 Hz, exactly frame_count samples. Both functions and contexts are required. Each endpoint has one serial owner; RX and TX may run concurrently. Callbacks return zero on success and must not allocate, lock, block, log, call Asterisk, access files/network or change refcounts. The owner retains contexts and executable code until synchronous channel stop or hangup returns; USBRadioPlus never owns or frees contexts. Reload copies the same attachment before starting the replacement stream. No DSO lookup is used. </para>
+    </detaileddescription>
+    <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="39" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="39" bodyend="49"/>
+    <listofallmembers>
+      <member refid="structurp__ast__direct__callbacks_1a43a5894465f6496512f7dfc3e46d845c" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>abi_version</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a83a96c4d59ba2271041123f291d0199a" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>accepted_abi_version</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a8bb597245c72d730c329f5b4e83f4b0a" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>receive</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a95ca6b5ed7dedbb92d19c6800080f399" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>receive_context</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a9a63d0f0966db3dece323f7a3e998678" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>struct_size</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a87736a5911039f382152a022a4f6d93b" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>transmit</name></member>
+      <member refid="structurp__ast__direct__callbacks_1a833a7412cc8bea9623563bcf36bab3b8" prot="public" virt="non-virtual"><scope>urp_ast_direct_callbacks</scope><name>transmit_context</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
