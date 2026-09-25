@@ -23,6 +23,8 @@ on:
         default: false
         required: false
         type: boolean
+  repository_dispatch:
+    types: [shared-package-release]
 
 permissions:
   contents: write
@@ -33,11 +35,32 @@ permissions:
 
 jobs:
   packages:
+    if: github.event_name == 'workflow_dispatch'
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/packages.yml@main
     with:
       source_ref: ${{ inputs.source_ref }}
       package_version: ${{ inputs.package_version }}
       package_revision: ${{ inputs.package_revision }}
       include_debian12: ${{ inputs.include_debian12 }}
+    secrets:
+      APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+
+  refresh-after-shared-release:
+    if: >-
+      github.event_name == 'repository_dispatch' &&
+      contains(fromJSON('["cpeter1207/rate_adjusting_pcm_ring","cpeter1207/rptadv-samplerate-adapter"]'),
+        github.event.client_payload.repository)
+    uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/packages.yml@main
+    with:
+      source_ref: main
+      package_version: ""
+      package_revision: "2.${{ github.run_number }}"
+      ring_version: >-
+        ${{ github.event.client_payload.repository == 'cpeter1207/rate_adjusting_pcm_ring' &&
+        github.event.client_payload.tag || 'v2.0.0-alpha.4' }}
+      samplerate_adapter_version: >-
+        ${{ github.event.client_payload.repository == 'cpeter1207/rptadv-samplerate-adapter' &&
+        github.event.client_payload.tag ||
+        github.event.client_payload.samplerate_adapter_tag || 'v0.1.0-alpha.3' }}
     secrets:
       APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
