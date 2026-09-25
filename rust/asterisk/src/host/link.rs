@@ -222,6 +222,21 @@ pub(super) fn reload_prepare(profile: Option<&str>) -> Result<LinkReload, LinkHo
     Ok(reload)
 }
 
+/// Bind a referenced peer to the reserved radio profile before its first read.
+/// Graph setup is control-plane-only and serialized with reload and shutdown.
+pub(super) unsafe fn bind_peer(
+    channel: *mut ffi::ast_channel,
+    profile: &str,
+) -> Result<(), LinkHostError> {
+    let _control = lock(&LINK_CONTROL);
+    let host = lock(running_host())
+        .as_ref()
+        .map(|running| running.host)
+        .ok_or(LinkHostError::Asterisk)?;
+    // SAFETY: the caller retains the peer for this synchronous control operation.
+    unsafe { host.bind_channel(channel, profile) }
+}
+
 /// Snapshot every active incoming-link graph for status presentation.
 pub(super) fn statistics() -> Vec<LinkStatistics> {
     let _control = lock(&LINK_CONTROL);
@@ -242,7 +257,48 @@ pub(super) struct LinkStatistics {
     pub(super) observation: UrpAstLinkObservation,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InstallMode {
+    Active,
+    Staged,
+    // Explicit ownership survives a disabled graph, so reload can enable it.
+    Bound,
+}
+
 impl LinkHost {
+    unsafe fn bind_channel(
+        &self,
+        channel: *mut ffi::ast_channel,
+        profile: &str,
+    ) -> Result<(), LinkHostError> {
+        // SAFETY: caller retains the peer throughout this serialized operation.
+        let snapshot = unsafe { self.snapshot(channel) };
+        if let Some(hook) = snapshot.hook {
+            // SAFETY: this retained reference keeps the immutable profile alive.
+            let hook = unsafe { hook.raw.as_ref() };
+            return if &*hook.profile == profile
+                && hook.attachment.load(Ordering::Acquire) == LINK_ATTACHED
+            {
+                hook.profile_bound.store(true, Ordering::Release);
+                Ok(())
+            } else {
+                Err(LinkHostError::Asterisk)
+            };
+        }
+        // SAFETY: the snapshot belongs to the same caller-retained peer.
+        unsafe {
+            self.install(
+                channel,
+                profile,
+                &snapshot.name,
+                snapshot.sample_rate_hz,
+                InstallMode::Bound,
+            )
+        }?
+        .ok_or(LinkHostError::Asterisk)
+        .map(|_| ())
+    }
+
     /// Construct the production host around one live Rust driver generation.
     pub(super) fn new(driver: *mut c_void, module_self: *mut ffi::ast_module) -> Self {
         Self::with_operations(
@@ -300,7 +356,7 @@ impl LinkHost {
                     profile,
                     &snapshot.name,
                     snapshot.sample_rate_hz,
-                    false,
+                    InstallMode::Active,
                 )
             }
             .map(|hook| hook.is_some())
@@ -335,7 +391,7 @@ impl LinkHost {
                     profile,
                     &snapshot.name,
                     snapshot.sample_rate_hz,
-                    true,
+                    InstallMode::Staged,
                 )
             }
         } else {
@@ -514,18 +570,20 @@ impl LinkHost {
         profile: &str,
         channel_name: &str,
         sample_rate_hz: u32,
-        staged: bool,
+        mode: InstallMode,
     ) -> Result<Option<LinkHookRef>, LinkHostError> {
-        let Some(graph) = self.prepare(profile, sample_rate_hz, staged)? else {
+        let staged = mode == InstallMode::Staged;
+        let graph = self.prepare(profile, sample_rate_hz, staged)?;
+        if graph.is_none() && mode != InstallMode::Bound {
             return Ok(None);
-        };
+        }
         let hook = Box::new(LinkHook::new(
             self.product,
             self.asterisk,
             profile,
             channel_name,
-            graph,
-            staged,
+            graph.unwrap_or(ptr::null_mut()),
+            mode,
         ));
         let raw = Box::into_raw(hook);
         // SAFETY: raw points to a pinned heap allocation whose first member is audiohook.
@@ -721,6 +779,7 @@ struct LinkHook {
     references: AtomicUsize,
     attachment: AtomicU8,
     reload_pending: AtomicBool,
+    profile_bound: AtomicBool,
     profile: Box<str>,
     asterisk_channel: Box<str>,
 }
@@ -732,8 +791,9 @@ impl LinkHook {
         profile: &str,
         asterisk_channel: &str,
         graph: *mut c_void,
-        staged: bool,
+        mode: InstallMode,
     ) -> Self {
+        let staged = mode == InstallMode::Staged;
         // SAFETY: every bit pattern in the generated C audiohook structure is valid;
         // Asterisk initializes the complete value before publication.
         let audiohook = unsafe { std::mem::zeroed() };
@@ -746,6 +806,7 @@ impl LinkHook {
             references: AtomicUsize::new(1),
             attachment: AtomicU8::new(LINK_BUILDING),
             reload_pending: AtomicBool::new(staged),
+            profile_bound: AtomicBool::new(mode == InstallMode::Bound),
             profile: profile.into(),
             asterisk_channel: asterisk_channel.into(),
         }
@@ -764,6 +825,13 @@ impl LinkHook {
             return Ok(());
         }
         let mut candidate = ptr::null_mut();
+        // Explicit peers retain their exact radio; legacy discovery keeps its
+        // existing active-profile selection when reactivating a dormant hook.
+        let profile = if self.profile_bound.load(Ordering::Acquire) {
+            &self.profile
+        } else {
+            profile
+        };
         // SAFETY: profile and driver remain live for this synchronous call.
         let result = unsafe {
             (self.product.prepare)(

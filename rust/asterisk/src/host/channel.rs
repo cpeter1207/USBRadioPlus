@@ -1275,6 +1275,45 @@ unsafe extern "C" fn setoption(
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
     }
+    if option == super::super::URP_AST_OPTION_LINK_ATTACH {
+        if data_length as usize != size_of::<super::super::UrpAstLinkAttach>() {
+            return -1;
+        }
+        // SAFETY: the option supplies exactly one readable/writable descriptor;
+        // byte-aligned callers do not have to align the pointer fields.
+        let binding = unsafe {
+            data.cast::<super::super::UrpAstLinkAttach>()
+                .read_unaligned()
+        };
+        if binding.struct_size as usize != size_of::<super::super::UrpAstLinkAttach>()
+            || binding.abi_version != 1
+            || binding.peer_channel.is_null()
+        {
+            return -1;
+        }
+        let profile = channel.name().to_owned();
+        // Asterisk calls setoption with the radio locked. The link scanner takes
+        // LINK_CONTROL before visiting channels, so never wait for it while holding
+        // this owner. Copy the profile first; do not use technology-private state
+        // after releasing the owner. The caller retains both channel references.
+        // SAFETY: release Asterisk's caller-held owner lock for graph preparation.
+        unsafe { unlock_owner(owner) };
+        // SAFETY: the option contract retains this peer until the call returns.
+        let attached = unsafe { super::link::bind_peer(binding.peer_channel.cast(), &profile) };
+        // SAFETY: restore the caller's lock on both success and preparation failure.
+        unsafe { relock_owner(owner) };
+        if attached.is_err() {
+            return -1;
+        }
+        // SAFETY: complete writable descriptor was validated above.
+        unsafe {
+            ptr::addr_of_mut!(
+                (*data.cast::<super::super::UrpAstLinkAttach>()).accepted_abi_version
+            )
+            .write_unaligned(1);
+        }
+        return 0;
+    }
     if option == super::super::URP_AST_OPTION_DIRECT_CALLBACKS {
         // SAFETY: Asterisk supplies data_length readable bytes for this option.
         let callbacks = unsafe { direct_option(channel.sample_rate_hz, data, data_length) };
@@ -1407,7 +1446,7 @@ pub(super) unsafe fn unlock_owner(owner: *mut ffi::ast_channel) {
 }
 
 unsafe fn relock_owner(owner: *mut ffi::ast_channel) {
-    // SAFETY: owner remains live throughout its Asterisk hangup callback.
+    // SAFETY: owner remains referenced throughout its synchronous Asterisk callback.
     let _ = unsafe {
         __ao2_lock(
             owner.cast(),

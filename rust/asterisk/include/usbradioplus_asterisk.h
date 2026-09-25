@@ -48,6 +48,28 @@ struct urp_ast_direct_callbacks {
 	uint32_t accepted_abi_version; /**< Initialize to zero; host acknowledges retained ABI. */
 };
 
+/** Peer binding option; call ast_channel_setoption on the reserved radio with block=0. */
+#define URP_AST_OPTION_LINK_ATTACH 0x52504C41
+/** Exact peer-binding payload ABI. */
+#define URP_AST_LINK_ATTACH_ABI_VERSION UINT32_C(1)
+
+/**
+ * @brief Attach the radio's configured link graph before reading peer audio.
+ *
+ * Call on the control plane before starting the peer reader. The caller retains
+ * the peer channel until this synchronous call returns; the peer datastore then
+ * owns the hook. Disabled processing retains the profile for later reloads.
+ * Repeating the same binding is harmless; rebinding to another profile fails.
+ * Require both a zero return and the accepted ABI: Asterisk can return success
+ * for options unknown to an older driver. No public loader ABI changes.
+ */
+struct urp_ast_link_attach {
+	uint32_t struct_size;	       /**< Exact sizeof(struct urp_ast_link_attach). */
+	uint32_t abi_version;	       /**< Exact URP_AST_LINK_ATTACH_ABI_VERSION. */
+	void *peer_channel;	       /**< Caller-retained Asterisk peer channel. */
+	uint32_t accepted_abi_version; /**< Initialize to zero; set on successful binding. */
+};
+
 /** @brief Process-lifetime providers selected by the Asterisk module. */
 struct urp_ast_provider_manifest {
 	uint32_t struct_size;	/**< Size of this structure in bytes. */

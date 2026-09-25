@@ -294,9 +294,21 @@ fn duplicate_publication_and_teardown_release_only_their_own_graphs() {
         assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
         assert!(
             // SAFETY: a competing publication already owns this live channel datastore.
-            unsafe { host.install(channel.raw(), "alpha", "IAX2/duplicate", 8_000, staged) }
-                .unwrap()
-                .is_none()
+            unsafe {
+                host.install(
+                    channel.raw(),
+                    "alpha",
+                    "IAX2/duplicate",
+                    8_000,
+                    if staged {
+                        InstallMode::Staged
+                    } else {
+                        InstallMode::Active
+                    },
+                )
+            }
+            .unwrap()
+            .is_none()
         );
         assert_eq!(with_state(|state| state.graphs.len()), 1);
         detach(&host, &mut channel);
@@ -479,7 +491,7 @@ fn reference_count_guards_and_final_owner_preserve_teardown() {
         "alpha",
         "IAX2/owned",
         graph,
-        false,
+        InstallMode::Active,
     )));
     // SAFETY: this test initializes a pinned, exclusively owned hook before creating its RAII owner.
     let owned = unsafe {
@@ -513,6 +525,7 @@ struct FakeState {
     graphs: HashMap<usize, FakeGraph>,
     next_graph: usize,
     prepare_result: i32,
+    preparation_observer: Option<fn()>,
     prepare_empty: bool,
     observe_result: i32,
     attach_result: i32,
@@ -577,6 +590,14 @@ impl RunningFixture {
 
     pub(in crate::host) fn preparation_result(&self, result: i32) {
         with_state(|state| state.prepare_result = result);
+    }
+
+    pub(in crate::host) fn observe_preparation(&self, observer: fn()) {
+        with_state(|state| state.preparation_observer = Some(observer));
+    }
+
+    pub(in crate::host) fn peer(&mut self) -> *mut ffi::ast_channel {
+        self._channel.as_mut().unwrap().raw()
     }
 }
 
@@ -684,6 +705,9 @@ unsafe fn fake_prepare_common(
     output: *mut *mut c_void,
     event: &'static str,
 ) -> i32 {
+    if let Some(observer) = with_state(|state| state.preparation_observer) {
+        observer();
+    }
     // SAFETY: the host supplies a readable byte-counted profile.
     let profile = unsafe { std::slice::from_raw_parts(profile, profile_length as usize) };
     let profile = String::from_utf8(profile.to_vec()).expect("profile must be UTF-8");
@@ -1340,6 +1364,67 @@ fn staged_reload_logs_failed_link_channel_and_product_status() {
     assert_eq!(
         with_state(|state| state.diagnostics[0].clone()),
         "Unable to prepare replacement USBRadioPlus link processing for IAX2/506316-reload-log (-8)"
+    );
+}
+
+#[test]
+fn explicit_peer_binding_retains_its_radio_profile_even_when_disabled() {
+    let _guard = HostFixture::new();
+    reset();
+    let mut peer = FakeChannel::eligible("IAX2/advanced", 8_000);
+    peer.application = nul("RptAdvanced");
+    peer.data = nul("different-node-name");
+    register(&mut peer);
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    assert_eq!(start_with(fake_host(), missing_profile), URP_AST_OK);
+    // SAFETY: the fixture owns the peer until host stop detaches its hook.
+    assert_eq!(unsafe { bind_peer(peer.raw(), "radio-two") }, Ok(()));
+    assert!(!peer.audiohook.is_null());
+    let mut samples = [12_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut peer, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples, [12; 160]);
+    // A duplicate binding cannot redirect processing to another node's settings.
+    // SAFETY: the fixture still retains the same peer channel.
+    unsafe {
+        assert_eq!(bind_peer(peer.raw(), "radio-two"), Ok(()));
+        assert_eq!(
+            bind_peer(peer.raw(), "wrong-radio"),
+            Err(LinkHostError::Asterisk)
+        );
+    }
+    with_state(|state| state.prepare_result = URP_AST_OK);
+    reload_prepare(Some("wrong-default")).unwrap().finish(true);
+    invoke(&mut peer, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    assert_eq!(
+        with_state(|state| state.process_calls.clone()),
+        [(1, URP_AST_LINK_DIRECTION_READ, 8_000, 160)]
+    );
+    assert!(with_state(|state| state
+        .prepare_profiles
+        .iter()
+        .all(|(_, profile)| profile == "radio-two")));
+    assert_eq!(attachment_count(), 1);
+    // A disabled bound peer may also satisfy the legacy scanner's heuristic.
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    reload_prepare(None).unwrap().finish(true);
+    peer.application = nul("Rpt");
+    peer.data = nul("Remote Rx");
+    with_state(|state| state.prepare_result = URP_AST_OK);
+    assert_eq!(attach(&fake_host(), &mut peer, "wrong-default"), Ok(false));
+    assert_eq!(
+        with_state(|state| state.prepare_profiles.last().cloned()),
+        Some(("prepare", "radio-two".into()))
+    );
+    stop();
+    assert!(peer.datastore.is_null());
+    assert_eq!(with_state(|state| state.detach_calls), 1);
+    assert!(with_state(|state| state.graphs.is_empty()));
+    assert_eq!(
+        // SAFETY: the channel remains live, but the process host has stopped.
+        unsafe { bind_peer(peer.raw(), "radio-two") },
+        Err(LinkHostError::Asterisk)
     );
 }
 

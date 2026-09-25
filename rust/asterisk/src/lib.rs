@@ -56,6 +56,21 @@ use usbradioplus_station::{StationMedia, hardware_plan};
 const ABI_VERSION: u32 = 4;
 /// Private positive Asterisk setoption ID (ASCII RPAD), passed with block zero.
 pub const URP_AST_OPTION_DIRECT_CALLBACKS: c_int = 0x5250_4144;
+/// Bind a peer to the selected radio's incoming link graph, using block zero.
+pub const URP_AST_OPTION_LINK_ATTACH: c_int = 0x5250_4C41;
+/// Exact peer-binding payload, synchronously borrowed by the channel option.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct UrpAstLinkAttach {
+    /// Exact size of this payload in bytes.
+    pub struct_size: u32,
+    /// Exact peer-binding ABI, currently 1.
+    pub abi_version: u32,
+    /// Caller-retained Asterisk peer channel, valid until the option returns.
+    pub peer_channel: *mut c_void,
+    /// Initialize to zero; written to 1 only after the hook is attached.
+    pub accepted_abi_version: u32,
+}
 const MAXIMUM_FRAME_COUNT: u32 = 960;
 const HANDOFF_SLOTS: usize = 3;
 const CAPABILITY: &std::ffi::CStr = c"usbradioplus.asterisk";

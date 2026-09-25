@@ -1,4 +1,4 @@
-use super::super::support::{FakeChannel, Fixture, with_state};
+use super::super::support::{FakeChannel, Fixture, OwnerLockTrace, with_state};
 use super::*;
 use crate::{ABI_VERSION, URP_AST_JITTER_ADAPTIVE};
 use std::cell::RefCell;
@@ -1269,6 +1269,96 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         let accepted = unsafe { data.read_unaligned().accepted_abi_version };
         assert_eq!(accepted, if case == 8 { 2 } else { 0 }, "case {case}");
         assert_eq!(result == 0, case == 8, "case {case}");
+    }
+}
+
+#[test]
+fn link_binding_option_acknowledges_only_valid_profile_attachment() {
+    let _fixture = Fixture::new();
+    let mut links = crate::host::link::tests::RunningFixture::new(true);
+    links.observe_preparation(|| {
+        with_state(|state| {
+            let trace = state.owner_lock_trace.as_mut().unwrap();
+            trace.events.push(("prepare", trace.depth));
+        });
+    });
+    // SAFETY: descriptor consists of scalar fields and optional C callbacks.
+    let descriptor: UrpAstDescriptor = unsafe { zeroed() };
+    let mut channel = Channel {
+        _name: "specific-radio".into(),
+        descriptor: &descriptor,
+        rust_channel: AtomicPtr::new(ptr::null_mut()),
+        control: ptr::null_mut(),
+        dsp: ptr::null_mut(),
+        format: ptr::null_mut(),
+        sample_rate_hz: ADVANCED_RATE_HZ,
+        frame_samples: 960,
+        owner: AtomicPtr::new(ptr::null_mut()),
+        worker: Mutex::new(None),
+        delivery_stop: AtomicBool::new(false),
+        service_failed: AtomicBool::new(false),
+        jitter_pending: AtomicBool::new(false),
+        pending_transmit: AtomicU64::new(0),
+        direct: AtomicBool::new(false),
+    };
+    let mut owner = FakeChannel::new(ptr::from_mut(&mut channel).cast());
+    for case in 0..6 {
+        let mut binding = crate::UrpAstLinkAttach {
+            struct_size: size_of::<crate::UrpAstLinkAttach>() as u32,
+            abi_version: 1,
+            peer_channel: links.peer().cast(),
+            accepted_abi_version: 0,
+        };
+        let mut length = size_of::<crate::UrpAstLinkAttach>() as c_int;
+        match case {
+            0 => binding.struct_size -= 1,
+            1 => binding.abi_version = 0,
+            2 => binding.peer_channel = ptr::null_mut(),
+            3 => length -= 1,
+            4 => links.preparation_result(-8),
+            _ => links.preparation_result(URP_AST_OK),
+        }
+        let mut storage = vec![0u8; size_of::<crate::UrpAstLinkAttach>() + 1];
+        // SAFETY: storage reserves a complete descriptor at a byte-aligned offset.
+        let data = unsafe {
+            storage
+                .as_mut_ptr()
+                .add(1)
+                .cast::<crate::UrpAstLinkAttach>()
+        };
+        with_state(|state| {
+            state.owner_lock_trace = Some(OwnerLockTrace {
+                owner: owner.as_ptr() as usize,
+                depth: 1,
+                events: Vec::new(),
+            });
+        });
+        // SAFETY: both descriptor and retained peer remain live until option returns.
+        let (result, accepted) = unsafe {
+            data.write_unaligned(binding);
+            let result = setoption(
+                owner.as_ptr(),
+                crate::URP_AST_OPTION_LINK_ATTACH,
+                data.cast(),
+                length,
+            );
+            (result, data.read_unaligned().accepted_abi_version)
+        };
+        assert_eq!(result == 0, case == 5, "case {case}");
+        assert_eq!(accepted, u32::from(case == 5), "case {case}");
+        with_state(|state| {
+            let trace = state.owner_lock_trace.take().unwrap();
+            let expected: &[(&str, i32)] = if case < 4 {
+                &[]
+            } else {
+                &[("unlock", 0), ("prepare", 0), ("lock", 1)]
+            };
+            assert_eq!(trace.events, expected, "case {case}");
+            assert_eq!(
+                trace.depth, 1,
+                "restore the caller-held lock in case {case}"
+            );
+        });
     }
 }
 
