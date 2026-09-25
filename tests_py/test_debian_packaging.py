@@ -28,11 +28,11 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-portaudio-alsa-adapter-dev" in control
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
-    assert "librate-adjusting-pcm-ring2-dev" in control
+    assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha1)" in control
     assert "librptadvradio-dev (>= 0.1.0~alpha5)" in control
     assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
-        "librate_adjusting_pcm_ring2.so.2",
+        "librate_adjusting_pcm_ring3.so.3",
         "librptadvradio.so.4",
         "librptadv_samplerate_adapter.so.1",
         "librptadv_ffmpeg_adapter.so.1",
@@ -214,7 +214,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
         check=True,
     )
     for provider, soname in (
-        ("rate_adjusting_pcm_ring2", "librate_adjusting_pcm_ring2.so.2"),
+        ("rate_adjusting_pcm_ring3", "librate_adjusting_pcm_ring3.so.3"),
         ("rptadvradio", "librptadvradio.so.4"),
         ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.1"),
         ("rptadv_ffmpeg_adapter", "librptadv_ffmpeg_adapter.so.1"),

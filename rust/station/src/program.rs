@@ -16,7 +16,7 @@ use usbradioplus_radio::{
     RingObservation as RadioRingObservation,
 };
 use usbradioplus_ring::{
-    ConversionQuality, RingConsumer, RingError, RingObservation, RingProducer, RingProvider,
+    PlcMode, RingConsumer, RingError, RingObservation, RingProducer, RingProvider, RingSettings,
 };
 
 use crate::ControllerTransport;
@@ -35,22 +35,13 @@ const KEYED_BIT: u32 = 1 << 2;
 const DCS_BIT: u32 = 1 << 3;
 const TONE_SHIFT: u32 = 4;
 
-/// Immutable source-rate ring settings for one controller interface.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ProgramRingPlan {
-    /// Number of source-rate samples retained by the ring.
-    pub capacity_samples: u64,
-    /// Controller source sample rate.
-    pub input_rate_hz: u32,
-    /// Fixed native hardware sample rate.
-    pub output_rate_hz: u32,
-    /// Protected source-rate reserve reported by the ring.
-    pub reserve_samples: u64,
-    /// Source-rate occupancy setpoint used for clock recovery.
-    pub target_samples: u64,
-}
+/// Immutable ring settings for one controller interface.
+pub type ProgramRingPlan = RingSettings;
 
-/// Resolve the current low-latency ring policy for one ASL3 interface.
+/// Resolve immutable buffering and callback bounds for one ASL3 interface.
+/// app_rpt reserves 162 input samples for a drift-adjusted 960-sample native
+/// callback and enables PLC. Advanced fallback retains its 20/40/80 ms policy
+/// without PLC; attached direct callbacks continue to bypass this ring.
 #[must_use]
 pub const fn program_ring_plan(transport: ControllerTransport) -> ProgramRingPlan {
     let input_rate_hz = match transport {
@@ -61,8 +52,19 @@ pub const fn program_ring_plan(transport: ControllerTransport) -> ProgramRingPla
         capacity_samples: milliseconds_to_samples(input_rate_hz, CAPACITY_MILLISECONDS),
         input_rate_hz,
         output_rate_hz: NATIVE_RATE_HZ,
-        reserve_samples: milliseconds_to_samples(input_rate_hz, RESERVE_MILLISECONDS),
+        reserve_samples: match transport {
+            ControllerTransport::AppRpt => 162,
+            ControllerTransport::RptAdvanced => {
+                milliseconds_to_samples(input_rate_hz, RESERVE_MILLISECONDS)
+            }
+        },
         target_samples: milliseconds_to_samples(input_rate_hz, TARGET_MILLISECONDS),
+        max_producer_samples: milliseconds_to_samples(input_rate_hz, 20),
+        max_output_samples: 960,
+        plc_mode: match transport {
+            ControllerTransport::AppRpt => PlcMode::G711AppendixI,
+            ControllerTransport::RptAdvanced => PlcMode::Disabled,
+        },
     }
 }
 
@@ -92,14 +94,7 @@ pub fn prepare_program_ring(
     provider: RingProvider,
     plan: ProgramRingPlan,
 ) -> Result<(Box<dyn ProgramProducer>, ProgramRingConsumer), ProgramRingSetupError> {
-    let prepared = provider
-        .prepare(
-            plan.capacity_samples,
-            plan.input_rate_hz,
-            plan.output_rate_hz,
-            ConversionQuality::Best,
-        )
-        .map_err(ProgramRingSetupError)?;
+    let prepared = provider.prepare(plan).map_err(ProgramRingSetupError)?;
     let (producer, consumer) = prepared.split();
     let qualification = Arc::new(AtomicU32::new(0));
     Ok((
@@ -110,8 +105,6 @@ pub fn prepare_program_ring(
         ProgramRingConsumer {
             ring: consumer,
             qualification,
-            reserve_samples: plan.reserve_samples,
-            target_samples: plan.target_samples,
             nominal_ratio: f64::from(plan.output_rate_hz) / f64::from(plan.input_rate_hz),
             direct: Arc::new(DirectProgram::default()),
         },
@@ -142,8 +135,6 @@ impl ProgramProducer for ControllerProgramProducer {
 pub struct ProgramRingConsumer {
     ring: RingConsumer,
     pub(crate) qualification: Arc<AtomicU32>,
-    reserve_samples: u64,
-    target_samples: u64,
     nominal_ratio: f64,
     direct: Arc<DirectProgram>,
 }
@@ -220,8 +211,7 @@ impl ProgramRingConsumer {
                 unpack_qualification(self.qualification.load(Ordering::Acquire)),
             ));
         }
-        self.ring
-            .render(output, self.reserve_samples, self.target_samples)?;
+        self.ring.render(output)?;
         let observation = self.ring.observe()?;
         let qualification = unpack_qualification(self.qualification.load(Ordering::Acquire));
         Ok((observation, qualification))

@@ -8,18 +8,95 @@ use std::ptr;
 const OK: c_int = 0;
 const INVALID: c_int = -1;
 
+#[link(name = "rate_adjusting_pcm_ring3")]
+unsafe extern "C" {
+    fn rpcr3_descriptor() -> *const c_void;
+}
+
+fn released_provider() -> RingProvider {
+    // SAFETY: the linked shared library owns its immutable descriptor for the
+    // complete process lifetime, including every ring created by these tests.
+    unsafe { RingProvider::from_raw_descriptor(rpcr3_descriptor()) }.unwrap()
+}
+
+#[test]
+fn released_app_rpt_ring_primes_then_applies_native_rate_plc_delay() {
+    let plan = program_ring_plan(ControllerTransport::AppRpt);
+    let (mut producer, mut consumer) = prepare_program_ring(released_provider(), plan).unwrap();
+    let qualification = ReceiveQualification {
+        receiver_keyed: true,
+        ..ReceiveQualification::default()
+    };
+    assert_eq!(producer.push(&[0.25; 160], qualification).unwrap(), 160);
+    let mut output = [1.0; 960];
+    let (observation, _) = consumer.render(&mut output).unwrap();
+    assert_eq!(output, [0.0; 960]);
+    assert_eq!(observation.missing_samples, 0);
+
+    assert_eq!(producer.push(&[0.25; 160], qualification).unwrap(), 160);
+    let (observation, received) = consumer.render(&mut output).unwrap();
+    // G.711's 3.75 ms delay is 180 output samples at the native 48 kHz rate.
+    assert!(output[..180].iter().all(|sample| *sample == 0.0));
+    assert!(
+        output[192..]
+            .iter()
+            .all(|sample| (*sample - 0.25).abs() < 1e-6)
+    );
+    assert_eq!(observation.missing_samples, 0);
+    assert_eq!(observation.reserve_samples, 162);
+    assert_eq!(observation.target_samples, 320);
+    assert_eq!(observation.capacity_samples, 640);
+    assert!(received.receiver_keyed);
+}
+
+#[test]
+fn released_advanced_fallback_has_no_plc_delay_and_silences_shortfall() {
+    let plan = program_ring_plan(ControllerTransport::RptAdvanced);
+    let (mut producer, mut consumer) = prepare_program_ring(released_provider(), plan).unwrap();
+    for _ in 0..2 {
+        assert_eq!(
+            producer
+                .push(&[0.25; 960], ReceiveQualification::default())
+                .unwrap(),
+            960
+        );
+    }
+    let mut output = [0.0; 960];
+    let (observation, _) = consumer.render(&mut output).unwrap();
+    assert!(
+        output[1..]
+            .iter()
+            .all(|sample| (*sample - 0.25).abs() < 1e-6)
+    );
+    assert_eq!(observation.missing_samples, 0);
+    assert_eq!(observation.reserve_samples, 960);
+    assert_eq!(observation.target_samples, 1_920);
+    assert_eq!(observation.capacity_samples, 3_840);
+    for _ in 0..3 {
+        consumer.render(&mut output).unwrap();
+    }
+    assert_eq!(output, [0.0; 960]);
+    assert!(consumer.ring.observe().unwrap().missing_samples > 0);
+}
+
 thread_local! {
     static OBSERVE_FAILS: Cell<bool> = const { Cell::new(false) };
+    static CREATED_CONFIG: Cell<Option<FakeConfig>> = const { Cell::new(None) };
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct FakeConfig {
     struct_size: u32,
     abi_version: u32,
     capacity_samples: u64,
     input_rate_hz: u32,
     output_rate_hz: u32,
-    quality: u32,
+    reserve_samples: u64,
+    target_samples: u64,
+    max_producer_samples: u64,
+    max_output_samples: u64,
+    plc_mode: u32,
 }
 
 #[repr(C)]
@@ -45,8 +122,8 @@ type Create = unsafe extern "C" fn(*const FakeConfig, *mut *mut c_void) -> c_int
 type Destroy = unsafe extern "C" fn(*mut c_void);
 type PushSample = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type Push = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
-type RenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
-type Render = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type RenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, *mut bool) -> c_int;
+type Render = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut u64) -> c_int;
 type Reset = unsafe extern "C" fn(*mut c_void) -> c_int;
 type Observe = unsafe extern "C" fn(*const c_void, *mut FakeObservation) -> c_int;
 
@@ -83,11 +160,12 @@ unsafe extern "C" fn fake_create(config: *const FakeConfig, output: *mut *mut c_
     else {
         return INVALID;
     };
+    CREATED_CONFIG.set(Some(*config));
     let ring = Box::new(FakeRing {
         capacity: config.capacity_samples as usize,
         samples: VecDeque::with_capacity(config.capacity_samples as usize),
-        reserve: 0,
-        target: 0,
+        reserve: config.reserve_samples,
+        target: config.target_samples,
         discarded: 0,
         missing: 0,
     });
@@ -147,7 +225,6 @@ unsafe extern "C" fn fake_push(
 unsafe extern "C" fn fake_render_sample(
     ring: *mut c_void,
     output: *mut f32,
-    target: u64,
     real: *mut bool,
 ) -> c_int {
     // SAFETY: The test client supplies one live handle.
@@ -159,7 +236,6 @@ unsafe extern "C" fn fake_render_sample(
     let (Some(ring), Some(output), Some(real)) = (ring, output, real) else {
         return INVALID;
     };
-    ring.target = target;
     *real = ring.samples.front().is_some();
     *output = ring.samples.pop_front().unwrap_or_else(|| {
         ring.missing += 1;
@@ -172,8 +248,6 @@ unsafe extern "C" fn fake_render(
     ring: *mut c_void,
     output: *mut f32,
     count: u64,
-    reserve: u64,
-    target: u64,
     real: *mut u64,
 ) -> c_int {
     // SAFETY: The test client supplies the live fake handle and result pointer.
@@ -182,8 +256,6 @@ unsafe extern "C" fn fake_render(
     }) else {
         return INVALID;
     };
-    ring.reserve = reserve;
-    ring.target = target;
     // SAFETY: The test client supplies exactly count writable samples.
     let output = unsafe { std::slice::from_raw_parts_mut(output, count as usize) };
     *real = 0;
@@ -211,7 +283,7 @@ unsafe extern "C" fn fake_observe(ring: *const c_void, output: *mut FakeObservat
     };
     *output = FakeObservation {
         struct_size: size_of::<FakeObservation>() as u32,
-        abi_version: 2,
+        abi_version: 3,
         capacity_samples: ring.capacity as u64,
         available_samples: ring.samples.len() as u64,
         reserve_samples: ring.reserve,
@@ -229,7 +301,7 @@ unsafe extern "C" fn fake_reset(_ring: *mut c_void) -> c_int {
 
 static FAKE_DESCRIPTOR: FakeDescriptor = FakeDescriptor {
     struct_size: size_of::<FakeDescriptor>() as u32,
-    abi_version: 2,
+    abi_version: 3,
     capability_name: c"rptadv.rate-adjusting-pcm-ring.f32".as_ptr(),
     create: Some(fake_create),
     destroy: Some(fake_destroy),
@@ -247,11 +319,11 @@ pub(crate) fn provider() -> RingProvider {
 }
 
 #[test]
-fn interface_plans_keep_the_same_real_time_policy() {
+fn interface_plans_preserve_targets_and_capacity_with_plc_reserve() {
     let app_rpt = program_ring_plan(ControllerTransport::AppRpt);
     assert_eq!(app_rpt.input_rate_hz, 8_000);
     assert_eq!(app_rpt.output_rate_hz, 48_000);
-    assert_eq!(app_rpt.reserve_samples, 160);
+    assert_eq!(app_rpt.reserve_samples, 162);
     assert_eq!(app_rpt.target_samples, 320);
     assert_eq!(app_rpt.capacity_samples, 640);
 
@@ -261,6 +333,26 @@ fn interface_plans_keep_the_same_real_time_policy() {
     assert_eq!(advanced.reserve_samples, 960);
     assert_eq!(advanced.target_samples, 1_920);
     assert_eq!(advanced.capacity_samples, 3_840);
+}
+
+#[test]
+fn preparation_selects_plc_and_declares_each_transport_block_bound() {
+    for (transport, mode, producer_maximum, reserve, target, capacity) in [
+        (ControllerTransport::AppRpt, 1, 160, 162, 320, 640),
+        (ControllerTransport::RptAdvanced, 0, 960, 960, 1920, 3840),
+    ] {
+        let plan = program_ring_plan(transport);
+        let _owners = prepare_program_ring(provider(), plan).unwrap();
+        let config = CREATED_CONFIG.take().unwrap();
+        assert_eq!(config.abi_version, 3);
+        assert_eq!(config.struct_size, 64);
+        assert_eq!(config.plc_mode, mode);
+        assert_eq!(config.reserve_samples, reserve);
+        assert_eq!(config.target_samples, target);
+        assert_eq!(config.capacity_samples, capacity);
+        assert_eq!(config.max_producer_samples, producer_maximum);
+        assert_eq!(config.max_output_samples, 960);
+    }
 }
 
 #[test]
@@ -437,6 +529,9 @@ fn rejected_write_does_not_replace_the_latest_accepted_state() {
         output_rate_hz: 48_000,
         reserve_samples: 1,
         target_samples: 2,
+        max_producer_samples: 512,
+        max_output_samples: 960,
+        plc_mode: PlcMode::Disabled,
     };
     let (mut producer, consumer) = prepare_program_ring(provider(), plan).unwrap();
     let accepted = ReceiveQualification {

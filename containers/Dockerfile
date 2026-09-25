@@ -102,7 +102,7 @@ RUN ldconfig && \
 	 ldd "$(find /usr/lib -path '*/asterisk/modules/chan_usbradioplus.so' -print -quit)" | \
       tee /tmp/module-libraries && \
 	! grep -q 'not found' /tmp/module-libraries && \
-	grep -Fq 'librate_adjusting_pcm_ring2.so.2' /tmp/module-libraries && \
+	grep -Fq 'librate_adjusting_pcm_ring3.so.3' /tmp/module-libraries && \
 	grep -Fq 'librptadvradio.so.4' /tmp/module-libraries && \
 	grep -Fq 'librptadv_samplerate_adapter.so.1' /tmp/module-libraries && \
 	grep -Fq 'librptadv_ffmpeg_adapter.so.1' /tmp/module-libraries && \

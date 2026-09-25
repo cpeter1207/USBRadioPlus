@@ -246,7 +246,11 @@ struct RingConfig {
     capacity_samples: u64,
     input_rate_hz: u32,
     output_rate_hz: u32,
-    quality: u32,
+    reserve_samples: u64,
+    target_samples: u64,
+    max_producer_samples: u64,
+    max_output_samples: u64,
+    plc_mode: u32,
 }
 
 #[repr(C)]
@@ -255,8 +259,8 @@ struct RingObservation([u64; 12]);
 type RingCreate = unsafe extern "C" fn(*const RingConfig, *mut *mut c_void) -> c_int;
 type RingPushSample = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type RingPush = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
-type RingRenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
-type RingRender = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type RingRenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, *mut bool) -> c_int;
+type RingRender = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut u64) -> c_int;
 type RingReset = unsafe extern "C" fn(*mut c_void) -> c_int;
 type RingObserve = unsafe extern "C" fn(*const c_void, *mut RingObservation) -> c_int;
 
@@ -304,7 +308,6 @@ unsafe extern "C" fn ring_push(
 unsafe extern "C" fn ring_render_sample(
     _handle: *mut c_void,
     _output: *mut f32,
-    _target: u64,
     _ready: *mut bool,
 ) -> c_int {
     OK
@@ -314,8 +317,6 @@ unsafe extern "C" fn ring_render(
     _handle: *mut c_void,
     _output: *mut f32,
     _count: u64,
-    _reserve: u64,
-    _target: u64,
     _rendered: *mut u64,
 ) -> c_int {
     OK
@@ -334,7 +335,7 @@ unsafe extern "C" fn ring_reset(_handle: *mut c_void) -> c_int {
 
 static RING: RingDescriptor = RingDescriptor {
     struct_size: size_of::<RingDescriptor>() as u32,
-    abi_version: 2,
+    abi_version: 3,
     capability_name: c"rptadv.rate-adjusting-pcm-ring.f32".as_ptr(),
     create: Some(ring_create),
     destroy: Some(destroy_unit),
