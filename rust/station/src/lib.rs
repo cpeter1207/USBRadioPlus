@@ -42,6 +42,7 @@ pub use program::{
 pub use runtime::{
     CallbackStatistics, ControllerRequests, HardwareInputs, HardwareOutputs, ReceiveObservation,
     SharedHardwareState, StationControlHost, StationRuntime, StationRuntimeStatistics,
+    StationUpdate, StationUpdateError, StationUpdatePreparation,
 };
 
 const TUNING_SCALE_MAXIMUM: u32 = 1_000;

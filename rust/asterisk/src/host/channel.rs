@@ -69,6 +69,7 @@ pub(super) struct Channel {
     pub(super) delivery_stop: AtomicBool,
     pub(super) service_failed: AtomicBool,
     jitter_pending: AtomicBool,
+    jitter_applied: Mutex<Option<(usize, UrpAstJitterConfig)>>,
     pending_transmit: AtomicU64,
     direct: AtomicBool,
 }
@@ -840,6 +841,7 @@ unsafe extern "C" fn request(
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(PendingTransmit::NONE.raw()),
         direct: AtomicBool::new(false),
     });
@@ -1436,9 +1438,18 @@ unsafe fn configure_jitter(channel: &Channel) -> Result<(), ()> {
     let owner = unsafe { lock_owner(channel) }.ok_or(())?;
     let result = match channel.control(ControlOperation::Jitter) {
         ControlResult::Jitter(status, resolved) if status == URP_AST_OK => {
-            let configuration = jitter_configuration(resolved);
-            // SAFETY: owner is locked and configuration is fully initialized.
-            unsafe { ffi::ast_jb_configure(owner, &raw const configuration) };
+            // This is Asterisk's control/delivery boundary, never a native
+            // callback. Do not reset an unchanged jitter buffer on tuning edits.
+            let mut applied = channel
+                .jitter_applied
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if applied.as_ref() != Some(&(owner as usize, resolved)) {
+                let configuration = jitter_configuration(resolved);
+                // SAFETY: owner is locked and configuration is fully initialized.
+                unsafe { ffi::ast_jb_configure(owner, &raw const configuration) };
+                *applied = Some((owner as usize, resolved));
+            }
             Ok(())
         }
         _ => Err(()),
@@ -1454,7 +1465,7 @@ pub(super) fn replay_transmit(channel: &Channel) -> i32 {
     let Some((keyed, ctcss_tenths_hz)) = pending.decode() else {
         return URP_AST_OK;
     };
-    let result = channel.control_status(ControlOperation::Transmit {
+    let result = channel.control_status_admitted(ControlOperation::Transmit {
         keyed,
         ctcss_tenths_hz,
     });
@@ -1470,7 +1481,9 @@ pub(super) fn replay_transmit(channel: &Channel) -> i32 {
 }
 
 pub(super) fn service(channel: &Channel) -> i32 {
-    channel.control_status(ControlOperation::Service)
+    // Membership is frozen during reload, but the existing station still owns
+    // PCM delivery. Ordinary tuning must not starve its ring while graphs build.
+    channel.control_status_admitted(ControlOperation::Service)
 }
 
 pub(super) fn reload_prepare(channel: &Channel) -> i32 {

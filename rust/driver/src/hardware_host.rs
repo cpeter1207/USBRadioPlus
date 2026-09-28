@@ -25,10 +25,13 @@ use usbradioplus_gpio::{
     GpioError, ParallelDevice, ParallelInputs, ParallelOutputs, ParallelPulse, ParallelRtx,
     ParallelStatistics,
 };
+use usbradioplus_radio::RadioProvider;
+use usbradioplus_runtime::NativeProcessingFactory;
 use usbradioplus_station::{
     ControllerTransport, HardwareInputs, HardwarePlan, HardwarePlanError, ParallelPlan,
     ReceiveObservation, SelectedHardwarePlan, SharedHardwareState, StationControlHost,
-    StationMedia, StationRuntime, StationRuntimeStatistics,
+    StationMedia, StationPlan, StationRuntime, StationRuntimeStatistics, StationUpdate,
+    StationUpdateError, StationUpdatePreparation,
 };
 
 const SERVICE_INTERVAL: Duration = Duration::from_millis(5);
@@ -171,6 +174,8 @@ pub enum HardwareStationError {
     ControlTimeout,
     /// The hardware service thread terminated unexpectedly.
     WorkerPanicked,
+    /// Preparing or adopting a callback-owned radio update failed.
+    Update(StationUpdateError),
 }
 
 impl fmt::Display for HardwareStationError {
@@ -186,6 +191,7 @@ impl fmt::Display for HardwareStationError {
             Self::EepromDisabled => formatter.write_str("EEPROM tuning storage is disabled"),
             Self::ControlTimeout => formatter.write_str("hardware control request timed out"),
             Self::WorkerPanicked => formatter.write_str("hardware service thread panicked"),
+            Self::Update(error) => write!(formatter, "station update failed: {error}"),
         }
     }
 }
@@ -196,6 +202,7 @@ impl std::error::Error for HardwareStationError {
             Self::Audio(error) => Some(error),
             Self::Plan(error) => Some(error),
             Self::Gpio { source, .. } => Some(source),
+            Self::Update(error) => Some(error),
             _ => None,
         }
     }
@@ -204,6 +211,12 @@ impl std::error::Error for HardwareStationError {
 impl From<AudioError> for HardwareStationError {
     fn from(error: AudioError) -> Self {
         Self::Audio(error)
+    }
+}
+
+impl From<StationUpdateError> for HardwareStationError {
+    fn from(error: StationUpdateError) -> Self {
+        Self::Update(error)
     }
 }
 
@@ -465,6 +478,7 @@ pub struct HardwareStation {
     control: StationControlHost,
     service: HardwareService,
     mixers: HardwareMixers,
+    update_mixers: Option<[u32; 3]>,
 }
 
 impl HardwareStation {
@@ -583,6 +597,7 @@ impl HardwareStation {
             control,
             service,
             mixers,
+            update_mixers: None,
         })
     }
 
@@ -643,6 +658,150 @@ impl HardwareStation {
     /// Borrow serialized controller and radio-observer ownership.
     pub fn control(&mut self) -> &mut StationControlHost {
         &mut self.control
+    }
+
+    /// Whether the existing stream and control-service owners can adopt this plan.
+    #[must_use]
+    pub fn supports_live_update(&self, plan: &StationPlan) -> bool {
+        let current = self.control.plan();
+        current.transport() == plan.transport()
+            && current.hardware() == plan.hardware()
+            && current.program_ring() == plan.program_ring()
+            && current.configuration().station.hardware.eeprom_enabled
+                == plan.configuration().station.hardware.eeprom_enabled
+            && hardware_local_repeat_level(
+                current.transport(),
+                current.configuration().station.duplex.local_repeat_level,
+            ) == hardware_local_repeat_level(
+                plan.transport(),
+                plan.configuration().station.duplex.local_repeat_level,
+            )
+            && configured_remote_radio(current.configuration())
+                == configured_remote_radio(plan.configuration())
+    }
+
+    /// Retain EEPROM-derived values unless the operator explicitly changes their file setting.
+    pub fn preserve_startup_tuning(
+        &self,
+        previous: &ChannelConfiguration,
+        candidate: &mut ChannelConfiguration,
+    ) {
+        let current = &self.control.plan().configuration().station;
+        let previous = &previous.station;
+        let candidate = &mut candidate.station;
+        for (old, active, next) in [
+            (
+                previous.hardware.input_gain_db,
+                current.hardware.input_gain_db,
+                &mut candidate.hardware.input_gain_db,
+            ),
+            (
+                previous.hardware.output_a_gain_db,
+                current.hardware.output_a_gain_db,
+                &mut candidate.hardware.output_a_gain_db,
+            ),
+            (
+                previous.hardware.output_b_gain_db,
+                current.hardware.output_b_gain_db,
+                &mut candidate.hardware.output_b_gain_db,
+            ),
+        ] {
+            if *next == old {
+                *next = active;
+            }
+        }
+        if candidate.receive.squelch_level == previous.receive.squelch_level {
+            candidate.receive.squelch_level = current.receive.squelch_level;
+        }
+        if candidate.ctcss.transmit_peak_dbfs == previous.ctcss.transmit_peak_dbfs {
+            candidate.ctcss.transmit_peak_dbfs = current.ctcss.transmit_peak_dbfs;
+        }
+    }
+
+    /// Capture safe graph ownership for construction outside the control-delivery task.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an overlapping update or incompatible provider state.
+    pub fn update_snapshot(
+        &self,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+    ) -> Result<StationUpdatePreparation, StationUpdateError> {
+        self.runtime
+            .snapshot_update(&self.control, factory, provider)
+    }
+
+    /// Publish a prepared update without stopping audio or the GPIO service.
+    ///
+    /// Only explicitly changed mixer settings are written; unrelated unsaved
+    /// calibration remains live. The original levels are retained for rollback.
+    ///
+    /// # Errors
+    ///
+    /// Returns the runtime publication or hardware mixer failure.
+    pub fn begin_update(
+        &mut self,
+        update: StationUpdate,
+        explicitly_changed_mixers: [bool; 3],
+    ) -> Result<(), HardwareStationError> {
+        let old = &self.control.plan().configuration().station.hardware;
+        let next = &update.plan().configuration().station.hardware;
+        let gains = [
+            (old.input_gain_db, next.input_gain_db),
+            (old.output_a_gain_db, next.output_a_gain_db),
+            (old.output_b_gain_db, next.output_b_gain_db),
+        ];
+        self.runtime.begin_update(&self.control, update)?;
+        self.update_mixers = Some(self.mixers.levels);
+        for ((mixer, (old, next)), changed) in [
+            HardwareMixer::Receive,
+            HardwareMixer::TransmitA,
+            HardwareMixer::TransmitB,
+        ]
+        .into_iter()
+        .zip(gains)
+        .zip(explicitly_changed_mixers)
+        {
+            if changed || old != next {
+                self.set_mixer_level(mixer, mixer_level(next))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Accept the candidate after both audio owners have adopted it.
+    ///
+    /// # Errors
+    ///
+    /// `Pending` means callbacks have not yet reached their update boundaries.
+    pub fn accept_update(&mut self) -> Result<(), StationUpdateError> {
+        self.runtime.accept_update(&mut self.control)
+    }
+
+    /// Commit or roll back a live update; pending rollback can be retried.
+    ///
+    /// # Errors
+    ///
+    /// Returns pending callback adoption, a radio failure, or a mixer failure.
+    pub fn finish_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
+        self.runtime.finish_update(&mut self.control, commit)?;
+        if let Some(levels) = self.update_mixers {
+            if !commit {
+                for (mixer, level) in [
+                    HardwareMixer::Receive,
+                    HardwareMixer::TransmitA,
+                    HardwareMixer::TransmitB,
+                ]
+                .into_iter()
+                .zip(levels)
+                {
+                    self.set_mixer_level(mixer, level)?;
+                }
+            }
+            self.update_mixers = None;
+        }
+        Ok(())
     }
 
     /// Clone the lock-free state shared with the native callbacks.

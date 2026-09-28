@@ -26,6 +26,11 @@ use crate::{
 const CALLBACK_OK: c_int = 0;
 const CALLBACK_FAILED: c_int = -1;
 
+#[path = "update.rs"]
+mod update;
+use update::UpdateMailbox;
+pub use update::{StationUpdate, StationUpdateError, StationUpdatePreparation};
+
 const HARDWARE_CARRIER: u32 = 1 << 0;
 const PARALLEL_CARRIER: u32 = 1 << 1;
 const HARDWARE_SUBAUDIBLE: u32 = 1 << 2;
@@ -384,6 +389,7 @@ struct ReceiveContext {
     hardware: SharedHardwareState,
     controller_ctcss: [Option<CtcssTone>; CTCSS_TONE_COUNT],
     voter_reporting: bool,
+    updates: Arc<UpdateMailbox>,
 }
 
 struct TransmitContext {
@@ -391,6 +397,7 @@ struct TransmitContext {
     maximum_frames: usize,
     mono: Box<[f32]>,
     hardware: SharedHardwareState,
+    updates: Arc<UpdateMailbox>,
 }
 
 /// One stopped, running, or reload-suspended direct PortAudio station composition.
@@ -404,6 +411,8 @@ pub struct StationRuntime {
     provider: AudioProvider,
     stream_config: StreamConfig,
     hardware: SharedHardwareState,
+    updates: Arc<UpdateMailbox>,
+    running: bool,
 }
 
 /// Serialized controller and radio-observer owner paired with one runtime.
@@ -415,6 +424,7 @@ pub struct StationControlHost {
     control: StationControl,
     controller: usbradioplus_asl3::ControllerState,
     hardware: SharedHardwareState,
+    _updates: Arc<UpdateMailbox>,
 }
 
 impl StationControlHost {
@@ -467,6 +477,7 @@ impl StationRuntime {
         let controller_ctcss = controller_ctcss_table(&media.plan);
         let voter_reporting = media.plan.configuration().station.hardware.voter_reporting != 0;
         let hardware = SharedHardwareState::default();
+        let updates = Arc::new(UpdateMailbox::default());
         let StationMedia {
             plan,
             receive,
@@ -480,12 +491,14 @@ impl StationRuntime {
             hardware: hardware.clone(),
             controller_ctcss,
             voter_reporting,
+            updates: Arc::clone(&updates),
         }));
         let transmit_context = Box::new(UnsafeCell::new(TransmitContext {
             station: transmit,
             maximum_frames: stream.maximum_transmit_frame_count as usize,
             mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
+            updates: Arc::clone(&updates),
         }));
         let mut runtime = Self {
             stream: None,
@@ -494,6 +507,8 @@ impl StationRuntime {
             provider,
             stream_config: stream,
             hardware: hardware.clone(),
+            updates: Arc::clone(&updates),
+            running: false,
         };
         runtime.reopen()?;
         Ok((
@@ -503,6 +518,7 @@ impl StationRuntime {
                 control,
                 controller,
                 hardware,
+                _updates: updates,
             },
         ))
     }
@@ -545,12 +561,16 @@ impl StationRuntime {
         self.stream
             .as_mut()
             .expect("successful reopen owns a stream")
-            .start()
+            .start()?;
+        self.running = true;
+        Ok(())
     }
 
     /// Stop capture and playback callbacks; repeated calls are harmless.
     pub fn stop(&mut self) -> Result<(), AudioError> {
-        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)
+        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)?;
+        self.running = false;
+        Ok(())
     }
 
     /// Stop callbacks and release the exclusive device lease for reload.
@@ -616,6 +636,11 @@ unsafe extern "C" fn receive_callback(
     }
     // SAFETY: the audio adapter supplies canonical stereo input for each frame.
     let input = unsafe { std::slice::from_raw_parts(input, frames * 2) };
+    context.updates.receive(
+        &mut context.station,
+        &mut context.controller_ctcss,
+        &mut context.voter_reporting,
+    );
     let station = &mut context.station;
     let result = match station.radio().process(
         input,
@@ -694,6 +719,7 @@ unsafe extern "C" fn transmit_callback(
     // SAFETY: the audio adapter supplies two writable samples for each frame.
     let output = unsafe { std::slice::from_raw_parts_mut(output, frames * 2) };
     output.fill(0.0);
+    context.updates.transmit(&mut context.station);
     let station = &mut context.station;
     let mut controls = context.hardware.transmit_controls();
     let mut direct_failed = false;

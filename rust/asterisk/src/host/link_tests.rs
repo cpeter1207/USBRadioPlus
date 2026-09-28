@@ -514,6 +514,7 @@ struct FakeState {
     next_graph: usize,
     prepare_result: i32,
     prepare_empty: bool,
+    reload_unchanged: bool,
     observe_result: i32,
     attach_result: i32,
     process_calls: Vec<(usize, u32, u32, u32)>,
@@ -635,6 +636,7 @@ fn fake_product_operations() -> LinkProductOperations {
     LinkProductOperations {
         prepare: fake_prepare,
         prepare_reload: fake_prepare_reload,
+        reload_unchanged: fake_reload_unchanged,
         process: fake_process,
         observe: fake_observe,
         destroy: fake_graph_destroy,
@@ -723,6 +725,16 @@ unsafe extern "C" fn fake_prepare(
 ) -> i32 {
     // SAFETY: forwarded test fixture storage follows the product ABI.
     unsafe { fake_prepare_common(channel_name, channel_name_length, output, "prepare") }
+}
+
+unsafe fn fake_reload_unchanged(
+    _driver: *mut c_void,
+    _link: *mut c_void,
+    _profile: &str,
+    _sample_rate_hz: u32,
+    _maximum_frame_count: u32,
+) -> Result<bool, c_int> {
+    Ok(with_state(|state| state.reload_unchanged))
 }
 
 unsafe extern "C" fn fake_prepare_reload(
@@ -1378,6 +1390,31 @@ fn process_host_scans_periodically_and_stop_detaches_every_hook() {
         state.events.contains(&"profile_before_link_control")
             && !state.events.contains(&"profile_under_link_control")
     }));
+}
+
+#[test]
+fn unchanged_reload_keeps_the_live_graph_history_and_statistics() {
+    let _guard = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/unchanged", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    with_state(|state| state.reload_unchanged = true);
+    let before = observe(&host, &mut channel).unwrap().unwrap().observation;
+    let mut samples = [9_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    for commit in [true, false] {
+        let mut reload = LinkReload::default();
+        stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+        assert_eq!(with_state(|state| state.graphs.len()), 1);
+        reload.finish(commit);
+        let after = observe(&host, &mut channel).unwrap().unwrap().observation;
+        assert_eq!(after.processed_blocks, before.processed_blocks);
+        invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+        assert_eq!(samples[0], 1);
+    }
 }
 
 #[test]

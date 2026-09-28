@@ -249,7 +249,7 @@ fn concrete_reload_preserves_backend_results_and_reopens_admission() {
     });
     let before = with_state(|state| state.jitter.len());
     channel::with_live_channel("usb", channel::configure_pending_jitter).unwrap();
-    assert_eq!(with_state(|state| state.jitter.len()), before + 1);
+    assert_eq!(with_state(|state| state.jitter.len()), before);
 }
 
 #[test]

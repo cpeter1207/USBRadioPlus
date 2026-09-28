@@ -270,6 +270,17 @@ pub struct StationControl {
 }
 
 impl StationControl {
+    pub(crate) fn processing(&self) -> &ProcessingGeneration {
+        &self._resources.processing
+    }
+
+    pub(crate) fn validate_update(
+        &self,
+        update: &usbradioplus_radio::PreparedUpdate<'_>,
+    ) -> Result<(), RadioError> {
+        self.radio.validate_update(update)
+    }
+
     /// Borrow the released radio control observer.
     pub fn radio(&mut self) -> &mut ControlObserver<'static> {
         &mut self.radio

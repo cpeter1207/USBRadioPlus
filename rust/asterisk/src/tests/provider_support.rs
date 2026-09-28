@@ -3,7 +3,8 @@ use super::*;
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
 use std::ptr;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 const OK: c_int = 0;
 const AUDIO_ABI: u32 = 2;
@@ -27,6 +28,33 @@ static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
 static AUDIO_CREATES: AtomicU32 = AtomicU32::new(0);
 static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
+static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
+static PTT_DROPS: AtomicU32 = AtomicU32::new(0);
+static GRAPH_DELAY_MS: AtomicU32 = AtomicU32::new(0);
+static GRAPH_PREPARING: AtomicBool = AtomicBool::new(false);
+
+pub(super) fn delay_graph_preparation(milliseconds: u32) {
+    GRAPH_DELAY_MS.store(milliseconds, Ordering::Release);
+}
+
+pub(super) fn graph_preparing() -> bool {
+    GRAPH_PREPARING.load(Ordering::Acquire)
+}
+
+pub(super) fn periodic_audio(enabled: bool) {
+    PERIODIC_AUDIO.store(enabled, Ordering::Release);
+}
+
+pub(super) fn reset_ptt_drops() {
+    PTT_DROPS.store(0, Ordering::Release);
+}
+
+pub(super) fn ptt_state() -> (bool, u32) {
+    (
+        PTT.load(Ordering::Acquire) != 0,
+        PTT_DROPS.load(Ordering::Acquire),
+    )
+}
 
 pub(super) fn exclusive_audio(enabled: bool) {
     assert_eq!(AUDIO_STREAMS.load(Ordering::Acquire), 0);
@@ -103,6 +131,12 @@ struct GraphState(u32);
 unsafe extern "C" fn graph_create(config: *const GraphConfig, output: *mut *mut c_void) -> c_int {
     if failed(FAIL_GRAPH) {
         return -1;
+    }
+    let delay = GRAPH_DELAY_MS.load(Ordering::Acquire);
+    if delay != 0 {
+        GRAPH_PREPARING.store(true, Ordering::Release);
+        std::thread::sleep(std::time::Duration::from_millis(u64::from(delay)));
+        GRAPH_PREPARING.store(false, Ordering::Release);
     }
     // SAFETY: the product wrapper supplies live configuration and output storage.
     unsafe { *output = Box::into_raw(Box::new(GraphState((*config).maximum_frame_count))).cast() };
@@ -523,6 +557,10 @@ struct RadioDescriptor {
     pop_receive: Option<RadioPop>,
     pop_transmit: Option<RadioPop>,
     destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    prepare_update: Option<RadioCreate>,
+    apply_receive_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    apply_transmit_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -544,6 +582,10 @@ unsafe extern "C" fn radio_create(
 }
 
 unsafe extern "C" fn radio_warm(_handle: *mut c_void) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn radio_apply_update(_handle: *mut c_void, _update: *mut c_void) -> c_int {
     OK
 }
 
@@ -678,6 +720,10 @@ static RADIO: RadioDescriptor = RadioDescriptor {
     pop_receive: Some(radio_pop),
     pop_transmit: Some(radio_pop),
     destroy: Some(radio_destroy),
+    prepare_update: Some(radio_create),
+    apply_receive_update: Some(radio_apply_update),
+    apply_transmit_update: Some(radio_apply_update),
+    destroy_update: Some(radio_destroy),
 };
 
 #[repr(C)]
@@ -876,6 +922,8 @@ struct FakeStream {
     receive_context: *mut c_void,
     transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
     transmit_context: *mut c_void,
+    stop: Arc<AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
 }
 
 struct FakeMixer {
@@ -909,6 +957,8 @@ unsafe extern "C" fn audio_stream_create(
         receive_context: config.receive_context,
         transmit: config.transmit_worker.unwrap(),
         transmit_context: config.transmit_context,
+        stop: Arc::new(AtomicBool::new(false)),
+        worker: None,
     }))
     .cast();
     OK
@@ -930,6 +980,26 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
     let receive = unsafe { (stream.receive)(stream.receive_context, input.as_ptr(), 960) };
     // SAFETY: contexts and canonical 20 ms buffers are live for these calls.
     let transmit = unsafe { (stream.transmit)(stream.transmit_context, output.as_mut_ptr(), 960) };
+    if receive == 0 && transmit == 0 && PERIODIC_AUDIO.load(Ordering::Acquire) {
+        let rx = stream.receive;
+        let rx_context = stream.receive_context as usize;
+        let tx = stream.transmit;
+        let tx_context = stream.transmit_context as usize;
+        let stop = stream.stop.clone();
+        stop.store(false, Ordering::Release);
+        stream.worker = Some(std::thread::spawn(move || {
+            let input = [0.25_f32; 1_920];
+            let mut output = [0.0_f32; 1_920];
+            while !stop.load(Ordering::Acquire) {
+                // SAFETY: stop joins this sole callback owner before either context is freed.
+                unsafe {
+                    assert_eq!(rx(rx_context as *mut c_void, input.as_ptr(), 960), OK);
+                    assert_eq!(tx(tx_context as *mut c_void, output.as_mut_ptr(), 960), OK);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        }));
+    }
     if receive == 0 && transmit == 0 {
         OK
     } else {
@@ -940,6 +1010,12 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
 unsafe extern "C" fn audio_stream_control(stream: *mut c_void) -> c_int {
     if failed(FAIL_STOP) {
         return -1;
+    }
+    // SAFETY: the control owner exclusively accesses this provider handle.
+    let owned = unsafe { &mut *stream.cast::<FakeStream>() };
+    owned.stop.store(true, Ordering::Release);
+    if let Some(worker) = owned.worker.take() {
+        worker.join().unwrap();
     }
     if failed(PUBLISH_ON_STOP) || failed(PUBLISH_ON_STOP_FAIL_OPEN) {
         // SAFETY: the handle originates from audio_stream_create and its receive context is live.
@@ -987,6 +1063,8 @@ unsafe extern "C" fn audio_stream_timing(
 }
 
 unsafe extern "C" fn audio_stream_destroy(stream: *mut c_void) {
+    // SAFETY: join callbacks before taking ownership of their backing stream.
+    let _ = unsafe { audio_stream_control(stream) };
     // SAFETY: the handle is the unique allocation returned by create.
     let stream = unsafe { Box::from_raw(stream.cast::<FakeStream>()) };
     if stream.exclusive {
@@ -1333,7 +1411,10 @@ unsafe extern "C" fn gpio_open(_config: *const c_void, output: *mut *mut c_void)
 
 unsafe extern "C" fn gpio_publish(_device: *mut c_void, outputs: *const GpioCm119Outputs) -> c_int {
     // SAFETY: the wrapper supplies a complete output snapshot.
-    PTT.store(unsafe { (*outputs).ptt_asserted }, Ordering::Release);
+    let next = unsafe { (*outputs).ptt_asserted };
+    if PTT.swap(next, Ordering::AcqRel) != 0 && next == 0 {
+        PTT_DROPS.fetch_add(1, Ordering::Relaxed);
+    }
     OK
 }
 

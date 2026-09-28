@@ -221,6 +221,14 @@ pub(super) type SessionSnapshotFn =
     unsafe extern "C" fn(*const OpaqueSession, *mut RawSnapshot) -> c_int;
 pub(super) type SessionPopEvent = unsafe extern "C" fn(*const OpaqueSession, *mut RawEvent) -> u32;
 pub(super) type SessionDestroy = unsafe extern "C" fn(*mut OpaqueSession);
+pub(super) type SessionPrepareUpdate = unsafe extern "C" fn(
+    *const RawSessionConfig,
+    *const RawSessionPorts,
+    *mut *mut OpaqueUpdate,
+) -> c_int;
+pub(super) type SessionApplyUpdate =
+    unsafe extern "C" fn(*mut OpaqueSession, *mut OpaqueUpdate) -> c_int;
+pub(super) type SessionDestroyUpdate = unsafe extern "C" fn(*mut OpaqueUpdate);
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -244,10 +252,14 @@ pub(super) struct RawDescriptor {
     pub(super) session_pop_receive_event: Option<SessionPopEvent>,
     pub(super) session_pop_transmit_event: Option<SessionPopEvent>,
     pub(super) session_destroy: Option<SessionDestroy>,
+    pub(super) session_prepare_update: Option<SessionPrepareUpdate>,
+    pub(super) session_apply_receive_update: Option<SessionApplyUpdate>,
+    pub(super) session_apply_transmit_update: Option<SessionApplyUpdate>,
+    pub(super) session_destroy_update: Option<SessionDestroyUpdate>,
 }
 
 pub(super) const REQUIRED_DESCRIPTOR_SIZE: usize =
-    offset_of!(RawDescriptor, session_destroy) + size_of::<Option<SessionDestroy>>();
+    offset_of!(RawDescriptor, session_destroy_update) + size_of::<Option<SessionDestroyUpdate>>();
 
 #[derive(Clone, Copy)]
 pub(super) struct Functions {
@@ -259,6 +271,10 @@ pub(super) struct Functions {
     pub(super) pop_receive_event: SessionPopEvent,
     pub(super) pop_transmit_event: SessionPopEvent,
     pub(super) destroy: SessionDestroy,
+    pub(super) prepare_update: SessionPrepareUpdate,
+    pub(super) apply_receive_update: SessionApplyUpdate,
+    pub(super) apply_transmit_update: SessionApplyUpdate,
+    pub(super) destroy_update: SessionDestroyUpdate,
 }
 
 impl SessionConfig {

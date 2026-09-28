@@ -42,6 +42,11 @@ struct OpaqueSession {
     _private: [u8; 0],
 }
 
+#[repr(C)]
+struct OpaqueUpdate {
+    _private: [u8; 0],
+}
+
 /// Failure while validating, preparing, or operating a radio session.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RadioError {

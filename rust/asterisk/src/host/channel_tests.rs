@@ -141,7 +141,11 @@ fn live_profile_selection_handles_query_failures_and_frozen_membership() {
         Some("UsB")
     );
     let channel = membership.iter().next().unwrap();
-    assert_eq!(service(channel), URP_AST_CHANNEL_BUSY);
+    assert_eq!(
+        service(channel),
+        URP_AST_OK,
+        "reload must not block PCM delivery"
+    );
     membership.reopen_control();
     assert_eq!(service(membership.iter().next().unwrap()), URP_AST_OK);
     drop(membership);
@@ -218,7 +222,7 @@ fn channel_forwarders_preserve_typed_outputs_and_admission_failures() {
         let _gate = control_gate().write().unwrap();
         panic!("test poisoned admission gate");
     });
-    let status = service(&channel);
+    let status = set_echo(&channel, false);
     let transmit = transmit(&channel, true, 1230);
     control_gate().clear_poison();
     assert!(poisoned.is_err());
@@ -863,6 +867,7 @@ pub(in crate::host) fn callback_channel(
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(0),
         direct: AtomicBool::new(false),
     });
@@ -1149,9 +1154,11 @@ fn owner_callbacks_publish_state_and_retry_failed_jitter() {
     calls.lock().unwrap().result = URP_AST_OK;
     configure_pending_jitter(&channel);
     configure_pending_jitter(&channel);
+    mark_jitter_pending(&channel);
+    configure_pending_jitter(&channel);
     assert!(!channel.jitter_pending.load(Ordering::Acquire));
     with_state(|state| {
-        assert_eq!(state.unlocks, 2);
+        assert_eq!(state.unlocks, 3);
         assert_eq!(state.jitter.len(), 1);
         assert_eq!(state.jitter[0].0, replacement.as_ptr() as usize);
         assert_eq!(state.jitter[0].1.max_size, 80);
@@ -1170,7 +1177,7 @@ fn owner_callbacks_publish_state_and_retry_failed_jitter() {
     });
     // SAFETY: the owner is live; the hook simulates publication changing during trylock.
     assert!(unsafe { lock_owner(&channel) }.is_none());
-    with_state(|state| assert_eq!(state.unlocks, 3));
+    with_state(|state| assert_eq!(state.unlocks, 4));
 }
 
 #[repr(C)]
@@ -1214,6 +1221,7 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(0),
         direct: AtomicBool::new(false),
     };

@@ -25,6 +25,14 @@ const CHANNELS: usize = 2;
 static DESTROYED_SEVEN: AtomicUsize = AtomicUsize::new(0);
 static DESTROYED_FAILURE: AtomicUsize = AtomicUsize::new(0);
 
+thread_local! {
+    static PROGRAM_SAMPLE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.25) };
+}
+
+pub(crate) fn program_sample(sample: f32) {
+    PROGRAM_SAMPLE.set(sample);
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct FakeConfigPrefix {
@@ -150,6 +158,7 @@ type Transmit = unsafe extern "C" fn(
 type Snapshot = unsafe extern "C" fn(*const c_void, *mut FakeSnapshot) -> c_int;
 type Pop = unsafe extern "C" fn(*const c_void, *mut c_void) -> u32;
 type Destroy = unsafe extern "C" fn(*mut c_void);
+type ApplyUpdate = unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int;
 
 #[repr(C)]
 struct FakeDescriptor {
@@ -164,6 +173,41 @@ struct FakeDescriptor {
     pop_receive: Option<Pop>,
     pop_transmit: Option<Pop>,
     destroy: Option<Destroy>,
+    prepare_update: Option<Create>,
+    apply_receive_update: Option<ApplyUpdate>,
+    apply_transmit_update: Option<ApplyUpdate>,
+    destroy_update: Option<Destroy>,
+}
+
+unsafe extern "C" fn apply_update(session: *mut c_void, update: *mut c_void) -> c_int {
+    // SAFETY: both handles originate from this fixture's create operation.
+    let (Some(session), Some(update)) = (unsafe {
+        (
+            session.cast::<FakeSession>().as_ref(),
+            update.cast::<FakeSession>().as_ref(),
+        )
+    }) else {
+        return RADIO_FAILED;
+    };
+    if session.maximum_receive != update.maximum_receive
+        || session.maximum_transmit != update.maximum_transmit
+    {
+        return RADIO_FAILED;
+    }
+    RADIO_OK
+}
+
+unsafe extern "C" fn apply_transmit_update(session: *mut c_void, update: *mut c_void) -> c_int {
+    // SAFETY: both live handles belong to this fixture and the sole TX owner calls this.
+    let status = unsafe { apply_update(session, update) };
+    if status == RADIO_OK {
+        // SAFETY: the update ports stay externally owned until replacement or teardown.
+        unsafe {
+            (*session.cast::<FakeSession>()).transmit_processor =
+                (*update.cast::<FakeSession>()).transmit_processor;
+        }
+    }
+    status
 }
 
 // SAFETY: the immutable descriptor contains only process-lifetime functions.
@@ -176,6 +220,7 @@ struct FakeSession {
     receive_frames: u64,
     transmit_frames: u64,
     program: FakeProgramPort,
+    transmit_processor: FakeProcessorPort,
 }
 
 #[repr(C)]
@@ -220,6 +265,10 @@ unsafe extern "C" fn create(
         transmit_frames: 0,
         // SAFETY: the radio wrapper supplies the complete session-port ABI.
         program: unsafe { (*ports.cast::<FakePorts>()).program },
+        // SAFETY: TX program follows two RX ports, the notch bank, NR and dynamics.
+        transmit_processor: unsafe {
+            (*ports.cast::<FakePorts>()).processors[usbradioplus_radio::CTCSS_TONE_COUNT + 4]
+        },
     });
     *output = Box::into_raw(session).cast();
     if config.generation_id == FAILING_GENERATION {
@@ -322,6 +371,32 @@ unsafe extern "C" fn transmit(
     // SAFETY: the wrapper supplies stereo output for frame_count.
     unsafe {
         std::slice::from_raw_parts_mut(output, frame_count as usize * CHANNELS).fill(0.25);
+    }
+    if session.generation_id == 25 {
+        let input = vec![PROGRAM_SAMPLE.get(); frame_count as usize];
+        let mut processed = vec![0.0; frame_count as usize];
+        if let Some(process) = session.transmit_processor.process {
+            // SAFETY: the fixture retains this exact port and supplies disjoint bounded spans.
+            if unsafe {
+                process(
+                    session.transmit_processor.context,
+                    input.as_ptr(),
+                    processed.as_mut_ptr(),
+                    frame_count,
+                )
+            } != RADIO_OK
+            {
+                return RADIO_FAILED;
+            }
+        }
+        // SAFETY: output contains exactly two samples per frame.
+        for (index, sample) in processed.into_iter().enumerate() {
+            // SAFETY: the wrapper provided exactly two writable samples per frame.
+            unsafe {
+                output.add(index * 2).write(sample);
+                output.add(index * 2 + 1).write(sample);
+            }
+        }
     }
     if session.generation_id == 24 {
         let mut mono = [0.0; ADVANCED_FRAME_SAMPLES];
@@ -436,6 +511,10 @@ static DESCRIPTOR: FakeDescriptor = FakeDescriptor {
     pop_receive: Some(pop),
     pop_transmit: Some(pop),
     destroy: Some(destroy),
+    prepare_update: Some(create),
+    apply_receive_update: Some(apply_update),
+    apply_transmit_update: Some(apply_transmit_update),
+    destroy_update: Some(destroy),
 };
 
 pub(crate) fn radio_provider() -> RadioProvider {

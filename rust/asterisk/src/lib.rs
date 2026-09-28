@@ -51,7 +51,7 @@ use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_samplerate::SampleRateAdapter;
 /// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
 pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
-use usbradioplus_station::{StationMedia, hardware_plan};
+use usbradioplus_station::{StationMedia, StationUpdate, StationUpdateError, hardware_plan};
 
 const ABI_VERSION: u32 = 4;
 /// Private positive Asterisk setoption ID (ASCII RPAD), passed with block zero.
@@ -62,6 +62,8 @@ const CAPABILITY: &std::ffi::CStr = c"usbradioplus.asterisk";
 
 /// Successful C ABI operation.
 pub const URP_AST_OK: c_int = 0;
+/// An asynchronous reload phase is progressing without blocking media delivery.
+pub const URP_AST_RELOAD_PENDING: c_int = 1;
 /// A pointer, structure, enum, string, or PCM span was invalid.
 pub const URP_AST_INVALID_ARGUMENT: c_int = -1;
 /// A required descriptor or function-table ABI was incompatible.
@@ -329,7 +331,7 @@ pub struct UrpAstChannelReserveArgs {
 }
 
 /// Resolved Asterisk jitter-buffer settings for one channel.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct UrpAstJitterConfig {
     /// Size of this structure in bytes.
@@ -925,7 +927,23 @@ struct ChannelControl {
     direct: Option<UrpAstDirectCallbacks>,
 }
 
-struct PreparedChannelReload {
+enum PreparedChannelReload {
+    Unchanged,
+    Preparing {
+        worker: std::thread::JoinHandle<Result<StationUpdate, StationUpdateError>>,
+        jitter: UrpAstJitterConfig,
+        mixers: [bool; 3],
+        cancelled: bool,
+    },
+    Live {
+        update: StationUpdate,
+        jitter: UrpAstJitterConfig,
+        mixers: [bool; 3],
+    },
+    Replacement(Box<PreparedChannelReplacement>),
+}
+
+struct PreparedChannelReplacement {
     media: StationMedia,
     preflight: HardwarePreflight,
     jitter: UrpAstJitterConfig,
@@ -937,6 +955,8 @@ struct AdoptedChannelReload {
 }
 
 enum PreviousChannelGeneration {
+    Unchanged,
+    Live,
     Prepared {
         media: Box<StationMedia>,
         preflight: HardwarePreflight,
@@ -1020,6 +1040,13 @@ unsafe impl Sync for ChannelHandle {}
 
 impl Drop for ChannelHandle {
     fn drop(&mut self) {
+        // A prepared snapshot borrows provider code. Join before the last channel
+        // can release the driver and allow its shared objects to unload.
+        if let Some(PreparedChannelReload::Preparing { worker, .. }) =
+            self.control.get_mut().reload.take()
+        {
+            let _ = worker.join();
+        }
         self.driver()
             .reservations
             .lock()
@@ -1068,6 +1095,7 @@ impl ReservationState {
 
 #[derive(Clone, Copy, Debug)]
 enum Status {
+    ReloadPending,
     InvalidArgument,
     IncompatibleAbi,
     InvalidConfiguration,
@@ -1082,6 +1110,7 @@ enum Status {
 impl Status {
     const fn code(self) -> c_int {
         match self {
+            Self::ReloadPending => URP_AST_RELOAD_PENDING,
             Self::InvalidArgument => URP_AST_INVALID_ARGUMENT,
             Self::IncompatibleAbi => URP_AST_INCOMPATIBLE_ABI,
             Self::InvalidConfiguration => URP_AST_INVALID_CONFIGURATION,
@@ -1365,24 +1394,79 @@ unsafe extern "C" fn link_prepare_reload(
     })
 }
 
+struct LinkHandle {
+    processing: PreparedLink,
+    description: String,
+    sample_rate_hz: u32,
+    maximum_frame_count: u32,
+}
+
+/// Compare the pending effective graph with a retained, quiescent live handle.
+unsafe fn link_reload_unchanged(
+    driver: *mut c_void,
+    link: *mut c_void,
+    name: &str,
+    sample_rate_hz: u32,
+    maximum_frame_count: u32,
+) -> Result<bool, c_int> {
+    // SAFETY: the host retains both handles and holds the audiohook lock.
+    let driver = unsafe { driver_ref(driver) }.map_err(Status::code)?;
+    // SAFETY: link_prepare created this allocation; callback mutation is quiesced.
+    let link = unsafe { link.cast::<LinkHandle>().as_ref() }.ok_or(URP_AST_INVALID_ARGUMENT)?;
+    let configuration = driver
+        .0
+        .pending_reload
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+        .ok_or(URP_AST_NOT_READY)?;
+    let channel = configuration
+        .channel(name)
+        .ok_or(URP_AST_CHANNEL_NOT_FOUND)?;
+    if !channel.config().link.enabled
+        || link.sample_rate_hz != sample_rate_hz
+        || link.maximum_frame_count != maximum_frame_count
+    {
+        return Ok(false);
+    }
+    let description = driver
+        .0
+        .factory
+        .graph_descriptions()
+        .dynamics(&channel.config().link)
+        .map_err(|_| URP_AST_SETUP_FAILED)?;
+    Ok(link.description == description)
+}
+
 fn prepare_link(
     driver: &DriverInner,
     configuration: &DriverConfiguration,
     name: &str,
     sample_rate_hz: u32,
     maximum_frame_count: u32,
-) -> Result<PreparedLink, Status> {
+) -> Result<LinkHandle, Status> {
     let channel = configuration.channel(name).ok_or(Status::ChannelNotFound)?;
     if !channel.config().link.enabled {
         return Err(Status::NotReady);
     }
-    driver
+    let description = driver
+        .factory
+        .graph_descriptions()
+        .dynamics(&channel.config().link)
+        .map_err(|_| Status::SetupFailed)?;
+    let processing = driver
         .link_factory
         .prepare(&channel.config().link, sample_rate_hz, maximum_frame_count)
         .map_err(|error| {
             driver.operations.log(URP_AST_LOG_ERROR, &error.to_string());
             Status::SetupFailed
-        })
+        })?;
+    Ok(LinkHandle {
+        processing,
+        description,
+        sample_rate_hz,
+        maximum_frame_count,
+    })
 }
 
 unsafe extern "C" fn link_process(
@@ -1423,7 +1507,7 @@ unsafe extern "C" fn link_destroy(link: *mut c_void) {
     let _ = catch_unwind(AssertUnwindSafe(|| {
         if !link.is_null() {
             // SAFETY: the pointer came from link_prepare and is consumed once after detachment.
-            drop(unsafe { Box::from_raw(link.cast::<PreparedLink>()) });
+            drop(unsafe { Box::from_raw(link.cast::<LinkHandle>()) });
         }
     }));
 }
@@ -1575,6 +1659,35 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
+        if let Some(PreparedChannelReload::Preparing { worker, .. }) = control.reload.as_ref() {
+            if !worker.is_finished() {
+                return Err(Status::ReloadPending);
+            }
+            let Some(PreparedChannelReload::Preparing {
+                worker,
+                jitter,
+                mixers,
+                cancelled,
+            }) = control.reload.take()
+            else {
+                unreachable!("the serialized prepare owns its worker");
+            };
+            let result = worker.join();
+            if !cancelled {
+                let update = result
+                    .map_err(|_| Status::InternalFailure)?
+                    .map_err(|error| {
+                        channel.log_error(&error.to_string());
+                        Status::SetupFailed
+                    })?;
+                control.reload = Some(PreparedChannelReload::Live {
+                    update,
+                    jitter,
+                    mixers,
+                });
+                return Ok(());
+            }
+        }
         if control.reload.is_some()
             || channel
                 .rollback
@@ -1601,6 +1714,17 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
                 );
                 Status::InvalidConfiguration
             })?;
+        // Compare the resolved file values, not EEPROM or unsaved live tuning.
+        // An unrelated channel edit must leave this station completely alone.
+        if driver
+            .configuration
+            .snapshot()
+            .channel(&channel.reservation)
+            .is_some_and(|current| current.config() == configuration.config())
+        {
+            control.reload = Some(PreparedChannelReload::Unchanged);
+            return Ok(());
+        }
         let jitter = jitter_config(&configuration.config().station.asterisk);
         let transport = match channel.mode {
             AsteriskPcmMode::AppRpt => URP_AST_TRANSPORT_APP_RPT,
@@ -1608,6 +1732,61 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
         };
         let (_, controller) = controller_configuration(transport)?;
         let station_generation = driver.station_generation.fetch_add(1, Ordering::Relaxed);
+        let previous_configuration = driver.configuration.snapshot();
+        let previous = previous_configuration
+            .channel(&channel.reservation)
+            .ok_or(Status::NotReady)?;
+        let old_hardware = &previous.config().station.hardware;
+        let next_hardware = &configuration.config().station.hardware;
+        let mixers = [
+            old_hardware.input_gain_db != next_hardware.input_gain_db,
+            old_hardware.output_a_gain_db != next_hardware.output_a_gain_db,
+            old_hardware.output_b_gain_db != next_hardware.output_b_gain_db,
+        ];
+        if control.running {
+            if let Some(hardware) = control.hardware.as_ref() {
+                if let Some(previous) = driver
+                    .configuration
+                    .snapshot()
+                    .channel(&channel.reservation)
+                {
+                    hardware.preserve_startup_tuning(previous.config(), configuration.config_mut());
+                }
+            }
+            let candidate = driver
+                .factory
+                .plan(configuration.clone(), station_generation, controller)
+                .map_err(|error| {
+                    channel.log_error(&error.to_string());
+                    Status::SetupFailed
+                })?;
+            if let Some(hardware) = control
+                .hardware
+                .as_ref()
+                .filter(|hardware| hardware.supports_live_update(&candidate))
+            {
+                let snapshot = driver.factory.update_snapshot(hardware).map_err(|error| {
+                    channel.log_error(&error.to_string());
+                    Status::SetupFailed
+                })?;
+                // Only immutable plans and retained processor ownership leave the
+                // taskprocessor. Asterisk PCM delivery continues during compilation.
+                let worker = std::thread::Builder::new()
+                    .name("urp-reload".into())
+                    .spawn(move || snapshot.prepare(candidate))
+                    .map_err(|error| {
+                        channel.log_error(&error.to_string());
+                        Status::SetupFailed
+                    })?;
+                control.reload = Some(PreparedChannelReload::Preparing {
+                    worker,
+                    jitter,
+                    mixers,
+                    cancelled: false,
+                });
+                return Err(Status::ReloadPending);
+            }
+        }
         let plan = hardware_plan(configuration.config());
         let eeprom_enabled = configuration.config().station.hardware.eeprom_enabled;
         let preflight = if let Some(hardware) = control.hardware.as_ref() {
@@ -1632,11 +1811,13 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
             // the previous PortAudio generation before starting its replacement.
             unsafe { media.set_direct_callbacks(direct) }.map_err(|_| Status::SetupFailed)?;
         }
-        control.reload = Some(PreparedChannelReload {
-            media,
-            preflight,
-            jitter,
-        });
+        control.reload = Some(PreparedChannelReload::Replacement(Box::new(
+            PreparedChannelReplacement {
+                media,
+                preflight,
+                jitter,
+            },
+        )));
         Ok(())
     })
 }
@@ -1645,9 +1826,63 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
-        let mut prepared = control.reload.take().ok_or(Status::NotReady)?;
+        if channel
+            .rollback
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|adopted| matches!(adopted.previous, PreviousChannelGeneration::Live))
+        {
+            return control
+                .hardware
+                .as_mut()
+                .ok_or(Status::NotReady)?
+                .accept_update()
+                .map_err(|error| update_status(channel, error));
+        }
+        let mut prepared = match control.reload.take().ok_or(Status::NotReady)? {
+            PreparedChannelReload::Unchanged => {
+                *channel
+                    .rollback
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                    Some(AdoptedChannelReload {
+                        previous: PreviousChannelGeneration::Unchanged,
+                        jitter: control.jitter,
+                    });
+                return Ok(());
+            }
+            pending @ PreparedChannelReload::Preparing { .. } => {
+                control.reload = Some(pending);
+                return Err(Status::ReloadPending);
+            }
+            PreparedChannelReload::Live {
+                update,
+                jitter,
+                mixers,
+            } => {
+                let previous_jitter = std::mem::replace(&mut control.jitter, jitter);
+                *channel
+                    .rollback
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                    Some(AdoptedChannelReload {
+                        previous: PreviousChannelGeneration::Live,
+                        jitter: previous_jitter,
+                    });
+                let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
+                hardware.begin_update(update, mixers).map_err(|error| {
+                    channel.log_error(&error.to_string());
+                    Status::SetupFailed
+                })?;
+                return hardware
+                    .accept_update()
+                    .map_err(|error| update_status(channel, error));
+            }
+            PreparedChannelReload::Replacement(prepared) => prepared,
+        };
         if let Err(status) = drain_receive(channel, control) {
-            control.reload = Some(prepared);
+            control.reload = Some(PreparedChannelReload::Replacement(prepared));
             return Err(status);
         }
         if control.hardware.is_none() {
@@ -1702,7 +1937,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                 transient,
             )
             .unwrap_or(false);
-            control.reload = Some(prepared);
+            control.reload = Some(PreparedChannelReload::Replacement(prepared));
             return Err(Status::SetupFailed);
         }
         if let Err(status) = drain_receive(channel, control) {
@@ -1715,7 +1950,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                 transient,
             )
             .unwrap_or(false);
-            control.reload = Some(prepared);
+            control.reload = Some(PreparedChannelReload::Replacement(prepared));
             return Err(status);
         }
         let retained = RetainedControllerState::capture(control.controller()?);
@@ -1771,10 +2006,52 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
 unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) -> c_int {
     ffi_status(|| {
         let commit = boolean(commit)?;
+        // SAFETY: every finish operation is serialized with channel control.
+        let (channel, control) = unsafe { channel_control(channel)? };
+        let live = channel
+            .rollback
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|adopted| matches!(adopted.previous, PreviousChannelGeneration::Live));
+        if live {
+            control
+                .hardware
+                .as_mut()
+                .ok_or(Status::NotReady)?
+                .finish_update(commit)
+                .map_err(|error| match error {
+                    HardwareStationError::Update(error) => update_status(channel, error),
+                    error => {
+                        channel.log_error(&error.to_string());
+                        Status::SetupFailed
+                    }
+                })?;
+            let adopted = channel
+                .rollback
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .take()
+                .expect("live rollback remains owned until completion");
+            if !commit {
+                control.jitter = adopted.jitter;
+            }
+            return Ok(());
+        }
+        if let Some(PreparedChannelReload::Preparing {
+            worker, cancelled, ..
+        }) = control.reload.as_mut()
+        {
+            if !commit {
+                *cancelled = true;
+            }
+            if !worker.is_finished() {
+                return Err(Status::ReloadPending);
+            }
+        }
         if commit {
             // SAFETY: commit touches only the control-plane rollback slot; the
             // adopted generation and its audio callbacks remain disjoint.
-            let channel = unsafe { channel_ref(channel)? };
             let retired = channel
                 .rollback
                 .lock()
@@ -1785,7 +2062,6 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
         }
 
         // SAFETY: abort runs on the channel's serialized taskprocessor.
-        let (channel, control) = unsafe { channel_control(channel)? };
         if control.reload.take().is_some() {
             return Ok(());
         }
@@ -1799,6 +2075,10 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
         };
         control.jitter = adopted.jitter;
         match adopted.previous {
+            PreviousChannelGeneration::Unchanged => Ok(()),
+            PreviousChannelGeneration::Live => {
+                unreachable!("live rollback is handled without replacement")
+            }
             PreviousChannelGeneration::Prepared { media, preflight } => {
                 control.media = Some(*media);
                 control.preflight = Some(preflight);
@@ -1828,6 +2108,15 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
             }
         }
     })
+}
+
+fn update_status(channel: &ChannelHandle, error: StationUpdateError) -> Status {
+    if matches!(error, StationUpdateError::Pending) {
+        Status::ReloadPending
+    } else {
+        channel.log_error(&error.to_string());
+        Status::SetupFailed
+    }
 }
 
 unsafe extern "C" fn channel_write_voice(
@@ -2500,7 +2789,9 @@ unsafe fn channel_ref<'a>(channel: *mut c_void) -> Result<&'a ChannelHandle, Sta
 
 unsafe fn link_mut<'a>(link: *mut c_void) -> Result<&'a mut PreparedLink, Status> {
     // SAFETY: the caller exclusively owns a live handle returned by link_prepare.
-    unsafe { link.cast::<PreparedLink>().as_mut() }.ok_or(Status::InvalidArgument)
+    unsafe { link.cast::<LinkHandle>().as_mut() }
+        .map(|link| &mut link.processing)
+        .ok_or(Status::InvalidArgument)
 }
 
 unsafe fn channel_control<'a>(

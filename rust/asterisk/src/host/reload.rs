@@ -2,7 +2,7 @@
 
 use std::sync::Mutex;
 
-use crate::URP_AST_OK;
+use crate::{URP_AST_OK, URP_AST_RELOAD_PENDING, URP_AST_SETUP_FAILED};
 
 use std::ffi::{CStr, CString, c_int};
 use std::path::PathBuf;
@@ -116,7 +116,7 @@ impl ReloadCoordinator {
             for index in 0..channels {
                 check(
                     "channel prepare",
-                    operations.channel_prepare(index),
+                    complete_phase(|| operations.channel_prepare(index)),
                     Some(index),
                 )?;
             }
@@ -124,7 +124,7 @@ impl ReloadCoordinator {
             for index in 0..channels {
                 check(
                     "channel activate",
-                    operations.channel_activate(index),
+                    complete_phase(|| operations.channel_activate(index)),
                     Some(index),
                 )?;
             }
@@ -134,7 +134,7 @@ impl ReloadCoordinator {
         if let Err(failure) = result {
             operations.link_finish(false);
             for index in 0..channels {
-                let status = operations.channel_finish(index, false);
+                let status = complete_phase(|| operations.channel_finish(index, false));
                 if status != URP_AST_OK {
                     operations.log_error("channel rollback", status, Some(index));
                 }
@@ -148,7 +148,7 @@ impl ReloadCoordinator {
 
         operations.link_finish(true);
         for index in 0..channels {
-            let status = operations.channel_finish(index, true);
+            let status = complete_phase(|| operations.channel_finish(index, true));
             if status != URP_AST_OK {
                 operations.log_error("channel commit", status, Some(index));
             }
@@ -157,6 +157,21 @@ impl ReloadCoordinator {
             operations.mark_jitter_pending(index);
         }
         Ok(())
+    }
+}
+
+/// Poll off the channel taskprocessor so PCM delivery continues during preparation/adoption.
+pub(super) fn complete_phase(mut operation: impl FnMut() -> i32) -> i32 {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        let status = operation();
+        if status != URP_AST_RELOAD_PENDING {
+            return status;
+        }
+        if std::time::Instant::now() >= deadline {
+            return URP_AST_SETUP_FAILED;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
 }
 

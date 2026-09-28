@@ -10,7 +10,10 @@ use super::super::{
     UrpAstLinkObservation, UrpAstLinkObserve, UrpAstLinkPrepare, UrpAstLinkProcess, ffi,
 };
 
-use super::super::{link_destroy, link_observe, link_prepare, link_prepare_reload, link_process};
+use super::super::{
+    link_destroy, link_observe, link_prepare, link_prepare_reload, link_process,
+    link_reload_unchanged,
+};
 use super::channel;
 
 use std::ffi::{CStr, c_char, c_int, c_void};
@@ -45,6 +48,8 @@ pub(super) enum LinkHostError {
 pub(super) struct LinkProductOperations {
     pub(super) prepare: UrpAstLinkPrepare,
     pub(super) prepare_reload: UrpAstLinkPrepare,
+    pub(super) reload_unchanged:
+        unsafe fn(*mut c_void, *mut c_void, &str, u32, u32) -> Result<bool, c_int>,
     pub(super) process: UrpAstLinkProcess,
     pub(super) observe: UrpAstLinkObserve,
     pub(super) destroy: UrpAstLinkDestroy,
@@ -251,6 +256,7 @@ impl LinkHost {
             LinkProductOperations {
                 prepare: link_prepare,
                 prepare_reload: link_prepare_reload,
+                reload_unchanged: link_reload_unchanged,
                 process: link_process,
                 observe: link_observe,
                 destroy: link_destroy,
@@ -326,7 +332,7 @@ impl LinkHost {
         let snapshot = unsafe { self.snapshot(channel) };
         let result = if let Some(hook) = snapshot.hook {
             hook.prepare_reload(self.driver, snapshot.sample_rate_hz)
-                .map(|()| Some(hook))
+                .map(|changed| changed.then_some(hook))
         } else if let Some(profile) = profile.filter(|_| snapshot.eligible) {
             // SAFETY: the snapshot was captured from this same referenced channel.
             unsafe {
@@ -801,7 +807,35 @@ impl LinkHook {
         &self,
         driver: *mut c_void,
         sample_rate_hz: u32,
-    ) -> Result<(), LinkHostError> {
+    ) -> Result<bool, LinkHostError> {
+        let audiohook = ptr::from_ref(&self.audiohook).cast_mut();
+        // SAFETY: this retained hook stays pinned; the lock protects active
+        // graph lifetime against both callbacks and external datastore teardown.
+        unsafe { (self.asterisk.audiohook_lock)(audiohook) };
+        let active = self.active.load(Ordering::Acquire);
+        let unchanged = if self.reload_pending.load(Ordering::Acquire) {
+            Err(LinkHostError::Asterisk)
+        } else if active.is_null() {
+            Ok(false)
+        } else {
+            // SAFETY: the live graph is retained and quiescent while its immutable
+            // description is compared; no graph construction or warmup occurs.
+            unsafe {
+                (self.product.reload_unchanged)(
+                    driver,
+                    active,
+                    &self.profile,
+                    sample_rate_hz,
+                    MAXIMUM_LINK_FRAME_COUNT,
+                )
+            }
+            .map_err(LinkHostError::Product)
+        };
+        // SAFETY: balances the lock above, including comparison errors.
+        unsafe { (self.asterisk.audiohook_unlock)(audiohook) };
+        if unchanged? {
+            return Ok(false);
+        }
         let mut candidate = ptr::null_mut();
         // SAFETY: profile storage and driver remain live for this synchronous call.
         let result = unsafe {
@@ -817,7 +851,6 @@ impl LinkHook {
         if result != URP_AST_OK && result != URP_AST_NOT_READY {
             return Err(LinkHostError::Product(result));
         }
-        let audiohook = ptr::from_ref(&self.audiohook).cast_mut();
         // SAFETY: the serialized reload control plane quiesces the callback.
         unsafe { (self.asterisk.audiohook_lock)(audiohook) };
         if self.reload_pending.swap(true, Ordering::AcqRel) {
@@ -832,7 +865,7 @@ impl LinkHook {
         self.staged.store(candidate, Ordering::Release);
         // SAFETY: balances audiohook_lock above.
         unsafe { (self.asterisk.audiohook_unlock)(audiohook) };
-        Ok(())
+        Ok(true)
     }
 
     fn observe(&self) -> Result<Option<LinkStatistics>, LinkHostError> {
@@ -935,7 +968,7 @@ impl LinkHookRef {
         &self,
         driver: *mut c_void,
         sample_rate_hz: u32,
-    ) -> Result<(), LinkHostError> {
+    ) -> Result<bool, LinkHostError> {
         // SAFETY: this RAII reference keeps the hook alive.
         unsafe { self.raw.as_ref() }.prepare_reload(driver, sample_rate_hz)
     }

@@ -12,10 +12,10 @@ use usbradioplus_runtime::NativeProcessingFactory;
 use usbradioplus_samplerate::{SampleRateAdapter, SampleRateError};
 use usbradioplus_station::{
     ControllerSetup, ControllerTransport, StationMedia, StationMediaError, StationPlan,
-    StationPreparationError,
+    StationPreparationError, StationUpdateError, StationUpdatePreparation,
 };
 
-use crate::prepare_app_rpt_converter;
+use crate::{HardwareStation, prepare_app_rpt_converter};
 
 /// Transport-specific Asterisk handoff configuration.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -52,6 +52,8 @@ pub enum StationFactoryError {
     AppRptConverter(SampleRateError),
     /// Prepared station resources could not be bound to released providers.
     Media(StationMediaError),
+    /// A live station update could not be prepared.
+    Update(StationUpdateError),
 }
 
 impl fmt::Display for StationFactoryError {
@@ -62,6 +64,7 @@ impl fmt::Display for StationFactoryError {
                 write!(formatter, "app_rpt converter preparation failed: {error}")
             }
             Self::Media(error) => write!(formatter, "station media binding failed: {error}"),
+            Self::Update(error) => write!(formatter, "station update preparation failed: {error}"),
         }
     }
 }
@@ -72,6 +75,7 @@ impl std::error::Error for StationFactoryError {
             Self::Station(error) => Some(error),
             Self::AppRptConverter(error) => Some(error),
             Self::Media(error) => Some(error),
+            Self::Update(error) => Some(error),
         }
     }
 }
@@ -150,6 +154,42 @@ impl StationFactory {
         self.processing.graph_descriptions()
     }
 
+    /// Capture immutable update ownership without compiling graphs on the delivery task.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the live station already has an unfinished update.
+    pub fn update_snapshot(
+        &self,
+        station: &HardwareStation,
+    ) -> Result<StationUpdatePreparation, StationFactoryError> {
+        station
+            .update_snapshot(&self.processing, self.providers.radio)
+            .map_err(StationFactoryError::Update)
+    }
+
+    /// Resolve a candidate without opening hardware or constructing processors.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the resolved settings cannot form a native station.
+    pub fn plan(
+        &self,
+        channel: ResolvedChannelConfiguration,
+        generation_id: u64,
+        controller: ControllerConfiguration,
+    ) -> Result<StationPlan, StationFactoryError> {
+        let channel_name = channel.channel().to_owned();
+        StationPlan::new(
+            channel_name,
+            channel.into_config(),
+            controller.transport(),
+            generation_id,
+            self.maximum_frame_count,
+        )
+        .map_err(StationFactoryError::from)
+    }
+
     /// Plan, prepare, warm, and bind one resolved station generation.
     ///
     /// No device is opened and no callback is published by this operation.
@@ -164,15 +204,7 @@ impl StationFactory {
         generation_id: u64,
         controller: ControllerConfiguration,
     ) -> Result<StationMedia, StationFactoryError> {
-        let transport = controller.transport();
-        let channel_name = channel.channel().to_owned();
-        let plan = StationPlan::new(
-            channel_name,
-            channel.into_config(),
-            transport,
-            generation_id,
-            self.maximum_frame_count,
-        )?;
+        let plan = self.plan(channel, generation_id, controller)?;
         let prepared = plan.prepare(&self.processing)?;
         let controller = match controller {
             ControllerConfiguration::AppRpt {

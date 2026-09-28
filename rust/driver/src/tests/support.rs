@@ -440,6 +440,10 @@ struct RadioDescriptor {
     pop_receive: Option<RadioPop>,
     pop_transmit: Option<RadioPop>,
     destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    prepare_update: Option<RadioCreate>,
+    apply_receive_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    apply_transmit_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: The descriptor and every referenced function are static.
@@ -462,6 +466,10 @@ unsafe extern "C" fn radio_create(
 }
 
 unsafe extern "C" fn radio_warm(_handle: *mut c_void) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn radio_apply_update(_handle: *mut c_void, _update: *mut c_void) -> c_int {
     OK
 }
 
@@ -543,6 +551,10 @@ static RADIO: RadioDescriptor = RadioDescriptor {
     pop_receive: Some(radio_pop),
     pop_transmit: Some(radio_pop),
     destroy: Some(radio_destroy),
+    prepare_update: Some(radio_create),
+    apply_receive_update: Some(radio_apply_update),
+    apply_transmit_update: Some(radio_apply_update),
+    destroy_update: Some(radio_destroy),
 };
 
 #[repr(C)]

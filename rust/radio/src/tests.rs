@@ -348,6 +348,27 @@ unsafe extern "C" fn fake_destroy(session: *mut OpaqueSession) {
     }
 }
 
+unsafe extern "C" fn fake_prepare_update(
+    config: *const RawSessionConfig,
+    ports: *const RawSessionPorts,
+    output: *mut *mut OpaqueUpdate,
+) -> c_int {
+    // SAFETY: this fixture reuses fake session allocation solely as opaque update storage.
+    unsafe { fake_create(config, ports, output.cast()) }
+}
+
+unsafe extern "C" fn fake_apply_update(
+    _session: *mut OpaqueSession,
+    _update: *mut OpaqueUpdate,
+) -> c_int {
+    RESULT_OK
+}
+
+unsafe extern "C" fn fake_destroy_update(update: *mut OpaqueUpdate) {
+    // SAFETY: fake_prepare_update creates this exact fixture allocation.
+    unsafe { fake_destroy(update.cast()) };
+}
+
 fn valid_descriptor() -> RawDescriptor {
     RawDescriptor {
         struct_size: size_of::<RawDescriptor>() as u32,
@@ -361,6 +382,10 @@ fn valid_descriptor() -> RawDescriptor {
         session_pop_receive_event: Some(fake_pop_receive_event),
         session_pop_transmit_event: Some(fake_pop_transmit_event),
         session_destroy: Some(fake_destroy),
+        session_prepare_update: Some(fake_prepare_update),
+        session_apply_receive_update: Some(fake_apply_update),
+        session_apply_transmit_update: Some(fake_apply_update),
+        session_destroy_update: Some(fake_destroy_update),
     }
 }
 
@@ -389,12 +414,75 @@ fn prepare(
 }
 
 #[test]
+fn descriptor_without_prepared_updates_is_rejected_before_session_creation() {
+    let mut descriptor = valid_descriptor();
+    descriptor.struct_size = 80;
+    // SAFETY: the prefix is readable and deliberately advertises the old ABI-4 size.
+    let result = unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&descriptor).cast()) };
+    assert_eq!(result.err(), Some(RadioError::IncompatibleAdapter));
+}
+
+#[test]
+fn prepared_updates_validate_limits_preserve_generation_and_never_warm_ports() {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<PreparedUpdate<'static>>();
+    let lifecycle = FakeLifecycle::default();
+    let update_lifecycle = FakeLifecycle::default();
+    let (mut receive, mut transmit, observer) = prepare(51, &lifecycle, 16).unwrap().split();
+    let mut config = SessionConfig::new(52, 16, 16);
+    config.publication_interval_milliseconds = 25;
+    let update = provider()
+        .prepare_update(&config, ports(&update_lifecycle))
+        .unwrap();
+    assert_eq!(update_lifecycle.warm_calls.load(Ordering::Relaxed), 0);
+    assert_eq!(observer.validate_update(&update), Ok(()));
+    assert_eq!(receive.apply_update(&update), Ok(()));
+    assert_eq!(transmit.apply_update(&update), Ok(()));
+    drop(update);
+    assert_eq!(update_lifecycle.destroy_calls.load(Ordering::Relaxed), 1);
+    assert_eq!(observer.snapshot().unwrap().generation_id, 51);
+    config.maximum_transmit_frame_count += 1;
+    let update = provider()
+        .prepare_update(&config, SessionPorts::default())
+        .unwrap();
+    assert_eq!(
+        observer.validate_update(&update),
+        Err(RadioError::Unsupported)
+    );
+    assert_eq!(receive.apply_update(&update), Err(RadioError::Unsupported));
+    assert_eq!(transmit.apply_update(&update), Err(RadioError::Unsupported));
+}
+
+#[test]
+fn prepared_update_creation_cleans_partial_handles_and_rejects_ring_replacement() {
+    for (generation, error, destroyed) in [
+        (CREATE_FAILURE_GENERATION, RadioError::ProviderFailed, 1),
+        (NULL_FAILURE_GENERATION, RadioError::ProviderFailed, 0),
+        (NULL_SUCCESS_GENERATION, RadioError::AdapterFailure, 0),
+    ] {
+        let lifecycle = FakeLifecycle::default();
+        let result =
+            provider().prepare_update(&SessionConfig::new(generation, 16, 16), ports(&lifecycle));
+        assert_eq!(result.err(), Some(error));
+        assert_eq!(lifecycle.destroy_calls.load(Ordering::Relaxed), destroyed);
+    }
+    let mut ports = SessionPorts::default();
+    ports.program_ring.raw.context = NonNull::<c_void>::dangling().as_ptr();
+    assert_eq!(
+        provider()
+            .prepare_update(&SessionConfig::new(1, 16, 16), ports)
+            .err(),
+        Some(RadioError::InvalidArgument)
+    );
+}
+
+#[test]
 fn descriptor_validation_requires_the_complete_abi4_table() {
     // SAFETY: null is explicitly accepted as an incompatible descriptor.
     let null_result = unsafe { RadioProvider::from_raw_descriptor(ptr::null()) };
     assert_eq!(null_result.err(), Some(RadioError::IncompatibleAdapter));
 
-    for defect in 0..11 {
+    for defect in 0..15 {
         let mut descriptor = valid_descriptor();
         match defect {
             0 => descriptor.struct_size = (REQUIRED_DESCRIPTOR_SIZE - 1) as u32,
@@ -410,6 +498,10 @@ fn descriptor_validation_requires_the_complete_abi4_table() {
             8 => descriptor.session_snapshot = None,
             9 => descriptor.session_pop_receive_event = None,
             10 => descriptor.session_pop_transmit_event = None,
+            11 => descriptor.session_prepare_update = None,
+            12 => descriptor.session_apply_receive_update = None,
+            13 => descriptor.session_apply_transmit_update = None,
+            14 => descriptor.session_destroy_update = None,
             _ => unreachable!(),
         }
         // SAFETY: this local descriptor remains readable for the validation
@@ -527,7 +619,7 @@ fn rust_layout_matches_the_abi4_c_header() {
     );
     assert_eq!(offset_of!(RawSessionPorts, program_ring), 1_448);
     assert_eq!(offset_of!(RawSessionPorts, receive_ctcss_tail_notch), 1_472);
-    assert_eq!(size_of::<RawDescriptor>(), 80);
+    assert_eq!(size_of::<RawDescriptor>(), 112);
     assert_eq!(size_of::<RawReceiveInput>(), 20);
     assert_eq!(size_of::<RawTransmitInput>(), 24);
     assert_eq!(size_of::<RawReceiveResult>(), 96);
