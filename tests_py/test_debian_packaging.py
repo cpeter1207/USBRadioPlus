@@ -28,13 +28,15 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-portaudio-alsa-adapter-dev" in control
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
-    assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha1)" in control
+    assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2)" in control
+    assert "librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1)" in control
+    assert "libsamplerate" not in control
     assert "librptadvradio-dev (>= 0.1.0~alpha5)" in control
     assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
         "librate_adjusting_pcm_ring3.so.3",
         "librptadvradio.so.4",
-        "librptadv_samplerate_adapter.so.1",
+        "librptadv_samplerate_adapter.so.2",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
         "librptadv_gpio_adapter.so.1",
@@ -192,7 +194,8 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     pkg_config.write_text(
         "#!/bin/sh\n"
         'case "$1" in\n'
-        "  --variable=abi_version) echo 4;;\n"
+        '  --variable=abi_version) case "$2" in\n'
+        "    rptadv_samplerate_adapter) echo 2;; *) echo 4;; esac;;\n"
         '  --variable=libdir) echo /selected/"$2";;\n'
         '  --libs-only-other) printf "%s " -pthread -Wl,--as-needed;;\n'
         '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
@@ -216,7 +219,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     for provider, soname in (
         ("rate_adjusting_pcm_ring3", "librate_adjusting_pcm_ring3.so.3"),
         ("rptadvradio", "librptadvradio.so.4"),
-        ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.1"),
+        ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.2"),
         ("rptadv_ffmpeg_adapter", "librptadv_ffmpeg_adapter.so.1"),
         ("rptadv_portaudio_alsa_adapter", "librptadv_portaudio_alsa_adapter.so.2"),
         ("rptadv_gpio_adapter", "librptadv_gpio_adapter.so.1"),

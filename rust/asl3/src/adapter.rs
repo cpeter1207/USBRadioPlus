@@ -368,7 +368,7 @@ impl ReceivePublisher {
                     {
                         return Err(AdapterError::InvalidConversionResult);
                     }
-                    if result.input_used == 0 {
+                    if result.input_used == 0 && result.output_generated == 0 {
                         return Err(AdapterError::ConversionStalled);
                     }
                     used += result.input_used;

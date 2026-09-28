@@ -4,9 +4,9 @@ Priority: optional
 Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  libclang-dev, pkg-config, asl3-asterisk-dev,
- librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha1),
+ librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2),
  librptadvradio-dev (>= 0.1.0~alpha5),
- librptadv-samplerate-adapter-dev (>= 0.1.0~alpha2),
+ librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1),
  librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha2),
  librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha3),
  librptadv-gpio-adapter-dev (>= 0.1.0~alpha2),

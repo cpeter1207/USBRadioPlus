@@ -293,7 +293,7 @@ pub struct UrpAstProviderManifest {
     pub ring: *const c_void,
     /// Released radio-core descriptor.
     pub radio: *const c_void,
-    /// Released libsamplerate adapter descriptor.
+    /// Versioned bounded sample-rate adapter descriptor.
     pub samplerate: *const c_void,
     /// Released PortAudio/ALSA adapter descriptor.
     pub audio: *const c_void,

@@ -356,7 +356,7 @@ struct ConverterDescriptor {
     struct_size: u32,
     abi_version: u32,
     capability_name: *const c_char,
-    create: Option<unsafe extern "C" fn(c_int, u32, *mut *mut Converter) -> c_int>,
+    create: Option<unsafe extern "C" fn(u32, u32, u32, u32, *mut *mut Converter) -> c_int>,
     reset: Option<unsafe extern "C" fn(*mut Converter) -> c_int>,
     process: Option<
         unsafe extern "C" fn(
@@ -371,14 +371,18 @@ struct ConverterDescriptor {
         ) -> c_int,
     >,
     destroy: Option<unsafe extern "C" fn(*mut Converter)>,
+    queued_input: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
+    converter_output_delay: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
 unsafe impl Sync for ConverterDescriptor {}
 
 unsafe extern "C" fn converter_create(
-    _quality: c_int,
-    _channels: u32,
+    _input_rate: u32,
+    _output_rate: u32,
+    _max_input: u32,
+    _max_output: u32,
     output: *mut *mut Converter,
 ) -> c_int {
     // SAFETY: the wrapper supplies writable output storage.
@@ -387,6 +391,12 @@ unsafe extern "C" fn converter_create(
 }
 
 unsafe extern "C" fn converter_reset(_handle: *mut Converter) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn converter_queued_input(_: *mut Converter, frames: *mut u32) -> c_int {
+    // SAFETY: the client supplies writable output storage.
+    unsafe { *frames = 0 };
     OK
 }
 
@@ -425,12 +435,14 @@ unsafe extern "C" fn converter_destroy(handle: *mut Converter) {
 
 static CONVERTER: ConverterDescriptor = ConverterDescriptor {
     struct_size: size_of::<ConverterDescriptor>() as u32,
-    abi_version: 1,
+    abi_version: 2,
     capability_name: c"rptadv.samplerate".as_ptr(),
     create: Some(converter_create),
     reset: Some(converter_reset),
     process: Some(converter_process),
     destroy: Some(converter_destroy),
+    queued_input: Some(converter_queued_input),
+    converter_output_delay: Some(converter_queued_input),
 };
 
 type RadioCreate = unsafe extern "C" fn(*const c_void, *const c_void, *mut *mut c_void) -> c_int;

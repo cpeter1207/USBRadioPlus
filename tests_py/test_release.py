@@ -98,7 +98,7 @@ def test_build_and_install_use_dynamic_rust_artifacts():
     for soname in (
         "librate_adjusting_pcm_ring3.so.3",
         "librptadvradio.so.4",
-        "librptadv_samplerate_adapter.so.1",
+        "librptadv_samplerate_adapter.so.2",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
         "librptadv_gpio_adapter.so.1",

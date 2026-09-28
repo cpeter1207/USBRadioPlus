@@ -18,6 +18,7 @@ impl EchoConfiguration {
 enum ConverterBehavior {
     Downsample,
     DropFirst,
+    DrainFirst,
     Fail,
     Stall,
     InvalidInputCount,
@@ -69,7 +70,17 @@ impl AppRptConverter for FakeConverter {
                     output_generated: output.len(),
                 });
             }
-            ConverterBehavior::Downsample | ConverterBehavior::DropFirst => {}
+            ConverterBehavior::DrainFirst if !self.dropped => {
+                self.dropped = true;
+                output[0] = 0.25;
+                return Ok(ConversionProgress {
+                    input_used: 0,
+                    output_generated: 1,
+                });
+            }
+            ConverterBehavior::Downsample
+            | ConverterBehavior::DropFirst
+            | ConverterBehavior::DrainFirst => {}
         }
 
         let mut generated = 0;
@@ -377,6 +388,34 @@ fn app_rpt_converter_preserves_callback_partitioning_and_startup_padding() {
     let samples = frame.samples();
     assert_eq!(&samples[..159], &[16_384; 159]);
     assert_eq!(samples[159], 0);
+}
+
+#[test]
+fn converter_held_output_progress_does_not_drop_the_unaccepted_input() {
+    let (program, _) = producer(ProducerBehavior::All);
+    let (mut publisher, mut state) = ControllerState::prepare_app_rpt(
+        FakeConverter::boxed(ConverterBehavior::DrainFirst),
+        program,
+        2,
+        EchoConfiguration::disabled(),
+    )
+    .unwrap();
+    publisher
+        .publish(
+            &[0.5; ADVANCED_FRAME_SAMPLES],
+            ReceiveMetadata {
+                qualification: ReceiveQualification {
+                    receiver_keyed: true,
+                    ..ReceiveQualification::default()
+                },
+                ..ReceiveMetadata::default()
+            },
+        )
+        .unwrap();
+    let _ = next(&mut state);
+    let (_, frame) = next(&mut state);
+    assert_eq!(frame.samples()[0], 8192);
+    assert_eq!(&frame.samples()[1..], &[16384; APP_RPT_FRAME_SAMPLES - 1]);
 }
 
 #[test]

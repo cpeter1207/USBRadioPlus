@@ -32,7 +32,7 @@ ENV PATH=/opt/cargo/bin:${PATH}
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       "asl3-asterisk-dev=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" build-essential clang clang-format clang-tidy cppcheck doxygen git graphviz \
       gcovr pkg-config python3 python3-pytest python3-venv shellcheck \
-      libasound2-dev libusb-1.0-0-dev libsamplerate0-dev \
+      libasound2-dev libusb-1.0-0-dev \
       libavfilter-dev libavutil-dev ladspa-sdk portaudio19-dev autoconf automake libtool \
       ca-certificates cargo curl libclang-dev patch rustc xz-utils && \
     rm -rf /var/lib/apt/lists/* && \
@@ -86,7 +86,7 @@ ARG RUN_SMOKE_TEST=0
 RUN if [ "$DEBIAN_VERSION" = 12 ]; then av_packages="libavfilter8 libavutil57"; \
     else av_packages="libavfilter10 libavutil59"; fi && \
     apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      libasound2 $av_packages libportaudio2 libsamplerate0 \
+      libasound2 $av_packages libportaudio2 \
       libusb-1.0-0 whiptail && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=released-shared-packages / /tmp/shared-packages/
@@ -104,7 +104,7 @@ RUN ldconfig && \
 	! grep -q 'not found' /tmp/module-libraries && \
 	grep -Fq 'librate_adjusting_pcm_ring3.so.3' /tmp/module-libraries && \
 	grep -Fq 'librptadvradio.so.4' /tmp/module-libraries && \
-	grep -Fq 'librptadv_samplerate_adapter.so.1' /tmp/module-libraries && \
+	grep -Fq 'librptadv_samplerate_adapter.so.2' /tmp/module-libraries && \
 	grep -Fq 'librptadv_ffmpeg_adapter.so.1' /tmp/module-libraries && \
 	grep -Fq 'librptadv_portaudio_alsa_adapter.so.2' /tmp/module-libraries && \
 	grep -Fq 'librptadv_gpio_adapter.so.1' /tmp/module-libraries && \

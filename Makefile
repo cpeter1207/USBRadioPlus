@@ -58,8 +58,8 @@ RPCR_CFLAGS := -I$(RPCR_PREFIX)/include
 RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring3
 RPCR_BUILD_DEP := $(RPCR_LIBRARY)
 else
-ifeq ($(shell $(PKG_CONFIG) --exists rate_adjusting_pcm_ring3 && echo yes),)
-$(error USBRadioPlus requires the librate-adjusting-pcm-ring3 development package)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=3.0.0-alpha.2 rate_adjusting_pcm_ring3 && echo yes),)
+$(error USBRadioPlus requires the librate-adjusting-pcm-ring3 development package 3.0.0-alpha.2 or newer)
 endif
 RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring3)
 # Link the exact selected shared object: an earlier -L path must not override it.
@@ -111,11 +111,14 @@ RPTADV_SAMPLERATE_CFLAGS := -I$(RPTADV_SAMPLERATE_PREFIX)/include
 RPTADV_SAMPLERATE_LIBS := -L$(RPTADV_SAMPLERATE_LIBDIR) -lrptadv_samplerate_adapter
 RPTADV_SAMPLERATE_BUILD_DEP := $(RPTADV_SAMPLERATE_LIBRARY)
 else
-ifeq ($(shell $(PKG_CONFIG) --exists rptadv_samplerate_adapter && echo yes),)
-$(error USBRadioPlus requires the librptadv-samplerate-adapter development package)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.2.0~alpha1 rptadv_samplerate_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-samplerate-adapter-dev 0.2.0~alpha1 or newer)
+endif
+ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadv_samplerate_adapter),2)
+$(error USBRadioPlus requires samplerate adapter ABI 2)
 endif
 RPTADV_SAMPLERATE_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_samplerate_adapter)
-RPTADV_SAMPLERATE_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter)/librptadv_samplerate_adapter.so.1
+RPTADV_SAMPLERATE_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_samplerate_adapter)/librptadv_samplerate_adapter.so.2
 RPTADV_SAMPLERATE_BUILD_DEP :=
 endif
 # Native signaling graphs use the released dynamic FFmpeg adapter.
@@ -281,7 +284,7 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring3.so.3]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
-	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.1]'
+	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.2]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_ffmpeg_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_portaudio_alsa_adapter.so.2]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_gpio_adapter.so.1]'
