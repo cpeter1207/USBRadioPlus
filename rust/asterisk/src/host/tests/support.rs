@@ -87,6 +87,13 @@ pub(crate) enum DspOutput {
     },
 }
 
+/// Track the caller-held channel lock across one synchronous option callback.
+pub(crate) struct OwnerLockTrace {
+    pub owner: usize,
+    pub depth: i32,
+    pub events: Vec<(&'static str, i32)>,
+}
+
 /// Mutable external results shared only by serialized host tests.
 #[derive(Default)]
 pub(crate) struct State {
@@ -115,6 +122,7 @@ pub(crate) struct State {
     pub trylock_result: c_int,
     pub trylock_hook: Option<Box<dyn FnOnce() + Send>>,
     pub unlocks: usize,
+    pub owner_lock_trace: Option<OwnerLockTrace>,
     pub jitter: Vec<(usize, ffi::ast_jb_conf)>,
     pub advanced_format_missing: bool,
     pub advanced_format_wrong_rate: bool,
@@ -397,13 +405,23 @@ unsafe extern "C" fn __ast_module_unref(
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn __ao2_lock(
-    _: *mut c_void,
+    owner: *mut c_void,
     _: ffi::ao2_lock_req,
     _: *const c_char,
     _: *const c_char,
     _: c_int,
     _: *const c_char,
 ) -> c_int {
+    with_state(|state| {
+        if let Some(trace) = state
+            .owner_lock_trace
+            .as_mut()
+            .filter(|trace| trace.owner == owner as usize)
+        {
+            trace.depth += 1;
+            trace.events.push(("lock", trace.depth));
+        }
+    });
     0
 }
 
@@ -603,13 +621,23 @@ unsafe extern "C" fn __ao2_trylock(
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn __ao2_unlock(
-    _: *mut c_void,
+    owner: *mut c_void,
     _: *const c_char,
     _: *const c_char,
     _: c_int,
     _: *const c_char,
 ) -> c_int {
-    with_state(|state| state.unlocks += 1);
+    with_state(|state| {
+        state.unlocks += 1;
+        if let Some(trace) = state
+            .owner_lock_trace
+            .as_mut()
+            .filter(|trace| trace.owner == owner as usize)
+        {
+            trace.depth -= 1;
+            trace.events.push(("unlock", trace.depth));
+        }
+    });
     0
 }
 

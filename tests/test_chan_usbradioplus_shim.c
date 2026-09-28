@@ -86,7 +86,7 @@ const void *rptadv_rnnoise_adapter_descriptor(void)
 	return &rnnoise_provider;
 }
 
-const void *rpcr2_descriptor(void)
+const void *rpcr3_descriptor(void)
 {
 	return &ring_provider;
 }

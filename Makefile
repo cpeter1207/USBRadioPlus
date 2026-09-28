@@ -49,21 +49,21 @@ RPCR_SOURCE ?=
 ifneq ($(strip $(RPCR_SOURCE)),)
 RPCR_STAGE ?= $(CURDIR)/build/rpcr-stage
 RPCR_PREFIX := $(RPCR_STAGE)/usr
-RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring2.so
+RPCR_LIBRARY := $(RPCR_PREFIX)/lib/librate_adjusting_pcm_ring3.so
 RPCR_SOURCE_FILES := $(RPCR_SOURCE)/Makefile \
 	$(RPCR_SOURCE)/Cargo.toml $(RPCR_SOURCE)/Cargo.lock \
-	$(RPCR_SOURCE)/rate_adjusting_pcm_ring2.pc.in \
+	$(RPCR_SOURCE)/rate_adjusting_pcm_ring3.pc.in \
 	$(wildcard $(RPCR_SOURCE)/include/*.h $(RPCR_SOURCE)/src/*.rs)
 RPCR_CFLAGS := -I$(RPCR_PREFIX)/include
-RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring2
+RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring3
 RPCR_BUILD_DEP := $(RPCR_LIBRARY)
 else
-ifeq ($(shell $(PKG_CONFIG) --exists rate_adjusting_pcm_ring2 && echo yes),)
-$(error USBRadioPlus requires the librate-adjusting-pcm-ring2 development package)
+ifeq ($(shell $(PKG_CONFIG) --exists rate_adjusting_pcm_ring3 && echo yes),)
+$(error USBRadioPlus requires the librate-adjusting-pcm-ring3 development package)
 endif
-RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring2)
+RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring3)
 # Link the exact selected shared object: an earlier -L path must not override it.
-RPCR_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring2)/librate_adjusting_pcm_ring2.so.2
+RPCR_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rate_adjusting_pcm_ring3)/librate_adjusting_pcm_ring3.so.3
 RPCR_BUILD_DEP :=
 endif
 # USBRadioPlus consumes the portable Rust radio core through its released
@@ -279,7 +279,7 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 		$(RPCR_LIBS) $(RPTADV_RADIO_LIBS) $(RPTADV_SAMPLERATE_LIBS) \
 		$(RPTADV_FFMPEG_LIBS) $(RADIO_LIBS) -lm
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
-	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring2.so.2]'
+	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring3.so.3]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_ffmpeg_adapter.so.1]'
@@ -550,7 +550,7 @@ DISTCHECK_TEST_TARGET ?= check
 # pkg-config dependencies on their normal host paths.
 ifneq ($(strip $(RPCR_SOURCE)),)
 DIST_RPCR_ARGS := 'RPCR_CFLAGS=-I$(RPCR_PREFIX)/include' \
-	'RPCR_LIBS=-L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring2'
+	'RPCR_LIBS=-L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring3'
 DIST_RPCR_ENV = export LD_LIBRARY_PATH="$(RPCR_PREFIX)/lib$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}"; \
 	unset RPCR_SOURCE RPCR_STAGE;
 else

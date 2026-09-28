@@ -11,23 +11,42 @@ use std::mem::{offset_of, size_of};
 use std::ptr::NonNull;
 use std::sync::Arc;
 
-const ABI_VERSION: u32 = 2;
+const ABI_VERSION: u32 = 3;
 const CAPABILITY: &CStr = c"rptadv.rate-adjusting-pcm-ring.f32";
 const MINIMUM_CAPACITY_SAMPLES: u64 = 512;
 const RESULT_OK: c_int = 0;
 const RESULT_INVALID_ARGUMENT: c_int = -1;
 const RESULT_NO_MEMORY: c_int = -2;
 
-/// Converter-quality policy implemented by the external ring.
+/// Missing-audio policy implemented by the external ring.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ConversionQuality {
-    /// Highest available sample-rate-conversion quality.
-    Best = 0,
-    /// Balanced conversion quality and CPU use.
-    Medium = 1,
-    /// Lowest-latency conversion offered by the selected adapter.
-    Fastest = 2,
+pub enum PlcMode {
+    /// Supply silence on shortfall, without concealment history or delay.
+    Disabled = 0,
+    /// G.711 Appendix I concealment, including its 3.75 ms output delay.
+    G711AppendixI = 1,
+}
+
+/// Immutable rate, buffering and operation bounds for one prepared ring.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RingSettings {
+    /// FIFO capacity in input-rate samples.
+    pub capacity_samples: u64,
+    /// Producer sample rate in Hz.
+    pub input_rate_hz: u32,
+    /// Consumer sample rate in Hz.
+    pub output_rate_hz: u32,
+    /// Protected startup reserve in input-rate samples.
+    pub reserve_samples: u64,
+    /// Clock-recovery occupancy target in input-rate samples.
+    pub target_samples: u64,
+    /// Largest allowed producer call in input-rate samples.
+    pub max_producer_samples: u64,
+    /// Largest allowed consumer call in output-rate samples.
+    pub max_output_samples: u64,
+    /// Explicit missing-audio policy; independent of linear conversion.
+    pub plc_mode: PlcMode,
 }
 
 #[repr(C)]
@@ -37,8 +56,14 @@ struct Config {
     capacity_samples: u64,
     input_rate_hz: u32,
     output_rate_hz: u32,
-    quality: u32,
+    reserve_samples: u64,
+    target_samples: u64,
+    max_producer_samples: u64,
+    max_output_samples: u64,
+    plc_mode: u32,
 }
+
+const _: [(); size_of::<Config>()] = [(); 64];
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -66,8 +91,8 @@ type CreateFn = unsafe extern "C" fn(*const Config, *mut *mut c_void) -> c_int;
 type DestroyFn = unsafe extern "C" fn(*mut c_void);
 type PushSampleFn = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type PushFn = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
-type RenderSampleFn = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
-type RenderFn = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type RenderSampleFn = unsafe extern "C" fn(*mut c_void, *mut f32, *mut bool) -> c_int;
+type RenderFn = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut u64) -> c_int;
 type ResetFn = unsafe extern "C" fn(*mut c_void) -> c_int;
 type ObserveFn = unsafe extern "C" fn(*const c_void, *mut RawObservation) -> c_int;
 
@@ -123,11 +148,11 @@ pub struct RingObservation {
     pub capacity_samples: u64,
     /// Producer samples available to the consumer.
     pub available_samples: u64,
-    /// Latest caller-selected protected reserve.
+    /// Immutable caller-selected protected reserve.
     pub reserve_samples: u64,
     /// Filtered producer-sample occupancy used by clock recovery.
     pub filtered_occupancy_samples: u64,
-    /// Latest caller-selected target occupancy.
+    /// Immutable caller-selected target occupancy.
     pub target_samples: u64,
     /// Applied correction relative to nominal conversion, in ppm.
     pub ratio_correction_ppm: i32,
@@ -220,34 +245,36 @@ impl RingProvider {
         })
     }
 
-    /// Allocate one stopped ring and its persistent converter.
+    /// Allocate one stopped ring with immutable timing and operation bounds.
+    /// The released provider validates PLC reserve and producer headroom; this
+    /// wrapper never silently enlarges caller-selected buffering.
     ///
     /// # Errors
     ///
     /// Returns [`RingError::InvalidArgument`] for unsupported configuration,
     /// or the adapter error reported while creating the ring.
-    pub fn prepare(
-        self,
-        capacity_samples: u64,
-        input_rate_hz: u32,
-        output_rate_hz: u32,
-        quality: ConversionQuality,
-    ) -> Result<PreparedRing, RingError> {
-        if capacity_samples < MINIMUM_CAPACITY_SAMPLES || input_rate_hz == 0 || output_rate_hz == 0
+    pub fn prepare(self, settings: RingSettings) -> Result<PreparedRing, RingError> {
+        if settings.capacity_samples < MINIMUM_CAPACITY_SAMPLES
+            || settings.input_rate_hz == 0
+            || settings.output_rate_hz == 0
         {
             return Err(RingError::InvalidArgument);
         }
-        let ratio = f64::from(output_rate_hz) / f64::from(input_rate_hz);
+        let ratio = f64::from(settings.output_rate_hz) / f64::from(settings.input_rate_hz);
         if !(1.0 / 256.0..=256.0).contains(&ratio) {
             return Err(RingError::InvalidArgument);
         }
         let config = Config {
             struct_size: u32::try_from(size_of::<Config>()).unwrap_or(u32::MAX),
             abi_version: ABI_VERSION,
-            capacity_samples,
-            input_rate_hz,
-            output_rate_hz,
-            quality: quality as u32,
+            capacity_samples: settings.capacity_samples,
+            input_rate_hz: settings.input_rate_hz,
+            output_rate_hz: settings.output_rate_hz,
+            reserve_samples: settings.reserve_samples,
+            target_samples: settings.target_samples,
+            max_producer_samples: settings.max_producer_samples,
+            max_output_samples: settings.max_output_samples,
+            plc_mode: settings.plc_mode as u32,
         };
         let mut handle = std::ptr::null_mut();
         // SAFETY: The validated function receives one live synchronous config
@@ -265,6 +292,7 @@ impl RingProvider {
             inner: Arc::new(RingInner {
                 provider: self,
                 handle,
+                settings,
             }),
         })
     }
@@ -273,6 +301,7 @@ impl RingProvider {
 struct RingInner {
     provider: RingProvider,
     handle: NonNull<c_void>,
+    settings: RingSettings,
 }
 
 impl RingInner {
@@ -350,10 +379,14 @@ impl RingProducer {
     ///
     /// # Errors
     ///
-    /// Returns the adapter's operation error, or [`RingError::AdapterFailure`]
+    /// Returns [`RingError::InvalidArgument`] before mutation for a block beyond
+    /// its declared maximum, the adapter's error, or [`RingError::AdapterFailure`]
     /// if it reports accepting more samples than supplied.
     pub fn push(&mut self, input: &[f32]) -> Result<usize, RingError> {
         let samples = input.len() as u64;
+        if samples > self.inner.settings.max_producer_samples {
+            return Err(RingError::InvalidArgument);
+        }
         let mut accepted = 0;
         // SAFETY: The immutable input remains live for this synchronous call;
         // exclusive endpoint access preserves the single-producer contract.
@@ -379,19 +412,18 @@ pub struct RingConsumer {
 }
 
 impl RingConsumer {
-    /// Render an arbitrary output block with persistent clock recovery.
+    /// Render within the declared output bound using immutable clock-recovery timing.
     ///
     /// # Errors
     ///
-    /// Returns the adapter's operation error, or [`RingError::AdapterFailure`]
+    /// Returns [`RingError::InvalidArgument`] before mutation for a block beyond
+    /// its declared maximum, the adapter's error, or [`RingError::AdapterFailure`]
     /// if it reports more real samples than requested.
-    pub fn render(
-        &mut self,
-        output: &mut [f32],
-        reserve_samples: u64,
-        target_samples: u64,
-    ) -> Result<usize, RingError> {
+    pub fn render(&mut self, output: &mut [f32]) -> Result<usize, RingError> {
         let samples = output.len() as u64;
+        if samples > self.inner.settings.max_output_samples {
+            return Err(RingError::InvalidArgument);
+        }
         let mut real_samples = 0;
         // SAFETY: The writable output remains live for this synchronous call;
         // exclusive endpoint access preserves the single-consumer contract.
@@ -400,8 +432,6 @@ impl RingConsumer {
                 self.inner.handle.as_ptr(),
                 output.as_mut_ptr(),
                 samples,
-                reserve_samples,
-                target_samples,
                 &mut real_samples,
             )
         })?;

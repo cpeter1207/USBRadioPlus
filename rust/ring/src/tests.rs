@@ -26,8 +26,8 @@ unsafe extern "C" fn create(config: *const Config, output: *mut *mut c_void) -> 
             values: VecDeque::with_capacity(capacity),
             capacity,
             fail: false,
-            last_reserve: 0,
-            last_target: 0,
+            last_reserve: config.reserve_samples,
+            last_target: config.target_samples,
             track_destroy: config.input_rate_hz == 8_000,
             partial_destroy: false,
         }))
@@ -105,7 +105,6 @@ unsafe extern "C" fn push(
 unsafe extern "C" fn render_sample(
     handle: *mut c_void,
     sample: *mut f32,
-    target: u64,
     real: *mut bool,
 ) -> c_int {
     // SAFETY: Wrapper supplies a live fake handle and writable results.
@@ -114,7 +113,6 @@ unsafe extern "C" fn render_sample(
         return RESULT_ADAPTER_ERROR;
     }
     let value = ring.values.pop_front();
-    ring.last_target = target;
     // SAFETY: Wrapper supplies writable result storage.
     unsafe {
         *sample = value.unwrap_or(-0.25);
@@ -127,8 +125,6 @@ unsafe extern "C" fn render(
     handle: *mut c_void,
     output: *mut f32,
     samples: u64,
-    reserve: u64,
-    target: u64,
     real_samples: *mut u64,
 ) -> c_int {
     // SAFETY: Wrapper supplies a live fake handle and writable output span.
@@ -148,8 +144,6 @@ unsafe extern "C" fn render(
             *sample = -0.25;
         }
     }
-    ring.last_reserve = reserve;
-    ring.last_target = target;
     // SAFETY: Wrapper supplies writable result storage.
     unsafe { *real_samples = real };
     RESULT_OK
@@ -210,8 +204,6 @@ unsafe extern "C" fn excessive_render(
     _handle: *mut c_void,
     _output: *mut f32,
     samples: u64,
-    _reserve: u64,
-    _target: u64,
     real_samples: *mut u64,
 ) -> c_int {
     // SAFETY: The wrapper supplies writable result storage.
@@ -238,6 +230,19 @@ fn valid_descriptor() -> Descriptor {
 fn provider(descriptor: &'static Descriptor) -> Result<RingProvider, RingError> {
     // SAFETY: Static test descriptors satisfy the documented lifetime.
     unsafe { RingProvider::from_raw_descriptor(std::ptr::from_ref(descriptor).cast()) }
+}
+
+fn settings(capacity_samples: u64, input_rate_hz: u32, output_rate_hz: u32) -> RingSettings {
+    RingSettings {
+        capacity_samples,
+        input_rate_hz,
+        output_rate_hz,
+        reserve_samples: 20,
+        target_samples: 60,
+        max_producer_samples: 4,
+        max_output_samples: 5,
+        plc_mode: PlcMode::Disabled,
+    }
 }
 
 #[test]
@@ -305,36 +310,38 @@ fn descriptor_validation_rejects_incompatible_prefixes() {
 }
 
 #[test]
+fn abi_two_provider_is_rejected_before_its_callbacks_are_used() {
+    let descriptor = Box::leak(Box::new(Descriptor {
+        abi_version: 2,
+        ..valid_descriptor()
+    }));
+    assert_eq!(
+        provider(descriptor).err(),
+        Some(RingError::IncompatibleAdapter)
+    );
+}
+
+#[test]
 fn setup_validates_capacity_rate_ratio_and_adapter_failure() {
     let valid_provider = provider(Box::leak(Box::new(valid_descriptor()))).unwrap();
     assert_eq!(
-        valid_provider
-            .prepare(511, 48_000, 48_000, ConversionQuality::Best)
-            .err(),
+        valid_provider.prepare(settings(511, 48_000, 48_000)).err(),
         Some(RingError::InvalidArgument)
     );
     assert_eq!(
-        valid_provider
-            .prepare(512, 0, 48_000, ConversionQuality::Best)
-            .err(),
+        valid_provider.prepare(settings(512, 0, 48_000)).err(),
         Some(RingError::InvalidArgument)
     );
     assert_eq!(
-        valid_provider
-            .prepare(512, 48_000, 0, ConversionQuality::Best)
-            .err(),
+        valid_provider.prepare(settings(512, 48_000, 0)).err(),
         Some(RingError::InvalidArgument)
     );
     assert_eq!(
-        valid_provider
-            .prepare(512, 1, 48_000, ConversionQuality::Best)
-            .err(),
+        valid_provider.prepare(settings(512, 1, 48_000)).err(),
         Some(RingError::InvalidArgument)
     );
     assert_eq!(
-        valid_provider
-            .prepare(512, 48_000, 1, ConversionQuality::Fastest)
-            .err(),
+        valid_provider.prepare(settings(512, 48_000, 1)).err(),
         Some(RingError::InvalidArgument)
     );
     let descriptor = Box::leak(Box::new(Descriptor {
@@ -344,7 +351,7 @@ fn setup_validates_capacity_rate_ratio_and_adapter_failure() {
     assert_eq!(
         provider(descriptor)
             .unwrap()
-            .prepare(512, 48_000, 48_000, ConversionQuality::Best)
+            .prepare(settings(512, 48_000, 48_000))
             .err(),
         Some(RingError::AdapterFailure)
     );
@@ -356,7 +363,7 @@ fn setup_validates_capacity_rate_ratio_and_adapter_failure() {
     assert_eq!(
         provider(descriptor)
             .unwrap()
-            .prepare(512, 48_000, 48_000, ConversionQuality::Best)
+            .prepare(settings(512, 48_000, 48_000))
             .err(),
         Some(RingError::AdapterFailure)
     );
@@ -368,12 +375,12 @@ fn split_endpoints_forward_blocks_and_observation() {
     TRACKED_DESTROYS.store(0, Ordering::Relaxed);
     let ring = provider(Box::leak(Box::new(valid_descriptor())))
         .unwrap()
-        .prepare(512, 8_000, 48_000, ConversionQuality::Best)
+        .prepare(settings(512, 8_000, 48_000))
         .unwrap();
     let (mut producer, mut consumer) = ring.split();
     assert_eq!(producer.push(&[0.1, 0.2, 0.3, 0.4]).unwrap(), 4);
     let mut output = [0.0; 5];
-    assert_eq!(consumer.render(&mut output, 20, 60).unwrap(), 4);
+    assert_eq!(consumer.render(&mut output).unwrap(), 4);
     assert_eq!(
         output.map(f32::to_bits),
         [0.1, 0.2, 0.3, 0.4, -0.25].map(f32::to_bits)
@@ -400,16 +407,13 @@ fn split_endpoints_forward_blocks_and_observation() {
 fn endpoint_failures_map_without_panicking() {
     let ring = provider(Box::leak(Box::new(valid_descriptor())))
         .unwrap()
-        .prepare(512, 48_000, 48_000, ConversionQuality::Medium)
+        .prepare(settings(512, 48_000, 48_000))
         .unwrap();
     let (mut producer, mut consumer) = ring.split();
     // SAFETY: The test owns both endpoints and no operation is concurrent.
     unsafe { (*producer.inner.handle.as_ptr().cast::<FakeRing>()).fail = true };
     assert_eq!(producer.push(&[0.0]), Err(RingError::AdapterFailure));
-    assert_eq!(
-        consumer.render(&mut [0.0], 0, 0),
-        Err(RingError::AdapterFailure)
-    );
+    assert_eq!(consumer.render(&mut [0.0]), Err(RingError::AdapterFailure));
     assert_eq!(
         RingError::IncompatibleAdapter.to_string(),
         "incompatible PCM-ring adapter"
@@ -442,7 +446,7 @@ fn invalid_adapter_results_are_rejected() {
     }));
     let (_producer, consumer) = provider(descriptor)
         .unwrap()
-        .prepare(512, 48_000, 48_000, ConversionQuality::Best)
+        .prepare(settings(512, 48_000, 48_000))
         .unwrap()
         .split();
     assert_eq!(consumer.observe(), Err(RingError::IncompatibleAdapter));
@@ -453,7 +457,7 @@ fn invalid_adapter_results_are_rejected() {
     }));
     let (mut producer, _consumer) = provider(descriptor)
         .unwrap()
-        .prepare(512, 48_000, 48_000, ConversionQuality::Best)
+        .prepare(settings(512, 48_000, 48_000))
         .unwrap()
         .split();
     assert_eq!(producer.push(&[0.0]), Err(RingError::AdapterFailure));
@@ -464,11 +468,30 @@ fn invalid_adapter_results_are_rejected() {
     }));
     let (_producer, mut consumer) = provider(descriptor)
         .unwrap()
-        .prepare(512, 48_000, 48_000, ConversionQuality::Best)
+        .prepare(settings(512, 48_000, 48_000))
         .unwrap()
         .split();
+    assert_eq!(consumer.render(&mut [0.0]), Err(RingError::AdapterFailure));
+}
+
+#[test]
+fn oversized_blocks_are_rejected_without_touching_pcm_or_ring_state() {
+    let (mut producer, mut consumer) = provider(Box::leak(Box::new(valid_descriptor())))
+        .unwrap()
+        .prepare(settings(512, 48_000, 48_000))
+        .unwrap()
+        .split();
+    let before = consumer.observe().unwrap();
+    assert_eq!(producer.push(&[0.1; 5]), Err(RingError::InvalidArgument));
+    assert_eq!(consumer.observe().unwrap(), before);
+    assert_eq!(producer.push(&[0.1; 4]), Ok(4));
+    let before = consumer.observe().unwrap();
+    let mut output = [0.75; 6];
     assert_eq!(
-        consumer.render(&mut [0.0], 0, 0),
-        Err(RingError::AdapterFailure)
+        consumer.render(&mut output),
+        Err(RingError::InvalidArgument)
     );
+    assert_eq!(output, [0.75; 6]);
+    assert_eq!(consumer.observe().unwrap(), before);
+    assert_eq!(consumer.render(&mut output[..5]), Ok(4));
 }
