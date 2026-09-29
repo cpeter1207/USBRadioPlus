@@ -58,8 +58,11 @@ RPCR_CFLAGS := -I$(RPCR_PREFIX)/include
 RPCR_LIBS := -L$(RPCR_PREFIX)/lib -lrate_adjusting_pcm_ring3
 RPCR_BUILD_DEP := $(RPCR_LIBRARY)
 else
-ifeq ($(shell $(PKG_CONFIG) --atleast-version=3.0.0-alpha.2 rate_adjusting_pcm_ring3 && echo yes),)
-$(error USBRadioPlus requires the librate-adjusting-pcm-ring3 development package 3.0.0-alpha.2 or newer)
+# pkg-config orders source alpha.2 and Debian ~alpha2 differently. Compare each
+# prerelease spelling against its own minimum so neither alpha1 is admitted.
+RPCR_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rate_adjusting_pcm_ring3)),3.0.0-alpha.2,3.0.0~alpha2)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(RPCR_MIN_VERSION) rate_adjusting_pcm_ring3 && echo yes),)
+$(error USBRadioPlus requires the librate-adjusting-pcm-ring3 development package alpha2 or newer)
 endif
 RPCR_CFLAGS := $(shell $(PKG_CONFIG) --cflags rate_adjusting_pcm_ring3)
 # Link the exact selected shared object: an earlier -L path must not override it.

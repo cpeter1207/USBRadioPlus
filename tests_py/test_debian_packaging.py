@@ -1,5 +1,6 @@
 ## @file
 ## @brief Debian packaging regression checks.
+import os
 import subprocess
 from pathlib import Path
 
@@ -186,6 +187,43 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
         )
         assert result.returncode != 0
         assert "requires librptadvradio descriptor ABI 4" in result.stderr
+
+
+def test_ring_minimum_accepts_source_and_debian_alpha2_but_not_alpha1(tmp_path):
+    """Exercise the real pkg-config ordering for both supported version spellings."""
+    pkg_config = tmp_path / "pkg-config"
+    pkg_config.write_text(
+        "#!/bin/sh\n"
+        'case "$*" in\n'
+        '  *" rate_adjusting_pcm_ring3") exec /usr/bin/pkg-config "$@";;\n'
+        '  "--variable=abi_version rptadvradio") echo 4;;\n'
+        '  "--variable=abi_version rptadv_samplerate_adapter") echo 2;;\n'
+        "esac\n",
+        encoding="utf-8",
+    )
+    pkg_config.chmod(0o755)
+    for version, accepted in (
+        ("3.0.0~alpha1", False),
+        ("3.0.0-alpha.1", False),
+        ("3.0.0~alpha2", True),
+        ("3.0.0-alpha.2", True),
+        ("3.0.0~alpha3", True),
+        ("3.0.0-alpha.3", True),
+        ("3.0.0", True),
+    ):
+        (tmp_path / "rate_adjusting_pcm_ring3.pc").write_text(
+            f"Name: ring\nDescription: Version boundary fixture\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            ["make", "-n", "lint", f"PKG_CONFIG={pkg_config}"],
+            cwd=ROOT,
+            env={**os.environ, "PKG_CONFIG_PATH": str(tmp_path)},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert (result.returncode == 0) == accepted, (version, result.stderr)
 
 
 def test_module_link_uses_selected_provider_paths(tmp_path):
