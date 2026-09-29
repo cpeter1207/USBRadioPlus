@@ -102,6 +102,24 @@ impl GraphDescriptionFactory {
         Ok(graph)
     }
 
+    /// Live samples needed to fill the receiver low-pass FIR and partition guard.
+    pub fn receive_filter_history_frames(chain: &ProcessingChain) -> usize {
+        if chain.receive.bandpass_enabled {
+            lowpass_history_frames(chain.receive.bandpass_lowpass_hz)
+        } else {
+            0
+        }
+    }
+
+    /// Live samples needed to fill the transmitter low-pass FIR/guard, excluding limiting.
+    pub fn transmit_filter_history_frames(chain: &ProcessingChain) -> usize {
+        if chain.transmit_tail.bandpass_enabled {
+            lowpass_history_frames(chain.transmit_tail.bandpass_lowpass_hz)
+        } else {
+            0
+        }
+    }
+
     /// Build one fixed decoded-CTCSS notch graph.
     pub fn decoded_tone_notch(
         &self,
@@ -545,6 +563,25 @@ fn append_three_band(
     Ok(())
 }
 
+/// Match the resampler's Kaiser size at the normalized low-pass edge, bounded
+/// to 32,767 coefficients for unusually low receive cutoffs. Odd lengths give
+/// an integral sample delay: 614 samples at 5 kHz, before the partition guard.
+fn kaiser_fir_taps(cutoff_hz: f64) -> usize {
+    if cutoff_hz == 0.0 {
+        0
+    } else {
+        ((256.0 * 24_000.0 / cutoff_hz).ceil().min(32_767.0) as usize) | 1
+    }
+}
+
+fn lowpass_history_frames(lowpass_hz: f64) -> usize {
+    let taps = kaiser_fir_taps(lowpass_hz);
+    if taps == 0 { 0 } else { taps - 1 + 7 }
+}
+
+/// Retain the existing IIR high-pass; a low-frequency FIR would delay speech.
+/// Use FFmpeg's Kaiser-windowed sinc only for the sharp low-pass edge.
+/// Keep the FIR in the existing graph so setup/warm-up stays off the callback.
 fn append_brickwall_bandpass(
     graph: &mut String,
     input: &str,
@@ -553,22 +590,28 @@ fn append_brickwall_bandpass(
     highpass_hz: f64,
     lowpass_hz: f64,
 ) -> Result<(), GraphDescriptionError> {
-    if highpass_hz == 0.0 && lowpass_hz == 0.0 {
-        write!(graph, "[{input}]anull[{output}];")?;
-    } else if highpass_hz == 0.0 {
-        write!(
-            graph,
-            "[{input}]acrossover=split={lowpass_hz:.9}:order=20th[{output}][{prefix}hi];[{prefix}hi]anullsink;"
-        )?;
-    } else if lowpass_hz == 0.0 {
-        write!(
-            graph,
-            "[{input}]acrossover=split={highpass_hz:.9}:order=20th[{prefix}lo][{output}];[{prefix}lo]anullsink;"
-        )?;
+    let highpass_output = format!("{prefix}pass");
+    let input = if highpass_hz == 0.0 {
+        input
     } else {
         write!(
             graph,
-            "[{input}]acrossover=split={highpass_hz:.9}:order=20th[{prefix}lo][{prefix}pass];[{prefix}lo]anullsink;[{prefix}pass]acrossover=split={lowpass_hz:.9}:order=20th[{output}][{prefix}hi];[{prefix}hi]anullsink;"
+            "[{input}]acrossover=split={highpass_hz:.9}:order=20th[{prefix}lo][{highpass_output}];[{prefix}lo]anullsink;"
+        )?;
+        &highpass_output
+    };
+    if lowpass_hz == 0.0 {
+        write!(graph, "[{input}]anull[{output}];")?;
+    } else {
+        let lowpass_taps = kaiser_fir_taps(lowpass_hz);
+        // FFmpeg's smallest usable FFT partition is eight samples. The mono
+        // adelay emits seven leading samples before forwarding its input, so
+        // convolution can satisfy even one-sample callbacks without gaps.
+        write!(
+            graph,
+            "sinc=r=48000:hp=0.000000000:lp={lowpass_hz:.9}:beta=9:phase=50:hptaps=0:lptaps={lowpass_taps}[{prefix}ir];\
+             [{input}]adelay=7S[{prefix}pad];\
+             [{prefix}pad][{prefix}ir]afir=irnorm=-1:irgain=1:dry=1:wet=1:minp=8:maxp=8192:precision=float[{output}];"
         )?;
     }
     Ok(())

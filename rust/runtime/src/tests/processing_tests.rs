@@ -14,6 +14,7 @@ thread_local! {
     static GRAPH_DESCRIPTIONS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     static GRAPH_REPORT_HISTORY: Cell<bool> = const { Cell::new(false) };
     static GRAPH_SIMULATE_LOOKAHEAD: Cell<bool> = const { Cell::new(false) };
+    static GRAPH_SIMULATE_FIR: Cell<bool> = const { Cell::new(false) };
     static DENOISE_CREATES: Cell<usize> = const { Cell::new(0) };
     static DENOISE_PROCESSES: Cell<usize> = const { Cell::new(0) };
     static DENOISE_DESTROYS: Cell<usize> = const { Cell::new(0) };
@@ -76,7 +77,7 @@ unsafe extern "C" fn graph_create(
     let ordinal = GRAPH_CREATES.get() + 1;
     GRAPH_CREATES.set(ordinal);
     let description = description.to_string_lossy();
-    let lookahead = GRAPH_SIMULATE_LOOKAHEAD
+    let mut lookahead = GRAPH_SIMULATE_LOOKAHEAD
         .get()
         .then(|| {
             description.split("alimiter=").nth(1).map(|limiter| {
@@ -88,7 +89,18 @@ unsafe extern "C" fn graph_create(
         })
         .flatten()
         .unwrap_or(0);
-    let gain = if GRAPH_SIMULATE_LOOKAHEAD.get() {
+    if GRAPH_SIMULATE_FIR.get() && description.contains("afir=") {
+        // Independently calculated LP lengths: 2500 Hz => 2459 taps,
+        // 4000 Hz => 1537 taps. Include the seven-sample partition guard.
+        // The unchanged IIR high-pass does not add a long FIR history.
+        lookahead += if description.contains("lp=2500.000000000") {
+            2465
+        } else {
+            assert!(description.contains("lp=4000.000000000"));
+            1543
+        };
+    }
+    let gain = if GRAPH_SIMULATE_LOOKAHEAD.get() && !GRAPH_SIMULATE_FIR.get() {
         description.split("volume=").nth(1).map_or(1.0, |volume| {
             volume
                 .split([':', '[', ','])
@@ -625,6 +637,105 @@ fn changed_transmit_graph_covers_real_lookahead_without_silent_samples() {
             assert_eq!(GRAPH_DESTROYS.get(), 7);
         }
     }
+    GRAPH_SIMULATE_LOOKAHEAD.set(false);
+}
+
+#[test]
+fn receive_fir_replacement_and_restore_prime_all_retained_history() {
+    fir_handoffs_preserve_live_audio(false);
+}
+
+#[test]
+fn transmit_fir_replacement_and_restore_prime_history_plus_limiter() {
+    fir_handoffs_preserve_live_audio(true);
+}
+
+fn fir_handoffs_preserve_live_audio(transmit: bool) {
+    GRAPH_SIMULATE_FIR.set(true);
+    GRAPH_SIMULATE_LOOKAHEAD.set(true);
+    let factory = factory();
+    let mut original_plan = plan();
+    original_plan.voice_telemetry.enabled = false;
+    original_plan.voice_telemetry.input_gain_db = 0.0;
+    original_plan.local.receive.bandpass_enabled = true;
+    original_plan.local.receive.bandpass_highpass_hz = 300.0;
+    original_plan.local.receive.bandpass_lowpass_hz = 2500.0;
+    original_plan.voice_telemetry.transmit_tail.bandpass_enabled = true;
+    original_plan
+        .voice_telemetry
+        .transmit_tail
+        .bandpass_highpass_hz = 300.0;
+    original_plan
+        .voice_telemetry
+        .transmit_tail
+        .bandpass_lowpass_hz = 2500.0;
+    original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+    original_plan.voice_telemetry.transmit_tail.lookahead_ms = 20.0;
+    let mut original = factory.prepare(&original_plan).unwrap();
+    let process = |generation: &mut ProcessingGeneration, value, count| {
+        let graph = if transmit {
+            &generation.transmit_program
+        } else {
+            &generation.receive_filter
+        };
+        let input = vec![value; count];
+        let mut output = vec![0.0; count];
+        assert_eq!(
+            // SAFETY: one serial owner processes each graph with exact spans.
+            unsafe {
+                graph_process(
+                    graph.pointer().cast().as_ptr(),
+                    input.as_ptr(),
+                    output.as_mut_ptr(),
+                    count as u32,
+                )
+            },
+            PORT_OK
+        );
+        output
+    };
+    for _ in 0..8 {
+        process(&mut original, 0.5, 960);
+    }
+    let mut changed = original_plan.clone();
+    changed.local.receive.bandpass_lowpass_hz = 4000.0;
+    changed.voice_telemetry.transmit_tail.bandpass_lowpass_hz = 4000.0;
+    let mut forward =
+        // SAFETY: all generations retain the same serial RX/TX owners.
+        unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    let mut reverse =
+        // SAFETY: the inverse follows this forward update without an intervening generation.
+        unsafe { factory.prepare_restore(&original_plan, &original, &forward) }.unwrap();
+    for count in [1, 17, 960].into_iter().cycle().take(24) {
+        let calls = GRAPH_PROCESSES.get();
+        assert!(
+            process(&mut forward, 0.5, count)
+                .iter()
+                .all(|sample| *sample >= 0.499)
+        );
+        assert!(GRAPH_PROCESSES.get() - calls <= 2);
+    }
+    // The original stopped on 0.5. Make the forward graph audible on new live
+    // input; a premature inverse would replay the original's stopped history.
+    for _ in 0..8 {
+        process(&mut forward, 0.0, 960);
+    }
+    for _ in 0..8 {
+        process(&mut forward, 1.0, 960);
+    }
+    for count in [1, 17, 960].into_iter().cycle().take(24) {
+        let calls = GRAPH_PROCESSES.get();
+        assert!(
+            process(&mut reverse, 1.0, count)
+                .iter()
+                .all(|sample| *sample >= 0.999)
+        );
+        assert!(GRAPH_PROCESSES.get() - calls <= 2);
+    }
+    let calls = GRAPH_PROCESSES.get();
+    assert_eq!(process(&mut reverse, 1.0, 1), [1.0]);
+    assert_eq!(GRAPH_PROCESSES.get() - calls, 1);
+    GRAPH_SIMULATE_FIR.set(false);
     GRAPH_SIMULATE_LOOKAHEAD.set(false);
 }
 
