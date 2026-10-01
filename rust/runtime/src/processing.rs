@@ -17,8 +17,8 @@ use usbradioplus_radio::{CTCSS_TONE_COUNT, ProcessorPort, ProgramRingPort, Sessi
 use usbradioplus_rnnoise::{DenoiseError, DenoiseProvider, DenoiseStream};
 
 const GRAPH_WARMUP_BLOCKS: usize = 8;
-// One millisecond at the fixed native 48 kHz rate, added after the graph's
-// declared filter/limiter history and also used to smooth the final handoff.
+// One millisecond at the fixed native 48 kHz rate. The prime margin covers the
+// causal IIR tail after alimiter; the same short span smooths the final handoff.
 const GRAPH_TRANSITION_FRAMES: usize = 48;
 // DenoiseStream deliberately withholds its first two live 480-sample frames.
 const DENOISE_STARTUP_FRAMES: usize = 960;
@@ -281,7 +281,7 @@ impl NativeProcessingFactory {
                 self.descriptions.receive_filter(&plan.local)?,
                 self.descriptions.receive_filter(&previous_plan.local)?,
                 &previous.receive_filter,
-                GraphDescriptionFactory::receive_filter_history_frames(&plan.local),
+                0,
             )?,
             receive_ctcss_notch: notches,
             receive_ctcss_tail_notch: tail_notch,
@@ -359,11 +359,7 @@ impl NativeProcessingFactory {
                 &current.receive_deemphasis,
                 0,
             )?,
-            receive_filter: restore(
-                &target.receive_filter,
-                &current.receive_filter,
-                GraphDescriptionFactory::receive_filter_history_frames(&target_plan.local),
-            )?,
+            receive_filter: restore(&target.receive_filter, &current.receive_filter, 0)?,
             receive_ctcss_notch: notches,
             receive_ctcss_tail_notch: restore_optional(
                 &target.receive_ctcss_tail_notch,
@@ -665,14 +661,11 @@ fn validate_plan(plan: &NativeProcessingPlan) -> Result<(), ProcessingRuntimeErr
 }
 
 fn transmit_lookahead_frames(plan: &NativeProcessingPlan) -> usize {
-    let limiter = if plan.voice_telemetry.transmit_tail.limiter_enabled {
+    if plan.voice_telemetry.transmit_tail.limiter_enabled {
         (plan.voice_telemetry.transmit_tail.lookahead_ms * 48.0).ceil() as usize
     } else {
         0
-    };
-    // The post-limiter FIR must replace its complete stopped/silence history
-    // before either a new graph or a retained rollback graph becomes audible.
-    limiter + GraphDescriptionFactory::transmit_filter_history_frames(&plan.voice_telemetry)
+    }
 }
 
 fn graph_port(graph: &mut SharedGraph) -> ProcessorPort<'_> {

@@ -20,10 +20,7 @@ fn receive_graphs_cover_bypass_emphasis_bandpass_highpass_and_notch() {
 
     let local = ProcessingChain::shipped(ChainRole::LocalReceive);
     let filter = factory().receive_filter(&local).unwrap();
-    assert!(filter.contains("[in]acrossover=split=20.000000000:order=20th[rxbplo][rxbppass]"));
-    assert!(filter.contains("sinc=r=48000:hp=0.000000000:lp=5000.000000000"));
-    assert!(filter.contains("beta=9:phase=50:hptaps=0:lptaps=155[rxbpir]"));
-    assert!(filter.contains("[rxbppass]adelay=7S[rxbppad];[rxbppad][rxbpir]afir="));
+    assert!(filter.contains("split=20.000000000:order=20th"));
     assert!(filter.contains("split=300.000000000:order=20th"));
     let notch = factory().decoded_tone_notch(100.0, 5.0).unwrap();
     assert_eq!(notch.matches("bandreject=").count(), 4);
@@ -81,9 +78,7 @@ fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
     assert!(graph.contains("volume=1.995262314969"));
     assert!(graph.contains("biquad=b0="));
     assert!(graph.contains("alimiter=limit="));
-    assert!(graph.contains("sinc=r=48000:hp=0.000000000:lp=5000.000000000"));
-    assert!(graph.contains("hptaps=0:lptaps=155[clnir]"));
-    assert!(graph.find("alimiter=").unwrap() < graph.find("afir=").unwrap());
+    assert!(graph.contains("split=5000.000000000:order=20th[out]"));
 }
 
 #[test]
@@ -177,9 +172,12 @@ fn bypass_and_one_sided_brickwall_paths_are_explicit() {
     );
 
     local.receive.bandpass_highpass_hz = 150.0;
-    assert!(factory().receive_filter(&local).unwrap().contains(
-        "[in]acrossover=split=150.000000000:order=20th[rxbplo][rxbppass];[rxbplo]anullsink;[rxbppass]anull[rxbandpass];"
-    ));
+    assert!(
+        factory()
+            .receive_filter(&local)
+            .unwrap()
+            .contains("split=150.000000000:order=20th[rxbplo][rxbandpass]")
+    );
 }
 
 #[test]
