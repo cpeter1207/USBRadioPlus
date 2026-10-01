@@ -98,7 +98,7 @@ fn magnitude(response: &[f32], frequency: f64) -> f64 {
 #[test]
 fn native_lowpasses_have_positive_linear_phase_and_sharp_edges() {
     // Literal centers include the graph's seven-sample partition guard plus
-    // (length - 1) / 2 for the specified odd FIR lengths: 1229 and 309.
+    // (length - 1) / 2 for the specified odd FIR lengths: 309 and 77.
     // They are independent of the production graph-description implementation.
     let cases: [ResponseCase<'_>; 4] = [
         (0.0, 0.0, true, 0, &[10.0, 1_000.0, 6_000.0], &[]),
@@ -107,11 +107,11 @@ fn native_lowpasses_have_positive_linear_phase_and_sharp_edges() {
             0.0,
             5_000.0,
             true,
-            621,
+            161,
             &[40.0, 1_000.0, 4_800.0],
             &[5_200.0, 6_000.0],
         ),
-        (0.0, 20_000.0, true, 161, &[350.0, 19_000.0], &[21_000.0]),
+        (0.0, 20_000.0, true, 45, &[350.0, 19_000.0], &[21_000.0]),
     ];
     for role in [ChainRole::LocalReceive, ChainRole::VoiceTelemetry] {
         for (highpass, lowpass, enabled, center, passband, stopband) in cases {

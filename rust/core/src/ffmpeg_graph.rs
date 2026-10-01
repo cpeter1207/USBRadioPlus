@@ -563,14 +563,14 @@ fn append_three_band(
     Ok(())
 }
 
-/// Match the resampler's Kaiser size at the normalized low-pass edge, bounded
-/// to 32,767 coefficients for unusually low receive cutoffs. Odd lengths give
-/// an integral sample delay: 614 samples at 5 kHz, before the partition guard.
+/// Use a 64x Kaiser size at the normalized low-pass edge, bounded to 32,767
+/// coefficients for unusually low receive cutoffs. Odd lengths give an
+/// integral sample delay: 154 samples at 5 kHz, before the partition guard.
 fn kaiser_fir_taps(cutoff_hz: f64) -> usize {
     if cutoff_hz == 0.0 {
         0
     } else {
-        ((256.0 * 24_000.0 / cutoff_hz).ceil().min(32_767.0) as usize) | 1
+        ((64.0 * 24_000.0 / cutoff_hz).ceil().min(32_767.0) as usize) | 1
     }
 }
 

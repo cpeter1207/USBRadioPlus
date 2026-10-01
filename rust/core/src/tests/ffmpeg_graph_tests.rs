@@ -22,7 +22,7 @@ fn receive_graphs_cover_bypass_emphasis_bandpass_highpass_and_notch() {
     let filter = factory().receive_filter(&local).unwrap();
     assert!(filter.contains("[in]acrossover=split=20.000000000:order=20th[rxbplo][rxbppass]"));
     assert!(filter.contains("sinc=r=48000:hp=0.000000000:lp=5000.000000000"));
-    assert!(filter.contains("beta=9:phase=50:hptaps=0:lptaps=1229[rxbpir]"));
+    assert!(filter.contains("beta=9:phase=50:hptaps=0:lptaps=309[rxbpir]"));
     assert!(filter.contains("[rxbppass]adelay=7S[rxbppad];[rxbppad][rxbpir]afir="));
     assert!(filter.contains("split=300.000000000:order=20th"));
     let notch = factory().decoded_tone_notch(100.0, 5.0).unwrap();
@@ -82,7 +82,7 @@ fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
     assert!(graph.contains("biquad=b0="));
     assert!(graph.contains("alimiter=limit="));
     assert!(graph.contains("sinc=r=48000:hp=0.000000000:lp=5000.000000000"));
-    assert!(graph.contains("hptaps=0:lptaps=1229[clnir]"));
+    assert!(graph.contains("hptaps=0:lptaps=309[clnir]"));
     assert!(graph.find("alimiter=").unwrap() < graph.find("afir=").unwrap());
 }
 
