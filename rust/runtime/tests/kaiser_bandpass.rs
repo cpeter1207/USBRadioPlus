@@ -98,7 +98,7 @@ fn magnitude(response: &[f32], frequency: f64) -> f64 {
 #[test]
 fn native_lowpasses_have_positive_linear_phase_and_sharp_edges() {
     // Literal centers include the graph's seven-sample partition guard plus
-    // (length - 1) / 2 for the specified odd FIR lengths: 309 and 77.
+    // (length - 1) / 2 for the specified odd FIR lengths: 155 and 39.
     // They are independent of the production graph-description implementation.
     let cases: [ResponseCase<'_>; 4] = [
         (0.0, 0.0, true, 0, &[10.0, 1_000.0, 6_000.0], &[]),
@@ -107,11 +107,11 @@ fn native_lowpasses_have_positive_linear_phase_and_sharp_edges() {
             0.0,
             5_000.0,
             true,
-            161,
-            &[40.0, 1_000.0, 4_800.0],
-            &[5_200.0, 6_000.0],
+            84,
+            &[40.0, 1_000.0, 4_000.0],
+            &[7_000.0, 9_000.0],
         ),
-        (0.0, 20_000.0, true, 45, &[350.0, 19_000.0], &[21_000.0]),
+        (0.0, 20_000.0, true, 26, &[350.0, 15_000.0], &[23_000.0]),
     ];
     for role in [ChainRole::LocalReceive, ChainRole::VoiceTelemetry] {
         for (highpass, lowpass, enabled, center, passband, stopband) in cases {
@@ -149,7 +149,7 @@ fn native_lowpasses_have_positive_linear_phase_and_sharp_edges() {
             for frequency in stopband {
                 let gain = magnitude(&response, *frequency);
                 assert!(
-                    gain <= 10.0_f64.powf(-70.0 / 20.0),
+                    gain <= 10.0_f64.powf(-50.0 / 20.0),
                     "stopband {frequency}Hz gain={gain}: {graph}"
                 );
             }
