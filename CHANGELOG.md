@@ -16,7 +16,7 @@
 - Move radio, audio, hardware, configuration, and tuning behavior into Rust
   behind the minimal Asterisk C boundary. Use the released versioned provider
   shared objects without vendoring or static linking their implementations.
-- Remove driver-native software local repeat and native parrot. Silently ignore
+- Remove driver-native software local repeat. Silently ignore
   the retired `duplexmode` and `duplex_local_repeat_mode` selectors; keep
   hardware local repeat at its configured level. Preserve app_rpt audio and
   legacy echo, native DSP, signaling, and the separate RadioPlusAdvanced
@@ -108,14 +108,12 @@ Continuous audio I/O and improved transmit FIFO recovery; gated RMS AGC and conf
 ## 0.1.0~alpha9 - 2026-09-04
 
 - Replaces the remaining XPMR dependencies with native radio signaling, CTCSS, squelch, hardware control, and 48 kHz audio handling.
-- Expands the processing configuration and accessible tuning utility with unified hardware, duplex, Asterisk, diagnostics, parrot, calibration, equalizer, de-esser, and multiband-limiter controls.
-- Improves duplex-3 PTT behavior, native echo/parrot routing, DTMF muting, transmit FIFO recovery, filter behavior, fresh-install defaults, and CM119 calibration.
+- Expands the processing configuration and accessible tuning utility with unified hardware, duplex, Asterisk, diagnostics, calibration, equalizer, de-esser, and multiband-limiter controls.
+- Improves duplex-3 PTT behavior, native echo routing, DTMF muting, transmit FIFO recovery, filter behavior, fresh-install defaults, and CM119 calibration.
 - Builds shared sources as linked objects and accelerates the required Debian 12/13 amd64/arm64 quality, coverage, package, and container verification.
 - Publishes updated Debian packages, release archive, documentation, Doxygen output, and clean/install-test container images.
 
 ## 0.1.0~alpha8 - 2026-09-01
-
-Mute DTMF in the native parrot processed recording while preserving the unmuted app_rpt detector feed.
 
 ## 0.1.0~alpha7 - 2026-09-01
 
