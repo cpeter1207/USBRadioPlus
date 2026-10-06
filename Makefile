@@ -487,7 +487,6 @@ install: all
 	$(INSTALL_DATA) README.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) CHANGELOG.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
-	$(INSTALL_DATA) doc/native-mode-retirement.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/agc.md $(DESTDIR)$(docdir)/
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
