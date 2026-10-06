@@ -7,14 +7,17 @@ own USB access, signaling, and FFmpeg processing. Ordinary `RadioPlus` uses the
 
 The current rpt_advanced controller attaches direct callbacks through
 `ast_channel_setoption` before channel startup. The descriptor must match
-`URP_AST_DIRECT_CALLBACKS_ABI_VERSION` 2; the host acknowledges the retained
-attachment by setting `accepted_abi_version` to 2. Channel availability alone
+`URP_AST_DIRECT_CALLBACKS_ABI_VERSION` 3; the host acknowledges the retained
+attachment by setting `accepted_abi_version` to 3. Channel availability alone
 does not prove that a provider supports this contract.
 
 Direct callbacks exchange mutable normalized mono F32 at 48,000 samples per
 second. Hardware capture paces receive processing and delivers processed PCM
 with the receiver-keyed state. Hardware playback independently asks the
-controller to fill the current transmit block and return its PTT request.
+controller to fill the current transmit block and return separate PTT and
+CTCSS-enable decisions. Activity-scoped CTCSS policy is calculated by the
+controller; USBRadioPlus applies the result through its existing transmit
+CTCSS inhibit control.
 RX and TX may run concurrently; transmit does not wait for a receive voice
 frame. This path bypasses Asterisk voice-frame delivery and the driver's
 legacy program clock-recovery ring. Receiver and transmitter DSP remain in

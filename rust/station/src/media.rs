@@ -27,7 +27,7 @@ use crate::{
 pub struct DirectCallbacks {
     /// Exact byte size of this descriptor.
     pub struct_size: u32,
-    /// Exact direct-callback contract version, currently two.
+    /// Exact direct-callback contract version, currently three.
     pub abi_version: u32,
     /// Borrowed receive context, valid until synchronous stream shutdown.
     pub receive_context: *mut c_void,
@@ -35,8 +35,9 @@ pub struct DirectCallbacks {
     pub receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
     /// Borrowed transmit context, valid until synchronous stream shutdown.
     pub transmit_context: *mut c_void,
-    /// Fill program PCM and write zero/one to the transmitter key result.
-    pub transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32) -> c_int>,
+    /// Fill PCM and write zero/one transmitter-key and CTCSS-enable results.
+    pub transmit:
+        Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32, *mut u32) -> c_int>,
     /// Host writes the accepted version only after successful synchronous retention.
     pub accepted_abi_version: u32,
 }
@@ -49,8 +50,8 @@ unsafe impl Send for DirectCallbacks {}
 unsafe impl Sync for DirectCallbacks {}
 
 impl DirectCallbacks {
-    /// Exact initial-alpha admission contract including a writable acknowledgment.
-    pub const ABI_VERSION: u32 = 2;
+    /// Exact direct-callback contract including separate PTT and CTCSS outputs.
+    pub const ABI_VERSION: u32 = 3;
 
     /// Validate the exact initial-alpha boundary before copying callback pointers.
     #[must_use]

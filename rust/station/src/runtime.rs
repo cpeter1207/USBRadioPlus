@@ -727,6 +727,7 @@ unsafe extern "C" fn transmit_callback(
         let mono = &mut context.mono[..frames];
         mono.fill(0.0);
         let mut keyed = 0;
+        let mut ctcss_enabled = 0;
         // SAFETY: attachment keeps the endpoint live and uniquely TX-owned;
         // scratch and key are writable only for this synchronous invocation.
         let status = unsafe {
@@ -735,9 +736,10 @@ unsafe extern "C" fn transmit_callback(
                 mono.as_mut_ptr(),
                 frame_count,
                 &mut keyed,
+                &mut ctcss_enabled,
             )
         };
-        if status != CALLBACK_OK || keyed > 1 {
+        if status != CALLBACK_OK || keyed > 1 || ctcss_enabled > 1 {
             direct_failed = true;
             mono.fill(0.0);
             controls.external_ptt_request = false;
@@ -747,6 +749,7 @@ unsafe extern "C" fn transmit_callback(
             context.hardware.publish_transmit_fault();
         } else {
             controls.external_ptt_request |= keyed != 0;
+            controls.ctcss_inhibit = ctcss_enabled == 0;
         }
         station.stage_direct(mono);
         // The direct source is already staged for this hardware callback, so no

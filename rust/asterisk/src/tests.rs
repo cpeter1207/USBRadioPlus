@@ -16,6 +16,7 @@ unsafe extern "C" fn direct_transmit_noop(
     _: *mut f32,
     _: u32,
     _: *mut u32,
+    _: *mut u32,
 ) -> c_int {
     0
 }

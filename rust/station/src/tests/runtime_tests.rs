@@ -806,6 +806,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
 struct DirectCapture {
     samples: [f32; 4],
     keyed: u32,
+    ctcss_enabled: u32,
     rx_status: c_int,
     tx_keyed: u32,
     tx_status: c_int,
@@ -838,13 +839,15 @@ unsafe extern "C" fn direct_transmit(
     samples: *mut f32,
     count: u32,
     keyed: *mut u32,
+    ctcss_enabled: *mut u32,
 ) -> c_int {
-    // SAFETY: the test owns the context, output key and exact mono span.
+    // SAFETY: the test owns the context, output controls and exact mono span.
     let capture = unsafe { &mut *context.cast::<DirectCapture>() };
     // SAFETY: the callback contract supplies count writable samples and a key result.
     unsafe {
         std::slice::from_raw_parts_mut(samples, count as usize).fill(-0.375);
         *keyed = capture.tx_keyed;
+        *ctcss_enabled = capture.ctcss_enabled;
     }
     capture.transmit_calls += 1;
     capture.tx_status
@@ -852,9 +855,10 @@ unsafe extern "C" fn direct_transmit(
 
 #[test]
 fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
-    for (status, keyed) in [(-1, 1), (0, 2)] {
+    for (status, keyed, ctcss_enabled) in [(-1, 1, 1), (0, 2, 1), (0, 1, 2)] {
         let mut capture = DirectCapture {
             tx_keyed: 1,
+            ctcss_enabled: 1,
             ..DirectCapture::default()
         };
         let (mut media, selected) =
@@ -891,7 +895,11 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
         assert_eq!(output, [-0.375; 8]);
         capture.tx_status = status;
         capture.tx_keyed = keyed;
-        assert_eq!((capture.tx_status, capture.tx_keyed), (status, keyed));
+        capture.ctcss_enabled = ctcss_enabled;
+        assert_eq!(
+            (capture.tx_status, capture.tx_keyed, capture.ctcss_enabled),
+            (status, keyed, ctcss_enabled)
+        );
         // SAFETY: the stopped stream owns this context and exact stereo span.
         let failure = unsafe {
             transmit_callback(
@@ -916,6 +924,7 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
 fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render() {
     let mut capture = DirectCapture {
         tx_keyed: 1,
+        ctcss_enabled: 1,
         ..DirectCapture::default()
     };
     let (mut media, selected) =
@@ -1007,6 +1016,21 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert!(runtime.hardware.outputs().logical_ptt);
     // The radio fixture exercises the actual bound program port for generation 24.
     assert_eq!(output, [-0.375; 8]);
+    capture.ctcss_enabled = 0;
+    assert_eq!(
+        // SAFETY: the same stopped contexts and exact writable span remain valid.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        0
+    );
+    assert_eq!(output, [0.5; 8]);
+    assert!(runtime.hardware.outputs().logical_ptt);
+    capture.ctcss_enabled = 1;
     capture.tx_keyed = 0;
     assert_eq!(capture.tx_keyed, 0);
     runtime.hardware.publish_requests(ControllerRequests {
@@ -1049,7 +1073,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert_eq!(DESTROYS.get(), 1);
     // Context remains owned here until both callback owners have been destroyed.
     assert_eq!(capture.receive_calls, 3);
-    assert_eq!(capture.transmit_calls, 4);
+    assert_eq!(capture.transmit_calls, 5);
 }
 
 #[test]
