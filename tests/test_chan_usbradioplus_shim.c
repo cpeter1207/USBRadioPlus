@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "usbradioplus_asterisk.h"
+#include "usbradioplus_product.h"
 
 static struct ast_module fake_module;
 static struct ast_module_info_fixture fake_module_info = {.self = &fake_module};
@@ -75,6 +76,7 @@ static const uint8_t radio_provider;
 static const uint8_t samplerate_provider;
 static const uint8_t audio_provider;
 static const uint8_t gpio_provider;
+static const struct UrpAstDescriptor product_provider;
 
 const void *rptadv_ffmpeg_adapter_descriptor(void)
 {
@@ -109,6 +111,11 @@ const void *rptadv_portaudio_alsa_adapter_descriptor(void)
 const void *rptadv_gpio_adapter_descriptor(void)
 {
 	return &gpio_provider;
+}
+
+const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void)
+{
+	return &product_provider;
 }
 
 static void reset_fixture(void)
@@ -153,6 +160,7 @@ static void test_valid_loader_receives_every_provider(void)
 	assert(captured_providers.samplerate == &samplerate_provider);
 	assert(captured_providers.audio == &audio_provider);
 	assert(captured_providers.gpio == &gpio_provider);
+	assert(captured_providers.product == &product_provider);
 	assert(ast_module_entry_points.reload() == 0);
 	assert(reload_calls == 1);
 	assert(ast_module_entry_points.unload() == 0);
