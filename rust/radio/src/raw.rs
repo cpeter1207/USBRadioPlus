@@ -278,6 +278,128 @@ pub(super) struct Functions {
 }
 
 impl SessionConfig {
+    /// Copy a released ABI-4 configuration into the typed station request.
+    ///
+    /// # Safety
+    /// A non-null pointer must expose a readable size word and all bytes it
+    /// advertises. The configuration is borrowed only during this call.
+    pub unsafe fn from_abi(pointer: *const c_void) -> Result<Self, RadioError> {
+        if pointer.is_null() {
+            return Err(RadioError::InvalidArgument);
+        }
+        // SAFETY: the caller supplies a readable size word, even for a short header.
+        if unsafe { pointer.cast::<u32>().read_unaligned() } < size_of::<RawSessionConfig>() as u32
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
+        // SAFETY: the advertised size covers the complete released configuration.
+        let raw = unsafe { pointer.cast::<RawSessionConfig>().read_unaligned() };
+        if raw.abi_version != ABI_VERSION {
+            return Err(RadioError::IncompatibleAdapter);
+        }
+        if raw.native_sample_rate_hz != NATIVE_SAMPLE_RATE_HZ
+            || raw.interleaved_channels != CANONICAL_CHANNELS as u32
+        {
+            return Err(RadioError::Unsupported);
+        }
+        let boolean = |value| match value {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(RadioError::InvalidArgument),
+        };
+        macro_rules! choice {
+            ($value:expr, $($number:literal => $variant:path),+ $(,)?) => {
+                match $value { $($number => $variant,)+ _ => return Err(RadioError::InvalidArgument) }
+            };
+        }
+        let receive = raw.receive;
+        let transmit = raw.transmit;
+        let qualification = raw.qualification;
+        let receive_signaling = match (
+            boolean(receive.ctcss_enabled)?,
+            boolean(receive.dcs_enabled)?,
+        ) {
+            (false, false) => ReceiveSignaling::Disabled,
+            (true, false) => ReceiveSignaling::Ctcss(CtcssReceiveConfig {
+                tones: CtcssToneMask::from_bits(receive.ctcss_tone_mask)?,
+                relaxed: boolean(receive.ctcss_relax)?,
+            }),
+            (false, true) => ReceiveSignaling::Dcs(DcsReceiveConfig {
+                code: receive.dcs_code,
+                inverted: boolean(receive.dcs_inverted)?,
+            }),
+            (true, true) => return Err(RadioError::InvalidArgument),
+        };
+        let transmit_signaling = match (
+            boolean(transmit.ctcss_transmit_enabled)?,
+            boolean(transmit.dcs_transmit_enabled)?,
+        ) {
+            (false, false) => TransmitSignaling::Disabled,
+            (true, false) => TransmitSignaling::Ctcss(CtcssTransmitConfig {
+                default_frequency_tenths_hz: transmit.default_ctcss_frequency_tenths_hz,
+                mapped_frequencies_tenths_hz: transmit.mapped_ctcss_frequency_tenths_hz,
+                peak: transmit.ctcss_peak,
+                turnoff_duration_milliseconds: transmit.ctcss_turnoff_duration_ms,
+                turnoff_phase_shift_degrees: transmit.ctcss_turnoff_phase_shift_degrees,
+                turnoff_tail_tone_hz: transmit.ctcss_turnoff_tail_tone_hz,
+            }),
+            (false, true) => TransmitSignaling::Dcs(DcsTransmitConfig {
+                code: transmit.dcs_code,
+                inverted: boolean(transmit.dcs_inverted)?,
+                peak: transmit.dcs_peak,
+                turnoff_enabled: boolean(transmit.dcs_turnoff_enabled)?,
+                turnoff_duration_milliseconds: transmit.dcs_turnoff_duration_ms,
+            }),
+            (true, true) => return Err(RadioError::InvalidArgument),
+        };
+        let config = Self {
+            generation_id: raw.generation_id,
+            maximum_receive_frame_count: raw.maximum_receive_frame_count,
+            maximum_transmit_frame_count: raw.maximum_transmit_frame_count,
+            publication_interval_milliseconds: raw.publication_interval_ms,
+            receive_channel: choice!(raw.receive_channel, 0 => ReceiveChannel::First, 1 => ReceiveChannel::Second),
+            receive_input_gain: raw.receive_input_gain,
+            receive: ReceiveConfig {
+                noise_filter_profile: choice!(receive.noise_filter_profile, 0 => NoiseFilterProfile::Standard, 1 => NoiseFilterProfile::Alternate),
+                squelch_open_level: receive.squelch_open_level,
+                squelch_hysteresis: receive.squelch_hysteresis,
+                ctcss_decoder_gain: receive.ctcss_decoder_gain,
+                vox_threshold: receive.vox_threshold,
+                vox_hang_milliseconds: receive.vox_hang_ms,
+                signaling: receive_signaling,
+                cpu_saver_enabled: boolean(receive.cpu_saver_enabled)?,
+                native_squelch_delay_frames: receive.native_squelch_delay_frames,
+            },
+            qualification: QualificationConfig {
+                carrier_source: choice!(qualification.carrier_source, 0 => CarrierSource::Disabled, 1 => CarrierSource::DspNoise, 2 => CarrierSource::Vox, 3 => CarrierSource::Usb, 4 => CarrierSource::UsbInverted, 5 => CarrierSource::Parallel, 6 => CarrierSource::ParallelInverted),
+                subaudible_source: choice!(qualification.subaudible_source, 0 => SubaudibleSource::Disabled, 1 => SubaudibleSource::Usb, 2 => SubaudibleSource::UsbInverted, 3 => SubaudibleSource::Dsp, 4 => SubaudibleSource::Parallel, 5 => SubaudibleSource::ParallelInverted),
+                subaudible_override: boolean(qualification.subaudible_override)?,
+                advanced_transport: boolean(qualification.advanced_transport)?,
+                radio_duplex: boolean(qualification.radio_duplex)?,
+                receive_on_delay_blocks: qualification.rx_on_delay_blocks,
+                transmit_off_delay_blocks: qualification.tx_off_delay_blocks,
+            },
+            transmit: TransmitConfig {
+                signaling: transmit_signaling,
+                tone_off_mode: choice!(transmit.tone_off_mode, 0 => ToneOffMode::None, 1 => ToneOffMode::PhaseShift, 2 => ToneOffMode::ToneRemove, 3 => ToneOffMode::TailTone),
+                settle_time_milliseconds: transmit.tx_settle_time_ms,
+                cpu_saver_enabled: boolean(transmit.cpu_saver_enabled)?,
+                receive_blanking_milliseconds: transmit.receiver_blanking_ms,
+                output_a: OutputConfig {
+                    route: choice!(transmit.output_a_route, 0 => OutputRoute::Disabled, 1 => OutputRoute::Voice, 2 => OutputRoute::Tone, 3 => OutputRoute::Composite, 4 => OutputRoute::AuxiliaryVoice),
+                    tone_gain: transmit.output_a_tone_gain,
+                    tone_bias: transmit.output_a_tone_bias,
+                },
+                output_b: OutputConfig {
+                    route: choice!(transmit.output_b_route, 0 => OutputRoute::Disabled, 1 => OutputRoute::Voice, 2 => OutputRoute::Tone, 3 => OutputRoute::Composite, 4 => OutputRoute::AuxiliaryVoice),
+                    tone_gain: transmit.output_b_tone_gain,
+                    tone_bias: transmit.output_b_tone_bias,
+                },
+            },
+        };
+        Ok(config)
+    }
+
     pub(super) fn as_raw(&self) -> RawSessionConfig {
         let (ctcss, receive_dcs) = match self.receive.signaling {
             ReceiveSignaling::Disabled => (None, None),

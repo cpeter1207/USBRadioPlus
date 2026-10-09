@@ -44,6 +44,40 @@ fn defaults_select_automatically_and_prepare_no_optional_outputs() {
 }
 
 #[test]
+fn selected_stream_preserves_each_requested_physical_channel_layout() {
+    for input in [ChannelCount::Mono, ChannelCount::Stereo] {
+        for output in [ChannelCount::Mono, ChannelCount::Stereo] {
+            let mut plan = hardware_plan(&channel(HardwareConfig::default()));
+            plan.audio_selector.input_channels = input;
+            plan.audio_selector.output_channels = output;
+            let mut selected = selected_device();
+            selected.input_channels = input;
+            selected.output_channels = output;
+            let bound = plan.select(&selected, 480).unwrap();
+            assert_eq!(bound.stream.input_channels, input);
+            assert_eq!(bound.stream.output_channels, output);
+            selected.input_channels = match input {
+                ChannelCount::Mono => ChannelCount::Stereo,
+                ChannelCount::Stereo => ChannelCount::Mono,
+            };
+            assert_eq!(
+                plan.select(&selected, 480),
+                Err(HardwarePlanError::ChannelLayoutMismatch)
+            );
+            selected.input_channels = input;
+            selected.output_channels = match output {
+                ChannelCount::Mono => ChannelCount::Stereo,
+                ChannelCount::Stereo => ChannelCount::Mono,
+            };
+            assert_eq!(
+                plan.select(&selected, 480),
+                Err(HardwarePlanError::ChannelLayoutMismatch)
+            );
+        }
+    }
+}
+
+#[test]
 fn identity_uses_audio_identifier_then_checks_gpio_path_and_serial() {
     let config = HardwareConfig {
         device_identifier: "hw:2,0".to_owned(),
@@ -157,7 +191,7 @@ fn binding_errors_have_specific_messages() {
     let cases = [
         (
             HardwarePlanError::ChannelLayoutMismatch,
-            "selected audio device is not mono capture with stereo playback",
+            "selected audio device does not match the requested channel layout",
         ),
         (
             HardwarePlanError::UsbIdentityMismatch,

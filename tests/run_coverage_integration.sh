@@ -14,6 +14,8 @@ install -d "$plugin_dir"
 install -d "$runtime_libdir"
 install -m 0755 "$root/build/libusbradioplus_asterisk.so.1" \
 	"$runtime_libdir/libusbradioplus_asterisk.so.1"
+install -m 0755 "$root/build/libusbradioplus_product.so.1" \
+	"$runtime_libdir/libusbradioplus_product.so.1"
 install -m 0644 "$root/build/usbradioplus_agc.so.1" \
 	"$plugin_dir/usbradioplus_agc.so.1"
 ln -sf usbradioplus_agc.so.1 "$plugin_dir/usbradioplus_agc.so"

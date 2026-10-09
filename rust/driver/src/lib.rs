@@ -15,8 +15,9 @@ pub use conversion::prepare_app_rpt_converter;
 pub use factory::{ControllerConfiguration, StationFactory, StationFactoryError, StationProviders};
 pub use hardware_host::{
     EepromTuning, HardwareInput, HardwareInputEvent, HardwareMixer, HardwareOperation,
-    HardwarePreflight, HardwareServiceStatistics, HardwareStation, HardwareStationDiagnostics,
-    HardwareStationError, HardwareTransientState,
+    HardwarePreflight, HardwareService, HardwareServiceStatistics, HardwareStation,
+    HardwareStationDiagnostics, HardwareStationError, HardwareTransientState,
+    select_native_hardware,
 };
 pub use link::{LinkPreparationError, LinkProcessingFactory};
 pub use registry::ConfigurationRegistry;

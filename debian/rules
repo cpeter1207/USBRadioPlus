@@ -20,7 +20,7 @@ override_dh_auto_test:
 	$(MAKE) check
 
 override_dh_auto_install:
-	$(MAKE) DESTDIR=$(CURDIR)/debian/usbradioplus prefix=/usr \
+	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp prefix=/usr \
 		asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules install
 
 override_dh_auto_clean:
@@ -37,8 +37,9 @@ override_dh_makeshlibs:
 	dh_makeshlibs -Xusbradioplus_agc.so
 
 override_dh_installdocs:
-	dh_installdocs README.md CHANGELOG.md doc/native-radio.md doc/native-mode-retirement.md doc/agc.md \
+	dh_installdocs -pusbradioplus README.md CHANGELOG.md doc/native-radio.md doc/agc.md \
 		examples/usbradioplus.conf.sample
+	dh_installdocs -Nusbradioplus
 
 override_dh_gencontrol:
 	dh_gencontrol -- -V'usbradioplus:ASLDepends=$(ASL3_ASTERISK_DEPENDS)'

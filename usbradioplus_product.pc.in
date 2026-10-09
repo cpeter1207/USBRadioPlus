@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+abi_version=1
+
+Name: USBRadioPlus product
+Description: Asterisk-independent USBRadioPlus radio product
+Version: @VERSION@
+Libs: -L${libdir} -lusbradioplus_product
+Cflags: -I${includedir}

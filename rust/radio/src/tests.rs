@@ -553,6 +553,12 @@ fn high_level_configuration_maps_to_the_flat_abi() {
     };
 
     let raw = config.as_raw();
+    // SAFETY: this complete, aligned ABI-4 value lives through the import.
+    assert_eq!(
+        // SAFETY: this complete, aligned ABI-4 value lives through the import.
+        unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) },
+        Ok(config)
+    );
     assert_eq!(raw.struct_size as usize, size_of::<RawSessionConfig>());
     assert_eq!(raw.abi_version, ABI_VERSION);
     assert_eq!(raw.native_sample_rate_hz, NATIVE_SAMPLE_RATE_HZ);
@@ -565,6 +571,38 @@ fn high_level_configuration_maps_to_the_flat_abi() {
     assert_eq!(raw.transmit.mapped_ctcss_frequency_tenths_hz[0], 1_234);
     assert_eq!(raw.transmit.dcs_turnoff_enabled, 0);
     assert_eq!(raw.transmit.output_a_route, 3);
+}
+
+#[test]
+fn importing_native_session_rejects_malformed_abi_before_reading_payload() {
+    // SAFETY: null is an explicitly rejected argument.
+    assert_eq!(
+        // SAFETY: null is an explicitly rejected argument.
+        unsafe { SessionConfig::from_abi(ptr::null()) },
+        Err(RadioError::InvalidArgument)
+    );
+    let short = 4_u32;
+    // SAFETY: the size-only header is readable; its payload must not be read.
+    assert_eq!(
+        // SAFETY: the size-only header is readable; its payload must not be read.
+        unsafe { SessionConfig::from_abi(ptr::from_ref(&short).cast()) },
+        Err(RadioError::IncompatibleAdapter)
+    );
+    for defect in 0..7 {
+        let mut raw = SessionConfig::new(1, 960, 960).as_raw();
+        match defect {
+            0 => raw.abi_version = 3,
+            1 => raw.native_sample_rate_hz = 8_000,
+            2 => raw.interleaved_channels = 1,
+            3 => raw.receive_channel = 2,
+            4 => raw.receive.noise_filter_profile = 2,
+            5 => raw.qualification.carrier_source = 99,
+            6 => raw.transmit.output_a_route = 99,
+            _ => unreachable!(),
+        }
+        // SAFETY: the complete ABI value is readable for validation.
+        assert!(unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) }.is_err());
+    }
 }
 
 #[test]

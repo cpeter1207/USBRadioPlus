@@ -1408,7 +1408,12 @@ struct GpioDescriptor {
 // SAFETY: the immutable descriptor contains only function pointers.
 unsafe impl Sync for GpioDescriptor {}
 
-unsafe extern "C" fn gpio_probe(_config: *const c_void, _output: *mut c_void) -> c_int {
+unsafe extern "C" fn gpio_probe(_config: *const c_void, output: *mut c_void) -> c_int {
+    // SAFETY: the wrapper initializes a full device-info result. Its third u32
+    // is the released ABI's presence flag; preserve its size/version prefix.
+    unsafe {
+        output.cast::<u32>().add(2).write(1);
+    }
     OK
 }
 

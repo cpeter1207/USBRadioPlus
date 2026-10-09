@@ -7,6 +7,7 @@ prefix ?= /usr/local
 exec_prefix ?= $(prefix)
 sbindir ?= $(exec_prefix)/sbin
 libdir ?= $(exec_prefix)/lib
+includedir ?= $(prefix)/include
 datarootdir ?= $(prefix)/share
 docdir ?= $(datarootdir)/doc/$(PACKAGE)
 mandir ?= $(datarootdir)/man
@@ -170,7 +171,7 @@ RADIO_LIBS := \
 	$(shell $(PKG_CONFIG) --libs-only-other $(RADIO_PACKAGES))
 # External Asterisk headers use GNU pthread declarations before autoconfig.h
 # can request them, so make that feature set explicit for every module build.
-COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc -Irust/asterisk/include $(RPCR_CFLAGS) \
+COMMON_CPPFLAGS := -D_GNU_SOURCE -I$(ASTERISK_INCLUDEDIR) -Isrc -Irust/asterisk/include -Irust/product/include $(RPCR_CFLAGS) \
 	$(RPTADV_RADIO_CFLAGS) $(RPTADV_SAMPLERATE_CFLAGS) $(RPTADV_FFMPEG_CFLAGS)
 MODULE := $(BUILD_DIR)/chan_usbradioplus.so
 USBRADIOPLUS_LIBDIR ?= $(libdir)$(if $(MULTIARCH),/$(MULTIARCH))
@@ -179,6 +180,12 @@ ASTERISK_ADAPTER_SONAME := libusbradioplus_asterisk.so.1
 ASTERISK_ADAPTER_VERSIONED := $(BUILD_DIR)/$(ASTERISK_ADAPTER_SONAME)
 ASTERISK_ADAPTER := $(BUILD_DIR)/libusbradioplus_asterisk.so
 RUST_ASTERISK_ADAPTER := $(CARGO_TARGET_DIR)/release/libusbradioplus_asterisk.so
+PRODUCT_HEADER := rust/product/include/usbradioplus_product.h
+PRODUCT_SONAME := libusbradioplus_product.so.1
+PRODUCT_VERSIONED := $(BUILD_DIR)/$(PRODUCT_SONAME)
+PRODUCT_LIBRARY := $(BUILD_DIR)/libusbradioplus_product.so
+RUST_PRODUCT := $(CARGO_TARGET_DIR)/release/libusbradioplus_product.so
+PRODUCT_PKGCONFIG := $(BUILD_DIR)/usbradioplus_product.pc
 TUNER := $(BUILD_DIR)/usbradioplus-tune
 RUST_TUNER := $(CARGO_TARGET_DIR)/release/usbradioplus-tune
 AGC_PLUGIN := $(BUILD_DIR)/usbradioplus_agc.so
@@ -186,7 +193,7 @@ AGC_PLUGIN_SONAME := usbradioplus_agc.so.1
 AGC_PLUGIN_VERSIONED := $(BUILD_DIR)/$(AGC_PLUGIN_SONAME)
 RUST_AGC_LIBRARY := $(CARGO_TARGET_DIR)/release/libusbradioplus_agc.so
 RUST_SOURCES := $(shell find rust -type f \( -name '*.rs' -o -name Cargo.toml \))
-RUST_BINDGEN_INPUTS := rust/asterisk/wrapper.h
+RUST_BINDGEN_INPUTS := rust/asterisk/wrapper.h $(ASTERISK_ADAPTER_HEADER) $(PRODUCT_HEADER)
 RUST_BUILD_STAMP := $(BUILD_DIR)/.rust-release
 BUILD_CONFIG_STAMP := $(BUILD_DIR)/.module-build-config
 TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
@@ -194,9 +201,9 @@ TARBALL := $(DIST_DIR)/$(DISTNAME).tar.xz
 CHANNEL_OBJECT := $(BUILD_DIR)/$(patsubst src/%.c,%.o,$(CHANNEL_SOURCE))
 MODULE_OBJECTS := $(CHANNEL_OBJECT)
 
-MODULE_SOURCES := $(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER)
+MODULE_SOURCES := $(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER) $(PRODUCT_HEADER)
 DIST_TOP := Makefile VERSION CHANGELOG.md COPYING README.md INSTALL.md \
-	Cargo.toml Cargo.lock rust-toolchain.toml \
+	Cargo.toml Cargo.lock rust-toolchain.toml usbradioplus_product.pc.in \
 	RELEASE-CHECKLIST.md CONTRIBUTING.md AGENTS.md Doxyfile pyproject.toml \
 	.clang-format .clang-tidy .dockerignore install.sh
 DIST_DIRS := .github containers debian packaging src rust scripts examples man doc tests tests_py tests_docs tools
@@ -214,7 +221,7 @@ DIST_FILES := $(DIST_TOP) $(shell find $(DIST_DIRS) -type f \
 
 .PHONY: force-agc-path force-build-config
 
-all: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(MODULE) $(AGC_PLUGIN) $(TUNER)
+all: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(MODULE) $(AGC_PLUGIN) $(TUNER) $(PRODUCT_PKGCONFIG)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -278,13 +285,14 @@ $(BUILD_DIR)/%.o: src/%.c $(MODULE_SOURCES) $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUI
 		-fPIC -DAST_MODULE='"chan_usbradioplus"' \
 		-DAST_MODULE_SELF_SYM=__internal_chan_usbradioplus_self -c -o $@ $<
 
-$(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(ASTERISK_ADAPTER) $(MODULE_OBJECTS)
+$(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_DEP) $(RPTADV_FFMPEG_BUILD_DEP) $(ASTERISK_ADAPTER) $(PRODUCT_LIBRARY) $(MODULE_OBJECTS)
 	@echo "Building $(PACKAGE) as a minimal Asterisk shim over the Rust adapter"
 	$(CC) -shared $(LDFLAGS) -o $@ $(MODULE_OBJECTS) \
-		-L$(BUILD_DIR) -lusbradioplus_asterisk \
+		-L$(BUILD_DIR) -lusbradioplus_asterisk $(PRODUCT_LIBRARY) \
 		$(RPCR_LIBS) $(RPTADV_RADIO_LIBS) $(RPTADV_SAMPLERATE_LIBS) \
 		$(RPTADV_FFMPEG_LIBS) $(RADIO_LIBS) -lm
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
+	$(READELF) -d $@ | grep -F 'Shared library: [$(PRODUCT_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring3.so.3]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.2]'
@@ -305,6 +313,10 @@ $(RUST_BUILD_STAMP): Cargo.toml Cargo.lock rust-toolchain.toml $(RUST_SOURCES) \
 	$(BUILD_CONFIG_STAMP) $(BUILD_DIR)/agc-plugin-path
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" $(CARGO) build --release --locked -p usbradioplus-tune
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \
+		USBRADIOPLUS_AGC_PLUGIN_PATH="$(agcplugindir)/usbradioplus_agc.so" \
+		$(CARGO) rustc --release --locked -p usbradioplus-product -- \
+		-C link-arg=-Wl,-soname,$(PRODUCT_SONAME)
+	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" \
 		USBRADIOPLUS_ASTERISK_INCLUDEDIR="$(ASTERISK_INCLUDEDIR)" \
 		USBRADIOPLUS_AGC_PLUGIN_PATH="$(agcplugindir)/usbradioplus_agc.so" \
 		$(CARGO) rustc --release --locked -p usbradioplus-asterisk -- \
@@ -322,6 +334,20 @@ $(ASTERISK_ADAPTER_VERSIONED): $(RUST_BUILD_STAMP) | $(BUILD_DIR)
 $(ASTERISK_ADAPTER): $(ASTERISK_ADAPTER_VERSIONED)
 	ln -sf $(ASTERISK_ADAPTER_SONAME) $@
 
+$(PRODUCT_VERSIONED): $(RUST_BUILD_STAMP) | $(BUILD_DIR)
+	cp $(RUST_PRODUCT) $@
+	$(READELF) -d $@ | grep -F '$(PRODUCT_SONAME)'
+	@! $(READELF) -d $@ | grep -E 'libstd-|RPATH|RUNPATH'
+	@! $(NM) -D --undefined-only $@ | grep -E '[[:space:]]ast_'
+
+$(PRODUCT_LIBRARY): $(PRODUCT_VERSIONED)
+	ln -sf $(PRODUCT_SONAME) $@
+
+$(PRODUCT_PKGCONFIG): usbradioplus_product.pc.in force-build-config | $(BUILD_DIR)
+	sed -e 's|@prefix@|$(prefix)|g' -e 's|@exec_prefix@|$(exec_prefix)|g' \
+		-e 's|@libdir@|$(USBRADIOPLUS_LIBDIR)|g' -e 's|@includedir@|$(includedir)|g' \
+		-e 's|@VERSION@|$(VERSION)|g' $< > $@
+
 $(TUNER): $(RUST_BUILD_STAMP) | $(BUILD_DIR)
 	cp $(RUST_TUNER) $@
 
@@ -335,7 +361,8 @@ $(AGC_PLUGIN): $(AGC_PLUGIN_VERSIONED)
 
 check: all
 	$(PYTHON) -m pytest -q tests_py
-	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" $(CARGO) test --workspace --all-targets --locked
+	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" URP_PRODUCT_DSO="$(abspath $(PRODUCT_VERSIONED))" \
+		$(CARGO) test --workspace --all-targets --locked
 	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
 		RPCR_CFLAGS="$(RPCR_CFLAGS)" RPCR_LIBS="$(RPCR_LIBS)" \
 		RPTADV_RADIO_CFLAGS="$(RPTADV_RADIO_CFLAGS)" RPTADV_RADIO_LIBS="$(RPTADV_RADIO_LIBS)" \
@@ -352,7 +379,7 @@ lint:
 	$(RUFF) check tests_py tests_docs tools
 	$(RUFF) format --check tests_py tests_docs tools
 	$(CLANG_FORMAT) --dry-run --Werror \
-		$(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER) \
+		$(CHANNEL_SOURCE) $(ASTERISK_ADAPTER_HEADER) $(PRODUCT_HEADER) \
 		rust/asterisk/src/host/tests/variadic.c \
 		tests/test_chan_usbradioplus_shim.c \
 		$(shell find tests/fixtures/shim-host -type f -name '*.h') \
@@ -372,7 +399,7 @@ static-analysis: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE
 		--enable=warning,style,performance,portability \
 		--error-exitcode=1 --inline-suppr --suppress=missingIncludeSystem \
 		--suppress=normalCheckLevelMaxBranches --suppress=constParameterCallback \
-		-Itests/fixtures/shim-host/include -Irust/asterisk/include \
+		-Itests/fixtures/shim-host/include -Irust/asterisk/include -Irust/product/include \
 		$(CHANNEL_SOURCE) & cppcheck_pid=$$!; \
 	$(CPPCHECK) --std=c11 --enable=warning,style,performance,portability \
 		--error-exitcode=1 --suppress=missingIncludeSystem \
@@ -433,9 +460,10 @@ coverage: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_
 # Keep Rust and GCC counters separate. The validator uses LCOV source lines and
 # merges JSON branches by source span so generic monomorphizations cannot create
 # false gaps; dedicated test modules remain outside the production report.
-rust-coverage:
+rust-coverage: $(PRODUCT_VERSIONED)
 	mkdir -p $(BUILD_DIR)/coverage/rust
 	RUSTUP_TOOLCHAIN=$(COVERAGE_TOOLCHAIN) \
+		URP_PRODUCT_DSO="$(abspath $(PRODUCT_VERSIONED))" \
 		CARGO_LLVM_COV_TARGET_DIR="$(abspath $(BUILD_DIR)/rust-coverage-target)" \
 		$(CARGO_LLVM_COV) --workspace --all-targets --locked --branch --json \
 		--output-path $(BUILD_DIR)/coverage/rust/coverage.json
@@ -474,6 +502,7 @@ ci:
 
 install: all
 	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(USBRADIOPLUS_LIBDIR) \
+		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/pkgconfig $(DESTDIR)$(includedir) \
 		$(DESTDIR)$(agcplugindir) $(DESTDIR)$(sbindir) \
 		$(DESTDIR)$(docdir) $(DESTDIR)$(mandir)/man5 \
 		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8 \
@@ -481,6 +510,11 @@ install: all
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 	$(INSTALL_PROGRAM) $(ASTERISK_ADAPTER_VERSIONED) \
 		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME)
+	$(INSTALL_PROGRAM) $(PRODUCT_VERSIONED) \
+		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(PRODUCT_SONAME)
+	ln -sf $(PRODUCT_SONAME) $(DESTDIR)$(USBRADIOPLUS_LIBDIR)/libusbradioplus_product.so
+	$(INSTALL_DATA) $(PRODUCT_HEADER) $(DESTDIR)$(includedir)/usbradioplus_product.h
+	$(INSTALL_DATA) $(PRODUCT_PKGCONFIG) $(DESTDIR)$(USBRADIOPLUS_LIBDIR)/pkgconfig/
 	$(INSTALL_DATA) $(AGC_PLUGIN_VERSIONED) $(DESTDIR)$(agcplugindir)/$(AGC_PLUGIN_SONAME)
 	ln -sf $(AGC_PLUGIN_SONAME) $(DESTDIR)$(agcplugindir)/usbradioplus_agc.so
 	$(INSTALL_PROGRAM) $(TUNER) $(DESTDIR)$(sbindir)/usbradioplus-tune
@@ -502,12 +536,17 @@ install: all
 install-strip: install
 	strip $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
 	strip $(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME)
+	strip $(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(PRODUCT_SONAME)
 	strip $(DESTDIR)$(agcplugindir)/$(AGC_PLUGIN_SONAME)
 	strip $(DESTDIR)$(sbindir)/usbradioplus-tune
 
 uninstall:
 	rm -f $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so \
 		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME) \
+		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(PRODUCT_SONAME) \
+		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/libusbradioplus_product.so \
+		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/pkgconfig/usbradioplus_product.pc \
+		$(DESTDIR)$(includedir)/usbradioplus_product.h \
 		$(DESTDIR)$(agcplugindir)/usbradioplus_agc.so \
 		$(DESTDIR)$(agcplugindir)/$(AGC_PLUGIN_SONAME) \
 		$(DESTDIR)$(sbindir)/usbradioplus-tune \

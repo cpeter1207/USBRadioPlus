@@ -5,6 +5,7 @@ PROJECT_BRIEF          = "Enhanced AllStarLink USB radio channel driver"
 OUTPUT_DIRECTORY       = build/doxygen
 INPUT                  = src/chan_usbradioplus_shim.c \
                          rust/asterisk/include/usbradioplus_asterisk.h \
+                         rust/product/include/usbradioplus_product.h \
                          doc/developer.dox
 FILE_PATTERNS           = *.c *.h *.dox
 RECURSIVE               = NO

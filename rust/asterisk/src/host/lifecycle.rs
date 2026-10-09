@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// Loader ABI implemented by this Rust-owned Asterisk host.
-pub(super) const LOADER_ABI_VERSION: u32 = 4;
+pub(super) const LOADER_ABI_VERSION: u32 = 5;
 
 const LOADER_OK: c_int = 0;
 const LOADER_DECLINE: c_int = 1;
@@ -44,6 +44,8 @@ pub struct LoaderProviderManifest {
     pub audio: *const c_void,
     /// Released CM119/parallel GPIO adapter descriptor.
     pub gpio: *const c_void,
+    /// Shared radio product operations; the module retains this DSO until unload.
+    pub product: *const crate::UrpAstDescriptor,
 }
 
 /// Validate the complete outer loader manifest before constructing a driver.
@@ -57,6 +59,7 @@ pub(super) fn manifest_is_valid(manifest: &LoaderProviderManifest) -> bool {
         && !manifest.samplerate.is_null()
         && !manifest.audio.is_null()
         && !manifest.gpio.is_null()
+        && !manifest.product.is_null()
 }
 
 /// Immutable lifecycle table consumed by the metadata-only Asterisk module.
@@ -233,11 +236,15 @@ struct ProductionOperations {
 }
 
 impl ProductionOperations {
-    fn new(providers: ProviderAddresses, module: *mut c_void) -> Self {
+    fn new(
+        providers: ProviderAddresses,
+        module: *mut c_void,
+        product: *const crate::UrpAstDescriptor,
+    ) -> Self {
         Self {
             providers,
             module: module as usize,
-            descriptor: ptr::from_ref(crate::product_descriptor()) as usize,
+            descriptor: product as usize,
             driver: 0,
             phase: LoadPhase::Validate,
         }
@@ -324,6 +331,8 @@ impl LifecycleOperations for ProductionOperations {
     fn start_links(&mut self) -> i32 {
         self.phase = LoadPhase::Register;
         link::start(
+            // SAFETY: loader_load validated this immutable process-lifetime table.
+            unsafe { &*(self.descriptor as *const crate::UrpAstDescriptor) },
             self.driver as *mut c_void,
             self.module as *mut crate::ffi::ast_module,
         )
@@ -362,14 +371,21 @@ unsafe extern "C" fn loader_load(
         if !manifest_is_valid(providers) {
             return LOADER_DECLINE;
         }
+        // SAFETY: the loader supplies a readable, retained product descriptor.
+        if !unsafe { crate::product_descriptor_is_valid(providers.product) } {
+            return LOADER_DECLINE;
+        }
         let mut host = LIFECYCLE
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         if host.operations.is_some() {
             return LOADER_FAILURE;
         }
-        let mut operations =
-            ProductionOperations::new(ProviderAddresses::from_manifest(providers), module);
+        let mut operations = ProductionOperations::new(
+            ProviderAddresses::from_manifest(providers),
+            module,
+            providers.product,
+        );
         let status = host.coordinator.load(&mut operations);
         if status == URP_AST_OK {
             host.operations = Some(operations);

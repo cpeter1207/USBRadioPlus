@@ -153,6 +153,18 @@ pub(crate) struct DirectProgram {
 unsafe impl Sync for DirectProgram {}
 
 impl DirectProgram {
+    /// Borrow the exact-frame source without allocating a transport ring.
+    ///
+    /// # Safety
+    /// The sole TX owner serializes staging and rendering, and retains this
+    /// allocation until the borrowing radio session is destroyed.
+    pub(crate) unsafe fn radio_port(&self) -> ProgramRingPort<'_> {
+        // SAFETY: the caller guarantees stable storage and a single TX owner.
+        unsafe {
+            ProgramRingPort::from_raw(NonNull::from(self).cast(), render_direct_program, None)
+        }
+    }
+
     /// Allocate before callbacks begin, with no concurrent source access.
     pub(crate) unsafe fn prepare(&self, maximum_frames: usize) {
         // SAFETY: the caller owns the quiescent preparation phase.
@@ -180,6 +192,34 @@ impl DirectProgram {
             Err(RingError::InvalidArgument)
         })
     }
+}
+
+unsafe extern "C" fn render_direct_program(
+    context: *mut c_void,
+    output: *mut f32,
+    frames: u32,
+    result: *mut ProgramRingResult,
+) -> c_int {
+    if context.is_null() || output.is_null() || result.is_null() || frames == 0 {
+        return PROVIDER_FAILED;
+    }
+    // SAFETY: the session retains this source and serializes exact writable spans.
+    let (source, output) = unsafe {
+        (
+            &*context.cast::<DirectProgram>(),
+            std::slice::from_raw_parts_mut(output, frames as usize),
+        )
+    };
+    output.fill(0.0);
+    // SAFETY: staging has returned before the session requests program samples.
+    if !matches!(unsafe { source.render(output) }, Some(Ok(()))) {
+        return PROVIDER_FAILED;
+    }
+    // SAFETY: the radio supplies a writable result for this synchronous call.
+    unsafe {
+        result.write(ProgramRingResult::default());
+    }
+    PROVIDER_OK
 }
 
 impl ProgramRingConsumer {

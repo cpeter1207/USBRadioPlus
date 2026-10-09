@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 /** Current loader-descriptor ABI. */
-#define URP_AST_LOADER_ABI_VERSION UINT32_C(4)
+#define URP_AST_LOADER_ABI_VERSION UINT32_C(5)
 /** Rust host loaded successfully. */
 #define URP_AST_LOADER_OK 0
 /** Configuration or provider validation declined module loading. */
@@ -81,6 +81,7 @@ struct urp_ast_provider_manifest {
 	const void *samplerate; /**< Released sample-rate-adapter descriptor. */
 	const void *audio;	/**< Released audio-adapter descriptor. */
 	const void *gpio;	/**< Released GPIO-adapter descriptor. */
+	const struct UrpAstDescriptor *product; /**< Shared USBRadioPlus product descriptor. */
 };
 
 /** @brief Start the complete Rust-owned Asterisk host. */

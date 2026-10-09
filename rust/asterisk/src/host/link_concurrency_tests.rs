@@ -1,7 +1,7 @@
 //! Scanner shutdown and reload synchronize with control ownership.
 
 use super::*;
-use crate::host::support::Fixture;
+use crate::host::support::{Fixture, product_support};
 use std::cell::RefCell;
 use std::sync::mpsc;
 use std::time::Instant;
@@ -24,7 +24,11 @@ fn wait_for_stop_request() -> Option<Box<str>> {
 #[test]
 fn scanner_stops_after_profile_resolution_without_scanning_or_waiting() {
     let _fixture = Fixture::new();
-    let host = LinkHost::new(ptr::dangling_mut(), ptr::dangling_mut());
+    let host = LinkHost::new(
+        product_support::descriptor(),
+        ptr::dangling_mut(),
+        ptr::dangling_mut(),
+    );
     let stop = Arc::new((Mutex::new(false), Condvar::new()));
     let worker_stop = Arc::clone(&stop);
     let (entered, reached) = mpsc::channel();
@@ -74,7 +78,11 @@ fn reload_rejects_a_stopped_or_replaced_host_after_waiting_for_control() {
         let _cleanup = StopGuard;
         assert!(lock(running_host()).is_none());
         *lock(running_host()) = Some(RunningLinkHost {
-            host: LinkHost::new(ptr::dangling_mut(), ptr::dangling_mut()),
+            host: LinkHost::new(
+                product_support::descriptor(),
+                ptr::dangling_mut(),
+                ptr::dangling_mut(),
+            ),
             generation: Arc::new(()),
             stop: Arc::new((Mutex::new(false), Condvar::new())),
             scanner: thread::spawn(|| {}),

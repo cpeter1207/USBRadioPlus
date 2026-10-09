@@ -29,6 +29,7 @@
 #include "asterisk/module.h"
 
 #include "usbradioplus_asterisk.h"
+#include "usbradioplus_product.h"
 
 /** Capability name required from the co-packaged Rust host. */
 #define URP_AST_LOADER_CAPABILITY "usbradioplus.asterisk-loader"
@@ -65,6 +66,7 @@ static int load_module(void)
 		.samplerate = rptadv_samplerate_adapter_descriptor(),
 		.audio = rptadv_portaudio_alsa_adapter_descriptor(),
 		.gpio = rptadv_gpio_adapter_descriptor(),
+		.product = usbradioplus_product_descriptor_v1(),
 	};
 	int result;
 

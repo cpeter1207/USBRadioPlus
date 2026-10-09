@@ -5,6 +5,45 @@ use std::ffi::{CStr, c_char};
 use std::mem::size_of;
 use std::ptr;
 
+#[test]
+fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() {
+    GRAPH_CREATES.set(0);
+    GRAPH_DESTROYS.set(0);
+    DENOISE_CREATES.set(0);
+    GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+    let plan = ExplicitNativeProcessingPlan {
+        receive_graph: "highpass=f=60,lowpass=f=5500".to_owned(),
+        transmit_graph: "volume=-2dB".to_owned(),
+        receive_deemphasis: true,
+        receive_output_gain_db: -6,
+        receive_ctcss_mask: 1,
+        transmit_dcs: true,
+    };
+    let generation =
+        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960)
+            .unwrap();
+    let descriptions = GRAPH_DESCRIPTIONS.with(|values| values.borrow().clone());
+    assert!(descriptions.contains(&plan.receive_graph));
+    assert!(descriptions.contains(&plan.transmit_graph));
+    assert!(descriptions.contains(&"volume=-6dB".to_owned()));
+    assert_eq!(
+        descriptions
+            .iter()
+            .filter(|value| value.contains("bandreject"))
+            .count(),
+        2
+    );
+    assert!(descriptions.iter().any(|value| value.contains("biquad")));
+    assert!(
+        descriptions
+            .iter()
+            .any(|value| value.contains("volume=-3.42dB"))
+    );
+    assert_eq!(DENOISE_CREATES.get(), 0);
+    drop(generation);
+    assert_eq!(GRAPH_CREATES.get(), GRAPH_DESTROYS.get());
+}
+
 thread_local! {
     static GRAPH_CREATES: Cell<usize> = const { Cell::new(0) };
     static GRAPH_PROCESSES: Cell<usize> = const { Cell::new(0) };

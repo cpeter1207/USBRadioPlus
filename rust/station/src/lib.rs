@@ -32,8 +32,8 @@ pub use hardware::{
     Cm119Plan, HardwarePlan, HardwarePlanError, ParallelPlan, SelectedHardwarePlan, hardware_plan,
 };
 pub use media::{
-    ControllerSetup, DirectCallbacks, StationControl, StationMedia, StationMediaError,
-    StationReceive, StationTransmit,
+    ControllerSetup, DirectCallbacks, NativeStationMedia, StationControl, StationMedia,
+    StationMediaError, StationReceive, StationTransmit,
 };
 pub use program::{
     ProgramRingConsumer, ProgramRingPlan, ProgramRingSetupError, prepare_program_ring,

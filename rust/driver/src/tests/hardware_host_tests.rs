@@ -26,6 +26,12 @@ static FAILURE: AtomicU32 = AtomicU32::new(0);
 static MIXER_PATHS_MODE: AtomicU32 = AtomicU32::new(0);
 static DEVICE_INTERFACE_MODE: AtomicU32 = AtomicU32::new(0);
 static EEPROM_FLAGS: AtomicU32 = AtomicU32::new(3);
+static NATIVE_IDENTITY_MODE: AtomicU32 = AtomicU32::new(0);
+static TUNING_IO_CALLS: AtomicU32 = AtomicU32::new(0);
+static GPIO_OPENS: AtomicU32 = AtomicU32::new(0);
+static GPIO_PUBLISHES: AtomicU32 = AtomicU32::new(0);
+static GPIO_ONLINE: AtomicU32 = AtomicU32::new(1);
+static GPIO_APPLIED_PTT: AtomicU32 = AtomicU32::new(u32::MAX);
 
 const FAIL_AUDIO_START: u32 = 1;
 const FAIL_AUDIO_SELECT: u32 = 2;
@@ -75,6 +81,12 @@ fn reset_test_state() {
     MIXER_PATHS_MODE.store(0, Ordering::Release);
     DEVICE_INTERFACE_MODE.store(0, Ordering::Release);
     EEPROM_FLAGS.store(3, Ordering::Release);
+    NATIVE_IDENTITY_MODE.store(0, Ordering::Release);
+    TUNING_IO_CALLS.store(0, Ordering::Release);
+    GPIO_OPENS.store(0, Ordering::Release);
+    GPIO_PUBLISHES.store(0, Ordering::Release);
+    GPIO_ONLINE.store(1, Ordering::Release);
+    GPIO_APPLIED_PTT.store(u32::MAX, Ordering::Release);
 }
 
 fn test_guard() -> std::sync::MutexGuard<'static, ()> {
@@ -865,6 +877,7 @@ unsafe extern "C" fn audio_mixer_create(
     config: *const UsbMixerConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    TUNING_IO_CALLS.fetch_add(1, Ordering::AcqRel);
     // SAFETY: the wrapper supplies a complete live configuration.
     let name = unsafe { CStr::from_ptr((*config).element) }.to_bytes();
     let kind = match name {
@@ -989,7 +1002,9 @@ unsafe extern "C" fn audio_device_select(
     } else {
         copy_c_string(&mut output.interface, b"4-1:1.0");
     }
-    copy_c_string(&mut output.serial, b"ABC");
+    if !matches!(NATIVE_IDENTITY_MODE.load(Ordering::Acquire), 5 | 6) {
+        copy_c_string(&mut output.serial, b"ABC");
+    }
     output.selection = AudioDeviceSelection {
         struct_size: size_of::<AudioDeviceSelection>() as u32,
         abi_version: AUDIO_ABI,
@@ -1004,6 +1019,7 @@ unsafe extern "C" fn audio_mixer_paths(
     _interface: *const c_char,
     output: *mut AudioMixerPaths,
 ) -> c_int {
+    TUNING_IO_CALLS.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_AUDIO_PATHS) {
         return -1;
     }
@@ -1209,7 +1225,58 @@ struct GpioDescriptor {
 // SAFETY: the test descriptor and all referenced functions are immutable.
 unsafe impl Sync for GpioDescriptor {}
 
-unsafe extern "C" fn gpio_probe(_config: *const c_void, _output: *mut c_void) -> c_int {
+#[repr(C)]
+struct GpioDeviceConfig {
+    struct_size: u32,
+    abi_version: u32,
+    usb_port_path: *const c_char,
+    vendor_id: u16,
+    product_id: u16,
+    profile: u32,
+    ptt_inverted: u32,
+    output_enable_mask: u32,
+    output_initial_mask: u32,
+}
+
+#[repr(C)]
+struct GpioDeviceInfo {
+    struct_size: u32,
+    abi_version: u32,
+    present: u32,
+    vendor_id: u16,
+    product_id: u16,
+    usb_bus: u32,
+    usb_port_number_count: u32,
+    usb_port_numbers: [u8; 7],
+    serial: [c_char; 128],
+}
+
+unsafe extern "C" fn gpio_probe(config: *const c_void, output: *mut c_void) -> c_int {
+    // SAFETY: the validated wrapper supplies matching complete ABI records.
+    let (config, output) = unsafe {
+        (
+            &*config.cast::<GpioDeviceConfig>(),
+            &mut *output.cast::<GpioDeviceInfo>(),
+        )
+    };
+    let mode = NATIVE_IDENTITY_MODE.load(Ordering::Acquire);
+    // SAFETY: the synchronous probe borrows a live NUL-terminated USB path.
+    if unsafe { CStr::from_ptr(config.usb_port_path) }.to_bytes() != b"3-1" || mode == 4 {
+        return -4;
+    }
+    output.abi_version = if mode == 7 { 99 } else { GPIO_ABI };
+    output.present = u32::from(mode != 1);
+    output.vendor_id = 0x0d8c;
+    output.product_id = 0x000c;
+    output.usb_bus = 3;
+    output.usb_port_number_count = 1;
+    output.usb_port_numbers[0] = 1;
+    if !matches!(mode, 3 | 6) {
+        copy_c_string(
+            &mut output.serial,
+            if mode == 2 { b"OTHER" } else { b"ABC" },
+        );
+    }
     OK
 }
 
@@ -1218,6 +1285,7 @@ unsafe extern "C" fn gpio_discover(_output: *mut c_void) -> c_int {
 }
 
 unsafe extern "C" fn gpio_open(_config: *const c_void, output: *mut *mut c_void) -> c_int {
+    GPIO_OPENS.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_CM119_OPEN) {
         return -1;
     }
@@ -1236,6 +1304,7 @@ unsafe extern "C" fn parallel_open(_config: *const c_void, output: *mut *mut c_v
 }
 
 unsafe extern "C" fn gpio_publish(_device: *mut c_void, outputs: *const GpioCm119Outputs) -> c_int {
+    GPIO_PUBLISHES.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_CM119_PUBLISH) {
         return -1;
     }
@@ -1267,7 +1336,7 @@ unsafe extern "C" fn gpio_inputs(_device: *const c_void, output: *mut GpioCm119I
         *output = GpioCm119Inputs {
             struct_size: size_of::<GpioCm119Inputs>() as u32,
             abi_version: GPIO_ABI,
-            online: 1,
+            online: GPIO_ONLINE.load(Ordering::Acquire),
             cor_active: 1,
             ctcss_active: 1,
             gpio_input_mask: GPIO_INPUTS.load(Ordering::Acquire),
@@ -1291,7 +1360,10 @@ unsafe extern "C" fn gpio_statistics(
             abi_version: GPIO_ABI,
             input_read_count: 1,
             output_apply_count: 1,
-            ptt_applied: PTT.load(Ordering::Acquire),
+            ptt_applied: match GPIO_APPLIED_PTT.load(Ordering::Acquire) {
+                u32::MAX => PTT.load(Ordering::Acquire),
+                applied => applied,
+            },
             online: 1,
             ..GpioCm119Statistics::default()
         };
@@ -1305,6 +1377,7 @@ unsafe extern "C" fn gpio_close(device: *mut c_void) {
 }
 
 unsafe extern "C" fn gpio_read_eeprom(_device: *mut c_void, image: *mut GpioEeprom) -> c_int {
+    TUNING_IO_CALLS.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_EEPROM_READ) {
         return -1;
     }
@@ -1325,6 +1398,7 @@ unsafe extern "C" fn gpio_read_eeprom(_device: *mut c_void, image: *mut GpioEepr
 }
 
 unsafe extern "C" fn gpio_write_eeprom(_device: *mut c_void, image: *mut GpioEeprom) -> c_int {
+    TUNING_IO_CALLS.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_EEPROM_WRITE) {
         return -1;
     }
@@ -1519,6 +1593,195 @@ fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan
     (plan, selected)
 }
 
+#[test]
+fn native_selection_preserves_physical_layout_profile_and_identity_without_tuning() {
+    use usbradioplus_audio::{ChannelCount, SelectionPolicy};
+    use usbradioplus_gpio::Cm119Profile;
+
+    let _guard = test_guard();
+    reset_test_state();
+    for policy in [SelectionPolicy::Automatic, SelectionPolicy::Exact] {
+        for profile in [
+            Cm119Profile::DudeUsb,
+            Cm119Profile::SphUsb,
+            Cm119Profile::Nhrc,
+            Cm119Profile::Custom,
+        ] {
+            for input in [ChannelCount::Mono, ChannelCount::Stereo] {
+                for output in [ChannelCount::Mono, ChannelCount::Stereo] {
+                    let (mut plan, _) = selected_hardware(false);
+                    plan.audio_selector.policy = policy;
+                    plan.audio_selector.identifier =
+                        (policy == SelectionPolicy::Exact).then(|| "hw:1,0".to_owned());
+                    plan.audio_selector.serial =
+                        (policy == SelectionPolicy::Exact).then(|| "ABC".to_owned());
+                    plan.audio_selector.input_channels = input;
+                    plan.audio_selector.output_channels = output;
+                    plan.cm119.profile = profile;
+                    plan.cm119.ptt_inverted = true;
+                    plan.cm119.output_enable_mask = 0x21;
+                    plan.cm119.output_initial_mask = 0x20;
+                    plan.cm119.clip_led_mask = 1;
+                    let (device, bound) =
+                        select_native_hardware(&plan, audio_provider(), gpio_provider(), 480)
+                            .unwrap();
+                    assert_eq!(device.interface_path, "3-1:1.0");
+                    assert_eq!(device.serial.as_deref(), Some("ABC"));
+                    assert_eq!(bound.stream.input_channels, input);
+                    assert_eq!(bound.stream.output_channels, output);
+                    assert_eq!(bound.stream.maximum_receive_frame_count, 480);
+                    assert_eq!(bound.cm119.usb_port_path, "3-1");
+                    assert_eq!(
+                        (bound.cm119.vendor_id, bound.cm119.product_id),
+                        (0x0d8c, 0x000c)
+                    );
+                    assert_eq!(bound.cm119.profile, profile);
+                    assert!(bound.cm119.ptt_inverted);
+                    assert_eq!(bound.cm119.output_enable_mask, 0x21);
+                    assert_eq!(bound.cm119.output_initial_mask, 0x20);
+                }
+            }
+        }
+    }
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn native_selection_rejects_absent_mismatched_and_failed_identity_probes() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    for mode in [1, 2, 4, 7] {
+        NATIVE_IDENTITY_MODE.store(mode, Ordering::Release);
+        assert!(select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).is_err());
+    }
+    for (mode, serial) in [(3, Some("ABC")), (5, Some("ABC")), (6, None)] {
+        NATIVE_IDENTITY_MODE.store(mode, Ordering::Release);
+        let (device, _) =
+            select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).unwrap();
+        assert_eq!(device.serial.as_deref(), serial);
+    }
+    NATIVE_IDENTITY_MODE.store(0, Ordering::Release);
+    FAILURE.store(FAIL_AUDIO_SELECT, Ordering::Release);
+    assert!(select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).is_err());
+    let mut exact = plan;
+    exact.audio_selector.policy = usbradioplus_audio::SelectionPolicy::Exact;
+    exact.audio_selector.serial = Some("OTHER".to_owned());
+    assert!(select_native_hardware(&exact, audio_provider(), gpio_provider(), 960).is_err());
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn native_service_publishes_inputs_and_unkeys_without_mixer_or_eeprom_io() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    let (_, selected) =
+        select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).unwrap();
+    let state = SharedHardwareState::default();
+    GPIO_INPUTS.store(0x02, Ordering::Release);
+    PTT.store(1, Ordering::Release);
+    let mut service = HardwareService::native(&plan, selected, state.clone(), gpio_provider());
+    service.start().unwrap();
+    let deadline = Instant::now() + Duration::from_millis(100);
+    while !state.inputs().carrier && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(1));
+    }
+    let inputs = state.inputs();
+    assert!(inputs.carrier && inputs.subaudible);
+    assert_eq!(inputs.cm119_gpio_mask, 0x02);
+    assert!(matches!(
+        service.read_eeprom(),
+        Err(HardwareStationError::EepromDisabled)
+    ));
+    assert_eq!(service.statistics().cm119.input_read_count, 1);
+    service.stop().unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn native_service_keeps_its_handle_and_recovers_promptly_from_poll_failure() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let state = SharedHardwareState::default();
+    let mut service = HardwareService::native(&plan, selected, state.clone(), gpio_provider());
+    FAILURE.store(FAIL_CM119_SERVICE, Ordering::Release);
+    service
+        .start()
+        .expect("a native poll failure must not reject activation");
+    let deadline = Instant::now() + Duration::from_millis(100);
+    while !state.inputs().carrier && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(1));
+    }
+    service.stop().unwrap();
+    assert!(
+        service.statistics().service_cycles > 0,
+        "native polling must recover without the 500ms reconnect delay"
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 1);
+}
+
+#[test]
+fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_pulses() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let state = SharedHardwareState::default();
+    let (mut worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+    assert_eq!(worker.interval(), Duration::from_millis(5));
+    worker.native = true;
+    assert_eq!(worker.interval(), Duration::from_millis(2));
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+
+    GPIO_APPLIED_PTT.store(0, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 1);
+    assert!(
+        !state.inputs().physical_ptt,
+        "queued PTT is not physical PTT"
+    );
+    assert!(state.inputs().carrier);
+    let publishes = GPIO_PUBLISHES.load(Ordering::Acquire);
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(state.inputs().physical_ptt);
+    assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), publishes);
+
+    GPIO_ONLINE.store(0, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+    assert_eq!(state.inputs(), HardwareInputs::default());
+    GPIO_ONLINE.store(1, Ordering::Release);
+
+    for fault in [FAIL_CM119_SERVICE, FAIL_CM119_INPUTS, FAIL_CM119_STATISTICS] {
+        service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+        assert_eq!(PTT.load(Ordering::Acquire), 1);
+        FAILURE.store(fault, Ordering::Release);
+        assert!(service_native_once(&mut devices, &mut outputs, &worker, true).is_err());
+        assert_eq!(PTT.load(Ordering::Acquire), 0);
+        assert_eq!(state.inputs(), HardwareInputs::default());
+    }
+    FAILURE.store(FAIL_CM119_PUBLISH, Ordering::Release);
+    assert!(service_native_once(&mut devices, &mut outputs, &worker, true).is_err());
+    assert_eq!(outputs.native_ptt, None);
+    assert!(!state.inputs().physical_ptt);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 1);
+
+    outputs.clip_events_seen = u64::MAX;
+    FAILURE.store(FAIL_CM119_PULSE, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(FAILURE.load(Ordering::Acquire), 0);
+    assert!(outputs.clip_led_until.is_none());
+    outputs.clip_events_seen = u64::MAX;
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(outputs.clip_led_until.is_some());
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 1);
+}
+
 fn service_worker(
     plan: &HardwarePlan,
     selected: &SelectedHardwarePlan,
@@ -1532,6 +1795,7 @@ fn service_worker(
     let (input_sender, input_receiver) = sync_channel(INPUT_EVENT_QUEUE_CAPACITY);
     (
         ServiceWorker {
+            native: false,
             provider: gpio_provider(),
             selected: selected.clone(),
             parallel: plan.parallel.clone(),

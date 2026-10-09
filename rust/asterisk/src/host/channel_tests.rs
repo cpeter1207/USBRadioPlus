@@ -1,4 +1,4 @@
-use super::super::support::{FakeChannel, Fixture, OwnerLockTrace, with_state};
+use super::super::support::{FakeChannel, Fixture, OwnerLockTrace, product_support, with_state};
 use super::*;
 use crate::{ABI_VERSION, URP_AST_JITTER_ADAPTIVE};
 use std::cell::RefCell;
@@ -299,7 +299,7 @@ unsafe extern "C" fn capture_destroy(context: *mut c_void) {
 
 pub(in crate::host) fn lifecycle_descriptor() -> UrpAstDescriptor {
     // SAFETY: the process descriptor contains plain ABI fields and callback pointers.
-    let mut descriptor = unsafe { ptr::read(crate::product_descriptor()) };
+    let mut descriptor = unsafe { ptr::read(product_support::descriptor()) };
     descriptor.channel_reserve = Some(capture_reserve);
     descriptor.channel_start = Some(capture_start);
     descriptor.channel_stop = Some(capture_stop);
@@ -1202,7 +1202,7 @@ unsafe extern "C" fn retain_direct(
 #[test]
 fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
     let _fixture = Fixture::new();
-    let callbacks = crate::tests::direct_callbacks();
+    let callbacks = product_support::direct_callbacks();
     // SAFETY: descriptor fields are integers, raw pointers, and optional callbacks.
     let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
     descriptor.channel_set_direct_callbacks = Some(retain_direct);
@@ -1426,7 +1426,7 @@ fn failed_delivery_start_stops_the_station() {
 
 #[test]
 fn direct_option_rejects_wrong_technology_and_payload_length() {
-    let callbacks = crate::tests::direct_callbacks();
+    let callbacks = product_support::direct_callbacks();
     let data = ptr::from_ref(&callbacks).cast_mut().cast();
     let length = size_of::<super::super::super::UrpAstDirectCallbacks>() as c_int;
     // SAFETY: complete copied descriptor remains live throughout validation.
@@ -1741,19 +1741,19 @@ fn registration_gate_blocks_requests_until_rollback_finishes() {
 
 #[test]
 fn channel_host_requires_every_operation_it_invokes() {
-    assert!(descriptor_is_valid(crate::product_descriptor()));
+    assert!(descriptor_is_valid(product_support::descriptor()));
     macro_rules! reject_missing {
         ($field:ident) => {{
             // SAFETY: the descriptor contains only plain ABI fields and
             // function pointers, so this copy owns no dropped resource.
-            let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+            let mut incomplete = unsafe { std::ptr::read(product_support::descriptor()) };
             incomplete.$field = None;
             assert!(!descriptor_is_valid(&incomplete));
         }};
     }
     for corrupt in [0_u8, 1] {
         // SAFETY: see the macro comment above.
-        let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+        let mut incomplete = unsafe { std::ptr::read(product_support::descriptor()) };
         if corrupt == 0 {
             incomplete.struct_size = 0;
         } else {

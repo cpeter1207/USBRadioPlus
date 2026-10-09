@@ -20,6 +20,110 @@ use crate::media::tests::{
 };
 use crate::program::tests::provider as ring_provider;
 
+#[test]
+fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut received = 0_u32;
+    let mut transmitted = 0_u32;
+    unsafe extern "C" fn receive(context: *mut c_void, _: u32, _: *mut f32, frames: u32) -> i32 {
+        // SAFETY: this test retains the u32 until synchronous runtime destruction.
+        unsafe { *context.cast::<u32>() += frames };
+        0
+    }
+    unsafe extern "C" fn transmit(
+        context: *mut c_void,
+        pcm: *mut f32,
+        frames: u32,
+        keyed: *mut u32,
+        ctcss: *mut u32,
+    ) -> i32 {
+        // SAFETY: all callback spans and destinations belong to this test call.
+        unsafe {
+            *context.cast::<u32>() += frames;
+            std::slice::from_raw_parts_mut(pcm, frames as usize).fill(0.25);
+            *keyed = 1;
+            *ctcss = 1;
+        }
+        0
+    }
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: 3,
+        receive_context: ptr::from_mut(&mut received).cast(),
+        receive: Some(receive),
+        transmit_context: ptr::from_mut(&mut transmitted).cast(),
+        transmit: Some(transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: callback storage outlives the synchronous runtime below.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (mut runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.start().unwrap();
+    runtime.stop().unwrap();
+    drop(runtime);
+    assert!(received > 0);
+    assert!(transmitted > 0);
+}
+
+#[test]
+fn native_failed_render_and_oversized_callback_clear_key_and_output() {
+    for (generation, frames) in [(TRANSMIT_FAILING_GENERATION, 4), (24, 961)] {
+        let prepared = prepared(crate::ControllerTransport::RptAdvanced, generation);
+        let selected = selected(&prepared, 960);
+        let (plan, processing) = prepared.into_parts();
+        let mut capture = DirectCapture {
+            tx_keyed: 1,
+            ctcss_enabled: 1,
+            ..DirectCapture::default()
+        };
+        let callbacks = crate::DirectCallbacks {
+            struct_size: size_of::<crate::DirectCallbacks>() as u32,
+            abi_version: 3,
+            receive_context: ptr::from_mut(&mut capture).cast(),
+            receive: Some(direct_receive),
+            transmit_context: ptr::from_mut(&mut capture).cast(),
+            transmit: Some(direct_transmit),
+            accepted_abi_version: 0,
+        };
+        // SAFETY: this serial fixture retains callback storage through runtime teardown.
+        let media = unsafe {
+            crate::NativeStationMedia::prepare(
+                *plan.radio(),
+                processing,
+                radio_provider(),
+                callbacks,
+            )
+        }
+        .unwrap();
+        let (runtime, _control) =
+            StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+        runtime
+            .hardware
+            .publish_transmit_result(transmit_result(true, 1000));
+        let mut output = vec![1.0; frames * 2];
+        assert_eq!(
+            // SAFETY: the stopped runtime owns this context and advertised output span.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    frames as u32,
+                )
+            },
+            CALLBACK_FAILED
+        );
+        assert!(output.iter().all(|sample| *sample == 0.0));
+        assert!(!runtime.hardware.outputs().logical_ptt);
+        assert_eq!(runtime.hardware.outputs().selected_ctcss_tenths_hz, None);
+    }
+}
+
 impl StationRuntime {
     // Tests have no delivery task; join the production snapshot/preparation steps.
     fn prepare_update(

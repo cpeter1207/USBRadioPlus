@@ -8,6 +8,7 @@ use super::lifecycle::{
     AsteriskLoaderDescriptor, LOADER_ABI_VERSION, LifecycleCoordinator, LifecycleOperations,
     LoaderProviderManifest, manifest_is_valid,
 };
+use super::support::product_support;
 use crate::{URP_AST_CHANNEL_BUSY as BUSY, URP_AST_NOT_READY as NOT_READY, URP_AST_OK as OK};
 
 const FAILED: i32 = -8;
@@ -17,6 +18,7 @@ fn providers() -> LoaderProviderManifest {
     LoaderProviderManifest {
         struct_size: size_of::<LoaderProviderManifest>() as u32,
         abi_version: LOADER_ABI_VERSION,
+        product: product_support::descriptor(),
         ffmpeg: present,
         rnnoise: present,
         ring: present,
@@ -36,6 +38,10 @@ fn provider_manifest_requires_the_complete_loader_abi() {
     assert!(!manifest_is_valid(&manifest));
     manifest = providers();
     manifest.abi_version += 1;
+    assert!(!manifest_is_valid(&manifest));
+
+    manifest = providers();
+    manifest.product = ptr::null();
     assert!(!manifest_is_valid(&manifest));
 
     for missing in 0..7 {
@@ -66,7 +72,7 @@ fn loader_descriptor_layout_starts_with_size_version_and_capability() {
     };
 
     assert_eq!(descriptor.struct_size as usize, size_of_val(&descriptor));
-    assert_eq!(descriptor.abi_version, 4);
+    assert_eq!(descriptor.abi_version, 5);
     assert!(!descriptor.capability.is_null());
     assert!(descriptor.load.is_none());
     assert!(descriptor.reload.is_none());

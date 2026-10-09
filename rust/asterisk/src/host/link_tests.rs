@@ -7,7 +7,9 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use crate::host::support::Fixture as HostFixture;
-use crate::host::support::{FakeChannel as NativeChannel, with_state as with_native_state};
+use crate::host::support::{
+    FakeChannel as NativeChannel, product_support, with_state as with_native_state,
+};
 
 fn native_channel() -> *mut ffi::ast_channel {
     let mut channel = NativeChannel::new(ptr::null_mut());
@@ -217,13 +219,14 @@ fn production_scanner_start_rejects_invalid_and_failed_thread_ownership() {
 
     let _fixture = HostFixture::new();
     reset();
+    let descriptor = product_support::descriptor();
     assert_eq!(
-        start(ptr::null_mut(), ptr::null_mut()),
+        start(descriptor, ptr::null_mut(), ptr::null_mut()),
         crate::URP_AST_INVALID_ARGUMENT
     );
     // SAFETY: one thread-local failure affects only the next scanner spawn.
     unsafe { urp_test_fail_thread_create(1) };
-    let failed = start(ptr::dangling_mut(), ptr::dangling_mut());
+    let failed = start(descriptor, ptr::dangling_mut(), ptr::dangling_mut());
     // SAFETY: retrieve and disarm the calling thread's native test seam.
     let attempts = unsafe {
         let attempts = urp_test_thread_create_calls();
@@ -233,9 +236,12 @@ fn production_scanner_start_rejects_invalid_and_failed_thread_ownership() {
     assert_eq!(failed, URP_AST_ASTERISK_FAILURE);
     assert_eq!(attempts, 1);
     assert!(lock(running_host()).is_none());
-    assert_eq!(start(ptr::dangling_mut(), ptr::dangling_mut()), URP_AST_OK);
     assert_eq!(
-        start(ptr::dangling_mut(), ptr::dangling_mut()),
+        start(descriptor, ptr::dangling_mut(), ptr::dangling_mut()),
+        URP_AST_OK
+    );
+    assert_eq!(
+        start(descriptor, ptr::dangling_mut(), ptr::dangling_mut()),
         URP_AST_ASTERISK_FAILURE
     );
     stop();
@@ -528,6 +534,8 @@ struct FakeState {
     preparation_observer: Option<fn()>,
     prepare_empty: bool,
     reload_unchanged: bool,
+    reload_compare_result: i32,
+    reload_comparisons: Vec<(String, u32, u32)>,
     observe_result: i32,
     attach_result: i32,
     process_calls: Vec<(usize, u32, u32, u32)>,
@@ -645,12 +653,17 @@ fn nul(value: &str) -> Vec<u8> {
 }
 
 fn fake_host() -> LinkHost {
-    LinkHost::with_operations(
-        ptr::dangling_mut::<c_void>(),
-        ptr::null_mut(),
-        fake_product_operations(),
-        fake_asterisk_operations(),
-    )
+    // SAFETY: zeroed optional C callbacks are valid; the six consumed entries are supplied below.
+    let mut descriptor: UrpAstDescriptor = unsafe { std::mem::zeroed() };
+    descriptor.link_prepare = Some(fake_prepare);
+    descriptor.link_prepare_reload = Some(fake_prepare_reload);
+    descriptor.link_reload_unchanged = Some(fake_reload_unchanged);
+    descriptor.link_process = Some(fake_process);
+    descriptor.link_observe = Some(fake_observe);
+    descriptor.link_destroy = Some(fake_graph_destroy);
+    let mut host = LinkHost::new(&descriptor, ptr::dangling_mut::<c_void>(), ptr::null_mut());
+    host.asterisk = fake_asterisk_operations();
+    host
 }
 
 fn fake_product_operations() -> LinkProductOperations {
@@ -751,14 +764,26 @@ unsafe extern "C" fn fake_prepare(
     unsafe { fake_prepare_common(channel_name, channel_name_length, output, "prepare") }
 }
 
-unsafe fn fake_reload_unchanged(
+unsafe extern "C" fn fake_reload_unchanged(
     _driver: *mut c_void,
     _link: *mut c_void,
-    _profile: &str,
-    _sample_rate_hz: u32,
-    _maximum_frame_count: u32,
-) -> Result<bool, c_int> {
-    Ok(with_state(|state| state.reload_unchanged))
+    profile: *const u8,
+    profile_length: u32,
+    sample_rate_hz: u32,
+    maximum_frame_count: u32,
+    output: *mut u32,
+) -> c_int {
+    // SAFETY: the host borrows its complete UTF-8 profile through this synchronous call.
+    let profile = unsafe { std::slice::from_raw_parts(profile, profile_length as usize) };
+    let profile = std::str::from_utf8(profile).unwrap();
+    with_state(|state| {
+        state
+            .reload_comparisons
+            .push((profile.to_owned(), sample_rate_hz, maximum_frame_count));
+        // SAFETY: the host retains this writable result until the callback returns.
+        unsafe { output.write(u32::from(state.reload_unchanged)) };
+        state.reload_compare_result
+    })
 }
 
 unsafe extern "C" fn fake_prepare_reload(
@@ -1500,6 +1525,36 @@ fn unchanged_reload_keeps_the_live_graph_history_and_statistics() {
         invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
         assert_eq!(samples[0], 1);
     }
+    assert_eq!(
+        with_state(|state| state.reload_comparisons.clone()),
+        [("alpha".into(), 8_000, 960), ("alpha".into(), 8_000, 960)]
+    );
+}
+
+#[test]
+fn descriptor_comparison_failure_retains_graph_and_unlocks_before_returning() {
+    let _guard = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/compare-failure", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    with_state(|state| state.reload_compare_result = -17);
+    let hook = retain(&host, &mut channel).unwrap();
+    assert_eq!(
+        hook.prepare_reload(host.driver, 8_000),
+        Err(LinkHostError::Product(-17))
+    );
+    with_state(|state| {
+        assert_eq!(state.events.last(), Some(&"audiohook_unlock"));
+        assert_eq!(state.graphs.len(), 1);
+    });
+    let mut samples = [9_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    detach(&host, &mut channel);
+    drop(hook);
+    assert!(with_state(|state| state.graphs.is_empty()));
 }
 
 #[test]

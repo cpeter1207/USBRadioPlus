@@ -1,4 +1,24 @@
+//! Shared-product boundary regression tests, independent of Asterisk.
+
 use super::*;
+
+#[path = "tests/native.rs"]
+mod native;
+
+#[test]
+fn native_descriptor_rejects_missing_request_and_clears_handle() {
+    let descriptor = product_descriptor();
+    let mut output = std::ptr::dangling_mut::<c_void>();
+    // SAFETY: null arguments are rejected and output is valid writable storage.
+    assert_eq!(
+        unsafe { descriptor.native_create.unwrap()(std::ptr::null(), &mut output) },
+        URP_AST_INVALID_ARGUMENT
+    );
+    assert!(output.is_null());
+    assert!(descriptor.native_start.is_some());
+    assert!(descriptor.native_stop.is_some());
+    assert!(descriptor.native_destroy.is_some());
+}
 
 use std::cell::RefCell;
 use std::ffi::CStr;
@@ -477,16 +497,30 @@ fn unchanged_link_reload_requires_the_live_graph_configuration_and_rate() {
         // SAFETY: this test exclusively owns driver and the quiescent link.
         unsafe {
             assert_eq!(stage_reload(driver, configuration), URP_AST_OK);
+            let mut same = 9;
             assert_eq!(
-                link_reload_unchanged(driver, link, "usb", 8_000, 160),
+                product_descriptor().link_reload_unchanged.unwrap()(
+                    driver,
+                    link,
+                    b"usb".as_ptr(),
+                    3,
+                    8_000,
+                    160,
+                    &mut same
+                ),
+                URP_AST_OK
+            );
+            assert_eq!(same, u32::from(expected));
+            assert_eq!(
+                link_reload_unchanged(driver, link, "usb", 8_000, 160).map_err(Status::code),
                 Ok(expected)
             );
             assert_eq!(
-                link_reload_unchanged(driver, link, "usb", 48_000, 160),
+                link_reload_unchanged(driver, link, "usb", 48_000, 160).map_err(Status::code),
                 Ok(false)
             );
             assert_eq!(
-                link_reload_unchanged(driver, link, "usb", 8_000, 960),
+                link_reload_unchanged(driver, link, "usb", 8_000, 960).map_err(Status::code),
                 Ok(false)
             );
             assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
@@ -501,6 +535,9 @@ fn unchanged_link_reload_requires_the_live_graph_configuration_and_rate() {
 
 #[test]
 fn descriptor_exposes_one_complete_versioned_boundary() {
+    let incompatible = provider_support::incompatible_manifest();
+    // SAFETY: the fixture manifest is complete and references static descriptors.
+    assert!(unsafe { validate_providers(&incompatible) }.is_err());
     let descriptor = product_descriptor();
     assert_eq!(
         descriptor.struct_size as usize,
@@ -511,6 +548,7 @@ fn descriptor_exposes_one_complete_versioned_boundary() {
     let capability = unsafe { CStr::from_ptr(descriptor.capability_name) };
     assert_eq!(capability, CAPABILITY);
     assert!(descriptor.driver_create.is_some());
+    assert!(descriptor.link_reload_unchanged.is_some());
     assert!(descriptor.driver_reload.is_some());
     assert!(descriptor.driver_reload_finish.is_some());
     assert!(descriptor.driver_channel_name.is_some());

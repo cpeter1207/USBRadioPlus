@@ -1,8 +1,8 @@
 //! Concrete loader boundary and provider-backed lifecycle transactions.
 
 use super::*;
-use crate::host::support::{Fixture, with_state};
-use crate::tests::{PROVIDER_TEST_LOCK, provider_support};
+use crate::host::support::product_support::{PROVIDER_TEST_LOCK, provider_support};
+use crate::host::support::{Fixture, product_support, with_state};
 use std::ffi::CString;
 
 fn providers() -> LoaderProviderManifest {
@@ -10,6 +10,7 @@ fn providers() -> LoaderProviderManifest {
     LoaderProviderManifest {
         struct_size: size_of::<LoaderProviderManifest>() as u32,
         abi_version: LOADER_ABI_VERSION,
+        product: product_support::descriptor(),
         ffmpeg: product.ffmpeg,
         rnnoise: product.rnnoise,
         ring: product.ring,
@@ -75,6 +76,49 @@ fn exported_loader_rejects_bad_arguments_before_constructing_resources() {
         assert_eq!(descriptor.load.unwrap()(&manifest, module), LOADER_DECLINE);
     }
     with_state(|state| assert!(state.configuration_paths.is_empty()));
+}
+
+#[test]
+fn loader_rejects_invalid_product_before_configuration_or_driver_creation() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static CREATES: AtomicUsize = AtomicUsize::new(0);
+    unsafe extern "C" fn capture_create(
+        _: *const UrpAstDriverCreateArgs,
+        _: *mut *mut c_void,
+    ) -> c_int {
+        CREATES.fetch_add(1, Ordering::Relaxed);
+        crate::URP_AST_SETUP_FAILED
+    }
+
+    let _fixture = Fixture::new();
+    let _cleanup = LoadedGuard;
+    with_state(|state| state.configuration_text = Some(c"[usb]\n".to_owned()));
+    for case in 0..5 {
+        let mut product = *product_support::descriptor();
+        product.driver_create = Some(capture_create);
+        match case {
+            0 => product.struct_size = size_of::<u32>() as u32,
+            1 => product.abi_version += 1,
+            2 => product.capability_name = ptr::null(),
+            3 => product.capability_name = c"wrong.product".as_ptr(),
+            _ => product.link_reload_unchanged = None,
+        }
+        let manifest = LoaderProviderManifest {
+            product: &product,
+            ..providers()
+        };
+        // SAFETY: the descriptor copy and provider fixtures remain live until load returns.
+        assert_eq!(
+            unsafe { loader_load(&manifest, ptr::dangling_mut::<u8>().cast()) },
+            LOADER_DECLINE
+        );
+    }
+    assert_eq!(CREATES.load(Ordering::Relaxed), 0);
+    with_state(|state| {
+        assert!(state.configuration_paths.is_empty());
+        assert!(state.capabilities.is_empty());
+        assert!(state.channels.is_empty());
+    });
 }
 
 #[test]

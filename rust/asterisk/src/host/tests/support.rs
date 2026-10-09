@@ -14,6 +14,9 @@ mod abi_tests;
 #[path = "link_support.rs"]
 mod link_support;
 
+#[path = "product_support.rs"]
+pub(crate) mod product_support;
+
 #[path = "large_cstr.rs"]
 mod large_cstr;
 pub(crate) use large_cstr::OversizedCString;

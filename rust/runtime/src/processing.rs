@@ -111,6 +111,23 @@ pub struct NativeProcessingPlan {
     pub preemphasis_corner_hz: f64,
 }
 
+/// Explicit native frontend graph settings, without ASL chain defaults.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExplicitNativeProcessingPlan {
+    /// Exact configured mono receive graph.
+    pub receive_graph: String,
+    /// Exact configured mono transmit graph.
+    pub transmit_graph: String,
+    /// Apply the established 300 Hz deemphasis before receive gain/filtering.
+    pub receive_deemphasis: bool,
+    /// Gain after receive filtering, in decibels.
+    pub receive_output_gain_db: i32,
+    /// CTCSS table entries requiring decoded-tone rejection.
+    pub receive_ctcss_mask: u64,
+    /// Prepare normal and turnoff DCS shaping.
+    pub transmit_dcs: bool,
+}
+
 /// Reusable control-plane factory for prepared processing generations.
 #[derive(Clone)]
 pub struct NativeProcessingFactory {
@@ -121,6 +138,54 @@ pub struct NativeProcessingFactory {
 }
 
 impl NativeProcessingFactory {
+    /// Prepare explicit native graphs with the same processor ownership and
+    /// fixed signaling curves as the ASL station, without a denoiser provider.
+    pub fn prepare_explicit(
+        provider: GraphProvider,
+        plan: &ExplicitNativeProcessingPlan,
+        maximum_frame_count: u32,
+    ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
+        NativeStreamSpec::new(48_000, maximum_frame_count)?;
+        // Explicit graphs never synthesize an AGC stage or refer to its path.
+        let descriptions = GraphDescriptionFactory::new("")?;
+        let prepare = |description| prepare_graph(provider, description, maximum_frame_count);
+        let mut notches = std::array::from_fn(|_| None);
+        for tone in CtcssTone::supported() {
+            if plan.receive_ctcss_mask & (1 << tone.table_index()) != 0 {
+                notches[tone.table_index()] = Some(prepare(
+                    descriptions.decoded_tone_notch(f64::from(tone.as_hz()), 10.0)?,
+                )?);
+            }
+        }
+        let tail = (plan.receive_ctcss_mask != 0)
+            .then(|| prepare(descriptions.decoded_tone_notch(55.0, 10.0)?))
+            .transpose()?;
+        let dcs = |turnoff| {
+            if plan.transmit_dcs {
+                descriptions.dcs_filter(turnoff)
+            } else {
+                "anull".to_owned()
+            }
+        };
+        Ok(ProcessingGeneration {
+            receive_deemphasis: prepare(
+                descriptions.receive_deemphasis(plan.receive_deemphasis, 300.0)?,
+            )?,
+            receive_filter: prepare(plan.receive_graph.clone())?,
+            receive_ctcss_notch: notches,
+            receive_ctcss_tail_notch: tail,
+            receive_noise_reduction: None,
+            receive_dynamics: prepare(if plan.receive_output_gain_db == 0 {
+                "anull".to_owned()
+            } else {
+                format!("volume={}dB", plan.receive_output_gain_db)
+            })?,
+            transmit_program: prepare(plan.transmit_graph.clone())?,
+            transmit_dcs_normal_filter: prepare(dcs(false))?,
+            transmit_dcs_turnoff_filter: prepare(dcs(true))?,
+        })
+    }
+
     /// Construct a factory from process-lifetime adapter capabilities.
     pub fn new(
         graph_provider: GraphProvider,
@@ -446,16 +511,7 @@ impl NativeProcessingFactory {
         description: String,
         maximum_frame_count: u32,
     ) -> Result<SharedGraph, ProcessingRuntimeError> {
-        let primary =
-            SharedProcessor::new(self.prepare_warmed_graph(description, maximum_frame_count)?);
-        let audible = Arc::new(AtomicPtr::new(primary.pointer().as_ptr()));
-        Ok(SharedGraph(Arc::new(GraphStage {
-            primary,
-            previous: None,
-            audible,
-            transition: None,
-            complete: AtomicBool::new(true),
-        })))
+        prepare_graph(self.graph_provider, description, maximum_frame_count)
     }
 
     fn prepare_warmed_graph(
@@ -463,16 +519,38 @@ impl NativeProcessingFactory {
         description: String,
         maximum_frame_count: u32,
     ) -> Result<PreparedGraph, ProcessingRuntimeError> {
-        let description = CString::new(description)
-            .map_err(|_| ProcessingRuntimeError::InvalidGraphDescription)?;
-        let mut graph = self
-            .graph_provider
-            .prepare(&description, maximum_frame_count)?;
-        let silence = vec![0.0; maximum_frame_count as usize];
-        let mut output = vec![0.0; maximum_frame_count as usize];
-        graph.warm_up(&silence, &mut output, GRAPH_WARMUP_BLOCKS)?;
-        Ok(graph)
+        prepare_warmed_graph(self.graph_provider, description, maximum_frame_count)
     }
+}
+
+fn prepare_warmed_graph(
+    provider: GraphProvider,
+    description: String,
+    maximum: u32,
+) -> Result<PreparedGraph, ProcessingRuntimeError> {
+    let description =
+        CString::new(description).map_err(|_| ProcessingRuntimeError::InvalidGraphDescription)?;
+    let mut graph = provider.prepare(&description, maximum)?;
+    let silence = vec![0.0; maximum as usize];
+    let mut output = vec![0.0; maximum as usize];
+    graph.warm_up(&silence, &mut output, GRAPH_WARMUP_BLOCKS)?;
+    Ok(graph)
+}
+
+fn prepare_graph(
+    provider: GraphProvider,
+    description: String,
+    maximum: u32,
+) -> Result<SharedGraph, ProcessingRuntimeError> {
+    let primary = SharedProcessor::new(prepare_warmed_graph(provider, description, maximum)?);
+    let audible = Arc::new(AtomicPtr::new(primary.pointer().as_ptr()));
+    Ok(SharedGraph(Arc::new(GraphStage {
+        primary,
+        previous: None,
+        audible,
+        transition: None,
+        complete: AtomicBool::new(true),
+    })))
 }
 
 /// Stable storage shared only across successive generations of the same owner.

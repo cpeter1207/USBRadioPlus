@@ -6,13 +6,8 @@
 
 use super::super::{
     ABI_VERSION, URP_AST_ASTERISK_FAILURE, URP_AST_LINK_DIRECTION_READ,
-    URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK, UrpAstLinkDestroy,
-    UrpAstLinkObservation, UrpAstLinkObserve, UrpAstLinkPrepare, UrpAstLinkProcess, ffi,
-};
-
-use super::super::{
-    link_destroy, link_observe, link_prepare, link_prepare_reload, link_process,
-    link_reload_unchanged,
+    URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK, UrpAstDescriptor,
+    UrpAstLinkObservation, ffi,
 };
 use super::channel;
 
@@ -43,16 +38,18 @@ pub(super) enum LinkHostError {
     Product(c_int),
 }
 
-/// Existing Rust graph functions consumed by the audiohook owner.
+/// Required C graph operations copied from the validated product descriptor.
 #[derive(Clone, Copy)]
 pub(super) struct LinkProductOperations {
-    pub(super) prepare: UrpAstLinkPrepare,
-    pub(super) prepare_reload: UrpAstLinkPrepare,
+    pub(super) prepare:
+        unsafe extern "C" fn(*mut c_void, *const u8, u32, u32, u32, *mut *mut c_void) -> c_int,
+    pub(super) prepare_reload:
+        unsafe extern "C" fn(*mut c_void, *const u8, u32, u32, u32, *mut *mut c_void) -> c_int,
     pub(super) reload_unchanged:
-        unsafe fn(*mut c_void, *mut c_void, &str, u32, u32) -> Result<bool, c_int>,
-    pub(super) process: UrpAstLinkProcess,
-    pub(super) observe: UrpAstLinkObserve,
-    pub(super) destroy: UrpAstLinkDestroy,
+        unsafe extern "C" fn(*mut c_void, *mut c_void, *const u8, u32, u32, u32, *mut u32) -> c_int,
+    pub(super) process: unsafe extern "C" fn(*mut c_void, u32, u32, *mut i16, u32) -> c_int,
+    pub(super) observe: unsafe extern "C" fn(*mut c_void, *mut UrpAstLinkObservation) -> c_int,
+    pub(super) destroy: unsafe extern "C" fn(*mut c_void),
 }
 
 /// Narrow Asterisk operations used outside the real-time graph processor.
@@ -121,12 +118,16 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 /// Start periodic discovery of eligible incoming AllStarLink channels.
-pub(super) fn start(driver: *mut c_void, module_self: *mut ffi::ast_module) -> c_int {
+pub(super) fn start(
+    descriptor: &UrpAstDescriptor,
+    driver: *mut c_void,
+    module_self: *mut ffi::ast_module,
+) -> c_int {
     if driver.is_null() {
         return super::super::URP_AST_INVALID_ARGUMENT;
     }
     start_with(
-        LinkHost::new(driver, module_self),
+        LinkHost::new(descriptor, driver, module_self),
         channel::first_live_profile,
     )
 }
@@ -304,18 +305,26 @@ impl LinkHost {
         .map(|_| ())
     }
 
-    /// Construct the production host around one live Rust driver generation.
-    pub(super) fn new(driver: *mut c_void, module_self: *mut ffi::ast_module) -> Self {
+    /// Construct a host around a live driver and its validated product descriptor.
+    pub(super) fn new(
+        descriptor: &UrpAstDescriptor,
+        driver: *mut c_void,
+        module_self: *mut ffi::ast_module,
+    ) -> Self {
         Self::with_operations(
             driver,
             module_self,
             LinkProductOperations {
-                prepare: link_prepare,
-                prepare_reload: link_prepare_reload,
-                reload_unchanged: link_reload_unchanged,
-                process: link_process,
-                observe: link_observe,
-                destroy: link_destroy,
+                prepare: descriptor.link_prepare.expect("validated link_prepare"),
+                prepare_reload: descriptor
+                    .link_prepare_reload
+                    .expect("validated link_prepare_reload"),
+                reload_unchanged: descriptor
+                    .link_reload_unchanged
+                    .expect("validated link_reload_unchanged"),
+                process: descriptor.link_process.expect("validated link_process"),
+                observe: descriptor.link_observe.expect("validated link_observe"),
+                destroy: descriptor.link_destroy.expect("validated link_destroy"),
             },
             production_asterisk_operations(),
         )
@@ -886,18 +895,25 @@ impl LinkHook {
         } else if active.is_null() {
             Ok(false)
         } else {
+            let mut unchanged = 0;
             // SAFETY: the live graph is retained and quiescent while its immutable
             // description is compared; no graph construction or warmup occurs.
-            unsafe {
+            let status = unsafe {
                 (self.product.reload_unchanged)(
                     driver,
                     active,
-                    &self.profile,
+                    self.profile.as_ptr(),
+                    self.profile.len() as u32,
                     sample_rate_hz,
                     MAXIMUM_LINK_FRAME_COUNT,
+                    &raw mut unchanged,
                 )
+            };
+            if status == URP_AST_OK {
+                Ok(unchanged != 0)
+            } else {
+                Err(LinkHostError::Product(status))
             }
-            .map_err(LinkHostError::Product)
         };
         // SAFETY: balances the lock above, including comparison errors.
         unsafe { (self.asterisk.audiohook_unlock)(audiohook) };

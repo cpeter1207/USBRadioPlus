@@ -56,11 +56,17 @@ impl DirectCallbacks {
     /// Validate the exact initial-alpha boundary before copying callback pointers.
     #[must_use]
     pub fn is_valid(&self) -> bool {
+        self.is_valid_native()
+            && !self.receive_context.is_null()
+            && !self.transmit_context.is_null()
+    }
+
+    /// Validate native callbacks, whose functions may deliberately use no context.
+    #[must_use]
+    pub fn is_valid_native(&self) -> bool {
         self.struct_size as usize == std::mem::size_of::<Self>()
             && self.abi_version == Self::ABI_VERSION
-            && !self.receive_context.is_null()
             && self.receive.is_some()
-            && !self.transmit_context.is_null()
             && self.transmit.is_some()
     }
 }
@@ -177,6 +183,67 @@ pub struct StationMedia {
     pub controller: ControllerState,
 }
 
+/// Native radio media with no ASL controller, delivery handoff, or program ring.
+pub struct NativeStationMedia {
+    pub(crate) config: usbradioplus_radio::SessionConfig,
+    pub(crate) receive: StationReceive,
+    pub(crate) transmit: StationTransmit,
+    pub(crate) control: StationControl,
+}
+
+impl NativeStationMedia {
+    /// Bind already prepared processing to native exact-frame callbacks.
+    ///
+    /// # Safety
+    /// The callback contract and contexts must remain live until synchronous
+    /// stream shutdown; receive and transmit have independent serial owners.
+    pub unsafe fn prepare(
+        config: usbradioplus_radio::SessionConfig,
+        processing: ProcessingGeneration,
+        provider: RadioProvider,
+        callbacks: DirectCallbacks,
+    ) -> Result<Self, StationMediaError> {
+        if !callbacks.is_valid_native() {
+            return Err(StationMediaError::ControllerTransportMismatch);
+        }
+        let direct = Arc::new(crate::program::DirectProgram::default());
+        // SAFETY: no callbacks or radio session exist during preparation.
+        unsafe {
+            direct.prepare(config.maximum_transmit_frame_count as usize);
+        }
+        let mut resources = Arc::new(MediaResources {
+            processing,
+            program_ring: None,
+            direct: Arc::clone(&direct),
+        });
+        let resources_mut = Arc::get_mut(&mut resources).expect("new resources are uniquely owned");
+        // SAFETY: each endpoint below retains this stable allocation until destruction.
+        let (receive, transmit, control) =
+            unsafe { prepare_owned_session(provider, &config, resources_mut)? };
+        Ok(Self {
+            config,
+            receive: StationReceive {
+                radio: receive,
+                controller: None,
+                direct: Some(callbacks),
+                qualification: None,
+                _resources: Arc::clone(&resources),
+            },
+            transmit: StationTransmit {
+                radio: transmit,
+                direct: Some(callbacks),
+                native: true,
+                program: direct,
+                _resources: Arc::clone(&resources),
+            },
+            control: StationControl {
+                radio: control,
+                _resources: resources,
+            },
+        })
+    }
+}
+
 impl StationMedia {
     /// Attach borrowed direct endpoints before opening the station stream.
     ///
@@ -213,9 +280,9 @@ impl StationMedia {
 /// Sole local receive callback owner and its ASL3 publication endpoint.
 pub struct StationReceive {
     radio: ReceiveEndpoint<'static>,
-    controller: ReceivePublisher,
+    controller: Option<ReceivePublisher>,
     pub(crate) direct: Option<DirectCallbacks>,
-    qualification: Arc<AtomicU32>,
+    qualification: Option<Arc<AtomicU32>>,
     _resources: Arc<MediaResources>,
 }
 
@@ -224,10 +291,12 @@ impl StationReceive {
         &self,
         qualification: usbradioplus_asl3::ReceiveQualification,
     ) {
-        self.qualification.store(
-            crate::program::pack_qualification(qualification),
-            Ordering::Release,
-        );
+        if let Some(shared) = &self.qualification {
+            shared.store(
+                crate::program::pack_qualification(qualification),
+                Ordering::Release,
+            );
+        }
     }
 
     /// Borrow the released radio receive endpoint for one bounded callback.
@@ -237,7 +306,9 @@ impl StationReceive {
 
     /// Borrow the matching non-waiting ASL3 receive publisher.
     pub fn controller(&mut self) -> &mut ReceivePublisher {
-        &mut self.controller
+        self.controller
+            .as_mut()
+            .expect("ASL receive owner has a publisher")
     }
 }
 
@@ -245,6 +316,7 @@ impl StationReceive {
 pub struct StationTransmit {
     radio: TransmitEndpoint<'static>,
     pub(crate) direct: Option<DirectCallbacks>,
+    pub(crate) native: bool,
     program: Arc<crate::program::DirectProgram>,
     _resources: Arc<MediaResources>,
 }
@@ -290,7 +362,8 @@ impl StationControl {
 
 struct MediaResources {
     processing: ProcessingGeneration,
-    program_ring: ProgramRingConsumer,
+    program_ring: Option<ProgramRingConsumer>,
+    direct: Arc<crate::program::DirectProgram>,
 }
 
 // SAFETY: MediaResources has no public access after binding. Session creation
@@ -331,7 +404,8 @@ impl PreparedStation {
         let (plan, processing) = self.into_parts();
         let mut resources = Arc::new(MediaResources {
             processing,
-            program_ring,
+            program_ring: Some(program_ring),
+            direct: Arc::clone(&direct_program),
         });
         // A fresh Arc is uniquely mutable until the callback ports are captured.
         let resources_mut = Arc::get_mut(&mut resources).expect("a new Arc has one owner");
@@ -343,14 +417,15 @@ impl PreparedStation {
             plan,
             receive: StationReceive {
                 radio: receive,
-                controller: controller_publisher,
+                controller: Some(controller_publisher),
                 direct: None,
-                qualification,
+                qualification: Some(qualification),
                 _resources: Arc::clone(&resources),
             },
             transmit: StationTransmit {
                 radio: transmit,
                 direct: None,
+                native: false,
                 program: direct_program,
                 _resources: Arc::clone(&resources),
             },
@@ -374,7 +449,11 @@ unsafe fn prepare_owned_session(
     config: &usbradioplus_radio::SessionConfig,
     resources: &mut MediaResources,
 ) -> Result<OwnedEndpoints, RadioError> {
-    let program_ring = resources.program_ring.radio_port();
+    let program_ring = match &mut resources.program_ring {
+        Some(ring) => ring.radio_port(),
+        // SAFETY: the caller keeps this source stable and assigns a sole TX owner.
+        None => unsafe { resources.direct.radio_port() },
+    };
     let ports = resources.processing.session_ports(program_ring);
     let endpoints = provider.prepare(config, ports)?.split();
     // SAFETY: the caller keeps the stable MediaResources allocation live until

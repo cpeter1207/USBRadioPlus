@@ -48,6 +48,11 @@ def test_documentation_publishes_after_main_push_with_its_own_permissions():
     assert "runs-on:" not in workflow
 
 
+def test_public_product_header_is_in_developer_documentation():
+    """Keep the independently consumed product ABI in published API documentation."""
+    assert "rust/product/include/usbradioplus_product.h" in read("Doxyfile")
+
+
 def test_container_workflow_builds_and_publishes_native_multiarch_images():
     """Verify container workflow builds and publishes native multiarch images."""
     workflow = read(".github/workflows/containers.yml")

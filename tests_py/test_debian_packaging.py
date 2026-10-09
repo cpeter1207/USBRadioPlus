@@ -1,6 +1,7 @@
 ## @file
 ## @brief Debian packaging regression checks.
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -54,18 +55,18 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert ", whiptail" in binary_control
     assert "ASL3_ASTERISK_VERSION" in rules
     assert "DEB_BINARY_PACKAGE" not in rules
-    assert "debian/usbradioplus" in rules
-    assert control.count("\nPackage: ") == 1
+    assert "debian/tmp" in rules
+    assert control.count("\nPackage: ") == 3
     assert "\nPackage: usbradioplus\n" in control
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
     for document in (
         "README.md",
         "CHANGELOG.md",
         "doc/native-radio.md",
-        "doc/native-mode-retirement.md",
         "doc/agc.md",
     ):
         assert document in rules
+        assert (ROOT / document).is_file(), f"Missing packaged document: {document}"
     for maintainer_script in ("*.preinst", "*.postinst", "*.prerm", "*.postrm"):
         assert not list((ROOT / "debian").glob(maintainer_script))
 
@@ -75,13 +76,150 @@ def test_private_rust_host_and_module_are_one_package_transaction():
     control = read("debian/control")
     makefile = read("Makefile")
     rules = read("debian/rules")
-    assert control.count("\nPackage: ") == 1
+    assert "libusbradioplus-product1 (= ${binary:Version})" in control
     module_install = "$(INSTALL_DATA) $(MODULE) "
     module_path = "$(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so"
     assert module_install + module_path in makefile
     assert "$(INSTALL_PROGRAM) $(ASTERISK_ADAPTER_VERSIONED)" in makefile
     assert "$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/$(ASTERISK_ADAPTER_SONAME)" in makefile
-    assert "debian/usbradioplus" in rules
+    assert "debian/tmp" in rules
+
+
+def test_radio_product_packages_are_independent_of_asterisk_and_controller():
+    """Keep a native radio consumer installable without the channel module or controller."""
+    paragraphs = read("debian/control").split("\n\n")
+    packages = {
+        paragraph.splitlines()[0].removeprefix("Package: "): paragraph
+        for paragraph in paragraphs
+        if paragraph.startswith("Package: ")
+    }
+    assert set(packages) == {
+        "usbradioplus",
+        "libusbradioplus-product1",
+        "libusbradioplus-product-dev",
+    }
+    runtime = packages["libusbradioplus-product1"]
+    development = packages["libusbradioplus-product-dev"]
+    for package in (runtime, development):
+        dependency = package.partition("Depends: ")[2].partition("\nDescription:")[0]
+        assert not any(word in dependency for word in ("asterisk", "ASLDepends", "rpt-advanced"))
+        assert "usbradioplus (= " not in dependency
+    assert "libusbradioplus-product1 (= ${binary:Version})" in development
+    assert "librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3)" in runtime
+
+    integration_files = read("debian/usbradioplus.install").splitlines()
+    runtime_files = read("debian/libusbradioplus-product1.install").splitlines()
+    development_files = read("debian/libusbradioplus-product-dev.install").splitlines()
+    assert "usr/lib/*/asterisk/modules/chan_usbradioplus.so" in integration_files
+    assert "usr/lib/*/libusbradioplus_asterisk.so.1" in integration_files
+    assert "usr/sbin/usbradioplus-tune" in integration_files
+    assert runtime_files == [
+        "usr/lib/*/libusbradioplus_product.so.1",
+        "usr/lib/*/usbradioplus/usbradioplus_agc.so*",
+    ]
+    assert development_files == [
+        "usr/include/usbradioplus_product.h",
+        "usr/lib/*/libusbradioplus_product.so",
+        "usr/lib/*/pkgconfig/usbradioplus_product.pc",
+    ]
+
+
+def test_staged_install_exposes_product_development_files_and_preserves_configuration(tmp_path):
+    """Exercise Make's installation paths without compiling the supplied artifact fixtures."""
+    source = tmp_path / "source"
+    stage = tmp_path / "stage"
+    source.mkdir()
+    for path in (
+        "Makefile",
+        "VERSION",
+        "usbradioplus_product.pc.in",
+        "README.md",
+        "CHANGELOG.md",
+        "doc/native-radio.md",
+        "doc/agc.md",
+        "examples/usbradioplus.conf.sample",
+        "man/usbradioplus.conf.5",
+        "man/usbradioplus.7",
+        "man/usbradioplus-tune.8",
+    ):
+        destination = source / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / path, destination)
+    for path in (
+        "build/chan_usbradioplus.so",
+        "build/libusbradioplus_asterisk.so.1",
+        "build/libusbradioplus_product.so.1",
+        "build/usbradioplus_agc.so.1",
+        "build/usbradioplus-tune",
+        "rust/product/include/usbradioplus_product.h",
+    ):
+        destination = source / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(f"installation fixture: {path}\n", encoding="utf-8")
+    configuration = stage / "etc/asterisk/usbradioplus.conf"
+    configuration.parent.mkdir(parents=True)
+    configuration.write_text("existing operator configuration\n", encoding="utf-8")
+    provider_metadata = tmp_path / "providers"
+    provider_metadata.mkdir()
+    for name, abi in (
+        ("rate_adjusting_pcm_ring3", 3),
+        ("rptadvradio", 4),
+        ("rptadv_samplerate_adapter", 2),
+        ("rptadv_ffmpeg_adapter", 1),
+        ("rptadv_portaudio_alsa_adapter", 2),
+        ("rptadv_gpio_adapter", 1),
+        ("rptadv_rnnoise_adapter", 1),
+    ):
+        (provider_metadata / f"{name}.pc").write_text(
+            f"abi_version={abi}\nlibdir=/fixture/lib\nName: {name}\n"
+            "Description: install-only provider fixture\nVersion: 999.0.0\n",
+            encoding="utf-8",
+        )
+
+    subprocess.run(
+        [
+            "make",
+            "-o",
+            "all",
+            "build/usbradioplus_product.pc",
+            "install",
+            "prefix=/usr",
+            "MULTIARCH=x86_64-linux-gnu",
+            f"DESTDIR={stage}",
+        ],
+        cwd=source,
+        env=dict(os.environ, PKG_CONFIG_LIBDIR=str(provider_metadata)),
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    library = stage / "usr/lib/x86_64-linux-gnu"
+    assert (library / "libusbradioplus_product.so").readlink() == Path(
+        "libusbradioplus_product.so.1"
+    )
+    assert (library / "libusbradioplus_product.so.1").read_bytes() == (
+        source / "build/libusbradioplus_product.so.1"
+    ).read_bytes()
+    assert (stage / "usr/include/usbradioplus_product.h").read_bytes() == (
+        source / "rust/product/include/usbradioplus_product.h"
+    ).read_bytes()
+    environment = dict(os.environ, PKG_CONFIG_PATH=str(library / "pkgconfig"))
+    for query, expected in (
+        ("--variable=abi_version", "1"),
+        ("--variable=libdir", "/usr/lib/x86_64-linux-gnu"),
+        ("--variable=includedir", "/usr/include"),
+        ("--libs-only-l", "-lusbradioplus_product"),
+    ):
+        result = subprocess.run(
+            ["pkg-config", query, "usbradioplus_product"],
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert result.stdout.strip() == expected
+    assert configuration.read_text(encoding="utf-8") == "existing operator configuration\n"
 
 
 def test_rust_bindgen_build_dependency_is_declared():
@@ -265,6 +403,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     ):
         assert f"/selected/{provider}/{soname}" in result.stdout
         assert f"-l{provider} " not in result.stdout
+    assert "-lusbradioplus_asterisk build/libusbradioplus_product.so" in result.stdout
     assert "-pthread -Wl,--as-needed" in result.stdout
 
 

@@ -93,7 +93,7 @@ fn every_missing_operation_reports_host_failure() {
         },
         ControlOperation::Dtmf(true),
         ControlOperation::Echo(true),
-        ControlOperation::Direct(crate::tests::direct_callbacks()),
+        ControlOperation::Direct(support::product_support::direct_callbacks()),
         ControlOperation::Jitter,
         ControlOperation::Command(command),
         ControlOperation::Status,
@@ -215,7 +215,7 @@ fn present_callbacks_receive_owned_inputs_and_return_status() {
     ));
     assert_eq!(text, b"T 123.0");
 
-    let callbacks = crate::tests::direct_callbacks();
+    let callbacks = support::product_support::direct_callbacks();
     let version = callbacks.abi_version;
     descriptor.channel_set_direct_callbacks = Some(record_direct);
     assert!(matches!(
