@@ -10,13 +10,14 @@ use usbradioplus_asl3::{
     EchoConfiguration,
 };
 use usbradioplus_audio::{ChannelCount, SelectedDevice};
-use usbradioplus_radio::RadioProvider;
+use usbradioplus_radio::{RadioError, RadioProvider};
 use usbradioplus_runtime::NativeProcessingFactory;
 
 use crate::ControllerSetup;
 use crate::control::tests::{factory, resolved};
 use crate::media::tests::{
-    RECEIVE_FAILING_GENERATION, TRANSMIT_FAILING_GENERATION, prepared, radio_provider,
+    RECEIVE_FAILING_GENERATION, RECEIVE_UPDATE_FAILING_GENERATION, TRANSMIT_FAILING_GENERATION,
+    TRANSMIT_UPDATE_FAILING_GENERATION, prepared, radio_provider,
 };
 use crate::program::tests::provider as ring_provider;
 
@@ -136,6 +137,35 @@ impl StationRuntime {
         self.snapshot_update(control, factory, provider)?
             .prepare(plan)
     }
+}
+
+#[test]
+fn update_errors_explain_every_failure() {
+    use crate::StationUpdateError as Error;
+
+    assert_eq!(
+        Error::Incompatible.to_string(),
+        "setting requires device handoff"
+    );
+    assert_eq!(
+        Error::Busy.to_string(),
+        "another live update is awaiting completion"
+    );
+    assert_eq!(
+        Error::Pending.to_string(),
+        "audio callbacks have not acknowledged the live update"
+    );
+    assert_eq!(
+        Error::Preparation(crate::StationPreparationError::Radio(
+            RadioError::InvalidArgument,
+        ))
+        .to_string(),
+        "radio preparation failed: invalid radio-session argument"
+    );
+    assert_eq!(
+        Error::Radio(RadioError::InvalidArgument).to_string(),
+        "invalid radio-session argument"
+    );
 }
 
 const AUDIO_ABI: u32 = 2;
@@ -552,6 +582,104 @@ fn stopped_updates_rollback_without_starting_and_reject_stale_or_foreign_candida
 }
 
 #[test]
+fn update_control_ownership_and_in_flight_transaction_are_checked() {
+    let (mut runtime, mut control) = runtime(20);
+    let (_, mut foreign_control) = self::runtime(22);
+    let original = control.plan().clone();
+    let plan = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        original.transport(),
+        21,
+        960,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.snapshot_update(&foreign_control, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let first = runtime
+        .prepare_update(&control, plan.clone(), &factory(), radio_provider())
+        .unwrap();
+    assert_eq!(first.plan(), &plan);
+    runtime.finish_update(&mut control, true).unwrap();
+    assert!(matches!(
+        runtime.begin_update(&foreign_control, first),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let first = runtime
+        .prepare_update(&control, plan.clone(), &factory(), radio_provider())
+        .unwrap();
+    let second = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, first).unwrap();
+    assert!(matches!(
+        runtime.begin_update(&control, second),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert!(matches!(
+        runtime.accept_update(&mut foreign_control),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    assert!(matches!(
+        runtime.finish_update(&mut foreign_control, true),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    runtime.finish_update(&mut control, true).unwrap();
+}
+
+#[test]
+fn failed_callback_update_reports_radio_error_and_rolls_back() {
+    for generation in [
+        RECEIVE_UPDATE_FAILING_GENERATION,
+        TRANSMIT_UPDATE_FAILING_GENERATION,
+    ] {
+        let (mut runtime, mut control) = runtime(20);
+        runtime.start().unwrap();
+        let original = control.plan().clone();
+        let plan = StationPlan::new(
+            "usb",
+            original.configuration().clone(),
+            original.transport(),
+            generation,
+            960,
+        )
+        .unwrap();
+        let update = runtime
+            .prepare_update(&control, plan, &factory(), radio_provider())
+            .unwrap();
+        runtime.begin_update(&control, update).unwrap();
+        update_tick(&mut runtime, true);
+        assert!(matches!(
+            runtime.update_result(),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, false);
+        assert!(matches!(
+            runtime.update_result(),
+            Err(crate::StationUpdateError::Radio(
+                RadioError::InvalidArgument
+            ))
+        ));
+        assert!(matches!(
+            runtime.accept_update(&mut control),
+            Err(crate::StationUpdateError::Radio(
+                RadioError::InvalidArgument
+            ))
+        ));
+        assert!(matches!(
+            runtime.finish_update(&mut control, false),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, true);
+        update_tick(&mut runtime, false);
+        runtime.finish_update(&mut control, false).unwrap();
+        assert_eq!(control.plan(), &original);
+    }
+}
+
+#[test]
 fn delayed_rollback_primes_restored_graph_before_exposing_its_stale_pcm() {
     crate::control::tests::simulate_graph_delay(true);
     let (mut runtime, mut control) = runtime(25);
@@ -666,6 +794,10 @@ fn partial_callback_adoption_stays_owned_through_nonblocking_rollback() {
         runtime.accept_update(&mut control),
         Err(crate::StationUpdateError::Busy)
     ));
+    assert!(matches!(
+        runtime.finish_update(&mut control, true),
+        Err(crate::StationUpdateError::Busy)
+    ));
     runtime.finish_update(&mut control, false).unwrap();
     assert_eq!(control.plan(), &original);
 }
@@ -692,6 +824,26 @@ fn failed_update_preparation_and_incompatible_stream_leave_active_plan_untouched
         original.transport(),
         21,
         480,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let mut different_hardware = original.configuration().clone();
+    different_hardware.station.hardware.input_extra_buffer_ms += 1;
+    let incompatible =
+        StationPlan::new("usb", different_hardware, original.transport(), 21, 960).unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let incompatible = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        crate::ControllerTransport::AppRpt,
+        21,
+        960,
     )
     .unwrap();
     assert!(matches!(

@@ -20,6 +20,8 @@ const RADIO_FAILED: c_int = -1;
 const FAILING_GENERATION: u64 = 99;
 pub(crate) const RECEIVE_FAILING_GENERATION: u64 = 97;
 pub(crate) const TRANSMIT_FAILING_GENERATION: u64 = 98;
+pub(crate) const RECEIVE_UPDATE_FAILING_GENERATION: u64 = 96;
+pub(crate) const TRANSMIT_UPDATE_FAILING_GENERATION: u64 = 95;
 const ABI_VERSION: u32 = 4;
 const CHANNELS: usize = 2;
 static DESTROYED_SEVEN: AtomicUsize = AtomicUsize::new(0);
@@ -191,6 +193,7 @@ unsafe extern "C" fn apply_update(session: *mut c_void, update: *mut c_void) -> 
     };
     if session.maximum_receive != update.maximum_receive
         || session.maximum_transmit != update.maximum_transmit
+        || update.generation_id == RECEIVE_UPDATE_FAILING_GENERATION
     {
         return RADIO_FAILED;
     }
@@ -201,6 +204,12 @@ unsafe extern "C" fn apply_transmit_update(session: *mut c_void, update: *mut c_
     // SAFETY: both live handles belong to this fixture and the sole TX owner calls this.
     let status = unsafe { apply_update(session, update) };
     if status == RADIO_OK {
+        // SAFETY: successful apply_update validated this fixture-owned handle.
+        if unsafe { (*update.cast::<FakeSession>()).generation_id }
+            == TRANSMIT_UPDATE_FAILING_GENERATION
+        {
+            return RADIO_FAILED;
+        }
         // SAFETY: the update ports stay externally owned until replacement or teardown.
         unsafe {
             (*session.cast::<FakeSession>()).transmit_processor =

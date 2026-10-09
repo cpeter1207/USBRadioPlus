@@ -1,5 +1,6 @@
 use super::*;
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void};
 use std::ptr;
@@ -570,6 +571,17 @@ fn state() -> &'static Mutex<FakeState> {
 
 fn with_state<T>(operation: impl FnOnce(&mut FakeState) -> T) -> T {
     operation(&mut state().lock().unwrap())
+}
+
+thread_local! {
+    static PENDING_HOOK: Cell<*mut LinkHook> = const { Cell::new(ptr::null_mut()) };
+}
+
+fn mark_reload_pending_during_prepare() {
+    PENDING_HOOK.with(|hook| {
+        // SAFETY: the test retains this hook through the synchronous preparation callback.
+        unsafe { (*hook.get()).reload_pending.store(true, Ordering::Release) };
+    });
 }
 
 fn reset() {
@@ -1555,6 +1567,50 @@ fn descriptor_comparison_failure_retains_graph_and_unlocks_before_returning() {
     detach(&host, &mut channel);
     drop(hook);
     assert!(with_state(|state| state.graphs.is_empty()));
+}
+
+#[test]
+fn late_pending_reload_destroys_only_prepared_candidate() {
+    for (result, candidate_created) in [(URP_AST_OK, true), (URP_AST_NOT_READY, false)] {
+        let _guard = HostFixture::new();
+        reset();
+        let host = fake_host();
+        let mut channel = FakeChannel::eligible("IAX2/late-pending", 8_000);
+        assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+        let hook = retain(&host, &mut channel).unwrap();
+        PENDING_HOOK.with(|pending| pending.set(hook.raw.as_ptr()));
+        with_state(|state| {
+            state.prepare_result = result;
+            state.preparation_observer = Some(mark_reload_pending_during_prepare);
+        });
+        assert_eq!(
+            hook.prepare_reload(host.driver, 8_000),
+            Err(LinkHostError::Asterisk)
+        );
+        with_state(|state| {
+            assert_eq!(state.graphs.len(), 1);
+            assert_eq!(
+                state.events.last(),
+                Some(&if candidate_created {
+                    "graph_destroy"
+                } else {
+                    "audiohook_unlock"
+                })
+            );
+            state.preparation_observer = None;
+        });
+        // SAFETY: the retained hook remains live; restore the simulated flag before teardown.
+        unsafe {
+            hook.raw
+                .as_ref()
+                .reload_pending
+                .store(false, Ordering::Release)
+        };
+        PENDING_HOOK.with(|pending| pending.set(ptr::null_mut()));
+        detach(&host, &mut channel);
+        drop(hook);
+        assert!(with_state(|state| state.graphs.is_empty()));
+    }
 }
 
 #[test]

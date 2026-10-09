@@ -4,7 +4,7 @@ ARG RUSTUP_INIT_VERSION=1.28.2
 ARG RUST_STABLE=1.85.0
 ARG RUST_NIGHTLY=nightly-2025-02-20
 ARG CARGO_LLVM_COV_VERSION=0.6.21
-FROM debian:${DEBIAN_VERSION} AS asl3-clean
+FROM public.ecr.aws/docker/library/debian:${DEBIAN_VERSION} AS asl3-clean
 
 ARG DEBIAN_VERSION
 # Keep the runtime's exact config/modules dependencies on the same baseline.

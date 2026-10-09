@@ -8,10 +8,6 @@ use std::sync::{Mutex, Weak};
 use usbradioplus_radio::{PreparedUpdate, ProgramRingPort, RadioError, RadioProvider};
 use usbradioplus_runtime::{NativeProcessingFactory, ProcessingGeneration};
 
-const RX: u8 = 1;
-const TX: u8 = 2;
-const BOTH: u8 = RX | TX;
-
 /// Preparation or adoption failure. Pending updates retain all borrowed storage.
 #[derive(Debug)]
 pub enum StationUpdateError {
@@ -72,12 +68,11 @@ pub struct StationUpdatePreparation {
 impl StationUpdatePreparation {
     /// Prepare forward/rollback updates without accessing a live station owner.
     pub fn prepare(self, plan: StationPlan) -> Result<StationUpdate, StationUpdateError> {
+        // StationPlan::new gives RX and TX the same immutable frame maximum.
         if plan.hardware() != self.previous.hardware()
             || plan.transport() != self.previous.transport()
             || plan.radio().maximum_receive_frame_count
                 != self.previous.radio().maximum_receive_frame_count
-            || plan.radio().maximum_transmit_frame_count
-                != self.previous.radio().maximum_transmit_frame_count
         {
             return Err(StationUpdateError::Incompatible);
         }
@@ -169,18 +164,12 @@ pub(super) struct UpdateMailbox {
 }
 
 impl UpdateMailbox {
-    fn publish(&self, owner: &UpdateOwner, mask: u8) {
-        self.receive_result
-            .store(if mask & RX == 0 { 1 } else { 0 }, Ordering::Relaxed);
-        self.transmit_result
-            .store(if mask & TX == 0 { 1 } else { 0 }, Ordering::Relaxed);
+    fn publish(&self, owner: &UpdateOwner) {
+        self.receive_result.store(0, Ordering::Relaxed);
+        self.transmit_result.store(0, Ordering::Relaxed);
         let pointer = ptr::from_ref(owner).cast_mut();
-        if mask & RX != 0 {
-            self.receive.store(pointer, Ordering::Release);
-        }
-        if mask & TX != 0 {
-            self.transmit.store(pointer, Ordering::Release);
-        }
+        self.receive.store(pointer, Ordering::Release);
+        self.transmit.store(pointer, Ordering::Release);
     }
 
     fn result(&self) -> Result<(), StationUpdateError> {
@@ -310,7 +299,6 @@ impl StationRuntime {
                 .expect("installed update")
                 .candidate
                 .forward,
-            BOTH,
         );
         self.apply_stopped_update();
         Ok(())
@@ -395,7 +383,7 @@ impl StationRuntime {
         // Both owners must adopt the retained reverse ports, even if a forward
         // half rejected the update. Reapplying its original configuration keeps
         // state intact and prevents any port from borrowing the retired owner.
-        self.updates.publish(&transaction.candidate.reverse, BOTH);
+        self.updates.publish(&transaction.candidate.reverse);
         self.apply_stopped_update();
         self.updates.result()?;
         control.plan = transaction.candidate.previous.clone();

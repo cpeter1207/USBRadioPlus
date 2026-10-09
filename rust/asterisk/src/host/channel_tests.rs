@@ -198,6 +198,9 @@ fn channel_forwarders_preserve_typed_outputs_and_admission_failures() {
     assert_eq!(reload_finish(&channel, false), 17);
     assert_eq!(set_echo(&channel, true), 17);
     assert_eq!(set_transmit(&channel, true, 1230), 17);
+    let gate = control_gate().write().unwrap();
+    assert_eq!(set_echo(&channel, false), URP_AST_CHANNEL_BUSY);
+    drop(gate);
     assert_eq!(calls.lock().unwrap().dtmf, [1, 0, 1]);
     assert_eq!(calls.lock().unwrap().transmit, [(1, 1230)]);
     // SAFETY: command fields are integers and a fixed integer array.
