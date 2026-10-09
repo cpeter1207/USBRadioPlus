@@ -1004,6 +1004,15 @@ impl ChannelHandle {
     fn log_error(&self, message: &str) {
         self.driver().operations.log(URP_AST_LOG_ERROR, message);
     }
+
+    fn setup_error(&self, error: impl std::fmt::Display) -> Status {
+        self.log_error(&error.to_string());
+        Status::SetupFailed
+    }
+
+    fn setup_result<T, E: std::fmt::Display>(&self, result: Result<T, E>) -> Result<T, Status> {
+        result.map_err(|error| self.setup_error(error))
+    }
 }
 
 impl ChannelControl {
@@ -1700,41 +1709,49 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
-        if let Some(PreparedChannelReload::Preparing { worker, .. }) = control.reload.as_ref() {
-            if !worker.is_finished() {
-                return Err(Status::ReloadPending);
-            }
-            let Some(PreparedChannelReload::Preparing {
+        match control.reload.take() {
+            Some(PreparedChannelReload::Preparing {
                 worker,
                 jitter,
                 mixers,
                 cancelled,
-            }) = control.reload.take()
-            else {
-                unreachable!("the serialized prepare owns its worker");
-            };
-            let result = worker.join();
-            if !cancelled {
-                let update = result
-                    .map_err(|_| Status::InternalFailure)?
-                    .map_err(|error| {
-                        channel.log_error(&error.to_string());
-                        Status::SetupFailed
-                    })?;
-                control.reload = Some(PreparedChannelReload::Live {
-                    update,
-                    jitter,
-                    mixers,
-                });
-                return Ok(());
+            }) => {
+                if !worker.is_finished() {
+                    control.reload = Some(PreparedChannelReload::Preparing {
+                        worker,
+                        jitter,
+                        mixers,
+                        cancelled,
+                    });
+                    return Err(Status::ReloadPending);
+                }
+                let result = worker.join();
+                if !cancelled {
+                    let update = result
+                        .map_err(|_| Status::InternalFailure)?
+                        .map_err(|error| {
+                            channel.log_error(&error.to_string());
+                            Status::SetupFailed
+                        })?;
+                    control.reload = Some(PreparedChannelReload::Live {
+                        update,
+                        jitter,
+                        mixers,
+                    });
+                    return Ok(());
+                }
             }
+            Some(prepared) => {
+                control.reload = Some(prepared);
+                return Err(Status::ChannelBusy);
+            }
+            None => {}
         }
-        if control.reload.is_some()
-            || channel
-                .rollback
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .is_some()
+        if channel
+            .rollback
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some()
         {
             return Err(Status::ChannelBusy);
         }
@@ -1785,40 +1802,30 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
             old_hardware.output_b_gain_db != next_hardware.output_b_gain_db,
         ];
         if control.running {
-            if let Some(hardware) = control.hardware.as_ref() {
-                if let Some(previous) = driver
-                    .configuration
-                    .snapshot()
-                    .channel(&channel.reservation)
-                {
-                    hardware.preserve_startup_tuning(previous.config(), configuration.config_mut());
-                }
-            }
-            let candidate = driver
-                .factory
-                .plan(configuration.clone(), station_generation, controller)
-                .map_err(|error| {
-                    channel.log_error(&error.to_string());
-                    Status::SetupFailed
-                })?;
+            // Only a started hardware generation can mark the channel running.
+            control
+                .hardware
+                .as_ref()
+                .expect("running channel owns hardware")
+                .preserve_startup_tuning(previous.config(), configuration.config_mut());
+            let candidate = channel.setup_result(driver.factory.plan(
+                configuration.clone(),
+                station_generation,
+                controller,
+            ))?;
             if let Some(hardware) = control
                 .hardware
                 .as_ref()
                 .filter(|hardware| hardware.supports_live_update(&candidate))
             {
-                let snapshot = driver.factory.update_snapshot(hardware).map_err(|error| {
-                    channel.log_error(&error.to_string());
-                    Status::SetupFailed
-                })?;
+                let snapshot = channel.setup_result(driver.factory.update_snapshot(hardware))?;
                 // Only immutable plans and retained processor ownership leave the
                 // taskprocessor. Asterisk PCM delivery continues during compilation.
-                let worker = std::thread::Builder::new()
-                    .name("urp-reload".into())
-                    .spawn(move || snapshot.prepare(candidate))
-                    .map_err(|error| {
-                        channel.log_error(&error.to_string());
-                        Status::SetupFailed
-                    })?;
+                let worker = channel.setup_result(
+                    std::thread::Builder::new()
+                        .name("urp-reload".into())
+                        .spawn(move || snapshot.prepare(candidate)),
+                )?;
                 control.reload = Some(PreparedChannelReload::Preparing {
                     worker,
                     jitter,
@@ -1912,10 +1919,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                         jitter: previous_jitter,
                     });
                 let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
-                hardware.begin_update(update, mixers).map_err(|error| {
-                    channel.log_error(&error.to_string());
-                    Status::SetupFailed
-                })?;
+                channel.setup_result(hardware.begin_update(update, mixers))?;
                 return hardware
                     .accept_update()
                     .map_err(|error| update_status(channel, error));
@@ -2116,10 +2120,7 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
         };
         control.jitter = adopted.jitter;
         match adopted.previous {
-            PreviousChannelGeneration::Unchanged => Ok(()),
-            PreviousChannelGeneration::Live => {
-                unreachable!("live rollback is handled without replacement")
-            }
+            PreviousChannelGeneration::Unchanged | PreviousChannelGeneration::Live => Ok(()),
             PreviousChannelGeneration::Prepared { media, preflight } => {
                 control.media = Some(*media);
                 control.preflight = Some(preflight);
@@ -2155,8 +2156,7 @@ fn update_status(channel: &ChannelHandle, error: StationUpdateError) -> Status {
     if matches!(error, StationUpdateError::Pending) {
         Status::ReloadPending
     } else {
-        channel.log_error(&error.to_string());
-        Status::SetupFailed
+        channel.setup_error(error)
     }
 }
 

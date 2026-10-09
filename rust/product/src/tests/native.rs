@@ -153,6 +153,147 @@ fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
 }
 
 #[test]
+fn native_create_rejects_invalid_callback_and_frame_contracts() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    let raw = radio();
+    let config = request(&raw);
+    let providers = fixture::manifest();
+    let mut callbacks = direct_callbacks();
+    let mut args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let mut output = ptr::dangling_mut();
+    let create = product_descriptor().native_create.unwrap();
+    // SAFETY: every request and advertised descriptor remains readable for the call.
+    unsafe {
+        args.callbacks = ptr::null();
+        assert_eq!(create(&args, &mut output), URP_AST_INVALID_ARGUMENT);
+        assert!(output.is_null());
+
+        args.callbacks = &callbacks;
+        callbacks.struct_size -= 1;
+        assert_eq!(create(&args, &mut output), URP_AST_INCOMPATIBLE_ABI);
+        assert!(output.is_null());
+        callbacks.struct_size += 1;
+
+        args.generation_id = 0;
+        assert_eq!(create(&args, &mut output), URP_AST_INVALID_ARGUMENT);
+        args.generation_id = 8;
+        args.maximum_frames = 0;
+        assert_eq!(create(&args, &mut output), URP_AST_INVALID_ARGUMENT);
+        args.maximum_frames = 4097;
+        assert_eq!(create(&args, &mut output), URP_AST_INVALID_ARGUMENT);
+        args.maximum_frames = 960;
+        callbacks.receive = None;
+        assert_eq!(create(&args, &mut output), URP_AST_INVALID_ARGUMENT);
+        assert!(output.is_null());
+    }
+}
+
+#[test]
+fn native_create_rejects_invalid_selection_and_processing_fields() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    let raw = radio();
+    type Case = (&'static str, fn(&mut UrpNativeStationConfig));
+    let cases: &[Case] = &[
+        ("input buffer", |c| c.input_extra_buffer_ms = 501),
+        ("output buffer", |c| c.output_extra_buffer_ms = 501),
+        ("ptt inversion", |c| c.ptt_inverted = 2),
+        ("deemphasis", |c| c.receive_deemphasis = 2),
+        ("output gain", |c| c.receive_output_gain_db = 31),
+        ("gpio enable", |c| c.gpio_output_enable_mask = 256),
+        ("gpio initial", |c| c.gpio_output_initial_mask = 256),
+        ("clip gpio range", |c| c.clip_led_mask = 256),
+        ("multiple clip gpios", |c| c.clip_led_mask = 3),
+        ("receive graph", |c| c.receive_graph_length = 0),
+        ("transmit graph", |c| c.transmit_graph_length = 0),
+        ("selection policy", |c| c.device_selection = 2),
+        ("exact selection", |c| c.device_selection = 0),
+        ("input channels", |c| c.input_device_channels = 3),
+        ("output channels", |c| c.output_device_channels = 0),
+        ("cm119 profile", |c| c.cm119_profile = 4),
+    ];
+    for (case, configure) in cases {
+        let mut config = request(&raw);
+        configure(&mut config);
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_INVALID_CONFIGURATION, "{case}");
+        assert!(handle.is_null(), "{case}");
+    }
+
+    let mut config = request(&raw);
+    config.device_identifier = b"usb\0unexpected".as_ptr();
+    config.device_identifier_length = b"usb\0unexpected".len() as u32;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_INVALID_CONFIGURATION);
+    assert!(handle.is_null());
+}
+
+#[test]
+fn native_create_accepts_released_device_profiles_and_exact_selectors() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let api = product_descriptor();
+    for profile in 0..=3 {
+        let mut config = request(&raw);
+        config.cm119_profile = profile;
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_OK, "CM119 profile {profile}");
+        // SAFETY: successful creation transfers one owned station handle.
+        unsafe { api.native_destroy.unwrap()(handle) };
+    }
+    let mut config = request(&raw);
+    config.input_device_channels = 1;
+    config.output_device_channels = 1;
+    config.device_selection = 0;
+    config.device_identifier = b"input-device".as_ptr();
+    config.device_identifier_length = b"input-device".len() as u32;
+    let (status, handle) = create(&config);
+    assert_eq!(
+        status, URP_AST_OK,
+        "exact device identifier and mono channels"
+    );
+    // SAFETY: successful creation transfers one owned station handle.
+    unsafe { api.native_destroy.unwrap()(handle) };
+
+    config.device_identifier_length = 0;
+    config.usb_serial = b"ABC".as_ptr();
+    config.usb_serial_length = 3;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK, "exact USB serial");
+    // SAFETY: successful creation transfers one owned station handle.
+    unsafe {
+        api.native_destroy.unwrap()(handle);
+        api.native_destroy.unwrap()(ptr::null_mut());
+    }
+    assert_eq!(fixture::audio_streams(), 0);
+}
+
+#[test]
+fn native_create_accepts_dsp_and_usb_ctcss_sources() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let mut raw = radio();
+    raw.receive.ctcss_enabled = 1;
+    raw.receive.ctcss_tone_mask = 1;
+    for source in [3, 1] {
+        raw.qualification.subaudible_source = source;
+        let (status, handle) = create(&request(&raw));
+        assert_eq!(status, URP_AST_OK, "subaudible source {source}");
+        // SAFETY: successful creation transfers one owned station handle.
+        unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+    }
+    assert_eq!(fixture::audio_streams(), 0);
+}
+
+#[test]
 fn native_lifecycle_restarts_without_asl_services_or_mixer_writes() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();

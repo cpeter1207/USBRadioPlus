@@ -140,6 +140,7 @@ fn direct_attachment_validates_boundary_and_survives_prepared_reload() {
 #[test]
 fn prepared_reload_rejects_overlap_and_restores_the_original_generation() {
     const CONFIG: &[u8] = b"[usb]\n[link]\nenabled = yes\n";
+    const RELOAD: &[u8] = b"[usb]\n[link]\nenabled = yes\n[local]\ninput_gain_db=-3\n";
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     provider_support::clear_failure();
     let context = RefCell::new(Calls::default());
@@ -147,8 +148,8 @@ fn prepared_reload_rejects_overlap_and_restores_the_original_generation() {
     // SAFETY: this test serializes live handles and destroys each before its driver.
     unsafe {
         let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
-        assert_eq!(stage_reload(driver, CONFIG), URP_AST_OK);
-        assert_eq!(stage_reload(driver, CONFIG), URP_AST_CHANNEL_BUSY);
+        assert_eq!(stage_reload(driver, RELOAD), URP_AST_OK);
+        assert_eq!(stage_reload(driver, RELOAD), URP_AST_CHANNEL_BUSY);
         let mut busy = ptr::null_mut();
         assert_eq!(
             channel_reserve(driver, &reserve_args(URP_AST_TRANSPORT_APP_RPT), &mut busy),
@@ -174,6 +175,10 @@ fn prepared_reload_rejects_overlap_and_restores_the_original_generation() {
         assert_eq!(prepare_reload(channel), URP_AST_CHANNEL_BUSY);
         assert_eq!(finish_reload(channel, 0), URP_AST_OK);
         assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+        assert_eq!(
+            update_status(channel_ref(channel).unwrap(), StationUpdateError::Busy).code(),
+            URP_AST_SETUP_FAILED
+        );
         channel_destroy(channel);
         driver_destroy(driver);
     }
@@ -482,6 +487,25 @@ fn unchanged_link_reload_requires_the_live_graph_configuration_and_rate() {
         unsafe { link_prepare(driver, b"usb".as_ptr(), 3, 8_000, 160, &mut link) },
         URP_AST_OK
     );
+    let mut same = 0_u32;
+    assert_eq!(
+        // SAFETY: valid retained handles have no pending reload, so the query rejects them.
+        unsafe {
+            link_reload_unchanged_ffi(driver, link, b"usb".as_ptr(), 3, 8_000, 160, &mut same)
+        },
+        URP_AST_NOT_READY
+    );
+    for (name, output) in [
+        (b"usb".as_ptr(), ptr::null_mut()),
+        (b"usb".as_ptr(), ptr::without_provenance_mut::<u32>(1)),
+        (ptr::null(), &mut same as *mut _),
+    ] {
+        assert_eq!(
+            // SAFETY: invalid pointers are rejected without dereferencing them.
+            unsafe { link_reload_unchanged_ffi(driver, link, name, 3, 8_000, 160, output) },
+            URP_AST_INVALID_ARGUMENT
+        );
+    }
     for (configuration, expected) in [
         (b"[usb]\n[link]\nenabled=yes\n".as_slice(), true),
         (
@@ -539,6 +563,10 @@ fn descriptor_exposes_one_complete_versioned_boundary() {
     // SAFETY: the fixture manifest is complete and references static descriptors.
     assert!(unsafe { validate_providers(&incompatible) }.is_err());
     let descriptor = product_descriptor();
+    assert_eq!(
+        usbradioplus_product_descriptor_v1(),
+        ptr::from_ref(descriptor)
+    );
     assert_eq!(
         descriptor.struct_size as usize,
         size_of::<UrpAstDescriptor>()
@@ -2125,11 +2153,13 @@ fn unchanged_reload_keeps_the_running_audio_stream() {
             URP_AST_OK
         );
         assert_eq!(channel_start(channel), URP_AST_OK);
-        assert_eq!(stage_reload(driver, config), URP_AST_OK);
-        assert_eq!(prepare_reload(channel), URP_AST_OK);
-        assert_eq!(activate_reload(channel), URP_AST_OK);
-        assert_eq!(finish_reload(channel, 1), URP_AST_OK);
-        assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
+        for commit in [0, 1] {
+            assert_eq!(stage_reload(driver, config), URP_AST_OK);
+            assert_eq!(prepare_reload(channel), URP_AST_OK);
+            assert_eq!(activate_reload(channel), URP_AST_OK);
+            assert_eq!(finish_reload(channel, commit), URP_AST_OK);
+            assert_eq!(driver_reload_finish(driver, commit), URP_AST_OK);
+        }
         let lifecycle = provider_support::audio_lifecycle();
         channel_destroy(channel);
         driver_destroy(driver);
@@ -2240,6 +2270,9 @@ fn app_rpt_delivery_continues_while_a_changed_graph_is_prepared() {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         assert!(provider_support::graph_preparing());
+        assert_eq!(channel_reload_prepare(channel), URP_AST_RELOAD_PENDING);
+        assert_eq!(channel_reload_activate(channel), URP_AST_RELOAD_PENDING);
+        assert_eq!(channel_reload_finish(channel, 1), URP_AST_RELOAD_PENDING);
         let delivered = context.borrow().voice.len();
         let samples = [123_i16; usbradioplus_asl3::APP_RPT_FRAME_SAMPLES];
         for _ in 0..3 {
@@ -2262,6 +2295,66 @@ fn app_rpt_delivery_continues_while_a_changed_graph_is_prepared() {
         assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
         channel_destroy(channel);
         driver_destroy(driver);
+    }
+    provider_support::periodic_audio(false);
+}
+
+#[test]
+fn live_preparation_failure_and_destroyed_worker_release_all_resources() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::periodic_audio(true);
+    for disposition in 0..3 {
+        let context = RefCell::new(Calls::default());
+        let driver = create_driver(&context, b"[usb]\n");
+        // SAFETY: control is serialized here; the provider owns separate audio endpoints.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(
+                channel_set_direct_callbacks(channel, &direct_callbacks()),
+                URP_AST_OK
+            );
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            provider_support::delay_graph_preparation(40);
+            if disposition == 0 {
+                provider_support::set_failure(provider_support::FAIL_GRAPH);
+            }
+            assert_eq!(
+                stage_reload(driver, b"[usb]\n[local]\noutput_gain_db=-3\n"),
+                URP_AST_OK
+            );
+            assert_eq!(channel_reload_prepare(channel), URP_AST_RELOAD_PENDING);
+            if disposition == 0 {
+                assert_eq!(prepare_reload(channel), URP_AST_SETUP_FAILED);
+                assert_eq!(finish_reload(channel, 0), URP_AST_OK);
+                assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+            } else if disposition == 2 {
+                assert_eq!(
+                    await_reload(|| {
+                        let (_, control) = channel_control(channel).unwrap();
+                        let Some(PreparedChannelReload::Preparing { worker, .. }) =
+                            control.reload.as_ref()
+                        else {
+                            panic!("preparation must remain pending until cancelled");
+                        };
+                        if worker.is_finished() {
+                            channel_reload_finish(channel, 0)
+                        } else {
+                            URP_AST_RELOAD_PENDING
+                        }
+                    }),
+                    URP_AST_OK
+                );
+                assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+            }
+            channel_destroy(channel);
+            driver_destroy(driver);
+        }
+        // Destruction must join preparation before unloading its providers.
+        assert!(!provider_support::graph_preparing());
+        assert_eq!(provider_support::audio_streams(), 0);
+        provider_support::clear_failure();
+        provider_support::delay_graph_preparation(0);
     }
     provider_support::periodic_audio(false);
 }
@@ -2347,6 +2440,16 @@ fn live_mixer_reload_rolls_back_without_reopening_audio() {
             .unwrap()
             .set_mixer_level(HardwareMixer::Receive, 234)
             .unwrap();
+        assert_eq!(
+            stage_reload(driver, b"[usb]\n[hardware]\nhardware_input_gain_db=-6\n"),
+            URP_AST_OK
+        );
+        assert_eq!(prepare_reload(channel), URP_AST_OK);
+        provider_support::set_failure(provider_support::FAIL_MIXER);
+        assert_eq!(activate_reload(channel), URP_AST_SETUP_FAILED);
+        provider_support::clear_failure();
+        assert_eq!(finish_reload(channel, 0), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
         assert_eq!(
             stage_reload(driver, b"[usb]\n[hardware]\nhardware_input_gain_db=-6\n"),
             URP_AST_OK

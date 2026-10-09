@@ -44,11 +44,40 @@ fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() 
     assert_eq!(GRAPH_CREATES.get(), GRAPH_DESTROYS.get());
 }
 
+#[test]
+fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failure() {
+    GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+    let mut plan = ExplicitNativeProcessingPlan {
+        receive_graph: "anull".to_owned(),
+        transmit_graph: "anull".to_owned(),
+        receive_deemphasis: false,
+        receive_output_gain_db: 0,
+        receive_ctcss_mask: 0,
+        transmit_dcs: false,
+    };
+    let generation =
+        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960)
+            .unwrap();
+    assert!(generation.receive_ctcss_notch.iter().all(Option::is_none));
+    GRAPH_DESCRIPTIONS.with(|values| assert_eq!(values.borrow()[2], "anull"));
+    drop(generation);
+
+    plan.receive_ctcss_mask = 1;
+    GRAPH_CREATES.set(0);
+    GRAPH_CREATE_FAIL_AT.set(1);
+    assert!(matches!(
+        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960),
+        Err(ProcessingRuntimeError::GraphAdapter(_))
+    ));
+    GRAPH_CREATE_FAIL_AT.set(0);
+}
+
 thread_local! {
     static GRAPH_CREATES: Cell<usize> = const { Cell::new(0) };
     static GRAPH_PROCESSES: Cell<usize> = const { Cell::new(0) };
     static GRAPH_DESTROYS: Cell<usize> = const { Cell::new(0) };
     static GRAPH_PROCESS_FAILS: Cell<bool> = const { Cell::new(false) };
+    static GRAPH_FAIL_GAIN: Cell<Option<f32>> = const { Cell::new(None) };
     static GRAPH_CREATE_FAIL_AT: Cell<usize> = const { Cell::new(0) };
     static GRAPH_DESCRIPTIONS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
     static GRAPH_REPORT_HISTORY: Cell<bool> = const { Cell::new(false) };
@@ -165,7 +194,10 @@ unsafe extern "C" fn graph_process_adapter(
 ) -> c_int {
     // SAFETY: The wrapper supplies the handle created above and exact spans.
     let state = unsafe { &mut *state.cast::<TestGraphState>() };
-    if frame_count > state.maximum_frame_count || GRAPH_PROCESS_FAILS.get() {
+    if frame_count > state.maximum_frame_count
+        || GRAPH_PROCESS_FAILS.get()
+        || GRAPH_FAIL_GAIN.get() == Some(state.gain)
+    {
         return -2;
     }
     // SAFETY: The wrapper supplies distinct exact-length test spans.
@@ -525,11 +557,12 @@ fn enabling_denoise_bridges_startup_once_then_preserves_unchanged_and_burst_beha
     let destroys = DENOISE_DESTROYS.get();
     assert_eq!(process_denoise(&mut generation, &[0.5; 300]), [0.5; 300]);
     assert_eq!(process_denoise(&mut generation, &[0.5; 660]), [0.5; 660]);
-    let fade = process_denoise(&mut generation, &[0.5; 48]);
-    for (index, sample) in fade.iter().enumerate() {
+    let fade = process_denoise(&mut generation, &[0.5; 64]);
+    for (index, sample) in fade[..48].iter().enumerate() {
         let expected = 0.5 - 0.25 * (index + 1) as f32 / 48.0;
         assert!((*sample - expected).abs() < 0.0001);
     }
+    assert_eq!(&fade[48..], &[0.25; 16]);
     assert_eq!(denoise_lease_counts(&generation), leases);
     assert_eq!(DENOISE_DESTROYS.get(), destroys);
     let creates = DENOISE_CREATES.get();
@@ -737,7 +770,7 @@ fn graph_transition_has_an_exact_bounded_fade_and_never_changes_callback_leases(
         (
             Arc::strong_count(stage),
             Arc::strong_count(&stage.primary.0),
-            Arc::strong_count(&stage.previous.as_ref().unwrap().current.0),
+            Arc::strong_count(&stage.handoff.as_ref().unwrap().previous.current.0),
         )
     };
     let before = lease_counts();
@@ -764,10 +797,50 @@ fn graph_transition_has_an_exact_bounded_fade_and_never_changes_callback_leases(
     let after = (
         Arc::strong_count(stage),
         Arc::strong_count(&stage.primary.0),
-        Arc::strong_count(&stage.previous.as_ref().unwrap().current.0),
+        Arc::strong_count(&stage.handoff.as_ref().unwrap().previous.current.0),
     );
     assert_eq!(after, before);
     assert_eq!(GRAPH_DESTROYS.get(), 0);
+    GRAPH_SIMULATE_LOOKAHEAD.set(false);
+}
+
+#[test]
+fn predecessor_graph_failure_is_reported_without_publishing_a_transition() {
+    GRAPH_SIMULATE_LOOKAHEAD.set(true);
+    let factory = factory_with_maximum(64);
+    let mut original_plan = plan();
+    original_plan.preemphasis_enabled = false;
+    original_plan.voice_telemetry.enabled = false;
+    original_plan.voice_telemetry.input_gain_db = 0.0;
+    let original = factory.prepare(&original_plan).unwrap();
+    let mut changed = original_plan.clone();
+    changed.voice_telemetry.output_gain_db = -6.020_599_913;
+    let mut replacement =
+        // SAFETY: the replacement keeps the same serial TX owner.
+        unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    let before = replacement
+        .transmit_program
+        .0
+        .audible
+        .load(Ordering::Acquire);
+    GRAPH_FAIL_GAIN.set(Some(1.0));
+    let mut output = [0.0; 1];
+    let context = replacement.transmit_program.pointer().cast().as_ptr();
+    assert_eq!(
+        // SAFETY: this test owns the live graph and exact input/output spans.
+        unsafe { graph_process(context, [1.0].as_ptr(), output.as_mut_ptr(), 1) },
+        PORT_ERROR
+    );
+    GRAPH_FAIL_GAIN.set(None);
+    assert_eq!(
+        replacement
+            .transmit_program
+            .0
+            .audible
+            .load(Ordering::Acquire),
+        before
+    );
+    assert_eq!(process_transmit(&mut replacement, &[1.0; 1]), [1.0]);
     GRAPH_SIMULATE_LOOKAHEAD.set(false);
 }
 
@@ -806,6 +879,36 @@ fn delayed_publication_selects_the_now_audible_predecessor() {
         (output[0] - 0.5).abs() < 0.0001,
         "stale fallback: {output:?}"
     );
+    GRAPH_SIMULATE_LOOKAHEAD.set(false);
+}
+
+#[test]
+fn replacement_of_an_unpublished_generation_leases_its_newly_audible_pending_graph() {
+    GRAPH_SIMULATE_LOOKAHEAD.set(true);
+    let factory = factory_with_maximum(64);
+    let mut original_plan = plan();
+    original_plan.preemphasis_enabled = false;
+    original_plan.voice_telemetry.enabled = false;
+    original_plan.voice_telemetry.input_gain_db = 0.0;
+    let original = factory.prepare(&original_plan).unwrap();
+    let mut first_plan = original_plan.clone();
+    first_plan.voice_telemetry.output_gain_db = -6.020_599_913;
+    let mut first =
+        // SAFETY: each candidate keeps the same serial TX owner.
+        unsafe { factory.prepare_replacement(&first_plan, &original_plan, &original) }.unwrap();
+    let mut second_plan = first_plan.clone();
+    second_plan.voice_telemetry.output_gain_db = -12.041_199_827;
+    let second =
+        // SAFETY: the first generation remains active during preparation.
+        unsafe { factory.prepare_replacement(&second_plan, &first_plan, &first) }.unwrap();
+    process_transmit(&mut first, &[1.0; 64]);
+    process_transmit(&mut first, &[1.0; 64]);
+    let mut third_plan = second_plan.clone();
+    third_plan.voice_telemetry.output_gain_db = -18.061_799_740;
+    let mut third =
+        // SAFETY: the unpublished second generation is superseded under the same owner.
+        unsafe { factory.prepare_replacement(&third_plan, &second_plan, &second) }.unwrap();
+    assert_eq!(process_transmit(&mut third, &[1.0; 1]), [0.5]);
     GRAPH_SIMULATE_LOOKAHEAD.set(false);
 }
 
@@ -963,6 +1066,30 @@ fn failed_replacement_leaves_active_processor_history_untouched() {
 }
 
 #[test]
+fn each_changed_receive_graph_propagates_adapter_preparation_failure() {
+    let original_plan = plan();
+    let original = factory().prepare(&original_plan).unwrap();
+    let mut changes = [
+        original_plan.clone(),
+        original_plan.clone(),
+        original_plan.clone(),
+    ];
+    changes[0].deemphasis_corner_hz = 250.0;
+    changes[1].local.receive.bandpass_enabled = !original_plan.local.receive.bandpass_enabled;
+    changes[2].local.output_gain_db = -3.0;
+    for changed in changes {
+        GRAPH_CREATES.set(0);
+        GRAPH_CREATE_FAIL_AT.set(1);
+        assert!(matches!(
+            // SAFETY: the failed candidate is never published to a callback.
+            unsafe { factory().prepare_replacement(&changed, &original_plan, &original) },
+            Err(ProcessingRuntimeError::GraphAdapter(_))
+        ));
+        GRAPH_CREATE_FAIL_AT.set(0);
+    }
+}
+
+#[test]
 fn receive_changes_replace_only_the_affected_stage() {
     let original_plan = plan();
     let original = factory().prepare(&original_plan).unwrap();
@@ -1032,6 +1159,67 @@ fn enabling_and_disabling_optional_processors_retains_unrelated_stages() {
     assert!(disabled.receive_noise_reduction.is_none());
     assert!(disabled.receive_ctcss_notch.iter().all(Option::is_none));
     assert!(disabled.receive_ctcss_tail_notch.is_none());
+}
+
+#[test]
+fn enabled_notches_and_denoiser_keep_their_owners_across_replacement_and_restore() {
+    let mut original_plan = plan();
+    original_plan.local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    original_plan.local.rnnoise_enabled = true;
+    let original = factory().prepare(&original_plan).unwrap();
+    let mut changed = original_plan.clone();
+    changed.local.output_gain_db = -3.0;
+    GRAPH_CREATES.set(0);
+    DENOISE_CREATES.set(0);
+    let replacement =
+        // SAFETY: both generations remain under this same serial RX owner.
+        unsafe { factory().prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    assert_eq!(GRAPH_CREATES.get(), 1);
+    assert_eq!(DENOISE_CREATES.get(), 0);
+    assert_eq!(
+        original.receive_ctcss_notch[0].as_ref().unwrap().pointer(),
+        replacement.receive_ctcss_notch[0]
+            .as_ref()
+            .unwrap()
+            .pointer()
+    );
+    assert_eq!(
+        original.receive_noise_reduction.as_ref().unwrap().pointer(),
+        replacement
+            .receive_noise_reduction
+            .as_ref()
+            .unwrap()
+            .pointer()
+    );
+    let restored =
+        // SAFETY: this inverse immediately follows the forward generation.
+        unsafe { factory().prepare_restore(&original_plan, &original, &replacement) }.unwrap();
+    assert_eq!(
+        original.receive_ctcss_notch[0].as_ref().unwrap().pointer(),
+        restored.receive_ctcss_notch[0].as_ref().unwrap().pointer()
+    );
+    assert_eq!(
+        original.receive_noise_reduction.as_ref().unwrap().pointer(),
+        restored.receive_noise_reduction.as_ref().unwrap().pointer()
+    );
+}
+
+#[test]
+fn newly_enabled_notch_bank_propagates_tone_and_tail_setup_failures() {
+    let original_plan = plan();
+    let original = factory().prepare(&original_plan).unwrap();
+    let mut enabled = original_plan.clone();
+    enabled.local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    for failed_ordinal in [1, CTCSS_TONE_COUNT + 1] {
+        GRAPH_CREATES.set(0);
+        GRAPH_CREATE_FAIL_AT.set(failed_ordinal);
+        assert!(matches!(
+            // SAFETY: a failed candidate is never published to an audio owner.
+            unsafe { factory().prepare_replacement(&enabled, &original_plan, &original) },
+            Err(ProcessingRuntimeError::GraphAdapter(_))
+        ));
+        GRAPH_CREATE_FAIL_AT.set(0);
+    }
 }
 
 #[test]

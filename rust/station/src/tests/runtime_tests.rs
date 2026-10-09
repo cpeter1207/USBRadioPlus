@@ -73,6 +73,33 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
 }
 
 #[test]
+fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
+    let (plan, processing) = prepared.into_parts();
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: 0,
+        receive_context: ptr::null_mut(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::null_mut(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    assert!(matches!(
+        // SAFETY: rejection occurs before callbacks are retained or invoked.
+        unsafe {
+            crate::NativeStationMedia::prepare(
+                *plan.radio(),
+                processing,
+                radio_provider(),
+                callbacks,
+            )
+        },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+}
+
+#[test]
 fn native_failed_render_and_oversized_callback_clear_key_and_output() {
     for (generation, frames) in [(TRANSMIT_FAILING_GENERATION, 4), (24, 961)] {
         let prepared = prepared(crate::ControllerTransport::RptAdvanced, generation);
@@ -104,6 +131,13 @@ fn native_failed_render_and_oversized_callback_clear_key_and_output() {
         .unwrap();
         let (runtime, _control) =
             StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+        assert_eq!(
+            // SAFETY: the live native context rejects the null output before any span access.
+            unsafe {
+                transmit_callback(runtime._transmit_context.get().cast(), ptr::null_mut(), 4)
+            },
+            CALLBACK_FAILED
+        );
         runtime
             .hardware
             .publish_transmit_result(transmit_result(true, 1000));
@@ -123,6 +157,51 @@ fn native_failed_render_and_oversized_callback_clear_key_and_output() {
         assert!(!runtime.hardware.outputs().logical_ptt);
         assert_eq!(runtime.hardware.outputs().selected_ctcss_tenths_hz, None);
     }
+}
+
+#[test]
+fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut capture = DirectCapture {
+        tx_status: -1,
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        ..DirectCapture::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: capture remains live through the stopped runtime's synchronous callback.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    let mut output = [1.0; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the live context and exact stereo span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_FAILED
+    );
+    assert_eq!(capture.transmit_calls, 1);
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
 }
 
 impl StationRuntime {

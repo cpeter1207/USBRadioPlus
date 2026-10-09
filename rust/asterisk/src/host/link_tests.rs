@@ -1429,6 +1429,17 @@ fn explicit_peer_binding_retains_its_radio_profile_even_when_disabled() {
     // SAFETY: the fixture owns the peer until host stop detaches its hook.
     assert_eq!(unsafe { bind_peer(peer.raw(), "radio-two") }, Ok(()));
     assert!(!peer.audiohook.is_null());
+    // An existing datastore cannot be rebound while its hook is detached.
+    // SAFETY: this fixture exclusively owns the pinned hook and restores its live state.
+    unsafe {
+        let hook = (*peer.datastore).data.cast::<LinkHook>();
+        (*hook).attachment.store(LINK_DETACHED, Ordering::Release);
+        assert_eq!(
+            bind_peer(peer.raw(), "radio-two"),
+            Err(LinkHostError::Asterisk)
+        );
+        (*hook).attachment.store(LINK_ATTACHED, Ordering::Release);
+    }
     let mut samples = [12_i16; 160];
     let mut frame = voice_frame(&mut samples);
     invoke(&mut peer, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);

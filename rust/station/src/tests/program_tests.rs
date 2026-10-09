@@ -484,6 +484,47 @@ fn direct_program_uses_current_block_and_preserves_ring_and_receive_qualificatio
 }
 
 #[test]
+fn direct_program_callback_rejects_bad_arguments_and_renders_only_staged_frames() {
+    let source = DirectProgram::default();
+    // SAFETY: no callback can overlap this serial preparation or staging.
+    unsafe { source.prepare(2) };
+    let context = ptr::from_ref(&source).cast_mut().cast();
+    let mut output = [9.0; 2];
+    let mut result = ProgramRingResult::default();
+    for (context, output, frames, result) in [
+        (
+            ptr::null_mut(),
+            output.as_mut_ptr(),
+            2,
+            &mut result as *mut _,
+        ),
+        (context, ptr::null_mut(), 2, &mut result as *mut _),
+        (context, output.as_mut_ptr(), 2, ptr::null_mut()),
+        (context, output.as_mut_ptr(), 0, &mut result as *mut _),
+    ] {
+        assert_eq!(
+            // SAFETY: each invalid argument is rejected before dereference.
+            unsafe { render_direct_program(context, output, frames, result) },
+            PROVIDER_FAILED
+        );
+    }
+    assert_eq!(
+        // SAFETY: the source and exact writable spans are live and serially owned.
+        unsafe { render_direct_program(context, output.as_mut_ptr(), 2, &mut result) },
+        PROVIDER_FAILED
+    );
+    assert_eq!(output, [0.0; 2]);
+    // SAFETY: no callback overlaps staging.
+    unsafe { source.stage(&[0.125, -0.25]) };
+    assert_eq!(
+        // SAFETY: the source and exact writable spans remain live and serially owned.
+        unsafe { render_direct_program(context, output.as_mut_ptr(), 2, &mut result) },
+        PROVIDER_OK
+    );
+    assert_eq!(output, [0.125, -0.25]);
+}
+
+#[test]
 fn direct_source_stages_while_radio_exclusively_owns_the_consumer() {
     let (_, mut consumer) = prepare_program_ring(
         provider(),

@@ -296,39 +296,30 @@ impl NativeProcessingFactory {
         let mut tail_notch = None;
         if plan.local.receive.pl_filter == PlFilter::DecodedToneNotch {
             for tone in CtcssTone::supported() {
-                let description = self.descriptions.decoded_tone_notch(
-                    f64::from(tone.as_hz()),
-                    plan.local.receive.notch_width_hz,
-                )?;
                 notches[tone.table_index()] = Some(
                     if let Some(old) = &previous.receive_ctcss_notch[tone.table_index()] {
-                        self.replacement_graph(
-                            description,
+                        // Valid plans fix notch width at 10 Hz, so the same
+                        // tone retains the exact previous graph and history.
+                        old.clone()
+                    } else {
+                        self.prepare_graph(
                             self.descriptions.decoded_tone_notch(
                                 f64::from(tone.as_hz()),
-                                previous_plan.local.receive.notch_width_hz,
+                                plan.local.receive.notch_width_hz,
                             )?,
-                            old,
-                            0,
+                            maximum,
                         )?
-                    } else {
-                        self.prepare_graph(description, maximum)?
                     },
                 );
             }
-            let description = self
-                .descriptions
-                .decoded_tone_notch(55.0, plan.local.receive.notch_width_hz)?;
             tail_notch = Some(if let Some(old) = &previous.receive_ctcss_tail_notch {
-                self.replacement_graph(
-                    description,
-                    self.descriptions
-                        .decoded_tone_notch(55.0, previous_plan.local.receive.notch_width_hz)?,
-                    old,
-                    0,
-                )?
+                old.clone()
             } else {
-                self.prepare_graph(description, maximum)?
+                self.prepare_graph(
+                    self.descriptions
+                        .decoded_tone_notch(55.0, plan.local.receive.notch_width_hz)?,
+                    maximum,
+                )?
             });
         }
         Ok(ProcessingGeneration {
@@ -491,17 +482,19 @@ impl NativeProcessingFactory {
             (current.pointer() != previous.0.primary.pointer()).then(|| previous.0.primary.clone());
         Ok(SharedGraph(Arc::new(GraphStage {
             primary,
-            previous: Some(GraphPredecessor {
-                current: current.clone(),
-                pending,
-            }),
             audible: Arc::clone(&previous.0.audible),
-            transition: Some(UnsafeCell::new(GraphTransition {
-                output: vec![0.0; maximum].into_boxed_slice(),
-                prime_remaining: (lookahead_frames + GRAPH_TRANSITION_FRAMES).max(maximum),
-                faded: 0,
-                use_pending: None,
-            })),
+            handoff: Some(GraphHandoff {
+                previous: GraphPredecessor {
+                    current: current.clone(),
+                    pending,
+                },
+                transition: UnsafeCell::new(GraphTransition {
+                    output: vec![0.0; maximum].into_boxed_slice(),
+                    prime_remaining: (lookahead_frames + GRAPH_TRANSITION_FRAMES).max(maximum),
+                    faded: 0,
+                    use_pending: None,
+                }),
+            }),
             complete: AtomicBool::new(false),
         })))
     }
@@ -546,9 +539,8 @@ fn prepare_graph(
     let audible = Arc::new(AtomicPtr::new(primary.pointer().as_ptr()));
     Ok(SharedGraph(Arc::new(GraphStage {
         primary,
-        previous: None,
+        handoff: None,
         audible,
-        transition: None,
         complete: AtomicBool::new(true),
     })))
 }
@@ -584,10 +576,14 @@ unsafe impl<T: Send> Sync for SharedProcessor<T> {}
 /// transition's scratch/counters or mutates either selected native graph.
 struct GraphStage {
     primary: SharedProcessor<PreparedGraph>,
-    previous: Option<GraphPredecessor>,
+    handoff: Option<GraphHandoff>,
     audible: Arc<AtomicPtr<PreparedGraph>>,
-    transition: Option<UnsafeCell<GraphTransition>>,
     complete: AtomicBool,
+}
+
+struct GraphHandoff {
+    previous: GraphPredecessor,
+    transition: UnsafeCell<GraphTransition>,
 }
 
 struct GraphPredecessor {
@@ -618,7 +614,7 @@ impl SharedGraph {
         if self.0.primary.pointer().as_ptr() == pointer {
             return Some(&self.0.primary);
         }
-        let previous = self.0.previous.as_ref()?;
+        let previous = &self.0.handoff.as_ref()?.previous;
         if previous.current.pointer().as_ptr() == pointer {
             return Some(&previous.current);
         }
@@ -796,11 +792,15 @@ unsafe extern "C" fn graph_process(
     if stage.complete.load(Ordering::Relaxed) {
         return PORT_OK;
     }
-    let (Some(previous), Some(transition)) = (&stage.previous, &stage.transition) else {
-        return PORT_ERROR;
-    };
+    // Only transition_graph constructs an incomplete stage, always with its
+    // predecessor and scratch together; flat stages start complete.
+    let handoff = stage
+        .handoff
+        .as_ref()
+        .expect("incomplete graph has a handoff");
+    let previous = &handoff.previous;
     // SAFETY: control never accesses these callback-owned scratch/counters.
-    let transition = unsafe { &mut *transition.get() };
+    let transition = unsafe { &mut *handoff.transition.get() };
     let use_pending = match transition.use_pending {
         Some(selected) => selected,
         None => {
@@ -811,40 +811,28 @@ unsafe extern "C" fn graph_process(
                 stage.complete.store(true, Ordering::Relaxed);
                 return PORT_OK;
             }
-            let selected = if previous.current.pointer().as_ptr() == audible {
-                false
-            } else if previous
+            // Publication can select only the current or pending flat graph.
+            let selected = previous
                 .pending
                 .as_ref()
-                .is_some_and(|graph| graph.pointer().as_ptr() == audible)
-            {
-                true
-            } else {
-                return PORT_ERROR;
-            };
+                .is_some_and(|graph| graph.pointer().as_ptr() == audible);
             transition.use_pending = Some(selected);
             selected
         }
     };
     let previous = if use_pending {
-        let Some(previous) = &previous.pending else {
-            return PORT_ERROR;
-        };
         previous
+            .pending
+            .as_ref()
+            .expect("selected pending graph exists")
     } else {
         &previous.current
     };
-    if previous.pointer() == stage.primary.pointer() {
-        // An inverse adopted before its forward fade needs no handoff: its
-        // original primary was still audible and has already run exactly once.
-        stage.complete.store(true, Ordering::Relaxed);
-        return PORT_OK;
-    }
     // SAFETY: this flat, distinct predecessor retains the same sole owner.
     let previous = unsafe { &mut *previous.pointer().as_ptr() };
-    let Some(prior_output) = transition.output.get_mut(..output.len()) else {
-        return PORT_ERROR;
-    };
+    // A successful primary process already bounded this frame count by the
+    // same prepared maximum used to allocate transition scratch.
+    let prior_output = &mut transition.output[..output.len()];
     if previous.process_block(input, prior_output).is_err() {
         return PORT_ERROR;
     }

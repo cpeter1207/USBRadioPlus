@@ -716,7 +716,6 @@ impl HardwareStation {
         let current = self.control.plan();
         current.transport() == plan.transport()
             && current.hardware() == plan.hardware()
-            && current.program_ring() == plan.program_ring()
             && current.configuration().station.hardware.eeprom_enabled
                 == plan.configuration().station.hardware.eeprom_enabled
             && hardware_local_repeat_level(

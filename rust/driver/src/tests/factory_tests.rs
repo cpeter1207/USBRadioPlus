@@ -101,6 +101,7 @@ fn reports_each_composition_layer_with_its_source() {
         )
         .err()
         .unwrap();
+    let update = StationFactoryError::Update(usbradioplus_station::StationUpdateError::Busy);
 
     assert!(matches!(station, StationFactoryError::Station(_)));
     assert!(matches!(
@@ -108,7 +109,7 @@ fn reports_each_composition_layer_with_its_source() {
         StationFactoryError::AppRptConverter(_)
     ));
     assert!(matches!(media, StationFactoryError::Media(_)));
-    for error in [&station, &conversion, &media] {
+    for error in [&station, &conversion, &media, &update] {
         assert!(!error.to_string().is_empty());
         assert!(error.source().is_some());
     }

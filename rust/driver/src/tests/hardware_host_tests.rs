@@ -160,6 +160,25 @@ fn hardware_errors_and_operations_are_complete_and_diagnostic() {
         "read CM119 inputs failed: CM119 USB operation failed"
     );
     assert!(gpio.source().is_some());
+    let gpio_probe = HardwareStationError::GpioProbe(GpioError::Usb);
+    assert!(
+        gpio_probe
+            .to_string()
+            .starts_with("probe CM119 identity failed:")
+    );
+    assert!(gpio_probe.source().is_some());
+    let missing_gpio = HardwareStationError::GpioNotPresent;
+    assert_eq!(
+        missing_gpio.to_string(),
+        "selected CM119 is not present on GPIO"
+    );
+    assert!(missing_gpio.source().is_none());
+    let update = HardwareStationError::Update(StationUpdateError::Busy);
+    assert_eq!(
+        update.to_string(),
+        "station update failed: another live update is awaiting completion"
+    );
+    assert!(update.source().is_some());
     let simple = [
         (
             HardwareStationError::UnavailableOutput,
@@ -1578,6 +1597,133 @@ fn station_media(channel: ResolvedChannelConfiguration) -> StationMedia {
         ControllerConfiguration::RptAdvanced { handoff_slots: 2 },
     )
     .unwrap()
+}
+
+#[test]
+fn live_update_compatibility_and_startup_tuning_preserve_explicit_choices() {
+    let _guard = test_guard();
+    reset_test_state();
+    let channel = resolved_hardware_channel();
+    let plan = hardware_plan(channel.config());
+    let preflight =
+        HardwareStation::preflight(&plan, false, audio_provider(), gpio_provider()).unwrap();
+    let mut station = HardwareStation::open_preflighted(
+        station_media(channel),
+        audio_provider(),
+        gpio_provider(),
+        960,
+        preflight,
+    )
+    .unwrap();
+    let current = station.control().plan().clone();
+    let candidate = |configuration, transport| {
+        StationPlan::new("usb", configuration, transport, 2, 960).unwrap()
+    };
+    assert!(station.supports_live_update(&current));
+    assert!(!station.supports_live_update(&candidate(
+        current.configuration().clone(),
+        ControllerTransport::AppRpt,
+    )));
+    let mut changed = current.configuration().clone();
+    changed.station.hardware.input_extra_buffer_ms += 1;
+    assert!(!station.supports_live_update(&candidate(changed, current.transport())));
+    let mut changed = current.configuration().clone();
+    changed.station.hardware.eeprom_enabled = false;
+    assert!(!station.supports_live_update(&candidate(changed, current.transport())));
+    let mut changed = current.configuration().clone();
+    changed.station.receive.frequency_hz = 146_520_000;
+    changed.station.transmit.frequency_hz = 146_520_000;
+    assert!(!station.supports_live_update(&candidate(changed, current.transport())));
+
+    let previous = current.configuration().clone();
+    let mut explicit = previous.clone();
+    explicit.station.hardware.input_gain_db += 1.0;
+    explicit.station.receive.squelch_level += 1;
+    explicit.station.ctcss.transmit_peak_dbfs -= 1.0;
+    station.preserve_startup_tuning(&previous, &mut explicit);
+    assert_eq!(
+        explicit.station.hardware.input_gain_db,
+        previous.station.hardware.input_gain_db + 1.0
+    );
+    assert_eq!(
+        explicit.station.receive.squelch_level,
+        previous.station.receive.squelch_level + 1
+    );
+    assert_eq!(
+        explicit.station.ctcss.transmit_peak_dbfs,
+        previous.station.ctcss.transmit_peak_dbfs - 1.0
+    );
+    let mut unchanged = previous.clone();
+    station.preserve_startup_tuning(&previous, &mut unchanged);
+    station.finish_update(true).unwrap();
+
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let update = factory
+        .update_snapshot(&station)
+        .unwrap()
+        .prepare(current.clone())
+        .unwrap();
+    station.begin_update(update, [true, false, false]).unwrap();
+    station.finish_update(true).unwrap();
+    let mut changed = current.configuration().clone();
+    changed.station.hardware.input_gain_db += 1.0;
+    let update = factory
+        .update_snapshot(&station)
+        .unwrap()
+        .prepare(candidate(changed, current.transport()))
+        .unwrap();
+    station.begin_update(update, [false; 3]).unwrap();
+    station.finish_update(true).unwrap();
+    let update = factory
+        .update_snapshot(&station)
+        .unwrap()
+        .prepare(station.control().plan().clone())
+        .unwrap();
+    station.begin_update(update, [false; 3]).unwrap();
+    station.finish_update(false).unwrap();
+}
+
+#[test]
+fn app_rpt_local_repeat_change_requires_hardware_handoff() {
+    let _guard = test_guard();
+    reset_test_state();
+    let channel = resolved_hardware_channel();
+    let plan = hardware_plan(channel.config());
+    let preflight =
+        HardwareStation::preflight(&plan, false, audio_provider(), gpio_provider()).unwrap();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let mut station = HardwareStation::open_preflighted(
+        factory
+            .prepare(
+                channel,
+                1,
+                ControllerConfiguration::AppRpt {
+                    handoff_slots: 2,
+                    echo: usbradioplus_asl3::EchoConfiguration::disabled(),
+                },
+            )
+            .unwrap(),
+        audio_provider(),
+        gpio_provider(),
+        960,
+        preflight,
+    )
+    .unwrap();
+    let current = station.control().plan().clone();
+    let mut changed = current.configuration().clone();
+    changed.station.duplex.local_repeat_level += 1;
+    let changed = StationPlan::new("usb", changed, current.transport(), 2, 960).unwrap();
+    assert!(!station.supports_live_update(&changed));
 }
 
 fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan) {

@@ -161,8 +161,12 @@ impl ReloadCoordinator {
 }
 
 /// Poll off the channel taskprocessor so PCM delivery continues during preparation/adoption.
-pub(super) fn complete_phase(mut operation: impl FnMut() -> i32) -> i32 {
+pub(super) fn complete_phase(operation: impl FnMut() -> i32) -> i32 {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    complete_phase_until(operation, deadline)
+}
+
+fn complete_phase_until(mut operation: impl FnMut() -> i32, deadline: std::time::Instant) -> i32 {
     loop {
         let status = operation();
         if status != URP_AST_RELOAD_PENDING {
