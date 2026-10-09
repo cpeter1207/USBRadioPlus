@@ -1,0 +1,385 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpNativeStationConfig" kind="struct" language="C++" prot="public">
+    <compoundname>UrpNativeStationConfig</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a14563b5a990ae3e09e36e53c9999e1d6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpNativeStationConfig::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact structure size in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="23" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="23" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a95d8aff6cbebf7890089a64d1f308128" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpNativeStationConfig::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native request ABI, currently one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="25" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="25" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ad824be19d24f0270f86b56414515391d" prot="public" static="no" mutable="no">
+        <type>const struct rptadv_radio_session_config *</type>
+        <definition>const struct rptadv_radio_session_config* UrpNativeStationConfig::radio</definition>
+        <argsstring></argsstring>
+        <name>radio</name>
+        <qualifiedname>UrpNativeStationConfig::radio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed released ABI-4 radio settings template. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="27" column="40" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="27" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ad1d65ee39c886f12cf76ede2f605de8d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::device_selection</definition>
+        <argsstring></argsstring>
+        <name>device_selection</name>
+        <qualifiedname>UrpNativeStationConfig::device_selection</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released audio selection policy: exact zero or automatic one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="29" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="29" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a74b1eb428dbce8c11a077f50aef860cf" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeStationConfig::device_identifier</definition>
+        <argsstring></argsstring>
+        <name>device_identifier</name>
+        <qualifiedname>UrpNativeStationConfig::device_identifier</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional UTF-8 device identifier, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="31" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="31" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a5edd4ac2550e960894deef644b8afa69" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::device_identifier_length</definition>
+        <argsstring></argsstring>
+        <name>device_identifier_length</name>
+        <qualifiedname>UrpNativeStationConfig::device_identifier_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Device identifier byte count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="33" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a31169e9bd7d656d3889f77e0e396047c" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeStationConfig::usb_serial</definition>
+        <argsstring></argsstring>
+        <name>usb_serial</name>
+        <qualifiedname>UrpNativeStationConfig::usb_serial</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional UTF-8 exact USB serial, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="35" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a103150b9c09b541221d810214f5233a0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::usb_serial_length</definition>
+        <argsstring></argsstring>
+        <name>usb_serial_length</name>
+        <qualifiedname>UrpNativeStationConfig::usb_serial_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>USB serial byte count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="37" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a751c0851a51c3a59da7bc52a152d826f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::input_device_channels</definition>
+        <argsstring></argsstring>
+        <name>input_device_channels</name>
+        <qualifiedname>UrpNativeStationConfig::input_device_channels</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical capture channels, one or two. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="39" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="39" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ab10d99ec687ec8bfd182428727031de3" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::output_device_channels</definition>
+        <argsstring></argsstring>
+        <name>output_device_channels</name>
+        <qualifiedname>UrpNativeStationConfig::output_device_channels</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical playback channels, one or two. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="41" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ae99b951333231f2ab4ecd1fe521021d7" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::input_extra_buffer_ms</definition>
+        <argsstring></argsstring>
+        <name>input_extra_buffer_ms</name>
+        <qualifiedname>UrpNativeStationConfig::input_extra_buffer_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Additional capture buffering, zero through 500 milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="43" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a473ecf191242dd42e815d9f9cdff5e59" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::output_extra_buffer_ms</definition>
+        <argsstring></argsstring>
+        <name>output_extra_buffer_ms</name>
+        <qualifiedname>UrpNativeStationConfig::output_extra_buffer_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Additional playback buffering, zero through 500 milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="45" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="45" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ad12dfbfb03b7f9d47ce63e19420bdbf0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::cm119_profile</definition>
+        <argsstring></argsstring>
+        <name>cm119_profile</name>
+        <qualifiedname>UrpNativeStationConfig::cm119_profile</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released GPIO CM119 profile value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="47" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="47" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a2d827ac87f9c0990cb4389a3099e9980" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::ptt_inverted</definition>
+        <argsstring></argsstring>
+        <name>ptt_inverted</name>
+        <qualifiedname>UrpNativeStationConfig::ptt_inverted</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Dedicated PTT inversion, zero or one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="49" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1abaae0a13ca9e90ed8c04d75e8e62e727" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::gpio_output_enable_mask</definition>
+        <argsstring></argsstring>
+        <name>gpio_output_enable_mask</name>
+        <qualifiedname>UrpNativeStationConfig::gpio_output_enable_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Ordinary GPIO output-enable bits, GPIO one in bit zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="51" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="51" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1aa480a9a9bb34dda6adb8890fe6190073" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::gpio_output_initial_mask</definition>
+        <argsstring></argsstring>
+        <name>gpio_output_initial_mask</name>
+        <qualifiedname>UrpNativeStationConfig::gpio_output_initial_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Ordinary GPIO initial-high bits. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="53" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1aabbe4d523b65dbbb6ce39cacdf3701d2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::clip_led_mask</definition>
+        <argsstring></argsstring>
+        <name>clip_led_mask</name>
+        <qualifiedname>UrpNativeStationConfig::clip_led_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional clipping-indicator GPIO bit, zero when disabled. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="55" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ac3041dad4c863cc0bc42497c2a18a057" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeStationConfig::receive_graph</definition>
+        <argsstring></argsstring>
+        <name>receive_graph</name>
+        <qualifiedname>UrpNativeStationConfig::receive_graph</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Explicit UTF-8 mono 48 kHz receive graph, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="57" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="57" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a291437a4df4fe4ef3f4c06782516d9a6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::receive_graph_length</definition>
+        <argsstring></argsstring>
+        <name>receive_graph_length</name>
+        <qualifiedname>UrpNativeStationConfig::receive_graph_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive graph byte count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="59" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a79a5f9e9e8e35ca40ea134c37f872e85" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeStationConfig::transmit_graph</definition>
+        <argsstring></argsstring>
+        <name>transmit_graph</name>
+        <qualifiedname>UrpNativeStationConfig::transmit_graph</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Explicit UTF-8 mono 48 kHz transmit graph, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="61" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="61" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a6c2430eca4ec58e38eb6958ade366525" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::transmit_graph_length</definition>
+        <argsstring></argsstring>
+        <name>transmit_graph_length</name>
+        <qualifiedname>UrpNativeStationConfig::transmit_graph_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmit graph byte count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="63" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="63" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1ae272d392f38d3dcd2a0ad23bc1c11efa" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeStationConfig::receive_deemphasis</definition>
+        <argsstring></argsstring>
+        <name>receive_deemphasis</name>
+        <qualifiedname>UrpNativeStationConfig::receive_deemphasis</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Enable the established 300 Hz receive deemphasis, zero or one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="65" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeStationConfig_1a09df02d368bbb59514fbc78c7b690b5a" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpNativeStationConfig::receive_output_gain_db</definition>
+        <argsstring></argsstring>
+        <name>receive_output_gain_db</name>
+        <qualifiedname>UrpNativeStationConfig::receive_output_gain_db</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive output gain following filtering, minus 30 through 30 decibels. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="67" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="67" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Resolved native request. All byte spans and radio are borrowed during create. Native creation never changes mixer settings or reads tuning EEPROM. Radio generation/frame bounds/publication cadence are set by native lifecycle; effective released ABI-4 radio settings are otherwise preserved. Inactive signaling fields are normalized by the typed radio configuration. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="21" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="21" bodyend="68"/>
+    <listofallmembers>
+      <member refid="structUrpNativeStationConfig_1a95d8aff6cbebf7890089a64d1f308128" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>abi_version</name></member>
+      <member refid="structUrpNativeStationConfig_1aabbe4d523b65dbbb6ce39cacdf3701d2" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>clip_led_mask</name></member>
+      <member refid="structUrpNativeStationConfig_1ad12dfbfb03b7f9d47ce63e19420bdbf0" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>cm119_profile</name></member>
+      <member refid="structUrpNativeStationConfig_1a74b1eb428dbce8c11a077f50aef860cf" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>device_identifier</name></member>
+      <member refid="structUrpNativeStationConfig_1a5edd4ac2550e960894deef644b8afa69" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>device_identifier_length</name></member>
+      <member refid="structUrpNativeStationConfig_1ad1d65ee39c886f12cf76ede2f605de8d" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>device_selection</name></member>
+      <member refid="structUrpNativeStationConfig_1abaae0a13ca9e90ed8c04d75e8e62e727" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>gpio_output_enable_mask</name></member>
+      <member refid="structUrpNativeStationConfig_1aa480a9a9bb34dda6adb8890fe6190073" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>gpio_output_initial_mask</name></member>
+      <member refid="structUrpNativeStationConfig_1a751c0851a51c3a59da7bc52a152d826f" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>input_device_channels</name></member>
+      <member refid="structUrpNativeStationConfig_1ae99b951333231f2ab4ecd1fe521021d7" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>input_extra_buffer_ms</name></member>
+      <member refid="structUrpNativeStationConfig_1ab10d99ec687ec8bfd182428727031de3" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>output_device_channels</name></member>
+      <member refid="structUrpNativeStationConfig_1a473ecf191242dd42e815d9f9cdff5e59" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>output_extra_buffer_ms</name></member>
+      <member refid="structUrpNativeStationConfig_1a2d827ac87f9c0990cb4389a3099e9980" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>ptt_inverted</name></member>
+      <member refid="structUrpNativeStationConfig_1ad824be19d24f0270f86b56414515391d" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>radio</name></member>
+      <member refid="structUrpNativeStationConfig_1ae272d392f38d3dcd2a0ad23bc1c11efa" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>receive_deemphasis</name></member>
+      <member refid="structUrpNativeStationConfig_1ac3041dad4c863cc0bc42497c2a18a057" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>receive_graph</name></member>
+      <member refid="structUrpNativeStationConfig_1a291437a4df4fe4ef3f4c06782516d9a6" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>receive_graph_length</name></member>
+      <member refid="structUrpNativeStationConfig_1a09df02d368bbb59514fbc78c7b690b5a" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>receive_output_gain_db</name></member>
+      <member refid="structUrpNativeStationConfig_1a14563b5a990ae3e09e36e53c9999e1d6" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>struct_size</name></member>
+      <member refid="structUrpNativeStationConfig_1a79a5f9e9e8e35ca40ea134c37f872e85" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>transmit_graph</name></member>
+      <member refid="structUrpNativeStationConfig_1a6c2430eca4ec58e38eb6958ade366525" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>transmit_graph_length</name></member>
+      <member refid="structUrpNativeStationConfig_1a31169e9bd7d656d3889f77e0e396047c" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>usb_serial</name></member>
+      <member refid="structUrpNativeStationConfig_1a103150b9c09b541221d810214f5233a0" prot="public" virt="non-virtual"><scope>UrpNativeStationConfig</scope><name>usb_serial_length</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

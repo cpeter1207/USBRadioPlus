@@ -1,0 +1,5 @@
+<map id="usbradioplus_asterisk_loader_descriptor" name="usbradioplus_asterisk_loader_descriptor">
+<area shape="rect" id="Node000001" title="Return the immutable process&#45;lifetime loader descriptor." alt="" coords="160,5,324,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__shim_8c.html#ac3382bf6da54c56b37069bd76bbdf4f9" title="Load the complete Rust&#45;owned USBRadioPlus Asterisk host." alt="" coords="5,13,112,38"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="146,28,112,28,112,23,146,23"/>
+</map>

@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structurp__ast__link__attach" kind="struct" language="C++" prot="public">
+    <compoundname>urp_ast_link_attach</compoundname>
+    <includes refid="usbradioplus__asterisk_8h" local="no">usbradioplus_asterisk.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structurp__ast__link__attach_1a729193f989c420059d35e7ea742f6de2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_link_attach::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>urp_ast_link_attach::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact sizeof(struct urp_ast_link_attach). </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="67" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="67" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__link__attach_1a79154c6fa2b595403fa58076649da03b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_link_attach::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>urp_ast_link_attach::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact URP_AST_LINK_ATTACH_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="68" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__link__attach_1adfd7e3d4c7d9444f800855298617af97" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* urp_ast_link_attach::peer_channel</definition>
+        <argsstring></argsstring>
+        <name>peer_channel</name>
+        <qualifiedname>urp_ast_link_attach::peer_channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Caller-retained Asterisk peer channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="69" column="6" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="69" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structurp__ast__link__attach_1a00422416e3db8e6a4679c7e7b5e417c8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t urp_ast_link_attach::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>urp_ast_link_attach::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize to zero; set on successful binding. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="70" column="10" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="70" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Attach the radio&apos;s configured link graph before reading peer audio. </para>
+    </briefdescription>
+    <detaileddescription>
+<para>Call on the control plane before starting the peer reader. The caller retains the peer channel until this synchronous call returns; the peer datastore then owns the hook. Disabled processing retains the profile for later reloads. Repeating the same binding is harmless; rebinding to another profile fails. Require both a zero return and the accepted ABI: Asterisk can return success for options unknown to an older driver. No public loader ABI changes. </para>
+    </detaileddescription>
+    <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="66" column="1" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="66" bodyend="71"/>
+    <listofallmembers>
+      <member refid="structurp__ast__link__attach_1a79154c6fa2b595403fa58076649da03b" prot="public" virt="non-virtual"><scope>urp_ast_link_attach</scope><name>abi_version</name></member>
+      <member refid="structurp__ast__link__attach_1a00422416e3db8e6a4679c7e7b5e417c8" prot="public" virt="non-virtual"><scope>urp_ast_link_attach</scope><name>accepted_abi_version</name></member>
+      <member refid="structurp__ast__link__attach_1adfd7e3d4c7d9444f800855298617af97" prot="public" virt="non-virtual"><scope>urp_ast_link_attach</scope><name>peer_channel</name></member>
+      <member refid="structurp__ast__link__attach_1a729193f989c420059d35e7ea742f6de2" prot="public" virt="non-virtual"><scope>urp_ast_link_attach</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

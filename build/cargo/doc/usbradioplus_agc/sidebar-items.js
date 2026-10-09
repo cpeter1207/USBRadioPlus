@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["ladspa_descriptor"],"struct":["Descriptor","PortRangeHint"]};

@@ -1,0 +1,26 @@
+var structUrpNativeStationConfig =
+[
+    [ "abi_version", "structUrpNativeStationConfig.html#a95d8aff6cbebf7890089a64d1f308128", null ],
+    [ "clip_led_mask", "structUrpNativeStationConfig.html#aabbe4d523b65dbbb6ce39cacdf3701d2", null ],
+    [ "cm119_profile", "structUrpNativeStationConfig.html#ad12dfbfb03b7f9d47ce63e19420bdbf0", null ],
+    [ "device_identifier", "structUrpNativeStationConfig.html#a74b1eb428dbce8c11a077f50aef860cf", null ],
+    [ "device_identifier_length", "structUrpNativeStationConfig.html#a5edd4ac2550e960894deef644b8afa69", null ],
+    [ "device_selection", "structUrpNativeStationConfig.html#ad1d65ee39c886f12cf76ede2f605de8d", null ],
+    [ "gpio_output_enable_mask", "structUrpNativeStationConfig.html#abaae0a13ca9e90ed8c04d75e8e62e727", null ],
+    [ "gpio_output_initial_mask", "structUrpNativeStationConfig.html#aa480a9a9bb34dda6adb8890fe6190073", null ],
+    [ "input_device_channels", "structUrpNativeStationConfig.html#a751c0851a51c3a59da7bc52a152d826f", null ],
+    [ "input_extra_buffer_ms", "structUrpNativeStationConfig.html#ae99b951333231f2ab4ecd1fe521021d7", null ],
+    [ "output_device_channels", "structUrpNativeStationConfig.html#ab10d99ec687ec8bfd182428727031de3", null ],
+    [ "output_extra_buffer_ms", "structUrpNativeStationConfig.html#a473ecf191242dd42e815d9f9cdff5e59", null ],
+    [ "ptt_inverted", "structUrpNativeStationConfig.html#a2d827ac87f9c0990cb4389a3099e9980", null ],
+    [ "radio", "structUrpNativeStationConfig.html#ad824be19d24f0270f86b56414515391d", null ],
+    [ "receive_deemphasis", "structUrpNativeStationConfig.html#ae272d392f38d3dcd2a0ad23bc1c11efa", null ],
+    [ "receive_graph", "structUrpNativeStationConfig.html#ac3041dad4c863cc0bc42497c2a18a057", null ],
+    [ "receive_graph_length", "structUrpNativeStationConfig.html#a291437a4df4fe4ef3f4c06782516d9a6", null ],
+    [ "receive_output_gain_db", "structUrpNativeStationConfig.html#a09df02d368bbb59514fbc78c7b690b5a", null ],
+    [ "struct_size", "structUrpNativeStationConfig.html#a14563b5a990ae3e09e36e53c9999e1d6", null ],
+    [ "transmit_graph", "structUrpNativeStationConfig.html#a79a5f9e9e8e35ca40ea134c37f872e85", null ],
+    [ "transmit_graph_length", "structUrpNativeStationConfig.html#a6c2430eca4ec58e38eb6958ade366525", null ],
+    [ "usb_serial", "structUrpNativeStationConfig.html#a31169e9bd7d656d3889f77e0e396047c", null ],
+    [ "usb_serial_length", "structUrpNativeStationConfig.html#a103150b9c09b541221d810214f5233a0", null ]
+];

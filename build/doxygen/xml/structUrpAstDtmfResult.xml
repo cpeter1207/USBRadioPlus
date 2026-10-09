@@ -1,0 +1,81 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstDtmfResult" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstDtmfResult</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstDtmfResult_1a429c91e3a34ce0233baab59afa2dbc9a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDtmfResult::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstDtmfResult::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="285" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="285" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDtmfResult_1a4daaa67f89f6ab544fbec271b08e9b1c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDtmfResult::event_kind</definition>
+        <argsstring></argsstring>
+        <name>event_kind</name>
+        <qualifiedname>UrpAstDtmfResult::event_kind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One of <computeroutput>URP_AST_DTMF_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="289" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="289" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDtmfResult_1af4e210e0b0adafaa65a64cff6d8b8430" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t UrpAstDtmfResult::digit</definition>
+        <argsstring></argsstring>
+        <name>digit</name>
+        <qualifiedname>UrpAstDtmfResult::digit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>ASCII digit for a begin or end event. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="293" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="293" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDtmfResult_1a0280e9ebfca690fd7e80be1bb837b305" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t UrpAstDtmfResult::reserved[7]</definition>
+        <argsstring>[7]</argsstring>
+        <name>reserved</name>
+        <qualifiedname>UrpAstDtmfResult::reserved</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Reserved; callers initialize these bytes to zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="297" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="297" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Result storage supplied to the injected DTMF analyzer. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="281" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="281" bodyend="298"/>
+    <listofallmembers>
+      <member refid="structUrpAstDtmfResult_1af4e210e0b0adafaa65a64cff6d8b8430" prot="public" virt="non-virtual"><scope>UrpAstDtmfResult</scope><name>digit</name></member>
+      <member refid="structUrpAstDtmfResult_1a4daaa67f89f6ab544fbec271b08e9b1c" prot="public" virt="non-virtual"><scope>UrpAstDtmfResult</scope><name>event_kind</name></member>
+      <member refid="structUrpAstDtmfResult_1a0280e9ebfca690fd7e80be1bb837b305" prot="public" virt="non-virtual"><scope>UrpAstDtmfResult</scope><name>reserved</name></member>
+      <member refid="structUrpAstDtmfResult_1a429c91e3a34ce0233baab59afa2dbc9a" prot="public" virt="non-virtual"><scope>UrpAstDtmfResult</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

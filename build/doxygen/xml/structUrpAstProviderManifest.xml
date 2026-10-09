@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstProviderManifest" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstProviderManifest</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a906314e8942f6d25481688d4f32acdf2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstProviderManifest::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstProviderManifest::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="355" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="355" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a4aafff6db14adb91d5779533500167f0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstProviderManifest::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstProviderManifest::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="359" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="359" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a6a3a1fc4c3a8301e72346c8759ac30da" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::ffmpeg</definition>
+        <argsstring></argsstring>
+        <name>ffmpeg</name>
+        <qualifiedname>UrpAstProviderManifest::ffmpeg</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released FFmpeg graph adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="363" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="363" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a5ad06d4f4158be8985f61490e191e955" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::rnnoise</definition>
+        <argsstring></argsstring>
+        <name>rnnoise</name>
+        <qualifiedname>UrpAstProviderManifest::rnnoise</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released RNNoise adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="367" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="367" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a2d0e6e75625d930c190fbd941668abfd" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::ring</definition>
+        <argsstring></argsstring>
+        <name>ring</name>
+        <qualifiedname>UrpAstProviderManifest::ring</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released F32 rate-adjusting ring descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="371" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="371" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a178b9946965b910cc2d38ec25734c70d" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::radio</definition>
+        <argsstring></argsstring>
+        <name>radio</name>
+        <qualifiedname>UrpAstProviderManifest::radio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released radio-core descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="375" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="375" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a09d9a5d05818fe833f335daeaf3ad461" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::samplerate</definition>
+        <argsstring></argsstring>
+        <name>samplerate</name>
+        <qualifiedname>UrpAstProviderManifest::samplerate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Versioned bounded sample-rate adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="379" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="379" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a495d0dbf48fe4975d7f14c3e5ce96c86" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::audio</definition>
+        <argsstring></argsstring>
+        <name>audio</name>
+        <qualifiedname>UrpAstProviderManifest::audio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released PortAudio/ALSA adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="383" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="383" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProviderManifest_1a773ca7348217edbb6dd07141db138607" prot="public" static="no" mutable="no">
+        <type>const void *</type>
+        <definition>const void* UrpAstProviderManifest::gpio</definition>
+        <argsstring></argsstring>
+        <name>gpio</name>
+        <qualifiedname>UrpAstProviderManifest::gpio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released CM119/parallel GPIO adapter descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="387" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="387" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Process-lifetime descriptors for the selected product composition. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="351" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="351" bodyend="388"/>
+    <listofallmembers>
+      <member refid="structUrpAstProviderManifest_1a4aafff6db14adb91d5779533500167f0" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>abi_version</name></member>
+      <member refid="structUrpAstProviderManifest_1a495d0dbf48fe4975d7f14c3e5ce96c86" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>audio</name></member>
+      <member refid="structUrpAstProviderManifest_1a6a3a1fc4c3a8301e72346c8759ac30da" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>ffmpeg</name></member>
+      <member refid="structUrpAstProviderManifest_1a773ca7348217edbb6dd07141db138607" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>gpio</name></member>
+      <member refid="structUrpAstProviderManifest_1a178b9946965b910cc2d38ec25734c70d" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>radio</name></member>
+      <member refid="structUrpAstProviderManifest_1a2d0e6e75625d930c190fbd941668abfd" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>ring</name></member>
+      <member refid="structUrpAstProviderManifest_1a5ad06d4f4158be8985f61490e191e955" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>rnnoise</name></member>
+      <member refid="structUrpAstProviderManifest_1a09d9a5d05818fe833f335daeaf3ad461" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>samplerate</name></member>
+      <member refid="structUrpAstProviderManifest_1a906314e8942f6d25481688d4f32acdf2" prot="public" virt="non-virtual"><scope>UrpAstProviderManifest</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

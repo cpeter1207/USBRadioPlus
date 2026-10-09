@@ -1,0 +1,9 @@
+<map id="UrpNativeCreateArgs" name="UrpNativeCreateArgs">
+<area shape="rect" id="Node000001" title=" " alt="" coords="213,93,373,119"/>
+<area shape="rect" id="Node000002" href="$structUrpNativeStationConfig.html" title=" " alt="" coords="5,5,180,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="133,34,267,91,264,96,131,39"/>
+<area shape="rect" id="Node000003" href="$structUrpAstProviderManifest.html" title=" " alt="" coords="204,5,381,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="295,45,295,93,290,93,290,45"/>
+<area shape="rect" id="Node000004" href="$structUrpAstDirectCallbacks.html" title=" " alt="" coords="406,5,574,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="452,39,321,96,318,91,450,34"/>
+</map>
