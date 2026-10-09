@@ -1,0 +1,46 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: trixie
+Codename: trixie
+Date: Fri, 09 Oct 2026 22:11:09 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ c5896141e91c9ca8eeebde854b44fd00 23498 main/binary-amd64/Packages
+ 701107a93ef153d0f86fc9e0d0b05a68 5410 main/binary-amd64/Packages.gz
+ d54f289013b4dd2d2fc1ad9476d88868 143 main/binary-amd64/Release
+ be8401ce7d94f8f38251656e6c58c23f 23499 main/binary-arm64/Packages
+ 750a478c392db87c35431dc8bd19bc72 5397 main/binary-arm64/Packages.gz
+ 93c3386fbe84ff69eaa186077beaa099 143 main/binary-arm64/Release
+SHA1:
+ cb3088da34531988b4e512cd5c784ec8465903e6 23498 main/binary-amd64/Packages
+ 90655d2e9419e0e942361641f0f95f558121056f 5410 main/binary-amd64/Packages.gz
+ 5c3b7e0ccfa25bb832d1ace63468e9f21d9f1482 143 main/binary-amd64/Release
+ dc9d28121bc661e6c39ed9c0feaf48ef48c0c0a8 23499 main/binary-arm64/Packages
+ f742f5c46a3c5de73cdf7fc7649a2c92782438b2 5397 main/binary-arm64/Packages.gz
+ 234a7acd006c30c3dd33e966c9ca4f633beea1e9 143 main/binary-arm64/Release
+SHA256:
+ 497e1e4e964f429d7698988d3142c29f0e7e3ba6325a9d1fbe5adb36eb5c0389 23498 main/binary-amd64/Packages
+ b966987ef64f2cacc30adc90a37a16c1611d178e8f7d946d92cc55b1d62cea19 5410 main/binary-amd64/Packages.gz
+ 525681390319dc959bc0d941df033274e21b1dab533424b9761470f79a7bfc0d 143 main/binary-amd64/Release
+ 366ac512a29fa701e3ad261c5cededbea25fc5d8d867453ad54935eb45671303 23499 main/binary-arm64/Packages
+ a6ba7c1e52eb648a3860c33f65ae2168335c18e68db10d784c8b2b8ccc82a6ad 5397 main/binary-arm64/Packages.gz
+ 4c38a8e8ecc7bae18bdc031fd8aea866c11ab38f33db530244cad1e460c44a23 143 main/binary-arm64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEoNWnng9cRenmNnmVCVFQK6x5XlUFAmrJZn0ACgkQCVFQK6x5
+XlU2lgv/bmcmcDhMCVXpUcaBm88czH19L3FWckiJgl85t4UNXBNblts8GoH2orPw
+mR+Grn/Kfq3qjRPEaBYPdBL2ZycCoFanQXSiHsqNC0B5VPMpmF1QU2+YjJrgKfeZ
+J01x8zHwhgTT2aqpduGRQ9A8y2TeuDQt4P8uTc81aEzSWgOTOE5md3jer34Cekmg
+zaLuyK119Uqmz8o3rhbg1JPsq2DPTDApKLcRX4Td3zFKi7vDJZO3r3J9kdpnC2GZ
+2eVv5HQmIFHWSuZE410ENpe1M7hPOhsQaTdWgxIT9HX478Hfwge9kZBPUxzoj06D
+b/7FD56x4r0/UUta8nxmuTHRJ8eg6ezzdN3D5l6JpJUIqrkthBaZ7+9MiiW17Fan
+islUmmiZTt2wNYqRtybD+kxau9YAOmfXb2YpFAqm7hDRQVr5d7E+ckaLWDvcKfTj
+BWOCvwfM8wDncdImrYb3ykmTtsaUlbb9lxXbLGVhZdzue6o4L0zfCAJAZiSzcYye
+oEyBVSkB
+=LXxu
+-----END PGP SIGNATURE-----
