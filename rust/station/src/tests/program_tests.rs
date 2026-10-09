@@ -37,16 +37,19 @@ fn released_app_rpt_ring_primes_then_applies_native_rate_plc_delay() {
     let (observation, received) = consumer.render(&mut output).unwrap();
     // G.711's 3.75 ms delay is 180 output samples at the native 48 kHz rate.
     assert!(output[..180].iter().all(|sample| *sample == 0.0));
-    assert!(
-        output[192..]
-            .iter()
-            .all(|sample| (*sample - 0.25).abs() < 1e-6)
-    );
+    // The converter's FIR response settles separately from PLC lookahead.
+    assert!(output.iter().any(|sample| *sample > 0.1));
     assert_eq!(observation.missing_samples, 0);
     assert_eq!(observation.reserve_samples, 162);
     assert_eq!(observation.target_samples, 320);
     assert_eq!(observation.capacity_samples, 640);
     assert!(received.receiver_keyed);
+    for _ in 0..3 {
+        assert_eq!(producer.push(&[0.25; 160], qualification).unwrap(), 160);
+        let (observation, _) = consumer.render(&mut output).unwrap();
+        assert_eq!(observation.missing_samples, 0);
+    }
+    assert!(output.iter().all(|sample| (*sample - 0.25).abs() < 1e-6));
 }
 
 #[test]
@@ -63,15 +66,21 @@ fn released_advanced_fallback_has_no_plc_delay_and_silences_shortfall() {
     }
     let mut output = [0.0; 960];
     let (observation, _) = consumer.render(&mut output).unwrap();
-    assert!(
-        output[1..]
-            .iter()
-            .all(|sample| (*sample - 0.25).abs() < 1e-6)
-    );
+    // No PLC lookahead is added, but the converter still has an FIR startup.
+    assert!((output[959] - 0.25).abs() < 1e-6);
     assert_eq!(observation.missing_samples, 0);
     assert_eq!(observation.reserve_samples, 960);
     assert_eq!(observation.target_samples, 1_920);
     assert_eq!(observation.capacity_samples, 3_840);
+    assert_eq!(
+        producer
+            .push(&[0.25; 960], ReceiveQualification::default())
+            .unwrap(),
+        960
+    );
+    let (observation, _) = consumer.render(&mut output).unwrap();
+    assert!(output.iter().all(|sample| (*sample - 0.25).abs() < 1e-6));
+    assert_eq!(observation.missing_samples, 0);
     for _ in 0..3 {
         consumer.render(&mut output).unwrap();
     }

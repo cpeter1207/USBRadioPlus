@@ -107,8 +107,8 @@ fn loader_rejects_invalid_product_before_configuration_or_driver_creation() {
             product: &product,
             ..providers()
         };
-        // SAFETY: the descriptor copy and provider fixtures remain live until load returns.
         assert_eq!(
+            // SAFETY: the descriptor copy and provider fixtures remain live until load returns.
             unsafe { loader_load(&manifest, ptr::dangling_mut::<u8>().cast()) },
             LOADER_DECLINE
         );

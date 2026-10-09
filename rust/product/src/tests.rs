@@ -9,8 +9,8 @@ mod native;
 fn native_descriptor_rejects_missing_request_and_clears_handle() {
     let descriptor = product_descriptor();
     let mut output = std::ptr::dangling_mut::<c_void>();
-    // SAFETY: null arguments are rejected and output is valid writable storage.
     assert_eq!(
+        // SAFETY: null arguments are rejected and output is valid writable storage.
         unsafe { descriptor.native_create.unwrap()(std::ptr::null(), &mut output) },
         URP_AST_INVALID_ARGUMENT
     );

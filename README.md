@@ -9,6 +9,12 @@ Every channel requires the released PortAudio/ALSA and GPIO adapters, bound
 to one USB identity. The single ASL3 implementation has no `res_usbradio.so`
 dependency.
 
+The `usbradioplus` Debian package contains the ASL3 channel and tuner. It
+depends on `libusbradioplus-product1`, the versioned radio-processing and
+station library also used by the standalone rpt_advanced controller. The
+`libusbradioplus-product-dev` package supplies the C header and pkg-config
+metadata for consumers; the shared product has no Asterisk dependency.
+
 This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
 with suitable test equipment.
@@ -52,8 +58,8 @@ commands.
   multi-channel-capable starting point.
 - [Packaging notes](doc/packaging.md) describe the upstream archive and current
   Debian packaging interface.
-- [Native radio notes](doc/native-radio.md) cover signaling;
-  [retired modes](doc/native-mode-retirement.md) explains why native DSP remains.
+- [Native radio notes](doc/native-radio.md) cover signaling. The removed
+  software local-repeat and native parrot modes do not affect native DSP.
 - [The release checklist](RELEASE-CHECKLIST.md) lists the automated,
   service-monitor, activation, and rollback evidence required for an alpha.
 - [Generated source documentation](https://cpeter1207.github.io/USBRadioPlus/docs/)

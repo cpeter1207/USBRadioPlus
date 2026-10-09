@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0~alpha23 - 2026-10-09
+
+- Package the shared radio product independently of its Asterisk adapter so
+  the standalone controller and channel driver use the same radio processing.
+- Use the released PCM-ring ABI 3 and sample-rate adapter ABI 2.
+- Preserve audio and PTT during live processing adjustments, bind advanced
+  peers to the shared link graph, and expose independent CTCSS control.
+- Correct ring integration tests for converter startup behavior and remove
+  stale native-parrot documentation and install references.
+
 ## 0.1.0~alpha22 - 2026-09-23
 
 - Add independently configurable per-radio PortAudio input and output buffer

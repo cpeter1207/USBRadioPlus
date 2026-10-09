@@ -22,8 +22,8 @@ fn product_validation_rejects_null_short_and_incompatible_headers() {
             2 => descriptor.capability_name = ptr::null(),
             _ => descriptor.capability_name = c"wrong.product".as_ptr(),
         }
-        // SAFETY: this complete copy and its static capability remain live through validation.
         assert!(
+            // SAFETY: this complete copy and its static capability remain live through validation.
             !unsafe { product_descriptor_is_valid(&descriptor) },
             "case {case}"
         );
@@ -37,8 +37,8 @@ fn product_validation_requires_every_operation_the_host_can_invoke() {
         ($field:ident) => {
             let mut incomplete = *valid;
             incomplete.$field = None;
-            // SAFETY: the complete descriptor copy and static strings outlive validation.
             assert!(
+                // SAFETY: the complete descriptor copy and static strings outlive validation.
                 !unsafe { product_descriptor_is_valid(&incomplete) },
                 stringify!($field)
             );

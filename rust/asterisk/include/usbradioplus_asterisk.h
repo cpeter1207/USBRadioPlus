@@ -72,15 +72,15 @@ struct urp_ast_link_attach {
 
 /** @brief Process-lifetime providers selected by the Asterisk module. */
 struct urp_ast_provider_manifest {
-	uint32_t struct_size;	/**< Size of this structure in bytes. */
-	uint32_t abi_version;	/**< @c URP_AST_LOADER_ABI_VERSION. */
-	const void *ffmpeg;	/**< Released FFmpeg-graph descriptor. */
-	const void *rnnoise;	/**< Released RNNoise descriptor. */
-	const void *ring;	/**< Released rate-adjusting-ring descriptor. */
-	const void *radio;	/**< Released radio-core descriptor. */
-	const void *samplerate; /**< Released sample-rate-adapter descriptor. */
-	const void *audio;	/**< Released audio-adapter descriptor. */
-	const void *gpio;	/**< Released GPIO-adapter descriptor. */
+	uint32_t struct_size;			/**< Size of this structure in bytes. */
+	uint32_t abi_version;			/**< @c URP_AST_LOADER_ABI_VERSION. */
+	const void *ffmpeg;			/**< Released FFmpeg-graph descriptor. */
+	const void *rnnoise;			/**< Released RNNoise descriptor. */
+	const void *ring;			/**< Released rate-adjusting-ring descriptor. */
+	const void *radio;			/**< Released radio-core descriptor. */
+	const void *samplerate;			/**< Released sample-rate-adapter descriptor. */
+	const void *audio;			/**< Released audio-adapter descriptor. */
+	const void *gpio;			/**< Released GPIO-adapter descriptor. */
 	const struct UrpAstDescriptor *product; /**< Shared USBRadioPlus product descriptor. */
 };
 

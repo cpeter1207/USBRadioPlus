@@ -98,7 +98,7 @@ RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
 RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.4
 RPTADV_RADIO_BUILD_DEP :=
 endif
-# USBRadioPlus routes its current mono sinc compatibility conversion through
+# USBRadioPlus routes its current mono conversion through
 # this released dynamically linked adapter. There is no direct converter
 # fallback in the native compatibility path.
 RPTADV_SAMPLERATE_SOURCE ?=
@@ -556,7 +556,6 @@ uninstall:
 		$(DESTDIR)$(docdir)/README.md \
 		$(DESTDIR)$(docdir)/CHANGELOG.md \
 		$(DESTDIR)$(docdir)/native-radio.md \
-		$(DESTDIR)$(docdir)/native-mode-retirement.md \
 		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
 		$(DESTDIR)$(docdir)/agc.md
 

@@ -50,8 +50,8 @@ pub(crate) fn descriptor() -> &'static UrpAstDescriptor {
             size_of::<UrpAstDescriptor>()
         );
         assert_eq!(descriptor.abi_version, ABI_VERSION);
-        // SAFETY: the descriptor contract requires a static terminated capability string.
         assert_eq!(
+            // SAFETY: the descriptor contract requires a static terminated capability string.
             unsafe { CStr::from_ptr(descriptor.capability_name) },
             c"usbradioplus.product1"
         );

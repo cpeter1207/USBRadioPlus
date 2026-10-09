@@ -1,3 +1,13 @@
+usbradioplus (0.1.0~alpha23-1) unstable; urgency=medium
+
+  * Publish the shared radio runtime and development packages independently of
+    the Asterisk channel adapter.
+  * Require PCM-ring ABI 3 and sample-rate adapter ABI 2.
+  * Preserve live processing continuity and independent controller signaling.
+  * Correct ring integration coverage and remove stale install references.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 09 Oct 2026 12:00:00 -0500
+
 usbradioplus (0.1.0~alpha22-1) unstable; urgency=medium
 
   * Add per-radio PortAudio input and output extra-buffer settings; default both

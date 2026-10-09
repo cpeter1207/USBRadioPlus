@@ -206,7 +206,7 @@ unsafe impl Send for Converter {}
 impl Converter {
     /// Convert one bounded portion of a continuing normalized-F32 stream.
     ///
-    /// A successful call may consume or generate zero frames while the sinc
+    /// A successful call may consume or generate zero frames while the FIR
     /// filter gathers history. Accepted input is adapter-owned, even before it
     /// produces output: resubmit only the suffix after `input_used`. Empty input
     /// drains available output without flushing the FIR tail. The absolute
