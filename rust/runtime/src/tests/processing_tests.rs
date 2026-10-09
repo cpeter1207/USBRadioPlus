@@ -72,6 +72,53 @@ fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failur
     GRAPH_CREATE_FAIL_AT.set(0);
 }
 
+#[test]
+fn explicit_native_graph_reports_deemphasis_and_receive_gain_prepare_failures() {
+    let plan = ExplicitNativeProcessingPlan {
+        receive_graph: "anull".to_owned(),
+        transmit_graph: "anull".to_owned(),
+        receive_deemphasis: true,
+        receive_output_gain_db: -6,
+        receive_ctcss_mask: 0,
+        transmit_dcs: false,
+    };
+    // De-emphasis and receive filtering precede the receive-gain graph.
+    for failed_ordinal in [1, 3] {
+        GRAPH_CREATES.set(0);
+        GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+        GRAPH_CREATE_FAIL_AT.set(failed_ordinal);
+        let result = NativeProcessingFactory::prepare_explicit(
+            graph_provider(&GRAPH_DESCRIPTOR),
+            &plan,
+            960,
+        );
+        GRAPH_CREATE_FAIL_AT.set(0);
+        assert!(matches!(
+            result,
+            Err(ProcessingRuntimeError::GraphAdapter(_))
+        ));
+        GRAPH_DESCRIPTIONS.with(|values| {
+            let values = values.borrow();
+            if failed_ordinal == 1 {
+                assert!(values[0].contains("biquad"));
+            } else {
+                assert_eq!(values[2], "volume=-6dB");
+            }
+        });
+    }
+}
+
+#[test]
+fn graph_description_accessor_exposes_the_validated_factory() {
+    assert_eq!(
+        factory()
+            .graph_descriptions()
+            .receive_deemphasis(false, 300.0)
+            .unwrap(),
+        "[in]anull[out]"
+    );
+}
+
 thread_local! {
     static GRAPH_CREATES: Cell<usize> = const { Cell::new(0) };
     static GRAPH_PROCESSES: Cell<usize> = const { Cell::new(0) };
