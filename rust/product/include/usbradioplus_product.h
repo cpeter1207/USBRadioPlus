@@ -1004,7 +1004,10 @@ typedef struct UrpAstDescriptor {
 extern "C" {
 #endif // __cplusplus
 
-/** Return the immutable process-lifetime product descriptor (ABI 1). */
+/**
+ * Return the immutable process-lifetime product descriptor (ABI 1).
+ * @return Pointer to the process-lifetime descriptor.
+ */
 const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
 
 #ifdef __cplusplus
