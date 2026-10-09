@@ -1,11 +1,13 @@
 //! Fixed app_rpt conversion composed from the released sample-rate adapter.
 
-use usbradioplus_asl3::{AppRptConverter, ConversionError, ConversionProgress};
-use usbradioplus_samplerate::{Converter, Quality, SampleRateAdapter, SampleRateError};
+use usbradioplus_asl3::{
+    ADVANCED_FRAME_SAMPLES, AppRptConverter, ConversionError, ConversionProgress,
+};
+use usbradioplus_samplerate::{Converter, SampleRateAdapter, SampleRateError};
 
 const APP_RPT_TO_NATIVE_RATIO: f64 = 8_000.0 / 48_000.0;
 
-/// Prepare the persistent highest-quality native-to-app_rpt converter.
+/// Prepare the bounded persistent 48-kHz-to-8-kHz app_rpt converter.
 ///
 /// # Errors
 ///
@@ -13,9 +15,12 @@ const APP_RPT_TO_NATIVE_RATIO: f64 = 8_000.0 / 48_000.0;
 pub fn prepare_app_rpt_converter(
     adapter: &SampleRateAdapter,
 ) -> Result<Box<dyn AppRptConverter>, SampleRateError> {
-    Ok(Box::new(AppRptRateConverter(
-        adapter.create(Quality::SincBest)?,
-    )))
+    Ok(Box::new(AppRptRateConverter(adapter.create(
+        48_000,
+        8_000,
+        ADVANCED_FRAME_SAMPLES,
+        ADVANCED_FRAME_SAMPLES,
+    )?)))
 }
 
 struct AppRptRateConverter(Converter);

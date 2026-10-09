@@ -44,6 +44,15 @@ signed project repository, obtains the required Debian build packages and
 released shared-library dependency, builds the module and utilities, runs the
 hardware-independent tests, and installs the result.  Installation does not
 load a module, restart Asterisk, or edit an Asterisk configuration file.
+.PP
+The Debian
+.B usbradioplus
+package installs the channel and depends on the matching
+.B libusbradioplus-product1
+radio-processing runtime.  The separate
+.B libusbradioplus-product-dev
+package supplies its public C header and pkg-config metadata for native
+consumers.  The shared product does not require Asterisk.
 .SH ACTIVATION
 Retain the installed
 .B chan_usbradio.so
@@ -100,6 +109,12 @@ for operating instructions and the service-monitor procedure.
 .TP
 .B /usr/lib/<multiarch>/asterisk/modules/chan_usbradioplus.so
 Asterisk channel module.
+.TP
+.B /usr/lib/<multiarch>/libusbradioplus_product.so.1
+Versioned shared radio product used by the channel and native consumers.
+.TP
+.B /usr/lib/<multiarch>/usbradioplus/usbradioplus_agc.so
+Private LADSPA effect shipped with the shared radio product.
 .TP
 .B /etc/asterisk/usbradioplus.conf
 Channel, radio-interface, and tuning configuration.

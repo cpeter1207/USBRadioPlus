@@ -1,0 +1,8 @@
+etc/asterisk/usbradioplus.conf
+usr/lib/*/asterisk/modules/chan_usbradioplus.so
+usr/lib/*/libusbradioplus_asterisk.so.1
+usr/sbin/usbradioplus-tune
+usr/share/doc/usbradioplus/*
+usr/share/man/man5/usbradioplus.conf.5
+usr/share/man/man7/usbradioplus.7
+usr/share/man/man8/usbradioplus-tune.8

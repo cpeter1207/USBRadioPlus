@@ -3,7 +3,8 @@ use super::*;
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
 use std::ptr;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 const OK: c_int = 0;
 const AUDIO_ABI: u32 = 2;
@@ -27,6 +28,33 @@ static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
 static AUDIO_CREATES: AtomicU32 = AtomicU32::new(0);
 static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
+static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
+static PTT_DROPS: AtomicU32 = AtomicU32::new(0);
+static GRAPH_DELAY_MS: AtomicU32 = AtomicU32::new(0);
+static GRAPH_PREPARING: AtomicBool = AtomicBool::new(false);
+
+pub(super) fn delay_graph_preparation(milliseconds: u32) {
+    GRAPH_DELAY_MS.store(milliseconds, Ordering::Release);
+}
+
+pub(super) fn graph_preparing() -> bool {
+    GRAPH_PREPARING.load(Ordering::Acquire)
+}
+
+pub(super) fn periodic_audio(enabled: bool) {
+    PERIODIC_AUDIO.store(enabled, Ordering::Release);
+}
+
+pub(super) fn reset_ptt_drops() {
+    PTT_DROPS.store(0, Ordering::Release);
+}
+
+pub(super) fn ptt_state() -> (bool, u32) {
+    (
+        PTT.load(Ordering::Acquire) != 0,
+        PTT_DROPS.load(Ordering::Acquire),
+    )
+}
 
 pub(super) fn exclusive_audio(enabled: bool) {
     assert_eq!(AUDIO_STREAMS.load(Ordering::Acquire), 0);
@@ -103,6 +131,12 @@ struct GraphState(u32);
 unsafe extern "C" fn graph_create(config: *const GraphConfig, output: *mut *mut c_void) -> c_int {
     if failed(FAIL_GRAPH) {
         return -1;
+    }
+    let delay = GRAPH_DELAY_MS.load(Ordering::Acquire);
+    if delay != 0 {
+        GRAPH_PREPARING.store(true, Ordering::Release);
+        std::thread::sleep(std::time::Duration::from_millis(u64::from(delay)));
+        GRAPH_PREPARING.store(false, Ordering::Release);
     }
     // SAFETY: the product wrapper supplies live configuration and output storage.
     unsafe { *output = Box::into_raw(Box::new(GraphState((*config).maximum_frame_count))).cast() };
@@ -205,7 +239,11 @@ struct RingConfig {
     capacity_samples: u64,
     input_rate_hz: u32,
     output_rate_hz: u32,
-    quality: u32,
+    reserve_samples: u64,
+    target_samples: u64,
+    max_producer_samples: u64,
+    max_output_samples: u64,
+    plc_mode: u32,
 }
 
 #[repr(C)]
@@ -223,8 +261,8 @@ struct RingDescriptor {
     destroy: Option<unsafe extern "C" fn(*mut c_void)>,
     push_sample: Option<unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int>,
     push: Option<unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int>,
-    render_sample: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int>,
-    render: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int>,
+    render_sample: Option<unsafe extern "C" fn(*mut c_void, *mut f32, *mut bool) -> c_int>,
+    render: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut u64) -> c_int>,
     reset: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     observe: Option<unsafe extern "C" fn(*const c_void, *mut RingObservation) -> c_int>,
 }
@@ -262,7 +300,6 @@ unsafe extern "C" fn ring_push(
 unsafe extern "C" fn ring_render_sample(
     _handle: *mut c_void,
     output: *mut f32,
-    _target: u64,
     ready: *mut bool,
 ) -> c_int {
     // SAFETY: the wrapper supplies writable result storage.
@@ -277,8 +314,6 @@ unsafe extern "C" fn ring_render(
     _handle: *mut c_void,
     output: *mut f32,
     count: u64,
-    _reserve: u64,
-    _target: u64,
     rendered: *mut u64,
 ) -> c_int {
     // SAFETY: the wrapper supplies a writable count-sized output span.
@@ -301,7 +336,7 @@ unsafe extern "C" fn ring_reset(_handle: *mut c_void) -> c_int {
 
 static RING: RingDescriptor = RingDescriptor {
     struct_size: size_of::<RingDescriptor>() as u32,
-    abi_version: 2,
+    abi_version: 3,
     capability_name: c"rptadv.rate-adjusting-pcm-ring.f32".as_ptr(),
     create: Some(ring_create),
     destroy: Some(unit_destroy),
@@ -321,7 +356,7 @@ struct ConverterDescriptor {
     struct_size: u32,
     abi_version: u32,
     capability_name: *const c_char,
-    create: Option<unsafe extern "C" fn(c_int, u32, *mut *mut Converter) -> c_int>,
+    create: Option<unsafe extern "C" fn(u32, u32, u32, u32, *mut *mut Converter) -> c_int>,
     reset: Option<unsafe extern "C" fn(*mut Converter) -> c_int>,
     process: Option<
         unsafe extern "C" fn(
@@ -336,14 +371,18 @@ struct ConverterDescriptor {
         ) -> c_int,
     >,
     destroy: Option<unsafe extern "C" fn(*mut Converter)>,
+    queued_input: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
+    converter_output_delay: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
 unsafe impl Sync for ConverterDescriptor {}
 
 unsafe extern "C" fn converter_create(
-    _quality: c_int,
-    _channels: u32,
+    _input_rate: u32,
+    _output_rate: u32,
+    _max_input: u32,
+    _max_output: u32,
     output: *mut *mut Converter,
 ) -> c_int {
     // SAFETY: the wrapper supplies writable output storage.
@@ -352,6 +391,12 @@ unsafe extern "C" fn converter_create(
 }
 
 unsafe extern "C" fn converter_reset(_handle: *mut Converter) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn converter_queued_input(_: *mut Converter, frames: *mut u32) -> c_int {
+    // SAFETY: the client supplies writable output storage.
+    unsafe { *frames = 0 };
     OK
 }
 
@@ -390,12 +435,14 @@ unsafe extern "C" fn converter_destroy(handle: *mut Converter) {
 
 static CONVERTER: ConverterDescriptor = ConverterDescriptor {
     struct_size: size_of::<ConverterDescriptor>() as u32,
-    abi_version: 1,
+    abi_version: 2,
     capability_name: c"rptadv.samplerate".as_ptr(),
     create: Some(converter_create),
     reset: Some(converter_reset),
     process: Some(converter_process),
     destroy: Some(converter_destroy),
+    queued_input: Some(converter_queued_input),
+    converter_output_delay: Some(converter_queued_input),
 };
 
 type RadioCreate = unsafe extern "C" fn(*const c_void, *const c_void, *mut *mut c_void) -> c_int;
@@ -523,6 +570,10 @@ struct RadioDescriptor {
     pop_receive: Option<RadioPop>,
     pop_transmit: Option<RadioPop>,
     destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    prepare_update: Option<RadioCreate>,
+    apply_receive_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    apply_transmit_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -544,6 +595,10 @@ unsafe extern "C" fn radio_create(
 }
 
 unsafe extern "C" fn radio_warm(_handle: *mut c_void) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn radio_apply_update(_handle: *mut c_void, _update: *mut c_void) -> c_int {
     OK
 }
 
@@ -678,6 +733,10 @@ static RADIO: RadioDescriptor = RadioDescriptor {
     pop_receive: Some(radio_pop),
     pop_transmit: Some(radio_pop),
     destroy: Some(radio_destroy),
+    prepare_update: Some(radio_create),
+    apply_receive_update: Some(radio_apply_update),
+    apply_transmit_update: Some(radio_apply_update),
+    destroy_update: Some(radio_destroy),
 };
 
 #[repr(C)]
@@ -876,6 +935,8 @@ struct FakeStream {
     receive_context: *mut c_void,
     transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
     transmit_context: *mut c_void,
+    stop: Arc<AtomicBool>,
+    worker: Option<std::thread::JoinHandle<()>>,
 }
 
 struct FakeMixer {
@@ -909,6 +970,8 @@ unsafe extern "C" fn audio_stream_create(
         receive_context: config.receive_context,
         transmit: config.transmit_worker.unwrap(),
         transmit_context: config.transmit_context,
+        stop: Arc::new(AtomicBool::new(false)),
+        worker: None,
     }))
     .cast();
     OK
@@ -930,6 +993,26 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
     let receive = unsafe { (stream.receive)(stream.receive_context, input.as_ptr(), 960) };
     // SAFETY: contexts and canonical 20 ms buffers are live for these calls.
     let transmit = unsafe { (stream.transmit)(stream.transmit_context, output.as_mut_ptr(), 960) };
+    if receive == 0 && transmit == 0 && PERIODIC_AUDIO.load(Ordering::Acquire) {
+        let rx = stream.receive;
+        let rx_context = stream.receive_context as usize;
+        let tx = stream.transmit;
+        let tx_context = stream.transmit_context as usize;
+        let stop = stream.stop.clone();
+        stop.store(false, Ordering::Release);
+        stream.worker = Some(std::thread::spawn(move || {
+            let input = [0.25_f32; 1_920];
+            let mut output = [0.0_f32; 1_920];
+            while !stop.load(Ordering::Acquire) {
+                // SAFETY: stop joins this sole callback owner before either context is freed.
+                unsafe {
+                    assert_eq!(rx(rx_context as *mut c_void, input.as_ptr(), 960), OK);
+                    assert_eq!(tx(tx_context as *mut c_void, output.as_mut_ptr(), 960), OK);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(2));
+            }
+        }));
+    }
     if receive == 0 && transmit == 0 {
         OK
     } else {
@@ -940,6 +1023,12 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
 unsafe extern "C" fn audio_stream_control(stream: *mut c_void) -> c_int {
     if failed(FAIL_STOP) {
         return -1;
+    }
+    // SAFETY: the control owner exclusively accesses this provider handle.
+    let owned = unsafe { &mut *stream.cast::<FakeStream>() };
+    owned.stop.store(true, Ordering::Release);
+    if let Some(worker) = owned.worker.take() {
+        worker.join().unwrap();
     }
     if failed(PUBLISH_ON_STOP) || failed(PUBLISH_ON_STOP_FAIL_OPEN) {
         // SAFETY: the handle originates from audio_stream_create and its receive context is live.
@@ -987,6 +1076,8 @@ unsafe extern "C" fn audio_stream_timing(
 }
 
 unsafe extern "C" fn audio_stream_destroy(stream: *mut c_void) {
+    // SAFETY: join callbacks before taking ownership of their backing stream.
+    let _ = unsafe { audio_stream_control(stream) };
     // SAFETY: the handle is the unique allocation returned by create.
     let stream = unsafe { Box::from_raw(stream.cast::<FakeStream>()) };
     if stream.exclusive {
@@ -1317,7 +1408,12 @@ struct GpioDescriptor {
 // SAFETY: the immutable descriptor contains only function pointers.
 unsafe impl Sync for GpioDescriptor {}
 
-unsafe extern "C" fn gpio_probe(_config: *const c_void, _output: *mut c_void) -> c_int {
+unsafe extern "C" fn gpio_probe(_config: *const c_void, output: *mut c_void) -> c_int {
+    // SAFETY: the wrapper initializes a full device-info result. Its third u32
+    // is the released ABI's presence flag; preserve its size/version prefix.
+    unsafe {
+        output.cast::<u32>().add(2).write(1);
+    }
     OK
 }
 
@@ -1333,7 +1429,10 @@ unsafe extern "C" fn gpio_open(_config: *const c_void, output: *mut *mut c_void)
 
 unsafe extern "C" fn gpio_publish(_device: *mut c_void, outputs: *const GpioCm119Outputs) -> c_int {
     // SAFETY: the wrapper supplies a complete output snapshot.
-    PTT.store(unsafe { (*outputs).ptt_asserted }, Ordering::Release);
+    let next = unsafe { (*outputs).ptt_asserted };
+    if PTT.swap(next, Ordering::AcqRel) != 0 && next == 0 {
+        PTT_DROPS.fetch_add(1, Ordering::Relaxed);
+    }
     OK
 }
 

@@ -10,6 +10,18 @@ use usbradioplus_core::{
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_rnnoise::DenoiseProvider;
 
+thread_local! {
+    static SIMULATE_GRAPH_DELAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+pub(crate) fn simulate_graph_delay(enabled: bool) {
+    SIMULATE_GRAPH_DELAY.set(enabled);
+}
+
+struct TestGraph {
+    delay: std::collections::VecDeque<f32>,
+}
+
 #[repr(C)]
 struct TestGraphConfig {
     struct_size: u32,
@@ -41,20 +53,35 @@ unsafe extern "C" fn graph_create(
     _config: *const TestGraphConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    let delay = if SIMULATE_GRAPH_DELAY.get() {
+        std::collections::VecDeque::from(vec![0.0; 240])
+    } else {
+        std::collections::VecDeque::new()
+    };
     // SAFETY: The wrapper supplies one writable handle destination.
-    unsafe { *output = Box::into_raw(Box::new(())).cast() };
+    unsafe { *output = Box::into_raw(Box::new(TestGraph { delay })).cast() };
     0
 }
 
 unsafe extern "C" fn graph_process(
-    _state: *mut c_void,
+    state: *mut c_void,
     input: *const f32,
     frame_count: u32,
     output: *mut f32,
 ) -> c_int {
-    // SAFETY: The graph wrapper supplies distinct spans of frame_count samples.
+    // SAFETY: this fixture exclusively owns its graph and exact sample spans.
     unsafe {
-        ptr::copy_nonoverlapping(input, output, frame_count as usize);
+        let graph = &mut *state.cast::<TestGraph>();
+        for index in 0..frame_count as usize {
+            let sample = input.add(index).read();
+            let result = if let Some(previous) = graph.delay.pop_front() {
+                graph.delay.push_back(sample);
+                previous
+            } else {
+                sample
+            };
+            output.add(index).write(result);
+        }
     }
     0
 }
@@ -62,7 +89,7 @@ unsafe extern "C" fn graph_process(
 unsafe extern "C" fn graph_destroy(state: *mut c_void) {
     if !state.is_null() {
         // SAFETY: Every non-null state was allocated once by graph_create.
-        drop(unsafe { Box::from_raw(state.cast::<()>()) });
+        drop(unsafe { Box::from_raw(state.cast::<TestGraph>()) });
     }
 }
 

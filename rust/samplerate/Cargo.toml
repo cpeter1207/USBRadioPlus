@@ -4,7 +4,7 @@ version = "0.1.0-alpha19"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-2.0-only"
-description = "USBRadioPlus client for the libsamplerate adapter"
+description = "USBRadioPlus client for the bounded sample-rate adapter"
 publish = false
 
 [lints.rust]

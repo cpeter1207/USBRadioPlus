@@ -4,9 +4,9 @@ Priority: optional
 Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  libclang-dev, pkg-config, asl3-asterisk-dev,
- librate-adjusting-pcm-ring2-dev (>= 2.0.0~alpha3),
+ librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2),
  librptadvradio-dev (>= 0.1.0~alpha5),
- librptadv-samplerate-adapter-dev (>= 0.1.0~alpha2),
+ librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1),
  librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha2),
  librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha3),
  librptadv-gpio-adapter-dev (>= 0.1.0~alpha2),
@@ -21,8 +21,34 @@ Architecture: amd64 arm64
 Conflicts: usbradioplus-asl3105
 Replaces: usbradioplus-asl3105
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${usbradioplus:ASLDepends},
- librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3), whiptail
+ libusbradioplus-product1 (= ${binary:Version}), whiptail
 Description: enhanced USB radio channel driver for AllStarLink
  USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
  filtering and dynamics processing for amateur-radio and land-mobile interfaces
  using CM119-class USB audio devices.
+
+Package: libusbradioplus-product1
+Architecture: amd64 arm64
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ librate-adjusting-pcm-ring3 (>= 3.0.0~alpha2),
+ librptadvradio4 (>= 0.1.0~alpha5),
+ librptadv-samplerate-adapter2 (>= 0.2.0~alpha1),
+ librptadv-ffmpeg-adapter1 (>= 0.1.0~alpha2),
+ librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3),
+ librptadv-gpio-adapter1 (>= 0.1.0~alpha2),
+ librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2)
+Breaks: usbradioplus (<< ${binary:Version})
+Replaces: usbradioplus (<< ${binary:Version})
+Description: shared USBRadioPlus radio product
+ Versioned radio configuration, processing, and station lifecycle library with
+ its private AGC plugin. Native consumers do not require Asterisk or a controller.
+
+Package: libusbradioplus-product-dev
+Section: libdevel
+Architecture: amd64 arm64
+Multi-Arch: same
+Depends: ${misc:Depends}, libusbradioplus-product1 (= ${binary:Version})
+Description: development files for the USBRadioPlus radio product
+ Public C header, linker name, and pkg-config metadata for the versioned radio
+ product descriptor.

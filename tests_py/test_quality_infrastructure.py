@@ -48,6 +48,11 @@ def test_documentation_publishes_after_main_push_with_its_own_permissions():
     assert "runs-on:" not in workflow
 
 
+def test_public_product_header_is_in_developer_documentation():
+    """Keep the independently consumed product ABI in published API documentation."""
+    assert "rust/product/include/usbradioplus_product.h" in read("Doxyfile")
+
+
 def test_container_workflow_builds_and_publishes_native_multiarch_images():
     """Verify container workflow builds and publishes native multiarch images."""
     workflow = read(".github/workflows/containers.yml")
@@ -65,6 +70,7 @@ def test_container_workflow_builds_and_publishes_native_multiarch_images():
 def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     """Verify installed image derives from clean image and runs smoke test."""
     dockerfile = read("containers/Dockerfile")
+    assert "libsamplerate" not in dockerfile
     quality = dockerfile.split("FROM quality AS staged", maxsplit=1)[0]
     assert "COPY . ." not in quality
     assert "COPY scripts/install-rnnoise.sh" in quality
@@ -73,9 +79,9 @@ def test_installed_image_derives_from_clean_image_and_runs_smoke_test():
     assert "COPY --from=staged /stage/ /" in dockerfile
     assert "container-smoke-test.sh" in dockerfile
     for soname in (
-        "librate_adjusting_pcm_ring2.so.2",
+        "librate_adjusting_pcm_ring3.so.3",
         "librptadvradio.so.4",
-        "librptadv_samplerate_adapter.so.1",
+        "librptadv_samplerate_adapter.so.2",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
         "librptadv_gpio_adapter.so.1",

@@ -10,13 +10,242 @@ use usbradioplus_asl3::{
     EchoConfiguration,
 };
 use usbradioplus_audio::{ChannelCount, SelectedDevice};
+use usbradioplus_radio::{RadioError, RadioProvider};
+use usbradioplus_runtime::NativeProcessingFactory;
 
 use crate::ControllerSetup;
 use crate::control::tests::{factory, resolved};
 use crate::media::tests::{
-    RECEIVE_FAILING_GENERATION, TRANSMIT_FAILING_GENERATION, prepared, radio_provider,
+    RECEIVE_FAILING_GENERATION, RECEIVE_UPDATE_FAILING_GENERATION, TRANSMIT_FAILING_GENERATION,
+    TRANSMIT_UPDATE_FAILING_GENERATION, prepared, radio_provider,
 };
 use crate::program::tests::provider as ring_provider;
+
+#[test]
+fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut received = 0_u32;
+    let mut transmitted = 0_u32;
+    unsafe extern "C" fn receive(context: *mut c_void, _: u32, _: *mut f32, frames: u32) -> i32 {
+        // SAFETY: this test retains the u32 until synchronous runtime destruction.
+        unsafe { *context.cast::<u32>() += frames };
+        0
+    }
+    unsafe extern "C" fn transmit(
+        context: *mut c_void,
+        pcm: *mut f32,
+        frames: u32,
+        keyed: *mut u32,
+        ctcss: *mut u32,
+    ) -> i32 {
+        // SAFETY: all callback spans and destinations belong to this test call.
+        unsafe {
+            *context.cast::<u32>() += frames;
+            std::slice::from_raw_parts_mut(pcm, frames as usize).fill(0.25);
+            *keyed = 1;
+            *ctcss = 1;
+        }
+        0
+    }
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: 3,
+        receive_context: ptr::from_mut(&mut received).cast(),
+        receive: Some(receive),
+        transmit_context: ptr::from_mut(&mut transmitted).cast(),
+        transmit: Some(transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: callback storage outlives the synchronous runtime below.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (mut runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.start().unwrap();
+    runtime.stop().unwrap();
+    drop(runtime);
+    assert!(received > 0);
+    assert!(transmitted > 0);
+}
+
+#[test]
+fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
+    let (plan, processing) = prepared.into_parts();
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: 0,
+        receive_context: ptr::null_mut(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::null_mut(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    assert!(matches!(
+        // SAFETY: rejection occurs before callbacks are retained or invoked.
+        unsafe {
+            crate::NativeStationMedia::prepare(
+                *plan.radio(),
+                processing,
+                radio_provider(),
+                callbacks,
+            )
+        },
+        Err(crate::StationMediaError::ControllerTransportMismatch)
+    ));
+}
+
+#[test]
+fn native_failed_render_and_oversized_callback_clear_key_and_output() {
+    for (generation, frames) in [(TRANSMIT_FAILING_GENERATION, 4), (24, 961)] {
+        let prepared = prepared(crate::ControllerTransport::RptAdvanced, generation);
+        let selected = selected(&prepared, 960);
+        let (plan, processing) = prepared.into_parts();
+        let mut capture = DirectCapture {
+            tx_keyed: 1,
+            ctcss_enabled: 1,
+            ..DirectCapture::default()
+        };
+        let callbacks = crate::DirectCallbacks {
+            struct_size: size_of::<crate::DirectCallbacks>() as u32,
+            abi_version: 3,
+            receive_context: ptr::from_mut(&mut capture).cast(),
+            receive: Some(direct_receive),
+            transmit_context: ptr::from_mut(&mut capture).cast(),
+            transmit: Some(direct_transmit),
+            accepted_abi_version: 0,
+        };
+        // SAFETY: this serial fixture retains callback storage through runtime teardown.
+        let media = unsafe {
+            crate::NativeStationMedia::prepare(
+                *plan.radio(),
+                processing,
+                radio_provider(),
+                callbacks,
+            )
+        }
+        .unwrap();
+        let (runtime, _control) =
+            StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+        assert_eq!(
+            // SAFETY: the live native context rejects the null output before any span access.
+            unsafe {
+                transmit_callback(runtime._transmit_context.get().cast(), ptr::null_mut(), 4)
+            },
+            CALLBACK_FAILED
+        );
+        runtime
+            .hardware
+            .publish_transmit_result(transmit_result(true, 1000));
+        let mut output = vec![1.0; frames * 2];
+        assert_eq!(
+            // SAFETY: the stopped runtime owns this context and advertised output span.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    frames as u32,
+                )
+            },
+            CALLBACK_FAILED
+        );
+        assert!(output.iter().all(|sample| *sample == 0.0));
+        assert!(!runtime.hardware.outputs().logical_ptt);
+        assert_eq!(runtime.hardware.outputs().selected_ctcss_tenths_hz, None);
+    }
+}
+
+#[test]
+fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut capture = DirectCapture {
+        tx_status: -1,
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        ..DirectCapture::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: capture remains live through the stopped runtime's synchronous callback.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    let mut output = [1.0; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the live context and exact stereo span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_FAILED
+    );
+    assert_eq!(capture.transmit_calls, 1);
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
+}
+
+impl StationRuntime {
+    // Tests have no delivery task; join the production snapshot/preparation steps.
+    fn prepare_update(
+        &self,
+        control: &StationControlHost,
+        plan: StationPlan,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+    ) -> Result<StationUpdate, StationUpdateError> {
+        self.snapshot_update(control, factory, provider)?
+            .prepare(plan)
+    }
+}
+
+#[test]
+fn update_errors_explain_every_failure() {
+    use crate::StationUpdateError as Error;
+
+    assert_eq!(
+        Error::Incompatible.to_string(),
+        "setting requires device handoff"
+    );
+    assert_eq!(
+        Error::Busy.to_string(),
+        "another live update is awaiting completion"
+    );
+    assert_eq!(
+        Error::Pending.to_string(),
+        "audio callbacks have not acknowledged the live update"
+    );
+    assert_eq!(
+        Error::Preparation(crate::StationPreparationError::Radio(
+            RadioError::InvalidArgument,
+        ))
+        .to_string(),
+        "radio preparation failed: invalid radio-session argument"
+    );
+    assert_eq!(
+        Error::Radio(RadioError::InvalidArgument).to_string(),
+        "invalid radio-session argument"
+    );
+}
 
 const AUDIO_ABI: u32 = 2;
 const AUDIO_OK: c_int = 0;
@@ -343,6 +572,367 @@ fn transmit_result(logical_ptt: bool, tone: i32) -> TransmitResult {
 }
 
 #[test]
+fn live_update_preserves_stream_ptt_and_sample_clock() {
+    STARTS.set(0);
+    STOPS.set(0);
+    DESTROYS.set(0);
+    let (mut runtime, mut control) = runtime(20);
+    let hardware = runtime.hardware_state();
+    hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        physical_ptt: true,
+        ..HardwareInputs::default()
+    });
+    hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        render_admitted: true,
+        ..ControllerRequests::default()
+    });
+    runtime.start().unwrap();
+    let before = control.radio().radio().snapshot().unwrap();
+    let mut configuration = control.plan().configuration().clone();
+    configuration.local.input_gain_db = 3.0;
+    let plan = StationPlan::new("usb", configuration, control.plan().transport(), 21, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    // Explicit ticks let the test observe each owner without a timing-dependent sleep.
+    update_tick(&mut runtime, true);
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, false);
+    runtime.accept_update(&mut control).unwrap();
+    runtime.finish_update(&mut control, true).unwrap();
+    let after = control.radio().radio().snapshot().unwrap();
+    assert!(after.receive_frames > before.receive_frames);
+    assert!(after.transmit_frames > before.transmit_frames);
+    assert!(hardware.outputs().logical_ptt);
+    assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
+    assert_eq!(control.plan().configuration().local.input_gain_db, 3.0);
+}
+
+#[test]
+fn stopped_updates_rollback_without_starting_and_reject_stale_or_foreign_candidates() {
+    STARTS.set(0);
+    let (mut runtime, mut control) = runtime(20);
+    let original = control.plan().clone();
+    let make_plan = |gain| {
+        let mut config = original.configuration().clone();
+        config.local.input_gain_db = gain;
+        StationPlan::new("usb", config, original.transport(), 21, 960).unwrap()
+    };
+    let first = runtime
+        .prepare_update(&control, make_plan(1.0), &factory(), radio_provider())
+        .unwrap();
+    let stale = runtime
+        .prepare_update(&control, make_plan(2.0), &factory(), radio_provider())
+        .unwrap();
+    let foreign = runtime
+        .prepare_update(&control, make_plan(3.0), &factory(), radio_provider())
+        .unwrap();
+    let (mut other, other_control) = self::runtime(22);
+    assert!(matches!(
+        other.begin_update(&other_control, foreign),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    runtime.begin_update(&control, first).unwrap();
+    runtime.accept_update(&mut control).unwrap();
+    runtime.finish_update(&mut control, true).unwrap();
+    assert!(matches!(
+        runtime.begin_update(&control, stale),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    let second = runtime
+        .prepare_update(&control, make_plan(4.0), &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, second).unwrap();
+    runtime.accept_update(&mut control).unwrap();
+    runtime.finish_update(&mut control, false).unwrap();
+    assert_eq!(control.plan().configuration().local.input_gain_db, 1.0);
+    assert_eq!(STARTS.get(), 0);
+}
+
+#[test]
+fn update_control_ownership_and_in_flight_transaction_are_checked() {
+    let (mut runtime, mut control) = runtime(20);
+    let (_, mut foreign_control) = self::runtime(22);
+    let original = control.plan().clone();
+    let plan = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        original.transport(),
+        21,
+        960,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.snapshot_update(&foreign_control, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let first = runtime
+        .prepare_update(&control, plan.clone(), &factory(), radio_provider())
+        .unwrap();
+    assert_eq!(first.plan(), &plan);
+    runtime.finish_update(&mut control, true).unwrap();
+    assert!(matches!(
+        runtime.begin_update(&foreign_control, first),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let first = runtime
+        .prepare_update(&control, plan.clone(), &factory(), radio_provider())
+        .unwrap();
+    let second = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, first).unwrap();
+    assert!(matches!(
+        runtime.begin_update(&control, second),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert!(matches!(
+        runtime.accept_update(&mut foreign_control),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    assert!(matches!(
+        runtime.finish_update(&mut foreign_control, true),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    runtime.finish_update(&mut control, true).unwrap();
+}
+
+#[test]
+fn failed_callback_update_reports_radio_error_and_rolls_back() {
+    for generation in [
+        RECEIVE_UPDATE_FAILING_GENERATION,
+        TRANSMIT_UPDATE_FAILING_GENERATION,
+    ] {
+        let (mut runtime, mut control) = runtime(20);
+        runtime.start().unwrap();
+        let original = control.plan().clone();
+        let plan = StationPlan::new(
+            "usb",
+            original.configuration().clone(),
+            original.transport(),
+            generation,
+            960,
+        )
+        .unwrap();
+        let update = runtime
+            .prepare_update(&control, plan, &factory(), radio_provider())
+            .unwrap();
+        runtime.begin_update(&control, update).unwrap();
+        update_tick(&mut runtime, true);
+        assert!(matches!(
+            runtime.update_result(),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, false);
+        assert!(matches!(
+            runtime.update_result(),
+            Err(crate::StationUpdateError::Radio(
+                RadioError::InvalidArgument
+            ))
+        ));
+        assert!(matches!(
+            runtime.accept_update(&mut control),
+            Err(crate::StationUpdateError::Radio(
+                RadioError::InvalidArgument
+            ))
+        ));
+        assert!(matches!(
+            runtime.finish_update(&mut control, false),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, true);
+        update_tick(&mut runtime, false);
+        runtime.finish_update(&mut control, false).unwrap();
+        assert_eq!(control.plan(), &original);
+    }
+}
+
+#[test]
+fn delayed_rollback_primes_restored_graph_before_exposing_its_stale_pcm() {
+    crate::control::tests::simulate_graph_delay(true);
+    let (mut runtime, mut control) = runtime(25);
+    runtime.start().unwrap();
+    let render = |runtime: &mut StationRuntime| {
+        let mut output = [0.0; 1920];
+        assert_eq!(
+            // SAFETY: the fake provider has no live worker; this is the sole TX owner.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+        output
+    };
+    render(&mut runtime);
+    let original = control.plan().clone();
+    let mut configuration = original.configuration().clone();
+    configuration.voice_telemetry.output_gain_db = -3.0;
+    let next = StationPlan::new("usb", configuration, original.transport(), 26, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, next, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    update_tick(&mut runtime, true);
+    crate::media::tests::program_sample(0.5);
+    for _ in 0..4 {
+        render(&mut runtime);
+    }
+    runtime.accept_update(&mut control).unwrap();
+    crate::media::tests::program_sample(0.75);
+    for _ in 0..4 {
+        render(&mut runtime);
+    }
+    assert!(matches!(
+        runtime.finish_update(&mut control, false),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    let first = render(&mut runtime);
+    assert_eq!(
+        first[0], 0.75,
+        "rollback must not expose the original graph's stopped 0.5 PCM"
+    );
+    runtime.finish_update(&mut control, false).unwrap();
+    // Retired transaction ownership must not free the adopted reverse transition.
+    for _ in 0..4 {
+        assert!(render(&mut runtime).iter().all(|sample| *sample == 0.75));
+    }
+    assert_eq!(control.plan(), &original);
+    crate::media::tests::program_sample(0.25);
+    crate::control::tests::simulate_graph_delay(false);
+}
+
+fn update_tick(runtime: &mut StationRuntime, receive: bool) {
+    if receive {
+        let input = [0.25; 1920];
+        assert_eq!(
+            // SAFETY: the fake provider has no worker thread; this is the sole RX owner.
+            unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 960) },
+            0
+        );
+    } else {
+        let mut output = [0.0; 1920];
+        assert_eq!(
+            // SAFETY: the fake provider has no worker thread; this is the sole TX owner.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+    }
+}
+
+#[test]
+fn partial_callback_adoption_stays_owned_through_nonblocking_rollback() {
+    let (mut runtime, mut control) = runtime(20);
+    runtime.start().unwrap();
+    let original = control.plan().clone();
+    let mut config = original.configuration().clone();
+    config.local.input_gain_db = 2.0;
+    let plan = StationPlan::new("usb", config, original.transport(), 21, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    update_tick(&mut runtime, true);
+    assert!(matches!(
+        runtime.finish_update(&mut control, false),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    assert!(matches!(
+        runtime.prepare_update(&control, original.clone(), &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    update_tick(&mut runtime, false);
+    assert!(matches!(
+        runtime.finish_update(&mut control, false),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    assert!(matches!(
+        runtime.accept_update(&mut control),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert!(matches!(
+        runtime.finish_update(&mut control, true),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    runtime.finish_update(&mut control, false).unwrap();
+    assert_eq!(control.plan(), &original);
+}
+
+#[test]
+fn failed_update_preparation_and_incompatible_stream_leave_active_plan_untouched() {
+    let (runtime, control) = runtime(20);
+    let original = control.plan().clone();
+    let invalid = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        original.transport(),
+        99,
+        960,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, invalid, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Radio(_))
+    ));
+    let incompatible = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        original.transport(),
+        21,
+        480,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let mut different_hardware = original.configuration().clone();
+    different_hardware.station.hardware.input_extra_buffer_ms += 1;
+    let incompatible =
+        StationPlan::new("usb", different_hardware, original.transport(), 21, 960).unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    let incompatible = StationPlan::new(
+        "usb",
+        original.configuration().clone(),
+        crate::ControllerTransport::AppRpt,
+        21,
+        960,
+    )
+    .unwrap();
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    assert_eq!(control.plan(), &original);
+}
+
+#[test]
 fn shared_hardware_state_round_trips_complete_atomic_snapshots() {
     let state = SharedHardwareState::default();
     let inputs = HardwareInputs {
@@ -551,6 +1141,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
 struct DirectCapture {
     samples: [f32; 4],
     keyed: u32,
+    ctcss_enabled: u32,
     rx_status: c_int,
     tx_keyed: u32,
     tx_status: c_int,
@@ -583,13 +1174,15 @@ unsafe extern "C" fn direct_transmit(
     samples: *mut f32,
     count: u32,
     keyed: *mut u32,
+    ctcss_enabled: *mut u32,
 ) -> c_int {
-    // SAFETY: the test owns the context, output key and exact mono span.
+    // SAFETY: the test owns the context, output controls and exact mono span.
     let capture = unsafe { &mut *context.cast::<DirectCapture>() };
     // SAFETY: the callback contract supplies count writable samples and a key result.
     unsafe {
         std::slice::from_raw_parts_mut(samples, count as usize).fill(-0.375);
         *keyed = capture.tx_keyed;
+        *ctcss_enabled = capture.ctcss_enabled;
     }
     capture.transmit_calls += 1;
     capture.tx_status
@@ -597,9 +1190,10 @@ unsafe extern "C" fn direct_transmit(
 
 #[test]
 fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
-    for (status, keyed) in [(-1, 1), (0, 2)] {
+    for (status, keyed, ctcss_enabled) in [(-1, 1, 1), (0, 2, 1), (0, 1, 2)] {
         let mut capture = DirectCapture {
             tx_keyed: 1,
+            ctcss_enabled: 1,
             ..DirectCapture::default()
         };
         let (mut media, selected) =
@@ -636,7 +1230,11 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
         assert_eq!(output, [-0.375; 8]);
         capture.tx_status = status;
         capture.tx_keyed = keyed;
-        assert_eq!((capture.tx_status, capture.tx_keyed), (status, keyed));
+        capture.ctcss_enabled = ctcss_enabled;
+        assert_eq!(
+            (capture.tx_status, capture.tx_keyed, capture.ctcss_enabled),
+            (status, keyed, ctcss_enabled)
+        );
         // SAFETY: the stopped stream owns this context and exact stereo span.
         let failure = unsafe {
             transmit_callback(
@@ -661,6 +1259,7 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
 fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render() {
     let mut capture = DirectCapture {
         tx_keyed: 1,
+        ctcss_enabled: 1,
         ..DirectCapture::default()
     };
     let (mut media, selected) =
@@ -752,6 +1351,21 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert!(runtime.hardware.outputs().logical_ptt);
     // The radio fixture exercises the actual bound program port for generation 24.
     assert_eq!(output, [-0.375; 8]);
+    capture.ctcss_enabled = 0;
+    assert_eq!(
+        // SAFETY: the same stopped contexts and exact writable span remain valid.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        0
+    );
+    assert_eq!(output, [0.5; 8]);
+    assert!(runtime.hardware.outputs().logical_ptt);
+    capture.ctcss_enabled = 1;
     capture.tx_keyed = 0;
     assert_eq!(capture.tx_keyed, 0);
     runtime.hardware.publish_requests(ControllerRequests {
@@ -794,7 +1408,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert_eq!(DESTROYS.get(), 1);
     // Context remains owned here until both callback owners have been destroyed.
     assert_eq!(capture.receive_calls, 3);
-    assert_eq!(capture.transmit_calls, 4);
+    assert_eq!(capture.transmit_calls, 5);
 }
 
 #[test]

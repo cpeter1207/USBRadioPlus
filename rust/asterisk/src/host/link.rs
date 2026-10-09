@@ -6,11 +6,9 @@
 
 use super::super::{
     ABI_VERSION, URP_AST_ASTERISK_FAILURE, URP_AST_LINK_DIRECTION_READ,
-    URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK, UrpAstLinkDestroy,
-    UrpAstLinkObservation, UrpAstLinkObserve, UrpAstLinkPrepare, UrpAstLinkProcess, ffi,
+    URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK, UrpAstDescriptor,
+    UrpAstLinkObservation, ffi,
 };
-
-use super::super::{link_destroy, link_observe, link_prepare, link_prepare_reload, link_process};
 use super::channel;
 
 use std::ffi::{CStr, c_char, c_int, c_void};
@@ -40,14 +38,18 @@ pub(super) enum LinkHostError {
     Product(c_int),
 }
 
-/// Existing Rust graph functions consumed by the audiohook owner.
+/// Required C graph operations copied from the validated product descriptor.
 #[derive(Clone, Copy)]
 pub(super) struct LinkProductOperations {
-    pub(super) prepare: UrpAstLinkPrepare,
-    pub(super) prepare_reload: UrpAstLinkPrepare,
-    pub(super) process: UrpAstLinkProcess,
-    pub(super) observe: UrpAstLinkObserve,
-    pub(super) destroy: UrpAstLinkDestroy,
+    pub(super) prepare:
+        unsafe extern "C" fn(*mut c_void, *const u8, u32, u32, u32, *mut *mut c_void) -> c_int,
+    pub(super) prepare_reload:
+        unsafe extern "C" fn(*mut c_void, *const u8, u32, u32, u32, *mut *mut c_void) -> c_int,
+    pub(super) reload_unchanged:
+        unsafe extern "C" fn(*mut c_void, *mut c_void, *const u8, u32, u32, u32, *mut u32) -> c_int,
+    pub(super) process: unsafe extern "C" fn(*mut c_void, u32, u32, *mut i16, u32) -> c_int,
+    pub(super) observe: unsafe extern "C" fn(*mut c_void, *mut UrpAstLinkObservation) -> c_int,
+    pub(super) destroy: unsafe extern "C" fn(*mut c_void),
 }
 
 /// Narrow Asterisk operations used outside the real-time graph processor.
@@ -116,12 +118,16 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 /// Start periodic discovery of eligible incoming AllStarLink channels.
-pub(super) fn start(driver: *mut c_void, module_self: *mut ffi::ast_module) -> c_int {
+pub(super) fn start(
+    descriptor: &UrpAstDescriptor,
+    driver: *mut c_void,
+    module_self: *mut ffi::ast_module,
+) -> c_int {
     if driver.is_null() {
         return super::super::URP_AST_INVALID_ARGUMENT;
     }
     start_with(
-        LinkHost::new(driver, module_self),
+        LinkHost::new(descriptor, driver, module_self),
         channel::first_live_profile,
     )
 }
@@ -222,6 +228,21 @@ pub(super) fn reload_prepare(profile: Option<&str>) -> Result<LinkReload, LinkHo
     Ok(reload)
 }
 
+/// Bind a referenced peer to the reserved radio profile before its first read.
+/// Graph setup is control-plane-only and serialized with reload and shutdown.
+pub(super) unsafe fn bind_peer(
+    channel: *mut ffi::ast_channel,
+    profile: &str,
+) -> Result<(), LinkHostError> {
+    let _control = lock(&LINK_CONTROL);
+    let host = lock(running_host())
+        .as_ref()
+        .map(|running| running.host)
+        .ok_or(LinkHostError::Asterisk)?;
+    // SAFETY: the caller retains the peer for this synchronous control operation.
+    unsafe { host.bind_channel(channel, profile) }
+}
+
 /// Snapshot every active incoming-link graph for status presentation.
 pub(super) fn statistics() -> Vec<LinkStatistics> {
     let _control = lock(&LINK_CONTROL);
@@ -242,18 +263,68 @@ pub(super) struct LinkStatistics {
     pub(super) observation: UrpAstLinkObservation,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum InstallMode {
+    Active,
+    Staged,
+    // Explicit ownership survives a disabled graph, so reload can enable it.
+    Bound,
+}
+
 impl LinkHost {
-    /// Construct the production host around one live Rust driver generation.
-    pub(super) fn new(driver: *mut c_void, module_self: *mut ffi::ast_module) -> Self {
+    unsafe fn bind_channel(
+        &self,
+        channel: *mut ffi::ast_channel,
+        profile: &str,
+    ) -> Result<(), LinkHostError> {
+        // SAFETY: caller retains the peer throughout this serialized operation.
+        let snapshot = unsafe { self.snapshot(channel) };
+        if let Some(hook) = snapshot.hook {
+            // SAFETY: this retained reference keeps the immutable profile alive.
+            let hook = unsafe { hook.raw.as_ref() };
+            return if &*hook.profile == profile
+                && hook.attachment.load(Ordering::Acquire) == LINK_ATTACHED
+            {
+                hook.profile_bound.store(true, Ordering::Release);
+                Ok(())
+            } else {
+                Err(LinkHostError::Asterisk)
+            };
+        }
+        // SAFETY: the snapshot belongs to the same caller-retained peer.
+        unsafe {
+            self.install(
+                channel,
+                profile,
+                &snapshot.name,
+                snapshot.sample_rate_hz,
+                InstallMode::Bound,
+            )
+        }?
+        .ok_or(LinkHostError::Asterisk)
+        .map(|_| ())
+    }
+
+    /// Construct a host around a live driver and its validated product descriptor.
+    pub(super) fn new(
+        descriptor: &UrpAstDescriptor,
+        driver: *mut c_void,
+        module_self: *mut ffi::ast_module,
+    ) -> Self {
         Self::with_operations(
             driver,
             module_self,
             LinkProductOperations {
-                prepare: link_prepare,
-                prepare_reload: link_prepare_reload,
-                process: link_process,
-                observe: link_observe,
-                destroy: link_destroy,
+                prepare: descriptor.link_prepare.expect("validated link_prepare"),
+                prepare_reload: descriptor
+                    .link_prepare_reload
+                    .expect("validated link_prepare_reload"),
+                reload_unchanged: descriptor
+                    .link_reload_unchanged
+                    .expect("validated link_reload_unchanged"),
+                process: descriptor.link_process.expect("validated link_process"),
+                observe: descriptor.link_observe.expect("validated link_observe"),
+                destroy: descriptor.link_destroy.expect("validated link_destroy"),
             },
             production_asterisk_operations(),
         )
@@ -300,7 +371,7 @@ impl LinkHost {
                     profile,
                     &snapshot.name,
                     snapshot.sample_rate_hz,
-                    false,
+                    InstallMode::Active,
                 )
             }
             .map(|hook| hook.is_some())
@@ -326,7 +397,7 @@ impl LinkHost {
         let snapshot = unsafe { self.snapshot(channel) };
         let result = if let Some(hook) = snapshot.hook {
             hook.prepare_reload(self.driver, snapshot.sample_rate_hz)
-                .map(|()| Some(hook))
+                .map(|changed| changed.then_some(hook))
         } else if let Some(profile) = profile.filter(|_| snapshot.eligible) {
             // SAFETY: the snapshot was captured from this same referenced channel.
             unsafe {
@@ -335,7 +406,7 @@ impl LinkHost {
                     profile,
                     &snapshot.name,
                     snapshot.sample_rate_hz,
-                    true,
+                    InstallMode::Staged,
                 )
             }
         } else {
@@ -514,18 +585,20 @@ impl LinkHost {
         profile: &str,
         channel_name: &str,
         sample_rate_hz: u32,
-        staged: bool,
+        mode: InstallMode,
     ) -> Result<Option<LinkHookRef>, LinkHostError> {
-        let Some(graph) = self.prepare(profile, sample_rate_hz, staged)? else {
+        let staged = mode == InstallMode::Staged;
+        let graph = self.prepare(profile, sample_rate_hz, staged)?;
+        if graph.is_none() && mode != InstallMode::Bound {
             return Ok(None);
-        };
+        }
         let hook = Box::new(LinkHook::new(
             self.product,
             self.asterisk,
             profile,
             channel_name,
-            graph,
-            staged,
+            graph.unwrap_or(ptr::null_mut()),
+            mode,
         ));
         let raw = Box::into_raw(hook);
         // SAFETY: raw points to a pinned heap allocation whose first member is audiohook.
@@ -721,6 +794,7 @@ struct LinkHook {
     references: AtomicUsize,
     attachment: AtomicU8,
     reload_pending: AtomicBool,
+    profile_bound: AtomicBool,
     profile: Box<str>,
     asterisk_channel: Box<str>,
 }
@@ -732,8 +806,9 @@ impl LinkHook {
         profile: &str,
         asterisk_channel: &str,
         graph: *mut c_void,
-        staged: bool,
+        mode: InstallMode,
     ) -> Self {
+        let staged = mode == InstallMode::Staged;
         // SAFETY: every bit pattern in the generated C audiohook structure is valid;
         // Asterisk initializes the complete value before publication.
         let audiohook = unsafe { std::mem::zeroed() };
@@ -746,6 +821,7 @@ impl LinkHook {
             references: AtomicUsize::new(1),
             attachment: AtomicU8::new(LINK_BUILDING),
             reload_pending: AtomicBool::new(staged),
+            profile_bound: AtomicBool::new(mode == InstallMode::Bound),
             profile: profile.into(),
             asterisk_channel: asterisk_channel.into(),
         }
@@ -764,6 +840,13 @@ impl LinkHook {
             return Ok(());
         }
         let mut candidate = ptr::null_mut();
+        // Explicit peers retain their exact radio; legacy discovery keeps its
+        // existing active-profile selection when reactivating a dormant hook.
+        let profile = if self.profile_bound.load(Ordering::Acquire) {
+            &self.profile
+        } else {
+            profile
+        };
         // SAFETY: profile and driver remain live for this synchronous call.
         let result = unsafe {
             (self.product.prepare)(
@@ -801,7 +884,42 @@ impl LinkHook {
         &self,
         driver: *mut c_void,
         sample_rate_hz: u32,
-    ) -> Result<(), LinkHostError> {
+    ) -> Result<bool, LinkHostError> {
+        let audiohook = ptr::from_ref(&self.audiohook).cast_mut();
+        // SAFETY: this retained hook stays pinned; the lock protects active
+        // graph lifetime against both callbacks and external datastore teardown.
+        unsafe { (self.asterisk.audiohook_lock)(audiohook) };
+        let active = self.active.load(Ordering::Acquire);
+        let unchanged = if self.reload_pending.load(Ordering::Acquire) {
+            Err(LinkHostError::Asterisk)
+        } else if active.is_null() {
+            Ok(false)
+        } else {
+            let mut unchanged = 0;
+            // SAFETY: the live graph is retained and quiescent while its immutable
+            // description is compared; no graph construction or warmup occurs.
+            let status = unsafe {
+                (self.product.reload_unchanged)(
+                    driver,
+                    active,
+                    self.profile.as_ptr(),
+                    self.profile.len() as u32,
+                    sample_rate_hz,
+                    MAXIMUM_LINK_FRAME_COUNT,
+                    &raw mut unchanged,
+                )
+            };
+            if status == URP_AST_OK {
+                Ok(unchanged != 0)
+            } else {
+                Err(LinkHostError::Product(status))
+            }
+        };
+        // SAFETY: balances the lock above, including comparison errors.
+        unsafe { (self.asterisk.audiohook_unlock)(audiohook) };
+        if unchanged? {
+            return Ok(false);
+        }
         let mut candidate = ptr::null_mut();
         // SAFETY: profile storage and driver remain live for this synchronous call.
         let result = unsafe {
@@ -817,7 +935,6 @@ impl LinkHook {
         if result != URP_AST_OK && result != URP_AST_NOT_READY {
             return Err(LinkHostError::Product(result));
         }
-        let audiohook = ptr::from_ref(&self.audiohook).cast_mut();
         // SAFETY: the serialized reload control plane quiesces the callback.
         unsafe { (self.asterisk.audiohook_lock)(audiohook) };
         if self.reload_pending.swap(true, Ordering::AcqRel) {
@@ -832,7 +949,7 @@ impl LinkHook {
         self.staged.store(candidate, Ordering::Release);
         // SAFETY: balances audiohook_lock above.
         unsafe { (self.asterisk.audiohook_unlock)(audiohook) };
-        Ok(())
+        Ok(true)
     }
 
     fn observe(&self) -> Result<Option<LinkStatistics>, LinkHostError> {
@@ -935,7 +1052,7 @@ impl LinkHookRef {
         &self,
         driver: *mut c_void,
         sample_rate_hz: u32,
-    ) -> Result<(), LinkHostError> {
+    ) -> Result<bool, LinkHostError> {
         // SAFETY: this RAII reference keeps the hook alive.
         unsafe { self.raw.as_ref() }.prepare_reload(driver, sample_rate_hz)
     }

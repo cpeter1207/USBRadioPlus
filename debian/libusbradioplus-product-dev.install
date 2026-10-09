@@ -1,0 +1,3 @@
+usr/include/usbradioplus_product.h
+usr/lib/*/libusbradioplus_product.so
+usr/lib/*/pkgconfig/usbradioplus_product.pc

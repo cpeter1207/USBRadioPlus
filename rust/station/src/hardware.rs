@@ -85,7 +85,7 @@ pub struct SelectedHardwarePlan {
 /// Failure to bind an adapter-selected audio endpoint to CM119 GPIO.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HardwarePlanError {
-    /// The selected device did not retain mono capture and stereo playback.
+    /// The selected device did not retain the requested physical channel layout.
     ChannelLayoutMismatch,
     /// Audio selection and configured GPIO topology identified different USB devices.
     UsbIdentityMismatch,
@@ -97,7 +97,7 @@ impl fmt::Display for HardwarePlanError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::ChannelLayoutMismatch => {
-                "selected audio device is not mono capture with stereo playback"
+                "selected audio device does not match the requested channel layout"
             }
             Self::UsbIdentityMismatch => {
                 "selected audio device does not match the configured GPIO USB path"
@@ -126,8 +126,8 @@ impl HardwarePlan {
         selected: &SelectedDevice,
         maximum_frame_count: u32,
     ) -> Result<SelectedHardwarePlan, HardwarePlanError> {
-        if selected.input_channels != ChannelCount::Mono
-            || selected.output_channels != ChannelCount::Stereo
+        if selected.input_channels != self.audio_selector.input_channels
+            || selected.output_channels != self.audio_selector.output_channels
         {
             return Err(HardwarePlanError::ChannelLayoutMismatch);
         }
@@ -153,8 +153,8 @@ impl HardwarePlan {
                 maximum_transmit_frame_count: maximum_frame_count,
                 input_device_index: selected.input_device_index,
                 output_device_index: selected.output_device_index,
-                input_channels: ChannelCount::Mono,
-                output_channels: ChannelCount::Stereo,
+                input_channels: selected.input_channels,
+                output_channels: selected.output_channels,
                 extra_input_buffer_milliseconds: self.input_extra_buffer_ms,
                 extra_output_buffer_milliseconds: self.output_extra_buffer_ms,
             },

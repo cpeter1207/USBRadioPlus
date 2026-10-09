@@ -104,6 +104,27 @@ fn configuration_lengths_share_the_complete_abi_bound_and_diagnostics() {
 }
 
 #[test]
+fn pending_reload_phase_retries_and_observes_its_deadline() {
+    let mut polls = 0;
+    assert_eq!(
+        complete_phase(|| {
+            polls += 1;
+            if polls == 1 {
+                URP_AST_RELOAD_PENDING
+            } else {
+                URP_AST_OK
+            }
+        }),
+        URP_AST_OK
+    );
+    assert_eq!(polls, 2);
+    assert_eq!(
+        complete_phase_until(|| URP_AST_RELOAD_PENDING, std::time::Instant::now()),
+        URP_AST_SETUP_FAILED
+    );
+}
+
+#[test]
 fn configuration_read_uses_asterisk_directory_and_frees_owned_text() {
     let _fixture = HostFixture::new();
     // SAFETY: this test owns the shared host guard and restores the global immediately.
@@ -249,7 +270,7 @@ fn concrete_reload_preserves_backend_results_and_reopens_admission() {
     });
     let before = with_state(|state| state.jitter.len());
     channel::with_live_channel("usb", channel::configure_pending_jitter).unwrap();
-    assert_eq!(with_state(|state| state.jitter.len()), before + 1);
+    assert_eq!(with_state(|state| state.jitter.len()), before);
 }
 
 #[test]

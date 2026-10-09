@@ -167,8 +167,8 @@ the callback conceals the shortfall smoothly rather than abruptly inserting
 silence.
 .PP
 App_rpt program frames, including idle silence, enter the stream regardless of
-PTT. Legacy app_rpt echo uses its separate callback-owned queue; there is no
-driver-native parrot producer. PTT transitions preserve the program-ring state. This
+PTT. Legacy app_rpt echo uses its separate callback-owned queue. PTT transitions
+preserve the program-ring state. This
 PCM buffering does not request or release PTT; app_rpt and tuning retain
 ownership of the desired PTT state. After a complete non-silent DAC block is
 accepted, USBRadioPlus keeps physical PTT asserted until the device's measured

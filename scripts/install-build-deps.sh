@@ -54,13 +54,13 @@ apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	asl3-asterisk-dev build-essential cargo rustc libclang-dev pkg-config python3 python3-pytest \
 	ca-certificates wget xz-utils patch \
-	ladspa-sdk librate-adjusting-pcm-ring2-dev \
+	ladspa-sdk librate-adjusting-pcm-ring3-dev \
 	librptadvradio-dev librptadv-samplerate-adapter-dev \
 	librptadv-ffmpeg-adapter-dev librptadv-portaudio-alsa-adapter-dev \
 	librptadv-gpio-adapter-dev librptadv-rnnoise-adapter-dev
 
-pkg-config --atleast-version=2.0.0~alpha3 rate_adjusting_pcm_ring2 || \
-	die "rate_adjusting_pcm_ring2 2.0.0~alpha3 or newer is unavailable"
+pkg-config --atleast-version=3.0.0~alpha1 rate_adjusting_pcm_ring3 || \
+	die "rate_adjusting_pcm_ring3 3.0.0~alpha1 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha5 rptadvradio || \
 	die "rptadvradio 0.1.0~alpha5 or newer is unavailable"
 [ "$(pkg-config --variable=abi_version rptadvradio)" = 4 ] || \

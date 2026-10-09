@@ -1,4 +1,4 @@
-use super::super::support::{FakeChannel, Fixture, with_state};
+use super::super::support::{FakeChannel, Fixture, OwnerLockTrace, product_support, with_state};
 use super::*;
 use crate::{ABI_VERSION, URP_AST_JITTER_ADAPTIVE};
 use std::cell::RefCell;
@@ -141,7 +141,11 @@ fn live_profile_selection_handles_query_failures_and_frozen_membership() {
         Some("UsB")
     );
     let channel = membership.iter().next().unwrap();
-    assert_eq!(service(channel), URP_AST_CHANNEL_BUSY);
+    assert_eq!(
+        service(channel),
+        URP_AST_OK,
+        "reload must not block PCM delivery"
+    );
     membership.reopen_control();
     assert_eq!(service(membership.iter().next().unwrap()), URP_AST_OK);
     drop(membership);
@@ -194,6 +198,9 @@ fn channel_forwarders_preserve_typed_outputs_and_admission_failures() {
     assert_eq!(reload_finish(&channel, false), 17);
     assert_eq!(set_echo(&channel, true), 17);
     assert_eq!(set_transmit(&channel, true, 1230), 17);
+    let gate = control_gate().write().unwrap();
+    assert_eq!(set_echo(&channel, false), URP_AST_CHANNEL_BUSY);
+    drop(gate);
     assert_eq!(calls.lock().unwrap().dtmf, [1, 0, 1]);
     assert_eq!(calls.lock().unwrap().transmit, [(1, 1230)]);
     // SAFETY: command fields are integers and a fixed integer array.
@@ -218,7 +225,7 @@ fn channel_forwarders_preserve_typed_outputs_and_admission_failures() {
         let _gate = control_gate().write().unwrap();
         panic!("test poisoned admission gate");
     });
-    let status = service(&channel);
+    let status = set_echo(&channel, false);
     let transmit = transmit(&channel, true, 1230);
     control_gate().clear_poison();
     assert!(poisoned.is_err());
@@ -295,7 +302,7 @@ unsafe extern "C" fn capture_destroy(context: *mut c_void) {
 
 pub(in crate::host) fn lifecycle_descriptor() -> UrpAstDescriptor {
     // SAFETY: the process descriptor contains plain ABI fields and callback pointers.
-    let mut descriptor = unsafe { ptr::read(crate::product_descriptor()) };
+    let mut descriptor = unsafe { ptr::read(product_support::descriptor()) };
     descriptor.channel_reserve = Some(capture_reserve);
     descriptor.channel_start = Some(capture_start);
     descriptor.channel_stop = Some(capture_stop);
@@ -863,6 +870,7 @@ pub(in crate::host) fn callback_channel(
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(0),
         direct: AtomicBool::new(false),
     });
@@ -1149,9 +1157,11 @@ fn owner_callbacks_publish_state_and_retry_failed_jitter() {
     calls.lock().unwrap().result = URP_AST_OK;
     configure_pending_jitter(&channel);
     configure_pending_jitter(&channel);
+    mark_jitter_pending(&channel);
+    configure_pending_jitter(&channel);
     assert!(!channel.jitter_pending.load(Ordering::Acquire));
     with_state(|state| {
-        assert_eq!(state.unlocks, 2);
+        assert_eq!(state.unlocks, 3);
         assert_eq!(state.jitter.len(), 1);
         assert_eq!(state.jitter[0].0, replacement.as_ptr() as usize);
         assert_eq!(state.jitter[0].1.max_size, 80);
@@ -1170,17 +1180,17 @@ fn owner_callbacks_publish_state_and_retry_failed_jitter() {
     });
     // SAFETY: the owner is live; the hook simulates publication changing during trylock.
     assert!(unsafe { lock_owner(&channel) }.is_none());
-    with_state(|state| assert_eq!(state.unlocks, 3));
+    with_state(|state| assert_eq!(state.unlocks, 4));
 }
 
 #[repr(C)]
-struct DirectV2 {
+struct DirectV3 {
     struct_size: u32,
     abi_version: u32,
     receive_context: *mut c_void,
     receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
     transmit_context: *mut c_void,
-    transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32) -> c_int>,
+    transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32, *mut u32) -> c_int>,
     accepted_abi_version: u32,
 }
 
@@ -1195,7 +1205,7 @@ unsafe extern "C" fn retain_direct(
 #[test]
 fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
     let _fixture = Fixture::new();
-    let callbacks = crate::tests::direct_callbacks();
+    let callbacks = product_support::direct_callbacks();
     // SAFETY: descriptor fields are integers, raw pointers, and optional callbacks.
     let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
     descriptor.channel_set_direct_callbacks = Some(retain_direct);
@@ -1214,6 +1224,7 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(0),
         direct: AtomicBool::new(false),
     };
@@ -1230,16 +1241,16 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         channel
             .rust_channel
             .store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
-        let mut direct = DirectV2 {
-            struct_size: size_of::<DirectV2>() as u32,
-            abi_version: 2,
+        let mut direct = DirectV3 {
+            struct_size: size_of::<DirectV3>() as u32,
+            abi_version: 3,
             receive_context: callbacks.receive_context,
             receive: callbacks.receive,
             transmit_context: callbacks.transmit_context,
             transmit: callbacks.transmit,
             accepted_abi_version: 0,
         };
-        let mut length = size_of::<DirectV2>() as c_int;
+        let mut length = size_of::<DirectV3>() as c_int;
         match case {
             0 => direct.struct_size -= 1,
             1 => direct.abi_version = 1,
@@ -1251,9 +1262,9 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
             _ => {}
         }
         // The host option must also accept byte-aligned Asterisk payloads.
-        let mut storage = vec![0u8; size_of::<DirectV2>() + 1];
+        let mut storage = vec![0u8; size_of::<DirectV3>() + 1];
         // SAFETY: the allocation includes the byte offset and complete descriptor.
-        let data = unsafe { storage.as_mut_ptr().add(1).cast::<DirectV2>() };
+        let data = unsafe { storage.as_mut_ptr().add(1).cast::<DirectV3>() };
         // SAFETY: the byte buffer reserves a complete, possibly unaligned descriptor.
         unsafe { data.write_unaligned(direct) };
         // SAFETY: the fake owner, descriptor, and retention context remain live.
@@ -1267,8 +1278,99 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         };
         // SAFETY: setoption returned synchronously; the complete buffer remains live.
         let accepted = unsafe { data.read_unaligned().accepted_abi_version };
-        assert_eq!(accepted, if case == 8 { 2 } else { 0 }, "case {case}");
+        assert_eq!(accepted, if case == 8 { 3 } else { 0 }, "case {case}");
         assert_eq!(result == 0, case == 8, "case {case}");
+    }
+}
+
+#[test]
+fn link_binding_option_acknowledges_only_valid_profile_attachment() {
+    let _fixture = Fixture::new();
+    let mut links = crate::host::link::tests::RunningFixture::new(true);
+    links.observe_preparation(|| {
+        with_state(|state| {
+            let trace = state.owner_lock_trace.as_mut().unwrap();
+            trace.events.push(("prepare", trace.depth));
+        });
+    });
+    // SAFETY: descriptor consists of scalar fields and optional C callbacks.
+    let descriptor: UrpAstDescriptor = unsafe { zeroed() };
+    let mut channel = Channel {
+        _name: "specific-radio".into(),
+        descriptor: &descriptor,
+        rust_channel: AtomicPtr::new(ptr::null_mut()),
+        control: ptr::null_mut(),
+        dsp: ptr::null_mut(),
+        format: ptr::null_mut(),
+        sample_rate_hz: ADVANCED_RATE_HZ,
+        frame_samples: 960,
+        owner: AtomicPtr::new(ptr::null_mut()),
+        worker: Mutex::new(None),
+        delivery_stop: AtomicBool::new(false),
+        service_failed: AtomicBool::new(false),
+        jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
+        pending_transmit: AtomicU64::new(0),
+        direct: AtomicBool::new(false),
+    };
+    let mut owner = FakeChannel::new(ptr::from_mut(&mut channel).cast());
+    for case in 0..6 {
+        let mut binding = crate::UrpAstLinkAttach {
+            struct_size: size_of::<crate::UrpAstLinkAttach>() as u32,
+            abi_version: 1,
+            peer_channel: links.peer().cast(),
+            accepted_abi_version: 0,
+        };
+        let mut length = size_of::<crate::UrpAstLinkAttach>() as c_int;
+        match case {
+            0 => binding.struct_size -= 1,
+            1 => binding.abi_version = 0,
+            2 => binding.peer_channel = ptr::null_mut(),
+            3 => length -= 1,
+            4 => links.preparation_result(-8),
+            _ => links.preparation_result(URP_AST_OK),
+        }
+        let mut storage = vec![0u8; size_of::<crate::UrpAstLinkAttach>() + 1];
+        // SAFETY: storage reserves a complete descriptor at a byte-aligned offset.
+        let data = unsafe {
+            storage
+                .as_mut_ptr()
+                .add(1)
+                .cast::<crate::UrpAstLinkAttach>()
+        };
+        with_state(|state| {
+            state.owner_lock_trace = Some(OwnerLockTrace {
+                owner: owner.as_ptr() as usize,
+                depth: 1,
+                events: Vec::new(),
+            });
+        });
+        // SAFETY: both descriptor and retained peer remain live until option returns.
+        let (result, accepted) = unsafe {
+            data.write_unaligned(binding);
+            let result = setoption(
+                owner.as_ptr(),
+                crate::URP_AST_OPTION_LINK_ATTACH,
+                data.cast(),
+                length,
+            );
+            (result, data.read_unaligned().accepted_abi_version)
+        };
+        assert_eq!(result == 0, case == 5, "case {case}");
+        assert_eq!(accepted, u32::from(case == 5), "case {case}");
+        with_state(|state| {
+            let trace = state.owner_lock_trace.take().unwrap();
+            let expected: &[(&str, i32)] = if case < 4 {
+                &[]
+            } else {
+                &[("unlock", 0), ("prepare", 0), ("lock", 1)]
+            };
+            assert_eq!(trace.events, expected, "case {case}");
+            assert_eq!(
+                trace.depth, 1,
+                "restore the caller-held lock in case {case}"
+            );
+        });
     }
 }
 
@@ -1327,7 +1429,7 @@ fn failed_delivery_start_stops_the_station() {
 
 #[test]
 fn direct_option_rejects_wrong_technology_and_payload_length() {
-    let callbacks = crate::tests::direct_callbacks();
+    let callbacks = product_support::direct_callbacks();
     let data = ptr::from_ref(&callbacks).cast_mut().cast();
     let length = size_of::<super::super::super::UrpAstDirectCallbacks>() as c_int;
     // SAFETY: complete copied descriptor remains live throughout validation.
@@ -1642,19 +1744,19 @@ fn registration_gate_blocks_requests_until_rollback_finishes() {
 
 #[test]
 fn channel_host_requires_every_operation_it_invokes() {
-    assert!(descriptor_is_valid(crate::product_descriptor()));
+    assert!(descriptor_is_valid(product_support::descriptor()));
     macro_rules! reject_missing {
         ($field:ident) => {{
             // SAFETY: the descriptor contains only plain ABI fields and
             // function pointers, so this copy owns no dropped resource.
-            let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+            let mut incomplete = unsafe { std::ptr::read(product_support::descriptor()) };
             incomplete.$field = None;
             assert!(!descriptor_is_valid(&incomplete));
         }};
     }
     for corrupt in [0_u8, 1] {
         // SAFETY: see the macro comment above.
-        let mut incomplete = unsafe { std::ptr::read(crate::product_descriptor()) };
+        let mut incomplete = unsafe { std::ptr::read(product_support::descriptor()) };
         if corrupt == 0 {
             incomplete.struct_size = 0;
         } else {

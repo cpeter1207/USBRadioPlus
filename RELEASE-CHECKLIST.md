@@ -68,9 +68,8 @@ following checks pass.
       concealment, sustained shortfalls fade to silence, and counters expose
       both shortfalls and producer overflow.
 - [ ] Confirm app_rpt input and 48 kHz device output continue while idle with
-      silence. Legacy app_rpt echo uses its separate callback-owned path; no
-      driver-native parrot exists. PTT, COS, and CTCSS/DCS decode must not alter
-      device cadence.
+      silence. Legacy app_rpt echo uses its separate callback-owned path. PTT,
+      COS, and CTCSS/DCS decode must not alter device cadence.
 - [ ] Confirm the independent PortAudio capture and playback callbacks pass
       their actual bounded frame counts through preallocated native state.
       Capture performs receive processing and playback performs program-ring

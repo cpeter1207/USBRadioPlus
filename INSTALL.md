@@ -14,7 +14,8 @@ The installer reports the detected Debian release, architecture, and exact
 ASL3 Asterisk version before asking for confirmation. It accepts only published
 host combinations, verifies the repository signing-key fingerprint, checks the
 selected package's architecture and exact ASL dependency, and simulates the APT
-transaction before installation. Unsupported or unknown combinations stop with
+transaction, including `libusbradioplus-product1`, before installation.
+Unsupported or unknown combinations stop with
 an error; the installer never upgrades or downgrades ASL to satisfy the module.
 Use `sudo sh install-usbradioplus.sh --dry-run` to perform detection without
 changing the node. `--yes` permits an explicitly unattended installation.
@@ -37,9 +38,9 @@ sudo ./install.sh
 
 This verifies the shipped repository key, configures the signed project
 repository, and installs the required toolchain, development packages, and
-released `rate_adjusting_pcm_ring2`, `rptadvradio`, `rptadv_samplerate_adapter`,
+released `rate_adjusting_pcm_ring3`, `rptadvradio`, `rptadv_samplerate_adapter`,
 `rptadv_ffmpeg_adapter`, `rptadv_portaudio_alsa_adapter`, and
-`rptadv_gpio_adapter`, and `rptadv_rnnoise_adapter` ABIs. It
+`rptadv_gpio_adapter` and `rptadv_rnnoise_adapter` ABIs. It
 builds RNNoise when Debian does not provide it, runs the complete hardware-free test suite, and installs
 USBRadioPlus. It does not activate the module, restart Asterisk, or edit
 `modules.conf` or `rpt.conf`.
@@ -54,10 +55,11 @@ USBRadioPlus requires a matching `asl3-asterisk-dev` package, `ladspa-sdk`, and
 the libraries listed in `doc/packaging.md`. Developers with those dependencies
 already installed may use `sudo ./install.sh --skip-deps`.
 
-USBRadioPlus uses the released `rate_adjusting_pcm_ring2` shared library for
-the lock-free native program FIFO and the released `rptadv_samplerate_adapter`
-shared library for its mono sinc compatibility conversion. Native DCS shaping
-uses the `rptadv_ffmpeg_adapter` shared library. Every channel uses the
+USBRadioPlus uses the released `rate_adjusting_pcm_ring3` shared library for
+the lock-free native program FIFO and the released ABI-2
+`rptadv_samplerate_adapter` shared library for bounded mono conversion through
+FFmpeg's swresample. Native DCS shaping uses the `rptadv_ffmpeg_adapter`
+shared library. Every channel uses the
 `rptadv_portaudio_alsa_adapter` for audio and mixer control and
 `rptadv_gpio_adapter` for CM119 HID, EEPROM, and configured parallel I/O.
 The source installer
@@ -70,8 +72,12 @@ Asterisk headers. Both hardware adapter development packages are mandatory:
 `librptadv-portaudio-alsa-adapter-dev` version `0.2.0~alpha3` or newer and
 `librptadv-gpio-adapter-dev` version `0.1.0~alpha2` or newer. No backend build
 switches are required. The module
-does not require `res_usbradio.so`. The single `usbradioplus` Debian package
-declares the exact supported ASL3 runtime alternatives. Its release gate loads
+does not require `res_usbradio.so`. The `usbradioplus` Debian package declares
+the exact supported ASL3 runtime alternatives and depends on the matching
+`libusbradioplus-product1` package. The separate
+`libusbradioplus-product-dev` package contains the public C header, linker
+name, and pkg-config file for native consumers. Neither shared-product package
+requires Asterisk. The release gate loads
 the same module under ASL3 3.9.3 and 3.10.5; the bootstrap installer verifies
 the installed host is one of those alternatives without changing ASL3.
 
@@ -111,6 +117,7 @@ matches the ASL3 Asterisk module directory.
 The build also installs `usbradioplus_agc.so` in
 `lib/<multiarch>/usbradioplus` below the chosen prefix. This is a private
 LADSPA effect loaded by the shared FFmpeg graph, not an Asterisk module.
-Install it with the channel module; no separate plugin host or FFmpeg rebuild
+The Debian package places it in `libusbradioplus-product1`; the source install
+copies it with the channel module. No separate plugin host or FFmpeg rebuild
 is required on supported Debian systems. See `doc/agc.md` for AGC operation
 and the basis for its defaults.

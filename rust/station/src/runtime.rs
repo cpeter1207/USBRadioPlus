@@ -26,6 +26,11 @@ use crate::{
 const CALLBACK_OK: c_int = 0;
 const CALLBACK_FAILED: c_int = -1;
 
+#[path = "update.rs"]
+mod update;
+use update::UpdateMailbox;
+pub use update::{StationUpdate, StationUpdateError, StationUpdatePreparation};
+
 const HARDWARE_CARRIER: u32 = 1 << 0;
 const PARALLEL_CARRIER: u32 = 1 << 1;
 const HARDWARE_SUBAUDIBLE: u32 = 1 << 2;
@@ -384,6 +389,7 @@ struct ReceiveContext {
     hardware: SharedHardwareState,
     controller_ctcss: [Option<CtcssTone>; CTCSS_TONE_COUNT],
     voter_reporting: bool,
+    updates: Arc<UpdateMailbox>,
 }
 
 struct TransmitContext {
@@ -391,6 +397,7 @@ struct TransmitContext {
     maximum_frames: usize,
     mono: Box<[f32]>,
     hardware: SharedHardwareState,
+    updates: Arc<UpdateMailbox>,
 }
 
 /// One stopped, running, or reload-suspended direct PortAudio station composition.
@@ -404,6 +411,8 @@ pub struct StationRuntime {
     provider: AudioProvider,
     stream_config: StreamConfig,
     hardware: SharedHardwareState,
+    updates: Arc<UpdateMailbox>,
+    running: bool,
 }
 
 /// Serialized controller and radio-observer owner paired with one runtime.
@@ -415,6 +424,7 @@ pub struct StationControlHost {
     control: StationControl,
     controller: usbradioplus_asl3::ControllerState,
     hardware: SharedHardwareState,
+    _updates: Arc<UpdateMailbox>,
 }
 
 impl StationControlHost {
@@ -442,6 +452,31 @@ impl StationControlHost {
 }
 
 impl StationRuntime {
+    /// Open native media using the same stereo callback workers, without an
+    /// Asterisk controller or delivery worker. No additional audio ring is made.
+    pub fn open_native(
+        media: crate::NativeStationMedia,
+        selected: &SelectedHardwarePlan,
+        provider: AudioProvider,
+    ) -> Result<(Self, StationControl), AudioError> {
+        let crate::NativeStationMedia {
+            config,
+            receive,
+            transmit,
+            control,
+        } = media;
+        let runtime = Self::open_endpoints(
+            receive,
+            transmit,
+            &config,
+            selected.stream,
+            provider,
+            [None; CTCSS_TONE_COUNT],
+            false,
+        )?;
+        Ok((runtime, control))
+    }
+
     /// Open a stopped stream around one fully prepared station.
     ///
     /// # Errors
@@ -453,8 +488,43 @@ impl StationRuntime {
         selected: &SelectedHardwarePlan,
         provider: AudioProvider,
     ) -> Result<(Self, StationControlHost), AudioError> {
-        let radio = media.plan.radio();
-        let stream = selected.stream;
+        let controller_ctcss = controller_ctcss_table(&media.plan);
+        let voter_reporting = media.plan.configuration().station.hardware.voter_reporting != 0;
+        let StationMedia {
+            plan,
+            receive,
+            transmit,
+            control,
+            controller,
+        } = media;
+        let runtime = Self::open_endpoints(
+            receive,
+            transmit,
+            plan.radio(),
+            selected.stream,
+            provider,
+            controller_ctcss,
+            voter_reporting,
+        )?;
+        let control = StationControlHost {
+            plan,
+            control,
+            controller,
+            hardware: runtime.hardware.clone(),
+            _updates: Arc::clone(&runtime.updates),
+        };
+        Ok((runtime, control))
+    }
+
+    fn open_endpoints(
+        receive: StationReceive,
+        transmit: StationTransmit,
+        radio: &usbradioplus_radio::SessionConfig,
+        stream: StreamConfig,
+        provider: AudioProvider,
+        controller_ctcss: [Option<CtcssTone>; CTCSS_TONE_COUNT],
+        voter_reporting: bool,
+    ) -> Result<Self, AudioError> {
         if stream.maximum_receive_frame_count == 0
             || stream.maximum_transmit_frame_count == 0
             || stream.maximum_receive_frame_count > ADVANCED_FRAME_SAMPLES as u32
@@ -463,29 +533,22 @@ impl StationRuntime {
         {
             return Err(AudioError::InvalidArgument);
         }
-
-        let controller_ctcss = controller_ctcss_table(&media.plan);
-        let voter_reporting = media.plan.configuration().station.hardware.voter_reporting != 0;
         let hardware = SharedHardwareState::default();
-        let StationMedia {
-            plan,
-            receive,
-            transmit,
-            control,
-            controller,
-        } = media;
+        let updates = Arc::new(UpdateMailbox::default());
         let receive_context = Box::new(UnsafeCell::new(ReceiveContext {
             station: receive,
             mono: vec![0.0; stream.maximum_receive_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
             controller_ctcss,
             voter_reporting,
+            updates: Arc::clone(&updates),
         }));
         let transmit_context = Box::new(UnsafeCell::new(TransmitContext {
             station: transmit,
             maximum_frames: stream.maximum_transmit_frame_count as usize,
             mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
+            updates: Arc::clone(&updates),
         }));
         let mut runtime = Self {
             stream: None,
@@ -494,17 +557,11 @@ impl StationRuntime {
             provider,
             stream_config: stream,
             hardware: hardware.clone(),
+            updates: Arc::clone(&updates),
+            running: false,
         };
         runtime.reopen()?;
-        Ok((
-            runtime,
-            StationControlHost {
-                plan,
-                control,
-                controller,
-                hardware,
-            },
-        ))
+        Ok(runtime)
     }
 
     /// Reopen a reload-suspended stream without starting its callbacks.
@@ -545,12 +602,16 @@ impl StationRuntime {
         self.stream
             .as_mut()
             .expect("successful reopen owns a stream")
-            .start()
+            .start()?;
+        self.running = true;
+        Ok(())
     }
 
     /// Stop capture and playback callbacks; repeated calls are harmless.
     pub fn stop(&mut self) -> Result<(), AudioError> {
-        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)
+        self.stream.as_mut().map_or(Ok(()), AudioStream::stop)?;
+        self.running = false;
+        Ok(())
     }
 
     /// Stop callbacks and release the exclusive device lease for reload.
@@ -616,6 +677,11 @@ unsafe extern "C" fn receive_callback(
     }
     // SAFETY: the audio adapter supplies canonical stereo input for each frame.
     let input = unsafe { std::slice::from_raw_parts(input, frames * 2) };
+    context.updates.receive(
+        &mut context.station,
+        &mut context.controller_ctcss,
+        &mut context.voter_reporting,
+    );
     let station = &mut context.station;
     let result = match station.radio().process(
         input,
@@ -688,12 +754,21 @@ unsafe extern "C" fn transmit_callback(
     let context = unsafe { context.as_mut() };
     let frames = frame_count as usize;
     if output.is_null() || frames == 0 || frames > context.maximum_frames {
+        if context.station.native {
+            context.hardware.publish_transmit_fault();
+            if !output.is_null() {
+                // SAFETY: the adapter advertises this writable stereo span even
+                // when its frame count exceeds the prepared processing bound.
+                unsafe { std::slice::from_raw_parts_mut(output, frames * 2) }.fill(0.0);
+            }
+        }
         context.hardware.note_transmit(true);
         return CALLBACK_FAILED;
     }
     // SAFETY: the audio adapter supplies two writable samples for each frame.
     let output = unsafe { std::slice::from_raw_parts_mut(output, frames * 2) };
     output.fill(0.0);
+    context.updates.transmit(&mut context.station);
     let station = &mut context.station;
     let mut controls = context.hardware.transmit_controls();
     let mut direct_failed = false;
@@ -701,6 +776,7 @@ unsafe extern "C" fn transmit_callback(
         let mono = &mut context.mono[..frames];
         mono.fill(0.0);
         let mut keyed = 0;
+        let mut ctcss_enabled = 0;
         // SAFETY: attachment keeps the endpoint live and uniquely TX-owned;
         // scratch and key are writable only for this synchronous invocation.
         let status = unsafe {
@@ -709,9 +785,10 @@ unsafe extern "C" fn transmit_callback(
                 mono.as_mut_ptr(),
                 frame_count,
                 &mut keyed,
+                &mut ctcss_enabled,
             )
         };
-        if status != CALLBACK_OK || keyed > 1 {
+        if status != CALLBACK_OK || keyed > 1 || ctcss_enabled > 1 {
             direct_failed = true;
             mono.fill(0.0);
             controls.external_ptt_request = false;
@@ -719,8 +796,13 @@ unsafe extern "C" fn transmit_callback(
             controls.forced_ctcss_tenths_hz = 0;
             controls.ctcss_inhibit = true;
             context.hardware.publish_transmit_fault();
+            if station.native {
+                context.hardware.note_transmit(true);
+                return CALLBACK_FAILED;
+            }
         } else {
             controls.external_ptt_request |= keyed != 0;
+            controls.ctcss_inhibit = ctcss_enabled == 0;
         }
         station.stage_direct(mono);
         // The direct source is already staged for this hardware callback, so no
@@ -742,6 +824,9 @@ unsafe extern "C" fn transmit_callback(
         }
         Err(_) => {
             output.fill(0.0);
+            if station.native {
+                context.hardware.publish_transmit_fault();
+            }
             context.hardware.note_transmit(true);
             CALLBACK_FAILED
         }

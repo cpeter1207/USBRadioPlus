@@ -17,7 +17,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <rate_adjusting_pcm_ring2/rate_adjusting_pcm_ring2.h>
+#include <rate_adjusting_pcm_ring3/rate_adjusting_pcm_ring3.h>
 #include <rptadv_ffmpeg_adapter/rptadv_ffmpeg_adapter.h>
 #include <rptadv_gpio_adapter.h>
 #include <rptadv_portaudio_alsa_adapter/rptadv_portaudio_alsa_adapter.h>
@@ -29,6 +29,7 @@
 #include "asterisk/module.h"
 
 #include "usbradioplus_asterisk.h"
+#include "usbradioplus_product.h"
 
 /** Capability name required from the co-packaged Rust host. */
 #define URP_AST_LOADER_CAPABILITY "usbradioplus.asterisk-loader"
@@ -60,11 +61,12 @@ static int load_module(void)
 		.abi_version = URP_AST_LOADER_ABI_VERSION,
 		.ffmpeg = rptadv_ffmpeg_adapter_descriptor(),
 		.rnnoise = rptadv_rnnoise_adapter_descriptor(),
-		.ring = rpcr2_descriptor(),
+		.ring = rpcr3_descriptor(),
 		.radio = rptadv_radio_descriptor(),
 		.samplerate = rptadv_samplerate_adapter_descriptor(),
 		.audio = rptadv_portaudio_alsa_adapter_descriptor(),
 		.gpio = rptadv_gpio_adapter_descriptor(),
+		.product = usbradioplus_product_descriptor_v1(),
 	};
 	int result;
 

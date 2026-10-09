@@ -57,10 +57,10 @@ jobs:
       package_revision: "2.${{ github.run_number }}"
       ring_version: >-
         ${{ github.event.client_payload.repository == 'cpeter1207/rate_adjusting_pcm_ring' &&
-        github.event.client_payload.tag || 'v2.0.0-alpha.4' }}
+        github.event.client_payload.tag || 'v3.0.0-alpha.2' }}
       samplerate_adapter_version: >-
         ${{ github.event.client_payload.repository == 'cpeter1207/rptadv-samplerate-adapter' &&
         github.event.client_payload.tag ||
-        github.event.client_payload.samplerate_adapter_tag || 'v0.1.0-alpha.3' }}
+        github.event.client_payload.samplerate_adapter_tag || 'v0.2.0-alpha.1' }}
     secrets:
       APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}

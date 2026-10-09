@@ -7,5 +7,6 @@
 mod processing;
 
 pub use processing::{
-    NativeProcessingFactory, NativeProcessingPlan, ProcessingGeneration, ProcessingRuntimeError,
+    ExplicitNativeProcessingPlan, NativeProcessingFactory, NativeProcessingPlan,
+    ProcessingGeneration, ProcessingRuntimeError,
 };

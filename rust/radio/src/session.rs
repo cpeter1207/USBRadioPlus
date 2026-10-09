@@ -48,6 +48,10 @@ impl RadioProvider {
             Some(pop_receive_event),
             Some(pop_transmit_event),
             Some(destroy),
+            Some(prepare_update),
+            Some(apply_receive_update),
+            Some(apply_transmit_update),
+            Some(destroy_update),
         ) = (
             descriptor.session_create,
             descriptor.session_warm,
@@ -57,6 +61,10 @@ impl RadioProvider {
             descriptor.session_pop_receive_event,
             descriptor.session_pop_transmit_event,
             descriptor.session_destroy,
+            descriptor.session_prepare_update,
+            descriptor.session_apply_receive_update,
+            descriptor.session_apply_transmit_update,
+            descriptor.session_destroy_update,
         )
         else {
             return Err(RadioError::IncompatibleAdapter);
@@ -71,7 +79,51 @@ impl RadioProvider {
                 pop_receive_event,
                 pop_transmit_event,
                 destroy,
+                prepare_update,
+                apply_receive_update,
+                apply_transmit_update,
+                destroy_update,
             },
+        })
+    }
+
+    /// Prepare a single-use update on the control plane without calling any port.
+    ///
+    /// `program_ring` must be empty: the live ring never changes. Processing ports
+    /// must already be warmed. Their contexts must remain valid for the live
+    /// endpoints after applying, even after this update has been destroyed.
+    /// Validate with [`ControlObserver::validate_update`] before publication.
+    pub fn prepare_update<'a>(
+        self,
+        config: &SessionConfig,
+        ports: SessionPorts<'a>,
+    ) -> Result<PreparedUpdate<'a>, RadioError> {
+        validate_config(config)?;
+        let raw_config = config.as_raw();
+        let raw_ports = ports.as_raw();
+        if !raw_ports.program_ring.context.is_null()
+            || raw_ports.program_ring.render_f32.is_some()
+            || raw_ports.program_ring.warm.is_some()
+        {
+            return Err(RadioError::InvalidArgument);
+        }
+        let mut update = ptr::null_mut();
+        // SAFETY: synchronous preparation borrows complete validated values.
+        let status =
+            unsafe { (self.functions.prepare_update)(&raw_config, &raw_ports, &mut update) };
+        if status != RESULT_OK {
+            if let Some(partial) = NonNull::new(update) {
+                // SAFETY: this provider returned the partial, exclusively owned handle.
+                unsafe { (self.functions.destroy_update)(partial.as_ptr()) };
+            }
+            return Err(error_from_result(status));
+        }
+        Ok(PreparedUpdate {
+            functions: self.functions,
+            update: NonNull::new(update).ok_or(RadioError::AdapterFailure)?,
+            maximum_receive_frames: config.maximum_receive_frame_count,
+            maximum_transmit_frames: config.maximum_transmit_frame_count,
+            _ports: PhantomData,
         })
     }
 
@@ -118,6 +170,34 @@ impl RadioProvider {
     }
 }
 
+/// Control-owned prepared state, with one independently applied half per owner.
+///
+/// Keep this value alive until both callback owners acknowledge application (or
+/// cancellation), then destroy it on the control plane. Drop reclaims only
+/// internal candidate/retired buffers, never borrowed processing ports. Applied
+/// ports must outlive the receiving endpoints, not merely this value.
+pub struct PreparedUpdate<'a> {
+    functions: Functions,
+    update: NonNull<OpaqueUpdate>,
+    maximum_receive_frames: u32,
+    maximum_transmit_frames: u32,
+    _ports: PhantomData<&'a mut c_void>,
+}
+
+// SAFETY: ABI update halves have separate nonblocking guards and may be applied
+// concurrently by their serial owners; borrowed ports satisfy their Send contract.
+unsafe impl Send for PreparedUpdate<'_> {}
+// SAFETY: shared access only invokes those guarded halves. Rust borrowing prevents
+// destruction during a call; no shared method exposes mutable candidate storage.
+unsafe impl Sync for PreparedUpdate<'_> {}
+
+impl Drop for PreparedUpdate<'_> {
+    fn drop(&mut self) {
+        // SAFETY: exclusive ownership and absence of outstanding borrows allow reclamation.
+        unsafe { (self.functions.destroy_update)(self.update.as_ptr()) };
+    }
+}
+
 struct SessionInner<'a> {
     functions: Functions,
     session: NonNull<OpaqueSession>,
@@ -125,6 +205,22 @@ struct SessionInner<'a> {
     maximum_receive_frames: u32,
     maximum_transmit_frames: u32,
     _ports: PhantomData<&'a mut c_void>,
+}
+
+impl SessionInner<'_> {
+    fn validate_update(&self, update: &PreparedUpdate<'_>) -> Result<(), RadioError> {
+        if self.functions.create as usize != update.functions.create as usize
+            || self.functions.destroy_update as usize != update.functions.destroy_update as usize
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
+        if self.maximum_receive_frames != update.maximum_receive_frames
+            || self.maximum_transmit_frames != update.maximum_transmit_frames
+        {
+            return Err(RadioError::Unsupported);
+        }
+        Ok(())
+    }
 }
 
 impl Drop for SessionInner<'_> {
@@ -188,7 +284,20 @@ pub struct ReceiveEndpoint<'a> {
     _not_sync: Cell<()>,
 }
 
-impl ReceiveEndpoint<'_> {
+impl<'a> ReceiveEndpoint<'a> {
+    /// Apply once at this serial owner's callback boundary, without allocation,
+    /// reclamation, locks, or borrowed-port calls. The transmit half is independent.
+    pub fn apply_update(&mut self, update: &PreparedUpdate<'a>) -> Result<(), RadioError> {
+        self.inner.validate_update(update)?;
+        // SAFETY: exclusive endpoint access serializes this owner; the update is borrowed live.
+        map_result(unsafe {
+            (self.inner.functions.apply_receive_update)(
+                self.inner.session.as_ptr(),
+                update.update.as_ptr(),
+            )
+        })
+    }
+
     /// Process one exact canonical-stereo capture span into mono receive PCM.
     ///
     /// `input` contains two interleaved normalized-F32 samples per frame and
@@ -249,7 +358,20 @@ pub struct TransmitEndpoint<'a> {
     _not_sync: Cell<()>,
 }
 
-impl TransmitEndpoint<'_> {
+impl<'a> TransmitEndpoint<'a> {
+    /// Apply once at this serial owner's callback boundary while preserving PTT,
+    /// signaling phase, and the program ring. No allocation or reclamation occurs.
+    pub fn apply_update(&mut self, update: &PreparedUpdate<'a>) -> Result<(), RadioError> {
+        self.inner.validate_update(update)?;
+        // SAFETY: exclusive endpoint access serializes this owner; the update is borrowed live.
+        map_result(unsafe {
+            (self.inner.functions.apply_transmit_update)(
+                self.inner.session.as_ptr(),
+                update.update.as_ptr(),
+            )
+        })
+    }
+
     /// Render one exact canonical-stereo normalized-F32 playback span.
     ///
     /// `output` contains exactly two interleaved samples per native frame. On
@@ -303,6 +425,12 @@ pub struct ControlObserver<'a> {
 }
 
 impl ControlObserver<'_> {
+    /// Preflight provider identity and immutable callback limits without touching
+    /// live worker state. Generation IDs may differ; the physical session ID stays.
+    pub fn validate_update(&self, update: &PreparedUpdate<'_>) -> Result<(), RadioError> {
+        self.inner.validate_update(update)
+    }
+
     /// Read the latest independently published lock-free diagnostic values.
     pub fn snapshot(&self) -> Result<SessionSnapshot, RadioError> {
         let mut raw = RawSnapshot::default();

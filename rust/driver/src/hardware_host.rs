@@ -1,8 +1,9 @@
 //! Physical-device ownership for one prepared station.
 //!
 //! The audio callbacks own only native PCM work. This host resolves one
-//! canonical CM119, applies its ALSA mixer setup once, and runs USB/parallel
-//! control I/O on a bounded non-real-time service thread.
+//! canonical CM119 and runs USB/parallel control I/O on a bounded non-real-time
+//! service thread. Asterisk station composition also applies ALSA mixer setup;
+//! the native composition preserves the existing hardware tuning.
 
 use std::fmt;
 use std::sync::Arc;
@@ -25,13 +26,17 @@ use usbradioplus_gpio::{
     GpioError, ParallelDevice, ParallelInputs, ParallelOutputs, ParallelPulse, ParallelRtx,
     ParallelStatistics,
 };
+use usbradioplus_radio::RadioProvider;
+use usbradioplus_runtime::NativeProcessingFactory;
 use usbradioplus_station::{
     ControllerTransport, HardwareInputs, HardwarePlan, HardwarePlanError, ParallelPlan,
     ReceiveObservation, SelectedHardwarePlan, SharedHardwareState, StationControlHost,
-    StationMedia, StationRuntime, StationRuntimeStatistics,
+    StationMedia, StationPlan, StationRuntime, StationRuntimeStatistics, StationUpdate,
+    StationUpdateError, StationUpdatePreparation,
 };
 
 const SERVICE_INTERVAL: Duration = Duration::from_millis(5);
+const NATIVE_SERVICE_INTERVAL: Duration = Duration::from_millis(2);
 const RETRY_INTERVAL: Duration = Duration::from_millis(500);
 const CONTROL_QUEUE_CAPACITY: usize = 32;
 const INPUT_EVENT_QUEUE_CAPACITY: usize = 64;
@@ -157,6 +162,10 @@ pub enum HardwareStationError {
         /// Adapter failure.
         source: GpioError,
     },
+    /// Querying the selected CM119 identity without opening it failed.
+    GpioProbe(GpioError),
+    /// The audio-selected CM119 is absent from the GPIO provider.
+    GpioNotPresent,
     /// A GPIO or parallel output is not configured for product control.
     UnavailableOutput,
     /// A pulse duration cannot be represented in milliseconds.
@@ -171,6 +180,8 @@ pub enum HardwareStationError {
     ControlTimeout,
     /// The hardware service thread terminated unexpectedly.
     WorkerPanicked,
+    /// Preparing or adopting a callback-owned radio update failed.
+    Update(StationUpdateError),
 }
 
 impl fmt::Display for HardwareStationError {
@@ -179,6 +190,8 @@ impl fmt::Display for HardwareStationError {
             Self::Audio(error) => write!(formatter, "audio hardware failed: {error}"),
             Self::Plan(error) => write!(formatter, "hardware identity failed: {error}"),
             Self::Gpio { operation, source } => write!(formatter, "{operation} failed: {source}"),
+            Self::GpioProbe(error) => write!(formatter, "probe CM119 identity failed: {error}"),
+            Self::GpioNotPresent => formatter.write_str("selected CM119 is not present on GPIO"),
             Self::UnavailableOutput => formatter.write_str("output is not configured for control"),
             Self::PulseTooLong => formatter.write_str("output pulse duration is too long"),
             Self::ControlQueueFull => formatter.write_str("hardware control queue is full"),
@@ -186,6 +199,7 @@ impl fmt::Display for HardwareStationError {
             Self::EepromDisabled => formatter.write_str("EEPROM tuning storage is disabled"),
             Self::ControlTimeout => formatter.write_str("hardware control request timed out"),
             Self::WorkerPanicked => formatter.write_str("hardware service thread panicked"),
+            Self::Update(error) => write!(formatter, "station update failed: {error}"),
         }
     }
 }
@@ -196,6 +210,8 @@ impl std::error::Error for HardwareStationError {
             Self::Audio(error) => Some(error),
             Self::Plan(error) => Some(error),
             Self::Gpio { source, .. } => Some(source),
+            Self::GpioProbe(error) => Some(error),
+            Self::Update(error) => Some(error),
             _ => None,
         }
     }
@@ -204,6 +220,12 @@ impl std::error::Error for HardwareStationError {
 impl From<AudioError> for HardwareStationError {
     fn from(error: AudioError) -> Self {
         Self::Audio(error)
+    }
+}
+
+impl From<StationUpdateError> for HardwareStationError {
+    fn from(error: StationUpdateError) -> Self {
+        Self::Update(error)
     }
 }
 
@@ -458,6 +480,47 @@ impl HardwarePreflight {
     }
 }
 
+/// Select and cross-check native audio/GPIO identity without opening a device or tuning it.
+///
+/// The physical channel layout and CM119 wiring are supplied by the native caller. A GPIO
+/// serial is compared with the audio serial only when both providers report one, preserving
+/// standalone discovery semantics. The returned GPIO request retains the probed USB IDs.
+///
+/// # Errors
+///
+/// Returns audio selection, configured identity, GPIO presence, or serial mismatch failures.
+pub fn select_native_hardware(
+    plan: &HardwarePlan,
+    audio: AudioProvider,
+    gpio: GpioAdapter,
+    maximum_frame_count: u32,
+) -> Result<(SelectedDevice, SelectedHardwarePlan), HardwareStationError> {
+    let mut selected = audio.select_device(&plan.audio_selector)?;
+    let mut bound = plan.select(&selected, maximum_frame_count)?;
+    bound.cm119.usb_port_path = selected
+        .interface_path
+        .split(':')
+        .next()
+        .filter(|path| !path.is_empty())
+        .ok_or(AudioError::InvalidArgument)?
+        .to_owned();
+    let identity = gpio
+        .probe(&bound.cm119)
+        .map_err(HardwareStationError::GpioProbe)?;
+    if !identity.present {
+        return Err(HardwareStationError::GpioNotPresent);
+    }
+    if let (Some(audio_serial), Some(gpio_serial)) = (&selected.serial, &identity.serial) {
+        if audio_serial != gpio_serial {
+            return Err(HardwarePlanError::SerialMismatch.into());
+        }
+    }
+    selected.serial = selected.serial.or(identity.serial);
+    bound.cm119.vendor_id = identity.vendor_id;
+    bound.cm119.product_id = identity.product_id;
+    Ok((selected, bound))
+}
+
 /// One selected CM119, its mixers, hardware service, and native station stream.
 pub struct HardwareStation {
     selected: SelectedDevice,
@@ -465,6 +528,7 @@ pub struct HardwareStation {
     control: StationControlHost,
     service: HardwareService,
     mixers: HardwareMixers,
+    update_mixers: Option<[u32; 3]>,
 }
 
 impl HardwareStation {
@@ -583,6 +647,7 @@ impl HardwareStation {
             control,
             service,
             mixers,
+            update_mixers: None,
         })
     }
 
@@ -643,6 +708,149 @@ impl HardwareStation {
     /// Borrow serialized controller and radio-observer ownership.
     pub fn control(&mut self) -> &mut StationControlHost {
         &mut self.control
+    }
+
+    /// Whether the existing stream and control-service owners can adopt this plan.
+    #[must_use]
+    pub fn supports_live_update(&self, plan: &StationPlan) -> bool {
+        let current = self.control.plan();
+        current.transport() == plan.transport()
+            && current.hardware() == plan.hardware()
+            && current.configuration().station.hardware.eeprom_enabled
+                == plan.configuration().station.hardware.eeprom_enabled
+            && hardware_local_repeat_level(
+                current.transport(),
+                current.configuration().station.duplex.local_repeat_level,
+            ) == hardware_local_repeat_level(
+                plan.transport(),
+                plan.configuration().station.duplex.local_repeat_level,
+            )
+            && configured_remote_radio(current.configuration())
+                == configured_remote_radio(plan.configuration())
+    }
+
+    /// Retain EEPROM-derived values unless the operator explicitly changes their file setting.
+    pub fn preserve_startup_tuning(
+        &self,
+        previous: &ChannelConfiguration,
+        candidate: &mut ChannelConfiguration,
+    ) {
+        let current = &self.control.plan().configuration().station;
+        let previous = &previous.station;
+        let candidate = &mut candidate.station;
+        for (old, active, next) in [
+            (
+                previous.hardware.input_gain_db,
+                current.hardware.input_gain_db,
+                &mut candidate.hardware.input_gain_db,
+            ),
+            (
+                previous.hardware.output_a_gain_db,
+                current.hardware.output_a_gain_db,
+                &mut candidate.hardware.output_a_gain_db,
+            ),
+            (
+                previous.hardware.output_b_gain_db,
+                current.hardware.output_b_gain_db,
+                &mut candidate.hardware.output_b_gain_db,
+            ),
+        ] {
+            if *next == old {
+                *next = active;
+            }
+        }
+        if candidate.receive.squelch_level == previous.receive.squelch_level {
+            candidate.receive.squelch_level = current.receive.squelch_level;
+        }
+        if candidate.ctcss.transmit_peak_dbfs == previous.ctcss.transmit_peak_dbfs {
+            candidate.ctcss.transmit_peak_dbfs = current.ctcss.transmit_peak_dbfs;
+        }
+    }
+
+    /// Capture safe graph ownership for construction outside the control-delivery task.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an overlapping update or incompatible provider state.
+    pub fn update_snapshot(
+        &self,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+    ) -> Result<StationUpdatePreparation, StationUpdateError> {
+        self.runtime
+            .snapshot_update(&self.control, factory, provider)
+    }
+
+    /// Publish a prepared update without stopping audio or the GPIO service.
+    ///
+    /// Only explicitly changed mixer settings are written; unrelated unsaved
+    /// calibration remains live. The original levels are retained for rollback.
+    ///
+    /// # Errors
+    ///
+    /// Returns the runtime publication or hardware mixer failure.
+    pub fn begin_update(
+        &mut self,
+        update: StationUpdate,
+        explicitly_changed_mixers: [bool; 3],
+    ) -> Result<(), HardwareStationError> {
+        let old = &self.control.plan().configuration().station.hardware;
+        let next = &update.plan().configuration().station.hardware;
+        let gains = [
+            (old.input_gain_db, next.input_gain_db),
+            (old.output_a_gain_db, next.output_a_gain_db),
+            (old.output_b_gain_db, next.output_b_gain_db),
+        ];
+        self.runtime.begin_update(&self.control, update)?;
+        self.update_mixers = Some(self.mixers.levels);
+        for ((mixer, (old, next)), changed) in [
+            HardwareMixer::Receive,
+            HardwareMixer::TransmitA,
+            HardwareMixer::TransmitB,
+        ]
+        .into_iter()
+        .zip(gains)
+        .zip(explicitly_changed_mixers)
+        {
+            if changed || old != next {
+                self.set_mixer_level(mixer, mixer_level(next))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Accept the candidate after both audio owners have adopted it.
+    ///
+    /// # Errors
+    ///
+    /// `Pending` means callbacks have not yet reached their update boundaries.
+    pub fn accept_update(&mut self) -> Result<(), StationUpdateError> {
+        self.runtime.accept_update(&mut self.control)
+    }
+
+    /// Commit or roll back a live update; pending rollback can be retried.
+    ///
+    /// # Errors
+    ///
+    /// Returns pending callback adoption, a radio failure, or a mixer failure.
+    pub fn finish_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
+        self.runtime.finish_update(&mut self.control, commit)?;
+        if let Some(levels) = self.update_mixers {
+            if !commit {
+                for (mixer, level) in [
+                    HardwareMixer::Receive,
+                    HardwareMixer::TransmitA,
+                    HardwareMixer::TransmitB,
+                ]
+                .into_iter()
+                .zip(levels)
+                {
+                    self.set_mixer_level(mixer, level)?;
+                }
+            }
+            self.update_mixers = None;
+        }
+        Ok(())
     }
 
     /// Clone the lock-free state shared with the native callbacks.
@@ -1163,7 +1371,12 @@ enum ServiceCommand {
     Restore(HardwareTransientState),
 }
 
-struct HardwareService {
+/// One off-callback GPIO owner shared by native and Asterisk station compositions.
+///
+/// Stop audio before stopping this service, so no later callback can republish PTT intent.
+/// Dropping the service joins its worker and applies the existing fail-safe unkey sequence.
+pub struct HardwareService {
+    native: bool,
     provider: GpioAdapter,
     selected: SelectedHardwarePlan,
     parallel: Option<ParallelPlan>,
@@ -1188,6 +1401,32 @@ struct HardwareServiceSetup {
 }
 
 impl HardwareService {
+    /// Prepare native GPIO servicing without mixer, EEPROM, sidetone, or remote-radio setup.
+    ///
+    /// `selected` must come from [`select_native_hardware`]. Preparation performs no I/O;
+    /// [`Self::start`] opens the selected GPIO device after native audio has been prepared.
+    /// Native polling retains its handle at a 2 ms cadence and gates PTT on healthy inputs.
+    pub fn native(
+        plan: &HardwarePlan,
+        selected: SelectedHardwarePlan,
+        state: SharedHardwareState,
+        provider: GpioAdapter,
+    ) -> Self {
+        let mut service = Self::new(
+            provider,
+            plan,
+            selected,
+            state,
+            HardwareServiceSetup {
+                eeprom_enabled: false,
+                sidetone: None,
+                initial_remote_radio: None,
+            },
+        );
+        service.native = true;
+        service
+    }
+
     fn new(
         provider: GpioAdapter,
         plan: &HardwarePlan,
@@ -1196,6 +1435,7 @@ impl HardwareService {
         setup: HardwareServiceSetup,
     ) -> Self {
         Self {
+            native: false,
             provider,
             parallel: plan.parallel.clone(),
             statistics: Arc::new(ServiceStatistics::new(plan.parallel.is_some())),
@@ -1218,7 +1458,13 @@ impl HardwareService {
         self.worker.is_some()
     }
 
-    fn start(&mut self) -> Result<(), HardwareStationError> {
+    /// Open GPIO and start its single service owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns GPIO open failures. Asterisk mode also validates its first service cycle;
+    /// native mode retains the device and retries transient polling failures in its worker.
+    pub fn start(&mut self) -> Result<(), HardwareStationError> {
         if self.running() {
             return Ok(());
         }
@@ -1238,6 +1484,7 @@ impl HardwareService {
         let (sender, receiver) = sync_channel(CONTROL_QUEUE_CAPACITY);
         self.stop.store(false, Ordering::Release);
         let worker = ServiceWorker {
+            native: self.native,
             provider: self.provider,
             selected: self.selected.clone(),
             parallel: self.parallel.clone(),
@@ -1249,14 +1496,16 @@ impl HardwareService {
             clip_led_mask: self.clip_led_mask,
             input_sender,
         };
-        service_once(
-            &mut devices,
-            &mut outputs,
-            &mut inputs,
-            self.sidetone.as_mut(),
-            &worker,
-        )
-        .map_err(HardwareStationError::from)?;
+        if !self.native {
+            service_once(
+                &mut devices,
+                &mut outputs,
+                &mut inputs,
+                self.sidetone.as_mut(),
+                &worker,
+            )
+            .map_err(HardwareStationError::from)?;
+        }
         let sidetone = self.sidetone.take();
         self.worker = Some(thread::spawn(move || {
             worker.run(devices, outputs, inputs, sidetone)
@@ -1266,7 +1515,12 @@ impl HardwareService {
         Ok(())
     }
 
-    fn stop(&mut self) -> Result<(), HardwareStationError> {
+    /// Join the service owner and apply fail-safe unkey; repeated calls are harmless.
+    ///
+    /// # Errors
+    ///
+    /// Returns an unexpected service-worker panic.
+    pub fn stop(&mut self) -> Result<(), HardwareStationError> {
         let Some(worker) = self.worker.take() else {
             return Ok(());
         };
@@ -1389,7 +1643,8 @@ impl HardwareService {
         Ok(())
     }
 
-    fn statistics(&self) -> HardwareServiceStatistics {
+    /// Read the latest GPIO service counters and applied hardware state without waiting.
+    pub fn statistics(&self) -> HardwareServiceStatistics {
         self.statistics.snapshot()
     }
 }
@@ -1478,6 +1733,7 @@ impl ServiceDevices {
 }
 
 struct OutputState {
+    native_ptt: Option<bool>,
     cm119: u8,
     parallel: u8,
     remote_radio: Option<RemoteRadio>,
@@ -1494,6 +1750,7 @@ impl OutputState {
         remote_radio: Option<RemoteRadio>,
     ) -> Self {
         Self {
+            native_ptt: None,
             cm119: selected.cm119.output_initial_mask,
             parallel: parallel.map_or(0, |plan| plan.config.output_initial_mask),
             remote_radio,
@@ -1679,6 +1936,7 @@ fn apply_persistent(value: &mut u8, bit: u8, request: OutputRequest) {
 }
 
 struct ServiceWorker {
+    native: bool,
     provider: GpioAdapter,
     selected: SelectedHardwarePlan,
     parallel: Option<ParallelPlan>,
@@ -1692,6 +1950,14 @@ struct ServiceWorker {
 }
 
 impl ServiceWorker {
+    fn interval(&self) -> Duration {
+        if self.native {
+            NATIVE_SERVICE_INTERVAL
+        } else {
+            SERVICE_INTERVAL
+        }
+    }
+
     fn run(
         self,
         initial_devices: ServiceDevices,
@@ -1723,17 +1989,29 @@ impl ServiceWorker {
             .and_then(|()| {
                 service_once(current, &mut outputs, &mut inputs, sidetone.as_mut(), &self)
             }) {
-                Ok(()) => thread::park_timeout(SERVICE_INTERVAL),
+                Ok(()) => thread::park_timeout(self.interval()),
                 Err(failure) => {
                     self.statistics.failure(failure);
-                    self.state.publish_inputs(HardwareInputs::default());
-                    devices = None;
-                    thread::park_timeout(RETRY_INTERVAL);
+                    if self.native {
+                        // Native polling already published safe inputs/PTT and keeps its handle.
+                        thread::park_timeout(self.interval());
+                    } else {
+                        self.state.publish_inputs(HardwareInputs::default());
+                        devices = None;
+                        thread::park_timeout(RETRY_INTERVAL);
+                    }
                 }
             }
         }
         if let Some(mut current) = devices {
-            current.fail_safe_unkey(self.parallel.as_ref(), &outputs);
+            if self.native {
+                let _ = current.cm119.publish_outputs(Cm119Outputs {
+                    ptt_asserted: false,
+                    gpio_output_mask: outputs.cm119,
+                });
+            } else {
+                current.fail_safe_unkey(self.parallel.as_ref(), &outputs);
+            }
         }
         if let Some(control) = &mut sidetone {
             let _ = control.apply(false);
@@ -1785,6 +2063,9 @@ fn service_once(
     worker: &ServiceWorker,
 ) -> Result<(), ServiceFailure> {
     let radio = worker.state.outputs();
+    if worker.native {
+        return service_native_once(devices, outputs, worker, radio.logical_ptt);
+    }
     if let Some(control) = sidetone {
         if control.apply(radio.receiver_keyed).is_err() {
             worker
@@ -1864,6 +2145,58 @@ fn service_once(
         &worker.statistics,
     );
     worker.statistics.success(cm119_statistics);
+    Ok(())
+}
+
+fn service_native_once(
+    devices: &mut ServiceDevices,
+    outputs: &mut OutputState,
+    worker: &ServiceWorker,
+    logical_ptt: bool,
+) -> Result<(), ServiceFailure> {
+    // Indicator failures never prevent native input sampling or fail-safe PTT handling.
+    let _ = outputs.service_clip_led(
+        devices,
+        worker.clip_led_mask,
+        worker.state.receive_clip_events(),
+    );
+    let snapshots = devices
+        .cm119
+        .service()
+        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
+        .and_then(|()| {
+            let inputs = devices
+                .cm119
+                .inputs()
+                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))?;
+            let statistics = devices
+                .cm119
+                .statistics()
+                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
+            Ok((inputs, statistics))
+        });
+    let online = snapshots.as_ref().is_ok_and(|(inputs, _)| inputs.online);
+    let mut inputs = match snapshots.as_ref() {
+        Ok((inputs, statistics)) if online => hardware_inputs(*inputs, None, None, *statistics),
+        _ => HardwareInputs::default(),
+    };
+    let requested_ptt = online && logical_ptt;
+    if outputs.native_ptt != Some(requested_ptt) {
+        if let Err(source) = devices.cm119.publish_outputs(Cm119Outputs {
+            ptt_asserted: requested_ptt,
+            gpio_output_mask: outputs.cm119,
+        }) {
+            outputs.native_ptt = None;
+            inputs.physical_ptt = false;
+            worker.state.publish_inputs(inputs);
+            return Err(ServiceFailure(HardwareOperation::PublishCm119, source));
+        }
+        outputs.native_ptt = Some(requested_ptt);
+    }
+    // Physical PTT reflects the serviced snapshot, never the newly queued output intent.
+    worker.state.publish_inputs(inputs);
+    let (_, statistics) = snapshots?;
+    worker.statistics.success(statistics);
     Ok(())
 }
 

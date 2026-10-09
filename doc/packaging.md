@@ -30,18 +30,24 @@ and unload through the versioned Rust lifecycle descriptor. It builds against
 libraries. The module must retain these versioned dynamic dependencies:
 
 - `libusbradioplus_asterisk.so.1`
-- `librate_adjusting_pcm_ring2.so.2`
+- `libusbradioplus_product.so.1`
+- `librate_adjusting_pcm_ring3.so.3`
 - `librptadvradio.so.4`
-- the released samplerate, FFmpeg, PortAudio/ALSA, GPIO, and RNNoise adapters
+- the released samplerate ABI-2, FFmpeg, PortAudio/ALSA, GPIO, and RNNoise adapters
 
-The corresponding build packages are `librate-adjusting-pcm-ring2-dev`,
+The corresponding build packages are `librate-adjusting-pcm-ring3-dev`,
 `librptadvradio-dev`, `librptadv-samplerate-adapter-dev`,
 `librptadv-ffmpeg-adapter-dev`, `librptadv-portaudio-alsa-adapter-dev`,
 `librptadv-gpio-adapter-dev`, and `librptadv-rnnoise-adapter-dev`.
 
 `chan_usbradioplus.so` and `libusbradioplus_asterisk.so.1` are private,
-co-packaged artifacts. Apt therefore installs them as one versioned
-transaction. The metadata shim validates the lifecycle descriptor size and ABI
+co-packaged in `usbradioplus`. The separately packaged
+`libusbradioplus-product1` contains `libusbradioplus_product.so.1` and its
+private AGC plugin; `libusbradioplus-product-dev` contains
+`usbradioplus_product.h`, the linker name, and `usbradioplus_product.pc`.
+The channel package depends on the exact same-version product runtime.
+The product packages have no Asterisk or controller dependency. The metadata
+shim validates the lifecycle descriptor size and ABI
 before Rust registers either channel technology, so manually mixed artifacts
 fail safely instead of partially loading.
 
@@ -49,7 +55,8 @@ The build rejects undefined `ast_radio_*` imports. `res_usbradio.so` is not a
 runtime dependency.
 
 The private `usbradioplus_agc.so.1` LADSPA plugin is implemented in Rust and
-installed below `/usr/lib/<multiarch>/usbradioplus/`. FFmpeg loads the stable
+installed below `/usr/lib/<multiarch>/usbradioplus/` by the product runtime
+package. FFmpeg loads the stable
 `usbradioplus_agc.so` symlink by path. It is not an Asterisk module and must not
 be registered with `ldconfig` or added to `modules.conf`.
 

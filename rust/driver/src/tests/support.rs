@@ -246,7 +246,11 @@ struct RingConfig {
     capacity_samples: u64,
     input_rate_hz: u32,
     output_rate_hz: u32,
-    quality: u32,
+    reserve_samples: u64,
+    target_samples: u64,
+    max_producer_samples: u64,
+    max_output_samples: u64,
+    plc_mode: u32,
 }
 
 #[repr(C)]
@@ -255,8 +259,8 @@ struct RingObservation([u64; 12]);
 type RingCreate = unsafe extern "C" fn(*const RingConfig, *mut *mut c_void) -> c_int;
 type RingPushSample = unsafe extern "C" fn(*mut c_void, f32, *mut bool) -> c_int;
 type RingPush = unsafe extern "C" fn(*mut c_void, *const f32, u64, *mut u64) -> c_int;
-type RingRenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut bool) -> c_int;
-type RingRender = unsafe extern "C" fn(*mut c_void, *mut f32, u64, u64, u64, *mut u64) -> c_int;
+type RingRenderSample = unsafe extern "C" fn(*mut c_void, *mut f32, *mut bool) -> c_int;
+type RingRender = unsafe extern "C" fn(*mut c_void, *mut f32, u64, *mut u64) -> c_int;
 type RingReset = unsafe extern "C" fn(*mut c_void) -> c_int;
 type RingObserve = unsafe extern "C" fn(*const c_void, *mut RingObservation) -> c_int;
 
@@ -304,7 +308,6 @@ unsafe extern "C" fn ring_push(
 unsafe extern "C" fn ring_render_sample(
     _handle: *mut c_void,
     _output: *mut f32,
-    _target: u64,
     _ready: *mut bool,
 ) -> c_int {
     OK
@@ -314,8 +317,6 @@ unsafe extern "C" fn ring_render(
     _handle: *mut c_void,
     _output: *mut f32,
     _count: u64,
-    _reserve: u64,
-    _target: u64,
     _rendered: *mut u64,
 ) -> c_int {
     OK
@@ -334,7 +335,7 @@ unsafe extern "C" fn ring_reset(_handle: *mut c_void) -> c_int {
 
 static RING: RingDescriptor = RingDescriptor {
     struct_size: size_of::<RingDescriptor>() as u32,
-    abi_version: 2,
+    abi_version: 3,
     capability_name: c"rptadv.rate-adjusting-pcm-ring.f32".as_ptr(),
     create: Some(ring_create),
     destroy: Some(destroy_unit),
@@ -440,6 +441,10 @@ struct RadioDescriptor {
     pop_receive: Option<RadioPop>,
     pop_transmit: Option<RadioPop>,
     destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    prepare_update: Option<RadioCreate>,
+    apply_receive_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    apply_transmit_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: The descriptor and every referenced function are static.
@@ -462,6 +467,10 @@ unsafe extern "C" fn radio_create(
 }
 
 unsafe extern "C" fn radio_warm(_handle: *mut c_void) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn radio_apply_update(_handle: *mut c_void, _update: *mut c_void) -> c_int {
     OK
 }
 
@@ -543,12 +552,16 @@ static RADIO: RadioDescriptor = RadioDescriptor {
     pop_receive: Some(radio_pop),
     pop_transmit: Some(radio_pop),
     destroy: Some(radio_destroy),
+    prepare_update: Some(radio_create),
+    apply_receive_update: Some(radio_apply_update),
+    apply_transmit_update: Some(radio_apply_update),
+    destroy_update: Some(radio_destroy),
 };
 
 #[repr(C)]
 struct Converter(u8);
 
-type ConverterCreate = unsafe extern "C" fn(c_int, u32, *mut *mut Converter) -> c_int;
+type ConverterCreate = unsafe extern "C" fn(u32, u32, u32, u32, *mut *mut Converter) -> c_int;
 type ConverterReset = unsafe extern "C" fn(*mut Converter) -> c_int;
 type ConverterProcess = unsafe extern "C" fn(
     *mut Converter,
@@ -572,30 +585,46 @@ struct ConverterDescriptor {
     reset: Option<ConverterReset>,
     process: Option<ConverterProcess>,
     destroy: Option<ConverterDestroy>,
+    queued_input: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
+    converter_output_delay: Option<unsafe extern "C" fn(*mut Converter, *mut u32) -> c_int>,
 }
 
 // SAFETY: Test descriptors and every referenced function are static.
 unsafe impl Sync for ConverterDescriptor {}
 
 unsafe extern "C" fn converter_create(
-    _quality: c_int,
-    _channels: u32,
+    input_rate: u32,
+    output_rate: u32,
+    max_input: u32,
+    max_output: u32,
     output: *mut *mut Converter,
 ) -> c_int {
+    assert_eq!(
+        (input_rate, output_rate, max_input, max_output),
+        (48000, 8000, 960, 960)
+    );
     // SAFETY: The wrapper supplies one writable handle destination.
     unsafe { *output = Box::into_raw(Box::new(Converter(0))) };
     OK
 }
 
 unsafe extern "C" fn converter_create_fails(
-    _quality: c_int,
-    _channels: u32,
+    _input_rate: u32,
+    _output_rate: u32,
+    _max_input: u32,
+    _max_output: u32,
     _output: *mut *mut Converter,
 ) -> c_int {
     -2
 }
 
 unsafe extern "C" fn converter_reset(_handle: *mut Converter) -> c_int {
+    OK
+}
+
+unsafe extern "C" fn converter_queued_input(_: *mut Converter, frames: *mut u32) -> c_int {
+    // SAFETY: the client supplies writable output storage.
+    unsafe { *frames = 0 };
     OK
 }
 
@@ -644,12 +673,14 @@ unsafe extern "C" fn converter_destroy(handle: *mut Converter) {
 
 static CONVERTER: ConverterDescriptor = ConverterDescriptor {
     struct_size: size_of::<ConverterDescriptor>() as u32,
-    abi_version: 1,
+    abi_version: 2,
     capability_name: c"rptadv.samplerate".as_ptr(),
     create: Some(converter_create),
     reset: Some(converter_reset),
     process: Some(converter_process),
     destroy: Some(converter_destroy),
+    queued_input: Some(converter_queued_input),
+    converter_output_delay: Some(converter_queued_input),
 };
 
 static FAILING_CONVERTER: ConverterDescriptor = ConverterDescriptor {

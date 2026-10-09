@@ -38,10 +38,12 @@ cc -std=c11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} \
 cc -D_GNU_SOURCE -std=gnu11 -Wall -Wextra -Werror \
 	${C_TEST_CFLAGS:-} \
 	-I"$root/tests/fixtures/shim-host/include" -I"$root/rust/asterisk/include" \
+	-I"$root/rust/product/include" \
 	-c "$root/src/chan_usbradioplus_shim.c" -o "$out/channel-shim.o"
 # shellcheck disable=SC2086
 cc -D_GNU_SOURCE -std=gnu11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} \
 	-I"$root/tests/fixtures/shim-host/include" -I"$root/tests/fixtures/shim-host" \
-	-I"$root/rust/asterisk/include" "$root/tests/test_chan_usbradioplus_shim.c" \
+	-I"$root/rust/asterisk/include" -I"$root/rust/product/include" \
+	"$root/tests/test_chan_usbradioplus_shim.c" \
 	"$out/channel-shim.o" -o "$out/channel-shim" -lm
 "$out/channel-shim"

@@ -1,0 +1,33 @@
+[package]
+name = "usbradioplus-product"
+version = "0.1.0-alpha19"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+description = "Shared USBRadioPlus radio product"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+libc = "0.2"
+usbradioplus-asl3 = { path = "../asl3" }
+usbradioplus-audio = { path = "../audio" }
+usbradioplus-core = { path = "../core" }
+usbradioplus-driver = { path = "../driver" }
+usbradioplus-ffmpeg = { path = "../ffmpeg" }
+usbradioplus-gpio = { path = "../gpio" }
+usbradioplus-radio = { path = "../radio" }
+usbradioplus-ring = { path = "../ring" }
+usbradioplus-rnnoise = { path = "../rnnoise" }
+usbradioplus-samplerate = { path = "../samplerate" }
+usbradioplus-station = { path = "../station" }
+usbradioplus-runtime = { path = "../runtime" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"

@@ -1,5 +1,6 @@
 use super::*;
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void};
 use std::ptr;
@@ -7,7 +8,9 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use crate::host::support::Fixture as HostFixture;
-use crate::host::support::{FakeChannel as NativeChannel, with_state as with_native_state};
+use crate::host::support::{
+    FakeChannel as NativeChannel, product_support, with_state as with_native_state,
+};
 
 fn native_channel() -> *mut ffi::ast_channel {
     let mut channel = NativeChannel::new(ptr::null_mut());
@@ -217,13 +220,14 @@ fn production_scanner_start_rejects_invalid_and_failed_thread_ownership() {
 
     let _fixture = HostFixture::new();
     reset();
+    let descriptor = product_support::descriptor();
     assert_eq!(
-        start(ptr::null_mut(), ptr::null_mut()),
+        start(descriptor, ptr::null_mut(), ptr::null_mut()),
         crate::URP_AST_INVALID_ARGUMENT
     );
     // SAFETY: one thread-local failure affects only the next scanner spawn.
     unsafe { urp_test_fail_thread_create(1) };
-    let failed = start(ptr::dangling_mut(), ptr::dangling_mut());
+    let failed = start(descriptor, ptr::dangling_mut(), ptr::dangling_mut());
     // SAFETY: retrieve and disarm the calling thread's native test seam.
     let attempts = unsafe {
         let attempts = urp_test_thread_create_calls();
@@ -233,9 +237,12 @@ fn production_scanner_start_rejects_invalid_and_failed_thread_ownership() {
     assert_eq!(failed, URP_AST_ASTERISK_FAILURE);
     assert_eq!(attempts, 1);
     assert!(lock(running_host()).is_none());
-    assert_eq!(start(ptr::dangling_mut(), ptr::dangling_mut()), URP_AST_OK);
     assert_eq!(
-        start(ptr::dangling_mut(), ptr::dangling_mut()),
+        start(descriptor, ptr::dangling_mut(), ptr::dangling_mut()),
+        URP_AST_OK
+    );
+    assert_eq!(
+        start(descriptor, ptr::dangling_mut(), ptr::dangling_mut()),
         URP_AST_ASTERISK_FAILURE
     );
     stop();
@@ -294,9 +301,21 @@ fn duplicate_publication_and_teardown_release_only_their_own_graphs() {
         assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
         assert!(
             // SAFETY: a competing publication already owns this live channel datastore.
-            unsafe { host.install(channel.raw(), "alpha", "IAX2/duplicate", 8_000, staged) }
-                .unwrap()
-                .is_none()
+            unsafe {
+                host.install(
+                    channel.raw(),
+                    "alpha",
+                    "IAX2/duplicate",
+                    8_000,
+                    if staged {
+                        InstallMode::Staged
+                    } else {
+                        InstallMode::Active
+                    },
+                )
+            }
+            .unwrap()
+            .is_none()
         );
         assert_eq!(with_state(|state| state.graphs.len()), 1);
         detach(&host, &mut channel);
@@ -479,7 +498,7 @@ fn reference_count_guards_and_final_owner_preserve_teardown() {
         "alpha",
         "IAX2/owned",
         graph,
-        false,
+        InstallMode::Active,
     )));
     // SAFETY: this test initializes a pinned, exclusively owned hook before creating its RAII owner.
     let owned = unsafe {
@@ -513,7 +532,11 @@ struct FakeState {
     graphs: HashMap<usize, FakeGraph>,
     next_graph: usize,
     prepare_result: i32,
+    preparation_observer: Option<fn()>,
     prepare_empty: bool,
+    reload_unchanged: bool,
+    reload_compare_result: i32,
+    reload_comparisons: Vec<(String, u32, u32)>,
     observe_result: i32,
     attach_result: i32,
     process_calls: Vec<(usize, u32, u32, u32)>,
@@ -550,6 +573,17 @@ fn with_state<T>(operation: impl FnOnce(&mut FakeState) -> T) -> T {
     operation(&mut state().lock().unwrap())
 }
 
+thread_local! {
+    static PENDING_HOOK: Cell<*mut LinkHook> = const { Cell::new(ptr::null_mut()) };
+}
+
+fn mark_reload_pending_during_prepare() {
+    PENDING_HOOK.with(|hook| {
+        // SAFETY: the test retains this hook through the synchronous preparation callback.
+        unsafe { (*hook.get()).reload_pending.store(true, Ordering::Release) };
+    });
+}
+
 fn reset() {
     stop();
     *state().lock().unwrap() = FakeState {
@@ -577,6 +611,14 @@ impl RunningFixture {
 
     pub(in crate::host) fn preparation_result(&self, result: i32) {
         with_state(|state| state.prepare_result = result);
+    }
+
+    pub(in crate::host) fn observe_preparation(&self, observer: fn()) {
+        with_state(|state| state.preparation_observer = Some(observer));
+    }
+
+    pub(in crate::host) fn peer(&mut self) -> *mut ffi::ast_channel {
+        self._channel.as_mut().unwrap().raw()
     }
 }
 
@@ -623,18 +665,24 @@ fn nul(value: &str) -> Vec<u8> {
 }
 
 fn fake_host() -> LinkHost {
-    LinkHost::with_operations(
-        ptr::dangling_mut::<c_void>(),
-        ptr::null_mut(),
-        fake_product_operations(),
-        fake_asterisk_operations(),
-    )
+    // SAFETY: zeroed optional C callbacks are valid; the six consumed entries are supplied below.
+    let mut descriptor: UrpAstDescriptor = unsafe { std::mem::zeroed() };
+    descriptor.link_prepare = Some(fake_prepare);
+    descriptor.link_prepare_reload = Some(fake_prepare_reload);
+    descriptor.link_reload_unchanged = Some(fake_reload_unchanged);
+    descriptor.link_process = Some(fake_process);
+    descriptor.link_observe = Some(fake_observe);
+    descriptor.link_destroy = Some(fake_graph_destroy);
+    let mut host = LinkHost::new(&descriptor, ptr::dangling_mut::<c_void>(), ptr::null_mut());
+    host.asterisk = fake_asterisk_operations();
+    host
 }
 
 fn fake_product_operations() -> LinkProductOperations {
     LinkProductOperations {
         prepare: fake_prepare,
         prepare_reload: fake_prepare_reload,
+        reload_unchanged: fake_reload_unchanged,
         process: fake_process,
         observe: fake_observe,
         destroy: fake_graph_destroy,
@@ -684,6 +732,9 @@ unsafe fn fake_prepare_common(
     output: *mut *mut c_void,
     event: &'static str,
 ) -> i32 {
+    if let Some(observer) = with_state(|state| state.preparation_observer) {
+        observer();
+    }
     // SAFETY: the host supplies a readable byte-counted profile.
     let profile = unsafe { std::slice::from_raw_parts(profile, profile_length as usize) };
     let profile = String::from_utf8(profile.to_vec()).expect("profile must be UTF-8");
@@ -723,6 +774,28 @@ unsafe extern "C" fn fake_prepare(
 ) -> i32 {
     // SAFETY: forwarded test fixture storage follows the product ABI.
     unsafe { fake_prepare_common(channel_name, channel_name_length, output, "prepare") }
+}
+
+unsafe extern "C" fn fake_reload_unchanged(
+    _driver: *mut c_void,
+    _link: *mut c_void,
+    profile: *const u8,
+    profile_length: u32,
+    sample_rate_hz: u32,
+    maximum_frame_count: u32,
+    output: *mut u32,
+) -> c_int {
+    // SAFETY: the host borrows its complete UTF-8 profile through this synchronous call.
+    let profile = unsafe { std::slice::from_raw_parts(profile, profile_length as usize) };
+    let profile = std::str::from_utf8(profile).unwrap();
+    with_state(|state| {
+        state
+            .reload_comparisons
+            .push((profile.to_owned(), sample_rate_hz, maximum_frame_count));
+        // SAFETY: the host retains this writable result until the callback returns.
+        unsafe { output.write(u32::from(state.reload_unchanged)) };
+        state.reload_compare_result
+    })
 }
 
 unsafe extern "C" fn fake_prepare_reload(
@@ -1344,6 +1417,78 @@ fn staged_reload_logs_failed_link_channel_and_product_status() {
 }
 
 #[test]
+fn explicit_peer_binding_retains_its_radio_profile_even_when_disabled() {
+    let _guard = HostFixture::new();
+    reset();
+    let mut peer = FakeChannel::eligible("IAX2/advanced", 8_000);
+    peer.application = nul("RptAdvanced");
+    peer.data = nul("different-node-name");
+    register(&mut peer);
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    assert_eq!(start_with(fake_host(), missing_profile), URP_AST_OK);
+    // SAFETY: the fixture owns the peer until host stop detaches its hook.
+    assert_eq!(unsafe { bind_peer(peer.raw(), "radio-two") }, Ok(()));
+    assert!(!peer.audiohook.is_null());
+    // An existing datastore cannot be rebound while its hook is detached.
+    // SAFETY: this fixture exclusively owns the pinned hook and restores its live state.
+    unsafe {
+        let hook = (*peer.datastore).data.cast::<LinkHook>();
+        (*hook).attachment.store(LINK_DETACHED, Ordering::Release);
+        assert_eq!(
+            bind_peer(peer.raw(), "radio-two"),
+            Err(LinkHostError::Asterisk)
+        );
+        (*hook).attachment.store(LINK_ATTACHED, Ordering::Release);
+    }
+    let mut samples = [12_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut peer, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples, [12; 160]);
+    // A duplicate binding cannot redirect processing to another node's settings.
+    // SAFETY: the fixture still retains the same peer channel.
+    unsafe {
+        assert_eq!(bind_peer(peer.raw(), "radio-two"), Ok(()));
+        assert_eq!(
+            bind_peer(peer.raw(), "wrong-radio"),
+            Err(LinkHostError::Asterisk)
+        );
+    }
+    with_state(|state| state.prepare_result = URP_AST_OK);
+    reload_prepare(Some("wrong-default")).unwrap().finish(true);
+    invoke(&mut peer, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    assert_eq!(
+        with_state(|state| state.process_calls.clone()),
+        [(1, URP_AST_LINK_DIRECTION_READ, 8_000, 160)]
+    );
+    assert!(with_state(|state| state
+        .prepare_profiles
+        .iter()
+        .all(|(_, profile)| profile == "radio-two")));
+    assert_eq!(attachment_count(), 1);
+    // A disabled bound peer may also satisfy the legacy scanner's heuristic.
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    reload_prepare(None).unwrap().finish(true);
+    peer.application = nul("Rpt");
+    peer.data = nul("Remote Rx");
+    with_state(|state| state.prepare_result = URP_AST_OK);
+    assert_eq!(attach(&fake_host(), &mut peer, "wrong-default"), Ok(false));
+    assert_eq!(
+        with_state(|state| state.prepare_profiles.last().cloned()),
+        Some(("prepare", "radio-two".into()))
+    );
+    stop();
+    assert!(peer.datastore.is_null());
+    assert_eq!(with_state(|state| state.detach_calls), 1);
+    assert!(with_state(|state| state.graphs.is_empty()));
+    assert_eq!(
+        // SAFETY: the channel remains live, but the process host has stopped.
+        unsafe { bind_peer(peer.raw(), "radio-two") },
+        Err(LinkHostError::Asterisk)
+    );
+}
+
+#[test]
 fn ineligible_and_disabled_links_are_clean_no_ops() {
     let _guard = HostFixture::new();
     reset();
@@ -1378,6 +1523,105 @@ fn process_host_scans_periodically_and_stop_detaches_every_hook() {
         state.events.contains(&"profile_before_link_control")
             && !state.events.contains(&"profile_under_link_control")
     }));
+}
+
+#[test]
+fn unchanged_reload_keeps_the_live_graph_history_and_statistics() {
+    let _guard = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/unchanged", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    with_state(|state| state.reload_unchanged = true);
+    let before = observe(&host, &mut channel).unwrap().unwrap().observation;
+    let mut samples = [9_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    for commit in [true, false] {
+        let mut reload = LinkReload::default();
+        stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+        assert_eq!(with_state(|state| state.graphs.len()), 1);
+        reload.finish(commit);
+        let after = observe(&host, &mut channel).unwrap().unwrap().observation;
+        assert_eq!(after.processed_blocks, before.processed_blocks);
+        invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+        assert_eq!(samples[0], 1);
+    }
+    assert_eq!(
+        with_state(|state| state.reload_comparisons.clone()),
+        [("alpha".into(), 8_000, 960), ("alpha".into(), 8_000, 960)]
+    );
+}
+
+#[test]
+fn descriptor_comparison_failure_retains_graph_and_unlocks_before_returning() {
+    let _guard = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/compare-failure", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    with_state(|state| state.reload_compare_result = -17);
+    let hook = retain(&host, &mut channel).unwrap();
+    assert_eq!(
+        hook.prepare_reload(host.driver, 8_000),
+        Err(LinkHostError::Product(-17))
+    );
+    with_state(|state| {
+        assert_eq!(state.events.last(), Some(&"audiohook_unlock"));
+        assert_eq!(state.graphs.len(), 1);
+    });
+    let mut samples = [9_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(&mut channel, &mut frame, ffi::AST_AUDIOHOOK_DIRECTION_READ);
+    assert_eq!(samples[0], 1);
+    detach(&host, &mut channel);
+    drop(hook);
+    assert!(with_state(|state| state.graphs.is_empty()));
+}
+
+#[test]
+fn late_pending_reload_destroys_only_prepared_candidate() {
+    for (result, candidate_created) in [(URP_AST_OK, true), (URP_AST_NOT_READY, false)] {
+        let _guard = HostFixture::new();
+        reset();
+        let host = fake_host();
+        let mut channel = FakeChannel::eligible("IAX2/late-pending", 8_000);
+        assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+        let hook = retain(&host, &mut channel).unwrap();
+        PENDING_HOOK.with(|pending| pending.set(hook.raw.as_ptr()));
+        with_state(|state| {
+            state.prepare_result = result;
+            state.preparation_observer = Some(mark_reload_pending_during_prepare);
+        });
+        assert_eq!(
+            hook.prepare_reload(host.driver, 8_000),
+            Err(LinkHostError::Asterisk)
+        );
+        with_state(|state| {
+            assert_eq!(state.graphs.len(), 1);
+            assert_eq!(
+                state.events.last(),
+                Some(&if candidate_created {
+                    "graph_destroy"
+                } else {
+                    "audiohook_unlock"
+                })
+            );
+            state.preparation_observer = None;
+        });
+        // SAFETY: the retained hook remains live; restore the simulated flag before teardown.
+        unsafe {
+            hook.raw
+                .as_ref()
+                .reload_pending
+                .store(false, Ordering::Release)
+        };
+        PENDING_HOOK.with(|pending| pending.set(ptr::null_mut()));
+        detach(&host, &mut channel);
+        drop(hook);
+        assert!(with_state(|state| state.graphs.is_empty()));
+    }
 }
 
 #[test]

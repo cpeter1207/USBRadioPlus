@@ -69,6 +69,7 @@ pub(super) struct Channel {
     pub(super) delivery_stop: AtomicBool,
     pub(super) service_failed: AtomicBool,
     jitter_pending: AtomicBool,
+    jitter_applied: Mutex<Option<(usize, UrpAstJitterConfig)>>,
     pending_transmit: AtomicU64,
     direct: AtomicBool,
 }
@@ -840,6 +841,7 @@ unsafe extern "C" fn request(
         delivery_stop: AtomicBool::new(false),
         service_failed: AtomicBool::new(false),
         jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
         pending_transmit: AtomicU64::new(PendingTransmit::NONE.raw()),
         direct: AtomicBool::new(false),
     });
@@ -1275,6 +1277,45 @@ unsafe extern "C" fn setoption(
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
     }
+    if option == super::super::URP_AST_OPTION_LINK_ATTACH {
+        if data_length as usize != size_of::<super::super::UrpAstLinkAttach>() {
+            return -1;
+        }
+        // SAFETY: the option supplies exactly one readable/writable descriptor;
+        // byte-aligned callers do not have to align the pointer fields.
+        let binding = unsafe {
+            data.cast::<super::super::UrpAstLinkAttach>()
+                .read_unaligned()
+        };
+        if binding.struct_size as usize != size_of::<super::super::UrpAstLinkAttach>()
+            || binding.abi_version != 1
+            || binding.peer_channel.is_null()
+        {
+            return -1;
+        }
+        let profile = channel.name().to_owned();
+        // Asterisk calls setoption with the radio locked. The link scanner takes
+        // LINK_CONTROL before visiting channels, so never wait for it while holding
+        // this owner. Copy the profile first; do not use technology-private state
+        // after releasing the owner. The caller retains both channel references.
+        // SAFETY: release Asterisk's caller-held owner lock for graph preparation.
+        unsafe { unlock_owner(owner) };
+        // SAFETY: the option contract retains this peer until the call returns.
+        let attached = unsafe { super::link::bind_peer(binding.peer_channel.cast(), &profile) };
+        // SAFETY: restore the caller's lock on both success and preparation failure.
+        unsafe { relock_owner(owner) };
+        if attached.is_err() {
+            return -1;
+        }
+        // SAFETY: complete writable descriptor was validated above.
+        unsafe {
+            ptr::addr_of_mut!(
+                (*data.cast::<super::super::UrpAstLinkAttach>()).accepted_abi_version
+            )
+            .write_unaligned(1);
+        }
+        return 0;
+    }
     if option == super::super::URP_AST_OPTION_DIRECT_CALLBACKS {
         // SAFETY: Asterisk supplies data_length readable bytes for this option.
         let callbacks = unsafe { direct_option(channel.sample_rate_hz, data, data_length) };
@@ -1407,7 +1448,7 @@ pub(super) unsafe fn unlock_owner(owner: *mut ffi::ast_channel) {
 }
 
 unsafe fn relock_owner(owner: *mut ffi::ast_channel) {
-    // SAFETY: owner remains live throughout its Asterisk hangup callback.
+    // SAFETY: owner remains referenced throughout its synchronous Asterisk callback.
     let _ = unsafe {
         __ao2_lock(
             owner.cast(),
@@ -1436,9 +1477,18 @@ unsafe fn configure_jitter(channel: &Channel) -> Result<(), ()> {
     let owner = unsafe { lock_owner(channel) }.ok_or(())?;
     let result = match channel.control(ControlOperation::Jitter) {
         ControlResult::Jitter(status, resolved) if status == URP_AST_OK => {
-            let configuration = jitter_configuration(resolved);
-            // SAFETY: owner is locked and configuration is fully initialized.
-            unsafe { ffi::ast_jb_configure(owner, &raw const configuration) };
+            // This is Asterisk's control/delivery boundary, never a native
+            // callback. Do not reset an unchanged jitter buffer on tuning edits.
+            let mut applied = channel
+                .jitter_applied
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if applied.as_ref() != Some(&(owner as usize, resolved)) {
+                let configuration = jitter_configuration(resolved);
+                // SAFETY: owner is locked and configuration is fully initialized.
+                unsafe { ffi::ast_jb_configure(owner, &raw const configuration) };
+                *applied = Some((owner as usize, resolved));
+            }
             Ok(())
         }
         _ => Err(()),
@@ -1454,7 +1504,7 @@ pub(super) fn replay_transmit(channel: &Channel) -> i32 {
     let Some((keyed, ctcss_tenths_hz)) = pending.decode() else {
         return URP_AST_OK;
     };
-    let result = channel.control_status(ControlOperation::Transmit {
+    let result = channel.control_status_admitted(ControlOperation::Transmit {
         keyed,
         ctcss_tenths_hz,
     });
@@ -1470,7 +1520,9 @@ pub(super) fn replay_transmit(channel: &Channel) -> i32 {
 }
 
 pub(super) fn service(channel: &Channel) -> i32 {
-    channel.control_status(ControlOperation::Service)
+    // Membership is frozen during reload, but the existing station still owns
+    // PCM delivery. Ordinary tuning must not starve its ring while graphs build.
+    channel.control_status_admitted(ControlOperation::Service)
 }
 
 pub(super) fn reload_prepare(channel: &Channel) -> i32 {

@@ -3,6 +3,22 @@
 use std::process::Command;
 use std::{env, path::PathBuf};
 
+/// Preserve the signed status-code and unsigned option domains of the C ABI.
+#[derive(Debug)]
+struct ProductMacros;
+
+impl bindgen::callbacks::ParseCallbacks for ProductMacros {
+    fn int_macro(&self, name: &str, value: i64) -> Option<bindgen::callbacks::IntKind> {
+        Some(
+            if value < 0 || matches!(name, "URP_AST_OK" | "URP_AST_RELOAD_PENDING") {
+                bindgen::callbacks::IntKind::I32
+            } else {
+                bindgen::callbacks::IntKind::U32
+            },
+        )
+    }
+}
+
 /// Build test boundary symbols without adding them to production link inputs.
 fn build_test_ffi(include_dir: &str) {
     const SOURCE: &str = "src/host/tests/variadic.c";
@@ -41,6 +57,22 @@ fn build_test_ffi(include_dir: &str) {
 }
 
 fn main() {
+    let product = "../product/include/usbradioplus_product.h";
+    println!("cargo:rerun-if-changed={product}");
+    bindgen::Builder::default()
+        .header(product)
+        .allowlist_type("(UrpAst.*|DirectCallbacks)")
+        .allowlist_var("URP_AST_.*")
+        .parse_callbacks(Box::new(ProductMacros))
+        .derive_default(true)
+        .no_default("UrpAstDtmfResult")
+        .derive_partialeq(true)
+        .layout_tests(false)
+        .generate_comments(true)
+        .generate()
+        .expect("generate shared product ABI declarations")
+        .write_to_file(PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("product.rs"))
+        .expect("write shared product ABI declarations");
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-env-changed=USBRADIOPLUS_ASTERISK_INCLUDEDIR");
     println!("cargo:rerun-if-env-changed=USBRADIOPLUS_AGC_PLUGIN_PATH");

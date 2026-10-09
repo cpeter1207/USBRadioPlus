@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 /** Current loader-descriptor ABI. */
-#define URP_AST_LOADER_ABI_VERSION UINT32_C(4)
+#define URP_AST_LOADER_ABI_VERSION UINT32_C(5)
 /** Rust host loaded successfully. */
 #define URP_AST_LOADER_OK 0
 /** Configuration or provider validation declined module loading. */
@@ -23,7 +23,7 @@ extern "C" {
 /** Private initial-alpha Asterisk option ID; call ast_channel_setoption with block=0. */
 #define URP_AST_OPTION_DIRECT_CALLBACKS 0x52504144
 /** Exact direct callback descriptor ABI. */
-#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(2)
+#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(3)
 
 /**
  * @brief Borrowed direct RadioPlusAdvanced PCM endpoints, copied before call().
@@ -43,22 +43,45 @@ struct urp_ast_direct_callbacks {
 	int (*receive)(void *context, uint32_t receiver_keyed, float *samples,
 		       uint32_t frame_count); /**< Process qualified USB receive output. */
 	void *transmit_context;		      /**< Caller-owned TX context. */
-	int (*transmit)(void *context, float *samples, uint32_t frame_count,
-			uint32_t *keyed); /**< Fill program audio and write zero/one PTT. */
+	int (*transmit)(void *context, float *samples, uint32_t frame_count, uint32_t *keyed,
+			uint32_t *ctcss_enabled); /**< Fill audio and return PTT/CTCSS enable. */
 	uint32_t accepted_abi_version; /**< Initialize to zero; host acknowledges retained ABI. */
+};
+
+/** Peer binding option; call ast_channel_setoption on the reserved radio with block=0. */
+#define URP_AST_OPTION_LINK_ATTACH 0x52504C41
+/** Exact peer-binding payload ABI. */
+#define URP_AST_LINK_ATTACH_ABI_VERSION UINT32_C(1)
+
+/**
+ * @brief Attach the radio's configured link graph before reading peer audio.
+ *
+ * Call on the control plane before starting the peer reader. The caller retains
+ * the peer channel until this synchronous call returns; the peer datastore then
+ * owns the hook. Disabled processing retains the profile for later reloads.
+ * Repeating the same binding is harmless; rebinding to another profile fails.
+ * Require both a zero return and the accepted ABI: Asterisk can return success
+ * for options unknown to an older driver. No public loader ABI changes.
+ */
+struct urp_ast_link_attach {
+	uint32_t struct_size;	       /**< Exact sizeof(struct urp_ast_link_attach). */
+	uint32_t abi_version;	       /**< Exact URP_AST_LINK_ATTACH_ABI_VERSION. */
+	void *peer_channel;	       /**< Caller-retained Asterisk peer channel. */
+	uint32_t accepted_abi_version; /**< Initialize to zero; set on successful binding. */
 };
 
 /** @brief Process-lifetime providers selected by the Asterisk module. */
 struct urp_ast_provider_manifest {
-	uint32_t struct_size;	/**< Size of this structure in bytes. */
-	uint32_t abi_version;	/**< @c URP_AST_LOADER_ABI_VERSION. */
-	const void *ffmpeg;	/**< Released FFmpeg-graph descriptor. */
-	const void *rnnoise;	/**< Released RNNoise descriptor. */
-	const void *ring;	/**< Released rate-adjusting-ring descriptor. */
-	const void *radio;	/**< Released radio-core descriptor. */
-	const void *samplerate; /**< Released sample-rate-adapter descriptor. */
-	const void *audio;	/**< Released audio-adapter descriptor. */
-	const void *gpio;	/**< Released GPIO-adapter descriptor. */
+	uint32_t struct_size;			/**< Size of this structure in bytes. */
+	uint32_t abi_version;			/**< @c URP_AST_LOADER_ABI_VERSION. */
+	const void *ffmpeg;			/**< Released FFmpeg-graph descriptor. */
+	const void *rnnoise;			/**< Released RNNoise descriptor. */
+	const void *ring;			/**< Released rate-adjusting-ring descriptor. */
+	const void *radio;			/**< Released radio-core descriptor. */
+	const void *samplerate;			/**< Released sample-rate-adapter descriptor. */
+	const void *audio;			/**< Released audio-adapter descriptor. */
+	const void *gpio;			/**< Released GPIO-adapter descriptor. */
+	const struct UrpAstDescriptor *product; /**< Shared USBRadioPlus product descriptor. */
 };
 
 /** @brief Start the complete Rust-owned Asterisk host. */

@@ -3,7 +3,7 @@ use super::*;
 use crate::test_support::sample_rate_adapter;
 
 #[test]
-fn converter_uses_best_quality_fixed_ratio_and_maps_results() {
+fn converter_uses_fixed_rates_and_bounds_and_maps_results() {
     let mut converter = prepare_app_rpt_converter(&sample_rate_adapter()).unwrap();
     let input = [1.0_f32; 12];
     let mut output = [0.0; 2];
