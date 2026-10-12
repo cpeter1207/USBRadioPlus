@@ -41,6 +41,11 @@ is written as
 and so forth.  Omitted references select a profile having the same name as the
 channel.  Several channels may reference the same profile.
 .PP
+If an explicitly selected profile does not exist, a warning identifies the
+selector and effective fallback. The channel-named profile is used when present;
+otherwise the flat section supplies defaults. The invalid selector is retained
+until the operator corrects it.
+.PP
 Flat sections such as
 .BR [hardware] ,
 .BR [receive] ,

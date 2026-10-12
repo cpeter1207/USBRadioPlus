@@ -17,30 +17,112 @@ audio_source = flat\n";
 #[test]
 fn channels_and_profiles_resolve_without_losing_flat_defaults() {
     let document = ConfigDocument::new(CONFIG);
+    let mut warnings = Vec::new();
     assert_eq!(document.configured_channels(), ["usb"]);
-    assert_eq!(document.resolved_section("usb", "general").unwrap(), "usb");
     assert_eq!(
-        document.resolved_section("usb", "hardware").unwrap(),
+        document
+            .resolved_section("usb", "general", "radio.conf", &mut warnings)
+            .unwrap(),
+        "usb"
+    );
+    assert_eq!(
+        document
+            .resolved_section("usb", "hardware", "radio.conf", &mut warnings)
+            .unwrap(),
         "hardware site"
     );
     assert_eq!(
-        document.resolved_section("usb", "receive").unwrap(),
+        document
+            .resolved_section("usb", "receive", "radio.conf", &mut warnings)
+            .unwrap(),
         "receive"
     );
-    let hardware = document.resolved_values("usb", "hardware").unwrap();
+    let hardware = document
+        .resolved_values("usb", "hardware", "radio.conf", &mut warnings)
+        .unwrap();
     assert_eq!(hardware["hardware_input_gain_db"], "3.0");
     assert_eq!(hardware["hardware_output_a_gain_db"], "-1.0");
+    assert!(warnings.is_empty());
 }
 
 #[test]
-fn missing_selected_profile_falls_back_to_channel_scope_with_warning() {
-    let document = ConfigDocument::new("[usb]\nhardware_profile = absent\n[hardware usb]\n");
+fn implicit_profiles_use_channel_scope_or_flat_defaults_without_warnings() {
+    for (text, target, expected_values) in [
+        (
+            "[usb]\n[hardware]\ngain = 1\n[hardware usb]\ngain = 2\n",
+            "hardware usb",
+            BTreeMap::from([("gain".to_owned(), "2".to_owned())]),
+        ),
+        (
+            "[usb]\n[hardware]\ngain = 1\n",
+            "hardware",
+            BTreeMap::from([("gain".to_owned(), "1".to_owned())]),
+        ),
+        ("[usb]\n", "hardware", BTreeMap::new()),
+    ] {
+        let document = ConfigDocument::new(text);
+        let mut warnings = Vec::new();
+        assert_eq!(
+            document
+                .resolved_section("usb", "hardware", "radio.conf", &mut warnings)
+                .unwrap(),
+            target
+        );
+        assert_eq!(
+            document
+                .resolved_values("usb", "hardware", "radio.conf", &mut warnings)
+                .unwrap(),
+            expected_values
+        );
+        assert!(warnings.is_empty());
+    }
+}
+
+#[test]
+fn public_resolution_falls_back_from_a_missing_selected_profile() {
+    for (text, expected) in [
+        (
+            "[usb]\nhardware_profile = absent\n[hardware usb]\n",
+            "hardware usb",
+        ),
+        ("[usb]\nhardware_profile = absent\n[hardware]\n", "hardware"),
+        ("[usb]\nhardware_profile = absent\n", "hardware"),
+    ] {
+        let document = ConfigDocument::new(text);
+        let mut warnings = Vec::new();
+        assert_eq!(
+            document.resolved_section("usb", "hardware", "radio.conf", &mut warnings),
+            Ok(expected.to_owned())
+        );
+        assert_eq!(
+            warnings,
+            [crate::ResolutionWarning {
+                kind: crate::ResolutionWarningKind::InvalidValue,
+                source: "radio.conf".into(),
+                section: "usb".into(),
+                name: "hardware_profile".into(),
+                supplied_value: "absent".into(),
+                fallback: expected.into(),
+                reason: "missing profile".into(),
+            }]
+        );
+        assert_eq!(document.as_str(), text);
+    }
+}
+
+#[test]
+fn missing_selected_profile_values_merge_channel_scope_over_flat_defaults() {
+    let text = "[usb]\nhardware_profile = absent\n\
+         [hardware]\nhardware_input_gain_db = 1\nhardware_output_a_gain_db = -2\n\
+         [hardware usb]\nhardware_input_gain_db = 3\n";
+    let document = ConfigDocument::new(text);
     let mut warnings = Vec::new();
     assert_eq!(
-        document
-            .profile_section("usb", "hardware", "radio.conf", &mut warnings)
-            .unwrap(),
-        "hardware usb"
+        document.resolved_values("usb", "hardware", "radio.conf", &mut warnings),
+        Ok(BTreeMap::from([
+            ("hardware_input_gain_db".to_owned(), "3".to_owned()),
+            ("hardware_output_a_gain_db".to_owned(), "-2".to_owned()),
+        ]))
     );
     assert_eq!(
         warnings,
@@ -54,6 +136,7 @@ fn missing_selected_profile_falls_back_to_channel_scope_with_warning() {
             reason: "missing profile".into(),
         }]
     );
+    assert_eq!(document.as_str(), text);
 }
 
 #[test]
@@ -119,8 +202,9 @@ fn missing_flat_and_scoped_sections_can_be_created_but_channels_cannot() {
 }
 
 #[test]
-fn invalid_names_values_and_missing_profiles_are_contextual() {
+fn invalid_names_values_and_missing_channels_are_contextual() {
     let mut document = ConfigDocument::new(CONFIG);
+    let mut warnings = Vec::new();
     assert_eq!(
         document.set_value("", "gain", "0"),
         Err(ConfigError::InvalidSectionName)
@@ -134,14 +218,10 @@ fn invalid_names_values_and_missing_profiles_are_contextual() {
         Err(ConfigError::InvalidValue)
     );
     assert_eq!(
-        document.resolved_section("missing", "hardware"),
+        document.resolved_section("missing", "hardware", "radio.conf", &mut warnings),
         Err(ConfigError::MissingChannel("missing".to_owned()))
     );
-    let document = ConfigDocument::new("[usb]\nhardware_profile = absent\n");
-    assert_eq!(
-        document.resolved_section("usb", "hardware"),
-        Err(ConfigError::MissingProfile("hardware absent".to_owned()))
-    );
+    assert!(warnings.is_empty());
 }
 
 #[test]
@@ -162,26 +242,32 @@ fn windows_line_endings_are_retained_for_replaced_values() {
 #[test]
 fn all_document_boundaries_are_explicit_and_contextual() {
     let mut document = ConfigDocument::new("[usb]\nvalue = channel\n[hardware]\nvalue = flat\n");
+    let mut warnings = Vec::new();
     assert_eq!(
-        document.resolved_values("usb", "general").unwrap(),
+        document
+            .resolved_values("usb", "general", "radio.conf", &mut warnings)
+            .unwrap(),
         BTreeMap::from([("value".to_owned(), "channel".to_owned())])
     );
     assert_eq!(
-        document.resolved_values("usb", "hardware").unwrap(),
+        document
+            .resolved_values("usb", "hardware", "radio.conf", &mut warnings)
+            .unwrap(),
         BTreeMap::from([("value".to_owned(), "flat".to_owned())])
     );
     assert_eq!(
-        document.resolved_section("]", "hardware"),
+        document.resolved_section("]", "hardware", "radio.conf", &mut warnings),
         Err(ConfigError::InvalidSectionName)
     );
     assert_eq!(
-        document.resolved_section("usb", "]"),
+        document.resolved_section("usb", "]", "radio.conf", &mut warnings),
         Err(ConfigError::InvalidSectionName)
     );
     assert_eq!(
-        document.resolved_values("missing", "hardware"),
+        document.resolved_values("missing", "hardware", "radio.conf", &mut warnings),
         Err(ConfigError::MissingChannel("missing".to_owned()))
     );
+    assert!(warnings.is_empty());
 
     document.set_value("usb", "added", "one").unwrap();
     assert!(document.as_str().contains("added = one\n["));

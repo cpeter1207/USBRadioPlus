@@ -54,6 +54,13 @@ Automatic calibration changes live radio state; use the explicit
 action to write those results to the configuration and, when enabled, the
 interface EEPROM.
 .PP
+Menus and setting editors identify the configuration file and section that
+will receive edits. A missing selected profile produces a warning and uses
+the channel-named section, or the flat defaults when that section is absent.
+Edits to flat defaults affect every channel that inherits those settings.
+Calibration reports missing-profile fallbacks before changing live state.
+Device swaps are rejected if they would change another channel's device identity.
+.PP
 Menu buttons use consistent action names. Select opens the highlighted item,
 Apply commits an edit, Back returns one menu level, Exit leaves the utility,
 Cancel abandons an edit, and Close dismisses information without changing it.

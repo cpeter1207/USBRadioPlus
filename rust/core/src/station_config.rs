@@ -950,9 +950,9 @@ impl ResolvedStationConfig {
         channel: &str,
     ) -> Result<Self, StationConfigError> {
         let source = source.into();
-        document.resolved_section(channel, "general")?;
-        let mut config = StationConfig::default();
         let mut warnings = Vec::new();
+        document.resolved_section(channel, "general", &source, &mut warnings)?;
+        let mut config = StationConfig::default();
 
         for (kind, _) in PROFILE_KINDS {
             reject_ambiguous_selector(document, channel, kind)?;
@@ -977,7 +977,7 @@ impl ResolvedStationConfig {
 
         for (kind, apply) in PROFILE_KINDS {
             let resolved_section =
-                document.profile_section(channel, kind, &source, &mut warnings)?;
+                document.resolved_section(channel, kind, &source, &mut warnings)?;
             apply_overlay(
                 &mut config,
                 apply,

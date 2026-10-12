@@ -8,6 +8,9 @@
 ; Flat sections provide shared defaults. A scoped section such as
 ; [hardware usb] overrides [hardware] for a radio named usb. A radio may also
 ; select another scoped profile explicitly.
+; A missing selected profile warns and falls back to the channel-named profile,
+; then to flat defaults. The tuner shows the write destination; editing flat
+; defaults affects all channels that inherit those settings.
 ; For [receive], [transmit], [ctcss], and [dcs], an omitted option resolves to
 ; the concrete value shown below. A scoped explicit option overrides the flat
 ; section; inactive CTCSS and DCS settings do not enable either protocol.
