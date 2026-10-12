@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use usbradioplus_core::{
     CarrierSource, ChainRole, ConfigDocument, ConfigError, CtcssTone, DcsCode,
-    HardwareOutputAssignment, ReceiveAudioSource, ResolutionWarningKind, ResolvedProfile,
-    ResolvedStationConfig, SignalingMethod, StageOrder,
+    HardwareOutputAssignment, ReceiveAudioSource, ResolutionWarning, ResolutionWarningKind,
+    ResolvedProfile, ResolvedStationConfig, SignalingMethod, StageOrder,
 };
 
 const PCM_SCALE: f32 = 32_768.0;
@@ -334,6 +334,8 @@ impl MenuEntry {
 
 /// Durable configuration operations consumed by the menu state machine.
 pub trait ConfigurationStore {
+    /// Configuration file path used in operator-facing resolution diagnostics.
+    fn source_name(&self) -> String;
     /// Read the complete current configuration.
     ///
     /// # Errors
@@ -355,6 +357,10 @@ pub trait ConfigurationStore {
 }
 
 impl ConfigurationStore for ConfigRepository {
+    fn source_name(&self) -> String {
+        self.path().display().to_string()
+    }
+
     fn read_config(&self) -> Result<String, String> {
         self.read().map_err(|error| error.to_string())
     }
@@ -647,13 +653,14 @@ impl TunerApp {
         let channel = self.calibration_channel()?;
         let document = ConfigDocument::new(self.store.read_config()?);
         let mut effective = BTreeMap::<String, BTreeMap<String, String>>::new();
+        let mut warnings = Vec::new();
         effective.insert(channel.clone(), document.explicit_values(&channel));
         let catalog = crate::catalog::configuration_catalog();
         let mut sections = Vec::new();
         collect_sections(&catalog, &mut sections);
         for section in sections {
             let (target, values) = self
-                .section_values(&document, &section.section)
+                .section_values(&document, &section.section, &mut warnings)
                 .map_err(|error| error.to_string())?;
             let assignments = effective.entry(target).or_default();
             for setting in &section.settings {
@@ -667,6 +674,9 @@ impl TunerApp {
             }
         }
         let mut output = format!("Active channel: {channel}\n");
+        for warning in warning_messages(&warnings) {
+            output.push_str(&format!("Warning: {warning}\n"));
+        }
         for (section, assignments) in effective {
             output.push_str(&format!("\n[{section}]\n"));
             for (key, value) in assignments {
@@ -687,6 +697,12 @@ impl TunerApp {
         if station.config().receive.audio_source != ReceiveAudioSource::Flat {
             return Err("RX noise calibration requires receive_audio_source = flat".to_owned());
         }
+        let hardware = self.calibration_target(&document, "hardware")?;
+        let receive = if station.config().receive.cos_assignment == CarrierSource::Dsp {
+            Some(self.calibration_target(&document, "receive")?)
+        } else {
+            None
+        };
 
         let mut level = 2_u32;
         let mut best = None;
@@ -745,9 +761,6 @@ impl TunerApp {
         }
 
         let mut updated = document;
-        let hardware = updated
-            .resolved_section(&channel, "hardware")
-            .map_err(|error| error.to_string())?;
         updated
             .set_value(
                 &hardware,
@@ -756,13 +769,10 @@ impl TunerApp {
             )
             .map_err(|error| error.to_string())?;
         let mut squelch = None;
-        if station.config().receive.cos_assignment == CarrierSource::Dsp {
+        if let Some(receive) = receive {
             let normalized = (((32_767_i64 - i64::from(last.receive_rssi_peak)) * 999) / 32_767)
                 .clamp(0, 999) as u16;
             let threshold = normalized.saturating_add(150).min(999);
-            let receive = updated
-                .resolved_section(&channel, "receive")
-                .map_err(|error| error.to_string())?;
             updated
                 .set_value(&receive, "squelch_level", &threshold.to_string())
                 .map_err(|error| error.to_string())?;
@@ -826,12 +836,11 @@ impl TunerApp {
     }
 
     fn calibrate_receive_gain(&mut self, calibration: GainCalibration) -> Result<String, String> {
-        let channel = self.calibration_channel()?;
+        self.calibration_channel()?;
         let original = self.store.read_config()?;
         let mut current = original.clone();
-        let target_section = ConfigDocument::new(original.clone())
-            .resolved_section(&channel, calibration.section)
-            .map_err(|error| error.to_string())?;
+        let target_section =
+            self.calibration_target(&ConfigDocument::new(&original), calibration.section)?;
         let mut multiplier = calibration.initial;
         let mut measured = 0.0_f32;
         let mut attempts = 0_u32;
@@ -1014,9 +1023,26 @@ impl TunerApp {
             return Ok(());
         };
         let original = document.as_str().to_owned();
-        if let Err(error) = swap_hardware_identity(&mut document, &active, &selected) {
+        let mut warnings = Vec::new();
+        if let Err(error) = swap_hardware_identity(
+            &mut document,
+            &active,
+            &selected,
+            &self.store.source_name(),
+            &mut warnings,
+        ) {
             self.ui.message("USB-device swap failed", error)?;
             return Ok(());
+        }
+        for channel in [&active, &selected] {
+            warnings.clear();
+            let target = document.resolved_section(
+                channel,
+                "hardware",
+                &self.store.source_name(),
+                &mut warnings,
+            )?;
+            self.show_profile_fallback("hardware", &target, &warnings)?;
         }
         for channel in [&active, &selected] {
             if let Err(error) =
@@ -1345,7 +1371,9 @@ impl TunerApp {
         let mut cursor = cursor;
         loop {
             let document = self.document()?;
-            let (_target, values) = self.section_values(&document, &section.section)?;
+            let mut warnings = Vec::new();
+            let (target, values) =
+                self.section_values(&document, &section.section, &mut warnings)?;
             let visible = visible_settings(section, &values);
             let items = visible
                 .settings
@@ -1361,7 +1389,17 @@ impl TunerApp {
                     )
                 })
                 .collect();
-            let choice = self.ui.navigation(&section.title, &cursor, items)?;
+            let prompt = format!(
+                "{}\n{}",
+                section.title,
+                profile_destination(
+                    &self.store.source_name(),
+                    &section.section,
+                    &target,
+                    &warnings
+                )
+            );
+            let choice = self.ui.navigation(&prompt, &cursor, items)?;
             let Some(choice) = choice else {
                 self.section_cursors.insert(cursor_key, cursor);
                 return Ok(());
@@ -1385,11 +1423,23 @@ impl TunerApp {
     ) -> Result<(), MenuError> {
         let original = self.store.read_config().map_err(MenuError::Storage)?;
         let mut document = ConfigDocument::new(&original);
-        let (target, values) = self.section_values(&document, &section.section)?;
+        let mut warnings = Vec::new();
+        let (target, values) = self.section_values(&document, &section.section, &mut warnings)?;
         let current = values
             .get(&setting.key)
             .map_or(setting.default_value.as_str(), String::as_str);
-        let Some(value) = self.prompt_setting(setting, current)? else {
+        let mut editor = setting.clone();
+        editor.label = format!(
+            "{}\n{}",
+            setting.label,
+            profile_destination(
+                &self.store.source_name(),
+                &section.section,
+                &target,
+                &warnings
+            )
+        );
+        let Some(value) = self.prompt_setting(&editor, current)? else {
             return Ok(());
         };
         if matches!(setting.kind, SettingKind::OptionalEnumeration(_)) && value == INHERIT_VALUE {
@@ -1629,12 +1679,14 @@ impl TunerApp {
         &self,
         document: &ConfigDocument,
         section: &str,
+        warnings: &mut Vec<ResolutionWarning>,
     ) -> Result<(String, BTreeMap<String, String>), MenuError> {
         let Some(channel) = self.selected_channel.as_deref() else {
             return Ok((section.to_owned(), document.explicit_values(section)));
         };
-        let target = document.resolved_section(channel, section)?;
-        let mut values = document.resolved_values(channel, section)?;
+        let source = self.store.source_name();
+        let target = document.resolved_section(channel, section, &source, warnings)?;
+        let mut values = document.resolved_values(channel, section, &source, warnings)?;
         if let Some(role) = processing_role(section) {
             if let Ok(resolved) =
                 ResolvedProfile::from_document(document, "configuration", channel, role)
@@ -1648,18 +1700,72 @@ impl TunerApp {
         }
         Ok((target, values))
     }
+
+    /// Report a missing selector before calibration can change live state or shared defaults.
+    fn calibration_target(
+        &mut self,
+        document: &ConfigDocument,
+        section: &str,
+    ) -> Result<String, String> {
+        let channel = self.calibration_channel()?;
+        let mut warnings = Vec::new();
+        let target = document
+            .resolved_section(&channel, section, &self.store.source_name(), &mut warnings)
+            .map_err(|error| error.to_string())?;
+        self.show_profile_fallback(section, &target, &warnings)
+            .map_err(|error| error.to_string())?;
+        Ok(target)
+    }
+
+    fn show_profile_fallback(
+        &mut self,
+        section: &str,
+        target: &str,
+        warnings: &[ResolutionWarning],
+    ) -> Result<(), MenuError> {
+        if !warnings.is_empty() {
+            self.ui.message(
+                "Configuration fallback",
+                profile_destination(&self.store.source_name(), section, target, warnings),
+            )?;
+        }
+        Ok(())
+    }
+}
+
+/// Repeated catalog sections must not repeat the same diagnostic in a displayed report.
+fn warning_messages(warnings: &[ResolutionWarning]) -> std::collections::BTreeSet<String> {
+    warnings.iter().map(ToString::to_string).collect()
+}
+
+fn profile_destination(
+    source: &str,
+    section: &str,
+    target: &str,
+    warnings: &[ResolutionWarning],
+) -> String {
+    let mut context = format!("Writes to {source} [{target}].");
+    if section.eq_ignore_ascii_case(target) {
+        context.push_str(" These are shared defaults; edits affect every channel inheriting them.");
+    }
+    for warning in warning_messages(warnings) {
+        context.push_str(&format!("\nWarning: {warning}"));
+    }
+    context
 }
 
 fn swap_hardware_identity(
     document: &mut ConfigDocument,
     first_channel: &str,
     second_channel: &str,
+    source: &str,
+    warnings: &mut Vec<ResolutionWarning>,
 ) -> Result<(), String> {
     let first_target = document
-        .resolved_section(first_channel, "hardware")
+        .resolved_section(first_channel, "hardware", source, warnings)
         .map_err(|error| error.to_string())?;
     let second_target = document
-        .resolved_section(second_channel, "hardware")
+        .resolved_section(second_channel, "hardware", source, warnings)
         .map_err(|error| error.to_string())?;
     if first_target.eq_ignore_ascii_case(&second_target) {
         return Err(format!(
@@ -1671,10 +1777,18 @@ fn swap_hardware_identity(
         (second_channel, &second_target),
     ] {
         let shared = document.configured_channels().into_iter().any(|candidate| {
-            !candidate.eq_ignore_ascii_case(channel)
+            !candidate.eq_ignore_ascii_case(first_channel)
+                && !candidate.eq_ignore_ascii_case(second_channel)
                 && document
-                    .resolved_section(&candidate, "hardware")
-                    .is_ok_and(|resolved| resolved.eq_ignore_ascii_case(target))
+                    .resolved_section(&candidate, "hardware", source, warnings)
+                    .is_ok_and(|resolved| {
+                        // Scoped profiles can still inherit identity from flat defaults.
+                        resolved.eq_ignore_ascii_case(target)
+                            || (target.eq_ignore_ascii_case("hardware")
+                                && HARDWARE_IDENTITY_DEFAULTS.iter().any(|(key, _)| {
+                                    !document.explicit_values(&resolved).contains_key(*key)
+                                }))
+                    })
         });
         if shared {
             return Err(format!(
@@ -1683,10 +1797,10 @@ fn swap_hardware_identity(
         }
     }
     let first = document
-        .resolved_values(first_channel, "hardware")
+        .resolved_values(first_channel, "hardware", source, warnings)
         .map_err(|error| error.to_string())?;
     let second = document
-        .resolved_values(second_channel, "hardware")
+        .resolved_values(second_channel, "hardware", source, warnings)
         .map_err(|error| error.to_string())?;
     for (key, default_value) in HARDWARE_IDENTITY_DEFAULTS {
         document
@@ -2143,6 +2257,10 @@ mod tests {
     }
 
     impl ConfigurationStore for SharedStore {
+        fn source_name(&self) -> String {
+            "test-radio.conf".to_owned()
+        }
+
         fn read_config(&self) -> Result<String, String> {
             if self.0.borrow().fail_read {
                 return Err("read failed".to_owned());
@@ -2462,7 +2580,7 @@ mod tests {
                     prompt,
                     default_item,
                     ..
-                } if prompt == "CM119 hardware" => Some(default_item.as_str()),
+                } if prompt.starts_with("CM119 hardware\n") => Some(default_item.as_str()),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -3067,7 +3185,9 @@ mod tests {
             Some("one".to_owned()),
         );
         let document = app.document().unwrap();
-        let (_, values) = app.section_values(&document, "hardware").unwrap();
+        let (_, values) = app
+            .section_values(&document, "hardware", &mut Vec::new())
+            .unwrap();
         assert_eq!(
             values.get("hardware_input_gain_db").map(String::as_str),
             Some("0")
@@ -3912,6 +4032,307 @@ mod tests {
     }
 
     #[test]
+    fn missing_profile_calibration_reports_its_write_destination() {
+        for kind in ["local", "ctcss"] {
+            let backend = ScriptedBackend::new([DialogResponse::Accepted(String::new())]);
+            let store = SharedStore::with_text(&format!("[one]\n{kind}_profile = absent\n"));
+            let channels = SharedChannels::default();
+            channels.0.borrow_mut().radio_status = (0..6)
+                .map(|_| {
+                    Ok(RadioStatus {
+                        receive_output_peak: RX_VOICE_TARGET,
+                        receive_ctcss_decoder_peak: RX_CTCSS_TARGET,
+                        ..RadioStatus::default()
+                    })
+                })
+                .collect();
+            let mut app = TunerApp::new(
+                AccessibleUi::new(backend.clone()),
+                store.clone(),
+                SharedApplier::default(),
+                channels,
+                Some("one".to_owned()),
+            );
+            let report = if kind == "local" {
+                app.calibrate_receive_voice()
+            } else {
+                app.calibrate_receive_ctcss()
+            };
+            assert!(report.unwrap().contains("calibration complete"));
+            assert!(
+                matches!(&backend.0.borrow().requests[0], DialogRequest::Message { body, .. }
+                if body.contains(&format!("[{kind}]")) && body.contains("shared defaults")
+                && body.contains("missing profile") && body.contains("absent"))
+            );
+            let updated = ConfigDocument::new(store.0.borrow().text.clone());
+            assert_eq!(
+                updated.explicit_values("one")[&format!("{kind}_profile")],
+                "absent"
+            );
+            let key = if kind == "local" {
+                "input_gain_db"
+            } else {
+                "receive_decoder_gain_db"
+            };
+            assert!(updated.explicit_values(kind).contains_key(key));
+        }
+    }
+
+    #[test]
+    fn missing_profile_noise_calibration_reports_both_destinations() {
+        let backend = ScriptedBackend::new([
+            DialogResponse::Accepted(String::new()),
+            DialogResponse::Accepted(String::new()),
+        ]);
+        let store =
+            SharedStore::with_text("[one]\nhardware_profile = absent\nreceive_profile = absent\n");
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().radio_status = (0..8)
+            .map(|_| {
+                Ok(RadioStatus {
+                    receive_input_peak: RX_NOISE_TARGET,
+                    receive_rssi_peak: 20_000,
+                    receive_rssi_updated: true,
+                    ..RadioStatus::default()
+                })
+            })
+            .collect();
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            SharedApplier::default(),
+            channels,
+            Some("one".to_owned()),
+        );
+        app.calibrate_receive_noise().unwrap();
+        let requests = &backend.0.borrow().requests;
+        for (index, kind) in ["hardware", "receive"].iter().enumerate() {
+            assert!(
+                matches!(&requests[index], DialogRequest::Message { body, .. }
+                if body.contains(&format!("[{kind}]")) && body.contains("shared defaults")
+                && body.contains("missing profile"))
+            );
+        }
+        let updated = ConfigDocument::new(store.0.borrow().text.clone());
+        assert!(
+            updated
+                .explicit_values("hardware")
+                .contains_key("hardware_input_gain_db")
+        );
+        assert_eq!(updated.explicit_values("receive")["squelch_level"], "539");
+    }
+
+    #[test]
+    fn missing_profile_active_configuration_reports_warning() {
+        let channels = SharedChannels::default();
+        channels
+            .0
+            .borrow_mut()
+            .action_results
+            .push_back(Ok("running=1".to_owned()));
+        let mut app = TunerApp::new(
+            AccessibleUi::new(ScriptedBackend::default()),
+            SharedStore::with_text("[one]\nhardware_profile = absent\n"),
+            SharedApplier::default(),
+            channels,
+            Some("one".to_owned()),
+        );
+        let report = app.complete_active_configuration().unwrap();
+        assert!(report.contains("hardware_profile"));
+        assert!(report.contains("missing profile; using hardware"));
+        assert!(report.contains("[hardware]"));
+    }
+
+    #[test]
+    fn missing_profile_browse_shows_warning_and_shared_destination() {
+        let backend = ScriptedBackend::new([DialogResponse::Cancelled]);
+        let store = SharedStore::with_text("[one]\nhardware_profile = absent\n[hardware]\n");
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            store,
+            SharedApplier::default(),
+            SharedChannels::default(),
+            Some("one".to_owned()),
+        );
+        app.browse_section(&section()).unwrap();
+        assert!(
+            matches!(&backend.0.borrow().requests[0], DialogRequest::Menu { prompt, .. }
+            if prompt.contains("[hardware]") && prompt.contains("shared defaults")
+            && prompt.contains("hardware_profile") && prompt.contains("absent")
+            && prompt.contains("missing profile"))
+        );
+    }
+
+    #[test]
+    fn missing_profile_edit_shows_and_writes_effective_destination() {
+        for scoped in [false, true] {
+            let mut text =
+                "[one]\nhardware_profile = absent\n[hardware]\nhardware_input_gain_db = -2\n"
+                    .to_owned();
+            if scoped {
+                text.push_str("[hardware one]\nhardware_input_gain_db = -6\n");
+            }
+            let target = if scoped { "hardware one" } else { "hardware" };
+            let backend = ScriptedBackend::new([
+                DialogResponse::Accepted("-1".to_owned()),
+                DialogResponse::Accepted(String::new()),
+            ]);
+            let store = SharedStore::with_text(&text);
+            let setting = SettingSpec {
+                key: "hardware_input_gain_db".to_owned(),
+                label: "Hardware input gain".to_owned(),
+                default_value: "0".to_owned(),
+                kind: SettingKind::Gain(FloatEditor {
+                    minimum: Some(-30.0),
+                    maximum: Some(30.0),
+                    exclusive_minimum: false,
+                    units: "dB".to_owned(),
+                }),
+                apply_mode: ApplyMode::Reload,
+            };
+            let mut app = TunerApp::new(
+                AccessibleUi::new(backend.clone()),
+                store.clone(),
+                SharedApplier::default(),
+                SharedChannels::default(),
+                Some("one".to_owned()),
+            );
+            app.edit_setting(&section(), &setting).unwrap();
+            let updated = ConfigDocument::new(store.0.borrow().text.clone());
+            assert_eq!(
+                updated.explicit_values(target)["hardware_input_gain_db"],
+                "-1"
+            );
+            assert_eq!(updated.explicit_values("one")["hardware_profile"], "absent");
+            if scoped {
+                assert_eq!(
+                    updated.explicit_values("hardware")["hardware_input_gain_db"],
+                    "-2"
+                );
+            }
+            assert!(
+                matches!(&backend.0.borrow().requests[0], DialogRequest::Input { prompt, initial }
+                if prompt.contains(&format!("[{target}]")) && prompt.contains("hardware_profile")
+                && prompt.contains("absent") && prompt.contains("test-radio.conf")
+                && initial.trim() == if scoped { "-6" } else { "-2" })
+            );
+        }
+    }
+
+    #[test]
+    fn missing_profile_swap_warning_names_only_the_fallback_destination() {
+        let backend = ScriptedBackend::new(
+            std::iter::once(DialogResponse::Accepted("two".to_owned()))
+                .chain((0..5).map(|_| DialogResponse::Accepted(String::new()))),
+        );
+        let store = SharedStore::with_text(
+            "[one]\n[hardware one]\nhardware_device_identifier = first\n\
+            [two]\nhardware_profile = absent\n[hardware]\nhardware_device_identifier = second\n",
+        );
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            SharedApplier::default(),
+            SharedChannels::default(),
+            Some("one".to_owned()),
+        );
+        app.swap_usb_device().unwrap();
+        let state = backend.0.borrow();
+        let warnings: Vec<_> = state
+            .requests
+            .iter()
+            .filter_map(|request| match request {
+                DialogRequest::Message { title, body } if title == "Configuration fallback" => {
+                    Some(body)
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("Writes to test-radio.conf [hardware]."));
+        assert!(warnings[0].contains("[two]: hardware_profile"));
+        assert!(!warnings[0].contains("[hardware one]"));
+        let updated = ConfigDocument::new(store.0.borrow().text.clone());
+        assert_eq!(
+            updated.explicit_values("hardware")["hardware_device_identifier"],
+            "first"
+        );
+        assert_eq!(
+            updated.explicit_values("hardware one")["hardware_device_identifier"],
+            "second"
+        );
+    }
+
+    #[test]
+    fn missing_profile_swap_leaves_fully_overridden_identity_unchanged() {
+        let mut document = ConfigDocument::new(
+            "[one]\nhardware_profile = absent\n[two]\n[hardware two]\n\
+             hardware_device_identifier = second\n[three]\n[hardware three]\n\
+             hardware_device_identifier = third\nhardware_serial = C\n\
+             hardware_gpio_usb_port_path = 3-1\n\
+             [hardware]\nhardware_device_identifier = first\n",
+        );
+        let third = document.explicit_values("hardware three");
+        swap_hardware_identity(
+            &mut document,
+            "one",
+            "two",
+            "test-radio.conf",
+            &mut Vec::new(),
+        )
+        .unwrap();
+        assert_eq!(document.explicit_values("hardware three"), third);
+        assert_eq!(
+            document.explicit_values("hardware")["hardware_device_identifier"],
+            "second"
+        );
+    }
+
+    #[test]
+    fn missing_profile_swap_preserves_identity_inherited_by_scoped_channels() {
+        let mut document = ConfigDocument::new(
+            "[one]\nhardware_profile = absent\n[two]\n[hardware two]\n\
+             hardware_device_identifier = second\n[three]\n[hardware three]\n\
+             hardware_input_gain_db = 2\n[hardware]\nhardware_device_identifier = first\n",
+        );
+        let original = document.clone();
+        assert!(
+            swap_hardware_identity(
+                &mut document,
+                "one",
+                "two",
+                "test-radio.conf",
+                &mut Vec::new()
+            )
+            .unwrap_err()
+            .contains("shared by another channel")
+        );
+        assert_eq!(document, original);
+    }
+
+    #[test]
+    fn missing_profile_swap_rejects_shared_flat_fallback_without_writes() {
+        let mut document = ConfigDocument::new(
+            "[one]\n[two]\n[hardware two]\n\
+            hardware_device_identifier = second\n[three]\nhardware_profile = absent\n\
+            [hardware]\nhardware_device_identifier = first\n",
+        );
+        let original = document.clone();
+        assert!(
+            swap_hardware_identity(
+                &mut document,
+                "one",
+                "two",
+                "test-radio.conf",
+                &mut Vec::new()
+            )
+            .unwrap_err()
+            .contains("shared by another channel")
+        );
+        assert_eq!(document, original);
+    }
+
+    #[test]
     fn usb_swap_is_a_validated_config_edit_and_echo_uses_live_control() {
         let backend = ScriptedBackend::new([
             DialogResponse::Accepted("two".to_owned()),
@@ -3945,8 +4366,12 @@ mod tests {
         assert_eq!(state.selections, ["one"]);
         assert_eq!(state.echo_changes, [true]);
         let document = ConfigDocument::new(store.0.borrow().text.clone());
-        let first = document.resolved_values("one", "hardware").unwrap();
-        let second = document.resolved_values("two", "hardware").unwrap();
+        let first = document
+            .resolved_values("one", "hardware", "test-radio.conf", &mut Vec::new())
+            .unwrap();
+        let second = document
+            .resolved_values("two", "hardware", "test-radio.conf", &mut Vec::new())
+            .unwrap();
         assert_eq!(first["hardware_device_identifier"], "second");
         assert_eq!(first["hardware_serial"], "B");
         assert_eq!(first["hardware_gpio_usb_port_path"], "2-1");
@@ -4041,9 +4466,15 @@ mod tests {
              [hardware south]\nhardware_device_identifier = second\n",
         );
         assert!(
-            swap_hardware_identity(&mut document, "one", "two")
-                .unwrap_err()
-                .contains("shared by another channel")
+            swap_hardware_identity(
+                &mut document,
+                "one",
+                "two",
+                "test-radio.conf",
+                &mut Vec::new()
+            )
+            .unwrap_err()
+            .contains("shared by another channel")
         );
     }
 
@@ -4075,6 +4506,10 @@ mod tests {
         let path = root.join("radio.conf");
         std::fs::write(&path, "old\n").unwrap();
         let repository = ConfigRepository::new(&path, std::iter::empty::<std::path::PathBuf>());
+        assert_eq!(
+            ConfigurationStore::source_name(&repository),
+            path.display().to_string()
+        );
         assert_eq!(
             ConfigurationStore::read_config(&repository).unwrap(),
             "old\n"
@@ -4227,7 +4662,9 @@ mod tests {
         );
         app.browse(&[section()]).unwrap();
         let document = app.document().unwrap();
-        let (target, values) = app.section_values(&document, "hardware").unwrap();
+        let (target, values) = app
+            .section_values(&document, "hardware", &mut Vec::new())
+            .unwrap();
         assert_eq!(target, "hardware");
         assert_eq!(values["enabled"], "no");
         assert!(
@@ -4510,11 +4947,17 @@ mod tests {
         let ambiguous = ConfigDocument::new(
             "[one]\nlocal_profile = one\nLOCAL_PROFILE = two\n[local one]\n[local two]\n",
         );
-        assert!(app.section_values(&ambiguous, "local").is_ok());
+        assert!(
+            app.section_values(&ambiguous, "local", &mut Vec::new())
+                .is_ok()
+        );
         let ambiguous = ConfigDocument::new(
             "[one]\nhardware_profile = one\nHARDWARE_PROFILE = two\n[hardware one]\n[hardware two]\n",
         );
-        assert!(app.section_values(&ambiguous, "hardware").is_ok());
+        assert!(
+            app.section_values(&ambiguous, "hardware", &mut Vec::new())
+                .is_ok()
+        );
         assert!(
             app.validate_candidate(&ambiguous, "hardware", "hardware_input_gain_db")
                 .is_err()

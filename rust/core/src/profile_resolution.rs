@@ -268,7 +268,7 @@ impl ResolvedProfile {
         let kind = role_section(role);
         reject_ambiguous_selector(document, channel, kind)?;
         let mut warnings = Vec::new();
-        let resolved_section = document.profile_section(channel, kind, &source, &mut warnings)?;
+        let resolved_section = document.resolved_section(channel, kind, &source, &mut warnings)?;
         let flat = RawOverlay::flat(role, source.clone(), document.explicit_values(kind));
         let scoped = (!resolved_section.eq_ignore_ascii_case(kind)).then(|| {
             RawOverlay::scoped(

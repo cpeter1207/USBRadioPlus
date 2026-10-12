@@ -131,8 +131,8 @@ impl ConfigDocument {
         values
     }
 
-    /// Resolve one channel's profile section or its flat fallback.
-    pub fn resolved_section(&self, channel: &str, kind: &str) -> Result<String, ConfigError> {
+    /// Resolve one channel's selected profile section or its flat fallback.
+    fn selected_section(&self, channel: &str, kind: &str) -> Result<String, ConfigError> {
         validate_section_name(channel)?;
         validate_section_name(kind)?;
         if !self
@@ -161,15 +161,19 @@ impl ConfigDocument {
         }
     }
 
-    /// Resolve a selected profile, warning before normal scoped/flat inheritance.
-    pub(crate) fn profile_section(
+    /// Resolve a channel's profile section, appending any fallback warning.
+    ///
+    /// A missing selected profile falls back to the channel-named scoped section,
+    /// then to the flat section. Warnings retain the supplied diagnostic source;
+    /// the document and its profile selectors are not changed.
+    pub fn resolved_section(
         &self,
         channel: &str,
         kind: &str,
         source: &str,
         warnings: &mut Vec<crate::ResolutionWarning>,
     ) -> Result<String, ConfigError> {
-        match self.resolved_section(channel, kind) {
+        match self.selected_section(channel, kind) {
             Ok(section) => Ok(section),
             Err(crate::ConfigError::MissingProfile(_)) => {
                 let selector = format!("{kind}_profile");
@@ -199,13 +203,18 @@ impl ConfigDocument {
         }
     }
 
-    /// Merge flat defaults with one channel's selected profile values.
+    /// Merge flat defaults with one channel's resolved profile values.
+    ///
+    /// Missing selected profiles use the same fallback and warning behavior as
+    /// [`Self::resolved_section`]. No assignments are added to the document.
     pub fn resolved_values(
         &self,
         channel: &str,
         kind: &str,
+        source: &str,
+        warnings: &mut Vec<crate::ResolutionWarning>,
     ) -> Result<BTreeMap<String, String>, ConfigError> {
-        let resolved = self.resolved_section(channel, kind)?;
+        let resolved = self.resolved_section(channel, kind, source, warnings)?;
         if resolved.eq_ignore_ascii_case(channel) {
             return Ok(self.explicit_values(channel));
         }

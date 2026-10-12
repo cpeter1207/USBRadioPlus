@@ -90,6 +90,11 @@ pub struct ConfigRepository {
 }
 
 impl ConfigRepository {
+    /// Configuration file path for diagnostics and edit destinations.
+    pub fn path(&self) -> &Path {
+        &self.config_path
+    }
+
     /// Construct a repository with ordered, uncompressed sample candidates.
     pub fn new<I, P>(config_path: impl Into<PathBuf>, sample_candidates: I) -> Self
     where
