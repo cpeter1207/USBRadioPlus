@@ -48,7 +48,7 @@ jobs:
   refresh-after-shared-release:
     if: >-
       github.event_name == 'repository_dispatch' &&
-      contains(fromJSON('["cpeter1207/rate_adjusting_pcm_ring","cpeter1207/rptadv-samplerate-adapter"]'),
+      contains(fromJSON('["cpeter1207/rate_adjusting_pcm_ring","cpeter1207/rptadv-samplerate-adapter","cpeter1207/librptadvsquelch","cpeter1207/librptadvctcss","cpeter1207/librptadvdcs","cpeter1207/librptadvsignaling","cpeter1207/librptadvtone","cpeter1207/librptadvmorse","cpeter1207/librptadvdtmf","cpeter1207/librptadvtemplate","cpeter1207/librptadvschedule"]'),
         github.event.client_payload.repository)
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/packages.yml@main
     with:
@@ -62,5 +62,7 @@ jobs:
         ${{ github.event.client_payload.repository == 'cpeter1207/rptadv-samplerate-adapter' &&
         github.event.client_payload.tag ||
         github.event.client_payload.samplerate_adapter_tag || 'v0.2.0-alpha.1' }}
+      released_repository: ${{ github.event.client_payload.repository != 'cpeter1207/rate_adjusting_pcm_ring' && github.event.client_payload.repository != 'cpeter1207/rptadv-samplerate-adapter' && github.event.client_payload.repository || '' }}
+      released_tag: ${{ github.event.client_payload.repository != 'cpeter1207/rate_adjusting_pcm_ring' && github.event.client_payload.repository != 'cpeter1207/rptadv-samplerate-adapter' && github.event.client_payload.tag || '' }}
     secrets:
       APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
