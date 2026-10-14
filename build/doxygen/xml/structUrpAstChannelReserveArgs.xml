@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstChannelReserveArgs" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstChannelReserveArgs</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1a0b61d429303ca738fda0923031f526dd" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelReserveArgs::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstChannelReserveArgs::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="469" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="469" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1a039f0688dec4844c11ea7ca5fee87791" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelReserveArgs::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstChannelReserveArgs::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="473" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="473" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1ae0ecdb8cff32c3e281ede01f78864ece" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpAstChannelReserveArgs::channel_name</definition>
+        <argsstring></argsstring>
+        <name>channel_name</name>
+        <qualifiedname>UrpAstChannelReserveArgs::channel_name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 configured channel name; not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="477" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="477" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1ad8ab19eb0508606230c4d70e436d8c37" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelReserveArgs::channel_name_length</definition>
+        <argsstring></argsstring>
+        <name>channel_name_length</name>
+        <qualifiedname>UrpAstChannelReserveArgs::channel_name_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Byte length of <computeroutput>channel_name</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="481" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="481" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1a54deddc4f3e2bbadc682f9d2a0073c59" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelReserveArgs::transport</definition>
+        <argsstring></argsstring>
+        <name>transport</name>
+        <qualifiedname>UrpAstChannelReserveArgs::transport</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One of <computeroutput>URP_AST_TRANSPORT_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="485" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="485" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelReserveArgs_1aa211020921f06818b2c1cffcf0b87fab" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpAstChannelReserveArgs::channel_context</definition>
+        <argsstring></argsstring>
+        <name>channel_context</name>
+        <qualifiedname>UrpAstChannelReserveArgs::channel_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Opaque Asterisk channel context returned to queue operations. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="489" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="489" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Arguments for reserving one configured channel. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="465" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="465" bodyend="490"/>
+    <listofallmembers>
+      <member refid="structUrpAstChannelReserveArgs_1a039f0688dec4844c11ea7ca5fee87791" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>abi_version</name></member>
+      <member refid="structUrpAstChannelReserveArgs_1aa211020921f06818b2c1cffcf0b87fab" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>channel_context</name></member>
+      <member refid="structUrpAstChannelReserveArgs_1ae0ecdb8cff32c3e281ede01f78864ece" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>channel_name</name></member>
+      <member refid="structUrpAstChannelReserveArgs_1ad8ab19eb0508606230c4d70e436d8c37" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>channel_name_length</name></member>
+      <member refid="structUrpAstChannelReserveArgs_1a0b61d429303ca738fda0923031f526dd" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>struct_size</name></member>
+      <member refid="structUrpAstChannelReserveArgs_1a54deddc4f3e2bbadc682f9d2a0073c59" prot="public" virt="non-virtual"><scope>UrpAstChannelReserveArgs</scope><name>transport</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

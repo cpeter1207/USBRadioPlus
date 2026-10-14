@@ -1,0 +1,177 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstJitterConfig" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstJitterConfig</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a69d03bcc331ed2ecc56e7c7d3395bc77" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstJitterConfig::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="531" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="531" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a2ed16de56dd74fe36b2d339e724a2f44" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstJitterConfig::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="535" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="535" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a2e760f82f091a0e984092d640ad47db0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>UrpAstJitterConfig::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables Asterisk jitter buffering. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="539" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="539" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a67cb2d658026e97066e635519185c62c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::maximum_size_ms</definition>
+        <argsstring></argsstring>
+        <name>maximum_size_ms</name>
+        <qualifiedname>UrpAstJitterConfig::maximum_size_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum buffer length in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="543" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="543" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1aa2a60f9b52af7f7f5de6f92d1e44d020" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::resync_threshold_ms</definition>
+        <argsstring></argsstring>
+        <name>resync_threshold_ms</name>
+        <qualifiedname>UrpAstJitterConfig::resync_threshold_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Timestamp discontinuity which resets the buffer, in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="547" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="547" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a2533910d5ddfbb836355fbc68d577128" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::implementation</definition>
+        <argsstring></argsstring>
+        <name>implementation</name>
+        <qualifiedname>UrpAstJitterConfig::implementation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One of <computeroutput>URP_AST_JITTER_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="551" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="551" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a12523a874af0a7321df13b6b276b2bb0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::logging_enabled</definition>
+        <argsstring></argsstring>
+        <name>logging_enabled</name>
+        <qualifiedname>UrpAstJitterConfig::logging_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero enables Asterisk jitter-buffer diagnostics. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="555" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="555" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a4219b77fe8d49ca81c46710d9c26f3eb" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::force_enabled</definition>
+        <argsstring></argsstring>
+        <name>force_enabled</name>
+        <qualifiedname>UrpAstJitterConfig::force_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero forces buffering even when Asterisk considers it unnecessary. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="559" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="559" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1a34e61d9a7027a83fc2aa54d0bac19873" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::target_extra_ms</definition>
+        <argsstring></argsstring>
+        <name>target_extra_ms</name>
+        <qualifiedname>UrpAstJitterConfig::target_extra_ms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Extra adaptive target depth in milliseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="563" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="563" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstJitterConfig_1ae7f9880b0417fd0ec3fc4669064e99ce" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstJitterConfig::video_sync_enabled</definition>
+        <argsstring></argsstring>
+        <name>video_sync_enabled</name>
+        <qualifiedname>UrpAstJitterConfig::video_sync_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero delays video with buffered audio. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="567" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="567" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Resolved Asterisk jitter-buffer settings for one channel. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="527" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="527" bodyend="568"/>
+    <listofallmembers>
+      <member refid="structUrpAstJitterConfig_1a2ed16de56dd74fe36b2d339e724a2f44" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>abi_version</name></member>
+      <member refid="structUrpAstJitterConfig_1a2e760f82f091a0e984092d640ad47db0" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>enabled</name></member>
+      <member refid="structUrpAstJitterConfig_1a4219b77fe8d49ca81c46710d9c26f3eb" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>force_enabled</name></member>
+      <member refid="structUrpAstJitterConfig_1a2533910d5ddfbb836355fbc68d577128" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>implementation</name></member>
+      <member refid="structUrpAstJitterConfig_1a12523a874af0a7321df13b6b276b2bb0" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>logging_enabled</name></member>
+      <member refid="structUrpAstJitterConfig_1a67cb2d658026e97066e635519185c62c" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>maximum_size_ms</name></member>
+      <member refid="structUrpAstJitterConfig_1aa2a60f9b52af7f7f5de6f92d1e44d020" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>resync_threshold_ms</name></member>
+      <member refid="structUrpAstJitterConfig_1a69d03bcc331ed2ecc56e7c7d3395bc77" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>struct_size</name></member>
+      <member refid="structUrpAstJitterConfig_1a34e61d9a7027a83fc2aa54d0bac19873" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>target_extra_ms</name></member>
+      <member refid="structUrpAstJitterConfig_1ae7f9880b0417fd0ec3fc4669064e99ce" prot="public" virt="non-virtual"><scope>UrpAstJitterConfig</scope><name>video_sync_enabled</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

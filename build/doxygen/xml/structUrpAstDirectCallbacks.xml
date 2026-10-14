@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstDirectCallbacks" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstDirectCallbacks</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1a1a13af8e28e196bd9f347a39373f1c73" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDirectCallbacks::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstDirectCallbacks::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact byte size of this descriptor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="497" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="497" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1a41e805861ae4cd645c77f2e364088edb" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDirectCallbacks::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstDirectCallbacks::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact direct-callback contract version, currently three. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="501" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="501" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1abd856e9d29aa2f8baccecbb4b10cb24c" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpAstDirectCallbacks::receive_context</definition>
+        <argsstring></argsstring>
+        <name>receive_context</name>
+        <qualifiedname>UrpAstDirectCallbacks::receive_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed receive context, valid until synchronous stream shutdown. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="505" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="505" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1a7b249479b9991f887820c68f96af77bf" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDirectCallbacks::receive) (void *, uint32_t, float *, uint32_t)</definition>
+        <argsstring>)(void *, uint32_t, float *, uint32_t)</argsstring>
+        <name>receive</name>
+        <qualifiedname>UrpAstDirectCallbacks::receive</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Process USB receive DSP output and its qualified receiver key. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="509" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="509" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1a8d913063323dc8c41ea07f5b9bdcb427" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpAstDirectCallbacks::transmit_context</definition>
+        <argsstring></argsstring>
+        <name>transmit_context</name>
+        <qualifiedname>UrpAstDirectCallbacks::transmit_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed transmit context, valid until synchronous stream shutdown. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="513" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="513" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1a3ab2f168a69470c1be5e6565557ecb26" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDirectCallbacks::transmit) (void *, float *, uint32_t, uint32_t *, uint32_t *)</definition>
+        <argsstring>)(void *, float *, uint32_t, uint32_t *, uint32_t *)</argsstring>
+        <name>transmit</name>
+        <qualifiedname>UrpAstDirectCallbacks::transmit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fill PCM and write zero/one transmitter-key and CTCSS-enable results. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="517" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="517" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDirectCallbacks_1ad0122f4a99993953e43bd0e3d702ccf3" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDirectCallbacks::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpAstDirectCallbacks::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Host writes the accepted version only after successful synchronous retention. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="521" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="521" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Borrowed exact-frame native callbacks, independent of Asterisk frame queues. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="493" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="493" bodyend="522"/>
+    <listofallmembers>
+      <member refid="structUrpAstDirectCallbacks_1a41e805861ae4cd645c77f2e364088edb" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>abi_version</name></member>
+      <member refid="structUrpAstDirectCallbacks_1ad0122f4a99993953e43bd0e3d702ccf3" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpAstDirectCallbacks_1a7b249479b9991f887820c68f96af77bf" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>receive</name></member>
+      <member refid="structUrpAstDirectCallbacks_1abd856e9d29aa2f8baccecbb4b10cb24c" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>receive_context</name></member>
+      <member refid="structUrpAstDirectCallbacks_1a1a13af8e28e196bd9f347a39373f1c73" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>struct_size</name></member>
+      <member refid="structUrpAstDirectCallbacks_1a3ab2f168a69470c1be5e6565557ecb26" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>transmit</name></member>
+      <member refid="structUrpAstDirectCallbacks_1a8d913063323dc8c41ea07f5b9bdcb427" prot="public" virt="non-virtual"><scope>UrpAstDirectCallbacks</scope><name>transmit_context</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

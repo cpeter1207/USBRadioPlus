@@ -1,0 +1,19 @@
+var searchData=
+[
+  ['urp_5fast_5floader_5fload_5ffn_0',['urp_ast_loader_load_fn',['../usbradioplus__asterisk_8h.html#a17d3a7d015d1f98f55b5eb8464a9fc01',1,'usbradioplus_asterisk.h']]],
+  ['urp_5fast_5floader_5freload_5ffn_1',['urp_ast_loader_reload_fn',['../usbradioplus__asterisk_8h.html#ad9afb2d9c3326c7e5eec5799b786ae94',1,'usbradioplus_asterisk.h']]],
+  ['urp_5fast_5floader_5funload_5ffn_2',['urp_ast_loader_unload_fn',['../usbradioplus__asterisk_8h.html#a852d6f49d423b5faaaabf91ebcd8b5de',1,'usbradioplus_asterisk.h']]],
+  ['urpastchannelcommand_3',['UrpAstChannelCommand',['../usbradioplus__product_8h.html#ab1787f7b2ada9bae379e1e1febb41f2f',1,'usbradioplus_product.h']]],
+  ['urpastchannelreserveargs_4',['UrpAstChannelReserveArgs',['../usbradioplus__product_8h.html#a44bb27b266a02aa7954b74ac9973e1c3',1,'usbradioplus_product.h']]],
+  ['urpastchannelstatus_5',['UrpAstChannelStatus',['../usbradioplus__product_8h.html#a95e22227b297b91c128a137dc4c20e0f',1,'usbradioplus_product.h']]],
+  ['urpastdescriptor_6',['UrpAstDescriptor',['../usbradioplus__product_8h.html#a41f44ea34b7fd8477d6e866dbb781911',1,'usbradioplus_product.h']]],
+  ['urpastdirectcallbacks_7',['UrpAstDirectCallbacks',['../usbradioplus__product_8h.html#a5174e2240d25c0c342ed0352c549b98a',1,'usbradioplus_product.h']]],
+  ['urpastdrivercreateargs_8',['UrpAstDriverCreateArgs',['../usbradioplus__product_8h.html#a2c9f394181ea9abd7128604116a27353',1,'usbradioplus_product.h']]],
+  ['urpastdtmfresult_9',['UrpAstDtmfResult',['../usbradioplus__product_8h.html#a994f29eb417eb86201769512e18e685e',1,'usbradioplus_product.h']]],
+  ['urpastjitterconfig_10',['UrpAstJitterConfig',['../usbradioplus__product_8h.html#a463885566f95bfc71965eaa998e692fb',1,'usbradioplus_product.h']]],
+  ['urpastlinkobservation_11',['UrpAstLinkObservation',['../usbradioplus__product_8h.html#aadadf50fea500e5ef20875f0207b4ac8',1,'usbradioplus_product.h']]],
+  ['urpastoperations_12',['UrpAstOperations',['../usbradioplus__product_8h.html#a47f34e8b81f55b2993eb42c626a3863b',1,'usbradioplus_product.h']]],
+  ['urpastprovidermanifest_13',['UrpAstProviderManifest',['../usbradioplus__product_8h.html#aff0b1ff97570f18e96f56c2dec1e58b8',1,'usbradioplus_product.h']]],
+  ['urpnativecreateargs_14',['UrpNativeCreateArgs',['../usbradioplus__product_8h.html#ad83511b9d51dc8e84106d4bfe6a5974e',1,'usbradioplus_product.h']]],
+  ['urpnativestationconfig_15',['UrpNativeStationConfig',['../usbradioplus__product_8h.html#a1a5f03c1e00d55a31910fd50cbd6dc3e',1,'usbradioplus_product.h']]]
+];

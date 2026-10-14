@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstChannelCommand" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstChannelCommand</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a7c8dc286f730da6373731999ceb35052" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelCommand::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstChannelCommand::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="577" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="577" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a12cc3d2bd9347c1b589b869fbfb7dfe6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelCommand::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstChannelCommand::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="581" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="581" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a75187d2613d882fd60e34578f6c0103e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelCommand::command</definition>
+        <argsstring></argsstring>
+        <name>command</name>
+        <qualifiedname>UrpAstChannelCommand::command</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One of <computeroutput>URP_AST_COMMAND_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="585" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="585" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a087acff84d653eaa5e6a1e2f56e4ff3e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelCommand::target</definition>
+        <argsstring></argsstring>
+        <name>target</name>
+        <qualifiedname>UrpAstChannelCommand::target</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Command-specific target such as <computeroutput>URP_AST_MIXER_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="589" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="589" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a9bc0039a4749973bbfd031d81791dadc" prot="public" static="no" mutable="no">
+        <type>int64_t</type>
+        <definition>int64_t UrpAstChannelCommand::value</definition>
+        <argsstring></argsstring>
+        <name>value</name>
+        <qualifiedname>UrpAstChannelCommand::value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Command input or result value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="593" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="593" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a33e992c66e7b414f5cddf8bdc8975bfd" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelCommand::flags</definition>
+        <argsstring></argsstring>
+        <name>flags</name>
+        <qualifiedname>UrpAstChannelCommand::flags</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Command-specific input or result flags. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="597" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="597" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelCommand_1a697e34b19b724af8fc9027b992ce6453" prot="public" static="no" mutable="no">
+        <type>uint16_t</type>
+        <definition>uint16_t UrpAstChannelCommand::eeprom_words[64]</definition>
+        <argsstring>[64]</argsstring>
+        <name>eeprom_words</name>
+        <qualifiedname>UrpAstChannelCommand::eeprom_words</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete physical EEPROM image for EEPROM commands. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="601" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="601" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>One typed, non-real-time hardware or tuning operation. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="573" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="573" bodyend="602"/>
+    <listofallmembers>
+      <member refid="structUrpAstChannelCommand_1a12cc3d2bd9347c1b589b869fbfb7dfe6" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>abi_version</name></member>
+      <member refid="structUrpAstChannelCommand_1a75187d2613d882fd60e34578f6c0103e" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>command</name></member>
+      <member refid="structUrpAstChannelCommand_1a697e34b19b724af8fc9027b992ce6453" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>eeprom_words</name></member>
+      <member refid="structUrpAstChannelCommand_1a33e992c66e7b414f5cddf8bdc8975bfd" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>flags</name></member>
+      <member refid="structUrpAstChannelCommand_1a7c8dc286f730da6373731999ceb35052" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>struct_size</name></member>
+      <member refid="structUrpAstChannelCommand_1a087acff84d653eaa5e6a1e2f56e4ff3e" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>target</name></member>
+      <member refid="structUrpAstChannelCommand_1a9bc0039a4749973bbfd031d81791dadc" prot="public" virt="non-virtual"><scope>UrpAstChannelCommand</scope><name>value</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

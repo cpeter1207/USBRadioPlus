@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstLinkObservation" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstLinkObservation</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstLinkObservation::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="443" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="443" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstLinkObservation::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="447" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="447" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::processed_blocks</definition>
+        <argsstring></argsstring>
+        <name>processed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::processed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Successfully processed blocks. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="451" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="451" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::bypassed_blocks</definition>
+        <argsstring></argsstring>
+        <name>bypassed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::bypassed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Frames bypassed because their direction, rate, or size did not match. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="455" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="455" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::failed_blocks</definition>
+        <argsstring></argsstring>
+        <name>failed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::failed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Graph failures which retained the original PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="459" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="459" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Lock-free processing counters for one attached incoming-link graph. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="439" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="439" bodyend="460"/>
+    <listofallmembers>
+      <member refid="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>abi_version</name></member>
+      <member refid="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>bypassed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>failed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>processed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

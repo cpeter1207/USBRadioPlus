@@ -1,0 +1,197 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstDriverCreateArgs" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstDriverCreateArgs</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a6670ea9c8ec3da3a42082ee305e6abec" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDriverCreateArgs::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstDriverCreateArgs::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="397" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="397" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1ac1f7eb55795204a8494cfbab8c86e0d2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDriverCreateArgs::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstDriverCreateArgs::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="401" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="401" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a441752564f57c568e3b4c02c76f95db0" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpAstDriverCreateArgs::config_source</definition>
+        <argsstring></argsstring>
+        <name>config_source</name>
+        <qualifiedname>UrpAstDriverCreateArgs::config_source</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 configuration source name; not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="405" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="405" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1abf6e9f761a38dc98edbb585556da3dbd" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDriverCreateArgs::config_source_length</definition>
+        <argsstring></argsstring>
+        <name>config_source_length</name>
+        <qualifiedname>UrpAstDriverCreateArgs::config_source_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Byte length of <computeroutput>config_source</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="409" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="409" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a9287206cf51167246ec8334d61fdf028" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpAstDriverCreateArgs::config_text</definition>
+        <argsstring></argsstring>
+        <name>config_text</name>
+        <qualifiedname>UrpAstDriverCreateArgs::config_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 configuration document; not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="413" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="413" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a7f1c095a71865b8f6f4139df245e6aa2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDriverCreateArgs::config_text_length</definition>
+        <argsstring></argsstring>
+        <name>config_text_length</name>
+        <qualifiedname>UrpAstDriverCreateArgs::config_text_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Byte length of <computeroutput>config_text</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="417" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="417" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a01f8e4101bc78fb13e7343f094b8831f" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpAstDriverCreateArgs::agc_plugin_path</definition>
+        <argsstring></argsstring>
+        <name>agc_plugin_path</name>
+        <qualifiedname>UrpAstDriverCreateArgs::agc_plugin_path</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 path to the installed AGC LADSPA object; not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="421" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="421" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a645a1e93b58c464c287286627895957a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDriverCreateArgs::agc_plugin_path_length</definition>
+        <argsstring></argsstring>
+        <name>agc_plugin_path_length</name>
+        <qualifiedname>UrpAstDriverCreateArgs::agc_plugin_path_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Byte length of <computeroutput>agc_plugin_path</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="425" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="425" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a30231281712122ff83727c7895a5e09c" prot="public" static="no" mutable="no">
+        <type>const struct <ref refid="structUrpAstOperations" kindref="compound">UrpAstOperations</ref> *</type>
+        <definition>const struct UrpAstOperations* UrpAstDriverCreateArgs::operations</definition>
+        <argsstring></argsstring>
+        <name>operations</name>
+        <qualifiedname>UrpAstDriverCreateArgs::operations</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Required Asterisk operation table. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="429" column="29" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="429" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDriverCreateArgs_1a3e99f164d1e0670954c58171e0fd1eec" prot="public" static="no" mutable="no">
+        <type>const struct <ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref> *</type>
+        <definition>const struct UrpAstProviderManifest* UrpAstDriverCreateArgs::providers</definition>
+        <argsstring></argsstring>
+        <name>providers</name>
+        <qualifiedname>UrpAstDriverCreateArgs::providers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete selected provider manifest. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="433" column="35" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="433" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Arguments for constructing one Rust-owned driver generation. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>UrpAstDriverCreateArgs</label>
+        <link refid="structUrpAstDriverCreateArgs"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>operations</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>providers</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>UrpAstOperations</label>
+        <link refid="structUrpAstOperations"/>
+      </node>
+      <node id="3">
+        <label>UrpAstProviderManifest</label>
+        <link refid="structUrpAstProviderManifest"/>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="393" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="393" bodyend="434"/>
+    <listofallmembers>
+      <member refid="structUrpAstDriverCreateArgs_1ac1f7eb55795204a8494cfbab8c86e0d2" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>abi_version</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a01f8e4101bc78fb13e7343f094b8831f" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>agc_plugin_path</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a645a1e93b58c464c287286627895957a" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>agc_plugin_path_length</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a441752564f57c568e3b4c02c76f95db0" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>config_source</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1abf6e9f761a38dc98edbb585556da3dbd" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>config_source_length</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a9287206cf51167246ec8334d61fdf028" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>config_text</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a7f1c095a71865b8f6f4139df245e6aa2" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>config_text_length</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a30231281712122ff83727c7895a5e09c" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>operations</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a3e99f164d1e0670954c58171e0fd1eec" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>providers</name></member>
+      <member refid="structUrpAstDriverCreateArgs_1a6670ea9c8ec3da3a42082ee305e6abec" prot="public" virt="non-virtual"><scope>UrpAstDriverCreateArgs</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

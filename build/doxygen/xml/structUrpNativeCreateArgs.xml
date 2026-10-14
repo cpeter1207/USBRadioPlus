@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpNativeCreateArgs" kind="struct" language="C++" prot="public">
+    <compoundname>UrpNativeCreateArgs</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1aa2d27a92a9e19972a7e56ef541f2fe67" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeCreateArgs::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpNativeCreateArgs::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact structure size in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="832" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="832" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1a122e27c77779864127580e92989fa9c9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeCreateArgs::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpNativeCreateArgs::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native request ABI, currently one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="834" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="834" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1abc8e5a42e2c2bf3e4fa50b8edff8287a" prot="public" static="no" mutable="no">
+        <type>const struct <ref refid="structUrpNativeStationConfig" kindref="compound">UrpNativeStationConfig</ref> *</type>
+        <definition>const struct UrpNativeStationConfig* UrpNativeCreateArgs::config</definition>
+        <argsstring></argsstring>
+        <name>config</name>
+        <qualifiedname>UrpNativeCreateArgs::config</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved frontend configuration. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="836" column="35" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="836" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1a16a6d0cd60119bd0f97f74aa2b1e7e4b" prot="public" static="no" mutable="no">
+        <type>const struct <ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref> *</type>
+        <definition>const struct UrpAstProviderManifest* UrpNativeCreateArgs::providers</definition>
+        <argsstring></argsstring>
+        <name>providers</name>
+        <qualifiedname>UrpNativeCreateArgs::providers</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Released radio, graph, audio and GPIO descriptors; other entries unused. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="838" column="35" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="838" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1a10753ddf533805d33ff893cf59b04899" prot="public" static="no" mutable="no">
+        <type>const struct <ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref> *</type>
+        <definition>const struct UrpAstDirectCallbacks* UrpNativeCreateArgs::callbacks</definition>
+        <argsstring></argsstring>
+        <name>callbacks</name>
+        <qualifiedname>UrpNativeCreateArgs::callbacks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact-frame native callback pair, retained until synchronous destroy. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="840" column="34" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="840" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1a934b991e1a9faa0750f191dfeaaa7b0e" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativeCreateArgs::generation_id</definition>
+        <argsstring></argsstring>
+        <name>generation_id</name>
+        <qualifiedname>UrpNativeCreateArgs::generation_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero lifecycle generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="842" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="842" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeCreateArgs_1ad22c83f9ee9b83bd35749826f6fcc2c4" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeCreateArgs::maximum_frames</definition>
+        <argsstring></argsstring>
+        <name>maximum_frames</name>
+        <qualifiedname>UrpNativeCreateArgs::maximum_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepared frame bound, 1 through 4096; device callbacks stay at most 960. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="844" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="844" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Native stopped station creation. All requests are copied synchronously. Only ffmpeg/radio/audio/gpio provider entries are required. Callback contexts and provider DSOs remain alive until native_destroy returns. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="4">
+        <label>UrpAstDirectCallbacks</label>
+        <link refid="structUrpAstDirectCallbacks"/>
+      </node>
+      <node id="3">
+        <label>UrpAstProviderManifest</label>
+        <link refid="structUrpAstProviderManifest"/>
+      </node>
+      <node id="1">
+        <label>UrpNativeCreateArgs</label>
+        <link refid="structUrpNativeCreateArgs"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>config</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>providers</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>callbacks</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>UrpNativeStationConfig</label>
+        <link refid="structUrpNativeStationConfig"/>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="830" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="830" bodyend="845"/>
+    <listofallmembers>
+      <member refid="structUrpNativeCreateArgs_1a122e27c77779864127580e92989fa9c9" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>abi_version</name></member>
+      <member refid="structUrpNativeCreateArgs_1a10753ddf533805d33ff893cf59b04899" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>callbacks</name></member>
+      <member refid="structUrpNativeCreateArgs_1abc8e5a42e2c2bf3e4fa50b8edff8287a" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>config</name></member>
+      <member refid="structUrpNativeCreateArgs_1a934b991e1a9faa0750f191dfeaaa7b0e" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>generation_id</name></member>
+      <member refid="structUrpNativeCreateArgs_1ad22c83f9ee9b83bd35749826f6fcc2c4" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>maximum_frames</name></member>
+      <member refid="structUrpNativeCreateArgs_1a16a6d0cd60119bd0f97f74aa2b1e7e4b" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>providers</name></member>
+      <member refid="structUrpNativeCreateArgs_1aa2d27a92a9e19972a7e56ef541f2fe67" prot="public" virt="non-virtual"><scope>UrpNativeCreateArgs</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

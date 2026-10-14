@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["configuration_catalog"]};

@@ -1,0 +1,12 @@
+/__w/USBRadioPlus/USBRadioPlus/build/cargo/debug/deps/libclang_sys-d2a37318c41a5e99.rmeta: /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/lib.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/support.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/link.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/macros.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/common.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/dynamic.rs
+
+/__w/USBRadioPlus/USBRadioPlus/build/cargo/debug/deps/libclang_sys-d2a37318c41a5e99.rlib: /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/lib.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/support.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/link.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/macros.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/common.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/dynamic.rs
+
+/__w/USBRadioPlus/USBRadioPlus/build/cargo/debug/deps/clang_sys-d2a37318c41a5e99.d: /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/lib.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/support.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/link.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/macros.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/common.rs /opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/dynamic.rs
+
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/lib.rs:
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/support.rs:
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/link.rs:
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/macros.rs:
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/common.rs:
+/opt/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/clang-sys-1.9.1/src/../build/dynamic.rs:

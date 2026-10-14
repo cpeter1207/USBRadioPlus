@@ -1,0 +1,881 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstChannelStatus" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstChannelStatus</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ac25c20067f9072af620dd8dede322017" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstChannelStatus::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="611" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="611" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ad22491cec3afb16efa833343720bb4ec" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstChannelStatus::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="615" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="615" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a488e2b5285971ae0e91b3a5126ed99e8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::transport</definition>
+        <argsstring></argsstring>
+        <name>transport</name>
+        <qualifiedname>UrpAstChannelStatus::transport</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One of <computeroutput>URP_AST_TRANSPORT_*</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="619" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="619" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a23dee69148badb431ad1e8d01f2752c6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::running</definition>
+        <argsstring></argsstring>
+        <name>running</name>
+        <qualifiedname>UrpAstChannelStatus::running</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the physical station is started. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="623" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="623" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a9463488de082b36d3d63f80bdb14fe2e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::echo_enabled</definition>
+        <argsstring></argsstring>
+        <name>echo_enabled</name>
+        <qualifiedname>UrpAstChannelStatus::echo_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while legacy echo is enabled. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="627" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="627" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1abf1bab3b9a4d243c5527a1cf641d8fc1" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::dtmf_enabled</definition>
+        <argsstring></argsstring>
+        <name>dtmf_enabled</name>
+        <qualifiedname>UrpAstChannelStatus::dtmf_enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while Asterisk DTMF analysis is enabled. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="631" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="631" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a2e8a1a892bf9b2739b8c041d1621962d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::receive_handoff_available</definition>
+        <argsstring></argsstring>
+        <name>receive_handoff_available</name>
+        <qualifiedname>UrpAstChannelStatus::receive_handoff_available</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Pending receive-to-Asterisk handoff frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="635" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="635" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a0a31ac83fc0e92bf0a5689b4fe92a7b3" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::receive_handoff_discarded</definition>
+        <argsstring></argsstring>
+        <name>receive_handoff_discarded</name>
+        <qualifiedname>UrpAstChannelStatus::receive_handoff_discarded</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receive-to-Asterisk handoff frames discarded to bound latency. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="639" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="639" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1aef4c9115996d5fbfa245542e5f580835" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::program_handoff_available</definition>
+        <argsstring></argsstring>
+        <name>program_handoff_available</name>
+        <qualifiedname>UrpAstChannelStatus::program_handoff_available</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Pending Asterisk-to-program handoff frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="643" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="643" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a11f8c60857ddb76d02c3f3d33d8074db" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::program_handoff_discarded</definition>
+        <argsstring></argsstring>
+        <name>program_handoff_discarded</name>
+        <qualifiedname>UrpAstChannelStatus::program_handoff_discarded</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Asterisk-to-program frames discarded to bound latency. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="647" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="647" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1af500a329ea30db237708c80b909956e2" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::receive_input_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_input_peak</name>
+        <qualifiedname>UrpAstChannelStatus::receive_input_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest raw receive peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="651" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="651" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ab8bb9bcb95e15d23427d068e444ebadc" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::receive_input_rms</definition>
+        <argsstring></argsstring>
+        <name>receive_input_rms</name>
+        <qualifiedname>UrpAstChannelStatus::receive_input_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest raw receive RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="655" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="655" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a0390826be6e57ac6b9d6c93077c5e715" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::receive_output_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_output_peak</name>
+        <qualifiedname>UrpAstChannelStatus::receive_output_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest processed receive peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="659" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="659" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a3028e89e4452c6e29b60a8455e115772" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::receive_output_rms</definition>
+        <argsstring></argsstring>
+        <name>receive_output_rms</name>
+        <qualifiedname>UrpAstChannelStatus::receive_output_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest processed receive RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="663" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="663" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a249d046e5bdb0880d38891087ddd6b94" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::receive_input_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_input_rail_samples</name>
+        <qualifiedname>UrpAstChannelStatus::receive_input_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Raw receive samples at a hardware rail in the latest callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="667" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="667" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ad33c83086917e0ec6064de3779567f74" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::receive_output_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_output_rail_samples</name>
+        <qualifiedname>UrpAstChannelStatus::receive_output_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Processed receive samples at a hardware rail in the latest callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="671" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="671" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ae92e37d324f7ecb60ff9c91e29cfbea4" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::receive_ctcss_decoder_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_ctcss_decoder_peak</name>
+        <qualifiedname>UrpAstChannelStatus::receive_ctcss_decoder_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Post-decoder-gain CTCSS half peak-to-peak level as normalized PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="675" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="675" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ac539fb7494ff4d138f9a17503f9c27a2" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpAstChannelStatus::receive_rssi_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_rssi_peak</name>
+        <qualifiedname>UrpAstChannelStatus::receive_rssi_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest compatibility discriminator-noise measurement. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="679" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="679" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a951a2adb094e93af084a7204c9b81262" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::receive_rssi_updated</definition>
+        <argsstring></argsstring>
+        <name>receive_rssi_updated</name>
+        <qualifiedname>UrpAstChannelStatus::receive_rssi_updated</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when the latest callback completed an RSSI integration window. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="683" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="683" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a88b29f83e2197a446c1746ce41beef0a" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::transmit_program_peak</definition>
+        <argsstring></argsstring>
+        <name>transmit_program_peak</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_program_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest post-processing transmitter-program peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="687" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="687" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a8ccfc0941c6956efaffb4d3fceb5827b" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::transmit_program_rms</definition>
+        <argsstring></argsstring>
+        <name>transmit_program_rms</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_program_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest post-processing transmitter-program RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="691" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="691" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a7e26647073997d4f30f5dd7535c65a95" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::transmit_output_peak</definition>
+        <argsstring></argsstring>
+        <name>transmit_output_peak</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_output_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest routed transmitter peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="695" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="695" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ab4f865a5881e00f823649904d3a0a21c" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpAstChannelStatus::transmit_output_rms</definition>
+        <argsstring></argsstring>
+        <name>transmit_output_rms</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_output_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest routed transmitter RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="699" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="699" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1abccfc35291304183be15bc87ef3dc429" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::input_overflow_count</definition>
+        <argsstring></argsstring>
+        <name>input_overflow_count</name>
+        <qualifiedname>UrpAstChannelStatus::input_overflow_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative PortAudio input overflows. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="703" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="703" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ad5575d49e5a3e31af04d0b50d4ee8f6f" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::output_underflow_count</definition>
+        <argsstring></argsstring>
+        <name>output_underflow_count</name>
+        <qualifiedname>UrpAstChannelStatus::output_underflow_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative PortAudio output underflows. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="707" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="707" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a81f5f5ca26c9ea9f1959de880e93dbdc" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::input_clip_sample_count</definition>
+        <argsstring></argsstring>
+        <name>input_clip_sample_count</name>
+        <qualifiedname>UrpAstChannelStatus::input_clip_sample_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative raw input samples at or beyond full scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="711" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="711" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a918cba376c5c9ccd9cc4da9147c54256" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::output_clip_sample_count</definition>
+        <argsstring></argsstring>
+        <name>output_clip_sample_count</name>
+        <qualifiedname>UrpAstChannelStatus::output_clip_sample_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative output samples at or beyond full scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="715" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="715" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1afd387fbf03f243f9eb0f178d903582c1" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::callback_last_duration_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_last_duration_ns</name>
+        <qualifiedname>UrpAstChannelStatus::callback_last_duration_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent audio-callback duration in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="719" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="719" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a654a47d0da211fdf835b412cfe90697a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::callback_max_duration_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_max_duration_ns</name>
+        <qualifiedname>UrpAstChannelStatus::callback_max_duration_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum audio-callback duration in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="723" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="723" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ab1eb0854eb4b9d26b5c5f20662953552" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::callback_last_start_delay_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_last_start_delay_ns</name>
+        <qualifiedname>UrpAstChannelStatus::callback_last_start_delay_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent callback start-gap excess in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="727" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="727" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a13c8b9a39f90b9f48f348c7e05eb6b7d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::callback_max_start_delay_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_max_start_delay_ns</name>
+        <qualifiedname>UrpAstChannelStatus::callback_max_start_delay_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum callback start-gap excess in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="731" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="731" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a685febb5f420994b0f5cd8acbd384322" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::callback_late_start_count</definition>
+        <argsstring></argsstring>
+        <name>callback_late_start_count</name>
+        <qualifiedname>UrpAstChannelStatus::callback_late_start_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative late callback starts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="735" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="735" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a5b7b9c9460999ad756833d1925fcf287" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::last_input_xrun_monotonic_ns</definition>
+        <argsstring></argsstring>
+        <name>last_input_xrun_monotonic_ns</name>
+        <qualifiedname>UrpAstChannelStatus::last_input_xrun_monotonic_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest input-xrun monotonic timestamp in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="739" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="739" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a6e9487bcc6c525f927c5b8fc61d4e00f" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::last_output_xrun_monotonic_ns</definition>
+        <argsstring></argsstring>
+        <name>last_output_xrun_monotonic_ns</name>
+        <qualifiedname>UrpAstChannelStatus::last_output_xrun_monotonic_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest output-xrun monotonic timestamp in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="743" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="743" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a86b36bf8af7909ab9bd16f87b6933f9c" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstChannelStatus::input_latency_seconds</definition>
+        <argsstring></argsstring>
+        <name>input_latency_seconds</name>
+        <qualifiedname>UrpAstChannelStatus::input_latency_seconds</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>PortAudio input-latency estimate in seconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="747" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="747" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a59ca19123acdf2858e10221ba328d9ff" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstChannelStatus::output_latency_seconds</definition>
+        <argsstring></argsstring>
+        <name>output_latency_seconds</name>
+        <qualifiedname>UrpAstChannelStatus::output_latency_seconds</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>PortAudio output-latency estimate in seconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="751" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="751" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1af86110826cb231520e267b927a65a617" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstChannelStatus::native_sample_rate_hz</definition>
+        <argsstring></argsstring>
+        <name>native_sample_rate_hz</name>
+        <qualifiedname>UrpAstChannelStatus::native_sample_rate_hz</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Actual hardware-stream sample rate in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="755" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="755" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a0de6b6799a2603f542e461a37c4d4d3c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::ring_occupancy_frames</definition>
+        <argsstring></argsstring>
+        <name>ring_occupancy_frames</name>
+        <qualifiedname>UrpAstChannelStatus::ring_occupancy_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest program-ring occupancy in PCM frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="759" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="759" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a5b90b4006cb63ce1b4d81d77b207ab8c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::ring_reserve_frames</definition>
+        <argsstring></argsstring>
+        <name>ring_reserve_frames</name>
+        <qualifiedname>UrpAstChannelStatus::ring_reserve_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program-ring protected reserve in PCM frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="763" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="763" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a9ee3237ed0fc66382b6beff8bac96206" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::ring_target_frames</definition>
+        <argsstring></argsstring>
+        <name>ring_target_frames</name>
+        <qualifiedname>UrpAstChannelStatus::ring_target_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program-ring target in PCM frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="767" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="767" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a743f8a953f18c363b148ded4268ef2f8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::ring_capacity_frames</definition>
+        <argsstring></argsstring>
+        <name>ring_capacity_frames</name>
+        <qualifiedname>UrpAstChannelStatus::ring_capacity_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Allocated program-ring capacity in PCM frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="771" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="771" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1aea5956dc69c3f4b6ac542ab49395c782" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstChannelStatus::ring_ratio</definition>
+        <argsstring></argsstring>
+        <name>ring_ratio</name>
+        <qualifiedname>UrpAstChannelStatus::ring_ratio</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current program-ring input-to-output conversion ratio. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="775" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="775" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a0b0397ae37122bdfbdf8cab8e04b1125" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::ring_underrun_samples</definition>
+        <argsstring></argsstring>
+        <name>ring_underrun_samples</name>
+        <qualifiedname>UrpAstChannelStatus::ring_underrun_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program output samples absent at the ring. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="779" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="779" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a6436db0cb331c49214efbe5d58bae823" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::ring_overrun_samples</definition>
+        <argsstring></argsstring>
+        <name>ring_overrun_samples</name>
+        <qualifiedname>UrpAstChannelStatus::ring_overrun_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program input samples discarded by a full ring. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="783" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="783" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a70ae8c038697b3d0f610e28301b57310" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstChannelStatus::ring_concealment_samples</definition>
+        <argsstring></argsstring>
+        <name>ring_concealment_samples</name>
+        <qualifiedname>UrpAstChannelStatus::ring_concealment_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Program output samples supplied by concealment. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="787" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="787" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a9fea476eac1ef1ca25b5588c6f26040f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::carrier_active</definition>
+        <argsstring></argsstring>
+        <name>carrier_active</name>
+        <qualifiedname>UrpAstChannelStatus::carrier_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while carrier is detected. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="791" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="791" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1af8b462e8146b08de1e24eed35b647760" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::subaudible_active</definition>
+        <argsstring></argsstring>
+        <name>subaudible_active</name>
+        <qualifiedname>UrpAstChannelStatus::subaudible_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while CTCSS or DCS qualification is detected. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="795" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="795" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a3aa889606951503bf221eb425a6444fc" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::receiver_keyed</definition>
+        <argsstring></argsstring>
+        <name>receiver_keyed</name>
+        <qualifiedname>UrpAstChannelStatus::receiver_keyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the local receiver is qualified. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="799" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="799" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a729d029d39e102bcdecbd61461dd93e0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::logical_ptt</definition>
+        <argsstring></argsstring>
+        <name>logical_ptt</name>
+        <qualifiedname>UrpAstChannelStatus::logical_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while logical PTT is active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="803" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="803" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a1e67739ca6feed2c17e3ed1c7b3b4804" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpAstChannelStatus::ctcss_decode_index</definition>
+        <argsstring></argsstring>
+        <name>ctcss_decode_index</name>
+        <qualifiedname>UrpAstChannelStatus::ctcss_decode_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Decoded CTCSS table index, or -1 when absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="807" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="807" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a05378d63cb307dad22bd47d3a6f322df" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::dcs_valid</definition>
+        <argsstring></argsstring>
+        <name>dcs_valid</name>
+        <qualifiedname>UrpAstChannelStatus::dcs_valid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the configured DCS code is valid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="811" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="811" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1ada2083b52231f9834c310ba109c65341" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::receive_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>receive_mixer_level</name>
+        <qualifiedname>UrpAstChannelStatus::receive_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized receiver hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="815" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="815" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a53294d5ac3556d5fca0459299f3533d1" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::transmit_a_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>transmit_a_mixer_level</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_a_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized transmitter-A hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="819" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="819" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstChannelStatus_1a14d3091d0a4b7beb34807bb9ea54de98" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstChannelStatus::transmit_b_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>transmit_b_mixer_level</name>
+        <qualifiedname>UrpAstChannelStatus::transmit_b_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized transmitter-B hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="823" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="823" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Best-effort typed status for one active channel. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="607" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="607" bodyend="824"/>
+    <listofallmembers>
+      <member refid="structUrpAstChannelStatus_1ad22491cec3afb16efa833343720bb4ec" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>abi_version</name></member>
+      <member refid="structUrpAstChannelStatus_1afd387fbf03f243f9eb0f178d903582c1" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>callback_last_duration_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1ab1eb0854eb4b9d26b5c5f20662953552" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>callback_last_start_delay_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1a685febb5f420994b0f5cd8acbd384322" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>callback_late_start_count</name></member>
+      <member refid="structUrpAstChannelStatus_1a654a47d0da211fdf835b412cfe90697a" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>callback_max_duration_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1a13c8b9a39f90b9f48f348c7e05eb6b7d" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>callback_max_start_delay_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1a9fea476eac1ef1ca25b5588c6f26040f" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>carrier_active</name></member>
+      <member refid="structUrpAstChannelStatus_1a1e67739ca6feed2c17e3ed1c7b3b4804" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ctcss_decode_index</name></member>
+      <member refid="structUrpAstChannelStatus_1a05378d63cb307dad22bd47d3a6f322df" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>dcs_valid</name></member>
+      <member refid="structUrpAstChannelStatus_1abf1bab3b9a4d243c5527a1cf641d8fc1" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>dtmf_enabled</name></member>
+      <member refid="structUrpAstChannelStatus_1a9463488de082b36d3d63f80bdb14fe2e" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>echo_enabled</name></member>
+      <member refid="structUrpAstChannelStatus_1a81f5f5ca26c9ea9f1959de880e93dbdc" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>input_clip_sample_count</name></member>
+      <member refid="structUrpAstChannelStatus_1a86b36bf8af7909ab9bd16f87b6933f9c" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>input_latency_seconds</name></member>
+      <member refid="structUrpAstChannelStatus_1abccfc35291304183be15bc87ef3dc429" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>input_overflow_count</name></member>
+      <member refid="structUrpAstChannelStatus_1a5b7b9c9460999ad756833d1925fcf287" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>last_input_xrun_monotonic_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1a6e9487bcc6c525f927c5b8fc61d4e00f" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>last_output_xrun_monotonic_ns</name></member>
+      <member refid="structUrpAstChannelStatus_1a729d029d39e102bcdecbd61461dd93e0" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>logical_ptt</name></member>
+      <member refid="structUrpAstChannelStatus_1af86110826cb231520e267b927a65a617" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>native_sample_rate_hz</name></member>
+      <member refid="structUrpAstChannelStatus_1a918cba376c5c9ccd9cc4da9147c54256" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>output_clip_sample_count</name></member>
+      <member refid="structUrpAstChannelStatus_1a59ca19123acdf2858e10221ba328d9ff" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>output_latency_seconds</name></member>
+      <member refid="structUrpAstChannelStatus_1ad5575d49e5a3e31af04d0b50d4ee8f6f" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>output_underflow_count</name></member>
+      <member refid="structUrpAstChannelStatus_1aef4c9115996d5fbfa245542e5f580835" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>program_handoff_available</name></member>
+      <member refid="structUrpAstChannelStatus_1a11f8c60857ddb76d02c3f3d33d8074db" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>program_handoff_discarded</name></member>
+      <member refid="structUrpAstChannelStatus_1ae92e37d324f7ecb60ff9c91e29cfbea4" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_ctcss_decoder_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1a2e8a1a892bf9b2739b8c041d1621962d" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_handoff_available</name></member>
+      <member refid="structUrpAstChannelStatus_1a0a31ac83fc0e92bf0a5689b4fe92a7b3" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_handoff_discarded</name></member>
+      <member refid="structUrpAstChannelStatus_1af500a329ea30db237708c80b909956e2" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_input_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1a249d046e5bdb0880d38891087ddd6b94" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_input_rail_samples</name></member>
+      <member refid="structUrpAstChannelStatus_1ab8bb9bcb95e15d23427d068e444ebadc" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_input_rms</name></member>
+      <member refid="structUrpAstChannelStatus_1ada2083b52231f9834c310ba109c65341" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_mixer_level</name></member>
+      <member refid="structUrpAstChannelStatus_1a0390826be6e57ac6b9d6c93077c5e715" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_output_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1ad33c83086917e0ec6064de3779567f74" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_output_rail_samples</name></member>
+      <member refid="structUrpAstChannelStatus_1a3028e89e4452c6e29b60a8455e115772" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_output_rms</name></member>
+      <member refid="structUrpAstChannelStatus_1ac539fb7494ff4d138f9a17503f9c27a2" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_rssi_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1a951a2adb094e93af084a7204c9b81262" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receive_rssi_updated</name></member>
+      <member refid="structUrpAstChannelStatus_1a3aa889606951503bf221eb425a6444fc" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>receiver_keyed</name></member>
+      <member refid="structUrpAstChannelStatus_1a743f8a953f18c363b148ded4268ef2f8" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_capacity_frames</name></member>
+      <member refid="structUrpAstChannelStatus_1a70ae8c038697b3d0f610e28301b57310" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_concealment_samples</name></member>
+      <member refid="structUrpAstChannelStatus_1a0de6b6799a2603f542e461a37c4d4d3c" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_occupancy_frames</name></member>
+      <member refid="structUrpAstChannelStatus_1a6436db0cb331c49214efbe5d58bae823" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_overrun_samples</name></member>
+      <member refid="structUrpAstChannelStatus_1aea5956dc69c3f4b6ac542ab49395c782" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_ratio</name></member>
+      <member refid="structUrpAstChannelStatus_1a5b90b4006cb63ce1b4d81d77b207ab8c" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_reserve_frames</name></member>
+      <member refid="structUrpAstChannelStatus_1a9ee3237ed0fc66382b6beff8bac96206" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_target_frames</name></member>
+      <member refid="structUrpAstChannelStatus_1a0b0397ae37122bdfbdf8cab8e04b1125" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>ring_underrun_samples</name></member>
+      <member refid="structUrpAstChannelStatus_1a23dee69148badb431ad1e8d01f2752c6" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>running</name></member>
+      <member refid="structUrpAstChannelStatus_1ac25c20067f9072af620dd8dede322017" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>struct_size</name></member>
+      <member refid="structUrpAstChannelStatus_1af8b462e8146b08de1e24eed35b647760" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>subaudible_active</name></member>
+      <member refid="structUrpAstChannelStatus_1a53294d5ac3556d5fca0459299f3533d1" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_a_mixer_level</name></member>
+      <member refid="structUrpAstChannelStatus_1a14d3091d0a4b7beb34807bb9ea54de98" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_b_mixer_level</name></member>
+      <member refid="structUrpAstChannelStatus_1a7e26647073997d4f30f5dd7535c65a95" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_output_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1ab4f865a5881e00f823649904d3a0a21c" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_output_rms</name></member>
+      <member refid="structUrpAstChannelStatus_1a88b29f83e2197a446c1746ce41beef0a" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_program_peak</name></member>
+      <member refid="structUrpAstChannelStatus_1a8ccfc0941c6956efaffb4d3fceb5827b" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transmit_program_rms</name></member>
+      <member refid="structUrpAstChannelStatus_1a488e2b5285971ae0e91b3a5126ed99e8" prot="public" virt="non-virtual"><scope>UrpAstChannelStatus</scope><name>transport</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,161 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstOperations" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstOperations</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstOperations_1ae9223595ab3506347433aed02653f6de" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstOperations::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstOperations::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="307" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="307" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a89c6fc6bb574ad8aa62118ee100c71cf" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstOperations::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstOperations::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="311" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="311" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpAstOperations::application_context</definition>
+        <argsstring></argsstring>
+        <name>application_context</name>
+        <qualifiedname>UrpAstOperations::application_context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Opaque context returned to every operation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="315" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="315" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a7ba0901d0887b7ae976639078951010d" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstOperations::queue_voice) (void *application_context, void *channel_context, const int16_t *samples, uint32_t sample_count, uint32_t sample_rate_hz)</definition>
+        <argsstring>)(void *application_context, void *channel_context, const int16_t *samples, uint32_t sample_count, uint32_t sample_rate_hz)</argsstring>
+        <name>queue_voice</name>
+        <qualifiedname>UrpAstOperations::queue_voice</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue one complete voice frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="319" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="319" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a47858ae0a5f94e753c83b06c1061337f" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstOperations::queue_control) (void *application_context, void *channel_context, uint32_t kind, int32_t value, uint64_t duration_ms)</definition>
+        <argsstring>)(void *application_context, void *channel_context, uint32_t kind, int32_t value, uint64_t duration_ms)</argsstring>
+        <name>queue_control</name>
+        <qualifiedname>UrpAstOperations::queue_control</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue one translated control frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="324" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="324" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a294b5361194c92960cb687711d0c9945" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstOperations::queue_text) (void *application_context, void *channel_context, const uint8_t *text, uint32_t text_length)</definition>
+        <argsstring>)(void *application_context, void *channel_context, const uint8_t *text, uint32_t text_length)</argsstring>
+        <name>queue_text</name>
+        <qualifiedname>UrpAstOperations::queue_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue one translated text frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="329" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="329" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a227e176edfc3d62724d5fc4422eef0e4" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstOperations::analyze_dtmf) (void *application_context, void *channel_context, int16_t *samples, uint32_t sample_count, uint32_t sample_rate_hz, struct UrpAstDtmfResult *result)</definition>
+        <argsstring>)(void *application_context, void *channel_context, int16_t *samples, uint32_t sample_count, uint32_t sample_rate_hz, struct UrpAstDtmfResult *result)</argsstring>
+        <name>analyze_dtmf</name>
+        <qualifiedname>UrpAstOperations::analyze_dtmf</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Invoke Asterisk&apos;s DTMF analyzer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="334" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="334" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1ab6d9576508bbdce8bffcb7d835f80c51" prot="public" static="no" mutable="no">
+        <type>uint64_t(*</type>
+        <definition>uint64_t(* UrpAstOperations::monotonic_milliseconds) (void *application_context)</definition>
+        <argsstring>)(void *application_context)</argsstring>
+        <name>monotonic_milliseconds</name>
+        <qualifiedname>UrpAstOperations::monotonic_milliseconds</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read Asterisk&apos;s monotonic clock. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="340" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="340" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstOperations_1a5860f671b39d913beaa903f876d0e621" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstOperations::log) (void *application_context, uint32_t level, const uint8_t *message, uint32_t message_length)</definition>
+        <argsstring>)(void *application_context, uint32_t level, const uint8_t *message, uint32_t message_length)</argsstring>
+        <name>log</name>
+        <qualifiedname>UrpAstOperations::log</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Emit a non-real-time diagnostic. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="344" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="344" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Asterisk-owned operations injected into the Rust adapter. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="303" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="303" bodyend="346"/>
+    <listofallmembers>
+      <member refid="structUrpAstOperations_1a89c6fc6bb574ad8aa62118ee100c71cf" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>abi_version</name></member>
+      <member refid="structUrpAstOperations_1a227e176edfc3d62724d5fc4422eef0e4" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>analyze_dtmf</name></member>
+      <member refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>application_context</name></member>
+      <member refid="structUrpAstOperations_1a5860f671b39d913beaa903f876d0e621" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>log</name></member>
+      <member refid="structUrpAstOperations_1ab6d9576508bbdce8bffcb7d835f80c51" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>monotonic_milliseconds</name></member>
+      <member refid="structUrpAstOperations_1a47858ae0a5f94e753c83b06c1061337f" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>queue_control</name></member>
+      <member refid="structUrpAstOperations_1a294b5361194c92960cb687711d0c9945" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>queue_text</name></member>
+      <member refid="structUrpAstOperations_1a7ba0901d0887b7ae976639078951010d" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>queue_voice</name></member>
+      <member refid="structUrpAstOperations_1ae9223595ab3506347433aed02653f6de" prot="public" virt="non-virtual"><scope>UrpAstOperations</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

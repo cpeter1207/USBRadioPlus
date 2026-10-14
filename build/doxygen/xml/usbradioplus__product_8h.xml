@@ -1,0 +1,1133 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__product_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_product.h</compoundname>
+    <includes local="no">stdarg.h</includes>
+    <includes local="no">stdbool.h</includes>
+    <includes local="no">stdint.h</includes>
+    <includes local="no">stdlib.h</includes>
+    <includedby refid="chan__usbradioplus__shim_8c" local="yes">src/chan_usbradioplus_shim.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>rust/product/include/usbradioplus_product.h</label>
+        <link refid="usbradioplus__product_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>stdarg.h</label>
+      </node>
+      <node id="3">
+        <label>stdbool.h</label>
+      </node>
+      <node id="4">
+        <label>stdint.h</label>
+      </node>
+      <node id="5">
+        <label>stdlib.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="1">
+        <label>rust/product/include/usbradioplus_product.h</label>
+        <link refid="usbradioplus__product_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>src/chan_usbradioplus_shim.c</label>
+        <link refid="chan__usbradioplus__shim_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structUrpNativeStationConfig" prot="public">UrpNativeStationConfig</innerclass>
+    <innerclass refid="structUrpAstDtmfResult" prot="public">UrpAstDtmfResult</innerclass>
+    <innerclass refid="structUrpAstOperations" prot="public">UrpAstOperations</innerclass>
+    <innerclass refid="structUrpAstProviderManifest" prot="public">UrpAstProviderManifest</innerclass>
+    <innerclass refid="structUrpAstDriverCreateArgs" prot="public">UrpAstDriverCreateArgs</innerclass>
+    <innerclass refid="structUrpAstLinkObservation" prot="public">UrpAstLinkObservation</innerclass>
+    <innerclass refid="structUrpAstChannelReserveArgs" prot="public">UrpAstChannelReserveArgs</innerclass>
+    <innerclass refid="structUrpAstDirectCallbacks" prot="public">UrpAstDirectCallbacks</innerclass>
+    <innerclass refid="structUrpAstJitterConfig" prot="public">UrpAstJitterConfig</innerclass>
+    <innerclass refid="structUrpAstChannelCommand" prot="public">UrpAstChannelCommand</innerclass>
+    <innerclass refid="structUrpAstChannelStatus" prot="public">UrpAstChannelStatus</innerclass>
+    <innerclass refid="structUrpNativeCreateArgs" prot="public">UrpNativeCreateArgs</innerclass>
+    <innerclass refid="structUrpAstDescriptor" prot="public">UrpAstDescriptor</innerclass>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="usbradioplus__product_8h_1ae1af7467eff141de3a5ff5c4c414217f" prot="public" static="no">
+        <name>URP_AST_CTCSS_CALIBRATION_TARGET</name>
+        <initializer>(2400.0f / 32768.0f)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>CTCSS decoder calibration reference in normalized F32 PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="71" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="71" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1aefd7aface84c4cdf82e8494564915a2f" prot="public" static="no">
+        <name>URP_AST_OK</name>
+        <initializer>0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Successful C ABI operation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="76" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="76" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1aeedd321d69311d4b69192351d1087998" prot="public" static="no">
+        <name>URP_AST_RELOAD_PENDING</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>An asynchronous reload phase is progressing without blocking media delivery. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="81" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a5aeca9c54f0d172b0fb4ac9807b6ff14" prot="public" static="no">
+        <name>URP_AST_INVALID_ARGUMENT</name>
+        <initializer>-1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>A pointer, structure, enum, string, or PCM span was invalid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="86" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="86" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ad06b481719f8bac5da63a7cbac03949d" prot="public" static="no">
+        <name>URP_AST_INCOMPATIBLE_ABI</name>
+        <initializer>-2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>A required descriptor or function-table ABI was incompatible. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="91" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="91" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a1ccc389fe6abcee50ede94d48fdcd730" prot="public" static="no">
+        <name>URP_AST_INVALID_CONFIGURATION</name>
+        <initializer>-3</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>The supplied USBRadioPlus configuration was invalid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="96" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="96" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ad0a77954b7fbaa19e593ce538152d68b" prot="public" static="no">
+        <name>URP_AST_CHANNEL_NOT_FOUND</name>
+        <initializer>-4</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>The requested configured channel was not found. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="101" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="101" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a3084a3cb20f50c3b06b972dc8af94a80" prot="public" static="no">
+        <name>URP_AST_CHANNEL_BUSY</name>
+        <initializer>-5</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>The requested configured channel is already reserved. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="106" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="106" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1acc48ddd4a30641acea9fb7799ec94028" prot="public" static="no">
+        <name>URP_AST_SETUP_FAILED</name>
+        <initializer>-6</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Station planning or provider setup failed. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="111" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="111" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a1020241f006e417f7982ff0e5d50285c" prot="public" static="no">
+        <name>URP_AST_NOT_READY</name>
+        <initializer>-7</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>The requested operation requires runtime hardware binding not yet active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="116" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="116" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a39f76533660798e6414c979464cdfa38" prot="public" static="no">
+        <name>URP_AST_ASTERISK_FAILURE</name>
+        <initializer>-8</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>An injected Asterisk operation failed. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="121" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="121" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a20fb55b7ab247d4cdba26ed074d2a50d" prot="public" static="no">
+        <name>URP_AST_INTERNAL_FAILURE</name>
+        <initializer>-9</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>A Rust panic was contained at the C ABI boundary. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="126" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="126" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a485ada124c99ae83db296c11b7983957" prot="public" static="no">
+        <name>URP_AST_TRANSPORT_APP_RPT</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed 8 kHz interface used by <computeroutput>app_rpt</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="131" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="131" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a357ae0ec295cc14e495ea31cfc7456a3" prot="public" static="no">
+        <name>URP_AST_TRANSPORT_RPT_ADVANCED</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed 48 kHz interface used by <computeroutput>rpt_advanced</computeroutput>. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="136" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="136" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1acbabddda9199b11b8c90bea87b85707b" prot="public" static="no">
+        <name>URP_AST_LINK_DIRECTION_READ</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Audio read from an incoming Asterisk link before controller mixing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="141" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="141" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a022b8aecff486ae85020a3121b85ea8c" prot="public" static="no">
+        <name>URP_AST_LINK_DIRECTION_WRITE</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Audio written toward an Asterisk link; intentionally bypassed by link processing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="146" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="146" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1acae4f1810c4da7172748543f85db5a0c" prot="public" static="no">
+        <name>URP_AST_JITTER_FIXED</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Fixed Asterisk jitter-buffer implementation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="151" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="151" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ab11761313ed6a7945ddd5f3f330b3e73" prot="public" static="no">
+        <name>URP_AST_JITTER_ADAPTIVE</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Adaptive Asterisk jitter-buffer implementation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="156" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="156" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a0a63bc48c24cd01fa39ad83d31b1fedd" prot="public" static="no">
+        <name>URP_AST_DTMF_NONE</name>
+        <initializer>0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>No DTMF event was detected in a voice frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="161" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="161" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1acff3a58c3c1ed1e87e6e2f4be72188b4" prot="public" static="no">
+        <name>URP_AST_DTMF_BEGIN</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Start of one detected DTMF digit. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="166" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="166" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ae597e46bf59edfe06c1188a626c83f9d" prot="public" static="no">
+        <name>URP_AST_DTMF_END</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>End of one detected DTMF digit. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="171" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="171" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a6cc239571371801839f36fbf03eb81b8" prot="public" static="no">
+        <name>URP_AST_CONTROL_RECEIVER_KEY</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue a radio-key control frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="176" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="176" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a48f95d8974b5bdf00ef7794773ed391e" prot="public" static="no">
+        <name>URP_AST_CONTROL_RECEIVER_UNKEY</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue a radio-unkey control frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="181" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="181" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a014fb489588e56e26304a289a06fc75d" prot="public" static="no">
+        <name>URP_AST_CONTROL_DTMF_BEGIN</name>
+        <initializer>3</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue a DTMF-begin frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="186" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="186" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a523a32a7b4accab6977a2afa6e508df9" prot="public" static="no">
+        <name>URP_AST_CONTROL_DTMF_END</name>
+        <initializer>4</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue a DTMF-end frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="191" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="191" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a0068198bb2f7841edf383cf2d2df7cee" prot="public" static="no">
+        <name>URP_AST_CONTROL_NULL</name>
+        <initializer>5</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue an Asterisk null frame in place of a muted pseudo digit. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="196" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="196" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ac1404d0c67c58ee24139b64d9789463a" prot="public" static="no">
+        <name>URP_AST_LOG_INFO</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Informational adapter log message. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="201" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="201" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1af6abb5c95fd403b7ee6affc27a2332d4" prot="public" static="no">
+        <name>URP_AST_LOG_WARNING</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration or runtime warning. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="206" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="206" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a72d22eac2d40ba6ac4f88caa5c9b9f5b" prot="public" static="no">
+        <name>URP_AST_LOG_ERROR</name>
+        <initializer>3</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Operation failure. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="211" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="211" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a8aff223968b382d460b8da4a16f48c91" prot="public" static="no">
+        <name>URP_AST_COMMAND_GET_MIXER</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read one hardware mixer level into the command value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="216" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="216" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ac64e9db6654cc6e731863362b8c61140" prot="public" static="no">
+        <name>URP_AST_COMMAND_SET_MIXER</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Set one hardware mixer level from the command value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="221" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="221" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a378561a74f3691fa8d030bc58dcaed0b" prot="public" static="no">
+        <name>URP_AST_COMMAND_SET_TEST_TONE</name>
+        <initializer>3</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Enable or disable the calibrated transmitter test tone. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="226" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="226" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ae83d1336a7e747fea70039950e268755" prot="public" static="no">
+        <name>URP_AST_COMMAND_READ_EEPROM</name>
+        <initializer>4</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read the complete hardware tuning EEPROM image. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="231" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="231" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a5a0dd9bc29f469d33b86541d98c7c0a9" prot="public" static="no">
+        <name>URP_AST_COMMAND_WRITE_EEPROM</name>
+        <initializer>5</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Write the complete hardware tuning EEPROM image. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="236" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="236" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a7b91887af5126a41b2b6580c58c379a3" prot="public" static="no">
+        <name>URP_AST_COMMAND_SET_CTCSS_INHIBIT</name>
+        <initializer>7</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Temporarily inhibit or restore transmit CTCSS generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="241" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="241" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ae300ad81939567c9619e936945d5bd1b" prot="public" static="no">
+        <name>URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE</name>
+        <initializer>8</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Temporarily bypass or restore receive subaudible qualification. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="246" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="246" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a2f61e88116917b7b3e5929272a3912d0" prot="public" static="no">
+        <name>URP_AST_COMMAND_SAVE_TUNING_EEPROM</name>
+        <initializer>9</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Persist the current live mixer, CTCSS, and squelch tuning to EEPROM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="251" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="251" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a988e1c2c941a7b1af508aaf304924d44" prot="public" static="no">
+        <name>URP_AST_MIXER_RECEIVE</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Receiver ADC mixer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="256" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="256" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1ab5ad944894db6d1143a78e92a01a93b3" prot="public" static="no">
+        <name>URP_AST_MIXER_TRANSMIT_A</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmitter DAC A mixer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="261" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="261" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a44826650fe2b24d7347c4637c12c150e" prot="public" static="no">
+        <name>URP_AST_MIXER_TRANSMIT_B</name>
+        <initializer>3</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transmitter DAC B mixer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="266" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="266" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1a2b6eaa5c951dd05a7588a34f3fa6ddb0" prot="public" static="no">
+        <name>URP_AST_EEPROM_CHECKSUM_VALID</name>
+        <initializer>(1 &lt;&lt; 0)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>EEPROM image has a valid checksum. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="271" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="271" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__product_8h_1aeb8c0717c3a8dbc487e20048a07833f4" prot="public" static="no">
+        <name>URP_AST_EEPROM_MAGIC_VALID</name>
+        <initializer>(1 &lt;&lt; 1)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>EEPROM image has the established tuning magic value. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="276" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="276" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="typedef">
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a1a5f03c1e00d55a31910fd50cbd6dc3e" prot="public" static="no">
+        <type>struct <ref refid="structUrpNativeStationConfig" kindref="compound">UrpNativeStationConfig</ref></type>
+        <definition>typedef struct UrpNativeStationConfig UrpNativeStationConfig</definition>
+        <argsstring></argsstring>
+        <name>UrpNativeStationConfig</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved native request. All byte spans and radio are borrowed during create. Native creation never changes mixer settings or reads tuning EEPROM. Radio generation/frame bounds/publication cadence are set by native lifecycle; effective released ABI-4 radio settings are otherwise preserved. Inactive signaling fields are normalized by the typed radio configuration. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="68" column="24"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a994f29eb417eb86201769512e18e685e" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstDtmfResult" kindref="compound">UrpAstDtmfResult</ref></type>
+        <definition>typedef struct UrpAstDtmfResult UrpAstDtmfResult</definition>
+        <argsstring></argsstring>
+        <name>UrpAstDtmfResult</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Result storage supplied to the injected DTMF analyzer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="298" column="18"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a47f34e8b81f55b2993eb42c626a3863b" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstOperations" kindref="compound">UrpAstOperations</ref></type>
+        <definition>typedef struct UrpAstOperations UrpAstOperations</definition>
+        <argsstring></argsstring>
+        <name>UrpAstOperations</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Asterisk-owned operations injected into the Rust adapter. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="346" column="18"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1aff0b1ff97570f18e96f56c2dec1e58b8" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref></type>
+        <definition>typedef struct UrpAstProviderManifest UrpAstProviderManifest</definition>
+        <argsstring></argsstring>
+        <name>UrpAstProviderManifest</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Process-lifetime descriptors for the selected product composition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="388" column="24"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a2c9f394181ea9abd7128604116a27353" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstDriverCreateArgs" kindref="compound">UrpAstDriverCreateArgs</ref></type>
+        <definition>typedef struct UrpAstDriverCreateArgs UrpAstDriverCreateArgs</definition>
+        <argsstring></argsstring>
+        <name>UrpAstDriverCreateArgs</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Arguments for constructing one Rust-owned driver generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="434" column="24"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1aadadf50fea500e5ef20875f0207b4ac8" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstLinkObservation" kindref="compound">UrpAstLinkObservation</ref></type>
+        <definition>typedef struct UrpAstLinkObservation UrpAstLinkObservation</definition>
+        <argsstring></argsstring>
+        <name>UrpAstLinkObservation</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Lock-free processing counters for one attached incoming-link graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="460" column="23"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a44bb27b266a02aa7954b74ac9973e1c3" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstChannelReserveArgs" kindref="compound">UrpAstChannelReserveArgs</ref></type>
+        <definition>typedef struct UrpAstChannelReserveArgs UrpAstChannelReserveArgs</definition>
+        <argsstring></argsstring>
+        <name>UrpAstChannelReserveArgs</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Arguments for reserving one configured channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="490" column="26"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a5174e2240d25c0c342ed0352c549b98a" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref></type>
+        <definition>typedef struct UrpAstDirectCallbacks UrpAstDirectCallbacks</definition>
+        <argsstring></argsstring>
+        <name>UrpAstDirectCallbacks</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed exact-frame native callbacks, independent of Asterisk frame queues. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="522" column="23"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a463885566f95bfc71965eaa998e692fb" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstJitterConfig" kindref="compound">UrpAstJitterConfig</ref></type>
+        <definition>typedef struct UrpAstJitterConfig UrpAstJitterConfig</definition>
+        <argsstring></argsstring>
+        <name>UrpAstJitterConfig</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolved Asterisk jitter-buffer settings for one channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="568" column="20"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1ab1787f7b2ada9bae379e1e1febb41f2f" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstChannelCommand" kindref="compound">UrpAstChannelCommand</ref></type>
+        <definition>typedef struct UrpAstChannelCommand UrpAstChannelCommand</definition>
+        <argsstring></argsstring>
+        <name>UrpAstChannelCommand</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One typed, non-real-time hardware or tuning operation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="602" column="22"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a95e22227b297b91c128a137dc4c20e0f" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstChannelStatus" kindref="compound">UrpAstChannelStatus</ref></type>
+        <definition>typedef struct UrpAstChannelStatus UrpAstChannelStatus</definition>
+        <argsstring></argsstring>
+        <name>UrpAstChannelStatus</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Best-effort typed status for one active channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="824" column="21"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1ad83511b9d51dc8e84106d4bfe6a5974e" prot="public" static="no">
+        <type>struct <ref refid="structUrpNativeCreateArgs" kindref="compound">UrpNativeCreateArgs</ref></type>
+        <definition>typedef struct UrpNativeCreateArgs UrpNativeCreateArgs</definition>
+        <argsstring></argsstring>
+        <name>UrpNativeCreateArgs</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native stopped station creation. All requests are copied synchronously. Only ffmpeg/radio/audio/gpio provider entries are required. Callback contexts and provider DSOs remain alive until native_destroy returns. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="845" column="21"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__product_8h_1a41f44ea34b7fd8477d6e866dbb781911" prot="public" static="no">
+        <type>struct <ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref></type>
+        <definition>typedef struct UrpAstDescriptor UrpAstDescriptor</definition>
+        <argsstring></argsstring>
+        <name>UrpAstDescriptor</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Versioned shared-radio product operations. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1001" column="18"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__product_8h_1ac6e2d62f083d3e58901a5d4a4c869b34" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>const struct <ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref> *</type>
+        <definition>const struct UrpAstDescriptor * usbradioplus_product_descriptor_v1</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_product_descriptor_v1</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Return the immutable process-lifetime product descriptor (ABI 1). <simplesect kind="return"><para>Pointer to the process-lifetime descriptor. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1011" column="29" declfile="rust/product/include/usbradioplus_product.h" declline="1011" declcolumn="29"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="57" endline="84">load_module</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Shared USBRadioPlus product ABI. Handles are opaque and host callbacks and provider descriptors must outlive every object created from them. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_PRODUCT_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_PRODUCT_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdarg.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdbool.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdlib.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">rptadv_radio_session_config;</highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21" refid="structUrpNativeStationConfig" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpNativeStationConfig" kindref="compound">UrpNativeStationConfig</ref><sp/>{</highlight></codeline>
+<codeline lineno="23" refid="structUrpNativeStationConfig_1a14563b5a990ae3e09e36e53c9999e1d6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a14563b5a990ae3e09e36e53c9999e1d6" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="25" refid="structUrpNativeStationConfig_1a95d8aff6cbebf7890089a64d1f308128" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a95d8aff6cbebf7890089a64d1f308128" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="27" refid="structUrpNativeStationConfig_1ad824be19d24f0270f86b56414515391d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal">rptadv_radio_session_config<sp/>*<ref refid="structUrpNativeStationConfig_1ad824be19d24f0270f86b56414515391d" kindref="member">radio</ref>;</highlight></codeline>
+<codeline lineno="29" refid="structUrpNativeStationConfig_1ad1d65ee39c886f12cf76ede2f605de8d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1ad1d65ee39c886f12cf76ede2f605de8d" kindref="member">device_selection</ref>;</highlight></codeline>
+<codeline lineno="31" refid="structUrpNativeStationConfig_1a74b1eb428dbce8c11a077f50aef860cf" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpNativeStationConfig_1a74b1eb428dbce8c11a077f50aef860cf" kindref="member">device_identifier</ref>;</highlight></codeline>
+<codeline lineno="33" refid="structUrpNativeStationConfig_1a5edd4ac2550e960894deef644b8afa69" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a5edd4ac2550e960894deef644b8afa69" kindref="member">device_identifier_length</ref>;</highlight></codeline>
+<codeline lineno="35" refid="structUrpNativeStationConfig_1a31169e9bd7d656d3889f77e0e396047c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpNativeStationConfig_1a31169e9bd7d656d3889f77e0e396047c" kindref="member">usb_serial</ref>;</highlight></codeline>
+<codeline lineno="37" refid="structUrpNativeStationConfig_1a103150b9c09b541221d810214f5233a0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a103150b9c09b541221d810214f5233a0" kindref="member">usb_serial_length</ref>;</highlight></codeline>
+<codeline lineno="39" refid="structUrpNativeStationConfig_1a751c0851a51c3a59da7bc52a152d826f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a751c0851a51c3a59da7bc52a152d826f" kindref="member">input_device_channels</ref>;</highlight></codeline>
+<codeline lineno="41" refid="structUrpNativeStationConfig_1ab10d99ec687ec8bfd182428727031de3" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1ab10d99ec687ec8bfd182428727031de3" kindref="member">output_device_channels</ref>;</highlight></codeline>
+<codeline lineno="43" refid="structUrpNativeStationConfig_1ae99b951333231f2ab4ecd1fe521021d7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1ae99b951333231f2ab4ecd1fe521021d7" kindref="member">input_extra_buffer_ms</ref>;</highlight></codeline>
+<codeline lineno="45" refid="structUrpNativeStationConfig_1a473ecf191242dd42e815d9f9cdff5e59" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a473ecf191242dd42e815d9f9cdff5e59" kindref="member">output_extra_buffer_ms</ref>;</highlight></codeline>
+<codeline lineno="47" refid="structUrpNativeStationConfig_1ad12dfbfb03b7f9d47ce63e19420bdbf0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1ad12dfbfb03b7f9d47ce63e19420bdbf0" kindref="member">cm119_profile</ref>;</highlight></codeline>
+<codeline lineno="49" refid="structUrpNativeStationConfig_1a2d827ac87f9c0990cb4389a3099e9980" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a2d827ac87f9c0990cb4389a3099e9980" kindref="member">ptt_inverted</ref>;</highlight></codeline>
+<codeline lineno="51" refid="structUrpNativeStationConfig_1abaae0a13ca9e90ed8c04d75e8e62e727" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1abaae0a13ca9e90ed8c04d75e8e62e727" kindref="member">gpio_output_enable_mask</ref>;</highlight></codeline>
+<codeline lineno="53" refid="structUrpNativeStationConfig_1aa480a9a9bb34dda6adb8890fe6190073" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1aa480a9a9bb34dda6adb8890fe6190073" kindref="member">gpio_output_initial_mask</ref>;</highlight></codeline>
+<codeline lineno="55" refid="structUrpNativeStationConfig_1aabbe4d523b65dbbb6ce39cacdf3701d2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1aabbe4d523b65dbbb6ce39cacdf3701d2" kindref="member">clip_led_mask</ref>;</highlight></codeline>
+<codeline lineno="57" refid="structUrpNativeStationConfig_1ac3041dad4c863cc0bc42497c2a18a057" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpNativeStationConfig_1ac3041dad4c863cc0bc42497c2a18a057" kindref="member">receive_graph</ref>;</highlight></codeline>
+<codeline lineno="59" refid="structUrpNativeStationConfig_1a291437a4df4fe4ef3f4c06782516d9a6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a291437a4df4fe4ef3f4c06782516d9a6" kindref="member">receive_graph_length</ref>;</highlight></codeline>
+<codeline lineno="61" refid="structUrpNativeStationConfig_1a79a5f9e9e8e35ca40ea134c37f872e85" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpNativeStationConfig_1a79a5f9e9e8e35ca40ea134c37f872e85" kindref="member">transmit_graph</ref>;</highlight></codeline>
+<codeline lineno="63" refid="structUrpNativeStationConfig_1a6c2430eca4ec58e38eb6958ade366525" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1a6c2430eca4ec58e38eb6958ade366525" kindref="member">transmit_graph_length</ref>;</highlight></codeline>
+<codeline lineno="65" refid="structUrpNativeStationConfig_1ae272d392f38d3dcd2a0ad23bc1c11efa" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeStationConfig_1ae272d392f38d3dcd2a0ad23bc1c11efa" kindref="member">receive_deemphasis</ref>;</highlight></codeline>
+<codeline lineno="67" refid="structUrpNativeStationConfig_1a09df02d368bbb59514fbc78c7b690b5a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int32_t<sp/><ref refid="structUrpNativeStationConfig_1a09df02d368bbb59514fbc78c7b690b5a" kindref="member">receive_output_gain_db</ref>;</highlight></codeline>
+<codeline lineno="68" refid="usbradioplus__product_8h_1a1a5f03c1e00d55a31910fd50cbd6dc3e" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpNativeStationConfig" kindref="compound">UrpNativeStationConfig</ref>;</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"></highlight></codeline>
+<codeline lineno="71" refid="usbradioplus__product_8h_1ae1af7467eff141de3a5ff5c4c414217f" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CTCSS_CALIBRATION_TARGET<sp/>(2400.0f<sp/>/<sp/>32768.0f)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="72"><highlight class="normal"></highlight></codeline>
+<codeline lineno="76" refid="usbradioplus__product_8h_1aefd7aface84c4cdf82e8494564915a2f" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_OK<sp/>0</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="77"><highlight class="normal"></highlight></codeline>
+<codeline lineno="81" refid="usbradioplus__product_8h_1aeedd321d69311d4b69192351d1087998" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_RELOAD_PENDING<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="82"><highlight class="normal"></highlight></codeline>
+<codeline lineno="86" refid="usbradioplus__product_8h_1a5aeca9c54f0d172b0fb4ac9807b6ff14" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_INVALID_ARGUMENT<sp/>-1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="87"><highlight class="normal"></highlight></codeline>
+<codeline lineno="91" refid="usbradioplus__product_8h_1ad06b481719f8bac5da63a7cbac03949d" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_INCOMPATIBLE_ABI<sp/>-2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="92"><highlight class="normal"></highlight></codeline>
+<codeline lineno="96" refid="usbradioplus__product_8h_1a1ccc389fe6abcee50ede94d48fdcd730" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_INVALID_CONFIGURATION<sp/>-3</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="97"><highlight class="normal"></highlight></codeline>
+<codeline lineno="101" refid="usbradioplus__product_8h_1ad0a77954b7fbaa19e593ce538152d68b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CHANNEL_NOT_FOUND<sp/>-4</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="102"><highlight class="normal"></highlight></codeline>
+<codeline lineno="106" refid="usbradioplus__product_8h_1a3084a3cb20f50c3b06b972dc8af94a80" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CHANNEL_BUSY<sp/>-5</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="107"><highlight class="normal"></highlight></codeline>
+<codeline lineno="111" refid="usbradioplus__product_8h_1acc48ddd4a30641acea9fb7799ec94028" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_SETUP_FAILED<sp/>-6</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="112"><highlight class="normal"></highlight></codeline>
+<codeline lineno="116" refid="usbradioplus__product_8h_1a1020241f006e417f7982ff0e5d50285c" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_NOT_READY<sp/>-7</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="117"><highlight class="normal"></highlight></codeline>
+<codeline lineno="121" refid="usbradioplus__product_8h_1a39f76533660798e6414c979464cdfa38" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_ASTERISK_FAILURE<sp/>-8</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="122"><highlight class="normal"></highlight></codeline>
+<codeline lineno="126" refid="usbradioplus__product_8h_1a20fb55b7ab247d4cdba26ed074d2a50d" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_INTERNAL_FAILURE<sp/>-9</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="127"><highlight class="normal"></highlight></codeline>
+<codeline lineno="131" refid="usbradioplus__product_8h_1a485ada124c99ae83db296c11b7983957" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_TRANSPORT_APP_RPT<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="132"><highlight class="normal"></highlight></codeline>
+<codeline lineno="136" refid="usbradioplus__product_8h_1a357ae0ec295cc14e495ea31cfc7456a3" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_TRANSPORT_RPT_ADVANCED<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="137"><highlight class="normal"></highlight></codeline>
+<codeline lineno="141" refid="usbradioplus__product_8h_1acbabddda9199b11b8c90bea87b85707b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LINK_DIRECTION_READ<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="142"><highlight class="normal"></highlight></codeline>
+<codeline lineno="146" refid="usbradioplus__product_8h_1a022b8aecff486ae85020a3121b85ea8c" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LINK_DIRECTION_WRITE<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="147"><highlight class="normal"></highlight></codeline>
+<codeline lineno="151" refid="usbradioplus__product_8h_1acae4f1810c4da7172748543f85db5a0c" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_JITTER_FIXED<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="152"><highlight class="normal"></highlight></codeline>
+<codeline lineno="156" refid="usbradioplus__product_8h_1ab11761313ed6a7945ddd5f3f330b3e73" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_JITTER_ADAPTIVE<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="157"><highlight class="normal"></highlight></codeline>
+<codeline lineno="161" refid="usbradioplus__product_8h_1a0a63bc48c24cd01fa39ad83d31b1fedd" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_DTMF_NONE<sp/>0</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="162"><highlight class="normal"></highlight></codeline>
+<codeline lineno="166" refid="usbradioplus__product_8h_1acff3a58c3c1ed1e87e6e2f4be72188b4" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_DTMF_BEGIN<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="167"><highlight class="normal"></highlight></codeline>
+<codeline lineno="171" refid="usbradioplus__product_8h_1ae597e46bf59edfe06c1188a626c83f9d" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_DTMF_END<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="172"><highlight class="normal"></highlight></codeline>
+<codeline lineno="176" refid="usbradioplus__product_8h_1a6cc239571371801839f36fbf03eb81b8" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CONTROL_RECEIVER_KEY<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="177"><highlight class="normal"></highlight></codeline>
+<codeline lineno="181" refid="usbradioplus__product_8h_1a48f95d8974b5bdf00ef7794773ed391e" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CONTROL_RECEIVER_UNKEY<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="182"><highlight class="normal"></highlight></codeline>
+<codeline lineno="186" refid="usbradioplus__product_8h_1a014fb489588e56e26304a289a06fc75d" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CONTROL_DTMF_BEGIN<sp/>3</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="187"><highlight class="normal"></highlight></codeline>
+<codeline lineno="191" refid="usbradioplus__product_8h_1a523a32a7b4accab6977a2afa6e508df9" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CONTROL_DTMF_END<sp/>4</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="192"><highlight class="normal"></highlight></codeline>
+<codeline lineno="196" refid="usbradioplus__product_8h_1a0068198bb2f7841edf383cf2d2df7cee" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_CONTROL_NULL<sp/>5</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="197"><highlight class="normal"></highlight></codeline>
+<codeline lineno="201" refid="usbradioplus__product_8h_1ac1404d0c67c58ee24139b64d9789463a" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOG_INFO<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="202"><highlight class="normal"></highlight></codeline>
+<codeline lineno="206" refid="usbradioplus__product_8h_1af6abb5c95fd403b7ee6affc27a2332d4" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOG_WARNING<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="207"><highlight class="normal"></highlight></codeline>
+<codeline lineno="211" refid="usbradioplus__product_8h_1a72d22eac2d40ba6ac4f88caa5c9b9f5b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOG_ERROR<sp/>3</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="212"><highlight class="normal"></highlight></codeline>
+<codeline lineno="216" refid="usbradioplus__product_8h_1a8aff223968b382d460b8da4a16f48c91" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_GET_MIXER<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="217"><highlight class="normal"></highlight></codeline>
+<codeline lineno="221" refid="usbradioplus__product_8h_1ac64e9db6654cc6e731863362b8c61140" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_SET_MIXER<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="222"><highlight class="normal"></highlight></codeline>
+<codeline lineno="226" refid="usbradioplus__product_8h_1a378561a74f3691fa8d030bc58dcaed0b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_SET_TEST_TONE<sp/>3</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="227"><highlight class="normal"></highlight></codeline>
+<codeline lineno="231" refid="usbradioplus__product_8h_1ae83d1336a7e747fea70039950e268755" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_READ_EEPROM<sp/>4</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="232"><highlight class="normal"></highlight></codeline>
+<codeline lineno="236" refid="usbradioplus__product_8h_1a5a0dd9bc29f469d33b86541d98c7c0a9" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_WRITE_EEPROM<sp/>5</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="237"><highlight class="normal"></highlight></codeline>
+<codeline lineno="241" refid="usbradioplus__product_8h_1a7b91887af5126a41b2b6580c58c379a3" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_SET_CTCSS_INHIBIT<sp/>7</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="242"><highlight class="normal"></highlight></codeline>
+<codeline lineno="246" refid="usbradioplus__product_8h_1ae300ad81939567c9619e936945d5bd1b" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE<sp/>8</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="247"><highlight class="normal"></highlight></codeline>
+<codeline lineno="251" refid="usbradioplus__product_8h_1a2f61e88116917b7b3e5929272a3912d0" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_COMMAND_SAVE_TUNING_EEPROM<sp/>9</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="252"><highlight class="normal"></highlight></codeline>
+<codeline lineno="256" refid="usbradioplus__product_8h_1a988e1c2c941a7b1af508aaf304924d44" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_MIXER_RECEIVE<sp/>1</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="257"><highlight class="normal"></highlight></codeline>
+<codeline lineno="261" refid="usbradioplus__product_8h_1ab5ad944894db6d1143a78e92a01a93b3" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_MIXER_TRANSMIT_A<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="262"><highlight class="normal"></highlight></codeline>
+<codeline lineno="266" refid="usbradioplus__product_8h_1a44826650fe2b24d7347c4637c12c150e" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_MIXER_TRANSMIT_B<sp/>3</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="267"><highlight class="normal"></highlight></codeline>
+<codeline lineno="271" refid="usbradioplus__product_8h_1a2b6eaa5c951dd05a7588a34f3fa6ddb0" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_EEPROM_CHECKSUM_VALID<sp/>(1<sp/>&lt;&lt;<sp/>0)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="272"><highlight class="normal"></highlight></codeline>
+<codeline lineno="276" refid="usbradioplus__product_8h_1aeb8c0717c3a8dbc487e20048a07833f4" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_EEPROM_MAGIC_VALID<sp/>(1<sp/>&lt;&lt;<sp/>1)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="277"><highlight class="normal"></highlight></codeline>
+<codeline lineno="281" refid="structUrpAstDtmfResult" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDtmfResult" kindref="compound">UrpAstDtmfResult</ref><sp/>{</highlight></codeline>
+<codeline lineno="285" refid="structUrpAstDtmfResult_1a429c91e3a34ce0233baab59afa2dbc9a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDtmfResult_1a429c91e3a34ce0233baab59afa2dbc9a" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="289" refid="structUrpAstDtmfResult_1a4daaa67f89f6ab544fbec271b08e9b1c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDtmfResult_1a4daaa67f89f6ab544fbec271b08e9b1c" kindref="member">event_kind</ref>;</highlight></codeline>
+<codeline lineno="293" refid="structUrpAstDtmfResult_1af4e210e0b0adafaa65a64cff6d8b8430" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint8_t<sp/><ref refid="structUrpAstDtmfResult_1af4e210e0b0adafaa65a64cff6d8b8430" kindref="member">digit</ref>;</highlight></codeline>
+<codeline lineno="297" refid="structUrpAstDtmfResult_1a0280e9ebfca690fd7e80be1bb837b305" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint8_t<sp/><ref refid="structUrpAstDtmfResult_1a0280e9ebfca690fd7e80be1bb837b305" kindref="member">reserved</ref>[7];</highlight></codeline>
+<codeline lineno="298" refid="usbradioplus__product_8h_1a994f29eb417eb86201769512e18e685e" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstDtmfResult" kindref="compound">UrpAstDtmfResult</ref>;</highlight></codeline>
+<codeline lineno="299"><highlight class="normal"></highlight></codeline>
+<codeline lineno="303" refid="structUrpAstOperations" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstOperations" kindref="compound">UrpAstOperations</ref><sp/>{</highlight></codeline>
+<codeline lineno="307" refid="structUrpAstOperations_1ae9223595ab3506347433aed02653f6de" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstOperations_1ae9223595ab3506347433aed02653f6de" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="311" refid="structUrpAstOperations_1a89c6fc6bb574ad8aa62118ee100c71cf" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstOperations_1a89c6fc6bb574ad8aa62118ee100c71cf" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="315" refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>;</highlight></codeline>
+<codeline lineno="319" refid="structUrpAstOperations_1a7ba0901d0887b7ae976639078951010d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstOperations_1a7ba0901d0887b7ae976639078951010d" kindref="member">queue_voice</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel_context,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*samples,</highlight></codeline>
+<codeline lineno="320"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>sample_count,<sp/>uint32_t<sp/>sample_rate_hz);</highlight></codeline>
+<codeline lineno="324" refid="structUrpAstOperations_1a47858ae0a5f94e753c83b06c1061337f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstOperations_1a47858ae0a5f94e753c83b06c1061337f" kindref="member">queue_control</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel_context,<sp/>uint32_t<sp/>kind,</highlight></codeline>
+<codeline lineno="325"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>int32_t<sp/>value,<sp/>uint64_t<sp/>duration_ms);</highlight></codeline>
+<codeline lineno="329" refid="structUrpAstOperations_1a294b5361194c92960cb687711d0c9945" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstOperations_1a294b5361194c92960cb687711d0c9945" kindref="member">queue_text</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel_context,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*text,</highlight></codeline>
+<codeline lineno="330"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>text_length);</highlight></codeline>
+<codeline lineno="334" refid="structUrpAstOperations_1a227e176edfc3d62724d5fc4422eef0e4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstOperations_1a227e176edfc3d62724d5fc4422eef0e4" kindref="member">analyze_dtmf</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel_context,<sp/>int16_t<sp/>*samples,</highlight></codeline>
+<codeline lineno="335"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>sample_count,<sp/>uint32_t<sp/>sample_rate_hz,</highlight></codeline>
+<codeline lineno="336"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDtmfResult" kindref="compound">UrpAstDtmfResult</ref><sp/>*result);</highlight></codeline>
+<codeline lineno="340" refid="structUrpAstOperations_1ab6d9576508bbdce8bffcb7d835f80c51" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/>(*<ref refid="structUrpAstOperations_1ab6d9576508bbdce8bffcb7d835f80c51" kindref="member">monotonic_milliseconds</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>);</highlight></codeline>
+<codeline lineno="344" refid="structUrpAstOperations_1a5860f671b39d913beaa903f876d0e621" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structUrpAstOperations_1a5860f671b39d913beaa903f876d0e621" kindref="member">log</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstOperations_1a4e540a1d35007c2b69bbd0a1bd2e4d42" kindref="member">application_context</ref>,<sp/>uint32_t<sp/>level,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*message,</highlight></codeline>
+<codeline lineno="345"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>message_length);</highlight></codeline>
+<codeline lineno="346" refid="usbradioplus__product_8h_1a47f34e8b81f55b2993eb42c626a3863b" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstOperations" kindref="compound">UrpAstOperations</ref>;</highlight></codeline>
+<codeline lineno="347"><highlight class="normal"></highlight></codeline>
+<codeline lineno="351" refid="structUrpAstProviderManifest" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref><sp/>{</highlight></codeline>
+<codeline lineno="355" refid="structUrpAstProviderManifest_1a906314e8942f6d25481688d4f32acdf2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstProviderManifest_1a906314e8942f6d25481688d4f32acdf2" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="359" refid="structUrpAstProviderManifest_1a4aafff6db14adb91d5779533500167f0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstProviderManifest_1a4aafff6db14adb91d5779533500167f0" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="363" refid="structUrpAstProviderManifest_1a6a3a1fc4c3a8301e72346c8759ac30da" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a6a3a1fc4c3a8301e72346c8759ac30da" kindref="member">ffmpeg</ref>;</highlight></codeline>
+<codeline lineno="367" refid="structUrpAstProviderManifest_1a5ad06d4f4158be8985f61490e191e955" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a5ad06d4f4158be8985f61490e191e955" kindref="member">rnnoise</ref>;</highlight></codeline>
+<codeline lineno="371" refid="structUrpAstProviderManifest_1a2d0e6e75625d930c190fbd941668abfd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a2d0e6e75625d930c190fbd941668abfd" kindref="member">ring</ref>;</highlight></codeline>
+<codeline lineno="375" refid="structUrpAstProviderManifest_1a178b9946965b910cc2d38ec25734c70d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a178b9946965b910cc2d38ec25734c70d" kindref="member">radio</ref>;</highlight></codeline>
+<codeline lineno="379" refid="structUrpAstProviderManifest_1a09d9a5d05818fe833f335daeaf3ad461" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a09d9a5d05818fe833f335daeaf3ad461" kindref="member">samplerate</ref>;</highlight></codeline>
+<codeline lineno="383" refid="structUrpAstProviderManifest_1a495d0dbf48fe4975d7f14c3e5ce96c86" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a495d0dbf48fe4975d7f14c3e5ce96c86" kindref="member">audio</ref>;</highlight></codeline>
+<codeline lineno="387" refid="structUrpAstProviderManifest_1a773ca7348217edbb6dd07141db138607" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstProviderManifest_1a773ca7348217edbb6dd07141db138607" kindref="member">gpio</ref>;</highlight></codeline>
+<codeline lineno="388" refid="usbradioplus__product_8h_1aff0b1ff97570f18e96f56c2dec1e58b8" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref>;</highlight></codeline>
+<codeline lineno="389"><highlight class="normal"></highlight></codeline>
+<codeline lineno="393" refid="structUrpAstDriverCreateArgs" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDriverCreateArgs" kindref="compound">UrpAstDriverCreateArgs</ref><sp/>{</highlight></codeline>
+<codeline lineno="397" refid="structUrpAstDriverCreateArgs_1a6670ea9c8ec3da3a42082ee305e6abec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDriverCreateArgs_1a6670ea9c8ec3da3a42082ee305e6abec" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="401" refid="structUrpAstDriverCreateArgs_1ac1f7eb55795204a8494cfbab8c86e0d2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDriverCreateArgs_1ac1f7eb55795204a8494cfbab8c86e0d2" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="405" refid="structUrpAstDriverCreateArgs_1a441752564f57c568e3b4c02c76f95db0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpAstDriverCreateArgs_1a441752564f57c568e3b4c02c76f95db0" kindref="member">config_source</ref>;</highlight></codeline>
+<codeline lineno="409" refid="structUrpAstDriverCreateArgs_1abf6e9f761a38dc98edbb585556da3dbd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDriverCreateArgs_1abf6e9f761a38dc98edbb585556da3dbd" kindref="member">config_source_length</ref>;</highlight></codeline>
+<codeline lineno="413" refid="structUrpAstDriverCreateArgs_1a9287206cf51167246ec8334d61fdf028" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpAstDriverCreateArgs_1a9287206cf51167246ec8334d61fdf028" kindref="member">config_text</ref>;</highlight></codeline>
+<codeline lineno="417" refid="structUrpAstDriverCreateArgs_1a7f1c095a71865b8f6f4139df245e6aa2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDriverCreateArgs_1a7f1c095a71865b8f6f4139df245e6aa2" kindref="member">config_text_length</ref>;</highlight></codeline>
+<codeline lineno="421" refid="structUrpAstDriverCreateArgs_1a01f8e4101bc78fb13e7343f094b8831f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpAstDriverCreateArgs_1a01f8e4101bc78fb13e7343f094b8831f" kindref="member">agc_plugin_path</ref>;</highlight></codeline>
+<codeline lineno="425" refid="structUrpAstDriverCreateArgs_1a645a1e93b58c464c287286627895957a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDriverCreateArgs_1a645a1e93b58c464c287286627895957a" kindref="member">agc_plugin_path_length</ref>;</highlight></codeline>
+<codeline lineno="429" refid="structUrpAstDriverCreateArgs_1a30231281712122ff83727c7895a5e09c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstOperations" kindref="compound">UrpAstOperations</ref><sp/>*<ref refid="structUrpAstDriverCreateArgs_1a30231281712122ff83727c7895a5e09c" kindref="member">operations</ref>;</highlight></codeline>
+<codeline lineno="433" refid="structUrpAstDriverCreateArgs_1a3e99f164d1e0670954c58171e0fd1eec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref><sp/>*<ref refid="structUrpAstDriverCreateArgs_1a3e99f164d1e0670954c58171e0fd1eec" kindref="member">providers</ref>;</highlight></codeline>
+<codeline lineno="434" refid="usbradioplus__product_8h_1a2c9f394181ea9abd7128604116a27353" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstDriverCreateArgs" kindref="compound">UrpAstDriverCreateArgs</ref>;</highlight></codeline>
+<codeline lineno="435"><highlight class="normal"></highlight></codeline>
+<codeline lineno="439" refid="structUrpAstLinkObservation" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstLinkObservation" kindref="compound">UrpAstLinkObservation</ref><sp/>{</highlight></codeline>
+<codeline lineno="443" refid="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="447" refid="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="451" refid="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" kindref="member">processed_blocks</ref>;</highlight></codeline>
+<codeline lineno="455" refid="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" kindref="member">bypassed_blocks</ref>;</highlight></codeline>
+<codeline lineno="459" refid="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" kindref="member">failed_blocks</ref>;</highlight></codeline>
+<codeline lineno="460" refid="usbradioplus__product_8h_1aadadf50fea500e5ef20875f0207b4ac8" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstLinkObservation" kindref="compound">UrpAstLinkObservation</ref>;</highlight></codeline>
+<codeline lineno="461"><highlight class="normal"></highlight></codeline>
+<codeline lineno="465" refid="structUrpAstChannelReserveArgs" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelReserveArgs" kindref="compound">UrpAstChannelReserveArgs</ref><sp/>{</highlight></codeline>
+<codeline lineno="469" refid="structUrpAstChannelReserveArgs_1a0b61d429303ca738fda0923031f526dd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelReserveArgs_1a0b61d429303ca738fda0923031f526dd" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="473" refid="structUrpAstChannelReserveArgs_1a039f0688dec4844c11ea7ca5fee87791" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelReserveArgs_1a039f0688dec4844c11ea7ca5fee87791" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="477" refid="structUrpAstChannelReserveArgs_1ae0ecdb8cff32c3e281ede01f78864ece" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*<ref refid="structUrpAstChannelReserveArgs_1ae0ecdb8cff32c3e281ede01f78864ece" kindref="member">channel_name</ref>;</highlight></codeline>
+<codeline lineno="481" refid="structUrpAstChannelReserveArgs_1ad8ab19eb0508606230c4d70e436d8c37" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelReserveArgs_1ad8ab19eb0508606230c4d70e436d8c37" kindref="member">channel_name_length</ref>;</highlight></codeline>
+<codeline lineno="485" refid="structUrpAstChannelReserveArgs_1a54deddc4f3e2bbadc682f9d2a0073c59" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelReserveArgs_1a54deddc4f3e2bbadc682f9d2a0073c59" kindref="member">transport</ref>;</highlight></codeline>
+<codeline lineno="489" refid="structUrpAstChannelReserveArgs_1aa211020921f06818b2c1cffcf0b87fab" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstChannelReserveArgs_1aa211020921f06818b2c1cffcf0b87fab" kindref="member">channel_context</ref>;</highlight></codeline>
+<codeline lineno="490" refid="usbradioplus__product_8h_1a44bb27b266a02aa7954b74ac9973e1c3" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstChannelReserveArgs" kindref="compound">UrpAstChannelReserveArgs</ref>;</highlight></codeline>
+<codeline lineno="491"><highlight class="normal"></highlight></codeline>
+<codeline lineno="493" refid="structUrpAstDirectCallbacks" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref><sp/>{</highlight></codeline>
+<codeline lineno="497" refid="structUrpAstDirectCallbacks_1a1a13af8e28e196bd9f347a39373f1c73" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDirectCallbacks_1a1a13af8e28e196bd9f347a39373f1c73" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="501" refid="structUrpAstDirectCallbacks_1a41e805861ae4cd645c77f2e364088edb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDirectCallbacks_1a41e805861ae4cd645c77f2e364088edb" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="505" refid="structUrpAstDirectCallbacks_1abd856e9d29aa2f8baccecbb4b10cb24c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstDirectCallbacks_1abd856e9d29aa2f8baccecbb4b10cb24c" kindref="member">receive_context</ref>;</highlight></codeline>
+<codeline lineno="509" refid="structUrpAstDirectCallbacks_1a7b249479b9991f887820c68f96af77bf" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDirectCallbacks_1a7b249479b9991f887820c68f96af77bf" kindref="member">receive</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*,<sp/>uint32_t,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*,<sp/>uint32_t);</highlight></codeline>
+<codeline lineno="513" refid="structUrpAstDirectCallbacks_1a8d913063323dc8c41ea07f5b9bdcb427" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstDirectCallbacks_1a8d913063323dc8c41ea07f5b9bdcb427" kindref="member">transmit_context</ref>;</highlight></codeline>
+<codeline lineno="517" refid="structUrpAstDirectCallbacks_1a3ab2f168a69470c1be5e6565557ecb26" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDirectCallbacks_1a3ab2f168a69470c1be5e6565557ecb26" kindref="member">transmit</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*,<sp/>uint32_t,<sp/>uint32_t<sp/>*,<sp/>uint32_t<sp/>*);</highlight></codeline>
+<codeline lineno="521" refid="structUrpAstDirectCallbacks_1ad0122f4a99993953e43bd0e3d702ccf3" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDirectCallbacks_1ad0122f4a99993953e43bd0e3d702ccf3" kindref="member">accepted_abi_version</ref>;</highlight></codeline>
+<codeline lineno="522" refid="usbradioplus__product_8h_1a5174e2240d25c0c342ed0352c549b98a" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref>;</highlight></codeline>
+<codeline lineno="523"><highlight class="normal"></highlight></codeline>
+<codeline lineno="527" refid="structUrpAstJitterConfig" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstJitterConfig" kindref="compound">UrpAstJitterConfig</ref><sp/>{</highlight></codeline>
+<codeline lineno="531" refid="structUrpAstJitterConfig_1a69d03bcc331ed2ecc56e7c7d3395bc77" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a69d03bcc331ed2ecc56e7c7d3395bc77" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="535" refid="structUrpAstJitterConfig_1a2ed16de56dd74fe36b2d339e724a2f44" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a2ed16de56dd74fe36b2d339e724a2f44" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="539" refid="structUrpAstJitterConfig_1a2e760f82f091a0e984092d640ad47db0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a2e760f82f091a0e984092d640ad47db0" kindref="member">enabled</ref>;</highlight></codeline>
+<codeline lineno="543" refid="structUrpAstJitterConfig_1a67cb2d658026e97066e635519185c62c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a67cb2d658026e97066e635519185c62c" kindref="member">maximum_size_ms</ref>;</highlight></codeline>
+<codeline lineno="547" refid="structUrpAstJitterConfig_1aa2a60f9b52af7f7f5de6f92d1e44d020" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1aa2a60f9b52af7f7f5de6f92d1e44d020" kindref="member">resync_threshold_ms</ref>;</highlight></codeline>
+<codeline lineno="551" refid="structUrpAstJitterConfig_1a2533910d5ddfbb836355fbc68d577128" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a2533910d5ddfbb836355fbc68d577128" kindref="member">implementation</ref>;</highlight></codeline>
+<codeline lineno="555" refid="structUrpAstJitterConfig_1a12523a874af0a7321df13b6b276b2bb0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a12523a874af0a7321df13b6b276b2bb0" kindref="member">logging_enabled</ref>;</highlight></codeline>
+<codeline lineno="559" refid="structUrpAstJitterConfig_1a4219b77fe8d49ca81c46710d9c26f3eb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a4219b77fe8d49ca81c46710d9c26f3eb" kindref="member">force_enabled</ref>;</highlight></codeline>
+<codeline lineno="563" refid="structUrpAstJitterConfig_1a34e61d9a7027a83fc2aa54d0bac19873" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1a34e61d9a7027a83fc2aa54d0bac19873" kindref="member">target_extra_ms</ref>;</highlight></codeline>
+<codeline lineno="567" refid="structUrpAstJitterConfig_1ae7f9880b0417fd0ec3fc4669064e99ce" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstJitterConfig_1ae7f9880b0417fd0ec3fc4669064e99ce" kindref="member">video_sync_enabled</ref>;</highlight></codeline>
+<codeline lineno="568" refid="usbradioplus__product_8h_1a463885566f95bfc71965eaa998e692fb" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstJitterConfig" kindref="compound">UrpAstJitterConfig</ref>;</highlight></codeline>
+<codeline lineno="569"><highlight class="normal"></highlight></codeline>
+<codeline lineno="573" refid="structUrpAstChannelCommand" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelCommand" kindref="compound">UrpAstChannelCommand</ref><sp/>{</highlight></codeline>
+<codeline lineno="577" refid="structUrpAstChannelCommand_1a7c8dc286f730da6373731999ceb35052" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelCommand_1a7c8dc286f730da6373731999ceb35052" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="581" refid="structUrpAstChannelCommand_1a12cc3d2bd9347c1b589b869fbfb7dfe6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelCommand_1a12cc3d2bd9347c1b589b869fbfb7dfe6" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="585" refid="structUrpAstChannelCommand_1a75187d2613d882fd60e34578f6c0103e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelCommand_1a75187d2613d882fd60e34578f6c0103e" kindref="member">command</ref>;</highlight></codeline>
+<codeline lineno="589" refid="structUrpAstChannelCommand_1a087acff84d653eaa5e6a1e2f56e4ff3e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelCommand_1a087acff84d653eaa5e6a1e2f56e4ff3e" kindref="member">target</ref>;</highlight></codeline>
+<codeline lineno="593" refid="structUrpAstChannelCommand_1a9bc0039a4749973bbfd031d81791dadc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int64_t<sp/><ref refid="structUrpAstChannelCommand_1a9bc0039a4749973bbfd031d81791dadc" kindref="member">value</ref>;</highlight></codeline>
+<codeline lineno="597" refid="structUrpAstChannelCommand_1a33e992c66e7b414f5cddf8bdc8975bfd" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelCommand_1a33e992c66e7b414f5cddf8bdc8975bfd" kindref="member">flags</ref>;</highlight></codeline>
+<codeline lineno="601" refid="structUrpAstChannelCommand_1a697e34b19b724af8fc9027b992ce6453" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint16_t<sp/><ref refid="structUrpAstChannelCommand_1a697e34b19b724af8fc9027b992ce6453" kindref="member">eeprom_words</ref>[64];</highlight></codeline>
+<codeline lineno="602" refid="usbradioplus__product_8h_1ab1787f7b2ada9bae379e1e1febb41f2f" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstChannelCommand" kindref="compound">UrpAstChannelCommand</ref>;</highlight></codeline>
+<codeline lineno="603"><highlight class="normal"></highlight></codeline>
+<codeline lineno="607" refid="structUrpAstChannelStatus" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelStatus" kindref="compound">UrpAstChannelStatus</ref><sp/>{</highlight></codeline>
+<codeline lineno="611" refid="structUrpAstChannelStatus_1ac25c20067f9072af620dd8dede322017" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1ac25c20067f9072af620dd8dede322017" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="615" refid="structUrpAstChannelStatus_1ad22491cec3afb16efa833343720bb4ec" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1ad22491cec3afb16efa833343720bb4ec" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="619" refid="structUrpAstChannelStatus_1a488e2b5285971ae0e91b3a5126ed99e8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a488e2b5285971ae0e91b3a5126ed99e8" kindref="member">transport</ref>;</highlight></codeline>
+<codeline lineno="623" refid="structUrpAstChannelStatus_1a23dee69148badb431ad1e8d01f2752c6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a23dee69148badb431ad1e8d01f2752c6" kindref="member">running</ref>;</highlight></codeline>
+<codeline lineno="627" refid="structUrpAstChannelStatus_1a9463488de082b36d3d63f80bdb14fe2e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a9463488de082b36d3d63f80bdb14fe2e" kindref="member">echo_enabled</ref>;</highlight></codeline>
+<codeline lineno="631" refid="structUrpAstChannelStatus_1abf1bab3b9a4d243c5527a1cf641d8fc1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1abf1bab3b9a4d243c5527a1cf641d8fc1" kindref="member">dtmf_enabled</ref>;</highlight></codeline>
+<codeline lineno="635" refid="structUrpAstChannelStatus_1a2e8a1a892bf9b2739b8c041d1621962d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a2e8a1a892bf9b2739b8c041d1621962d" kindref="member">receive_handoff_available</ref>;</highlight></codeline>
+<codeline lineno="639" refid="structUrpAstChannelStatus_1a0a31ac83fc0e92bf0a5689b4fe92a7b3" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a0a31ac83fc0e92bf0a5689b4fe92a7b3" kindref="member">receive_handoff_discarded</ref>;</highlight></codeline>
+<codeline lineno="643" refid="structUrpAstChannelStatus_1aef4c9115996d5fbfa245542e5f580835" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1aef4c9115996d5fbfa245542e5f580835" kindref="member">program_handoff_available</ref>;</highlight></codeline>
+<codeline lineno="647" refid="structUrpAstChannelStatus_1a11f8c60857ddb76d02c3f3d33d8074db" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a11f8c60857ddb76d02c3f3d33d8074db" kindref="member">program_handoff_discarded</ref>;</highlight></codeline>
+<codeline lineno="651" refid="structUrpAstChannelStatus_1af500a329ea30db237708c80b909956e2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1af500a329ea30db237708c80b909956e2" kindref="member">receive_input_peak</ref>;</highlight></codeline>
+<codeline lineno="655" refid="structUrpAstChannelStatus_1ab8bb9bcb95e15d23427d068e444ebadc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1ab8bb9bcb95e15d23427d068e444ebadc" kindref="member">receive_input_rms</ref>;</highlight></codeline>
+<codeline lineno="659" refid="structUrpAstChannelStatus_1a0390826be6e57ac6b9d6c93077c5e715" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a0390826be6e57ac6b9d6c93077c5e715" kindref="member">receive_output_peak</ref>;</highlight></codeline>
+<codeline lineno="663" refid="structUrpAstChannelStatus_1a3028e89e4452c6e29b60a8455e115772" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a3028e89e4452c6e29b60a8455e115772" kindref="member">receive_output_rms</ref>;</highlight></codeline>
+<codeline lineno="667" refid="structUrpAstChannelStatus_1a249d046e5bdb0880d38891087ddd6b94" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a249d046e5bdb0880d38891087ddd6b94" kindref="member">receive_input_rail_samples</ref>;</highlight></codeline>
+<codeline lineno="671" refid="structUrpAstChannelStatus_1ad33c83086917e0ec6064de3779567f74" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1ad33c83086917e0ec6064de3779567f74" kindref="member">receive_output_rail_samples</ref>;</highlight></codeline>
+<codeline lineno="675" refid="structUrpAstChannelStatus_1ae92e37d324f7ecb60ff9c91e29cfbea4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1ae92e37d324f7ecb60ff9c91e29cfbea4" kindref="member">receive_ctcss_decoder_peak</ref>;</highlight></codeline>
+<codeline lineno="679" refid="structUrpAstChannelStatus_1ac539fb7494ff4d138f9a17503f9c27a2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int32_t<sp/><ref refid="structUrpAstChannelStatus_1ac539fb7494ff4d138f9a17503f9c27a2" kindref="member">receive_rssi_peak</ref>;</highlight></codeline>
+<codeline lineno="683" refid="structUrpAstChannelStatus_1a951a2adb094e93af084a7204c9b81262" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a951a2adb094e93af084a7204c9b81262" kindref="member">receive_rssi_updated</ref>;</highlight></codeline>
+<codeline lineno="687" refid="structUrpAstChannelStatus_1a88b29f83e2197a446c1746ce41beef0a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a88b29f83e2197a446c1746ce41beef0a" kindref="member">transmit_program_peak</ref>;</highlight></codeline>
+<codeline lineno="691" refid="structUrpAstChannelStatus_1a8ccfc0941c6956efaffb4d3fceb5827b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a8ccfc0941c6956efaffb4d3fceb5827b" kindref="member">transmit_program_rms</ref>;</highlight></codeline>
+<codeline lineno="695" refid="structUrpAstChannelStatus_1a7e26647073997d4f30f5dd7535c65a95" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a7e26647073997d4f30f5dd7535c65a95" kindref="member">transmit_output_peak</ref>;</highlight></codeline>
+<codeline lineno="699" refid="structUrpAstChannelStatus_1ab4f865a5881e00f823649904d3a0a21c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1ab4f865a5881e00f823649904d3a0a21c" kindref="member">transmit_output_rms</ref>;</highlight></codeline>
+<codeline lineno="703" refid="structUrpAstChannelStatus_1abccfc35291304183be15bc87ef3dc429" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1abccfc35291304183be15bc87ef3dc429" kindref="member">input_overflow_count</ref>;</highlight></codeline>
+<codeline lineno="707" refid="structUrpAstChannelStatus_1ad5575d49e5a3e31af04d0b50d4ee8f6f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1ad5575d49e5a3e31af04d0b50d4ee8f6f" kindref="member">output_underflow_count</ref>;</highlight></codeline>
+<codeline lineno="711" refid="structUrpAstChannelStatus_1a81f5f5ca26c9ea9f1959de880e93dbdc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a81f5f5ca26c9ea9f1959de880e93dbdc" kindref="member">input_clip_sample_count</ref>;</highlight></codeline>
+<codeline lineno="715" refid="structUrpAstChannelStatus_1a918cba376c5c9ccd9cc4da9147c54256" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a918cba376c5c9ccd9cc4da9147c54256" kindref="member">output_clip_sample_count</ref>;</highlight></codeline>
+<codeline lineno="719" refid="structUrpAstChannelStatus_1afd387fbf03f243f9eb0f178d903582c1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1afd387fbf03f243f9eb0f178d903582c1" kindref="member">callback_last_duration_ns</ref>;</highlight></codeline>
+<codeline lineno="723" refid="structUrpAstChannelStatus_1a654a47d0da211fdf835b412cfe90697a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a654a47d0da211fdf835b412cfe90697a" kindref="member">callback_max_duration_ns</ref>;</highlight></codeline>
+<codeline lineno="727" refid="structUrpAstChannelStatus_1ab1eb0854eb4b9d26b5c5f20662953552" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1ab1eb0854eb4b9d26b5c5f20662953552" kindref="member">callback_last_start_delay_ns</ref>;</highlight></codeline>
+<codeline lineno="731" refid="structUrpAstChannelStatus_1a13c8b9a39f90b9f48f348c7e05eb6b7d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a13c8b9a39f90b9f48f348c7e05eb6b7d" kindref="member">callback_max_start_delay_ns</ref>;</highlight></codeline>
+<codeline lineno="735" refid="structUrpAstChannelStatus_1a685febb5f420994b0f5cd8acbd384322" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a685febb5f420994b0f5cd8acbd384322" kindref="member">callback_late_start_count</ref>;</highlight></codeline>
+<codeline lineno="739" refid="structUrpAstChannelStatus_1a5b7b9c9460999ad756833d1925fcf287" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a5b7b9c9460999ad756833d1925fcf287" kindref="member">last_input_xrun_monotonic_ns</ref>;</highlight></codeline>
+<codeline lineno="743" refid="structUrpAstChannelStatus_1a6e9487bcc6c525f927c5b8fc61d4e00f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a6e9487bcc6c525f927c5b8fc61d4e00f" kindref="member">last_output_xrun_monotonic_ns</ref>;</highlight></codeline>
+<codeline lineno="747" refid="structUrpAstChannelStatus_1a86b36bf8af7909ab9bd16f87b6933f9c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a86b36bf8af7909ab9bd16f87b6933f9c" kindref="member">input_latency_seconds</ref>;</highlight></codeline>
+<codeline lineno="751" refid="structUrpAstChannelStatus_1a59ca19123acdf2858e10221ba328d9ff" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1a59ca19123acdf2858e10221ba328d9ff" kindref="member">output_latency_seconds</ref>;</highlight></codeline>
+<codeline lineno="755" refid="structUrpAstChannelStatus_1af86110826cb231520e267b927a65a617" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1af86110826cb231520e267b927a65a617" kindref="member">native_sample_rate_hz</ref>;</highlight></codeline>
+<codeline lineno="759" refid="structUrpAstChannelStatus_1a0de6b6799a2603f542e461a37c4d4d3c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a0de6b6799a2603f542e461a37c4d4d3c" kindref="member">ring_occupancy_frames</ref>;</highlight></codeline>
+<codeline lineno="763" refid="structUrpAstChannelStatus_1a5b90b4006cb63ce1b4d81d77b207ab8c" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a5b90b4006cb63ce1b4d81d77b207ab8c" kindref="member">ring_reserve_frames</ref>;</highlight></codeline>
+<codeline lineno="767" refid="structUrpAstChannelStatus_1a9ee3237ed0fc66382b6beff8bac96206" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a9ee3237ed0fc66382b6beff8bac96206" kindref="member">ring_target_frames</ref>;</highlight></codeline>
+<codeline lineno="771" refid="structUrpAstChannelStatus_1a743f8a953f18c363b148ded4268ef2f8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a743f8a953f18c363b148ded4268ef2f8" kindref="member">ring_capacity_frames</ref>;</highlight></codeline>
+<codeline lineno="775" refid="structUrpAstChannelStatus_1aea5956dc69c3f4b6ac542ab49395c782" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">double</highlight><highlight class="normal"><sp/><ref refid="structUrpAstChannelStatus_1aea5956dc69c3f4b6ac542ab49395c782" kindref="member">ring_ratio</ref>;</highlight></codeline>
+<codeline lineno="779" refid="structUrpAstChannelStatus_1a0b0397ae37122bdfbdf8cab8e04b1125" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a0b0397ae37122bdfbdf8cab8e04b1125" kindref="member">ring_underrun_samples</ref>;</highlight></codeline>
+<codeline lineno="783" refid="structUrpAstChannelStatus_1a6436db0cb331c49214efbe5d58bae823" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a6436db0cb331c49214efbe5d58bae823" kindref="member">ring_overrun_samples</ref>;</highlight></codeline>
+<codeline lineno="787" refid="structUrpAstChannelStatus_1a70ae8c038697b3d0f610e28301b57310" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpAstChannelStatus_1a70ae8c038697b3d0f610e28301b57310" kindref="member">ring_concealment_samples</ref>;</highlight></codeline>
+<codeline lineno="791" refid="structUrpAstChannelStatus_1a9fea476eac1ef1ca25b5588c6f26040f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a9fea476eac1ef1ca25b5588c6f26040f" kindref="member">carrier_active</ref>;</highlight></codeline>
+<codeline lineno="795" refid="structUrpAstChannelStatus_1af8b462e8146b08de1e24eed35b647760" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1af8b462e8146b08de1e24eed35b647760" kindref="member">subaudible_active</ref>;</highlight></codeline>
+<codeline lineno="799" refid="structUrpAstChannelStatus_1a3aa889606951503bf221eb425a6444fc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a3aa889606951503bf221eb425a6444fc" kindref="member">receiver_keyed</ref>;</highlight></codeline>
+<codeline lineno="803" refid="structUrpAstChannelStatus_1a729d029d39e102bcdecbd61461dd93e0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a729d029d39e102bcdecbd61461dd93e0" kindref="member">logical_ptt</ref>;</highlight></codeline>
+<codeline lineno="807" refid="structUrpAstChannelStatus_1a1e67739ca6feed2c17e3ed1c7b3b4804" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int32_t<sp/><ref refid="structUrpAstChannelStatus_1a1e67739ca6feed2c17e3ed1c7b3b4804" kindref="member">ctcss_decode_index</ref>;</highlight></codeline>
+<codeline lineno="811" refid="structUrpAstChannelStatus_1a05378d63cb307dad22bd47d3a6f322df" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a05378d63cb307dad22bd47d3a6f322df" kindref="member">dcs_valid</ref>;</highlight></codeline>
+<codeline lineno="815" refid="structUrpAstChannelStatus_1ada2083b52231f9834c310ba109c65341" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1ada2083b52231f9834c310ba109c65341" kindref="member">receive_mixer_level</ref>;</highlight></codeline>
+<codeline lineno="819" refid="structUrpAstChannelStatus_1a53294d5ac3556d5fca0459299f3533d1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a53294d5ac3556d5fca0459299f3533d1" kindref="member">transmit_a_mixer_level</ref>;</highlight></codeline>
+<codeline lineno="823" refid="structUrpAstChannelStatus_1a14d3091d0a4b7beb34807bb9ea54de98" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstChannelStatus_1a14d3091d0a4b7beb34807bb9ea54de98" kindref="member">transmit_b_mixer_level</ref>;</highlight></codeline>
+<codeline lineno="824" refid="usbradioplus__product_8h_1a95e22227b297b91c128a137dc4c20e0f" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstChannelStatus" kindref="compound">UrpAstChannelStatus</ref>;</highlight></codeline>
+<codeline lineno="825"><highlight class="normal"></highlight></codeline>
+<codeline lineno="830" refid="structUrpNativeCreateArgs" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpNativeCreateArgs" kindref="compound">UrpNativeCreateArgs</ref><sp/>{</highlight></codeline>
+<codeline lineno="832" refid="structUrpNativeCreateArgs_1aa2d27a92a9e19972a7e56ef541f2fe67" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeCreateArgs_1aa2d27a92a9e19972a7e56ef541f2fe67" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="834" refid="structUrpNativeCreateArgs_1a122e27c77779864127580e92989fa9c9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeCreateArgs_1a122e27c77779864127580e92989fa9c9" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="836" refid="structUrpNativeCreateArgs_1abc8e5a42e2c2bf3e4fa50b8edff8287a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpNativeStationConfig" kindref="compound">UrpNativeStationConfig</ref><sp/>*<ref refid="structUrpNativeCreateArgs_1abc8e5a42e2c2bf3e4fa50b8edff8287a" kindref="member">config</ref>;</highlight></codeline>
+<codeline lineno="838" refid="structUrpNativeCreateArgs_1a16a6d0cd60119bd0f97f74aa2b1e7e4b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstProviderManifest" kindref="compound">UrpAstProviderManifest</ref><sp/>*<ref refid="structUrpNativeCreateArgs_1a16a6d0cd60119bd0f97f74aa2b1e7e4b" kindref="member">providers</ref>;</highlight></codeline>
+<codeline lineno="840" refid="structUrpNativeCreateArgs_1a10753ddf533805d33ff893cf59b04899" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref><sp/>*<ref refid="structUrpNativeCreateArgs_1a10753ddf533805d33ff893cf59b04899" kindref="member">callbacks</ref>;</highlight></codeline>
+<codeline lineno="842" refid="structUrpNativeCreateArgs_1a934b991e1a9faa0750f191dfeaaa7b0e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint64_t<sp/><ref refid="structUrpNativeCreateArgs_1a934b991e1a9faa0750f191dfeaaa7b0e" kindref="member">generation_id</ref>;</highlight></codeline>
+<codeline lineno="844" refid="structUrpNativeCreateArgs_1ad22c83f9ee9b83bd35749826f6fcc2c4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpNativeCreateArgs_1ad22c83f9ee9b83bd35749826f6fcc2c4" kindref="member">maximum_frames</ref>;</highlight></codeline>
+<codeline lineno="845" refid="usbradioplus__product_8h_1ad83511b9d51dc8e84106d4bfe6a5974e" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpNativeCreateArgs" kindref="compound">UrpNativeCreateArgs</ref>;</highlight></codeline>
+<codeline lineno="846"><highlight class="normal"></highlight></codeline>
+<codeline lineno="848" refid="structUrpAstDescriptor" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref><sp/>{</highlight></codeline>
+<codeline lineno="852" refid="structUrpAstDescriptor_1aad50a6f8c8f1f312df4b154fb9944015" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDescriptor_1aad50a6f8c8f1f312df4b154fb9944015" kindref="member">struct_size</ref>;</highlight></codeline>
+<codeline lineno="856" refid="structUrpAstDescriptor_1ac14b57fe1bf3cf5ecc36016ad37128c9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structUrpAstDescriptor_1ac14b57fe1bf3cf5ecc36016ad37128c9" kindref="member">abi_version</ref>;</highlight></codeline>
+<codeline lineno="860" refid="structUrpAstDescriptor_1a9ebf82eb78490b2764d2cfb41c84002e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structUrpAstDescriptor_1a9ebf82eb78490b2764d2cfb41c84002e" kindref="member">capability_name</ref>;</highlight></codeline>
+<codeline lineno="864" refid="structUrpAstDescriptor_1abb6f3534047960a515f1e876b56ab319" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1abb6f3534047960a515f1e876b56ab319" kindref="member">driver_create</ref>)(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDriverCreateArgs" kindref="compound">UrpAstDriverCreateArgs</ref><sp/>*args,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>**output);</highlight></codeline>
+<codeline lineno="868" refid="structUrpAstDescriptor_1a6dd2c7dca232d03647b3586b695bd7c1" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a6dd2c7dca232d03647b3586b695bd7c1" kindref="member">driver_reload</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*source,<sp/>uint32_t<sp/>source_length,</highlight></codeline>
+<codeline lineno="869"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*text,<sp/>uint32_t<sp/>text_length);</highlight></codeline>
+<codeline lineno="873" refid="structUrpAstDescriptor_1a61f5b26ef5209bf76ea6e2755374c41e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a61f5b26ef5209bf76ea6e2755374c41e" kindref="member">driver_reload_finish</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/>uint32_t<sp/>commit);</highlight></codeline>
+<codeline lineno="877" refid="structUrpAstDescriptor_1af16c0c05eae863a908c082ac133753d0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1af16c0c05eae863a908c082ac133753d0" kindref="member">driver_channel_name</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/>uint32_t<sp/>index,<sp/>uint8_t<sp/>*output,</highlight></codeline>
+<codeline lineno="878"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>output_capacity,<sp/>uint32_t<sp/>*output_length);</highlight></codeline>
+<codeline lineno="882" refid="structUrpAstDescriptor_1a47195797d43a3dcfe71d1a003ec94f2d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a47195797d43a3dcfe71d1a003ec94f2d" kindref="member">driver_active_channel</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/>uint8_t<sp/>*output,<sp/>uint32_t<sp/>output_capacity,</highlight></codeline>
+<codeline lineno="883"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>*output_length);</highlight></codeline>
+<codeline lineno="887" refid="structUrpAstDescriptor_1a21c19c0e1b0b4a5a5880f7fa0daac728" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a21c19c0e1b0b4a5a5880f7fa0daac728" kindref="member">driver_set_active_channel</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*channel_name,</highlight></codeline>
+<codeline lineno="888"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>channel_name_length);</highlight></codeline>
+<codeline lineno="892" refid="structUrpAstDescriptor_1a5ffc989bf7f9a0469b526846004af896" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structUrpAstDescriptor_1a5ffc989bf7f9a0469b526846004af896" kindref="member">driver_destroy</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver);</highlight></codeline>
+<codeline lineno="896" refid="structUrpAstDescriptor_1ace4eae2951e6a933950d911acddfa0da" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ace4eae2951e6a933950d911acddfa0da" kindref="member">link_prepare</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*channel_name,<sp/>uint32_t<sp/>channel_name_length,</highlight></codeline>
+<codeline lineno="897"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>sample_rate_hz,<sp/>uint32_t<sp/>maximum_frame_count,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>**output);</highlight></codeline>
+<codeline lineno="901" refid="structUrpAstDescriptor_1a6b38455ab73f6beb7e3c54b347bef7e4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a6b38455ab73f6beb7e3c54b347bef7e4" kindref="member">link_prepare_reload</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*channel_name,</highlight></codeline>
+<codeline lineno="902"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>channel_name_length,<sp/>uint32_t<sp/>sample_rate_hz,</highlight></codeline>
+<codeline lineno="903"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>maximum_frame_count,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>**output);</highlight></codeline>
+<codeline lineno="907" refid="structUrpAstDescriptor_1adf05abc153f00199e1b447d1325e26c9" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1adf05abc153f00199e1b447d1325e26c9" kindref="member">link_reload_unchanged</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*link,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*name,</highlight></codeline>
+<codeline lineno="908"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>name_length,<sp/>uint32_t<sp/>sample_rate_hz,</highlight></codeline>
+<codeline lineno="909"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>uint32_t<sp/>maximum_frame_count,<sp/>uint32_t<sp/>*output);</highlight></codeline>
+<codeline lineno="913" refid="structUrpAstDescriptor_1abbe5e03aab63c6666f21738e12c6aa97" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1abbe5e03aab63c6666f21738e12c6aa97" kindref="member">link_process</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*link,<sp/>uint32_t<sp/>direction,<sp/>uint32_t<sp/>sample_rate_hz,</highlight></codeline>
+<codeline lineno="914"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>int16_t<sp/>*samples,<sp/>uint32_t<sp/>sample_count);</highlight></codeline>
+<codeline lineno="918" refid="structUrpAstDescriptor_1ae0cf27f65f5733cbdeae5c49a2d640dc" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ae0cf27f65f5733cbdeae5c49a2d640dc" kindref="member">link_observe</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*link,<sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstLinkObservation" kindref="compound">UrpAstLinkObservation</ref><sp/>*output);</highlight></codeline>
+<codeline lineno="922" refid="structUrpAstDescriptor_1a48797f3556c97d46234fc5be75d024a7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structUrpAstDescriptor_1a48797f3556c97d46234fc5be75d024a7" kindref="member">link_destroy</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*link);</highlight></codeline>
+<codeline lineno="926" refid="structUrpAstDescriptor_1ac8f8ec1af5b1ec4cffb4a12bee85442e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ac8f8ec1af5b1ec4cffb4a12bee85442e" kindref="member">channel_reserve</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*driver,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelReserveArgs" kindref="compound">UrpAstChannelReserveArgs</ref><sp/>*args,</highlight></codeline>
+<codeline lineno="927"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>**output);</highlight></codeline>
+<codeline lineno="931" refid="structUrpAstDescriptor_1ad406432fbfa85fb188714449b2fb7a6f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ad406432fbfa85fb188714449b2fb7a6f" kindref="member">channel_start</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="935" refid="structUrpAstDescriptor_1ad0a94502edd62caefb3d77b208003ba4" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ad0a94502edd62caefb3d77b208003ba4" kindref="member">channel_stop</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="939" refid="structUrpAstDescriptor_1ad24ff41504f44944e9de5533b6076350" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ad24ff41504f44944e9de5533b6076350" kindref="member">channel_reload_prepare</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="943" refid="structUrpAstDescriptor_1af71943bf4224d38328ffeec7ee795298" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1af71943bf4224d38328ffeec7ee795298" kindref="member">channel_reload_activate</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="947" refid="structUrpAstDescriptor_1aabe5a58bbbfb2a24686f88f49c3f5b7f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1aabe5a58bbbfb2a24686f88f49c3f5b7f" kindref="member">channel_reload_finish</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/>uint32_t<sp/>commit);</highlight></codeline>
+<codeline lineno="951" refid="structUrpAstDescriptor_1a172d882655ec43f417092da58347558a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a172d882655ec43f417092da58347558a" kindref="member">channel_write_voice</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>int16_t<sp/>*samples,<sp/>uint32_t<sp/>sample_count);</highlight></codeline>
+<codeline lineno="955" refid="structUrpAstDescriptor_1a5a22618a3646128b58e965bad2e27888" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a5a22618a3646128b58e965bad2e27888" kindref="member">channel_write_text</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>uint8_t<sp/>*text,<sp/>uint32_t<sp/>text_length);</highlight></codeline>
+<codeline lineno="959" refid="structUrpAstDescriptor_1a0b44a0d51882e3119598322031fd46d2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a0b44a0d51882e3119598322031fd46d2" kindref="member">channel_set_transmit</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/>uint32_t<sp/>keyed,<sp/>uint32_t<sp/>forced_ctcss_tenths_hz);</highlight></codeline>
+<codeline lineno="963" refid="structUrpAstDescriptor_1af8a1b83a8fcfd084cd9e8a9abc29ba00" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1af8a1b83a8fcfd084cd9e8a9abc29ba00" kindref="member">channel_set_dtmf</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/>uint32_t<sp/>enabled);</highlight></codeline>
+<codeline lineno="967" refid="structUrpAstDescriptor_1a955cdc1345e08a3e645d6c8b1421765d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a955cdc1345e08a3e645d6c8b1421765d" kindref="member">channel_set_echo</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/>uint32_t<sp/>enabled);</highlight></codeline>
+<codeline lineno="971" refid="structUrpAstDescriptor_1a4cb15f687652911aa87d2ba855e0187f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a4cb15f687652911aa87d2ba855e0187f" kindref="member">channel_set_direct_callbacks</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,</highlight></codeline>
+<codeline lineno="972"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref><sp/>*callbacks);</highlight></codeline>
+<codeline lineno="976" refid="structUrpAstDescriptor_1ad553c9cb299b67c9d7f7946c746288bb" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ad553c9cb299b67c9d7f7946c746288bb" kindref="member">channel_get_jitter_config</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstJitterConfig" kindref="compound">UrpAstJitterConfig</ref><sp/>*output);</highlight></codeline>
+<codeline lineno="980" refid="structUrpAstDescriptor_1a97c92885b1495bdebd094264561dbc82" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a97c92885b1495bdebd094264561dbc82" kindref="member">channel_command</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelCommand" kindref="compound">UrpAstChannelCommand</ref><sp/>*command);</highlight></codeline>
+<codeline lineno="984" refid="structUrpAstDescriptor_1ad9b1ad00859960164f34b92928301289" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1ad9b1ad00859960164f34b92928301289" kindref="member">channel_get_status</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel,<sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstChannelStatus" kindref="compound">UrpAstChannelStatus</ref><sp/>*output);</highlight></codeline>
+<codeline lineno="988" refid="structUrpAstDescriptor_1aae2f9129ab1dfbeae77f28694a1c1733" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1aae2f9129ab1dfbeae77f28694a1c1733" kindref="member">channel_service</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="992" refid="structUrpAstDescriptor_1ac5ef90f8e7a84d699a8f67a05f9614f8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structUrpAstDescriptor_1ac5ef90f8e7a84d699a8f67a05f9614f8" kindref="member">channel_destroy</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*channel);</highlight></codeline>
+<codeline lineno="994" refid="structUrpAstDescriptor_1a7c26912077479d656adf661e5171b4d0" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a7c26912077479d656adf661e5171b4d0" kindref="member">native_create</ref>)(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpNativeCreateArgs" kindref="compound">UrpNativeCreateArgs</ref><sp/>*args,<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>**output);</highlight></codeline>
+<codeline lineno="996" refid="structUrpAstDescriptor_1a77c192b4d040f999d0116d644f373202" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a77c192b4d040f999d0116d644f373202" kindref="member">native_start</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*native);</highlight></codeline>
+<codeline lineno="998" refid="structUrpAstDescriptor_1a27afcc5cbd259160fec51904099e2a91" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>int<sp/>(*<ref refid="structUrpAstDescriptor_1a27afcc5cbd259160fec51904099e2a91" kindref="member">native_stop</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*native);</highlight></codeline>
+<codeline lineno="1000" refid="structUrpAstDescriptor_1a1b6ed9ae63d720a5bd3ddb15db0dfe65" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>void<sp/>(*<ref refid="structUrpAstDescriptor_1a1b6ed9ae63d720a5bd3ddb15db0dfe65" kindref="member">native_destroy</ref>)(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*native);</highlight></codeline>
+<codeline lineno="1001" refid="usbradioplus__product_8h_1a41f44ea34b7fd8477d6e866dbb781911" refkind="member"><highlight class="normal">}<sp/><ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref>;</highlight></codeline>
+<codeline lineno="1002"><highlight class="normal"></highlight></codeline>
+<codeline lineno="1003"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="1004"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="stringliteral">&quot;C&quot;</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="1005"><highlight class="normal"></highlight><highlight class="preprocessor">#endif<sp/></highlight><highlight class="comment">//<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="1006"><highlight class="normal"></highlight></codeline>
+<codeline lineno="1011" refid="usbradioplus__product_8h_1ac6e2d62f083d3e58901a5d4a4c869b34" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref><sp/>*<ref refid="usbradioplus__product_8h_1ac6e2d62f083d3e58901a5d4a4c869b34" kindref="member">usbradioplus_product_descriptor_v1</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="1012"><highlight class="normal"></highlight></codeline>
+<codeline lineno="1013"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="1014"><highlight class="normal">}<sp/></highlight><highlight class="comment">//<sp/>extern<sp/>&quot;C&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="1015"><highlight class="normal"></highlight><highlight class="preprocessor">#endif<sp/></highlight><highlight class="comment">//<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="1016"><highlight class="normal"></highlight></codeline>
+<codeline lineno="1017"><highlight class="normal"></highlight><highlight class="preprocessor">#endif<sp/></highlight><highlight class="comment">/*<sp/>USBRADIOPLUS_PRODUCT_H<sp/>*/</highlight><highlight class="preprocessor"></highlight></codeline>
+    </programlisting>
+    <location file="rust/product/include/usbradioplus_product.h"/>
+  </compounddef>
+</doxygen>

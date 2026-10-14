@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DialogRequest","DialogResponse"],"struct":["AccessibleUi","ChoiceItem","UiError","WhiptailBackend"],"trait":["DialogBackend"]};
