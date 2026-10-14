@@ -48,8 +48,15 @@ fn released_app_rpt_ring_primes_then_applies_native_rate_plc_delay() {
         assert_eq!(producer.push(&[0.25; 160], qualification).unwrap(), 160);
         let (observation, _) = consumer.render(&mut output).unwrap();
         assert_eq!(observation.missing_samples, 0);
+        assert_eq!(observation.adapter_error_count, 0);
     }
-    assert!(output.iter().all(|sample| (*sample - 0.25).abs() < 1e-6));
+    // SWR's upsampling phases retain a small DC ripple after FIR startup.
+    // Keep every sample within half a signed-16-bit PCM step of unity gain.
+    assert!(
+        output
+            .iter()
+            .all(|sample| (*sample - 0.25).abs() < 0.5 / 32_768.0)
+    );
 }
 
 #[test]

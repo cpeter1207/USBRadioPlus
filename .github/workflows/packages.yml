@@ -62,7 +62,7 @@ jobs:
         ${{ github.event.client_payload.repository == 'cpeter1207/rptadv-samplerate-adapter' &&
         github.event.client_payload.tag ||
         github.event.client_payload.samplerate_adapter_tag || 'v0.2.0-alpha1' }}
-      released_repository: ${{ github.event.client_payload.repository != 'cpeter1207/rate_adjusting_pcm_ring' && github.event.client_payload.repository != 'cpeter1207/rptadv-samplerate-adapter' && github.event.client_payload.repository || '' }}
-      released_tag: ${{ github.event.client_payload.repository != 'cpeter1207/rate_adjusting_pcm_ring' && github.event.client_payload.repository != 'cpeter1207/rptadv-samplerate-adapter' && github.event.client_payload.tag || '' }}
+      released_repository: ${{ github.event.client_payload.repository }}
+      released_tag: ${{ github.event.client_payload.tag }}
     secrets:
       APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
