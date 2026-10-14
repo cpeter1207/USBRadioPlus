@@ -241,9 +241,11 @@ unsafe impl Send for PreparedGraph {}
 #[cfg_attr(coverage, coverage(off))]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::cell::Cell;
 
-    static DESTROYS: AtomicUsize = AtomicUsize::new(0);
+    thread_local! {
+        static DESTROYS: Cell<usize> = const { Cell::new(0) };
+    }
 
     struct FakeGraphState {
         sample_rate_hz: u32,
@@ -324,7 +326,7 @@ mod tests {
         // SAFETY: Every handle in these tests originated from Box::into_raw,
         // and the validated graph owner never destroys a null handle.
         drop(unsafe { Box::from_raw(handle.cast::<FakeGraphState>()) });
-        DESTROYS.fetch_add(1, Ordering::Relaxed);
+        DESTROYS.set(DESTROYS.get() + 1);
     }
 
     static VALID: Descriptor = Descriptor {
@@ -399,7 +401,7 @@ mod tests {
 
     #[test]
     fn graph_lifecycle_processing_and_warmup_are_exact_block() {
-        DESTROYS.store(0, Ordering::Relaxed);
+        DESTROYS.set(0);
         {
             let mut graph = provider(&VALID).unwrap().prepare(c"volume=0.5", 4).unwrap();
             let input = [1.0, 0.5, -0.5, -1.0];
@@ -408,7 +410,11 @@ mod tests {
             assert_eq!(output, [0.5, 0.25, -0.25, -0.5]);
             graph.warm_up(&[0.0; 4], &mut output, 3).unwrap();
         }
-        assert_eq!(DESTROYS.load(Ordering::Relaxed), 1);
+        // Another test thread's graph lifetime must not enter this fixture's count.
+        std::thread::spawn(|| drop(provider(&VALID).unwrap().prepare(c"anull", 1).unwrap()))
+            .join()
+            .unwrap();
+        assert_eq!(DESTROYS.get(), 1);
     }
 
     #[test]
@@ -481,7 +487,7 @@ mod tests {
             create: Some(failing_create),
             ..VALID
         };
-        let before = DESTROYS.load(Ordering::Relaxed);
+        let before = DESTROYS.get();
         assert_eq!(
             provider(Box::leak(Box::new(descriptor)))
                 .unwrap()
@@ -489,7 +495,7 @@ mod tests {
                 .err(),
             Some(GraphError::AdapterFailure)
         );
-        assert_eq!(DESTROYS.load(Ordering::Relaxed), before + 1);
+        assert_eq!(DESTROYS.get(), before + 1);
 
         let descriptor = Descriptor {
             process_block: Some(failing_process),
