@@ -48,7 +48,7 @@ jobs:
   refresh-after-shared-release:
     if: >-
       github.event_name == 'repository_dispatch' &&
-      contains(fromJSON('["cpeter1207/rate_adjusting_pcm_ring","cpeter1207/rptadv-samplerate-adapter","cpeter1207/librptadvradio","cpeter1207/rptadv-gpio-adapter","cpeter1207/librptadvsquelch","cpeter1207/librptadvctcss","cpeter1207/librptadvdcs","cpeter1207/librptadvsignaling","cpeter1207/librptadvtone","cpeter1207/librptadvmorse","cpeter1207/librptadvdtmf","cpeter1207/librptadvtemplate","cpeter1207/librptadvschedule"]'),
+      contains(fromJSON('["cpeter1207/rate_adjusting_pcm_ring","cpeter1207/rptadv-samplerate-adapter","cpeter1207/librptadvradio","cpeter1207/rptadv-gpio-adapter","cpeter1207/librptadvsquelch","cpeter1207/librptadvctcss","cpeter1207/librptadvdcs","cpeter1207/librptadvsignaling","cpeter1207/librptadvtone","cpeter1207/librptadvmorse","cpeter1207/librptadvdtmf","cpeter1207/librptadvtemplate","cpeter1207/librptadvschedule","cpeter1207/librptadviax2","cpeter1207/rpt_advanced"]'),
         github.event.client_payload.repository)
     uses: cpeter1207/USBRadioPlus-Workflows/.github/workflows/packages.yml@main
     with:
