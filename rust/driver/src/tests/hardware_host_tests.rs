@@ -1239,6 +1239,13 @@ struct GpioDescriptor {
     set_channel: Option<unsafe extern "C" fn(*mut c_void, u8) -> c_int>,
     program_rtx: Option<unsafe extern "C" fn(*mut c_void, u32, u32, u32, u32) -> c_int>,
     clear_rtx: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    context_operations: [Option<unsafe extern "C" fn()>; 5],
+    device_capabilities: Option<
+        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
+    >,
+    parallel_capabilities: Option<
+        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
+    >,
 }
 
 // SAFETY: the test descriptor and all referenced functions are immutable.
@@ -1529,6 +1536,39 @@ unsafe extern "C" fn unused_gpio_pulse() -> c_int {
     OK
 }
 
+unsafe extern "C" fn gpio_capabilities(
+    _device: *const c_void,
+    output: *mut usbradioplus_gpio::GpioCapabilities,
+) -> c_int {
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = usbradioplus_gpio::GpioCapabilities {
+            struct_size: size_of::<usbradioplus_gpio::GpioCapabilities>() as u32,
+            inputs: 3,
+            outputs: 1,
+            input_pin_mask: 0xfb,
+            output_pin_mask: 0xfb,
+            ..usbradioplus_gpio::GpioCapabilities::default()
+        };
+    }
+    OK
+}
+unsafe extern "C" fn parallel_capabilities(
+    _device: *const c_void,
+    output: *mut usbradioplus_gpio::GpioCapabilities,
+) -> c_int {
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = usbradioplus_gpio::GpioCapabilities {
+            struct_size: size_of::<usbradioplus_gpio::GpioCapabilities>() as u32,
+            input_pin_mask: 0xf800,
+            output_pin_mask: 0xff,
+            ..usbradioplus_gpio::GpioCapabilities::default()
+        };
+    }
+    OK
+}
+
 static GPIO_DESCRIPTOR: GpioDescriptor = GpioDescriptor {
     struct_size: size_of::<GpioDescriptor>() as u32,
     abi_version: GPIO_ABI,
@@ -1557,6 +1597,9 @@ static GPIO_DESCRIPTOR: GpioDescriptor = GpioDescriptor {
     set_channel: Some(parallel_set_channel),
     program_rtx: Some(parallel_program_rtx),
     clear_rtx: Some(parallel_control),
+    context_operations: [None; 5],
+    device_capabilities: Some(gpio_capabilities),
+    parallel_capabilities: Some(parallel_capabilities),
 };
 
 fn audio_provider() -> AudioProvider {
@@ -1896,6 +1939,11 @@ fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_
     assert!(state.inputs().physical_ptt);
     assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), publishes);
 
+    outputs.cm119 ^= 0x20;
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), publishes + 1);
+    assert_eq!(PTT.load(Ordering::Acquire), 1);
+
     GPIO_ONLINE.store(0, Ordering::Release);
     service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 0);
@@ -1912,7 +1960,7 @@ fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_
     }
     FAILURE.store(FAIL_CM119_PUBLISH, Ordering::Release);
     assert!(service_native_once(&mut devices, &mut outputs, &worker, true).is_err());
-    assert_eq!(outputs.native_ptt, None);
+    assert_eq!(outputs.native_outputs, None);
     assert!(!state.inputs().physical_ptt);
     service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 1);
@@ -1926,6 +1974,277 @@ fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_
     service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
     assert!(outputs.clip_led_until.is_some());
     assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 1);
+}
+
+#[test]
+fn site_owner_spare_writes_share_native_handle_and_report_read_failure() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(false);
+    selected.cm119.output_enable_mask = 0x21;
+    selected.cm119.output_initial_mask = 1;
+    plan.cm119.input_mask = 0x02;
+    plan.cm119.clip_led_mask = 1;
+    let (mut worker, sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.native = true;
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    let initial = outputs.site[0].snapshot();
+    assert_eq!(initial.output_mask, 0x21);
+    assert_eq!(initial.reserved_mask & 1, 1);
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    sender
+        .send(ServiceCommand::SiteBind(
+            SiteBank::Cm119,
+            SiteDigitalBinding {
+                generation: initial.generation,
+                output_mask: 1,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+        ))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        None,
+    )
+    .unwrap();
+    assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), 0);
+    assert_eq!(outputs.cm119, 1);
+    sender
+        .send(ServiceCommand::SiteBind(
+            SiteBank::Cm119,
+            SiteDigitalBinding {
+                generation: initial.generation,
+                output_mask: 0x20,
+                initial_high_mask: 0x20,
+                safe_high_mask: 0,
+            },
+        ))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        None,
+    )
+    .unwrap();
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(outputs.native_outputs.unwrap().gpio_output_mask, 0x21);
+    assert_eq!(PTT.load(Ordering::Acquire), 1);
+    let snapshot = outputs.site[0].snapshot();
+    assert_eq!(snapshot.input_quality, SiteReadQuality::Valid);
+    assert_eq!(snapshot.readback_valid_mask, 0);
+    assert_eq!(snapshot.submitted_high_mask, 0x21);
+    assert_eq!(snapshot.submitted_generation, snapshot.generation);
+    assert_ne!(
+        snapshot.serviced_generation, snapshot.generation,
+        "queueing an output is not servicing it"
+    );
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(
+        outputs.site[0].snapshot().serviced_generation,
+        snapshot.generation
+    );
+    sender
+        .send(ServiceCommand::SitePublish(
+            SiteBank::Cm119,
+            SiteDigitalRequest {
+                generation: initial.generation,
+                output_mask: 0x20,
+                high_mask: 0,
+            },
+        ))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        outputs.cm119, 0x21,
+        "stale queued work cannot change hardware intent"
+    );
+    outputs.restore(
+        HardwareTransientState {
+            cm119_output_mask: 0,
+            parallel_output_mask: 0,
+            remote_radio: None,
+        },
+        &selected,
+        None,
+    );
+    assert_eq!(
+        outputs.cm119 & 0x20,
+        0x20,
+        "ordinary state restoration cannot reset claimed site pins"
+    );
+    let observed_at = outputs.site[0].snapshot().observed_at_ms;
+    FAILURE.store(FAIL_CM119_INPUTS, Ordering::Release);
+    assert!(service_native_once(&mut devices, &mut outputs, &worker, true).is_err());
+    let failed = outputs.site[0].snapshot();
+    assert_eq!(failed.input_quality, SiteReadQuality::Fault);
+    assert_eq!(failed.observed_at_ms, observed_at);
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+}
+
+#[test]
+fn site_owner_parallel_native_acquisition_and_commands_preserve_reserved_pins() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, selected) = selected_hardware(true);
+    let parallel = plan.parallel.as_mut().unwrap();
+    parallel.config.output_enable_mask = 0xff;
+    parallel.ptt_mask = 0x01;
+    parallel.input_mask = 0x80;
+    let (mut worker, sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.native = true;
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    PARALLEL_INPUTS.store(0x80, Ordering::Release);
+    let generation = outputs.site[1].snapshot().generation;
+    sender
+        .send(ServiceCommand::SiteBind(
+            SiteBank::Parallel,
+            SiteDigitalBinding {
+                generation,
+                output_mask: 0x10,
+                initial_high_mask: 0x10,
+                safe_high_mask: 0,
+            },
+        ))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        plan.parallel.as_ref(),
+    )
+    .unwrap();
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    let snapshot = outputs.site[1].snapshot();
+    assert_eq!(snapshot.input_quality, SiteReadQuality::Valid);
+    assert_eq!(snapshot.input_high_mask, 0x8000);
+    assert_eq!(snapshot.submitted_high_mask, 0x11);
+    assert_eq!(snapshot.readback_valid_mask, 0);
+    sender.send(ServiceCommand::SelectChannel(1)).unwrap();
+    sender
+        .send(ServiceCommand::ConfigureRemoteRadio(remote_radio(
+            146_520_000,
+        )))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        plan.parallel.as_ref(),
+    )
+    .unwrap();
+    assert_eq!(
+        outputs.parallel, 0x10,
+        "legacy channel commands cannot overwrite site pins"
+    );
+    assert!(outputs.remote_radio.is_none());
+    FAILURE.store(FAIL_PARALLEL_INPUTS, Ordering::Release);
+    assert!(service_native_once(&mut devices, &mut outputs, &worker, false).is_err());
+    let failed = outputs.site[1].snapshot();
+    assert_eq!(failed.observed_at_ms, snapshot.observed_at_ms);
+    assert_eq!(failed.input_quality, SiteReadQuality::Fault);
+}
+
+#[test]
+fn site_owner_cached_age_advances_even_without_worker_progress() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut service = hardware_service(false, false);
+    assert!(matches!(
+        service.site_snapshot(SiteBank::Cm119),
+        Err(HardwareStationError::NotRunning)
+    ));
+    service.worker = Some(thread::spawn(|| None));
+    service.site[0].publish(
+        SiteDigitalSnapshot {
+            observed_at_ms: Some(10),
+            input_quality: SiteReadQuality::Valid,
+            ..SiteDigitalSnapshot::default()
+        },
+        20,
+    );
+    thread::sleep(Duration::from_millis(25));
+    let snapshot = service.site_snapshot(SiteBank::Cm119).unwrap();
+    assert_eq!(snapshot.observed_at_ms, Some(10));
+    assert!(
+        snapshot.snapshot_at_ms >= 25,
+        "a cached read cannot freeze acquisition age"
+    );
+    service.stop().unwrap();
+}
+
+#[test]
+fn site_owner_binding_cancels_prior_pulses_before_claiming_output() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, mut selected) = selected_hardware(false);
+    selected.cm119.output_enable_mask = 0x21;
+    let (worker, sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    let initial = outputs.site[0].snapshot();
+    let binding = SiteDigitalBinding {
+        generation: initial.generation,
+        output_mask: 0x20,
+        initial_high_mask: 0x20,
+        safe_high_mask: 0,
+    };
+    sender
+        .send(ServiceCommand::SiteBind(SiteBank::Cm119, binding))
+        .unwrap();
+    FAILURE.store(FAIL_CM119_PULSE, Ordering::Release);
+    assert!(
+        service_commands(
+            &worker.receiver,
+            &mut outputs,
+            &mut devices,
+            &selected,
+            None
+        )
+        .is_err()
+    );
+    assert_eq!(outputs.site[0].snapshot().generation, initial.generation);
+    assert_eq!(
+        outputs.site[0].snapshot().last_command_error,
+        Some(SiteError::Fault)
+    );
+    assert_eq!(outputs.cm119 & 0x20, 0);
+    sender
+        .send(ServiceCommand::SiteBind(SiteBank::Cm119, binding))
+        .unwrap();
+    service_commands(
+        &worker.receiver,
+        &mut outputs,
+        &mut devices,
+        &selected,
+        None,
+    )
+    .unwrap();
+    assert_eq!(outputs.site[0].snapshot().claimed_mask, 0x20);
+    assert_eq!(outputs.cm119 & 0x20, 0x20);
 }
 
 fn service_worker(
@@ -1952,6 +2271,8 @@ fn service_worker(
             cm119_input_mask: plan.cm119.input_mask,
             clip_led_mask: plan.cm119.clip_led_mask,
             input_sender,
+            clock: Instant::now(),
+            site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
         },
         command_sender,
         input_receiver,

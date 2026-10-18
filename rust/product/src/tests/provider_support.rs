@@ -1403,6 +1403,13 @@ struct GpioDescriptor {
     set_channel: Option<unsafe extern "C" fn(*mut c_void, u8) -> c_int>,
     program_rtx: Option<unsafe extern "C" fn(*mut c_void, u32, u32, u32, u32) -> c_int>,
     clear_rtx: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    context_operations: [Option<unsafe extern "C" fn()>; 5],
+    device_capabilities: Option<
+        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
+    >,
+    parallel_capabilities: Option<
+        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
+    >,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1587,6 +1594,22 @@ unsafe extern "C" fn unused_gpio_pulse() -> c_int {
     OK
 }
 
+unsafe extern "C" fn gpio_capabilities(
+    _device: *const c_void,
+    output: *mut usbradioplus_gpio::GpioCapabilities,
+) -> c_int {
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = usbradioplus_gpio::GpioCapabilities {
+            struct_size: size_of::<usbradioplus_gpio::GpioCapabilities>() as u32,
+            input_pin_mask: 0xfb,
+            output_pin_mask: 0xfb,
+            ..usbradioplus_gpio::GpioCapabilities::default()
+        };
+    }
+    OK
+}
+
 static GPIO: GpioDescriptor = GpioDescriptor {
     struct_size: size_of::<GpioDescriptor>() as u32,
     abi_version: GPIO_ABI,
@@ -1615,6 +1638,9 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     set_channel: Some(parallel_set_channel),
     program_rtx: Some(parallel_program_rtx),
     clear_rtx: Some(parallel_control),
+    context_operations: [None; 5],
+    device_capabilities: Some(gpio_capabilities),
+    parallel_capabilities: Some(gpio_capabilities),
 };
 
 pub(crate) fn manifest() -> UrpAstProviderManifest {
