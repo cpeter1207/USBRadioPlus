@@ -2701,6 +2701,60 @@ fn same_device_reload_releases_exclusive_audio_and_reopens_on_rollback() {
 }
 
 #[test]
+fn reload_rollback_retains_candidate_until_safe_write_succeeds() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::exclusive_audio(true);
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    // SAFETY: this fixture owns both generations and all synchronous callbacks.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(
+            channel_set_direct_callbacks(channel, &direct_callbacks()),
+            URP_AST_OK
+        );
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert_eq!(
+            stage_reload(
+                driver,
+                b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms = 20\n"
+            ),
+            URP_AST_OK
+        );
+        assert_eq!(prepare_reload(channel), URP_AST_OK);
+        assert_eq!(activate_reload(channel), URP_AST_OK);
+        let created = provider_support::audio_lifecycle().0;
+        provider_support::set_failure(provider_support::FAIL_GPIO_SERVICE);
+        let failed = finish_reload(channel, 0);
+        let retained = channel_ref(channel)
+            .unwrap()
+            .rollback
+            .lock()
+            .unwrap()
+            .is_some();
+        let created_after_failure = provider_support::audio_lifecycle().0;
+        provider_support::clear_failure();
+        let retried = finish_reload(channel, 0);
+        let finished = driver_reload_finish(driver, 0);
+        channel_destroy(channel);
+        driver_destroy(driver);
+        provider_support::exclusive_audio(false);
+        assert_eq!(failed, URP_AST_SETUP_FAILED);
+        assert!(
+            retained,
+            "failed safe retirement must preserve the rollback transaction"
+        );
+        assert_eq!(
+            created_after_failure, created,
+            "do not reopen the prior owner after a failed safe write"
+        );
+        assert_eq!(retried, URP_AST_OK);
+        assert_eq!(finished, URP_AST_OK);
+    }
+}
+
+#[test]
 fn reload_recovery_failures_report_degradation_and_remain_restartable() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     for (activation_failure, rollback_failure, expected_running) in [

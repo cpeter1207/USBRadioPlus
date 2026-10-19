@@ -107,6 +107,12 @@ its serviced output acknowledgment before using it. Every later write carries
 the acknowledged generation. Radio signaling and other reserved bits cannot
 be claimed. Failed retirement keeps the device for safe-write retry before
 replacement; recovery starts at safe levels and rejects departed commands.
+The first safe write precedes recovery backoff. Replacement transfers safe
+levels rather than retired site intent, and preserves high safe levels until
+an explicit new binding, radio reservation, or ordinary output command supersedes
+them. Startup resolves safe levels before opening hardware and uses the same
+safe retirement on setup failure. Failed cleanup retains ownership for retry.
+Failed rollback retirement retains both generations for a later control-plane retry.
 
 Snapshots distinguish requested, submitted, and serviced output levels from
 independent electrical readback, which these banks do not provide. Input time

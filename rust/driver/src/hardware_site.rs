@@ -165,7 +165,7 @@ impl SiteBankState {
         *output = value as u8;
         self.snapshot.requested_high_mask = value;
         self.snapshot.claimed_mask = binding.output_mask;
-        self.safe_high_mask = binding.safe_high_mask;
+        self.safe_high_mask = (self.safe_high_mask & !binding.output_mask) | binding.safe_high_mask;
         self.snapshot.generation = next;
         Ok(())
     }
@@ -210,6 +210,7 @@ impl SiteBankState {
             false
         } else {
             self.snapshot.reserved_mask |= mask;
+            self.safe_high_mask &= !mask;
             true
         }
     }
@@ -230,10 +231,32 @@ impl SiteBankState {
 
     /// End this ownership epoch before safe-output I/O or device replacement.
     pub(super) fn retire(&mut self, output: &mut u8) {
-        *output = ((u32::from(*output) & !self.snapshot.claimed_mask) | self.safe_high_mask) as u8;
+        *output = self.retired_output(*output);
         self.snapshot.requested_high_mask = u32::from(*output);
         self.snapshot.generation = 0;
         self.snapshot.input_quality = SiteReadQuality::Unavailable;
+    }
+
+    /// Substitute safe levels for site intent when transferring ordinary state.
+    pub(super) const fn retired_output(&self, output: u8) -> u8 {
+        ((output as u32 & !self.snapshot.claimed_mask) | self.safe_high_mask) as u8
+    }
+
+    /// Preserve high safe levels across recovery until another owner changes them.
+    pub(super) const fn safe_high(&self) -> u8 {
+        self.safe_high_mask as u8
+    }
+
+    /// Restore only unclaimed, available safe levels; keep current bindings intact.
+    pub(super) fn restore_safe_high(&mut self, high: u8) {
+        let retained = u32::from(high) & self.snapshot.output_mask & !self.snapshot.reserved_mask;
+        self.safe_high_mask = (self.safe_high_mask & self.snapshot.claimed_mask)
+            | (retained & !self.snapshot.claimed_mask);
+    }
+
+    /// An accepted ordinary command supersedes any retired site's safe level.
+    pub(super) fn release_safe_high(&mut self, mask: u8) {
+        self.safe_high_mask &= !u32::from(mask);
     }
 
     pub(super) fn observe(&mut self, value: Option<u32>, now_ms: u64) {

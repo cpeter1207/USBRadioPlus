@@ -205,8 +205,18 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
         source / "rust/product/include/usbradioplus_product.h"
     ).read_bytes()
     subprocess.run(
-        ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only",
-         "-I", str(stage / "usr/include"), "-xc", "-"],
+        [
+            "cc",
+            "-std=c11",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fsyntax-only",
+            "-I",
+            str(stage / "usr/include"),
+            "-xc",
+            "-",
+        ],
         input="""#include <usbradioplus_product.h>
 int main(void) {
     UrpAstSiteControl request = {

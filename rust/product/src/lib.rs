@@ -2157,16 +2157,28 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                 mut hardware,
                 transient,
             } => {
-                let mut degraded = false;
                 if let Err(error) = control.stop_hardware() {
                     channel.log_error(&format!(
                         "configuration reload rollback could not stop the candidate generation: {error}"
                     ));
-                    degraded = true;
+                    // Preserve both generations. A failed safe write must not
+                    // release the candidate owner or reopen the previous one.
+                    *channel
+                        .rollback
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        Some(AdoptedChannelReload {
+                            previous: PreviousChannelGeneration::Hardware {
+                                hardware,
+                                transient,
+                            },
+                            jitter: adopted.jitter,
+                        });
+                    return Err(Status::SetupFailed);
                 }
                 drop(control.hardware.take());
                 let restored = restore_previous(channel, &mut hardware, transient);
-                degraded |= restored.is_err();
+                let degraded = restored.is_err();
                 control.running = restored.unwrap_or(false);
                 control.hardware = Some(hardware);
                 if degraded {

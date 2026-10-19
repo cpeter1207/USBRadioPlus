@@ -5,6 +5,40 @@ fn bank() -> SiteBankState {
 }
 
 #[test]
+fn radio_reservation_supersedes_a_released_sites_safe_high_level() {
+    let mut bank = bank();
+    let mut output = 1;
+    bank.bind(
+        SiteDigitalBinding {
+            generation: bank.snapshot().generation,
+            output_mask: 0x20,
+            initial_high_mask: 0,
+            safe_high_mask: 0x20,
+        },
+        &mut output,
+    )
+    .unwrap();
+    bank.bind(
+        SiteDigitalBinding {
+            generation: bank.snapshot().generation,
+            output_mask: 0,
+            initial_high_mask: 0,
+            safe_high_mask: 0,
+        },
+        &mut output,
+    )
+    .unwrap();
+    assert_eq!(output, 0x21);
+    assert!(bank.reserve(0x20));
+    output = 1; // The new radio owner deasserts its signaling output.
+    bank.retire(&mut output);
+    assert_eq!(
+        output, 1,
+        "retired site policy must not reassert radio signaling"
+    );
+}
+
+#[test]
 fn site_owner_masks_and_generation_reject_before_mutation() {
     let mut bank = bank();
     let original = bank.snapshot().generation;

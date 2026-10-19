@@ -283,12 +283,14 @@ pub struct HardwareInputEvent {
 ///
 /// Timed pulses are deliberately excluded and restart from the inactive state;
 /// retained state covers ordinary outputs, parallel channel selection, and the
-/// current parallel remote-radio request.
+/// current parallel remote-radio request. Site outputs transfer their safe
+/// levels, never a retired owner's active intent or ownership generation.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct HardwareTransientState {
     cm119_output_mask: u8,
     parallel_output_mask: u8,
     remote_radio: Option<RemoteRadio>,
+    site_safe_high: [u8; 2],
 }
 
 impl HardwareTransientState {
@@ -1494,17 +1496,21 @@ impl HardwareService {
         if self.running() {
             return Ok(());
         }
-        let mut devices =
-            ServiceDevices::open(self.provider, &self.selected, self.parallel.as_ref())
-                .map_err(HardwareStationError::from)?;
         let mut outputs = OutputState::new(
             &self.selected,
             self.parallel.as_ref(),
             self.initial_remote_radio,
         );
-        if let Some(state) = self.pending_transient.take() {
+        if let Some(state) = self.pending_transient {
             outputs.restore(state, &self.selected, self.parallel.as_ref());
         }
+        let mut devices = ServiceDevices::open_at_outputs(
+            self.provider,
+            &self.selected,
+            self.parallel.as_ref(),
+            &outputs,
+        )
+        .map_err(HardwareStationError::from)?;
         let mut inputs = InputTracker::default();
         let (input_sender, input_receiver) = sync_channel(INPUT_EVENT_QUEUE_CAPACITY);
         let (sender, receiver) = sync_channel(CONTROL_QUEUE_CAPACITY);
@@ -1525,19 +1531,27 @@ impl HardwareService {
             clock: self.site_clock,
             site: self.site.clone(),
         };
-        outputs
-            .prepare_site(&devices, &worker)
-            .map_err(HardwareStationError::from)?;
-        worker.publish_site(&outputs);
-        if !self.native {
-            service_once(
-                &mut devices,
-                &mut outputs,
-                &mut inputs,
-                self.sidetone.as_mut(),
-                &worker,
-            )
-            .map_err(HardwareStationError::from)?;
+        let setup = outputs.prepare_site(&devices, &worker).and_then(|()| {
+            worker.publish_site(&outputs);
+            if self.native {
+                Ok(())
+            } else {
+                service_once(
+                    &mut devices,
+                    &mut outputs,
+                    &mut inputs,
+                    self.sidetone.as_mut(),
+                    &worker,
+                )
+            }
+        });
+        if let Err(failure) = setup {
+            outputs.retire_site();
+            self.retiring = Some(Box::new(RetiringDevices { devices, outputs }));
+            // Reuse safe retirement even before a worker exists. Failed cleanup
+            // retains the owner, and pending state remains available for retry.
+            self.stop()?;
+            return Err(failure.into());
         }
         let sidetone = self.sidetone.take();
         self.worker = Some(thread::spawn(move || {
@@ -1545,6 +1559,7 @@ impl HardwareService {
         }));
         self.sender = Some(sender);
         self.input_events = Some(input_receiver);
+        self.pending_transient = None;
         Ok(())
     }
 
@@ -1806,6 +1821,24 @@ struct ServiceExit {
 }
 
 impl ServiceDevices {
+    fn open_at_outputs(
+        provider: GpioAdapter,
+        selected: &SelectedHardwarePlan,
+        parallel: Option<&ParallelPlan>,
+        outputs: &OutputState,
+    ) -> Result<Self, ServiceFailure> {
+        // Use the resolved safe baseline even if a later open fails and drops
+        // the first handle. Startup and recovery share this ownership transfer.
+        let mut selected = selected.clone();
+        selected.cm119.output_initial_mask = outputs.cm119;
+        let mut parallel = parallel.cloned();
+        if let Some(plan) = &mut parallel {
+            plan.config.output_initial_mask =
+                parallel_output(plan, outputs.parallel, false, selected.cm119.ptt_inverted);
+        }
+        Self::open(provider, &selected, parallel.as_ref())
+    }
+
     fn open(
         provider: GpioAdapter,
         selected: &SelectedHardwarePlan,
@@ -1863,7 +1896,7 @@ impl ServiceDevices {
             let plan = parallel.expect("an owned parallel device has a plan");
             // Retain only configured site safe levels. Other data bits keep the
             // existing close-to-low policy; PTT is deasserted with its polarity.
-            let persistent = outputs.parallel & outputs.site[1].snapshot().claimed_mask as u8;
+            let persistent = outputs.site[1].safe_high();
             let value = parallel_output(plan, persistent, false, self.ptt_inverted);
             match device.close_outputs(value) {
                 Ok(()) => {
@@ -1939,6 +1972,7 @@ impl OutputState {
         devices: &ServiceDevices,
         worker: &ServiceWorker,
     ) -> Result<(), ServiceFailure> {
+        let safe_high = self.site.each_ref().map(SiteBankState::safe_high);
         let caps = devices
             .cm119
             .capabilities()
@@ -1949,6 +1983,7 @@ impl OutputState {
             u32::from(worker.clip_led_mask),
             u32::from(self.cm119),
         );
+        self.site[0].restore_safe_high(safe_high[0]);
         if let Some((device, plan)) = devices.parallel.as_ref().zip(worker.parallel.as_ref()) {
             let caps = device
                 .capabilities()
@@ -1966,6 +2001,7 @@ impl OutputState {
                 ),
                 u32::from(self.parallel),
             );
+            self.site[1].restore_safe_high(safe_high[1]);
         }
         Ok(())
     }
@@ -2086,14 +2122,16 @@ impl OutputState {
                 apply_persistent(&mut self.parallel, bit, request);
             }
         }
+        self.site[bank].release_safe_high(bit);
         Ok(())
     }
 
     const fn snapshot(&self) -> HardwareTransientState {
         HardwareTransientState {
-            cm119_output_mask: self.cm119,
-            parallel_output_mask: self.parallel,
+            cm119_output_mask: self.site[0].retired_output(self.cm119),
+            parallel_output_mask: self.site[1].retired_output(self.parallel),
             remote_radio: self.remote_radio,
+            site_safe_high: [self.site[0].safe_high(), self.site[1].safe_high()],
         }
     }
 
@@ -2103,6 +2141,9 @@ impl OutputState {
         selected: &SelectedHardwarePlan,
         parallel: Option<&ParallelPlan>,
     ) {
+        for (site, high) in self.site.iter_mut().zip(state.site_safe_high) {
+            site.restore_safe_high(high);
+        }
         let cm119_mask =
             selected.cm119.output_enable_mask & !(self.site[0].snapshot().claimed_mask as u8);
         self.cm119 = (self.cm119 & !cm119_mask) | (state.cm119_output_mask & cm119_mask);
@@ -2279,6 +2320,9 @@ impl ServiceWorker {
                 }
                 devices = None;
                 retiring = false;
+                // Make outputs safe first; the delay only limits reopen attempts.
+                thread::park_timeout(RETRY_INTERVAL);
+                continue;
             }
             if devices.is_none() {
                 // Reopen at the safe baseline, not the previous configuration's
@@ -2290,14 +2334,12 @@ impl ServiceWorker {
                         outputs.site[bank.index()].reject(SiteError::StaleGeneration);
                     }
                 }
-                let mut selected = self.selected.clone();
-                selected.cm119.output_initial_mask = outputs.cm119;
-                let mut parallel = self.parallel.clone();
-                if let Some(plan) = &mut parallel {
-                    plan.config.output_initial_mask =
-                        parallel_output(plan, outputs.parallel, false, selected.cm119.ptt_inverted);
-                }
-                match ServiceDevices::open(self.provider, &selected, parallel.as_ref()) {
+                match ServiceDevices::open_at_outputs(
+                    self.provider,
+                    &self.selected,
+                    self.parallel.as_ref(),
+                    &outputs,
+                ) {
                     Ok(opened) => {
                         if let Err(failure) = outputs.prepare_site(&opened, &self) {
                             self.statistics.failure(failure);
@@ -2341,7 +2383,6 @@ impl ServiceWorker {
                         outputs.retire_site();
                         self.publish_site(&outputs);
                         retiring = true;
-                        thread::park_timeout(RETRY_INTERVAL);
                     }
                 }
             }

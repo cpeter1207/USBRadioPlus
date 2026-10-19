@@ -23,6 +23,7 @@ pub(super) const PUBLISH_ON_STOP: u32 = 11;
 pub(super) const FAIL_START_ONCE: u32 = 12;
 pub(super) const FAIL_OPEN_ONCE: u32 = 13;
 pub(super) const PUBLISH_ON_STOP_FAIL_OPEN: u32 = 14;
+pub(super) const FAIL_GPIO_SERVICE: u32 = 15;
 static FAILURE: AtomicU32 = AtomicU32::new(0);
 static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
@@ -1444,6 +1445,9 @@ unsafe extern "C" fn gpio_publish(_device: *mut c_void, outputs: *const GpioCm11
 }
 
 unsafe extern "C" fn gpio_service(_device: *mut c_void) -> c_int {
+    if failed(FAIL_GPIO_SERVICE) {
+        return -1;
+    }
     OK
 }
 
