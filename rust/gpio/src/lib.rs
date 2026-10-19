@@ -304,6 +304,9 @@ struct Descriptor {
     context_operations: [Option<unsafe extern "C" fn()>; 5],
     device_capabilities: Option<DeviceCapabilities>,
     parallel_capabilities: Option<ParallelCapabilities>,
+    // Context/interlock operations between capabilities and the safe-close tail.
+    interlock_operations: [Option<unsafe extern "C" fn()>; 8],
+    parallel_close_outputs: Option<ParallelWrite>,
 }
 
 /// Failure reported while preparing or operating a GPIO adapter.
@@ -631,6 +634,7 @@ impl GpioAdapter {
             || descriptor.parallel_schedule_inverting_pulse.is_none()
             || descriptor.device_capabilities.is_none()
             || descriptor.parallel_capabilities.is_none()
+            || descriptor.parallel_close_outputs.is_none()
         {
             return Err(GpioError::IncompatibleAdapter);
         }
@@ -894,6 +898,30 @@ unsafe impl Send for ParallelDevice {}
 unsafe impl Sync for ParallelDevice {}
 
 impl ParallelDevice {
+    /// Write the final physical byte and release the port without a zero write.
+    ///
+    /// The caller must stop all publishers and include deasserted radio outputs.
+    /// On failure the returned device retains ownership for a later retry; no
+    /// replacement owner may open the port until this handoff succeeds.
+    pub fn close_outputs(self, outputs: u8) -> Result<(), (Box<Self>, GpioError)> {
+        // SAFETY: the consumed handle has no remaining borrowers or publishers.
+        let result = map_result(unsafe {
+            self.descriptor.parallel_close_outputs.unwrap_unchecked()(
+                self.device.as_ptr(),
+                u32::from(outputs),
+            )
+        });
+        match result {
+            Ok(()) => {
+                // The provider consumed the handle; the ordinary Drop would clear
+                // the safe byte and free the same handle a second time.
+                std::mem::forget(self);
+                Ok(())
+            }
+            Err(error) => Err((Box::new(self), error)),
+        }
+    }
+
     /// Read immutable capabilities of this already-owned port without port I/O.
     pub fn capabilities(&self) -> Result<GpioCapabilities, GpioError> {
         read_capabilities(|output| {

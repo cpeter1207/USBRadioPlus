@@ -1,5 +1,10 @@
 [
   {
+    "repository": "rptadv-gpio-adapter",
+    "sha": "a5bd54f310bbc98447c97d8f139d4fa503b2241a",
+    "packages": ["librptadv-gpio-adapter1", "librptadv-gpio-adapter-dev"]
+  },
+  {
     "repository": "rptadv-samplerate-adapter",
     "sha": "55e09c0152afd44aa6cae164006186172bd06249",
     "packages": ["librptadv-samplerate-adapter2", "librptadv-samplerate-adapter-dev"]

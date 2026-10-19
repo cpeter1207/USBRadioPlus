@@ -1402,7 +1402,8 @@ pub struct HardwareService {
     stop: Arc<AtomicBool>,
     sender: Option<SyncSender<ServiceCommand>>,
     input_events: Option<Receiver<HardwareInputEvent>>,
-    worker: Option<JoinHandle<Option<HardwareSidetone>>>,
+    worker: Option<JoinHandle<ServiceExit>>,
+    retiring: Option<Box<RetiringDevices>>,
     site: [Arc<SiteCache>; 2],
     site_clock: Instant,
 }
@@ -1464,6 +1465,7 @@ impl HardwareService {
             sender: None,
             input_events: None,
             worker: None,
+            retiring: None,
             site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
             site_clock: Instant::now(),
         }
@@ -1480,6 +1482,9 @@ impl HardwareService {
     /// Returns GPIO open failures. Asterisk mode also validates its first service cycle;
     /// native mode retains the device and retries transient polling failures in its worker.
     pub fn start(&mut self) -> Result<(), HardwareStationError> {
+        if self.retiring.is_some() {
+            self.stop()?;
+        }
         if self.running() {
             return Ok(());
         }
@@ -1541,18 +1546,39 @@ impl HardwareService {
     ///
     /// # Errors
     ///
-    /// Returns an unexpected service-worker panic.
+    /// Returns a service-worker panic or failed safe-output write. Failed device
+    /// retirement retains ownership; a later stop/start retries before reopening.
     pub fn stop(&mut self) -> Result<(), HardwareStationError> {
-        let Some(worker) = self.worker.take() else {
-            return Ok(());
-        };
-        self.stop.store(true, Ordering::Release);
-        worker.thread().unpark();
-        self.sender = None;
-        self.input_events = None;
-        self.sidetone = worker
-            .join()
-            .map_err(|_| HardwareStationError::WorkerPanicked)?;
+        if let Some(worker) = self.worker.take() {
+            self.stop.store(true, Ordering::Release);
+            worker.thread().unpark();
+            self.sender = None;
+            self.input_events = None;
+            let exit = worker
+                .join()
+                .map_err(|_| HardwareStationError::WorkerPanicked)?;
+            self.sidetone = exit.sidetone;
+            self.retiring = exit.retiring;
+            if let Some(error) = exit.failure {
+                return Err(error.into());
+            }
+        }
+        if let Some(retiring) = &mut self.retiring {
+            let result = retiring
+                .devices
+                .close_outputs(self.parallel.as_ref(), &mut retiring.outputs);
+            for (cache, state) in self.site.iter().zip(&retiring.outputs.site) {
+                cache.publish(
+                    state.snapshot(),
+                    self.site_clock.elapsed().as_millis() as u64,
+                );
+            }
+            if let Err(error) = result {
+                self.statistics.failure(error);
+                return Err(error.into());
+            }
+            self.retiring = None;
+        }
         Ok(())
     }
 
@@ -1760,6 +1786,19 @@ struct ServiceDevices {
     ptt_inverted: bool,
 }
 
+/// A failed final write retains the physical owner across a bounded stop call.
+struct RetiringDevices {
+    devices: ServiceDevices,
+    outputs: OutputState,
+}
+
+#[derive(Default)]
+struct ServiceExit {
+    sidetone: Option<HardwareSidetone>,
+    retiring: Option<Box<RetiringDevices>>,
+    failure: Option<ServiceFailure>,
+}
+
 impl ServiceDevices {
     fn open(
         provider: GpioAdapter,
@@ -1783,31 +1822,60 @@ impl ServiceDevices {
         })
     }
 
-    fn fail_safe_unkey(&mut self, parallel: Option<&ParallelPlan>, outputs: &OutputState) {
-        let _ = self.cm119.publish_outputs(Cm119Outputs {
-            ptt_asserted: false,
-            gpio_output_mask: outputs.cm119,
-        });
-        let _ = self.cm119.service();
-        if let Some(plan) = parallel {
-            let device = self
-                .parallel
-                .as_mut()
-                .expect("a configured parallel plan owns a device");
-            if outputs.remote_radio.is_some() {
-                let _ = device.clear_rtx_transmit();
-            }
-            let _ = device.publish_outputs(ParallelOutputs {
-                output_mask: parallel_output(
-                    plan,
-                    outputs.parallel & !(PARALLEL_RTX_TRANSMIT_MASK | PARALLEL_RTX_POWER_MASK),
-                    false,
-                    self.ptt_inverted,
-                ),
-                ..ParallelOutputs::default()
+    fn close_outputs(
+        &mut self,
+        parallel: Option<&ParallelPlan>,
+        outputs: &mut OutputState,
+    ) -> Result<(), ServiceFailure> {
+        let cm119 = self
+            .cm119
+            .schedule_pulse(Cm119Pulse {
+                cancel_ptt: true,
+                cancel_gpio_mask: outputs.site[0].snapshot().output_mask as u8,
+                ..Cm119Pulse::default()
+            })
+            .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source))
+            .and_then(|()| {
+                self.cm119
+                    .publish_outputs(Cm119Outputs {
+                        ptt_asserted: false,
+                        gpio_output_mask: outputs.cm119,
+                    })
+                    .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
+                outputs.site[0].submitted(u32::from(outputs.cm119));
+                self.cm119
+                    .service()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
             });
-            let _ = device.service();
+        outputs.site[0].serviced(cm119.is_ok());
+        if cm119.is_err() {
+            outputs.site[0].reject(SiteError::Fault);
         }
+        // Attempt both banks even when one fails. Successful closes are not
+        // repeated; failed closes keep their handle for retry, never a second owner.
+        let port = if let Some(device) = self.parallel.take() {
+            let plan = parallel.expect("an owned parallel device has a plan");
+            // Retain only configured site safe levels. Other data bits keep the
+            // existing close-to-low policy; PTT is deasserted with its polarity.
+            let persistent = outputs.parallel & outputs.site[1].snapshot().claimed_mask as u8;
+            let value = parallel_output(plan, persistent, false, self.ptt_inverted);
+            match device.close_outputs(value) {
+                Ok(()) => {
+                    outputs.site[1].submitted(u32::from(value));
+                    outputs.site[1].serviced(true);
+                    Ok(())
+                }
+                Err((device, source)) => {
+                    self.parallel = Some(*device);
+                    outputs.site[1].serviced(false);
+                    outputs.site[1].reject(SiteError::Fault);
+                    Err(ServiceFailure(HardwareOperation::PublishParallel, source))
+                }
+            }
+        } else {
+            Ok(())
+        };
+        cm119.and(port)
     }
 }
 
@@ -1824,6 +1892,11 @@ struct OutputState {
 }
 
 impl OutputState {
+    fn retire_site(&mut self) {
+        self.site[0].retire(&mut self.cm119);
+        self.site[1].retire(&mut self.parallel);
+        self.native_outputs = None;
+    }
     fn new(
         selected: &SelectedHardwarePlan,
         parallel: Option<&ParallelPlan>,
@@ -2185,12 +2258,51 @@ impl ServiceWorker {
         mut outputs: OutputState,
         mut inputs: InputTracker,
         mut sidetone: Option<HardwareSidetone>,
-    ) -> Option<HardwareSidetone> {
+    ) -> ServiceExit {
         let mut devices = Some(initial_devices);
+        let mut retiring = false;
         while !self.stop.load(Ordering::Acquire) {
+            if retiring {
+                let current = devices.as_mut().expect("retirement retains its owner");
+                let result = current.close_outputs(self.parallel.as_ref(), &mut outputs);
+                self.publish_site(&outputs);
+                if let Err(failure) = result {
+                    self.statistics.failure(failure);
+                    thread::park_timeout(RETRY_INTERVAL);
+                    continue;
+                }
+                devices = None;
+                retiring = false;
+            }
             if devices.is_none() {
-                match ServiceDevices::open(self.provider, &self.selected, self.parallel.as_ref()) {
-                    Ok(opened) => devices = Some(opened),
+                // Reopen at the safe baseline, not the previous configuration's
+                // startup byte. Commands queued for the retired owner are obsolete.
+                for command in self.receiver.try_iter().take(CONTROL_QUEUE_CAPACITY) {
+                    if let ServiceCommand::SiteBind(bank, _)
+                    | ServiceCommand::SitePublish(bank, _) = command
+                    {
+                        outputs.site[bank.index()].reject(SiteError::StaleGeneration);
+                    }
+                }
+                let mut selected = self.selected.clone();
+                selected.cm119.output_initial_mask = outputs.cm119;
+                let mut parallel = self.parallel.clone();
+                if let Some(plan) = &mut parallel {
+                    plan.config.output_initial_mask =
+                        parallel_output(plan, outputs.parallel, false, selected.cm119.ptt_inverted);
+                }
+                match ServiceDevices::open(self.provider, &selected, parallel.as_ref()) {
+                    Ok(opened) => {
+                        if let Err(failure) = outputs.prepare_site(&opened, &self) {
+                            self.statistics.failure(failure);
+                            devices = Some(opened);
+                            outputs.retire_site();
+                            retiring = true;
+                            continue;
+                        }
+                        devices = Some(opened);
+                        self.publish_site(&outputs);
+                    }
                     Err(failure) => {
                         self.statistics.failure(failure);
                         self.state.publish_inputs(HardwareInputs::default());
@@ -2220,27 +2332,37 @@ impl ServiceWorker {
                         thread::park_timeout(self.interval());
                     } else {
                         self.state.publish_inputs(HardwareInputs::default());
-                        devices = None;
+                        outputs.retire_site();
+                        self.publish_site(&outputs);
+                        retiring = true;
                         thread::park_timeout(RETRY_INTERVAL);
                     }
                 }
             }
         }
-        if let Some(mut current) = devices {
-            if self.native {
-                let _ = current.cm119.publish_outputs(Cm119Outputs {
-                    ptt_asserted: false,
-                    gpio_output_mask: outputs.cm119,
-                });
-            } else {
-                current.fail_safe_unkey(self.parallel.as_ref(), &outputs);
-            }
+        outputs.retire_site();
+        let failure = devices.as_mut().and_then(|current| {
+            current
+                .close_outputs(self.parallel.as_ref(), &mut outputs)
+                .err()
+        });
+        self.publish_site(&outputs);
+        if let Some(failure) = failure {
+            self.statistics.failure(failure);
         }
         if let Some(control) = &mut sidetone {
             let _ = control.apply(false);
         }
         self.state.publish_inputs(HardwareInputs::default());
-        sidetone
+        ServiceExit {
+            sidetone,
+            retiring: if failure.is_some() {
+                devices.map(|devices| Box::new(RetiringDevices { devices, outputs }))
+            } else {
+                None
+            },
+            failure,
+        }
     }
 }
 

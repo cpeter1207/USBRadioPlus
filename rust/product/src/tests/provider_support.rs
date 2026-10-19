@@ -1410,6 +1410,8 @@ struct GpioDescriptor {
     parallel_capabilities: Option<
         unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
     >,
+    interlock_operations: [Option<unsafe extern "C" fn()>; 8],
+    parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1485,6 +1487,12 @@ unsafe extern "C" fn gpio_statistics(
 unsafe extern "C" fn gpio_close(device: *mut c_void) {
     // SAFETY: the handle is the unique allocation returned by open.
     drop(unsafe { Box::from_raw(device.cast::<u8>()) });
+}
+
+unsafe extern "C" fn gpio_parallel_close_outputs(device: *mut c_void, _value: u32) -> c_int {
+    // SAFETY: successful close consumes the fixture's unique handle.
+    unsafe { gpio_close(device) };
+    OK
 }
 
 unsafe extern "C" fn gpio_read_eeprom(_device: *mut c_void, image: *mut GpioEeprom) -> c_int {
@@ -1641,6 +1649,8 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     context_operations: [None; 5],
     device_capabilities: Some(gpio_capabilities),
     parallel_capabilities: Some(gpio_capabilities),
+    interlock_operations: [None; 8],
+    parallel_close_outputs: Some(gpio_parallel_close_outputs),
 };
 
 pub(crate) fn manifest() -> UrpAstProviderManifest {

@@ -228,6 +228,14 @@ impl SiteBankState {
         mask & (!self.snapshot.output_mask | self.snapshot.claimed_mask) == 0
     }
 
+    /// End this ownership epoch before safe-output I/O or device replacement.
+    pub(super) fn retire(&mut self, output: &mut u8) {
+        *output = ((u32::from(*output) & !self.snapshot.claimed_mask) | self.safe_high_mask) as u8;
+        self.snapshot.requested_high_mask = u32::from(*output);
+        self.snapshot.generation = 0;
+        self.snapshot.input_quality = SiteReadQuality::Unavailable;
+    }
+
     pub(super) fn observe(&mut self, value: Option<u32>, now_ms: u64) {
         if let Some(value) = value {
             self.snapshot.input_high_mask = value & self.snapshot.input_mask;

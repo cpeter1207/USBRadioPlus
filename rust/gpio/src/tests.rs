@@ -7,6 +7,8 @@ static RESULT: AtomicI32 = AtomicI32::new(RESULT_OK);
 static RETURN_MODE: AtomicU32 = AtomicU32::new(0);
 static CM119_CLOSES: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_SAFE_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Default)]
 struct FakeCm119 {
@@ -327,6 +329,20 @@ unsafe extern "C" fn parallel_close(device: *mut OpaqueParallelDevice) {
     PARALLEL_CLOSES.fetch_add(1, Ordering::Relaxed);
 }
 
+unsafe extern "C" fn parallel_close_outputs(
+    device: *mut OpaqueParallelDevice,
+    value: u32,
+) -> c_int {
+    let result = RESULT.load(Ordering::Relaxed);
+    if result == RESULT_OK {
+        PARALLEL_FINAL_BYTE.store(value, Ordering::Relaxed);
+        PARALLEL_SAFE_CLOSES.fetch_add(1, Ordering::Relaxed);
+        // SAFETY: success consumes the live handle exactly once.
+        drop(unsafe { Box::from_raw(device.cast::<FakeParallel>()) });
+    }
+    result
+}
+
 unsafe extern "C" fn unused_extension() -> c_int {
     RESULT_OK
 }
@@ -409,6 +425,8 @@ fn descriptor() -> Descriptor {
         context_operations: [None; 5],
         device_capabilities: Some(device_capabilities),
         parallel_capabilities: Some(parallel_capabilities),
+        interlock_operations: [None; 8],
+        parallel_close_outputs: Some(parallel_close_outputs),
     }
 }
 
@@ -652,6 +670,34 @@ fn optional_parallel_compatibility_operations_report_unsupported() {
 }
 
 #[test]
+fn safe_close_keeps_handle_on_failure_and_does_not_zero_after_success() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    PARALLEL_SAFE_CLOSES.store(0, Ordering::Relaxed);
+    let raw = descriptor();
+    let device = adapter(&raw)
+        .open_parallel(&ParallelConfig {
+            transport: ParallelTransport::RawIo,
+            ppdev_path: None,
+            raw_io_base: 0x378,
+            output_enable_mask: 0xff,
+            output_initial_mask: 0,
+        })
+        .unwrap();
+    RESULT.store(-5, Ordering::Relaxed);
+    let (mut device, error) = device.close_outputs(0x08).err().unwrap();
+    assert_eq!(error, GpioError::Io);
+    assert_eq!(PARALLEL_CLOSES.load(Ordering::Relaxed), 0);
+    assert_eq!(PARALLEL_SAFE_CLOSES.load(Ordering::Relaxed), 0);
+    RESULT.store(RESULT_OK, Ordering::Relaxed);
+    device.service().unwrap();
+    assert!((*device).close_outputs(0x08).is_ok());
+    assert_eq!(PARALLEL_SAFE_CLOSES.load(Ordering::Relaxed), 1);
+    assert_eq!(PARALLEL_FINAL_BYTE.load(Ordering::Relaxed), 0x08);
+    assert_eq!(PARALLEL_CLOSES.load(Ordering::Relaxed), 0);
+}
+
+#[test]
 fn descriptor_and_adapter_failures_are_rejected() {
     let _guard = TEST_LOCK.lock().unwrap();
     reset();
@@ -755,6 +801,7 @@ fn descriptor_and_returned_values_reject_every_invalid_abi_form() {
     assert_missing_function_is_rejected!(parallel_schedule_inverting_pulse);
     assert_missing_function_is_rejected!(device_capabilities);
     assert_missing_function_is_rejected!(parallel_capabilities);
+    assert_missing_function_is_rejected!(parallel_close_outputs);
 }
 
 #[test]
