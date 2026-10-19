@@ -2353,6 +2353,88 @@ fn site_owner_stop_failure_retains_port_until_safe_write_succeeds() {
 }
 
 #[test]
+fn site_owner_recovery_opens_at_safe_levels_without_replaying_departed_commands() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, mut selected) = selected_hardware(false);
+    selected.cm119.output_enable_mask = 0x20;
+    selected.cm119.output_initial_mask = 0;
+    let (worker, sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    outputs
+        .site_bind(
+            SiteBank::Cm119,
+            SiteDigitalBinding {
+                generation: outputs.site[0].snapshot().generation,
+                output_mask: 0x20,
+                initial_high_mask: 0,
+                safe_high_mask: 0x20,
+            },
+            &devices,
+        )
+        .unwrap();
+    let old_generation = outputs.site[0].snapshot().generation;
+    let cache = Arc::clone(&worker.site[0]);
+    let stop = Arc::clone(&worker.stop);
+    FAILURE.store(FAIL_CM119_SERVICE, Ordering::Release);
+    let handle = thread::spawn(move || worker.run(devices, outputs, InputTracker::default(), None));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let retired = loop {
+        if let Ok(snapshot) = cache.read() {
+            if snapshot.generation == 0 && snapshot.requested_high_mask == 0x20 {
+                break true;
+            }
+        }
+        if Instant::now() >= deadline {
+            break false;
+        }
+        thread::sleep(Duration::from_millis(1));
+    };
+    sender
+        .send(ServiceCommand::SitePublish(
+            SiteBank::Cm119,
+            SiteDigitalRequest {
+                generation: old_generation,
+                output_mask: 0x20,
+                high_mask: 0,
+            },
+        ))
+        .unwrap();
+    handle.thread().unpark();
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let recovered = loop {
+        if let Ok(snapshot) = cache.read() {
+            if snapshot.generation != 0
+                && snapshot.generation != old_generation
+                && snapshot.serviced_generation == snapshot.generation
+            {
+                break Some(snapshot);
+            }
+        }
+        if Instant::now() >= deadline {
+            break None;
+        }
+        thread::sleep(Duration::from_millis(1));
+    };
+    stop.store(true, Ordering::Release);
+    handle.thread().unpark();
+    let exit = handle.join().unwrap();
+    assert!(retired, "failed owner must invalidate its generation");
+    let recovered = recovered.expect("replacement owner must become ready");
+    assert_eq!(recovered.serviced_high_mask, 0x20);
+    assert_eq!(
+        recovered.claimed_mask, 0,
+        "new generation requires a fresh binding"
+    );
+    assert_eq!(GPIO_FINAL_BYTE.load(Ordering::Acquire), 0x20);
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 2);
+    assert!(exit.failure.is_none());
+}
+
+#[test]
 fn site_owner_stop_clears_unclaimed_parallel_bits_and_deasserts_inverted_ptt() {
     let _guard = test_guard();
     reset_test_state();

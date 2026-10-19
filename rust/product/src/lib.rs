@@ -7,6 +7,8 @@
 
 mod native;
 pub use native::{UrpNativeCreateArgs, UrpNativeStationConfig};
+mod site;
+pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
 
 use std::cell::UnsafeCell;
 use std::collections::HashSet;
@@ -606,6 +608,13 @@ pub type UrpAstChannelGetStatus =
 pub type UrpAstChannelService = unsafe extern "C" fn(channel: *mut c_void) -> c_int;
 /// Release one channel reservation and its prepared resources.
 pub type UrpAstChannelDestroy = unsafe extern "C" fn(channel: *mut c_void);
+/// Queue ownership on bank zero (CM119) or one (parallel); acceptance is not service completion.
+pub type UrpAstSiteBind = unsafe extern "C" fn(*mut c_void, u32, *const UrpAstSiteBinding) -> c_int;
+/// Queue an output intent, validating its owner generation and spare-pin mask.
+pub type UrpAstSitePublish =
+    unsafe extern "C" fn(*mut c_void, u32, *const UrpAstSiteRequest) -> c_int;
+/// Read cached physical-owner state without device I/O; control-only, never audio.
+pub type UrpAstSiteRead = unsafe extern "C" fn(*mut c_void, u32, *mut UrpAstSiteSnapshot) -> c_int;
 
 /// Versioned shared-radio product operations.
 #[derive(Clone, Copy)]
@@ -686,6 +695,18 @@ pub struct UrpAstDescriptor {
     pub native_stop: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     /// Destroy a native station using the provider's synchronous teardown contract.
     pub native_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// Queue native-site ownership; poll the snapshot for its new generation.
+    pub native_site_bind: Option<UrpAstSiteBind>,
+    /// Queue native-site output intent.
+    pub native_site_publish: Option<UrpAstSitePublish>,
+    /// Read native-site cached acquisition and acknowledgement state.
+    pub native_site_snapshot: Option<UrpAstSiteRead>,
+    /// Queue channel-site ownership on the serialized channel control owner.
+    pub channel_site_bind: Option<UrpAstSiteBind>,
+    /// Queue channel-site output intent on that same owner.
+    pub channel_site_publish: Option<UrpAstSitePublish>,
+    /// Read channel-site state on that same owner, without physical I/O.
+    pub channel_site_snapshot: Option<UrpAstSiteRead>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
@@ -696,6 +717,12 @@ static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
     native_start: Some(native::start),
     native_stop: Some(native::stop),
     native_destroy: Some(native::destroy),
+    native_site_bind: Some(site::native_bind),
+    native_site_publish: Some(site::native_publish),
+    native_site_snapshot: Some(site::native_snapshot),
+    channel_site_bind: Some(site::channel_bind),
+    channel_site_publish: Some(site::channel_publish),
+    channel_site_snapshot: Some(site::channel_snapshot),
     struct_size: size_of::<UrpAstDescriptor>() as u32,
     abi_version: ABI_VERSION,
     capability_name: CAPABILITY.as_ptr(),

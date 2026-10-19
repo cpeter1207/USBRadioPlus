@@ -394,6 +394,28 @@ fn registration_rolls_back_every_completed_external_stage() {
 }
 
 #[test]
+fn site_registration_rejects_incomplete_owner_bridges_before_host_setup() {
+    let _fixture = Fixture::new();
+    let calls = Mutex::new(DriverCalls::default());
+    for missing in 0..3 {
+        let mut descriptor = lifecycle_descriptor();
+        match missing {
+            0 => descriptor.channel_site_bind = None,
+            1 => descriptor.channel_site_publish = None,
+            _ => descriptor.channel_site_snapshot = None,
+        }
+        assert_eq!(
+            register_fixture(&descriptor, &calls),
+            crate::URP_AST_INCOMPATIBLE_ABI
+        );
+        with_state(|state| {
+            assert!(state.registered.is_empty());
+            assert!(state.capabilities.is_empty());
+        });
+    }
+}
+
+#[test]
 fn requester_rejects_invalid_inputs_without_reserving_resources() {
     let _fixture = Fixture::new();
     let descriptor = lifecycle_descriptor();
@@ -1371,6 +1393,180 @@ fn link_binding_option_acknowledges_only_valid_profile_attachment() {
                 "restore the caller-held lock in case {case}"
             );
         });
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct SiteOption {
+    struct_size: u32,
+    abi_version: u32,
+    operation: u32,
+    bank: u32,
+    binding: crate::UrpAstSiteBinding,
+    request: crate::UrpAstSiteRequest,
+    snapshot: crate::UrpAstSiteSnapshot,
+    accepted_abi_version: u32,
+}
+
+#[derive(Default)]
+struct SiteCalls {
+    result: i32,
+    bindings: Vec<(u32, u64, u32, u32, u32)>,
+    writes: Vec<(u32, u64, u32, u32)>,
+    reads: Vec<u32>,
+}
+
+unsafe extern "C" fn capture_site_bind(
+    context: *mut c_void,
+    bank: u32,
+    binding: *const crate::UrpAstSiteBinding,
+) -> i32 {
+    // SAFETY: the option test retains its counter and dispatch borrows a complete record.
+    let (calls, binding) = unsafe { (&mut *context.cast::<SiteCalls>(), &*binding) };
+    calls.bindings.push((
+        bank,
+        binding.generation,
+        binding.output_mask,
+        binding.initial_high_mask,
+        binding.safe_high_mask,
+    ));
+    calls.result
+}
+
+unsafe extern "C" fn capture_site_publish(
+    context: *mut c_void,
+    bank: u32,
+    request: *const crate::UrpAstSiteRequest,
+) -> i32 {
+    // SAFETY: the option test retains its counter and dispatch borrows a complete record.
+    let (calls, request) = unsafe { (&mut *context.cast::<SiteCalls>(), &*request) };
+    calls.writes.push((
+        bank,
+        request.generation,
+        request.output_mask,
+        request.high_mask,
+    ));
+    calls.result
+}
+
+unsafe extern "C" fn capture_site_snapshot(
+    context: *mut c_void,
+    bank: u32,
+    output: *mut crate::UrpAstSiteSnapshot,
+) -> i32 {
+    // SAFETY: dispatch supplies a complete output and the option test retains its counter.
+    let (calls, output) = unsafe { (&mut *context.cast::<SiteCalls>(), &mut *output) };
+    calls.reads.push(bank);
+    output.generation = 19;
+    output.input_high_mask = 4;
+    output.input_quality = 1;
+    output.observed_at_ms = 1234;
+    output.observed_at_valid = 1;
+    calls.result
+}
+
+#[test]
+fn site_option_serializes_owned_requests_and_returns_only_acknowledged_snapshots() {
+    let _fixture = Fixture::new();
+    let mut descriptor = callback_descriptor();
+    descriptor.channel_site_bind = Some(capture_site_bind);
+    descriptor.channel_site_publish = Some(capture_site_publish);
+    descriptor.channel_site_snapshot = Some(capture_site_snapshot);
+    let calls = Mutex::new(DriverCalls::default());
+    let (channel, mut owner) = callback_channel(&descriptor, &calls);
+    let mut site = SiteCalls::default();
+    channel
+        .rust_channel
+        .store(ptr::from_mut(&mut site).cast(), Ordering::Release);
+    for operation in 0..3 {
+        let mut option = SiteOption {
+            struct_size: size_of::<SiteOption>() as u32,
+            abi_version: 1,
+            operation,
+            bank: 1,
+            binding: crate::UrpAstSiteBinding {
+                struct_size: size_of::<crate::UrpAstSiteBinding>() as u32,
+                abi_version: 1,
+                generation: 17,
+                output_mask: 32,
+                initial_high_mask: 32,
+                safe_high_mask: 0,
+            },
+            request: crate::UrpAstSiteRequest {
+                struct_size: size_of::<crate::UrpAstSiteRequest>() as u32,
+                abi_version: 1,
+                generation: 18,
+                output_mask: 32,
+                high_mask: 0,
+            },
+            ..SiteOption::default()
+        };
+        // SAFETY: the fake owner and complete writable option remain live through dispatch.
+        let result = unsafe {
+            setoption(
+                owner.as_ptr(),
+                0x52505349,
+                ptr::from_mut(&mut option).cast(),
+                size_of::<SiteOption>() as c_int,
+            )
+        };
+        assert_eq!(result, 0, "site operation {operation}");
+        assert_eq!(option.accepted_abi_version, 1);
+        if operation == 2 {
+            assert_eq!(option.snapshot.generation, 19);
+            assert_eq!(option.snapshot.input_high_mask, 4);
+            assert_eq!(option.snapshot.observed_at_ms, 1234);
+            assert_eq!(option.snapshot.observed_at_valid, 1);
+        }
+    }
+    assert_eq!(site.bindings, [(1, 17, 32, 32, 0)]);
+    assert_eq!(site.writes, [(1, 18, 32, 0)]);
+    assert_eq!(site.reads, [1]);
+
+    for case in 0..7 {
+        let mut option = SiteOption {
+            struct_size: size_of::<SiteOption>() as u32,
+            abi_version: 1,
+            operation: 2,
+            ..SiteOption::default()
+        };
+        let mut length = size_of::<SiteOption>() as c_int;
+        match case {
+            0 => length -= 1,
+            1 => option.struct_size -= 1,
+            2 => option.abi_version = 0,
+            3 => option.operation = 3,
+            4 => site.result = crate::URP_AST_NOT_READY,
+            5 => with_state(|state| state.taskprocessor_push_result = -1),
+            _ => site.result = URP_AST_OK,
+        }
+        let gate = (case == 6).then(|| control_gate().write().unwrap());
+        let mut bytes = vec![0; size_of::<SiteOption>() + 1];
+        // SAFETY: byte storage reserves a complete record at an intentionally unaligned address.
+        let (result, output) = unsafe {
+            let data = bytes.as_mut_ptr().add(1).cast::<SiteOption>();
+            data.write_unaligned(option);
+            let result = setoption(owner.as_ptr(), 0x52505349, data.cast(), length);
+            (result, data.read_unaligned())
+        };
+        drop(gate);
+        assert_eq!(
+            result,
+            if case == 4 {
+                crate::URP_AST_NOT_READY
+            } else {
+                -1
+            },
+            "case {case}"
+        );
+        assert_eq!(output.accepted_abi_version, 0, "case {case}");
+        assert_eq!(
+            output.snapshot.generation, 0,
+            "failed snapshot must not escape"
+        );
+        site.result = URP_AST_OK;
+        with_state(|state| state.taskprocessor_push_result = 0);
     }
 }
 

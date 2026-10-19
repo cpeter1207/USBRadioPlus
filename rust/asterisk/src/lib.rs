@@ -131,6 +131,9 @@ unsafe fn product_descriptor_is_valid(raw: *const UrpAstDescriptor) -> bool {
         && descriptor.channel_get_status.is_some()
         && descriptor.channel_service.is_some()
         && descriptor.channel_destroy.is_some()
+        && descriptor.channel_site_bind.is_some()
+        && descriptor.channel_site_publish.is_some()
+        && descriptor.channel_site_snapshot.is_some()
         && descriptor.link_reload_unchanged.is_some()
 }
 

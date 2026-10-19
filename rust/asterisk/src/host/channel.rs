@@ -503,6 +503,9 @@ fn descriptor_is_valid(descriptor: &UrpAstDescriptor) -> bool {
         && descriptor.channel_get_status.is_some()
         && descriptor.channel_service.is_some()
         && descriptor.channel_destroy.is_some()
+        && descriptor.channel_site_bind.is_some()
+        && descriptor.channel_site_publish.is_some()
+        && descriptor.channel_site_snapshot.is_some()
 }
 
 unsafe fn release_ao2(pointer: *mut c_void) {
@@ -1276,6 +1279,32 @@ unsafe extern "C" fn setoption(
         // SAFETY: errno is thread-local on supported Linux targets.
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
+    }
+    if option as u32 == super::super::URP_AST_OPTION_SITE_IO {
+        use super::super::UrpAstSiteControl;
+        if data_length as usize != size_of::<UrpAstSiteControl>() {
+            return -1;
+        }
+        // SAFETY: exact size is checked; Asterisk payloads may be byte-aligned.
+        let request = unsafe { data.cast::<UrpAstSiteControl>().read_unaligned() };
+        if request.struct_size as usize != size_of::<UrpAstSiteControl>()
+            || request.abi_version != super::super::URP_AST_SITE_OPTION_ABI_VERSION
+            || request.operation > super::super::URP_AST_SITE_SNAPSHOT
+        {
+            return -1;
+        }
+        let ControlResult::Site(status, mut response) =
+            channel.control(ControlOperation::Site(request))
+        else {
+            return -1;
+        };
+        if status != URP_AST_OK {
+            return status;
+        }
+        response.accepted_abi_version = super::super::URP_AST_SITE_OPTION_ABI_VERSION;
+        // SAFETY: the complete writable envelope outlives this synchronous dispatch.
+        unsafe { data.cast::<UrpAstSiteControl>().write_unaligned(response) };
+        return 0;
     }
     if option == super::super::URP_AST_OPTION_LINK_ATTACH {
         if data_length as usize != size_of::<super::super::UrpAstLinkAttach>() {

@@ -719,6 +719,12 @@ impl HardwareStation {
         &mut self.control
     }
 
+    /// Borrow the existing hardware owner for control-only site queues/snapshots.
+    /// This shared reference cannot stop, reopen or duplicate the device owner.
+    pub fn site_service(&self) -> &HardwareService {
+        &self.service
+    }
+
     /// Whether the existing stream and control-service owners can adopt this plan.
     #[must_use]
     pub fn supports_live_update(&self, plan: &StationPlan) -> bool {

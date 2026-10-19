@@ -141,6 +141,7 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
         "man/usbradioplus.conf.5",
         "man/usbradioplus.7",
         "man/usbradioplus-tune.8",
+        "rust/product/include/usbradioplus_product.h",
     ):
         destination = source / path
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +152,6 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
         "build/libusbradioplus_product.so.1",
         "build/usbradioplus_agc.so.1",
         "build/usbradioplus-tune",
-        "rust/product/include/usbradioplus_product.h",
     ):
         destination = source / path
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -204,6 +204,23 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
     assert (stage / "usr/include/usbradioplus_product.h").read_bytes() == (
         source / "rust/product/include/usbradioplus_product.h"
     ).read_bytes()
+    subprocess.run(
+        ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only",
+         "-I", str(stage / "usr/include"), "-xc", "-"],
+        input="""#include <usbradioplus_product.h>
+int main(void) {
+    UrpAstSiteControl request = {
+        .struct_size = sizeof(UrpAstSiteControl),
+        .abi_version = URP_AST_SITE_OPTION_ABI_VERSION,
+        .operation = URP_AST_SITE_SNAPSHOT
+    };
+    return request.accepted_abi_version;
+}
+""",
+        text=True,
+        capture_output=True,
+        check=True,
+    )
     environment = dict(os.environ, PKG_CONFIG_PATH=str(library / "pkgconfig"))
     for query, expected in (
         ("--variable=abi_version", "1"),

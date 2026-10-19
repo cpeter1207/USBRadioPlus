@@ -1404,12 +1404,10 @@ struct GpioDescriptor {
     program_rtx: Option<unsafe extern "C" fn(*mut c_void, u32, u32, u32, u32) -> c_int>,
     clear_rtx: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     context_operations: [Option<unsafe extern "C" fn()>; 5],
-    device_capabilities: Option<
-        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
-    >,
-    parallel_capabilities: Option<
-        unsafe extern "C" fn(*const c_void, *mut usbradioplus_gpio::GpioCapabilities) -> c_int,
-    >,
+    device_capabilities:
+        Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
+    parallel_capabilities:
+        Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
     interlock_operations: [Option<unsafe extern "C" fn()>; 8],
     parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
 }
@@ -1602,17 +1600,30 @@ unsafe extern "C" fn unused_gpio_pulse() -> c_int {
     OK
 }
 
+// Shared product/host fixture mirrors the released C record, not the driver crate.
+#[repr(C)]
+#[derive(Default)]
+struct GpioCapabilities {
+    struct_size: u32,
+    inputs: u32,
+    outputs: u32,
+    input_pin_mask: u64,
+    output_pin_mask: u64,
+    readback: u32,
+    safety: u32,
+}
+
 unsafe extern "C" fn gpio_capabilities(
     _device: *const c_void,
-    output: *mut usbradioplus_gpio::GpioCapabilities,
+    output: *mut GpioCapabilities,
 ) -> c_int {
     // SAFETY: the wrapper supplies a complete capability result.
     unsafe {
-        *output = usbradioplus_gpio::GpioCapabilities {
-            struct_size: size_of::<usbradioplus_gpio::GpioCapabilities>() as u32,
+        *output = GpioCapabilities {
+            struct_size: size_of::<GpioCapabilities>() as u32,
             input_pin_mask: 0xfb,
             output_pin_mask: 0xfb,
-            ..usbradioplus_gpio::GpioCapabilities::default()
+            ..GpioCapabilities::default()
         };
     }
     OK
