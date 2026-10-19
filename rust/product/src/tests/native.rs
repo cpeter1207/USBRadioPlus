@@ -153,6 +153,109 @@ fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
 }
 
 #[test]
+fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    config.gpio_output_enable_mask = 0x21;
+    config.clip_led_mask = 1;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    let mut snapshot = UrpAstSiteSnapshot {
+        struct_size: size_of::<UrpAstSiteSnapshot>() as u32,
+        abi_version: ABI_VERSION,
+        ..UrpAstSiteSnapshot::default()
+    };
+    // SAFETY: serialized native owner and fully initialized ABI records live until destroy.
+    unsafe {
+        assert_eq!(
+            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            URP_AST_NOT_READY
+        );
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            URP_AST_OK
+        );
+        assert_eq!(snapshot.output_mask, 0x21);
+        assert_eq!(snapshot.reserved_mask, 1);
+        assert_eq!(snapshot.readback_valid_mask, 0);
+        let old_generation = snapshot.generation;
+        let mut binding = UrpAstSiteBinding {
+            struct_size: size_of::<UrpAstSiteBinding>() as u32,
+            abi_version: ABI_VERSION,
+            generation: old_generation,
+            output_mask: 1,
+            initial_high_mask: 1,
+            safe_high_mask: 0,
+        };
+        assert_eq!(
+            api.native_site_bind.unwrap()(handle, 0, &binding),
+            URP_AST_NOT_READY
+        );
+        binding.output_mask = 0x20;
+        binding.initial_high_mask = 0x20;
+        assert_eq!(
+            api.native_site_bind.unwrap()(handle, 0, &binding),
+            URP_AST_OK
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        loop {
+            let result = api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot);
+            if result == URP_AST_OK
+                && snapshot.generation != old_generation
+                && snapshot.serviced_generation == snapshot.generation
+            {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "binding was not serviced"
+            );
+            std::thread::yield_now();
+        }
+        assert_eq!(snapshot.claimed_mask, 0x20);
+        assert_eq!(snapshot.serviced_high_mask & 0x20, 0x20);
+        let request = UrpAstSiteRequest {
+            struct_size: size_of::<UrpAstSiteRequest>() as u32,
+            abi_version: ABI_VERSION,
+            generation: old_generation,
+            output_mask: 0x20,
+            high_mask: 0,
+        };
+        assert_eq!(
+            api.native_site_publish.unwrap()(handle, 0, &request),
+            URP_AST_NOT_READY
+        );
+        let request = UrpAstSiteRequest {
+            generation: snapshot.generation,
+            ..request
+        };
+        assert_eq!(
+            api.native_site_publish.unwrap()(handle, 0, &request),
+            URP_AST_OK
+        );
+        assert_eq!(
+            api.native_site_snapshot.unwrap()(handle, 1, &mut snapshot),
+            URP_AST_NOT_READY
+        );
+        assert_eq!(
+            api.native_site_snapshot.unwrap()(handle, 99, &mut snapshot),
+            URP_AST_INVALID_ARGUMENT
+        );
+        snapshot.struct_size = 8;
+        assert_eq!(
+            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            URP_AST_INCOMPATIBLE_ABI
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        api.native_destroy.unwrap()(handle);
+    }
+}
+
+#[test]
 fn native_create_rejects_invalid_callback_and_frame_contracts() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     let raw = radio();

@@ -23,6 +23,7 @@ pub(super) const PUBLISH_ON_STOP: u32 = 11;
 pub(super) const FAIL_START_ONCE: u32 = 12;
 pub(super) const FAIL_OPEN_ONCE: u32 = 13;
 pub(super) const PUBLISH_ON_STOP_FAIL_OPEN: u32 = 14;
+pub(super) const FAIL_GPIO_SERVICE: u32 = 15;
 static FAILURE: AtomicU32 = AtomicU32::new(0);
 static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
@@ -1403,6 +1404,13 @@ struct GpioDescriptor {
     set_channel: Option<unsafe extern "C" fn(*mut c_void, u8) -> c_int>,
     program_rtx: Option<unsafe extern "C" fn(*mut c_void, u32, u32, u32, u32) -> c_int>,
     clear_rtx: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    context_operations: [Option<unsafe extern "C" fn()>; 5],
+    device_capabilities:
+        Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
+    parallel_capabilities:
+        Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
+    interlock_operations: [Option<unsafe extern "C" fn()>; 8],
+    parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1437,6 +1445,9 @@ unsafe extern "C" fn gpio_publish(_device: *mut c_void, outputs: *const GpioCm11
 }
 
 unsafe extern "C" fn gpio_service(_device: *mut c_void) -> c_int {
+    if failed(FAIL_GPIO_SERVICE) {
+        return -1;
+    }
     OK
 }
 
@@ -1478,6 +1489,12 @@ unsafe extern "C" fn gpio_statistics(
 unsafe extern "C" fn gpio_close(device: *mut c_void) {
     // SAFETY: the handle is the unique allocation returned by open.
     drop(unsafe { Box::from_raw(device.cast::<u8>()) });
+}
+
+unsafe extern "C" fn gpio_parallel_close_outputs(device: *mut c_void, _value: u32) -> c_int {
+    // SAFETY: successful close consumes the fixture's unique handle.
+    unsafe { gpio_close(device) };
+    OK
 }
 
 unsafe extern "C" fn gpio_read_eeprom(_device: *mut c_void, image: *mut GpioEeprom) -> c_int {
@@ -1587,6 +1604,35 @@ unsafe extern "C" fn unused_gpio_pulse() -> c_int {
     OK
 }
 
+// Shared product/host fixture mirrors the released C record, not the driver crate.
+#[repr(C)]
+#[derive(Default)]
+struct GpioCapabilities {
+    struct_size: u32,
+    inputs: u32,
+    outputs: u32,
+    input_pin_mask: u64,
+    output_pin_mask: u64,
+    readback: u32,
+    safety: u32,
+}
+
+unsafe extern "C" fn gpio_capabilities(
+    _device: *const c_void,
+    output: *mut GpioCapabilities,
+) -> c_int {
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = GpioCapabilities {
+            struct_size: size_of::<GpioCapabilities>() as u32,
+            input_pin_mask: 0xfb,
+            output_pin_mask: 0xfb,
+            ..GpioCapabilities::default()
+        };
+    }
+    OK
+}
+
 static GPIO: GpioDescriptor = GpioDescriptor {
     struct_size: size_of::<GpioDescriptor>() as u32,
     abi_version: GPIO_ABI,
@@ -1615,6 +1661,11 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     set_channel: Some(parallel_set_channel),
     program_rtx: Some(parallel_program_rtx),
     clear_rtx: Some(parallel_control),
+    context_operations: [None; 5],
+    device_capabilities: Some(gpio_capabilities),
+    parallel_capabilities: Some(gpio_capabilities),
+    interlock_operations: [None; 8],
+    parallel_close_outputs: Some(gpio_parallel_close_outputs),
 };
 
 pub(crate) fn manifest() -> UrpAstProviderManifest {

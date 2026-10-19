@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0~alpha24 - 2026-10-19
+
+- Expose spare CM119 and configured parallel-port GPIO through the shared
+  radio product, with reserved-pin protection and cached input status.
+- Apply configured safe output levels when site ownership ends or hardware
+  recovers, and reject commands from retired owners.
+- Require GPIO adapter alpha4 or newer.
+
 ## 0.1.0~alpha23 - 2026-10-09
 
 - Package the shared radio product independently of its Asterisk adapter so

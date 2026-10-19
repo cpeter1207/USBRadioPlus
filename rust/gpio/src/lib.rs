@@ -244,6 +244,31 @@ type ParallelProgramRtx =
     unsafe extern "C" fn(*mut OpaqueParallelDevice, u32, u32, u32, u32) -> c_int;
 type ParallelClearRtxTransmit = unsafe extern "C" fn(*mut OpaqueParallelDevice) -> c_int;
 
+/// Facilities reported by the selected GPIO provider, not inferred from a product name.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct GpioCapabilities {
+    /// Complete released capability-record size.
+    pub struct_size: u32,
+    /// Normalized radio input facilities, independent of ordinary pin masks.
+    pub inputs: u32,
+    /// Normalized radio output facilities, independent of ordinary pin masks.
+    pub outputs: u32,
+    /// Ordinary input pins; parallel status bits occupy bits 8 through 15.
+    pub input_pin_mask: u64,
+    /// Ordinary output pins; CM119 and parallel data bits occupy bits 0 through 7.
+    pub output_pin_mask: u64,
+    /// Independently confirmed output facilities; zero means no physical readback.
+    pub readback: u32,
+    /// Actual hardware safety facilities, never emulated by this client.
+    pub safety: u32,
+}
+
+type DeviceCapabilities =
+    unsafe extern "C" fn(*const OpaqueCm119Device, *mut GpioCapabilities) -> c_int;
+type ParallelCapabilities =
+    unsafe extern "C" fn(*const OpaqueParallelDevice, *mut GpioCapabilities) -> c_int;
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct Descriptor {
@@ -274,6 +299,14 @@ struct Descriptor {
     parallel_set_binary_channel: Option<ParallelSetBinaryChannel>,
     parallel_program_rtx: Option<ParallelProgramRtx>,
     parallel_clear_rtx_transmit: Option<ParallelClearRtxTransmit>,
+    // Released context-operation slots are retained for layout only; this owner
+    // uses its already-open CM119/parallel handles, not a second context.
+    context_operations: [Option<unsafe extern "C" fn()>; 5],
+    device_capabilities: Option<DeviceCapabilities>,
+    parallel_capabilities: Option<ParallelCapabilities>,
+    // Context/interlock operations between capabilities and the safe-close tail.
+    interlock_operations: [Option<unsafe extern "C" fn()>; 8],
+    parallel_close_outputs: Option<ParallelWrite>,
 }
 
 /// Failure reported while preparing or operating a GPIO adapter.
@@ -566,16 +599,17 @@ impl GpioAdapter {
     pub unsafe fn from_raw(descriptor: *const c_void) -> Result<Self, GpioError> {
         let pointer = NonNull::new(descriptor.cast_mut().cast::<Descriptor>())
             .ok_or(GpioError::IncompatibleAdapter)?;
-        // SAFETY: the caller guarantees a readable descriptor header.
-        let header = unsafe { pointer.as_ref() };
-        if header.struct_size < size_of::<Descriptor>() as u32
-            || header.abi_version != ABI_VERSION
-            || header.capability_name.is_null()
-        {
+        // SAFETY: only the two-word prefix is required before the size check.
+        // Do not form a reference spanning an older, shorter function table.
+        let header = unsafe { &*pointer.as_ptr().cast::<[u32; 2]>() };
+        if header[0] < size_of::<Descriptor>() as u32 || header[1] != ABI_VERSION {
             return Err(GpioError::IncompatibleAdapter);
         }
         // SAFETY: the size check above proves that the full ABI-1 descriptor is readable.
         let descriptor = unsafe { *pointer.as_ptr() };
+        if descriptor.capability_name.is_null() {
+            return Err(GpioError::IncompatibleAdapter);
+        }
         // SAFETY: the descriptor contract requires a valid static C string.
         let capability = unsafe { CStr::from_ptr(descriptor.capability_name) };
         if capability != CAPABILITY
@@ -598,6 +632,9 @@ impl GpioAdapter {
             || descriptor.parallel_close.is_none()
             || descriptor.device_schedule_inverting_pulse.is_none()
             || descriptor.parallel_schedule_inverting_pulse.is_none()
+            || descriptor.device_capabilities.is_none()
+            || descriptor.parallel_capabilities.is_none()
+            || descriptor.parallel_close_outputs.is_none()
         {
             return Err(GpioError::IncompatibleAdapter);
         }
@@ -692,6 +729,16 @@ unsafe impl Send for Cm119Device {}
 unsafe impl Sync for Cm119Device {}
 
 impl Cm119Device {
+    /// Read immutable capabilities of this already-owned device without USB I/O.
+    pub fn capabilities(&self) -> Result<GpioCapabilities, GpioError> {
+        read_capabilities(|output| {
+            // SAFETY: descriptor validation requires the function; the handle and output live.
+            unsafe {
+                self.descriptor.device_capabilities.unwrap_unchecked()(self.device.as_ptr(), output)
+            }
+        })
+    }
+
     /// Publish the newest prepared PTT and GPIO output state without HID I/O.
     pub fn publish_outputs(&self, outputs: Cm119Outputs) -> Result<(), GpioError> {
         let raw = RawCm119Outputs {
@@ -851,6 +898,43 @@ unsafe impl Send for ParallelDevice {}
 unsafe impl Sync for ParallelDevice {}
 
 impl ParallelDevice {
+    /// Write the final physical byte and release the port without a zero write.
+    ///
+    /// The caller must stop all publishers and include deasserted radio outputs.
+    /// On failure the returned device retains ownership for a later retry; no
+    /// replacement owner may open the port until this handoff succeeds.
+    pub fn close_outputs(self, outputs: u8) -> Result<(), (Box<Self>, GpioError)> {
+        // SAFETY: the consumed handle has no remaining borrowers or publishers.
+        let result = map_result(unsafe {
+            self.descriptor.parallel_close_outputs.unwrap_unchecked()(
+                self.device.as_ptr(),
+                u32::from(outputs),
+            )
+        });
+        match result {
+            Ok(()) => {
+                // The provider consumed the handle; the ordinary Drop would clear
+                // the safe byte and free the same handle a second time.
+                std::mem::forget(self);
+                Ok(())
+            }
+            Err(error) => Err((Box::new(self), error)),
+        }
+    }
+
+    /// Read immutable capabilities of this already-owned port without port I/O.
+    pub fn capabilities(&self) -> Result<GpioCapabilities, GpioError> {
+        read_capabilities(|output| {
+            // SAFETY: descriptor validation requires the function; the handle and output live.
+            unsafe {
+                self.descriptor.parallel_capabilities.unwrap_unchecked()(
+                    self.device.as_ptr(),
+                    output,
+                )
+            }
+        })
+    }
+
     /// Publish persistent outputs and an optional active-high pulse without I/O.
     pub fn publish_outputs(&self, outputs: ParallelOutputs) -> Result<(), GpioError> {
         let raw = RawParallelOutputs {
@@ -997,6 +1081,20 @@ impl Drop for ParallelDevice {
         // SAFETY: this object uniquely owns the live device handle.
         unsafe { self.descriptor.parallel_close.unwrap_unchecked()(self.device.as_ptr()) };
     }
+}
+
+fn read_capabilities(
+    call: impl FnOnce(*mut GpioCapabilities) -> c_int,
+) -> Result<GpioCapabilities, GpioError> {
+    let mut value = GpioCapabilities {
+        struct_size: size_of::<GpioCapabilities>() as u32,
+        ..GpioCapabilities::default()
+    };
+    map_result(call(&mut value))?;
+    if value.struct_size != size_of::<GpioCapabilities>() as u32 {
+        return Err(GpioError::InvalidArgument);
+    }
+    Ok(value)
 }
 
 fn raw_device_config<'a>(config: &'a Cm119Config, path: &'a CString) -> RawDeviceConfig {

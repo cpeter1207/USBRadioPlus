@@ -5,6 +5,12 @@
 //! service thread. Asterisk station composition also applies ALSA mixer setup;
 //! the native composition preserves the existing hardware tuning.
 
+#[cfg(test)]
+use crate::hardware_site::SiteReadQuality;
+use crate::hardware_site::{
+    SiteBank, SiteBankState, SiteCache, SiteDigitalBinding, SiteDigitalRequest,
+    SiteDigitalSnapshot, SiteError,
+};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicU64, Ordering};
@@ -182,6 +188,8 @@ pub enum HardwareStationError {
     WorkerPanicked,
     /// Preparing or adopting a callback-owned radio update failed.
     Update(StationUpdateError),
+    /// Spare-pin ownership or cached-snapshot validation failed.
+    Site(SiteError),
 }
 
 impl fmt::Display for HardwareStationError {
@@ -200,6 +208,7 @@ impl fmt::Display for HardwareStationError {
             Self::ControlTimeout => formatter.write_str("hardware control request timed out"),
             Self::WorkerPanicked => formatter.write_str("hardware service thread panicked"),
             Self::Update(error) => write!(formatter, "station update failed: {error}"),
+            Self::Site(error) => write!(formatter, "site hardware request failed: {error:?}"),
         }
     }
 }
@@ -274,12 +283,14 @@ pub struct HardwareInputEvent {
 ///
 /// Timed pulses are deliberately excluded and restart from the inactive state;
 /// retained state covers ordinary outputs, parallel channel selection, and the
-/// current parallel remote-radio request.
+/// current parallel remote-radio request. Site outputs transfer their safe
+/// levels, never a retired owner's active intent or ownership generation.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct HardwareTransientState {
     cm119_output_mask: u8,
     parallel_output_mask: u8,
     remote_radio: Option<RemoteRadio>,
+    site_safe_high: [u8; 2],
 }
 
 impl HardwareTransientState {
@@ -708,6 +719,12 @@ impl HardwareStation {
     /// Borrow serialized controller and radio-observer ownership.
     pub fn control(&mut self) -> &mut StationControlHost {
         &mut self.control
+    }
+
+    /// Borrow the existing hardware owner for control-only site queues/snapshots.
+    /// This shared reference cannot stop, reopen or duplicate the device owner.
+    pub fn site_service(&self) -> &HardwareService {
+        &self.service
     }
 
     /// Whether the existing stream and control-service owners can adopt this plan.
@@ -1363,6 +1380,8 @@ enum OutputCommand {
 
 enum ServiceCommand {
     Output(OutputCommand),
+    SiteBind(SiteBank, SiteDigitalBinding),
+    SitePublish(SiteBank, SiteDigitalRequest),
     ReadEeprom(SyncSender<Result<EepromImage, GpioError>>),
     WriteEeprom(EepromImage, SyncSender<Result<EepromImage, GpioError>>),
     SelectChannel(u8),
@@ -1391,7 +1410,10 @@ pub struct HardwareService {
     stop: Arc<AtomicBool>,
     sender: Option<SyncSender<ServiceCommand>>,
     input_events: Option<Receiver<HardwareInputEvent>>,
-    worker: Option<JoinHandle<Option<HardwareSidetone>>>,
+    worker: Option<JoinHandle<ServiceExit>>,
+    retiring: Option<Box<RetiringDevices>>,
+    site: [Arc<SiteCache>; 2],
+    site_clock: Instant,
 }
 
 struct HardwareServiceSetup {
@@ -1451,6 +1473,9 @@ impl HardwareService {
             sender: None,
             input_events: None,
             worker: None,
+            retiring: None,
+            site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
+            site_clock: Instant::now(),
         }
     }
 
@@ -1465,24 +1490,32 @@ impl HardwareService {
     /// Returns GPIO open failures. Asterisk mode also validates its first service cycle;
     /// native mode retains the device and retries transient polling failures in its worker.
     pub fn start(&mut self) -> Result<(), HardwareStationError> {
+        if self.retiring.is_some() {
+            self.stop()?;
+        }
         if self.running() {
             return Ok(());
         }
-        let mut devices =
-            ServiceDevices::open(self.provider, &self.selected, self.parallel.as_ref())
-                .map_err(HardwareStationError::from)?;
         let mut outputs = OutputState::new(
             &self.selected,
             self.parallel.as_ref(),
             self.initial_remote_radio,
         );
-        if let Some(state) = self.pending_transient.take() {
+        if let Some(state) = self.pending_transient {
             outputs.restore(state, &self.selected, self.parallel.as_ref());
         }
+        let mut devices = ServiceDevices::open_at_outputs(
+            self.provider,
+            &self.selected,
+            self.parallel.as_ref(),
+            &outputs,
+        )
+        .map_err(HardwareStationError::from)?;
         let mut inputs = InputTracker::default();
         let (input_sender, input_receiver) = sync_channel(INPUT_EVENT_QUEUE_CAPACITY);
         let (sender, receiver) = sync_channel(CONTROL_QUEUE_CAPACITY);
         self.stop.store(false, Ordering::Release);
+        self.site_clock = Instant::now();
         let worker = ServiceWorker {
             native: self.native,
             provider: self.provider,
@@ -1495,16 +1528,30 @@ impl HardwareService {
             cm119_input_mask: self.cm119_input_mask,
             clip_led_mask: self.clip_led_mask,
             input_sender,
+            clock: self.site_clock,
+            site: self.site.clone(),
         };
-        if !self.native {
-            service_once(
-                &mut devices,
-                &mut outputs,
-                &mut inputs,
-                self.sidetone.as_mut(),
-                &worker,
-            )
-            .map_err(HardwareStationError::from)?;
+        let setup = outputs.prepare_site(&devices, &worker).and_then(|()| {
+            worker.publish_site(&outputs);
+            if self.native {
+                Ok(())
+            } else {
+                service_once(
+                    &mut devices,
+                    &mut outputs,
+                    &mut inputs,
+                    self.sidetone.as_mut(),
+                    &worker,
+                )
+            }
+        });
+        if let Err(failure) = setup {
+            outputs.retire_site();
+            self.retiring = Some(Box::new(RetiringDevices { devices, outputs }));
+            // Reuse safe retirement even before a worker exists. Failed cleanup
+            // retains the owner, and pending state remains available for retry.
+            self.stop()?;
+            return Err(failure.into());
         }
         let sidetone = self.sidetone.take();
         self.worker = Some(thread::spawn(move || {
@@ -1512,6 +1559,7 @@ impl HardwareService {
         }));
         self.sender = Some(sender);
         self.input_events = Some(input_receiver);
+        self.pending_transient = None;
         Ok(())
     }
 
@@ -1519,18 +1567,39 @@ impl HardwareService {
     ///
     /// # Errors
     ///
-    /// Returns an unexpected service-worker panic.
+    /// Returns a service-worker panic or failed safe-output write. Failed device
+    /// retirement retains ownership; a later stop/start retries before reopening.
     pub fn stop(&mut self) -> Result<(), HardwareStationError> {
-        let Some(worker) = self.worker.take() else {
-            return Ok(());
-        };
-        self.stop.store(true, Ordering::Release);
-        worker.thread().unpark();
-        self.sender = None;
-        self.input_events = None;
-        self.sidetone = worker
-            .join()
-            .map_err(|_| HardwareStationError::WorkerPanicked)?;
+        if let Some(worker) = self.worker.take() {
+            self.stop.store(true, Ordering::Release);
+            worker.thread().unpark();
+            self.sender = None;
+            self.input_events = None;
+            let exit = worker
+                .join()
+                .map_err(|_| HardwareStationError::WorkerPanicked)?;
+            self.sidetone = exit.sidetone;
+            self.retiring = exit.retiring;
+            if let Some(error) = exit.failure {
+                return Err(error.into());
+            }
+        }
+        if let Some(retiring) = &mut self.retiring {
+            let result = retiring
+                .devices
+                .close_outputs(self.parallel.as_ref(), &mut retiring.outputs);
+            for (cache, state) in self.site.iter().zip(&retiring.outputs.site) {
+                cache.publish(
+                    state.snapshot(),
+                    self.site_clock.elapsed().as_millis() as u64,
+                );
+            }
+            if let Err(error) = result {
+                self.statistics.failure(error);
+                return Err(error.into());
+            }
+            self.retiring = None;
+        }
         Ok(())
     }
 
@@ -1647,6 +1716,63 @@ impl HardwareService {
     pub fn statistics(&self) -> HardwareServiceStatistics {
         self.statistics.snapshot()
     }
+
+    /// Queue spare-pin ownership replacement on the existing hardware worker.
+    ///
+    /// Success means queued, not physically applied. Observe the changed generation
+    /// and submitted levels through [`Self::site_snapshot`] before completing a handoff.
+    /// # Errors
+    /// Rejects unavailable banks, malformed masks, stale generations, or queue failure.
+    pub fn site_bind(
+        &self,
+        bank: SiteBank,
+        binding: SiteDigitalBinding,
+    ) -> Result<(), HardwareStationError> {
+        let snapshot = self.site_snapshot(bank)?;
+        SiteBankState::from_snapshot(snapshot)
+            .validate_binding(binding)
+            .map_err(HardwareStationError::Site)?;
+        self.queue_service(ServiceCommand::SiteBind(bank, binding))
+    }
+
+    /// Queue steady spare-pin levels; the worker validates ownership again at dispatch.
+    /// # Errors
+    /// Rejects stale or unowned requests and bounded queue failures.
+    pub fn site_publish(
+        &self,
+        bank: SiteBank,
+        request: SiteDigitalRequest,
+    ) -> Result<(), HardwareStationError> {
+        let snapshot = self.site_snapshot(bank)?;
+        SiteBankState::from_snapshot(snapshot)
+            .validate_request(request)
+            .map_err(HardwareStationError::Site)?;
+        self.queue_service(ServiceCommand::SitePublish(bank, request))
+    }
+
+    /// Copy a cached physical-owner observation without waiting for device I/O.
+    /// # Errors
+    /// Reports stopped/unconfigured banks or a concurrently changing cache.
+    pub fn site_snapshot(
+        &self,
+        bank: SiteBank,
+    ) -> Result<SiteDigitalSnapshot, HardwareStationError> {
+        if !self.running() {
+            return Err(HardwareStationError::NotRunning);
+        }
+        if bank == SiteBank::Parallel && self.parallel.is_none() {
+            return Err(HardwareStationError::Site(SiteError::Unavailable));
+        }
+        let mut snapshot = self.site[bank.index()]
+            .read()
+            .map_err(HardwareStationError::Site)?;
+        snapshot.snapshot_at_ms = self
+            .site_clock
+            .elapsed()
+            .as_millis()
+            .min(u128::from(u64::MAX)) as u64;
+        Ok(snapshot)
+    }
 }
 
 impl Drop for HardwareService {
@@ -1681,7 +1807,38 @@ struct ServiceDevices {
     ptt_inverted: bool,
 }
 
+/// A failed final write retains the physical owner across a bounded stop call.
+struct RetiringDevices {
+    devices: ServiceDevices,
+    outputs: OutputState,
+}
+
+#[derive(Default)]
+struct ServiceExit {
+    sidetone: Option<HardwareSidetone>,
+    retiring: Option<Box<RetiringDevices>>,
+    failure: Option<ServiceFailure>,
+}
+
 impl ServiceDevices {
+    fn open_at_outputs(
+        provider: GpioAdapter,
+        selected: &SelectedHardwarePlan,
+        parallel: Option<&ParallelPlan>,
+        outputs: &OutputState,
+    ) -> Result<Self, ServiceFailure> {
+        // Use the resolved safe baseline even if a later open fails and drops
+        // the first handle. Startup and recovery share this ownership transfer.
+        let mut selected = selected.clone();
+        selected.cm119.output_initial_mask = outputs.cm119;
+        let mut parallel = parallel.cloned();
+        if let Some(plan) = &mut parallel {
+            plan.config.output_initial_mask =
+                parallel_output(plan, outputs.parallel, false, selected.cm119.ptt_inverted);
+        }
+        Self::open(provider, &selected, parallel.as_ref())
+    }
+
     fn open(
         provider: GpioAdapter,
         selected: &SelectedHardwarePlan,
@@ -1704,36 +1861,65 @@ impl ServiceDevices {
         })
     }
 
-    fn fail_safe_unkey(&mut self, parallel: Option<&ParallelPlan>, outputs: &OutputState) {
-        let _ = self.cm119.publish_outputs(Cm119Outputs {
-            ptt_asserted: false,
-            gpio_output_mask: outputs.cm119,
-        });
-        let _ = self.cm119.service();
-        if let Some(plan) = parallel {
-            let device = self
-                .parallel
-                .as_mut()
-                .expect("a configured parallel plan owns a device");
-            if outputs.remote_radio.is_some() {
-                let _ = device.clear_rtx_transmit();
-            }
-            let _ = device.publish_outputs(ParallelOutputs {
-                output_mask: parallel_output(
-                    plan,
-                    outputs.parallel & !(PARALLEL_RTX_TRANSMIT_MASK | PARALLEL_RTX_POWER_MASK),
-                    false,
-                    self.ptt_inverted,
-                ),
-                ..ParallelOutputs::default()
+    fn close_outputs(
+        &mut self,
+        parallel: Option<&ParallelPlan>,
+        outputs: &mut OutputState,
+    ) -> Result<(), ServiceFailure> {
+        let cm119 = self
+            .cm119
+            .schedule_pulse(Cm119Pulse {
+                cancel_ptt: true,
+                cancel_gpio_mask: outputs.site[0].snapshot().output_mask as u8,
+                ..Cm119Pulse::default()
+            })
+            .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source))
+            .and_then(|()| {
+                self.cm119
+                    .publish_outputs(Cm119Outputs {
+                        ptt_asserted: false,
+                        gpio_output_mask: outputs.cm119,
+                    })
+                    .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
+                outputs.site[0].submitted(u32::from(outputs.cm119));
+                self.cm119
+                    .service()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
             });
-            let _ = device.service();
+        outputs.site[0].serviced(cm119.is_ok());
+        if cm119.is_err() {
+            outputs.site[0].reject(SiteError::Fault);
         }
+        // Attempt both banks even when one fails. Successful closes are not
+        // repeated; failed closes keep their handle for retry, never a second owner.
+        let port = if let Some(device) = self.parallel.take() {
+            let plan = parallel.expect("an owned parallel device has a plan");
+            // Retain only configured site safe levels. Other data bits keep the
+            // existing close-to-low policy; PTT is deasserted with its polarity.
+            let persistent = outputs.site[1].safe_high();
+            let value = parallel_output(plan, persistent, false, self.ptt_inverted);
+            match device.close_outputs(value) {
+                Ok(()) => {
+                    outputs.site[1].submitted(u32::from(value));
+                    outputs.site[1].serviced(true);
+                    Ok(())
+                }
+                Err((device, source)) => {
+                    self.parallel = Some(*device);
+                    outputs.site[1].serviced(false);
+                    outputs.site[1].reject(SiteError::Fault);
+                    Err(ServiceFailure(HardwareOperation::PublishParallel, source))
+                }
+            }
+        } else {
+            Ok(())
+        };
+        cm119.and(port)
     }
 }
 
 struct OutputState {
-    native_ptt: Option<bool>,
+    native_outputs: Option<Cm119Outputs>,
     cm119: u8,
     parallel: u8,
     remote_radio: Option<RemoteRadio>,
@@ -1741,16 +1927,22 @@ struct OutputState {
     remote_radio_ptt: Option<bool>,
     clip_events_seen: u64,
     clip_led_until: Option<Instant>,
+    site: [SiteBankState; 2],
 }
 
 impl OutputState {
+    fn retire_site(&mut self) {
+        self.site[0].retire(&mut self.cm119);
+        self.site[1].retire(&mut self.parallel);
+        self.native_outputs = None;
+    }
     fn new(
         selected: &SelectedHardwarePlan,
         parallel: Option<&ParallelPlan>,
         remote_radio: Option<RemoteRadio>,
     ) -> Self {
         Self {
-            native_ptt: None,
+            native_outputs: None,
             cm119: selected.cm119.output_initial_mask,
             parallel: parallel.map_or(0, |plan| plan.config.output_initial_mask),
             remote_radio,
@@ -1758,6 +1950,120 @@ impl OutputState {
             remote_radio_ptt: None,
             clip_events_seen: 0,
             clip_led_until: None,
+            site: [
+                SiteBankState::new(
+                    0,
+                    u32::from(selected.cm119.output_enable_mask),
+                    0,
+                    u32::from(selected.cm119.output_initial_mask),
+                ),
+                SiteBankState::new(
+                    0,
+                    parallel.map_or(0, |plan| u32::from(plan.config.output_enable_mask)),
+                    parallel.map_or(0, |plan| u32::from(plan.ptt_mask)),
+                    parallel.map_or(0, |plan| u32::from(plan.config.output_initial_mask)),
+                ),
+            ],
+        }
+    }
+
+    fn prepare_site(
+        &mut self,
+        devices: &ServiceDevices,
+        worker: &ServiceWorker,
+    ) -> Result<(), ServiceFailure> {
+        let safe_high = self.site.each_ref().map(SiteBankState::safe_high);
+        let caps = devices
+            .cm119
+            .capabilities()
+            .map_err(|error| ServiceFailure(HardwareOperation::OpenCm119, error))?;
+        self.site[0] = SiteBankState::new(
+            (caps.input_pin_mask as u32) & u32::from(worker.cm119_input_mask),
+            (caps.output_pin_mask as u32) & u32::from(worker.selected.cm119.output_enable_mask),
+            u32::from(worker.clip_led_mask),
+            u32::from(self.cm119),
+        );
+        self.site[0].restore_safe_high(safe_high[0]);
+        if let Some((device, plan)) = devices.parallel.as_ref().zip(worker.parallel.as_ref()) {
+            let caps = device
+                .capabilities()
+                .map_err(|error| ServiceFailure(HardwareOperation::OpenParallel, error))?;
+            self.site[1] = SiteBankState::new(
+                (caps.input_pin_mask as u32) & (u32::from(plan.input_mask) << 8),
+                (caps.output_pin_mask as u32) & u32::from(plan.config.output_enable_mask),
+                u32::from(
+                    plan.ptt_mask
+                        | if self.remote_radio.is_some() {
+                            PARALLEL_RTX_CONTROL_MASK
+                        } else {
+                            0
+                        },
+                ),
+                u32::from(self.parallel),
+            );
+            self.site[1].restore_safe_high(safe_high[1]);
+        }
+        Ok(())
+    }
+
+    fn site_bind(
+        &mut self,
+        bank: SiteBank,
+        binding: SiteDigitalBinding,
+        devices: &ServiceDevices,
+    ) -> Result<(), ServiceFailure> {
+        let state = &mut self.site[bank.index()];
+        if let Err(error) = state.validate_binding(binding) {
+            state.reject(error);
+            return Ok(());
+        }
+        // A pulse queued by the former owner must not change a newly claimed pin.
+        let mask = (state.snapshot().claimed_mask | binding.output_mask) as u8;
+        if mask != 0 {
+            let result = match bank {
+                SiteBank::Cm119 => devices
+                    .cm119
+                    .schedule_pulse(Cm119Pulse {
+                        cancel_gpio_mask: mask,
+                        ..Cm119Pulse::default()
+                    })
+                    .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source)),
+                SiteBank::Parallel => devices
+                    .parallel
+                    .as_ref()
+                    .ok_or(ServiceFailure(
+                        HardwareOperation::PulseParallel,
+                        GpioError::Unsupported,
+                    ))?
+                    .schedule_pulse(ParallelPulse {
+                        cancel_mask: mask,
+                        ..ParallelPulse::default()
+                    })
+                    .map_err(|source| ServiceFailure(HardwareOperation::PulseParallel, source)),
+            };
+            if let Err(error) = result {
+                state.reject(SiteError::Fault);
+                return Err(error);
+            }
+        }
+        let output = match bank {
+            SiteBank::Cm119 => &mut self.cm119,
+            SiteBank::Parallel => &mut self.parallel,
+        };
+        if let Err(error) = state.bind(binding, output) {
+            state.reject(error);
+        }
+        Ok(())
+    }
+
+    fn site_publish(&mut self, bank: SiteBank, request: SiteDigitalRequest) {
+        let state = &mut self.site[bank.index()];
+        let output = match bank {
+            SiteBank::Cm119 => &mut self.cm119,
+            SiteBank::Parallel => &mut self.parallel,
+        };
+        if let Err(error) = state.apply(request, output) {
+            state.reject(error);
         }
     }
 
@@ -1766,6 +2072,14 @@ impl OutputState {
         command: OutputCommand,
         devices: &ServiceDevices,
     ) -> Result<(), ServiceFailure> {
+        let (bank, bit) = match command {
+            OutputCommand::Cm119(bit, _) => (0, bit),
+            OutputCommand::Parallel(bit, _) => (1, bit),
+        };
+        if !self.site[bank].permits_ordinary(u32::from(bit)) {
+            self.site[bank].reject(SiteError::Unavailable);
+            return Ok(());
+        }
         match command {
             OutputCommand::Cm119(bit, request) => {
                 let pulse = match request {
@@ -1808,14 +2122,16 @@ impl OutputState {
                 apply_persistent(&mut self.parallel, bit, request);
             }
         }
+        self.site[bank].release_safe_high(bit);
         Ok(())
     }
 
     const fn snapshot(&self) -> HardwareTransientState {
         HardwareTransientState {
-            cm119_output_mask: self.cm119,
-            parallel_output_mask: self.parallel,
+            cm119_output_mask: self.site[0].retired_output(self.cm119),
+            parallel_output_mask: self.site[1].retired_output(self.parallel),
             remote_radio: self.remote_radio,
+            site_safe_high: [self.site[0].safe_high(), self.site[1].safe_high()],
         }
     }
 
@@ -1825,13 +2141,21 @@ impl OutputState {
         selected: &SelectedHardwarePlan,
         parallel: Option<&ParallelPlan>,
     ) {
-        let cm119_mask = selected.cm119.output_enable_mask;
+        for (site, high) in self.site.iter_mut().zip(state.site_safe_high) {
+            site.restore_safe_high(high);
+        }
+        let cm119_mask =
+            selected.cm119.output_enable_mask & !(self.site[0].snapshot().claimed_mask as u8);
         self.cm119 = (self.cm119 & !cm119_mask) | (state.cm119_output_mask & cm119_mask);
         if let Some(plan) = parallel {
-            self.parallel = state.parallel_output_mask & !plan.ptt_mask;
-            self.remote_radio = state.remote_radio;
-            self.remote_radio_dirty = state.remote_radio.is_some();
-            self.remote_radio_ptt = None;
+            let preserved = self.site[1].snapshot().claimed_mask as u8;
+            self.parallel = (self.parallel & preserved)
+                | (state.parallel_output_mask & !plan.ptt_mask & !preserved);
+            if preserved & PARALLEL_RTX_CONTROL_MASK == 0 {
+                self.remote_radio = state.remote_radio;
+                self.remote_radio_dirty = state.remote_radio.is_some();
+                self.remote_radio_ptt = None;
+            }
         }
     }
 
@@ -1840,6 +2164,9 @@ impl OutputState {
         channel: u8,
         devices: &mut ServiceDevices,
     ) -> Result<(), ServiceFailure> {
+        if !self.site[1].reserve(u32::from(PARALLEL_BINARY_MASK)) {
+            return Ok(());
+        }
         let device = devices.parallel.as_mut().ok_or(ServiceFailure(
             HardwareOperation::SelectChannel,
             GpioError::Unsupported,
@@ -1852,6 +2179,9 @@ impl OutputState {
     }
 
     fn configure_remote_radio(&mut self, settings: RemoteRadio) {
+        if !self.site[1].reserve(u32::from(PARALLEL_RTX_CONTROL_MASK)) {
+            return;
+        }
         self.remote_radio = Some(settings);
         self.remote_radio_dirty = true;
     }
@@ -1947,9 +2277,20 @@ struct ServiceWorker {
     cm119_input_mask: u8,
     clip_led_mask: u8,
     input_sender: SyncSender<HardwareInputEvent>,
+    clock: Instant,
+    site: [Arc<SiteCache>; 2],
 }
 
 impl ServiceWorker {
+    fn now_ms(&self) -> u64 {
+        self.clock.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
+    }
+    fn publish_site(&self, outputs: &OutputState) {
+        let now = self.now_ms();
+        for (cache, state) in self.site.iter().zip(&outputs.site) {
+            cache.publish(state.snapshot(), now);
+        }
+    }
     fn interval(&self) -> Duration {
         if self.native {
             NATIVE_SERVICE_INTERVAL
@@ -1964,12 +2305,52 @@ impl ServiceWorker {
         mut outputs: OutputState,
         mut inputs: InputTracker,
         mut sidetone: Option<HardwareSidetone>,
-    ) -> Option<HardwareSidetone> {
+    ) -> ServiceExit {
         let mut devices = Some(initial_devices);
+        let mut retiring = false;
         while !self.stop.load(Ordering::Acquire) {
+            if retiring {
+                let current = devices.as_mut().expect("retirement retains its owner");
+                let result = current.close_outputs(self.parallel.as_ref(), &mut outputs);
+                self.publish_site(&outputs);
+                if let Err(failure) = result {
+                    self.statistics.failure(failure);
+                    thread::park_timeout(RETRY_INTERVAL);
+                    continue;
+                }
+                devices = None;
+                retiring = false;
+                // Make outputs safe first; the delay only limits reopen attempts.
+                thread::park_timeout(RETRY_INTERVAL);
+                continue;
+            }
             if devices.is_none() {
-                match ServiceDevices::open(self.provider, &self.selected, self.parallel.as_ref()) {
-                    Ok(opened) => devices = Some(opened),
+                // Reopen at the safe baseline, not the previous configuration's
+                // startup byte. Commands queued for the retired owner are obsolete.
+                for command in self.receiver.try_iter().take(CONTROL_QUEUE_CAPACITY) {
+                    if let ServiceCommand::SiteBind(bank, _)
+                    | ServiceCommand::SitePublish(bank, _) = command
+                    {
+                        outputs.site[bank.index()].reject(SiteError::StaleGeneration);
+                    }
+                }
+                match ServiceDevices::open_at_outputs(
+                    self.provider,
+                    &self.selected,
+                    self.parallel.as_ref(),
+                    &outputs,
+                ) {
+                    Ok(opened) => {
+                        if let Err(failure) = outputs.prepare_site(&opened, &self) {
+                            self.statistics.failure(failure);
+                            devices = Some(opened);
+                            outputs.retire_site();
+                            retiring = true;
+                            continue;
+                        }
+                        devices = Some(opened);
+                        self.publish_site(&outputs);
+                    }
                     Err(failure) => {
                         self.statistics.failure(failure);
                         self.state.publish_inputs(HardwareInputs::default());
@@ -1979,7 +2360,7 @@ impl ServiceWorker {
                 }
             }
             let current = devices.as_mut().expect("devices were opened above");
-            match service_commands(
+            let result = service_commands(
                 &self.receiver,
                 &mut outputs,
                 current,
@@ -1988,7 +2369,9 @@ impl ServiceWorker {
             )
             .and_then(|()| {
                 service_once(current, &mut outputs, &mut inputs, sidetone.as_mut(), &self)
-            }) {
+            });
+            self.publish_site(&outputs);
+            match result {
                 Ok(()) => thread::park_timeout(self.interval()),
                 Err(failure) => {
                     self.statistics.failure(failure);
@@ -1997,27 +2380,36 @@ impl ServiceWorker {
                         thread::park_timeout(self.interval());
                     } else {
                         self.state.publish_inputs(HardwareInputs::default());
-                        devices = None;
-                        thread::park_timeout(RETRY_INTERVAL);
+                        outputs.retire_site();
+                        self.publish_site(&outputs);
+                        retiring = true;
                     }
                 }
             }
         }
-        if let Some(mut current) = devices {
-            if self.native {
-                let _ = current.cm119.publish_outputs(Cm119Outputs {
-                    ptt_asserted: false,
-                    gpio_output_mask: outputs.cm119,
-                });
-            } else {
-                current.fail_safe_unkey(self.parallel.as_ref(), &outputs);
-            }
+        outputs.retire_site();
+        let failure = devices.as_mut().and_then(|current| {
+            current
+                .close_outputs(self.parallel.as_ref(), &mut outputs)
+                .err()
+        });
+        self.publish_site(&outputs);
+        if let Some(failure) = failure {
+            self.statistics.failure(failure);
         }
         if let Some(control) = &mut sidetone {
             let _ = control.apply(false);
         }
         self.state.publish_inputs(HardwareInputs::default());
-        sidetone
+        ServiceExit {
+            sidetone,
+            retiring: if failure.is_some() {
+                devices.map(|devices| Box::new(RetiringDevices { devices, outputs }))
+            } else {
+                None
+            },
+            failure,
+        }
     }
 }
 
@@ -2031,6 +2423,10 @@ fn service_commands(
     loop {
         match receiver.try_recv() {
             Ok(ServiceCommand::Output(command)) => outputs.apply(command, devices)?,
+            Ok(ServiceCommand::SiteBind(bank, binding)) => {
+                outputs.site_bind(bank, binding, devices)?
+            }
+            Ok(ServiceCommand::SitePublish(bank, request)) => outputs.site_publish(bank, request),
             Ok(ServiceCommand::ReadEeprom(response)) => {
                 let _ = response.send(devices.cm119.read_eeprom());
             }
@@ -2085,50 +2481,34 @@ fn service_once(
             gpio_output_mask: outputs.cm119,
         })
         .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
-    devices
+    outputs.site[0].submitted(u32::from(outputs.cm119));
+    let acquisition = devices
         .cm119
         .service()
-        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))?;
-    let cm119 = devices
-        .cm119
-        .inputs()
-        .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))?;
+        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
+        .and_then(|()| {
+            devices
+                .cm119
+                .inputs()
+                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))
+        });
+    outputs.site[0].observe(
+        acquisition
+            .as_ref()
+            .ok()
+            .filter(|input| input.online)
+            .map(|input| u32::from(input.gpio_input_mask)),
+        worker.now_ms(),
+    );
+    outputs.site[0].serviced(acquisition.as_ref().is_ok_and(|input| input.online));
+    let cm119 = acquisition?;
     let cm119_statistics = devices
         .cm119
         .statistics()
         .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
 
     outputs.service_remote_radio(devices, radio.logical_ptt)?;
-    let parallel_inputs = if let Some(plan) = worker.parallel.as_ref() {
-        let device = devices
-            .parallel
-            .as_mut()
-            .expect("a configured parallel plan owns a device");
-        device
-            .publish_outputs(ParallelOutputs {
-                output_mask: parallel_output(
-                    plan,
-                    outputs.parallel,
-                    radio.logical_ptt,
-                    devices.ptt_inverted,
-                ),
-                ..ParallelOutputs::default()
-            })
-            .map_err(|source| ServiceFailure(HardwareOperation::PublishParallel, source))?;
-        device
-            .service()
-            .map_err(|source| ServiceFailure(HardwareOperation::ServiceParallel, source))?;
-        let inputs = device
-            .inputs()
-            .map_err(|source| ServiceFailure(HardwareOperation::ReadParallel, source))?;
-        let device_statistics = device
-            .statistics()
-            .map_err(|source| ServiceFailure(HardwareOperation::ReadParallelStatistics, source))?;
-        worker.statistics.publish_parallel(device_statistics);
-        Some(inputs)
-    } else {
-        None
-    };
+    let parallel_inputs = service_parallel_once(devices, outputs, worker, radio.logical_ptt)?;
 
     worker.state.publish_inputs(hardware_inputs(
         cm119,
@@ -2148,6 +2528,54 @@ fn service_once(
     Ok(())
 }
 
+fn service_parallel_once(
+    devices: &mut ServiceDevices,
+    outputs: &mut OutputState,
+    worker: &ServiceWorker,
+    logical_ptt: bool,
+) -> Result<Option<ParallelInputs>, ServiceFailure> {
+    if let Some(plan) = worker.parallel.as_ref() {
+        let device = devices
+            .parallel
+            .as_mut()
+            .expect("a configured parallel plan owns a device");
+        let output_mask =
+            parallel_output(plan, outputs.parallel, logical_ptt, devices.ptt_inverted);
+        let acquisition = device
+            .publish_outputs(ParallelOutputs {
+                output_mask,
+                ..ParallelOutputs::default()
+            })
+            .map_err(|source| ServiceFailure(HardwareOperation::PublishParallel, source))
+            .and_then(|()| {
+                outputs.site[1].submitted(u32::from(output_mask));
+                device
+                    .service()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ServiceParallel, source))?;
+                device
+                    .inputs()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ReadParallel, source))
+            });
+        outputs.site[1].observe(
+            acquisition
+                .as_ref()
+                .ok()
+                .filter(|input| input.online)
+                .map(|input| u32::from(input.status_mask) << 8),
+            worker.now_ms(),
+        );
+        outputs.site[1].serviced(acquisition.as_ref().is_ok_and(|input| input.online));
+        let inputs = acquisition?;
+        let device_statistics = device
+            .statistics()
+            .map_err(|source| ServiceFailure(HardwareOperation::ReadParallelStatistics, source))?;
+        worker.statistics.publish_parallel(device_statistics);
+        Ok(Some(inputs))
+    } else {
+        Ok(None)
+    }
+}
+
 fn service_native_once(
     devices: &mut ServiceDevices,
     outputs: &mut OutputState,
@@ -2165,36 +2593,55 @@ fn service_native_once(
         .service()
         .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
         .and_then(|()| {
-            let inputs = devices
+            devices
                 .cm119
                 .inputs()
-                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))?;
-            let statistics = devices
-                .cm119
-                .statistics()
-                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
-            Ok((inputs, statistics))
+                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))
         });
+    outputs.site[0].observe(
+        snapshots
+            .as_ref()
+            .ok()
+            .filter(|input| input.online)
+            .map(|input| u32::from(input.gpio_input_mask)),
+        worker.now_ms(),
+    );
+    outputs.site[0].serviced(snapshots.as_ref().is_ok_and(|input| input.online));
+    let snapshots = snapshots.and_then(|inputs| {
+        let statistics = devices
+            .cm119
+            .statistics()
+            .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
+        Ok((inputs, statistics))
+    });
     let online = snapshots.as_ref().is_ok_and(|(inputs, _)| inputs.online);
+    let parallel = service_parallel_once(devices, outputs, worker, online && logical_ptt);
     let mut inputs = match snapshots.as_ref() {
-        Ok((inputs, statistics)) if online => hardware_inputs(*inputs, None, None, *statistics),
+        Ok((inputs, statistics)) if online => hardware_inputs(
+            *inputs,
+            worker.parallel.as_ref(),
+            parallel.as_ref().ok().copied().flatten(),
+            *statistics,
+        ),
         _ => HardwareInputs::default(),
     };
-    let requested_ptt = online && logical_ptt;
-    if outputs.native_ptt != Some(requested_ptt) {
-        if let Err(source) = devices.cm119.publish_outputs(Cm119Outputs {
-            ptt_asserted: requested_ptt,
-            gpio_output_mask: outputs.cm119,
-        }) {
-            outputs.native_ptt = None;
+    let requested = Cm119Outputs {
+        ptt_asserted: online && logical_ptt,
+        gpio_output_mask: outputs.cm119,
+    };
+    if outputs.native_outputs != Some(requested) {
+        if let Err(source) = devices.cm119.publish_outputs(requested) {
+            outputs.native_outputs = None;
             inputs.physical_ptt = false;
             worker.state.publish_inputs(inputs);
             return Err(ServiceFailure(HardwareOperation::PublishCm119, source));
         }
-        outputs.native_ptt = Some(requested_ptt);
+        outputs.native_outputs = Some(requested);
     }
+    outputs.site[0].submitted(u32::from(requested.gpio_output_mask));
     // Physical PTT reflects the serviced snapshot, never the newly queued output intent.
     worker.state.publish_inputs(inputs);
+    parallel?;
     let (_, statistics) = snapshots?;
     worker.statistics.success(statistics);
     Ok(())
@@ -2450,3 +2897,7 @@ impl ServiceStatistics {
 #[cfg(test)]
 #[path = "tests/hardware_host_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests/hardware_site_tests.rs"]
+mod site_tests;

@@ -94,6 +94,22 @@ fn every_missing_operation_reports_host_failure() {
         ControlOperation::Dtmf(true),
         ControlOperation::Echo(true),
         ControlOperation::Direct(support::product_support::direct_callbacks()),
+        ControlOperation::Site(crate::UrpAstSiteControl {
+            operation: 0,
+            ..Default::default()
+        }),
+        ControlOperation::Site(crate::UrpAstSiteControl {
+            operation: 1,
+            ..Default::default()
+        }),
+        ControlOperation::Site(crate::UrpAstSiteControl {
+            operation: 2,
+            ..Default::default()
+        }),
+        ControlOperation::Site(crate::UrpAstSiteControl {
+            operation: 3,
+            ..Default::default()
+        }),
         ControlOperation::Jitter,
         ControlOperation::Command(command),
         ControlOperation::Status,

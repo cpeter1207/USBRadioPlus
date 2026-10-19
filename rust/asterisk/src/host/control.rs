@@ -25,6 +25,7 @@ pub(super) enum ControlOperation {
     Dtmf(bool),
     Echo(bool),
     Direct(super::super::UrpAstDirectCallbacks),
+    Site(super::super::UrpAstSiteControl),
     Jitter,
     Command(UrpAstChannelCommand),
     Status,
@@ -38,6 +39,7 @@ pub(super) enum ControlResult {
     Jitter(i32, UrpAstJitterConfig),
     Command(i32, UrpAstChannelCommand),
     ChannelStatus(i32, UrpAstChannelStatus),
+    Site(i32, super::super::UrpAstSiteControl),
 }
 
 impl ControlResult {
@@ -47,7 +49,8 @@ impl ControlResult {
             Self::Status(status)
             | Self::Jitter(status, _)
             | Self::Command(status, _)
-            | Self::ChannelStatus(status, _) => *status,
+            | Self::ChannelStatus(status, _)
+            | Self::Site(status, _) => *status,
         }
     }
 }
@@ -121,6 +124,28 @@ unsafe fn execute(
                     .channel_set_direct_callbacks
                     .map(|call| call(channel, &callbacks)),
             )),
+            ControlOperation::Site(mut request) => {
+                let result = match request.operation {
+                    super::super::URP_AST_SITE_BIND => descriptor
+                        .channel_site_bind
+                        .map(|call| call(channel, request.bank, &request.binding)),
+                    super::super::URP_AST_SITE_PUBLISH => descriptor
+                        .channel_site_publish
+                        .map(|call| call(channel, request.bank, &request.request)),
+                    super::super::URP_AST_SITE_SNAPSHOT => {
+                        request.snapshot = super::super::UrpAstSiteSnapshot {
+                            struct_size: size_of::<super::super::UrpAstSiteSnapshot>() as u32,
+                            abi_version: super::super::ABI_VERSION,
+                            ..super::super::UrpAstSiteSnapshot::default()
+                        };
+                        descriptor
+                            .channel_site_snapshot
+                            .map(|call| call(channel, request.bank, &mut request.snapshot))
+                    }
+                    _ => None,
+                };
+                ControlResult::Site(status(result), request)
+            }
             ControlOperation::Jitter => {
                 let mut output = UrpAstJitterConfig {
                     struct_size: size_of::<UrpAstJitterConfig>() as u32,

@@ -116,6 +116,13 @@ impl NativeStation {
     }
 }
 
+pub(super) unsafe fn site_service<'a>(handle: *mut c_void) -> Result<&'a HardwareService, Status> {
+    // SAFETY: the synchronous caller owns a live native station and serializes control.
+    unsafe { handle.cast::<NativeStation>().as_ref() }
+        .map(|station| &station.service)
+        .ok_or(Status::InvalidArgument)
+}
+
 impl Drop for NativeStation {
     fn drop(&mut self) {
         let _ = self.stop();

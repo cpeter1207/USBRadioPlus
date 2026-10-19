@@ -7,6 +7,8 @@ static RESULT: AtomicI32 = AtomicI32::new(RESULT_OK);
 static RETURN_MODE: AtomicU32 = AtomicU32::new(0);
 static CM119_CLOSES: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_SAFE_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Default)]
 struct FakeCm119 {
@@ -327,7 +329,67 @@ unsafe extern "C" fn parallel_close(device: *mut OpaqueParallelDevice) {
     PARALLEL_CLOSES.fetch_add(1, Ordering::Relaxed);
 }
 
+unsafe extern "C" fn parallel_close_outputs(
+    device: *mut OpaqueParallelDevice,
+    value: u32,
+) -> c_int {
+    let result = RESULT.load(Ordering::Relaxed);
+    if result == RESULT_OK {
+        PARALLEL_FINAL_BYTE.store(value, Ordering::Relaxed);
+        PARALLEL_SAFE_CLOSES.fetch_add(1, Ordering::Relaxed);
+        // SAFETY: success consumes the live handle exactly once.
+        drop(unsafe { Box::from_raw(device.cast::<FakeParallel>()) });
+    }
+    result
+}
+
 unsafe extern "C" fn unused_extension() -> c_int {
+    RESULT_OK
+}
+
+unsafe extern "C" fn device_capabilities(
+    _device: *const OpaqueCm119Device,
+    output: *mut GpioCapabilities,
+) -> c_int {
+    let result = RESULT.load(Ordering::Relaxed);
+    if result != RESULT_OK {
+        return result;
+    }
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = GpioCapabilities {
+            struct_size: if RETURN_MODE.load(Ordering::Relaxed) == 90 {
+                0
+            } else {
+                size_of::<GpioCapabilities>() as u32
+            },
+            inputs: 3,
+            outputs: 1,
+            input_pin_mask: 0x0b,
+            output_pin_mask: 0xf0,
+            ..GpioCapabilities::default()
+        };
+    }
+    RESULT_OK
+}
+
+unsafe extern "C" fn parallel_capabilities(
+    _device: *const OpaqueParallelDevice,
+    output: *mut GpioCapabilities,
+) -> c_int {
+    let result = RESULT.load(Ordering::Relaxed);
+    if result != RESULT_OK {
+        return result;
+    }
+    // SAFETY: the wrapper supplies a complete capability result.
+    unsafe {
+        *output = GpioCapabilities {
+            struct_size: size_of::<GpioCapabilities>() as u32,
+            input_pin_mask: 0xf800,
+            output_pin_mask: 0xff,
+            ..GpioCapabilities::default()
+        };
+    }
     RESULT_OK
 }
 
@@ -360,6 +422,11 @@ fn descriptor() -> Descriptor {
         parallel_set_binary_channel: Some(parallel_set_binary_channel),
         parallel_program_rtx: Some(parallel_program_rtx),
         parallel_clear_rtx_transmit: Some(parallel_clear_rtx_transmit),
+        context_operations: [None; 5],
+        device_capabilities: Some(device_capabilities),
+        parallel_capabilities: Some(parallel_capabilities),
+        interlock_operations: [None; 8],
+        parallel_close_outputs: Some(parallel_close_outputs),
     }
 }
 
@@ -378,6 +445,40 @@ fn cm119_config() -> Cm119Config {
         output_enable_mask: 0xf0,
         output_initial_mask: 0x20,
     }
+}
+
+#[test]
+fn site_capabilities_preserve_pin_spaces_and_do_not_invent_readback() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    let raw = descriptor();
+    let provider = adapter(&raw);
+    let cm119 = provider.open_cm119(&cm119_config()).unwrap();
+    let parallel = provider
+        .open_parallel(&ParallelConfig {
+            transport: ParallelTransport::Ppdev,
+            ppdev_path: Some("/dev/parport0".into()),
+            raw_io_base: 0,
+            output_enable_mask: 0xff,
+            output_initial_mask: 0,
+        })
+        .unwrap();
+    let cm119_caps = cm119.capabilities().unwrap();
+    let parallel_caps = parallel.capabilities().unwrap();
+    assert_eq!(
+        (cm119_caps.input_pin_mask, cm119_caps.output_pin_mask),
+        (0x0b, 0xf0)
+    );
+    assert_eq!(
+        (parallel_caps.input_pin_mask, parallel_caps.output_pin_mask),
+        (0xf800, 0xff)
+    );
+    assert_eq!((cm119_caps.readback, parallel_caps.readback), (0, 0));
+    RETURN_MODE.store(90, Ordering::Relaxed);
+    assert_eq!(cm119.capabilities(), Err(GpioError::InvalidArgument));
+    RESULT.store(-3, Ordering::Relaxed);
+    assert!(cm119.capabilities().is_err());
+    assert!(parallel.capabilities().is_err());
 }
 
 fn populate_info(info: &mut RawDeviceInfo, present: bool, serial: &[u8]) {
@@ -569,6 +670,34 @@ fn optional_parallel_compatibility_operations_report_unsupported() {
 }
 
 #[test]
+fn safe_close_keeps_handle_on_failure_and_does_not_zero_after_success() {
+    let _guard = TEST_LOCK.lock().unwrap();
+    reset();
+    PARALLEL_SAFE_CLOSES.store(0, Ordering::Relaxed);
+    let raw = descriptor();
+    let device = adapter(&raw)
+        .open_parallel(&ParallelConfig {
+            transport: ParallelTransport::RawIo,
+            ppdev_path: None,
+            raw_io_base: 0x378,
+            output_enable_mask: 0xff,
+            output_initial_mask: 0,
+        })
+        .unwrap();
+    RESULT.store(-5, Ordering::Relaxed);
+    let (mut device, error) = device.close_outputs(0x08).err().unwrap();
+    assert_eq!(error, GpioError::Io);
+    assert_eq!(PARALLEL_CLOSES.load(Ordering::Relaxed), 0);
+    assert_eq!(PARALLEL_SAFE_CLOSES.load(Ordering::Relaxed), 0);
+    RESULT.store(RESULT_OK, Ordering::Relaxed);
+    device.service().unwrap();
+    assert!((*device).close_outputs(0x08).is_ok());
+    assert_eq!(PARALLEL_SAFE_CLOSES.load(Ordering::Relaxed), 1);
+    assert_eq!(PARALLEL_FINAL_BYTE.load(Ordering::Relaxed), 0x08);
+    assert_eq!(PARALLEL_CLOSES.load(Ordering::Relaxed), 0);
+}
+
+#[test]
 fn descriptor_and_adapter_failures_are_rejected() {
     let _guard = TEST_LOCK.lock().unwrap();
     reset();
@@ -576,6 +705,10 @@ fn descriptor_and_adapter_failures_are_rejected() {
     let result = unsafe { GpioAdapter::from_raw(ptr::null()) };
     assert!(matches!(result, Err(GpioError::IncompatibleAdapter)));
     let mut raw = descriptor();
+    let short = [8_u32, ABI_VERSION];
+    // SAFETY: the readable header declares its exact short extent; no table follows.
+    let result = unsafe { GpioAdapter::from_raw(ptr::from_ref(&short).cast()) };
+    assert!(matches!(result, Err(GpioError::IncompatibleAdapter)));
     raw.struct_size = 0;
     // SAFETY: `raw` is a readable but deliberately incompatible descriptor.
     let result = unsafe { GpioAdapter::from_raw(ptr::from_ref(&raw).cast()) };
@@ -666,6 +799,9 @@ fn descriptor_and_returned_values_reject_every_invalid_abi_form() {
     assert_missing_function_is_rejected!(parallel_close);
     assert_missing_function_is_rejected!(device_schedule_inverting_pulse);
     assert_missing_function_is_rejected!(parallel_schedule_inverting_pulse);
+    assert_missing_function_is_rejected!(device_capabilities);
+    assert_missing_function_is_rejected!(parallel_capabilities);
+    assert_missing_function_is_rejected!(parallel_close_outputs);
 }
 
 #[test]

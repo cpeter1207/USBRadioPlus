@@ -92,6 +92,40 @@ processing; a physical restart failure is logged and leaves the affected
 station RF-safe and stopped. Removing a live channel is rejected. Jitter
 queries and ordinary service never trigger a lazy refresh.
 
+@section site_io Shared site I/O
+
+Native and channel site operations borrow the station's existing hardware
+owner. Bank zero selects CM119 GPIO; bank one selects a configured parallel
+port. An absent bank returns not-ready. These calls do not open devices or
+perform hardware I/O. Bind and publish enqueue bounded commands; snapshot
+reads cached acquisition state. The native host serializes control calls;
+Asterisk uses the channel taskprocessor and `URP_AST_OPTION_SITE_IO`.
+
+A binding claims only spare output bits, with initial and safe physical levels.
+Binding advances the owner generation. Callers wait for that generation and
+its serviced output acknowledgment before using it. Every later write carries
+the acknowledged generation. Radio signaling and other reserved bits cannot
+be claimed. Failed retirement keeps the device for safe-write retry before
+replacement; recovery starts at safe levels and rejects departed commands.
+The first safe write precedes recovery backoff. Replacement transfers safe
+levels rather than retired site intent, and preserves high safe levels until
+an explicit new binding, radio reservation, or ordinary output command supersedes
+them. Startup resolves safe levels before opening hardware and uses the same
+safe retirement on setup failure. Failed cleanup retains ownership for retry.
+Failed rollback retirement retains both generations for a later control-plane retry.
+
+Snapshots distinguish requested, submitted, and serviced output levels from
+independent electrical readback, which these banks do not provide. Input time
+is the last successful acquisition, not the latest query. Compare it with the
+snapshot's current monotonic time; failed acquisition retains the old time and
+marks its quality. No site operation belongs in an audio callback.
+
+The product descriptor appends six site operations without changing ABI1 or
+SONAME1. Hosts using them require the complete enlarged descriptor and all
+applicable callbacks; an older provider fails admission before use. The site
+Asterisk option has its own size/version acknowledgment and does not change
+the loader ABI. A zero option return is insufficient without that acknowledgment.
+
 @section providers Dynamic providers
 
 The loader passes the installed descriptors for the rate-adjusting PCM ring,

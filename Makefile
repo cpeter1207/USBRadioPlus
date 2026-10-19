@@ -162,6 +162,10 @@ endif
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.2.0~alpha3 rptadv_portaudio_alsa_adapter && echo yes),)
 $(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha3 or newer)
 endif
+GPIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadv_gpio_adapter)),0.1.0-alpha.4,0.1.0~alpha4)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(GPIO_MIN_VERSION) rptadv_gpio_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-gpio-adapter-dev alpha4 or newer)
+endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
 # Keep non-library transitive flags while pinning each direct DSO to its provider.
 RADIO_LIBS := \

@@ -844,7 +844,86 @@ typedef struct UrpNativeCreateArgs {
 	uint32_t maximum_frames;
 } UrpNativeCreateArgs;
 
-/** Versioned shared-radio product operations. */
+/** Replace ownership on the existing hardware worker; acceptance only means queued. */
+typedef struct UrpAstSiteBinding {
+	uint32_t struct_size;	    /**< Complete structure size. */
+	uint32_t abi_version;	    /**< Product record ABI, one. */
+	uint64_t generation;	    /**< Expected current owner generation. */
+	uint32_t output_mask;	    /**< Spare pins to claim; reserved pins are rejected. */
+	uint32_t initial_high_mask; /**< Physical high levels for newly claimed pins. */
+	uint32_t safe_high_mask;    /**< Physical high levels when pins are released. */
+} UrpAstSiteBinding;
+
+/** Steady output intent; pulse timing belongs to the site controller. */
+typedef struct UrpAstSiteRequest {
+	uint32_t struct_size; /**< Complete structure size. */
+	uint32_t abi_version; /**< Product record ABI, one. */
+	uint64_t generation;  /**< Acknowledged owner generation. */
+	uint32_t output_mask; /**< Owned pins to change. */
+	uint32_t high_mask;   /**< Physical high levels within output_mask. */
+} UrpAstSiteRequest;
+
+/** Cached physical-owner observation; querying never performs device I/O. */
+typedef struct UrpAstSiteSnapshot {
+	uint32_t struct_size;	      /**< Complete structure size. */
+	uint32_t abi_version;	      /**< Product record ABI, one. */
+	uint64_t generation;	      /**< Current owner generation; zero means retired. */
+	uint32_t input_mask;	      /**< Available configured physical input pins. */
+	uint32_t output_mask;	      /**< Available configured physical output pins. */
+	uint32_t reserved_mask;	      /**< Pins reserved by radio signaling or existing controls. */
+	uint32_t claimed_mask;	      /**< Pins owned by this site configuration. */
+	uint32_t requested_high_mask; /**< Latest persistent output intent. */
+	uint32_t submitted_high_mask; /**< Last output levels submitted to the provider. */
+	uint64_t submitted_generation; /**< Owner generation of that submission. */
+	uint64_t serviced_generation;  /**< Generation whose submission completed service. */
+	uint32_t serviced_high_mask;   /**< Output levels at that successful service, not electrical
+					  readback. */
+	uint32_t readback_valid_mask;  /**< Pins with independent output readback; zero for these
+					  providers. */
+	uint32_t input_high_mask;      /**< Last successfully acquired physical input levels. */
+	uint32_t input_quality;	 /**< Input acquisition quality: zero unavailable, one valid, two
+				    fault. */
+	uint64_t observed_at_ms; /**< Last successful acquisition on the hardware owner's monotonic
+				    clock. */
+	uint32_t observed_at_valid; /**< One if observed_at_ms is valid; zero otherwise. */
+	uint64_t snapshot_at_ms; /**< Current time on the same clock; subtract observation time for
+				    age. */
+	uint64_t rejected_commands;  /**< Commands rejected by the hardware owner. */
+	uint32_t last_command_error; /**< Zero none, one unavailable, two stale, three mask, four
+					busy, five fault. */
+} UrpAstSiteSnapshot;
+
+/** Control-only Asterisk site I/O on the reserved radio; use block=0. */
+#define URP_AST_OPTION_SITE_IO 0x52505349
+/** Exact site option envelope ABI. */
+#define URP_AST_SITE_OPTION_ABI_VERSION 1u
+/** Replace spare-pin ownership; queued acceptance requires snapshot confirmation. */
+#define URP_AST_SITE_BIND 0u
+/** Publish steady output intent on the acknowledged generation. */
+#define URP_AST_SITE_PUBLISH 1u
+/** Read the current owner's cached observation without physical I/O. */
+#define URP_AST_SITE_SNAPSHOT 2u
+
+/**
+ * @brief Synchronous taskprocessor envelope; never call from an audio callback.
+ *
+ * Only the selected input record is used. Snapshot storage is initialized by
+ * the host. A zero result and accepted ABI confirm success; otherwise the
+ * result is a product error or -1 for malformed/unsupported transport. No new
+ * device is opened. A successful write means queued, not physical readback.
+ */
+typedef struct UrpAstSiteControl {
+	uint32_t struct_size;	       /**< Exact sizeof(UrpAstSiteControl). */
+	uint32_t abi_version;	       /**< URP_AST_SITE_OPTION_ABI_VERSION. */
+	uint32_t operation;	       /**< URP_AST_SITE_BIND, PUBLISH, or SNAPSHOT. */
+	uint32_t bank;		       /**< Zero CM119, one parallel. */
+	UrpAstSiteBinding binding;     /**< Ownership request for BIND. */
+	UrpAstSiteRequest request;     /**< Output request for PUBLISH. */
+	UrpAstSiteSnapshot snapshot;   /**< Returned only after a successful SNAPSHOT. */
+	uint32_t accepted_abi_version; /**< Initialize to zero; success writes one. */
+} UrpAstSiteControl;
+
+/** Immutable shared-product entry points. Site operations are serialized control-only. */
 typedef struct UrpAstDescriptor {
 	/**
 	 * Size of this structure in bytes.
@@ -998,6 +1077,23 @@ typedef struct UrpAstDescriptor {
 	int (*native_stop)(void *native);
 	/** Uses the audio provider's synchronous stream-destroy contract. */
 	void (*native_destroy)(void *native);
+	/** Queue native ownership, bank 0 CM119 or 1 parallel; poll for the new generation. */
+	int (*native_site_bind)(void *native, uint32_t bank,
+				const struct UrpAstSiteBinding *request);
+	/** Queue native output intent; success is acceptance, not electrical confirmation. */
+	int (*native_site_publish)(void *native, uint32_t bank,
+				   const struct UrpAstSiteRequest *request);
+	/** Read native cached state; never physical device I/O. */
+	int (*native_site_snapshot)(void *native, uint32_t bank, struct UrpAstSiteSnapshot *output);
+	/** Queue channel ownership on its serialized control owner; banks as above. */
+	int (*channel_site_bind)(void *channel, uint32_t bank,
+				 const struct UrpAstSiteBinding *request);
+	/** Queue channel output intent on the same owner. */
+	int (*channel_site_publish)(void *channel, uint32_t bank,
+				    const struct UrpAstSiteRequest *request);
+	/** Read channel cached state on the same owner, never on audio callbacks. */
+	int (*channel_site_snapshot)(void *channel, uint32_t bank,
+				     struct UrpAstSiteSnapshot *output);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

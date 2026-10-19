@@ -23,6 +23,100 @@ fn providers() -> LoaderProviderManifest {
 
 struct LoadedGuard;
 
+#[test]
+fn site_option_reaches_real_product_owner_and_retains_ownership_through_reload() {
+    use crate::{UrpAstSiteBinding, UrpAstSiteControl};
+    let _fixture = Fixture::new();
+    let _providers = PROVIDER_TEST_LOCK.lock().unwrap();
+    let _cleanup = LoadedGuard;
+    cli::tests::set_registration_result(0);
+    provider_support::clear_failure();
+    with_state(|state| {
+        state.configuration_text =
+            Some(c"[usb]\n[hardware]\nhardware_gpio_6_mode = out0\n".to_owned())
+    });
+    let manifest = providers();
+    assert_eq!(
+        // SAFETY: the fake Asterisk host and dynamic product fixture retain all provider tables.
+        unsafe { loader_load(&manifest, ptr::dangling_mut::<u8>().cast()) },
+        LOADER_OK
+    );
+    let technology = with_state(|state| state.registered[0]) as *const crate::ffi::ast_channel_tech;
+    // SAFETY: the loaded host owns this technology and the requester returns a retained owner.
+    let (owner, option) = unsafe {
+        let tech = &*technology;
+        let owner = tech.requester.unwrap()(
+            tech.type_,
+            tech.capabilities,
+            ptr::null(),
+            ptr::null(),
+            c"usb".as_ptr(),
+            ptr::null_mut(),
+        );
+        assert!(!owner.is_null());
+        assert_eq!(tech.call.unwrap()(owner, ptr::null(), 0), 0);
+        (owner, tech.setoption.unwrap())
+    };
+    let send = |request: &mut UrpAstSiteControl| {
+        // SAFETY: the loaded channel and complete envelope outlive each synchronous option call.
+        unsafe {
+            option(
+                owner,
+                crate::URP_AST_OPTION_SITE_IO as c_int,
+                ptr::from_mut(request).cast(),
+                size_of::<UrpAstSiteControl>() as c_int,
+            )
+        }
+    };
+    let snapshot = || {
+        let mut request = UrpAstSiteControl {
+            struct_size: size_of::<UrpAstSiteControl>() as u32,
+            abi_version: 1,
+            operation: crate::URP_AST_SITE_SNAPSHOT,
+            ..Default::default()
+        };
+        assert_eq!(send(&mut request), URP_AST_OK);
+        assert_eq!(request.accepted_abi_version, 1);
+        request.snapshot
+    };
+    let initial = snapshot();
+    assert_eq!(initial.output_mask & 0x20, 0x20);
+    let mut binding = UrpAstSiteControl {
+        struct_size: size_of::<UrpAstSiteControl>() as u32,
+        abi_version: 1,
+        operation: crate::URP_AST_SITE_BIND,
+        binding: UrpAstSiteBinding {
+            struct_size: size_of::<UrpAstSiteBinding>() as u32,
+            abi_version: 1,
+            generation: initial.generation,
+            output_mask: 0x20,
+            initial_high_mask: 0x20,
+            safe_high_mask: 0,
+        },
+        ..Default::default()
+    };
+    assert_eq!(send(&mut binding), URP_AST_OK);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let bound = loop {
+        let value = snapshot();
+        if value.generation != initial.generation && value.serviced_generation == value.generation {
+            break value;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "site binding must be serviced"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
+    assert_eq!(bound.serviced_high_mask & 0x20, 0x20);
+    assert_eq!(bound.readback_valid_mask, 0);
+    assert_eq!(loader_reload(), URP_AST_OK);
+    let reloaded = snapshot();
+    assert_eq!(reloaded.generation, bound.generation);
+    assert_eq!(reloaded.claimed_mask, 0x20);
+    assert_eq!(reloaded.serviced_high_mask & 0x20, 0x20);
+}
+
 impl Drop for LoadedGuard {
     fn drop(&mut self) {
         // Gather addresses without holding state across actual hangup callbacks.

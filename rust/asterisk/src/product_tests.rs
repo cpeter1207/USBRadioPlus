@@ -74,4 +74,7 @@ fn product_validation_requires_every_operation_the_host_can_invoke() {
     reject_missing!(channel_get_status);
     reject_missing!(channel_service);
     reject_missing!(channel_destroy);
+    reject_missing!(channel_site_bind);
+    reject_missing!(channel_site_publish);
+    reject_missing!(channel_site_snapshot);
 }

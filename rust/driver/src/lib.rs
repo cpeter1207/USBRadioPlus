@@ -7,6 +7,7 @@ mod configuration;
 mod conversion;
 mod factory;
 mod hardware_host;
+mod hardware_site;
 mod link;
 mod registry;
 
@@ -18,6 +19,10 @@ pub use hardware_host::{
     HardwarePreflight, HardwareService, HardwareServiceStatistics, HardwareStation,
     HardwareStationDiagnostics, HardwareStationError, HardwareTransientState,
     select_native_hardware,
+};
+pub use hardware_site::{
+    SiteBank, SiteDigitalBinding, SiteDigitalRequest, SiteDigitalSnapshot, SiteError,
+    SiteReadQuality,
 };
 pub use link::{LinkPreparationError, LinkProcessingFactory};
 pub use registry::ConfigurationRegistry;
