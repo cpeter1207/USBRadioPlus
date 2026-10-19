@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-static NEXT_GENERATION: AtomicU64 = AtomicU64::new(1);
+pub(super) static NEXT_GENERATION: AtomicU64 = AtomicU64::new(1);
 
 fn next_generation() -> u64 {
     // Zero disables ownership if the token space is ever exhausted; never reuse a token.

@@ -277,3 +277,7 @@ pub(crate) unsafe extern "C" fn channel_snapshot(
     // SAFETY: forwarded unchanged from the host's serialized control-only ABI call.
     unsafe { snapshot(handle, false, bank, raw) }
 }
+
+#[cfg(test)]
+#[path = "tests/site.rs"]
+mod tests;

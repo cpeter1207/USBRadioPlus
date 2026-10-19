@@ -194,6 +194,10 @@ fn hardware_errors_and_operations_are_complete_and_diagnostic() {
     assert!(update.source().is_some());
     let simple = [
         (
+            HardwareStationError::Site(SiteError::Fault),
+            "site hardware request failed: Fault",
+        ),
+        (
             HardwareStationError::UnavailableOutput,
             "output is not configured for control",
         ),
@@ -2207,6 +2211,46 @@ fn site_owner_parallel_native_acquisition_and_commands_preserve_reserved_pins() 
         "legacy channel commands cannot overwrite site pins"
     );
     assert!(outputs.remote_radio.is_none());
+    outputs.restore(
+        HardwareTransientState {
+            cm119_output_mask: 0,
+            parallel_output_mask: 0,
+            remote_radio: Some(remote_radio(146_520_000)),
+            site_safe_high: [0; 2],
+        },
+        &selected,
+        plan.parallel.as_ref(),
+    );
+    assert!(
+        outputs.remote_radio.is_none(),
+        "restoring radio state must not steal a site pin"
+    );
+    outputs
+        .apply(
+            OutputCommand::Parallel(0x10, OutputRequest::Inactive),
+            &devices,
+        )
+        .unwrap();
+    assert_eq!(
+        outputs.parallel, 0x10,
+        "ordinary writes cannot overwrite site ownership"
+    );
+    assert_eq!(
+        outputs.site[1].snapshot().last_command_error,
+        Some(SiteError::Unavailable)
+    );
+    outputs.site_publish(
+        SiteBank::Parallel,
+        SiteDigitalRequest {
+            generation: snapshot.generation,
+            output_mask: 0x10,
+            high_mask: 0,
+        },
+    );
+    assert_eq!(
+        outputs.parallel, 0,
+        "current owner can change its own output"
+    );
     FAILURE.store(FAIL_PARALLEL_INPUTS, Ordering::Release);
     assert!(service_native_once(&mut devices, &mut outputs, &worker, false).is_err());
     let failed = outputs.site[1].snapshot();
@@ -2224,6 +2268,10 @@ fn site_owner_cached_age_advances_even_without_worker_progress() {
         Err(HardwareStationError::NotRunning)
     ));
     service.worker = Some(thread::spawn(ServiceExit::default));
+    assert!(matches!(
+        service.site_snapshot(SiteBank::Parallel),
+        Err(HardwareStationError::Site(SiteError::Unavailable))
+    ));
     service.site[0].publish(
         SiteDigitalSnapshot {
             observed_at_ms: Some(10),
@@ -2240,6 +2288,170 @@ fn site_owner_cached_age_advances_even_without_worker_progress() {
         "a cached read cannot freeze acquisition age"
     );
     service.stop().unwrap();
+    let mut parallel = hardware_service(false, true);
+    parallel.worker = Some(thread::spawn(ServiceExit::default));
+    assert!(parallel.site_snapshot(SiteBank::Parallel).is_ok());
+    parallel.stop().unwrap();
+}
+
+#[test]
+fn site_owner_empty_binding_does_not_schedule_a_pulse() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    let generation = outputs.site[0].snapshot().generation;
+    FAILURE.store(FAIL_CM119_PULSE, Ordering::Release);
+    outputs
+        .site_bind(
+            SiteBank::Cm119,
+            SiteDigitalBinding {
+                generation,
+                output_mask: 0,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+            &devices,
+        )
+        .unwrap();
+    assert_ne!(outputs.site[0].snapshot().generation, generation);
+    assert_eq!(outputs.site[0].snapshot().last_command_error, None);
+    assert_eq!(FAILURE.swap(0, Ordering::AcqRel), FAIL_CM119_PULSE);
+}
+
+#[test]
+fn site_owner_generation_exhaustion_rejects_binding_without_mutation() {
+    // Exhaust the process-wide token source in an isolated test process only.
+    const FLAG: &str = "URP_TEST_GENERATION_EXHAUSTED";
+    if std::env::var_os(FLAG).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "hardware_host::tests::site_owner_generation_exhaustion_rejects_binding_without_mutation"])
+            .env(FLAG, "1").status().unwrap();
+        assert!(status.success());
+        return;
+    }
+    let (plan, mut selected) = selected_hardware(false);
+    selected.cm119.output_enable_mask = 0x20;
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    let generation = outputs.site[0].snapshot().generation;
+    crate::hardware_site::NEXT_GENERATION.store(u64::MAX, Ordering::Relaxed);
+    outputs
+        .site_bind(
+            SiteBank::Cm119,
+            SiteDigitalBinding {
+                generation,
+                output_mask: 0x20,
+                initial_high_mask: 0x20,
+                safe_high_mask: 0,
+            },
+            &devices,
+        )
+        .unwrap();
+    assert_eq!(outputs.cm119 & 0x20, 0);
+    let snapshot = outputs.site[0].snapshot();
+    assert_eq!(snapshot.generation, generation);
+    assert_eq!(snapshot.claimed_mask, 0);
+    assert_eq!(
+        snapshot.last_command_error,
+        Some(SiteError::StaleGeneration)
+    );
+    assert_eq!(SiteBankState::new(0, 0x20, 0, 0).snapshot().generation, 0);
+}
+
+#[test]
+fn site_owner_recovery_retains_failed_close_and_retires_failed_reopen() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, selected) = selected_hardware(true);
+    plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+    let (worker, sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    let devices = ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    outputs
+        .site_bind(
+            SiteBank::Parallel,
+            SiteDigitalBinding {
+                generation: outputs.site[1].snapshot().generation,
+                output_mask: 0x10,
+                initial_high_mask: 0,
+                safe_high_mask: 0x10,
+            },
+            &devices,
+        )
+        .unwrap();
+    let generation = outputs.site[1].snapshot().generation;
+    let cache = Arc::clone(&worker.site[1]);
+    let statistics = Arc::clone(&worker.statistics);
+    let stop = Arc::clone(&worker.stop);
+    PARALLEL_CLOSE_BLOCKED.store(1, Ordering::Release);
+    FAILURE.store(FAIL_CM119_SERVICE, Ordering::Release);
+    let handle = thread::spawn(move || worker.run(devices, outputs, InputTracker::default(), None));
+    let wait = |condition: &dyn Fn() -> bool| {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !condition() && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(1));
+        }
+        condition()
+    };
+    let close_failed = wait(&|| statistics.snapshot().service_failures >= 2);
+    let opens_while_blocked = GPIO_OPENS.load(Ordering::Acquire);
+    for command in [
+        ServiceCommand::SiteBind(
+            SiteBank::Parallel,
+            SiteDigitalBinding {
+                generation,
+                output_mask: 0x10,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+        ),
+        ServiceCommand::SitePublish(
+            SiteBank::Parallel,
+            SiteDigitalRequest {
+                generation,
+                output_mask: 0x10,
+                high_mask: 0,
+            },
+        ),
+        ServiceCommand::Output(OutputCommand::Parallel(0x10, OutputRequest::Inactive)),
+    ] {
+        sender.send(command).unwrap();
+    }
+    FAILURE.store(FAIL_CM119_CAPABILITIES, Ordering::Release);
+    PARALLEL_CLOSE_BLOCKED.store(0, Ordering::Release);
+    handle.thread().unpark();
+    let reopen_failed = wait(&|| statistics.snapshot().service_failures >= 3);
+    let recovered = wait(&|| {
+        cache.read().is_ok_and(|snapshot| {
+            snapshot.generation != 0
+                && snapshot.generation != generation
+                && snapshot.serviced_generation == snapshot.generation
+        })
+    });
+    let snapshot = cache.read().unwrap();
+    stop.store(true, Ordering::Release);
+    handle.thread().unpark();
+    let exit = handle.join().unwrap();
+    assert!(close_failed && reopen_failed && recovered);
+    assert_eq!(
+        opens_while_blocked, 1,
+        "failed safe close must retain the device"
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 3);
+    assert_eq!(snapshot.claimed_mask, 0);
+    assert_eq!(snapshot.serviced_high_mask & 0x10, 0x10);
+    assert_eq!(PARALLEL_FINAL_BYTE.load(Ordering::Acquire), 0x10);
+    assert!(exit.failure.is_none());
 }
 
 #[test]

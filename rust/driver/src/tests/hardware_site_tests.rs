@@ -5,6 +5,115 @@ fn bank() -> SiteBankState {
 }
 
 #[test]
+fn site_binding_rejects_levels_outside_owned_pins_and_retired_generations() {
+    let mut bank = bank();
+    let mut output = 1;
+    for (initial, safe) in [(0x40, 0), (0, 0x40)] {
+        assert_eq!(
+            bank.bind(
+                SiteDigitalBinding {
+                    generation: bank.snapshot().generation,
+                    output_mask: 0x20,
+                    initial_high_mask: initial,
+                    safe_high_mask: safe,
+                },
+                &mut output
+            ),
+            Err(SiteError::InvalidMask)
+        );
+        assert_eq!(output, 1);
+        assert_eq!(bank.snapshot().claimed_mask, 0);
+    }
+    bank.retire(&mut output);
+    assert_eq!(
+        bank.bind(
+            SiteDigitalBinding {
+                generation: 0,
+                output_mask: 0,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+            &mut output
+        ),
+        Err(SiteError::StaleGeneration)
+    );
+    assert_eq!(output, 1);
+}
+
+#[test]
+fn site_cache_preserves_each_rejection_and_acquisition_quality() {
+    let cache = SiteCache::default();
+    let mut bank = bank();
+    for error in [
+        SiteError::Unavailable,
+        SiteError::StaleGeneration,
+        SiteError::InvalidMask,
+        SiteError::Busy,
+        SiteError::Fault,
+    ] {
+        bank.reject(error);
+        for quality in [
+            SiteReadQuality::Unavailable,
+            SiteReadQuality::Valid,
+            SiteReadQuality::Fault,
+        ] {
+            let mut snapshot = bank.snapshot();
+            snapshot.input_quality = quality;
+            snapshot.snapshot_at_ms = 30;
+            cache.publish(snapshot, 30);
+            assert_eq!(cache.read(), Ok(snapshot));
+        }
+    }
+    assert_eq!(cache.read().unwrap().rejected_commands, 5);
+}
+
+#[test]
+fn site_cache_concurrent_publication_never_returns_a_torn_observation() {
+    use std::sync::{Barrier, atomic::AtomicBool};
+    let cache = SiteCache::default();
+    let ready = Barrier::new(2);
+    let done = AtomicBool::new(false);
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            ready.wait();
+            let mut generation = 1;
+            while !done.load(Ordering::Acquire) {
+                cache.publish(
+                    SiteDigitalSnapshot {
+                        generation,
+                        observed_at_ms: Some(generation),
+                        submitted_generation: generation,
+                        serviced_generation: generation,
+                        ..SiteDigitalSnapshot::default()
+                    },
+                    generation,
+                );
+                generation += 1;
+            }
+        });
+        ready.wait();
+        let coherent = (0..100_000).all(|_| match cache.read() {
+            Ok(snapshot) => {
+                snapshot.generation == snapshot.submitted_generation
+                    && snapshot.generation == snapshot.serviced_generation
+                    && snapshot.generation == snapshot.snapshot_at_ms
+                    && snapshot.observed_at_ms.unwrap_or(0) == snapshot.generation
+            }
+            Err(error) => error == SiteError::Busy,
+        });
+        done.store(true, Ordering::Release);
+        assert!(
+            coherent,
+            "a cached read must retry rather than expose a torn snapshot"
+        );
+    });
+    assert!(
+        cache.read().is_ok(),
+        "a joined writer must leave a readable cache"
+    );
+}
+
+#[test]
 fn radio_reservation_supersedes_a_released_sites_safe_high_level() {
     let mut bank = bank();
     let mut output = 1;
