@@ -153,6 +153,19 @@ fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
 }
 
 #[test]
+fn native_create_accepts_the_current_mixer_configuration_abi() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    config.abi_version = 2;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    // SAFETY: successful creation transfers the uniquely owned native handle.
+    unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+}
+
+#[test]
 fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();
