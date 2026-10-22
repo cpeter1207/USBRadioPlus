@@ -6,7 +6,11 @@
 #![deny(warnings)]
 
 mod native;
-pub use native::{UrpNativeCreateArgs, UrpNativeStationConfig};
+pub use native::{
+    URP_NATIVE_CONFIG_ABI_VERSION, URP_NATIVE_HARDWARE_GAIN_INPUT,
+    URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
+    UrpNativeStationConfig,
+};
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
 

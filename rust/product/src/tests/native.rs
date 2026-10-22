@@ -105,7 +105,7 @@ fn radio() -> RawSessionConfig {
 fn request(radio: &RawSessionConfig) -> UrpNativeStationConfig {
     UrpNativeStationConfig {
         struct_size: size_of::<UrpNativeStationConfig>() as u32,
-        abi_version: 1,
+        abi_version: URP_NATIVE_CONFIG_ABI_VERSION,
         radio: ptr::from_ref(radio).cast(),
         device_selection: 1,
         device_identifier: ptr::null(),
@@ -127,10 +127,18 @@ fn request(radio: &RawSessionConfig) -> UrpNativeStationConfig {
         transmit_graph_length: 5,
         receive_deemphasis: 0,
         receive_output_gain_db: -6,
+        hardware_gain_mask: 0,
+        hardware_input_gain_db: 0.0,
+        hardware_output_a_gain_db: 0.0,
+        hardware_output_b_gain_db: 0.0,
     }
 }
 
 fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
+    create_pointer(config)
+}
+
+fn create_pointer(config: *const UrpNativeStationConfig) -> (c_int, *mut c_void) {
     let mut providers = fixture::manifest();
     // Native program PCM is pulled directly from the callback: no ASL rate/queue path.
     providers.ring = ptr::null();
@@ -150,6 +158,198 @@ fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
     // SAFETY: all request spans live through creation; callbacks use no borrowed state.
     let status = unsafe { product_descriptor().native_create.unwrap()(&args, &mut handle) };
     (status, handle)
+}
+
+#[test]
+fn native_create_accepts_the_current_mixer_configuration_abi() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    config.abi_version = 2;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    // SAFETY: successful creation transfers the uniquely owned native handle.
+    unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+}
+
+#[test]
+fn native_start_without_configured_gains_preserves_mixer_controls() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::restored_mixer_levels([750, 795, 245]);
+    fixture::set_failure(fixture::FAIL_MIXER_PATHS);
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: creation transferred one stopped station with live provider fixtures.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+        assert_eq!(fixture::audio_start_mixer_levels(), [750, 795, 245]);
+        assert_eq!(fixture::mixer_other_writes(), 0);
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::clear_failure();
+}
+
+#[test]
+fn native_start_reapplies_only_configured_gains_before_audio_callbacks() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let api = product_descriptor();
+    for (mask, expected) in [
+        (7, [500, 999, 706]),
+        (URP_NATIVE_HARDWARE_GAIN_INPUT, [500, 795, 245]),
+        (URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, [750, 999, 245]),
+        (URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, [750, 795, 706]),
+    ] {
+        fixture::restored_mixer_levels([750, 795, 245]);
+        let mut config = request(&raw);
+        config.hardware_gain_mask = mask;
+        config.hardware_output_a_gain_db = 6.012;
+        config.hardware_output_b_gain_db = 3.0;
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_OK);
+        assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+        // SAFETY: successful creation returns one stopped station with live fixtures.
+        unsafe {
+            for _ in 0..2 {
+                assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+                assert_eq!(fixture::mixer_levels(), expected);
+                assert_eq!(fixture::audio_start_mixer_levels(), expected);
+                assert_eq!(fixture::mixer_other_writes(), 0);
+                fixture::set_failure(fixture::FAIL_MIXER);
+                assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+                fixture::clear_failure();
+                assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+                fixture::restored_mixer_levels([750, 795, 245]);
+            }
+            api.native_destroy.unwrap()(handle);
+        }
+    }
+}
+
+#[test]
+fn native_mixer_failures_leave_audio_stopped_and_allow_start_retry() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    let raw = radio();
+    let api = product_descriptor();
+    for (failure, mask, expected) in [
+        (
+            fixture::FAIL_MIXER_PATHS,
+            URP_NATIVE_HARDWARE_GAIN_OUTPUT_B,
+            [750, 795, 706],
+        ),
+        (
+            fixture::FAIL_MIXER_OPEN,
+            URP_NATIVE_HARDWARE_GAIN_OUTPUT_B,
+            [750, 795, 706],
+        ),
+        (
+            fixture::FAIL_MIXER,
+            URP_NATIVE_HARDWARE_GAIN_OUTPUT_B,
+            [750, 795, 706],
+        ),
+        (
+            fixture::FAIL_MIXER_OUTPUT_B_PATH,
+            URP_NATIVE_HARDWARE_GAIN_OUTPUT_B,
+            [750, 795, 706],
+        ),
+        (
+            fixture::FAIL_MIXER_INPUT_PATH,
+            URP_NATIVE_HARDWARE_GAIN_INPUT,
+            [500, 795, 245],
+        ),
+        (
+            fixture::FAIL_START,
+            URP_NATIVE_HARDWARE_GAIN_OUTPUT_B,
+            [750, 795, 706],
+        ),
+    ] {
+        fixture::clear_failure();
+        fixture::restored_mixer_levels([750, 795, 245]);
+        let mut config = request(&raw);
+        config.hardware_gain_mask = mask;
+        config.hardware_output_b_gain_db = 3.0;
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_OK);
+        fixture::set_failure(failure);
+        // SAFETY: the failed start retains this unique station for a retry.
+        unsafe {
+            assert_eq!(api.native_start.unwrap()(handle), URP_AST_SETUP_FAILED);
+            assert_eq!(fixture::audio_start_mixer_levels(), [0; 3]);
+            assert!(!fixture::ptt_state().0);
+            fixture::clear_failure();
+            assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+            assert_eq!(fixture::mixer_levels(), expected);
+            api.native_destroy.unwrap()(handle);
+        }
+    }
+}
+
+#[test]
+fn native_failed_audio_stop_does_not_reapply_gains_while_callbacks_remain_started() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    config.hardware_gain_mask = 7;
+    config.hardware_output_a_gain_db = 6.012;
+    config.hardware_output_b_gain_db = 3.0;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: the failed stop retains the unique station and its live callbacks.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        fixture::set_failure(fixture::FAIL_STOP);
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_SETUP_FAILED);
+        fixture::restored_mixer_levels([750, 795, 245]);
+        fixture::set_failure(fixture::FAIL_MIXER);
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+        assert_eq!(fixture::audio_start_mixer_levels(), [0; 3]);
+        fixture::clear_failure();
+        api.native_destroy.unwrap()(handle);
+    }
+}
+
+#[test]
+fn native_create_rejects_old_or_short_configurations_before_reading_the_gain_tail() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    #[repr(C, align(8))]
+    struct Header {
+        struct_size: u32,
+        abi_version: u32,
+    }
+    for abi_version in [1, URP_NATIVE_CONFIG_ABI_VERSION] {
+        let header = Header {
+            struct_size: size_of::<Header>() as u32,
+            abi_version,
+        };
+        let (status, handle) = create_pointer(ptr::from_ref(&header).cast());
+        assert_eq!(status, URP_AST_INCOMPATIBLE_ABI);
+        assert!(handle.is_null());
+    }
+    let (status, handle) = create_pointer(ptr::null());
+    assert_eq!(status, URP_AST_INVALID_ARGUMENT);
+    assert!(handle.is_null());
+    let storage = [0_u64; 2];
+    let (status, handle) = create_pointer(storage.as_ptr().cast::<u8>().wrapping_add(1).cast());
+    assert_eq!(status, URP_AST_INVALID_ARGUMENT);
+    assert!(handle.is_null());
+    let raw = radio();
+    let mut config = request(&raw);
+    for version in [1, 3] {
+        config.abi_version = version;
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_INCOMPATIBLE_ABI);
+        assert!(handle.is_null());
+    }
 }
 
 #[test]
@@ -310,6 +510,23 @@ fn native_create_rejects_invalid_selection_and_processing_fields() {
         ("ptt inversion", |c| c.ptt_inverted = 2),
         ("deemphasis", |c| c.receive_deemphasis = 2),
         ("output gain", |c| c.receive_output_gain_db = 31),
+        ("hardware gain mask", |c| c.hardware_gain_mask = 8),
+        ("capture gain below range", |c| {
+            c.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+            c.hardware_input_gain_db = -30.01;
+        }),
+        ("output-A gain above range", |c| {
+            c.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_OUTPUT_A;
+            c.hardware_output_a_gain_db = 30.01;
+        }),
+        ("output-B gain NaN", |c| {
+            c.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_OUTPUT_B;
+            c.hardware_output_b_gain_db = f64::NAN;
+        }),
+        ("capture infinite gain", |c| {
+            c.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+            c.hardware_input_gain_db = f64::INFINITY;
+        }),
         ("gpio enable", |c| c.gpio_output_enable_mask = 256),
         ("gpio initial", |c| c.gpio_output_initial_mask = 256),
         ("clip gpio range", |c| c.clip_led_mask = 256),
