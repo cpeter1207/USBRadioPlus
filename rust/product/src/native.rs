@@ -1,12 +1,13 @@
 //! Native product requests, independent of Asterisk delivery and configuration syntax.
 
 use crate::{
-    Status, UrpAstDirectCallbacks, UrpAstProviderManifest, copy_abi, ffi_status, output_pointer,
-    required_utf8,
+    AbiHeader, Status, UrpAstDirectCallbacks, UrpAstProviderManifest, copy_abi, ffi_status,
+    output_pointer, required_utf8,
 };
 use std::ffi::{c_int, c_void};
+use std::mem::{align_of, size_of};
 use usbradioplus_audio::{AudioProvider, ChannelCount, DeviceSelector, SelectionPolicy};
-use usbradioplus_driver::{HardwareService, select_native_hardware};
+use usbradioplus_driver::{HardwareService, apply_hardware_gains, select_native_hardware};
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_gpio::{Cm119Profile, GpioAdapter};
 use usbradioplus_radio::{
@@ -17,6 +18,15 @@ use usbradioplus_station::{
     Cm119Plan, HardwarePlan, NativeStationMedia, StationControl, StationRuntime,
 };
 
+/// Current resolved native station request ABI.
+pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 2;
+/// Select hardware capture gain at native startup.
+pub const URP_NATIVE_HARDWARE_GAIN_INPUT: u32 = 1;
+/// Select hardware output-A gain at native startup.
+pub const URP_NATIVE_HARDWARE_GAIN_OUTPUT_A: u32 = 2;
+/// Select hardware output-B gain at native startup.
+pub const URP_NATIVE_HARDWARE_GAIN_OUTPUT_B: u32 = 4;
+
 /// Resolved native station configuration. Byte spans and the released radio
 /// configuration are borrowed only for the synchronous native-create call.
 #[repr(C)]
@@ -24,7 +34,7 @@ use usbradioplus_station::{
 pub struct UrpNativeStationConfig {
     /// Exact structure size.
     pub struct_size: u32,
-    /// Native request ABI, currently one.
+    /// Native request ABI, currently two.
     pub abi_version: u32,
     /// Pointer to the released `rptadv_radio_session_config` ABI-4 template.
     /// Effective settings are preserved except lifecycle generation, frame bounds
@@ -70,6 +80,14 @@ pub struct UrpNativeStationConfig {
     pub receive_deemphasis: u32,
     /// Receive output gain following filtering, in decibels.
     pub receive_output_gain_db: i32,
+    /// Selected hardware gain bits; zero preserves every current control.
+    pub hardware_gain_mask: u32,
+    /// Hardware capture gain, finite -30 through 30 dB when selected.
+    pub hardware_input_gain_db: f64,
+    /// Hardware output-A gain, finite -30 through 30 dB when selected.
+    pub hardware_output_a_gain_db: f64,
+    /// Hardware output-B gain, finite -30 through 30 dB when selected.
+    pub hardware_output_b_gain_db: f64,
 }
 
 /// Synchronous stopped native station creation; all request data is copied.
@@ -96,10 +114,17 @@ struct NativeStation {
     service: HardwareService,
     runtime: StationRuntime,
     _control: StationControl,
+    audio: AudioProvider,
+    interface: String,
+    gains: [Option<f64>; 3],
 }
 
 impl NativeStation {
     fn start(&mut self) -> Result<(), Status> {
+        if !self.runtime.running() {
+            apply_hardware_gains(self.audio, &self.interface, self.gains)
+                .map_err(|_| Status::SetupFailed)?;
+        }
         self.service.start().map_err(|_| Status::SetupFailed)?;
         if self.runtime.start().is_err() {
             let _ = self.service.stop();
@@ -138,7 +163,7 @@ pub(crate) unsafe extern "C" fn create(
         // SAFETY: the caller supplies advertised ABI request bytes during this call.
         let (args, config, providers, callbacks) = unsafe {
             let args = copy_abi(args)?;
-            let config = copy_abi(args.config)?;
+            let config = copy_native_config(args.config)?;
             let providers = copy_abi(args.providers)?;
             if args.callbacks.is_null() {
                 return Err(Status::InvalidArgument);
@@ -167,6 +192,14 @@ pub(crate) unsafe extern "C" fn create(
         radio.publication_interval_milliseconds = 50;
         // SAFETY: the synchronous request owns every advertised text span.
         let (hardware, processing) = unsafe { resolve(&config, &radio)? };
+        let gain_values = [
+            config.hardware_input_gain_db,
+            config.hardware_output_a_gain_db,
+            config.hardware_output_b_gain_db,
+        ];
+        let gains = std::array::from_fn(|index| {
+            (config.hardware_gain_mask & (1 << index) != 0).then_some(gain_values[index])
+        });
         // SAFETY: providers and executable functions remain loaded through destroy.
         let (graph, radio_provider, audio, gpio) = unsafe {
             (
@@ -186,16 +219,20 @@ pub(crate) unsafe extern "C" fn create(
             // SAFETY: the caller retains callback contexts through synchronous destroy.
             unsafe { NativeStationMedia::prepare(radio, processing, radio_provider, callbacks) }
                 .map_err(|_| Status::SetupFailed)?;
-        let (_, selected) =
+        let (device, selected) =
             select_native_hardware(&hardware, audio, gpio, args.maximum_frames.min(960))
                 .map_err(|_| Status::SetupFailed)?;
         let (runtime, control) = StationRuntime::open_native(media, &selected, audio)
             .map_err(|_| Status::SetupFailed)?;
+        let interface = device.interface_path;
         let service = HardwareService::native(&hardware, selected, runtime.hardware_state(), gpio);
         let station = Box::new(NativeStation {
             service,
             runtime,
             _control: control,
+            audio,
+            interface,
+            gains,
         });
         // SAFETY: output storage was validated and the caller receives sole ownership.
         unsafe {
@@ -245,6 +282,24 @@ unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Status> {
     Ok(value.to_owned())
 }
 
+/// Admit the sized ABI-2 request before reading any of its new gain fields.
+unsafe fn copy_native_config(
+    raw: *const UrpNativeStationConfig,
+) -> Result<UrpNativeStationConfig, Status> {
+    if raw.is_null() || (raw as usize) % align_of::<UrpNativeStationConfig>() != 0 {
+        return Err(Status::InvalidArgument);
+    }
+    // SAFETY: the native caller supplies at least the common readable ABI header.
+    let header = unsafe { raw.cast::<AbiHeader>().read() };
+    if header.abi_version != URP_NATIVE_CONFIG_ABI_VERSION
+        || header.struct_size < size_of::<UrpNativeStationConfig>() as u32
+    {
+        return Err(Status::IncompatibleAbi);
+    }
+    // SAFETY: admission requires the complete current request before this read.
+    Ok(unsafe { raw.read() })
+}
+
 unsafe fn resolve(
     config: &UrpNativeStationConfig,
     radio: &SessionConfig,
@@ -263,6 +318,17 @@ unsafe fn resolve(
         || config.gpio_output_initial_mask > 255
         || config.clip_led_mask > 255
         || config.clip_led_mask.count_ones() > 1
+        || config.hardware_gain_mask & !7 != 0
+        || [
+            config.hardware_input_gain_db,
+            config.hardware_output_a_gain_db,
+            config.hardware_output_b_gain_db,
+        ]
+        .iter()
+        .enumerate()
+        .any(|(index, gain)| {
+            config.hardware_gain_mask & (1 << index) != 0 && !(-30.0..=30.0).contains(gain)
+        })
     {
         return Err(Status::InvalidConfiguration);
     }

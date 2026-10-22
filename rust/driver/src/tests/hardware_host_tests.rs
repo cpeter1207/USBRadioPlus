@@ -252,6 +252,20 @@ fn mixer_db_scale_preserves_the_established_midpoint() {
 }
 
 #[test]
+fn configured_hardware_gains_validate_before_adapter_access_and_skip_omitted_controls() {
+    let _guard = test_guard();
+    reset_test_state();
+    FAILURE.store(FAIL_AUDIO_PATHS, Ordering::Release);
+    assert!(apply_hardware_gains(audio_provider(), "3-1:1.0", [None; 3]).is_ok());
+    for gain in [-30.01, 30.01, f64::NAN, f64::INFINITY] {
+        assert!(matches!(
+            apply_hardware_gains(audio_provider(), "3-1:1.0", [Some(gain), None, None]),
+            Err(AudioError::InvalidArgument)
+        ));
+    }
+}
+
+#[test]
 fn hardware_local_repeat_is_app_rpt_only_and_tracks_receiver_state() {
     let _guard = test_guard();
     assert_eq!(

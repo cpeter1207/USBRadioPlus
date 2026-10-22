@@ -2,8 +2,8 @@
 //!
 //! The audio callbacks own only native PCM work. This host resolves one
 //! canonical CM119 and runs USB/parallel control I/O on a bounded non-real-time
-//! service thread. Asterisk station composition also applies ALSA mixer setup;
-//! the native composition preserves the existing hardware tuning.
+//! service thread. Both compositions apply their configured ALSA hardware gains;
+//! native startup preserves omitted controls and all unrelated hardware tuning.
 
 #[cfg(test)]
 use crate::hardware_site::SiteReadQuality;
@@ -1244,6 +1244,50 @@ fn open_paths(
 fn apply_gain(mixers: &mut [Mixer], level: u32) -> Result<(), AudioError> {
     for mixer in mixers {
         mixer.set_hardware_level(level)?;
+    }
+    Ok(())
+}
+
+/// Apply optional capture, output-A and output-B hardware gains before audio starts.
+///
+/// Uses the established radio calibration without changing mixer switches,
+/// sidetone, or EEPROM. An entirely omitted set performs no mixer operations.
+///
+/// # Errors
+///
+/// Returns an audio-adapter error for invalid gains, missing selected paths,
+/// or mixer discovery, opening, or writes. Earlier successful writes are retained.
+pub fn apply_hardware_gains(
+    provider: AudioProvider,
+    interface: &str,
+    gains: [Option<f64>; 3],
+) -> Result<(), AudioError> {
+    if gains.iter().all(Option::is_none) {
+        return Ok(());
+    }
+    if gains
+        .iter()
+        .flatten()
+        .any(|gain| !(-30.0..=30.0).contains(gain))
+    {
+        return Err(AudioError::InvalidArgument);
+    }
+    let paths = provider.cm119_mixer_paths(interface)?;
+    for (index, gain) in gains.into_iter().enumerate() {
+        if let Some(gain) = gain {
+            let selected = if index == 0 {
+                paths.receive.as_slice()
+            } else {
+                paths
+                    .transmit
+                    .get(index - 1..index)
+                    .ok_or(AudioError::Unsupported)?
+            };
+            apply_gain(
+                &mut open_paths(provider, interface, selected)?,
+                mixer_level(gain),
+            )?;
+        }
     }
     Ok(())
 }

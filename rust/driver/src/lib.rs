@@ -17,7 +17,7 @@ pub use factory::{ControllerConfiguration, StationFactory, StationFactoryError, 
 pub use hardware_host::{
     EepromTuning, HardwareInput, HardwareInputEvent, HardwareMixer, HardwareOperation,
     HardwarePreflight, HardwareService, HardwareServiceStatistics, HardwareStation,
-    HardwareStationDiagnostics, HardwareStationError, HardwareTransientState,
+    HardwareStationDiagnostics, HardwareStationError, HardwareTransientState, apply_hardware_gains,
     select_native_hardware,
 };
 pub use hardware_site::{

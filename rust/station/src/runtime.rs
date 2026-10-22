@@ -452,6 +452,12 @@ impl StationControlHost {
 }
 
 impl StationRuntime {
+    /// Whether callbacks have started without a subsequent successful stop.
+    #[must_use]
+    pub fn running(&self) -> bool {
+        self.running
+    }
+
     /// Open native media using the same stereo callback workers, without an
     /// Asterisk controller or delivery worker. No additional audio ring is made.
     pub fn open_native(

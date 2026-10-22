@@ -1,6 +1,6 @@
 use super::*;
 
-use std::ffi::{c_char, c_int, c_void};
+use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::size_of;
 use std::ptr;
 use std::sync::Arc;
@@ -24,6 +24,10 @@ pub(super) const FAIL_START_ONCE: u32 = 12;
 pub(super) const FAIL_OPEN_ONCE: u32 = 13;
 pub(super) const PUBLISH_ON_STOP_FAIL_OPEN: u32 = 14;
 pub(super) const FAIL_GPIO_SERVICE: u32 = 15;
+pub(super) const FAIL_MIXER_PATHS: u32 = 16;
+pub(super) const FAIL_MIXER_OPEN: u32 = 17;
+pub(super) const FAIL_MIXER_OUTPUT_B_PATH: u32 = 18;
+pub(super) const FAIL_MIXER_INPUT_PATH: u32 = 19;
 static FAILURE: AtomicU32 = AtomicU32::new(0);
 static EXCLUSIVE_AUDIO: AtomicU32 = AtomicU32::new(0);
 static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
@@ -33,6 +37,31 @@ static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
 static PTT_DROPS: AtomicU32 = AtomicU32::new(0);
 static GRAPH_DELAY_MS: AtomicU32 = AtomicU32::new(0);
 static GRAPH_PREPARING: AtomicBool = AtomicBool::new(false);
+static MIXER_LEVELS: [AtomicU32; 3] = [const { AtomicU32::new(500) }; 3];
+static AUDIO_START_MIXER_LEVELS: [AtomicU32; 3] = [const { AtomicU32::new(0) }; 3];
+static MIXER_OTHER_WRITES: AtomicU32 = AtomicU32::new(0);
+
+pub(super) fn restored_mixer_levels(levels: [u32; 3]) {
+    for (target, level) in MIXER_LEVELS.iter().zip(levels) {
+        target.store(level, Ordering::Release);
+    }
+    MIXER_OTHER_WRITES.store(0, Ordering::Release);
+    for level in &AUDIO_START_MIXER_LEVELS {
+        level.store(0, Ordering::Release);
+    }
+}
+
+pub(super) fn mixer_levels() -> [u32; 3] {
+    std::array::from_fn(|index| MIXER_LEVELS[index].load(Ordering::Acquire))
+}
+
+pub(super) fn audio_start_mixer_levels() -> [u32; 3] {
+    std::array::from_fn(|index| AUDIO_START_MIXER_LEVELS[index].load(Ordering::Acquire))
+}
+
+pub(super) fn mixer_other_writes() -> u32 {
+    MIXER_OTHER_WRITES.load(Ordering::Acquire)
+}
 
 pub(super) fn delay_graph_preparation(milliseconds: u32) {
     GRAPH_DELAY_MS.store(milliseconds, Ordering::Release);
@@ -943,6 +972,7 @@ struct FakeStream {
 struct FakeMixer {
     normalized: u32,
     enabled: u32,
+    index: Option<usize>,
 }
 
 unsafe extern "C" fn audio_stream_create(
@@ -985,6 +1015,9 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
     }
     if failed(FAIL_START) {
         return -1;
+    }
+    for (target, level) in AUDIO_START_MIXER_LEVELS.iter().zip(mixer_levels()) {
+        target.store(level, Ordering::Release);
     }
     // SAFETY: the handle originates from audio_stream_create.
     let stream = unsafe { &mut *stream.cast::<FakeStream>() };
@@ -1096,14 +1129,30 @@ unsafe extern "C" fn unused_audio_mixer_create(
 }
 
 unsafe extern "C" fn audio_mixer_create(
-    _config: *const UsbMixerConfig,
+    config: *const UsbMixerConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    if failed(FAIL_MIXER_OPEN) {
+        return -1;
+    }
+    // SAFETY: the wrapper retains the selected interface during this call.
+    if unsafe { CStr::from_ptr((*config).interface) }.to_bytes() != b"3-1:1.0" {
+        return -1;
+    }
+    // SAFETY: the audio wrapper retains the complete request and element string.
+    let name = unsafe { CStr::from_ptr((*config).element) }.to_bytes();
+    let index = match name {
+        b"rx" => Some(0),
+        b"tx-a" => Some(1),
+        b"tx-b" => Some(2),
+        _ => None,
+    };
     // SAFETY: the wrapper supplies writable handle storage.
     unsafe {
         *output = Box::into_raw(Box::new(FakeMixer {
             normalized: 500,
             enabled: 0,
+            index,
         }))
         .cast();
     }
@@ -1138,6 +1187,8 @@ unsafe extern "C" fn audio_mixer_set_i64(mixer: *mut c_void, value: i64) -> c_in
     }
     // SAFETY: the handle is exclusively owned by the wrapper.
     unsafe { (*mixer.cast::<FakeMixer>()).normalized = (value / 2) as u32 };
+    // SAFETY: the wrapper owns the live mixer handle throughout the write.
+    record_mixer_level(unsafe { &*mixer.cast::<FakeMixer>() });
     OK
 }
 
@@ -1156,6 +1207,8 @@ unsafe extern "C" fn audio_mixer_set(mixer: *mut c_void, value: u32) -> c_int {
     }
     // SAFETY: the handle is exclusively owned by the wrapper.
     unsafe { (*mixer.cast::<FakeMixer>()).normalized = value };
+    // SAFETY: the wrapper owns the live mixer handle throughout the write.
+    record_mixer_level(unsafe { &*mixer.cast::<FakeMixer>() });
     OK
 }
 
@@ -1168,7 +1221,16 @@ unsafe extern "C" fn audio_mixer_get_switch(mixer: *const c_void, value: *mut u3
 unsafe extern "C" fn audio_mixer_set_switch(mixer: *mut c_void, value: u32) -> c_int {
     // SAFETY: the handle is exclusively owned by the wrapper.
     unsafe { (*mixer.cast::<FakeMixer>()).enabled = value };
+    MIXER_OTHER_WRITES.fetch_add(1, Ordering::AcqRel);
     OK
+}
+
+fn record_mixer_level(mixer: &FakeMixer) {
+    if let Some(index) = mixer.index {
+        MIXER_LEVELS[index].store(mixer.normalized, Ordering::Release);
+    } else {
+        MIXER_OTHER_WRITES.fetch_add(1, Ordering::AcqRel);
+    }
 }
 
 unsafe extern "C" fn audio_mixer_destroy(mixer: *mut c_void) {
@@ -1206,14 +1268,25 @@ unsafe extern "C" fn audio_device_select(
 }
 
 unsafe extern "C" fn audio_mixer_paths(
-    _interface: *const c_char,
+    interface: *const c_char,
     output: *mut AudioMixerPaths,
 ) -> c_int {
+    if failed(FAIL_MIXER_PATHS) {
+        return -1;
+    }
+    // SAFETY: the wrapper retains the selected audio interface during discovery.
+    if unsafe { CStr::from_ptr(interface) }.to_bytes() != b"3-1:1.0" {
+        return -1;
+    }
     // SAFETY: the wrapper supplies writable result storage.
     let output = unsafe { &mut *output };
     output.abi_version = AUDIO_ABI;
-    output.receive_count = 1;
-    output.transmit_count = 2;
+    output.receive_count = if failed(FAIL_MIXER_INPUT_PATH) { 0 } else { 1 };
+    output.transmit_count = if failed(FAIL_MIXER_OUTPUT_B_PATH) {
+        1
+    } else {
+        2
+    };
     output.sidetone_count = 1;
     output.compatibility_count = 1;
     set_mixer_path(&mut output.receive[0], b"rx", 0, 3);

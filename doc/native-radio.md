@@ -11,6 +11,31 @@ noise measurement. The `[receive]` section configures squelch, `[ctcss]`
 configures decoder tolerance and gain, and `[local]` configures receive input
 gain.
 
+## Hardware gain initialization
+
+The ASL3 channel applies its configured capture and output-A/output-B hardware
+gains when it opens the station, using startup EEPROM tuning when enabled.
+Native consumers can select the same three gains in the ABI-2
+`UrpNativeStationConfig` request. The native station applies selected gains
+before GPIO and audio start, and reapplies them after a successful stop/start.
+Creation and configuration preparation do not change mixer controls. A repeated
+start while audio remains active does not reapply gains.
+
+The standalone controller resolves optional `hardware_input_gain_db`,
+`hardware_output_a_gain_db`, and `hardware_output_b_gain_db` values from its
+`[radio]` defaults and `[radio <node>]` overrides. It does not load ASL3's
+`usbradioplus.conf` hardware profiles. An omitted gain preserves that control's
+current value; native startup also preserves switches, sidetone, and EEPROM.
+If applying a selected gain fails, startup fails before callbacks begin.
+Successful writes preceding a later startup failure remain applied.
+
+Hardware gains use the existing radio calibration: 0 dB corresponds to level
+500 on its 0-through-999 scale, not ALSA's absolute 0 dB. The requested level
+is `round(500 * 10^(gain_db / 20))`, clamped to 0 through 999, and the ALSA
+step is `floor(maximum_step * level / 1000)`. For capture maximum 16 and
+playback maximum 151, gains of 0, +6.012, and +3 dB respectively select raw
+capture 8, output A 150, and output B 106.
+
 ## DSP preparation
 
 Before initial publication or a processing reload, every prepared native FFmpeg

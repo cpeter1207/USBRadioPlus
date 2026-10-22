@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0~alpha25 - 2026-10-22
+
+- Initialize explicitly configured native capture and transmitter hardware
+  gains before audio starts, including subsequent stop/start cycles.
+- Preserve omitted controls and unrelated mixer settings; retain the ASL3
+  channel's existing startup calibration and optional EEPROM tuning.
+- Require native station request ABI 2 and matching rpt_advanced alpha16
+  consumers; keep the shared-product descriptor and SONAME unchanged.
+
 ## 0.1.0~alpha24 - 2026-10-19
 
 - Expose spare CM119 and configured parallel-port GPIO through the shared

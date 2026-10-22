@@ -1,3 +1,12 @@
+usbradioplus (0.1.0~alpha25-1) unstable; urgency=medium
+
+  * Apply explicitly configured native hardware gains before each station start.
+  * Use native station configuration ABI 2; reject older native consumers.
+  * Preserve unconfigured mixer controls and existing ASL3 startup tuning.
+  * Require matching rpt_advanced alpha16 consumers for native startup.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Thu, 22 Oct 2026 09:30:00 -0500
+
 usbradioplus (0.1.0~alpha24-1) unstable; urgency=medium
 
   * Expose owned site GPIO through the shared product and ASL3 channel.

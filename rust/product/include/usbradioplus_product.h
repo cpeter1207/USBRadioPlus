@@ -12,8 +12,19 @@
 
 struct rptadv_radio_session_config;
 
+/** Current resolved native station request ABI. */
+#define URP_NATIVE_CONFIG_ABI_VERSION 2U
+/** Apply the configured hardware capture gain at native startup. */
+#define URP_NATIVE_HARDWARE_GAIN_INPUT 1U
+/** Apply the configured hardware output-A gain at native startup. */
+#define URP_NATIVE_HARDWARE_GAIN_OUTPUT_A 2U
+/** Apply the configured hardware output-B gain at native startup. */
+#define URP_NATIVE_HARDWARE_GAIN_OUTPUT_B 4U
+
 /** Resolved native request. All byte spans and radio are borrowed during create.
- * Native creation never changes mixer settings or reads tuning EEPROM.
+ * Native creation never changes mixer settings or reads tuning EEPROM. Each
+ * stopped-to-started transition applies only explicitly selected hardware gains
+ * before GPIO or audio starts; omitted controls and all switches are preserved.
  * Radio generation/frame bounds/publication cadence are set by native lifecycle;
  * effective released ABI-4 radio settings are otherwise preserved. Inactive
  * signaling fields are normalized by the typed radio configuration.
@@ -21,7 +32,7 @@ struct rptadv_radio_session_config;
 typedef struct UrpNativeStationConfig {
 	/** Exact structure size in bytes. */
 	uint32_t struct_size;
-	/** Native request ABI, currently one. */
+	/** Native request ABI, URP_NATIVE_CONFIG_ABI_VERSION. */
 	uint32_t abi_version;
 	/** Borrowed released ABI-4 radio settings template. */
 	const struct rptadv_radio_session_config *radio;
@@ -65,6 +76,14 @@ typedef struct UrpNativeStationConfig {
 	uint32_t receive_deemphasis;
 	/** Receive output gain following filtering, minus 30 through 30 decibels. */
 	int32_t receive_output_gain_db;
+	/** Selected URP_NATIVE_HARDWARE_GAIN_* bits; zero preserves all controls. */
+	uint32_t hardware_gain_mask;
+	/** Capture hardware gain, finite minus 30 through 30 dB when selected. */
+	double hardware_input_gain_db;
+	/** Output-A hardware gain, finite minus 30 through 30 dB when selected. */
+	double hardware_output_a_gain_db;
+	/** Output-B hardware gain, finite minus 30 through 30 dB when selected. */
+	double hardware_output_b_gain_db;
 } UrpNativeStationConfig;
 
 /** CTCSS decoder calibration reference in normalized F32 PCM. */
@@ -1071,7 +1090,8 @@ typedef struct UrpAstDescriptor {
 	void (*channel_destroy)(void *channel);
 	/** Prepare a stopped native station and clear output on failure. */
 	int (*native_create)(const struct UrpNativeCreateArgs *args, void **output);
-	/** Start native hardware service and audio; rolls hardware back on failure. */
+	/** Apply selected gains, then start GPIO and audio. Failure stops GPIO;
+	 * successful mixer writes remain applied and the station can be retried. */
 	int (*native_start)(void *native);
 	/** Stop native audio and unkey hardware; returns provider failures. */
 	int (*native_stop)(void *native);

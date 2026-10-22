@@ -53,6 +53,13 @@ shim validates the lifecycle descriptor size and ABI
 before Rust registers either channel technology, so manually mixed artifacts
 fail safely instead of partially loading.
 
+Alpha25 uses native station configuration ABI 2 while retaining shared-product
+descriptor ABI 1 and SONAME 1. Native consumers must be rebuilt for the new
+request; older requests fail admission. The runtime package declares `Breaks`
+against `rpt-advanced` and `librptadv-product1` versions before alpha16 so APT
+upgrades the installed native consumers together. These guards do not require
+installing a controller on an ASL3-only host.
+
 The build rejects undefined `ast_radio_*` imports. `res_usbradio.so` is not a
 runtime dependency.
 

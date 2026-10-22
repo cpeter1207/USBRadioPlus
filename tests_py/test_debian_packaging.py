@@ -1,6 +1,7 @@
 ## @file
 ## @brief Debian packaging regression checks.
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -101,7 +102,7 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
     runtime = packages["libusbradioplus-product1"]
     development = packages["libusbradioplus-product-dev"]
     for package in (runtime, development):
-        dependency = package.partition("Depends: ")[2].partition("\nDescription:")[0]
+        dependency = re.search(r"^Depends: (.+(?:\n[ \t].+)*)", package, re.MULTILINE)[1]
         assert not any(word in dependency for word in ("asterisk", "ASLDepends", "rpt-advanced"))
         assert "usbradioplus (= " not in dependency
     assert "libusbradioplus-product1 (= ${binary:Version})" in development
