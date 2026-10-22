@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CreationStatus","RepositoryError"],"struct":["ConfigRepository"]};

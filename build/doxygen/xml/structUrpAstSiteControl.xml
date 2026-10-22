@@ -1,0 +1,173 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstSiteControl" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstSiteControl</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstSiteControl_1ae3ce6a4817c34e4f32b0ebbb6c2ad603" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteControl::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstSiteControl::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact sizeof(UrpAstSiteControl). </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="935" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="935" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1ae0f8fee54c1c9277a700b04f1a1b5caf" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteControl::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstSiteControl::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_AST_SITE_OPTION_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="936" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="936" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1aee8cd2a9aefc2b6a1b59dfbecab4788c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteControl::operation</definition>
+        <argsstring></argsstring>
+        <name>operation</name>
+        <qualifiedname>UrpAstSiteControl::operation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_AST_SITE_BIND, PUBLISH, or SNAPSHOT. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="937" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="937" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1ae73e3a6708a39e60055bd5d8aef10865" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteControl::bank</definition>
+        <argsstring></argsstring>
+        <name>bank</name>
+        <qualifiedname>UrpAstSiteControl::bank</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Zero CM119, one parallel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="938" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="938" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1afa33246c40b45bda5b8dcd55817ed83c" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpAstSiteBinding" kindref="compound">UrpAstSiteBinding</ref></type>
+        <definition>UrpAstSiteBinding UrpAstSiteControl::binding</definition>
+        <argsstring></argsstring>
+        <name>binding</name>
+        <qualifiedname>UrpAstSiteControl::binding</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Ownership request for BIND. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="939" column="19" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="939" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1a4c63118c04b2460c9f661b7042929f37" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpAstSiteRequest" kindref="compound">UrpAstSiteRequest</ref></type>
+        <definition>UrpAstSiteRequest UrpAstSiteControl::request</definition>
+        <argsstring></argsstring>
+        <name>request</name>
+        <qualifiedname>UrpAstSiteControl::request</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output request for PUBLISH. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="940" column="19" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="940" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1aaad26efb03b91dd2e123711e822d26fc" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpAstSiteSnapshot" kindref="compound">UrpAstSiteSnapshot</ref></type>
+        <definition>UrpAstSiteSnapshot UrpAstSiteControl::snapshot</definition>
+        <argsstring></argsstring>
+        <name>snapshot</name>
+        <qualifiedname>UrpAstSiteControl::snapshot</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Returned only after a successful SNAPSHOT. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="941" column="20" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="941" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteControl_1aa64ecdf8970624e72011490f362d8dae" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteControl::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpAstSiteControl::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize to zero; success writes one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="942" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="942" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Synchronous taskprocessor envelope; never call from an audio callback. </para>
+    </briefdescription>
+    <detaileddescription>
+<para>Only the selected input record is used. Snapshot storage is initialized by the host. A zero result and accepted ABI confirm success; otherwise the result is a product error or -1 for malformed/unsupported transport. No new device is opened. A successful write means queued, not physical readback. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>UrpAstSiteBinding</label>
+        <link refid="structUrpAstSiteBinding"/>
+      </node>
+      <node id="1">
+        <label>UrpAstSiteControl</label>
+        <link refid="structUrpAstSiteControl"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>binding</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>request</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>snapshot</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>UrpAstSiteRequest</label>
+        <link refid="structUrpAstSiteRequest"/>
+      </node>
+      <node id="4">
+        <label>UrpAstSiteSnapshot</label>
+        <link refid="structUrpAstSiteSnapshot"/>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="934" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="934" bodyend="943"/>
+    <listofallmembers>
+      <member refid="structUrpAstSiteControl_1ae0f8fee54c1c9277a700b04f1a1b5caf" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>abi_version</name></member>
+      <member refid="structUrpAstSiteControl_1aa64ecdf8970624e72011490f362d8dae" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpAstSiteControl_1ae73e3a6708a39e60055bd5d8aef10865" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>bank</name></member>
+      <member refid="structUrpAstSiteControl_1afa33246c40b45bda5b8dcd55817ed83c" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>binding</name></member>
+      <member refid="structUrpAstSiteControl_1aee8cd2a9aefc2b6a1b59dfbecab4788c" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>operation</name></member>
+      <member refid="structUrpAstSiteControl_1a4c63118c04b2460c9f661b7042929f37" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>request</name></member>
+      <member refid="structUrpAstSiteControl_1aaad26efb03b91dd2e123711e822d26fc" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>snapshot</name></member>
+      <member refid="structUrpAstSiteControl_1ae3ce6a4817c34e4f32b0ebbb6c2ad603" prot="public" virt="non-virtual"><scope>UrpAstSiteControl</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,5 @@
+<map id="rust/product/include/usbradioplus_product.h" name="rust/product/include/usbradioplus_product.h">
+<area shape="rect" id="Node000001" title="Shared USBRadioPlus product ABI. Handles are opaque and host callbacks and provider descriptors must ..." alt="" coords="5,5,183,45"/>
+<area shape="rect" id="Node000002" href="$chan__usbradioplus__shim_8c.html" title="Compose released providers and forward Asterisk module lifecycle." alt="" coords="11,93,177,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="97,59,97,93,91,93,91,59"/>
+</map>

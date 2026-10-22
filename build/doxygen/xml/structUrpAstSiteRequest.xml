@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstSiteRequest" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstSiteRequest</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstSiteRequest_1acb716723e4dd108032fa1eea5a1ee362" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteRequest::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstSiteRequest::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete structure size. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="878" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="878" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteRequest_1aad774cb67830eaaef2c151dd009a0498" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteRequest::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstSiteRequest::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Product record ABI, one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="879" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="879" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteRequest_1a02a4f3d8f283d9b2aae17f788802ec59" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstSiteRequest::generation</definition>
+        <argsstring></argsstring>
+        <name>generation</name>
+        <qualifiedname>UrpAstSiteRequest::generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Acknowledged owner generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="880" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="880" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteRequest_1ab010e34501023656c049cad3ce5dc02b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteRequest::output_mask</definition>
+        <argsstring></argsstring>
+        <name>output_mask</name>
+        <qualifiedname>UrpAstSiteRequest::output_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Owned pins to change. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="881" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="881" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteRequest_1a10fc51011809a3bd65200030c78a27d8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteRequest::high_mask</definition>
+        <argsstring></argsstring>
+        <name>high_mask</name>
+        <qualifiedname>UrpAstSiteRequest::high_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical high levels within output_mask. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="882" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="882" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Steady output intent; pulse timing belongs to the site controller. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="877" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="877" bodyend="883"/>
+    <listofallmembers>
+      <member refid="structUrpAstSiteRequest_1aad774cb67830eaaef2c151dd009a0498" prot="public" virt="non-virtual"><scope>UrpAstSiteRequest</scope><name>abi_version</name></member>
+      <member refid="structUrpAstSiteRequest_1a02a4f3d8f283d9b2aae17f788802ec59" prot="public" virt="non-virtual"><scope>UrpAstSiteRequest</scope><name>generation</name></member>
+      <member refid="structUrpAstSiteRequest_1a10fc51011809a3bd65200030c78a27d8" prot="public" virt="non-virtual"><scope>UrpAstSiteRequest</scope><name>high_mask</name></member>
+      <member refid="structUrpAstSiteRequest_1ab010e34501023656c049cad3ce5dc02b" prot="public" virt="non-virtual"><scope>UrpAstSiteRequest</scope><name>output_mask</name></member>
+      <member refid="structUrpAstSiteRequest_1acb716723e4dd108032fa1eea5a1ee362" prot="public" virt="non-virtual"><scope>UrpAstSiteRequest</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

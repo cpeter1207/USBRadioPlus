@@ -1,0 +1,1362 @@
+Package: app-rpt-advanced
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 545
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadv-control-asterisk-adapter1 (= 0.1.0~alpha15-1), librptadv-file-adapter1 (= 0.1.0~alpha15-1), librptadv-product1 (= 0.1.0~alpha15-1), librptadv-speech-adapter1 (= 0.1.0~alpha15-1), asterisk-abi-1fb7f5c06d7a2052e38d021b3d8ca151, librate-adjusting-pcm-ring3 (>= 3.0.0~alpha3), librptadv-samplerate-adapter2 (>= 0.2.0~alpha2)
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/app-rpt-advanced_0.1.0~alpha15-1_arm64.deb
+Size: 166272
+SHA256: 4c272b5690026a213220e93b39daf97ea227b1feae69c9fce9e767994adbd145
+SHA1: 562efccdf2161d0de1d381d011272edd69273131
+MD5sum: bec7b13b8ef255c1a24cb420562952e6
+Description: optional Asterisk adapter for the RPT Advanced controller
+ Deprecated Asterisk module adapter for RadioPlusAdvanced channels. It may be
+ installed independently of the standalone controller package.
+
+Package: librate-adjusting-pcm-ring-dev
+Source: rate-adjusting-pcm-ring
+Version: 1.0.1-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 27
+Depends: librate-adjusting-pcm-ring1 (= 1.0.1-1.deb13), libsamplerate0-dev
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring-dev_1.0.1-1.deb13_arm64.deb
+Size: 7128
+SHA256: da9b1715f938ff2ada4c4d48504d6b588b076882fab0920c69a322ec245c0f6d
+SHA1: 4415c5275aff2df01307e1053a74eff7da6168d8
+MD5sum: afe91ce60c35a49789975bc86dca3ec7
+Description: development files for the rate-adjusting PCM playout ring
+ Header and pkg-config metadata for applications that link dynamically against
+ the ABI-major 1 rate-adjusting PCM playout ring.
+
+Package: librate-adjusting-pcm-ring1
+Source: rate-adjusting-pcm-ring
+Version: 1.0.1-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 80
+Depends: libc6 (>= 2.17), libsamplerate0 (>= 0.1.7)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring1_1.0.1-1.deb13_arm64.deb
+Size: 6752
+SHA256: 10f1d634f8120a1623f8456c9cc6f69f02e8fdc69d2d58cf0f2aeddcc09f6053
+SHA1: fde6527a997f97320e6e4b333e284153fb953903
+MD5sum: ec4939b62f8f2040d385783013ef5e71
+Description: lock-free rate-adjusting PCM playout ring
+ Shared library for a single-producer/single-consumer signed PCM ring with
+ persistent libsamplerate clock recovery and bounded packet-loss concealment.
+
+Package: librate-adjusting-pcm-ring2
+Source: rate-adjusting-pcm-ring
+Version: 2.0.0~alpha4-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadv-samplerate-adapter1 (>= 0.1.0~alpha3)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring2_2.0.0~alpha4-1_arm64.deb
+Size: 122572
+SHA256: 275d04c47dad13c2823fc3130c668664d751273cad4b6c98a37ac45cdc651b5c
+SHA1: bc259960e6a596567a82bceb2e406f469b4cd6a3
+MD5sum: d0a95f93a7bff70d6096eba591f95fd1
+Description: lock-free canonical-F32 rate-adjusting PCM ring
+ Rust shared library for single-producer/single-consumer PCM playout with
+ persistent sample-rate conversion, clock recovery, and bounded concealment.
+
+Package: librate-adjusting-pcm-ring2-dev
+Source: rate-adjusting-pcm-ring
+Version: 2.0.0~alpha4-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 30
+Depends: librate-adjusting-pcm-ring2 (= 2.0.0~alpha4-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring2-dev_2.0.0~alpha4-1_arm64.deb
+Size: 7068
+SHA256: 42bab73ad7c48c74938d55952e0fe6b745ddefb6278cd0b1d45de1bc94e72c43
+SHA1: a37c910d386523b0ff7695e9923301cfc6e97d83
+MD5sum: 3c6ad14306332052fbe49a98690ce3c3
+Description: development files for the F32 rate-adjusting PCM ring
+ Public descriptor header and pkg-config metadata for consumers of the
+ dynamically linked ABI-major-2 canonical-F32 PCM ring.
+
+Package: librate-adjusting-pcm-ring3
+Source: rate-adjusting-pcm-ring
+Version: 3.0.0~alpha3-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 400
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadv-samplerate-adapter2 (>= 0.2.0~alpha2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring3_3.0.0~alpha3-1_arm64.deb
+Size: 131084
+SHA256: 81959d58190473699cacfdef5258cd59c4197e89362b167e1e9e386c37ae2945
+SHA1: b962dabd1aa6eddab86c4b1777de035b5aecdadf
+MD5sum: 95f4437072d886eba1d11b1097fd5741
+Description: lock-free canonical-F32 rate-adjusting PCM ring
+ Rust shared library for single-producer/single-consumer PCM playout with
+ persistent sample-rate conversion, clock recovery, and selectable
+ G.711 Appendix I loss concealment.
+
+Package: librate-adjusting-pcm-ring3-dev
+Source: rate-adjusting-pcm-ring
+Version: 3.0.0~alpha3-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 33
+Depends: librate-adjusting-pcm-ring3 (= 3.0.0~alpha3-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rate_adjusting_pcm_ring
+Priority: optional
+Section: libs
+Filename: pool/main/r/rate-adjusting-pcm-ring/librate-adjusting-pcm-ring3-dev_3.0.0~alpha3-1_arm64.deb
+Size: 10416
+SHA256: c936f4023abb55785e9b023f8a4658c45e89d0f8411f7e9456effbbfa6091911
+SHA1: a8d290806f1649f9438e3bb619499e20f3ab03bf
+MD5sum: d879823f874ee127dec84eef5e6e75eb
+Description: development files for the F32 rate-adjusting PCM ring
+ Public descriptor header and pkg-config metadata for consumers of the
+ dynamically linked ABI-major-3 canonical-F32 PCM ring.
+
+Package: librnnoise-dev
+Source: rnnoise
+Version: 0.2-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1468
+Depends: librnnoise0 (= 0.2-1.deb13)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libdevel
+Filename: pool/main/r/rnnoise/librnnoise-dev_0.2-1.deb13_arm64.deb
+Size: 1196180
+SHA256: 21e18ed5c296a520f050190554f6ed66ae86ea297285611959c3b45ceca5b921
+SHA1: 08e9c90d8a8202ca78097a213b1408d8800b64eb
+MD5sum: 56d5d9e1c8772787d255eff0dccf8e78
+Description: development files for the RNNoise audio library
+ This package provides the header, shared-library link, and pkg-config metadata
+ required to build applications using RNNoise.
+
+Package: librnnoise0
+Source: rnnoise
+Version: 0.2-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1489
+Depends: libc6 (>= 2.17)
+Multi-Arch: same
+Homepage: https://gitlab.xiph.org/xiph/rnnoise
+Priority: optional
+Section: libs
+Filename: pool/main/r/rnnoise/librnnoise0_0.2-1.deb13_arm64.deb
+Size: 1192604
+SHA256: 513433bcd7b2cf88d770d1030acb3e885d3d6e1dd0ba1925c148c9352aea07d2
+SHA1: 0eafa84a26a1e6fc9a265b82f6321bb561b9e485
+MD5sum: 42ae1472bde29ab7fc825f12d857fb51
+Description: recurrent neural network audio noise suppression library
+ RNNoise combines signal processing and recurrent neural networks to suppress
+ background noise in speech audio.
+
+Package: librptadv-control-asterisk-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 15
+Depends: librptadv-control-asterisk-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-control-asterisk-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 3296
+SHA256: f2ebbb1ce848075b38d74d5f437c40723532500b6e0ae7edbd36297509516c57
+SHA1: 74ed936259c7a0798e5c39d0c3673360a01ee067
+MD5sum: a7926bea4bebbc196014b11bf8e5678a
+Description: development files for the rpt_advanced control adapter
+ Public C header and unversioned linker name for the versioned control adapter.
+
+Package: librptadv-control-asterisk-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 337
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), asterisk-abi-1fb7f5c06d7a2052e38d021b3d8ca151
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-control-asterisk-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 123776
+SHA256: 15cc9d73a6aab16cc12443712f818ab161a902b03c084815f78c727212080788
+SHA1: bca288d9ac394656e5cf2be47f5b3d22306b8b05
+MD5sum: f7a2ab4484b36d00ef431d31114b9c50
+Description: Asterisk taskprocessor adapter for rpt_advanced
+ Versioned Rust C-ABI adapter for bounded Asterisk taskprocessor execution.
+
+Package: librptadv-control-standalone-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 15
+Depends: librptadv-control-standalone-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-control-standalone-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 3304
+SHA256: ae18b1622a72f990a3410c5057e1cdd5a1d193a8356d65c95b8e76ac65207b84
+SHA1: 6b13616a08dfb5d1f8ed72d65780ba576d58f53f
+MD5sum: 8db11d106bf348660cdc4d418bc053fa
+Description: development files for the standalone control adapter
+ Public C header and unversioned linker name for the standalone control adapter.
+
+Package: librptadv-control-standalone-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 401
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-control-standalone-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 133764
+SHA256: 5a999009b9518a58ade051fd3223d1ffeefd37fd61ea722512c31a549e86e591
+SHA1: 228848b10076a783a66786066691f5db18c760b7
+MD5sum: e807edaeacd94bbef55a8b15c97328a2
+Description: standalone taskprocessor adapter for rpt_advanced
+ Versioned Rust C-ABI adapter for bounded lock-free standalone control tasks.
+
+Package: librptadv-ffmpeg-adapter-dev
+Source: rptadv-ffmpeg-adapter
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 26
+Depends: librptadv-ffmpeg-adapter1 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-ffmpeg-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-ffmpeg-adapter/librptadv-ffmpeg-adapter-dev_0.1.0~alpha2-1_arm64.deb
+Size: 5128
+SHA256: f4494978e158d42e1d418679b011202684941f2a504d5c2d09e4a29269c024f0
+SHA1: 1606e85cd7fb85a0360c8ad4eb92bf37b5c43432
+MD5sum: 733890fbaa5c9180f0bf2ca548134fb1
+Description: development files for the rpt_advanced FFmpeg adapter
+ Public C header and pkg-config metadata for dynamic graph consumers.
+
+Package: librptadv-ffmpeg-adapter1
+Source: rptadv-ffmpeg-adapter
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libavfilter10 (>= 7:7.1.5), libavutil59 (>= 7:7.1.5), libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-ffmpeg-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-ffmpeg-adapter/librptadv-ffmpeg-adapter1_0.1.0~alpha2-1_arm64.deb
+Size: 121436
+SHA256: 4ad76d8f63fccfc185bad8fb46de2859b901e8d456dbd2daa4265bea6e3d3752
+SHA1: 7c635a77c4e0b3fd06abdfa7ecdc0a65a43174c1
+MD5sum: 53cb1894859bea85a53e3854a89c8a11
+Description: FFmpeg graph adapter for rpt_advanced
+ Versioned dynamic adapter exposing normalized F32 PCM graph processing.
+
+Package: librptadv-file-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 22
+Depends: librptadv-file-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-file-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 4984
+SHA256: 50f43028b43c844097867b6f7ca51e5afc0a36564f2a575fd32c18786b205937
+SHA1: 6fae83d5bbad3c89e11d3cf6165925ff76f4cffb
+MD5sum: 18257c3898fa0afd5a0e5dbd7a99a3c9
+Description: development files for the rpt_advanced file adapter
+ Public C headers and unversioned linker name for the versioned file adapter.
+
+Package: librptadv-file-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 401
+Depends: libc6 (>= 2.39), libgcc-s1 (>= 4.2), ffmpeg
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-file-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 143776
+SHA256: 57a0ee866367733fb146782646e4c17dffd834c0bebba93f0f8f889f127e99fa
+SHA1: b488c4082007f97198caedcdbf0a079862547cbf
+MD5sum: d398259d130259a434e0196fac7a0482
+Description: local-file preparation adapter for rpt_advanced
+ Versioned Rust C-ABI adapter that prepares local files outside the real-time
+ audio path.
+
+Package: librptadv-gpio-adapter-dev
+Source: rptadv-gpio-adapter
+Version: 0.1.0~alpha4-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 53
+Depends: librptadv-gpio-adapter1 (= 0.1.0~alpha4-1), librptadvsignaling-dev (>= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-gpio-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-gpio-adapter/librptadv-gpio-adapter-dev_0.1.0~alpha4-1_arm64.deb
+Size: 12744
+SHA256: 2564f89fde4025b2cb412a3b0ae88866a32a21925b8f42eac8f4102448d89482
+SHA1: 226503c6f410750f1bf8f213576f549cb8123c5a
+MD5sum: da14f6f745a4ff9e8f7ac7c31b66eaf5
+Description: development files for the rpt_advanced GPIO adapter
+ Public C header and pkg-config metadata for dynamic consumers of the CM119
+ HID and Linux parallel GPIO adapter.
+
+Package: librptadv-gpio-adapter1
+Source: rptadv-gpio-adapter
+Version: 0.1.0~alpha4-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 400
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadvsignaling1 (>= 0.1.0~alpha1-1), libusb-1.0-0 (>= 2:1.0.16)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-gpio-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-gpio-adapter/librptadv-gpio-adapter1_0.1.0~alpha4-1_arm64.deb
+Size: 132308
+SHA256: 04378b42f80970a8e94dcc72d48f8f4dc186d461a1205b82b78a2b6cce9f7710
+SHA1: 37a1ca877c26003f8ddaa4cbc4d562c256d7675e
+MD5sum: a23f347d7b2f2128663beeb220157a7c
+Description: CM119 HID and Linux parallel GPIO adapter for rpt_advanced
+ Versioned dynamic GPIO adapter used by rpt_advanced radio ports.
+
+Package: librptadv-gpiod-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 21
+Depends: librptadv-gpiod-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-gpiod-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 4628
+SHA256: d141d3f4e3d875d94d4f8c2c58e6f5f4482827e87a74f2a3cc1a8c41f5a9d881
+SHA1: 99b13a5dc04996780ebd031b8d48bcd5bac418a9
+MD5sum: 9c697e83b63650484d6566e67be8d6e0
+Description: development files for the rpt_advanced Linux GPIO adapter
+ Public C header and unversioned linker name for the Linux GPIO adapter.
+
+Package: librptadv-gpiod-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 337
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), libgpiod3 (>= 2.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-gpiod-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 122328
+SHA256: 9cc574d6fdf2d106c85ebb6d554b57fd20d369a76a0116b695488106639e7475
+SHA1: 3cd9d2a83917ce24196ae95246bce9c6473d5f12
+MD5sum: c833f6f67bb0ce9f188789ea855defb4
+Description: Linux GPIO adapter for rpt_advanced site equipment
+ Versioned Rust C-ABI adapter for configured digital inputs and outputs
+ through libgpiod, outside the real-time audio path.
+
+Package: librptadv-hwmon-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 21
+Depends: librptadv-hwmon-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-hwmon-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 4648
+SHA256: a95929c6d77516309c639cac7aa6713bf3b1a2f00fbc211ec05a3cb1b51e04c3
+SHA1: 049f6107c4a680ed2d54851c3513b172d8dd12d8
+MD5sum: 89dd2d8dc781bbfb593bb05c9ec55c8e
+Description: development files for the rpt_advanced Linux sensor adapter
+ Public C header and unversioned linker name for the Linux sensor adapter.
+
+Package: librptadv-hwmon-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 401
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), libsensors5 (>= 1:3.5.0)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-hwmon-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 130804
+SHA256: 97a4a5a1f2f09a8f048edb0423585c03bc57c46069a40a88bc17c0b72517db49
+SHA1: d8a9527e315156285776bf455c6706419fb0486e
+MD5sum: 522d4c701a4bee35f18c5ecdc82fbea1
+Description: Linux sensor and PWM adapter for rpt_advanced site equipment
+ Versioned Rust C-ABI adapter for configured hwmon measurements and hardware
+ PWM outputs, outside the real-time audio path.
+
+Package: librptadv-iax2-client-dev
+Source: librptadviax2
+Version: 0.1.0~alpha7
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 29
+Depends: librptadv-iax2-client1 (= 0.1.0~alpha7)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadviax2
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadviax2/librptadv-iax2-client-dev_0.1.0~alpha7_arm64.deb
+Size: 6892
+SHA256: 041b4cf6c816c719c2a8e42302a6d796c2054efc39caf7530b295512d3de0429
+SHA1: 721d305d542b3eb68a2f6bfb984ea13348daf2b3
+MD5sum: e44ae798ff5d939e3398e29ab9286df3
+Description: development files for the standalone IAX2 client
+ Public C header and pkg-config metadata for dynamic consumers.
+
+Package: librptadv-iax2-client1
+Source: librptadviax2
+Version: 0.1.0~alpha7
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 848
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadviax2
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadviax2/librptadv-iax2-client1_0.1.0~alpha7_arm64.deb
+Size: 293156
+SHA256: b65f055a5c7c3c231e352e31c0238a1d47c30d9361c7513751afc560022e7e99
+SHA1: 3911f80e7fa52f07f380b009f859fe7208f7c018
+MD5sum: b7ac1e4e5018a72d6ccac43889b62fe8
+Description: standalone IAX2 protocol and ULAW client
+ Versioned Asterisk-free dynamic IAX2 client ABI for rpt_advanced.
+
+Package: librptadv-jitter-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 26
+Depends: librptadv-jitter-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-jitter-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 5768
+SHA256: 97596828643d064c75bf21702b961030a8b24d61db37a6976b0f4571307e0573
+SHA1: 88170c3d96617d39a8739dbd7a245b655cee70f6
+MD5sum: 1972b51f4166e6c145aed4360306f692
+Description: development files for the rpt_advanced jitter adapter
+ Public C header, pkg-config metadata and unversioned linker name for the
+ adaptive packet jitter adapter.
+
+Package: librptadv-jitter-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 337
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), libspeexdsp1 (>= 1.2.1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-jitter-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 126780
+SHA256: 94b69340ba9f5f241151ad1816b9cc91f95eea4493429abd1f74e1aac297f52a
+SHA1: a6597c8bca6d7fab4bf3b00a158d14aac4148449
+MD5sum: cec3e734d4dbf48857fbff95cded1669
+Description: adaptive packet jitter adapter for rpt_advanced
+ Versioned Rust C-ABI adapter for SpeexDSP packet ordering and playout timing
+ outside the real-time audio path.
+
+Package: librptadv-portaudio-alsa-adapter-dev
+Source: rptadv-portaudio-alsa-adapter
+Version: 0.2.0~alpha3-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 48
+Depends: librptadv-portaudio-alsa-adapter2 (= 0.2.0~alpha3-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-portaudio-alsa-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-portaudio-alsa-adapter/librptadv-portaudio-alsa-adapter-dev_0.2.0~alpha3-1_arm64.deb
+Size: 14464
+SHA256: 607066a3833204ce49f3b483449522b486e5434727796a92700a5fde90df6bca
+SHA1: b95c20c5bb2ec618b0cbfaf4e6d0e6b1e11ea7a2
+MD5sum: 8785eaa9fb7fdad014c66214359d8a87
+Description: development files for the rpt_advanced audio adapter
+ Public C header and pkg-config metadata for dynamic consumers of the
+ PortAudio and ALSA hardware-audio adapter.
+
+Package: librptadv-portaudio-alsa-adapter1
+Source: rptadv-portaudio-alsa-adapter
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 400
+Depends: libasound2t64 (>= 1.0.16), libc6 (>= 2.34), libgcc-s1 (>= 4.2), libportaudio2 (>= 19+svn20101113), librate-adjusting-pcm-ring2 (>= 2.0.0~alpha1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-portaudio-alsa-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-portaudio-alsa-adapter/librptadv-portaudio-alsa-adapter1_0.1.0~alpha2-1_arm64.deb
+Size: 144320
+SHA256: 22e554622aadf2520b1e95fc14213183d4dc7fd6ff51345d9f17ea5d5c7ef4c3
+SHA1: 677cb3645ebde0dff6a2a5cb3cbdadbc759ae5d5
+MD5sum: f1cfaf9b60768419a9a5eb4ab5bec02a
+Description: PortAudio and ALSA hardware audio adapter for rpt_advanced
+ Versioned dynamic hardware-audio adapter used by rpt_advanced radio ports.
+
+Package: librptadv-portaudio-alsa-adapter2
+Source: rptadv-portaudio-alsa-adapter
+Version: 0.2.0~alpha3-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 400
+Depends: libasound2t64 (>= 1.0.16), libc6 (>= 2.34), libgcc-s1 (>= 4.2), libportaudio2 (>= 19+svn20101113)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-portaudio-alsa-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-portaudio-alsa-adapter/librptadv-portaudio-alsa-adapter2_0.2.0~alpha3-1_arm64.deb
+Size: 144156
+SHA256: 480333db215af0151be698210e29bd1071bceb3dd56e746960d950b47353766a
+SHA1: 413675d58173617015daa340db144aa82006014a
+MD5sum: a5568bece6fcd1ad6d7e48066b66d8af
+Description: PortAudio and ALSA hardware audio adapter for rpt_advanced
+ Versioned dynamic hardware-audio adapter used by rpt_advanced radio ports.
+
+Package: librptadv-product-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 43
+Depends: librptadv-product1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-product-dev_0.1.0~alpha15-1_arm64.deb
+Size: 10956
+SHA256: 6388fcba7b827f276e11db2b6255d9fea95fb0255b6e1220238a080b5805b3cc
+SHA1: 65e689ad60cd6ee6084b0c76c2c8650f7d2359d1
+MD5sum: c090e7b1bb8f0e68500e72afc3909b97
+Description: development files for the rpt_advanced product
+ Public C header and unversioned linker name for the versioned product.
+
+Package: librptadv-product1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 4433
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librate-adjusting-pcm-ring3 (>= 3.0.0~alpha3), librptadv-samplerate-adapter2 (>= 0.2.0~alpha2), librptadvdtmf1 (>= 0.1.0~alpha2-1), librptadvmorse1 (>= 0.1.0~alpha1-1), librptadvschedule1 (>= 0.1.0~alpha2-1), librptadvtemplate1 (>= 0.1.0~alpha1-1), librptadvtone1 (>= 0.1.0~alpha1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-product1_0.1.0~alpha15-1_arm64.deb
+Size: 1541000
+SHA256: f5367da4b08e791700d27f6bff8f038ccd478b71180a9fd1dcdc932f1d2fae1c
+SHA1: a73c8c3135bc6dfbc52f258c3c8da0e53d3faac7
+MD5sum: 432c9e378f9ab240d5453cee0886e461
+Description: portable controller product for rpt_advanced
+ Versioned Rust C-ABI product that owns configuration, controller policy,
+ workers, and portable host-service clients.
+
+Package: librptadv-resolver-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 19
+Depends: librptadv-resolver-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-resolver-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 4064
+SHA256: 072829ec5b48a373ea4c1da4856b8034a0e61666486afd9913ed039532f7bc4f
+SHA1: 148cc7c4b9c5b281766f9f2f26a6664a1bd6fbbb
+MD5sum: db9b7657cd85e2296f5ac6b97974d918
+Description: development files for the rpt_advanced resolver adapter
+ Public C header and unversioned linker name for the resolver adapter.
+
+Package: librptadv-resolver-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 401
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-resolver-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 136436
+SHA256: 4b174772d3308901bbb2ce6f1a0936d7f23d4f38e1b92cc616706b98ff116cb4
+SHA1: f606c402b4bca0371793200aec53888ecfa407b4
+MD5sum: f1305b9242d706a8ea338fd3c18a9613
+Description: system DNS resolver adapter for rpt_advanced
+ Versioned Rust C-ABI adapter for system address and SRV resolution on
+ standalone control threads.
+
+Package: librptadv-rnnoise-adapter-dev
+Source: rptadv-rnnoise-adapter
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 26
+Depends: librptadv-rnnoise-adapter1 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-rnnoise-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-rnnoise-adapter/librptadv-rnnoise-adapter-dev_0.1.0~alpha2-1_arm64.deb
+Size: 5564
+SHA256: 864ccb47a560e8bf27de57b5713c426e2903c2c002275bafc747b4dad15d9da3
+SHA1: f9f18c59df8284198e312ff96479e56ada910f99
+MD5sum: bd132b93726b24b03abb519f94aa8ab5
+Description: development files for the rpt_advanced RNNoise adapter
+ Public C header and pkg-config metadata for consumers of the dynamic adapter.
+
+Package: librptadv-rnnoise-adapter1
+Source: rptadv-rnnoise-adapter
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 337
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librnnoise0 (>= 0.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-rnnoise-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-rnnoise-adapter/librptadv-rnnoise-adapter1_0.1.0~alpha2-1_arm64.deb
+Size: 119644
+SHA256: bf16a067daf4012ef95574f52d13beec8b86fa40f0198ff5869e6c9df99484b1
+SHA1: 36c3b7dc216ecce55f11ec0432bdd44f36d40a67
+MD5sum: c358c9595efdb4f8829292cf43aa2177
+Description: RNNoise adapter for rpt_advanced
+ Versioned dynamic RNNoise adapter used by rpt_advanced media components.
+
+Package: librptadv-samplerate-adapter-dev
+Source: rptadv-samplerate-adapter
+Version: 0.2.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 26
+Depends: librptadv-samplerate-adapter2 (= 0.2.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-samplerate-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-samplerate-adapter/librptadv-samplerate-adapter-dev_0.2.0~alpha2-1_arm64.deb
+Size: 7224
+SHA256: 80895398d96fcfe9ed6724e1fcb6f2cd9cae8ebc51ffc13b71900e27e9703a30
+SHA1: 776deb7237fdb2d35076018fccc052d01d661cd5
+MD5sum: 63f135ab538ff26b7a721e56211595d4
+Description: development files for the rpt_advanced sample-rate adapter
+ Public C header and pkg-config metadata for consumers of the dynamic adapter.
+
+Package: librptadv-samplerate-adapter1
+Source: rptadv-samplerate-adapter
+Version: 0.1.0~alpha3-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), libsamplerate0 (>= 0.1.7)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-samplerate-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-samplerate-adapter/librptadv-samplerate-adapter1_0.1.0~alpha3-1_arm64.deb
+Size: 119584
+SHA256: ed3c3127124fe6fea8330dd457f0467d1cd6d2dcc2683607b499db617dd64291
+SHA1: 9f181517f583dfd3e03331c32a5b4c8e5d74a61d
+MD5sum: 93888fc3e836ccd6550b7b5f9749eb91
+Description: libsamplerate adapter for rpt_advanced
+ Versioned dynamic libsamplerate adapter used by rpt_advanced media components.
+
+Package: librptadv-samplerate-adapter2
+Source: rptadv-samplerate-adapter
+Version: 0.2.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libavutil59 (>= 7:7.1.5), libc6 (>= 2.34), libgcc-s1 (>= 4.2), libswresample5 (>= 7:7.1.5)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rptadv-samplerate-adapter
+Priority: optional
+Section: libs
+Filename: pool/main/r/rptadv-samplerate-adapter/librptadv-samplerate-adapter2_0.2.0~alpha2-1_arm64.deb
+Size: 125824
+SHA256: 7659d36a4bd8164de8f6baab128dd5b0a8ad5ae71d85db0f5da5b5d01f0caf59
+SHA1: 97c4be5bf2669d781ad52014edae20f6318aeae6
+MD5sum: 4bf797676b7b6e44bf1c166665052321
+Description: libswresample adapter for rpt_advanced
+ Versioned dynamic prepared resampler used by rpt_advanced media components.
+
+Package: librptadv-speech-adapter-dev
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 22
+Depends: librptadv-speech-adapter1 (= 0.1.0~alpha15-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-speech-adapter-dev_0.1.0~alpha15-1_arm64.deb
+Size: 4980
+SHA256: cc40e179f175e1f4e021848641a363e197036a04bd70cfa6dbcdcb61f175514c
+SHA1: 77054389581ea938e26d8f4a3019c81b838750af
+MD5sum: 9cc411358f18c6e52720da3e7508d5fd
+Description: development files for the rpt_advanced speech adapter
+ Public C headers and unversioned linker name for the versioned speech adapter.
+
+Package: librptadv-speech-adapter1
+Source: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 465
+Depends: libc6 (>= 2.39), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/librptadv-speech-adapter1_0.1.0~alpha15-1_arm64.deb
+Size: 156612
+SHA256: 5c411866fabce374dbdcc41862ae0552d60b1bd93d34cd5788d35201574283f6
+SHA1: 5dffd7875d638ad0b2cba10a4e5df042c4d9325f
+MD5sum: ed6cf058fb520424f741c7ac36380e5a
+Description: offline speech preparation adapter for rpt_advanced
+ Versioned Rust C-ABI adapter that prepares Piper speech outside the real-time
+ audio path.
+
+Package: librptadvctcss-dev
+Source: librptadvctcss
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 22
+Depends: librptadvctcss2 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvctcss
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvctcss/librptadvctcss-dev_0.1.0~alpha2-1_arm64.deb
+Size: 4512
+SHA256: 7862e6e7785e11a4e269f0d3d799d48eb3215bcdaf160514230e541ea187c469
+SHA1: 9c13520cffd9edca51e35b4da5bb3baab5e6f810
+MD5sum: 309c4eb31e275aab01309ece329ead8b
+Description: development files for rpt_advanced CTCSS
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable CTCSS ABI.
+
+Package: librptadvctcss1
+Source: librptadvctcss
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvctcss
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvctcss/librptadvctcss1_0.1.0~alpha1-1_arm64.deb
+Size: 121664
+SHA256: 26611e329a51ce7d3dbce82f2d23dfed52a0b3fe1f8a5f17f4d80584cbecbb5d
+SHA1: 17dfb1effb44467a1f91d8f92300c47406498ef1
+MD5sum: eda613c56f9b209171539e3add606ee7
+Description: portable CTCSS state for rpt_advanced
+ Versioned 8 kHz receive and 48 kHz transmit ABI for radio consumers.
+
+Package: librptadvctcss2
+Source: librptadvctcss
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvctcss
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvctcss/librptadvctcss2_0.1.0~alpha2-1_arm64.deb
+Size: 121744
+SHA256: b8fd5b9826a4b403abe9cce206dae818c250802ca84c0349f317137ea0d48f5c
+SHA1: 356e6b4fb02a18728dc03d855a4ebda86a9525c3
+MD5sum: f443b8e060534d98e40d1c711c5d1f86
+Description: portable CTCSS state for rpt_advanced
+ Versioned 8 kHz receive and 48 kHz transmit ABI for radio consumers.
+
+Package: librptadvdcs-dev
+Source: librptadvdcs
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 22
+Depends: librptadvdcs1 (= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvdcs
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvdcs/librptadvdcs-dev_0.1.0~alpha1-1_arm64.deb
+Size: 4172
+SHA256: 211f545416a01257b5a8715856dde32abfd6e5f59f358e05b372c2d5c5ebc485
+SHA1: e8d4c3f4bb19aeb118d71dce589d52bccd2e9afb
+MD5sum: 4d3dfda69993dbafe19696e787674779
+Description: development files for rpt_advanced DCS
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable DCS ABI.
+
+Package: librptadvdcs1
+Source: librptadvdcs
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvdcs
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvdcs/librptadvdcs1_0.1.0~alpha1-1_arm64.deb
+Size: 121264
+SHA256: a09a990dde74713e0003a89d65a1a08a0e66f4e895fe745fd4e10d92ddeb2937
+SHA1: 79c95f16c8e8b128d7fcfd4998329590413a05bd
+MD5sum: e8728a062f4ce28931bd106e04739375
+Description: portable DCS state for rpt_advanced
+ Versioned DCS receive and transmit ABI for radio consumers.
+
+Package: librptadvdtmf-dev
+Source: librptadvdtmf
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 23
+Depends: librptadvdtmf1 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvdtmf
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvdtmf/librptadvdtmf-dev_0.1.0~alpha2-1_arm64.deb
+Size: 4784
+SHA256: 916cb5396bd5b2fbf2d52a0f1b04203c65be20ff18f5e6aa075f3a15ceaeebf7
+SHA1: c9772c7610be43ed2c2c2a9718d9cd702ec7d722
+MD5sum: f7bfecb9848ee79adf1d0a8991de23b7
+Description: development files for rpt_advanced DTMF
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable DTMF ABI.
+
+Package: librptadvdtmf1
+Source: librptadvdtmf
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadvtone1 (>= 0.1.0~alpha1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvdtmf
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvdtmf/librptadvdtmf1_0.1.0~alpha2-1_arm64.deb
+Size: 130680
+SHA256: 90ac59d7fd93e141c0ff0b89b902ee2e002e8f2b82090d975ed677c7872ba9e2
+SHA1: 0dd88979ac7ca4c2e92d428e4145395806094252
+MD5sum: 1cb06a1c0e7e51b556958a4732fad4b7
+Description: portable DTMF state for rpt_advanced
+ Versioned 48 kHz DTMF detection and finite PCM generation ABI.
+
+Package: librptadvmorse-dev
+Source: librptadvmorse
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 19
+Depends: librptadvmorse1 (= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvmorse
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvmorse/librptadvmorse-dev_0.1.0~alpha1-1_arm64.deb
+Size: 3556
+SHA256: 61314d29a28cf9987d4563b35d3c1dc3906ba2e99bbc0126c73e012792b2ee7a
+SHA1: 28be91499eb89ea65a7611fb5808f042c7344a6d
+MD5sum: b673b90f159e37c1eaa0ae34edf0bb68
+Description: development files for the rpt_advanced morse core
+ Public C header and pkg-config metadata for dynamic consumers.
+
+Package: librptadvmorse1
+Source: librptadvmorse
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadvtone1 (>= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvmorse
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvmorse/librptadvmorse1_0.1.0~alpha1-1_arm64.deb
+Size: 121144
+SHA256: 0e6b1f397e0f69f0b0e7686c20a5bdca207eb2fe8c288c7587ed4f9b50d89455
+SHA1: 867a43d7b718e13f6fab6f6e2fea124ceb5a6ad3
+MD5sum: 9493b9bd4d74a0321df62d5b5e25806e
+Description: portable 48 kHz morse core for rpt_advanced
+ Versioned native morse generator ABI used by rpt_advanced components.
+
+Package: librptadvradio-dev
+Source: librptadvradio
+Version: 0.1.0~alpha8-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 42
+Depends: librptadvradio4 (= 0.1.0~alpha8-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvradio
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvradio/librptadvradio-dev_0.1.0~alpha8-1_arm64.deb
+Size: 9648
+SHA256: afb2040a8fcd21338c474370a6e53dc0b2008c05fde6fa8cee3bfeba69d29f2d
+SHA1: fa0e14f1d69d54e5c40e4dd3d1d912af70876370
+MD5sum: 99ac1105ffc174fc20d831ba199bb9c2
+Description: development files for the rpt_advanced radio core
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable native radio-core ABI.
+
+Package: librptadvradio1
+Source: librptadvradio
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.38), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvradio
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvradio/librptadvradio1_0.1.0~alpha1-1_arm64.deb
+Size: 131684
+SHA256: 8df3e44c517a088dbc944241a7c6a39cbcee25418014e8f469eb440bc5850da3
+SHA1: 30452bdb45627028e3582a5ab77b85ebbfd04089
+MD5sum: 8c8d70525d6b936bc766e814119ab98a
+Description: portable f32 radio core for rpt_advanced
+ Versioned Asterisk-free native radio-core ABI used by rpt_advanced adapters.
+
+Package: librptadvradio4
+Source: librptadvradio
+Version: 0.1.0~alpha8-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 400
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librptadvctcss2 (>= 0.1.0~alpha2-1), librptadvdcs1 (>= 0.1.0~alpha1-1), librptadvsquelch2 (>= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvradio
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvradio/librptadvradio4_0.1.0~alpha8-1_arm64.deb
+Size: 140704
+SHA256: 141c3f9372347166281d0c4c9d5ae6588dca07d119c0d0873e207ded42681145
+SHA1: 1aef74b2322343840b81ab6efc93879d1cef65f5
+MD5sum: bc880864f0da1dbced0430371cbbd816
+Description: portable f32 radio core for rpt_advanced
+ Versioned Asterisk-free native radio-core ABI used by rpt_advanced adapters.
+
+Package: librptadvschedule-dev
+Source: librptadvschedule
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 25
+Depends: librptadvschedule1 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvschedule
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvschedule/librptadvschedule-dev_0.1.0~alpha2-1_arm64.deb
+Size: 4788
+SHA256: 950e63c85c2e98df22d0cc9dbfe9220f8622533b784f6f891a277e0c53bd82f2
+SHA1: 28a7ee3f3927f585d6b1b158a3aca1e5dfcc7714
+MD5sum: 13b591e917a1f78665384d128964f387
+Description: development files for rpt_advanced scheduling
+ Public C header and pkg-config metadata for dynamic consumers of the
+ generic schedule ABI.
+
+Package: librptadvschedule1
+Source: librptadvschedule
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvschedule
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvschedule/librptadvschedule1_0.1.0~alpha2-1_arm64.deb
+Size: 125400
+SHA256: 5d73205e5378bb8e63477b22bb525a8bfea28a1ab0cbc420d36901f30d730272
+SHA1: 8a530199b664075dd919d3802775cd88ccdac888
+MD5sum: bb0cb31d5ae3db3ff526f0ca0b0b6a8b
+Description: generic civil scheduling for rpt_advanced
+ Versioned civil-time recurrence and window calculation ABI for controller consumers.
+
+Package: librptadvsignaling-dev
+Source: librptadvsignaling
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 22
+Depends: librptadvsignaling1 (= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvsignaling
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvsignaling/librptadvsignaling-dev_0.1.0~alpha1-1_arm64.deb
+Size: 4160
+SHA256: 30596a6e97115b4006545f22064f4e2fe2df654e4a11439ec534b3a25bf497d5
+SHA1: 473d65d3f3600f26d6feedc882a0b913c05e8b7d
+MD5sum: 8b591ff030a59fc676d5a91d9e7831e3
+Description: development files for rpt_advanced signaling
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable signaling ABI.
+
+Package: librptadvsignaling1
+Source: librptadvsignaling
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvsignaling
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvsignaling/librptadvsignaling1_0.1.0~alpha1-1_arm64.deb
+Size: 120540
+SHA256: d1bb96c35015b89c7d18a99c7d60366adb1b6aa89a0e2d792b5c150a3ec3ad21
+SHA1: 790400ccfce43809d247dfa1182ed4512ec3ddac
+MD5sum: 8bf0448f495c1acea6a612b40702bfc1
+Description: portable signaling state for rpt_advanced
+ Versioned GPIO pulse and parallel signaling ABI for radio consumers.
+
+Package: librptadvsquelch-dev
+Source: librptadvsquelch
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 21
+Depends: librptadvsquelch2 (= 0.1.0~alpha2-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvsquelch
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvsquelch/librptadvsquelch-dev_0.1.0~alpha2-1_arm64.deb
+Size: 4188
+SHA256: c8a0ca4818efaab891bc075490961b87205fd8c459d14aa455e2b51d4508d0de
+SHA1: 229ef6cdbadaf6530b119031dc989ad2e86edf7c
+MD5sum: 5c3861df6a5cc0183cd44f39ac2eff97
+Description: development files for rpt_advanced squelch
+ Public C header and pkg-config metadata for dynamic consumers of the
+ portable squelch ABI.
+
+Package: librptadvsquelch1
+Source: librptadvsquelch
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvsquelch
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvsquelch/librptadvsquelch1_0.1.0~alpha1-1_arm64.deb
+Size: 119304
+SHA256: 30ba133d1e541c424a151765ddd92e6123866c01dee89ab3d8a5bccdb77def74
+SHA1: 71842a90e795eaefbfad2d96cd7763e6f42a324b
+MD5sum: 2bc5c31db26a0d8f17dfeba0ecd3a74f
+Description: portable squelch state for rpt_advanced
+ Versioned MICOR discriminator-noise and VOX hold ABI for radio consumers.
+
+Package: librptadvsquelch2
+Source: librptadvsquelch
+Version: 0.1.0~alpha2-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvsquelch
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvsquelch/librptadvsquelch2_0.1.0~alpha2-1_arm64.deb
+Size: 119340
+SHA256: c167fc844e1f323550e55b6f36ee2c9ca5c85ca32e90e4b7bb81e88a8c438046
+SHA1: 2943589759522a969e42b53e2cae082608195b1e
+MD5sum: 8f06d1e1f6fd124888149ef4e200899e
+Description: portable squelch state for rpt_advanced
+ Versioned MICOR discriminator-noise and VOX hold ABI for radio consumers.
+
+Package: librptadvtemplate-dev
+Source: librptadvtemplate
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 21
+Depends: librptadvtemplate1 (= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvtemplate
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvtemplate/librptadvtemplate-dev_0.1.0~alpha1-1_arm64.deb
+Size: 3588
+SHA256: fdb3ceb741710890b98e08c5687f016c4bb6a4cb6232608a22752386b82b7be1
+SHA1: 1e7ea879b2d400fc4bb2c63332f6a63ac26e5c6b
+MD5sum: dfe3965b3bb262772fcf08a2246e5ca3
+Description: development files for rpt_advanced templates
+ Public C header and pkg-config metadata for dynamic consumers of the
+ bounded template ABI.
+
+Package: librptadvtemplate1
+Source: librptadvtemplate
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvtemplate
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvtemplate/librptadvtemplate1_0.1.0~alpha1-1_arm64.deb
+Size: 120352
+SHA256: 9d4f3579a73d03d9b52b6ee565f872b97cefa1b492de1f954fb49070bb97be7d
+SHA1: 9dc951b469a362274b1fd64d3190caa9a76e86c6
+MD5sum: 18e22f679ba4c878f4fb3d7aa1a755f1
+Description: bounded message templates for rpt_advanced
+ Versioned UTF-8 template validation and expansion ABI for controller consumers.
+
+Package: librptadvtone-dev
+Source: librptadvtone
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 21
+Depends: librptadvtone1 (= 0.1.0~alpha1-1)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvtone
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvtone/librptadvtone-dev_0.1.0~alpha1-1_arm64.deb
+Size: 4200
+SHA256: b8dd13c90622a66e2425de80aaa303162a4e36580ef6834a537df3551e1eb6e3
+SHA1: d1fd49241216554be7b677bd305b439653e98785
+MD5sum: 196d5c26c9cf65eaf3f89e82115d10db
+Description: development files for the rpt_advanced tone core
+ Public C header and pkg-config metadata for dynamic consumers.
+
+Package: librptadvtone1
+Source: librptadvtone
+Version: 0.1.0~alpha1-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 336
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/librptadvtone
+Priority: optional
+Section: libs
+Filename: pool/main/libr/librptadvtone/librptadvtone1_0.1.0~alpha1-1_arm64.deb
+Size: 136672
+SHA256: e7e0beb0f1713595f1dc8ce1229e6b314deeaa7d563a6b1454421f9327cf20df
+SHA1: 9816fde3edbfe8fa74c20f61b1c6e5963aeeacb7
+MD5sum: a70d18d7e533df7cf05ecd7694ce85c8
+Description: portable 48 kHz tone core for rpt_advanced
+ Versioned native tone generator ABI used by rpt_advanced components.
+
+Package: libusbradioplus-product-dev
+Source: usbradioplus
+Version: 0.1.0~alpha24-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 52
+Depends: libusbradioplus-product1 (= 0.1.0~alpha24-1.deb13)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: libdevel
+Filename: pool/main/u/usbradioplus/libusbradioplus-product-dev_0.1.0~alpha24-1.deb13_arm64.deb
+Size: 15580
+SHA256: 88fcb681815169d297461fe7600f1691a658b470cc6c47c667b105bcdbc89e53
+SHA1: 9212b96dcee76b887fd0fb90ab8588efc8464b19
+MD5sum: 9438d1c14b532d1d5031752796a526d5
+Description: development files for the USBRadioPlus radio product
+ Public C header, linker name, and pkg-config metadata for the versioned radio
+ product descriptor.
+
+Package: libusbradioplus-product1
+Source: usbradioplus
+Version: 0.1.0~alpha24-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1243
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), librate-adjusting-pcm-ring3 (>= 3.0.0~alpha2), librptadvradio4 (>= 0.1.0~alpha5), librptadv-samplerate-adapter2 (>= 0.2.0~alpha1), librptadv-ffmpeg-adapter1 (>= 0.1.0~alpha2), librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3), librptadv-gpio-adapter1 (>= 0.1.0~alpha4), librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2)
+Breaks: usbradioplus (<< 0.1.0~alpha24-1.deb13)
+Replaces: usbradioplus (<< 0.1.0~alpha24-1.deb13)
+Multi-Arch: same
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: hamradio
+Filename: pool/main/u/usbradioplus/libusbradioplus-product1_0.1.0~alpha24-1.deb13_arm64.deb
+Size: 375376
+SHA256: 9b00b27cc660bdb333acfe550d42f9b03aa53df2a6f07900fc6f1ec94d3035b6
+SHA1: aeb6c1e0f7284cd97e7af6daf7adc1c31b63a1bb
+MD5sum: 4781093af7d7de0b99af21dd13d678ac
+Description: shared USBRadioPlus radio product
+ Versioned radio configuration, processing, and station lifecycle library with
+ its private AGC plugin. Native consumers do not require Asterisk or a controller.
+
+Package: libusbradioplus-product1-dbgsym
+Source: usbradioplus
+Version: 0.1.0~alpha24-1.deb13
+Auto-Built-Package: debug-symbols
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 4217
+Depends: libusbradioplus-product1 (= 0.1.0~alpha24-1.deb13)
+Multi-Arch: same
+Priority: optional
+Section: debug
+Filename: pool/main/u/usbradioplus/libusbradioplus-product1-dbgsym_0.1.0~alpha24-1.deb13_arm64.deb
+Size: 3919308
+SHA256: 09b2e050ed0b1b7daeb575e754e9c0349e4435752f14fb0f7f2c90a1d6dc11af
+SHA1: 939b39f026425999a252a5cb24f00d42a53384a0
+MD5sum: ecd09f9b1bb01dfb4f50c869320b7787
+Description: debug symbols for libusbradioplus-product1
+Build-Ids: 0ecb50e5c7f791c437aa50d2413dc7797fdba95c 8bf9c9a524ae6b2339ad2a256e424001c59ab2cf
+
+Package: rpt-advanced
+Version: 0.1.0~alpha15-1
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 2696
+Depends: libc6 (>= 2.34), libgcc-s1 (>= 4.2), adduser, librate-adjusting-pcm-ring3 (>= 3.0.0~alpha3), librptadv-samplerate-adapter2 (>= 0.2.0~alpha2), librptadv-product1 (= 0.1.0~alpha15-1), libusbradioplus-product1 (>= 0.1.0~alpha24-1.deb13), librptadv-file-adapter1 (= 0.1.0~alpha15-1), librptadv-speech-adapter1 (= 0.1.0~alpha15-1), librptadv-control-standalone-adapter1 (= 0.1.0~alpha15-1), librptadv-resolver-adapter1 (= 0.1.0~alpha15-1), librptadv-jitter-adapter1 (= 0.1.0~alpha15-1), librptadvradio4 (>= 0.1.0~alpha6), librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3), librptadv-gpio-adapter1 (>= 0.1.0~alpha2), librptadv-ffmpeg-adapter1 (>= 0.1.0~alpha2), librptadv-iax2-client1 (>= 0.1.0~alpha7)
+Homepage: https://github.com/cpeter1207/rpt_advanced
+Priority: optional
+Section: hamradio
+Filename: pool/main/r/rpt-advanced/rpt-advanced_0.1.0~alpha15-1_arm64.deb
+Size: 1130224
+SHA256: b1fd35e2b30d310d7b3c3d8af41efa9c191f025b84c0b72ffca32c2b20e124ee
+SHA1: aded2e43200cb64413e4acfb75e579dae12add46
+MD5sum: 48406910e98049221d2c372e61c2f178
+Description: standalone Rust-owned radio controller
+ Standalone controller service for configured radio nodes. It has no runtime
+ dependency on Asterisk or ASL3; the deprecated Asterisk adapter is packaged
+ separately as app-rpt-advanced.
+
+Package: usbradioplus
+Version: 0.1.0~alpha24-1.deb13
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 1460
+Depends: libc6 (>= 2.39), libgcc-s1 (>= 4.2), librate-adjusting-pcm-ring3 (>= 3.0.0~alpha3), librptadv-ffmpeg-adapter1 (>= 0.1.0~alpha2), librptadv-gpio-adapter1 (>= 0.1.0~alpha4), librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3), librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2), librptadv-samplerate-adapter2 (>= 0.2.0~alpha2), librptadvradio4 (>= 0.1.0~alpha8), libusbradioplus-product1 (= 0.1.0~alpha24-1.deb13), asl3-asterisk (= 2:22.9.0+asl3-3.9.3-1.deb13) | asl3-asterisk (= 2:22.10.1+asl3-3.10.5-1.deb13), whiptail
+Conflicts: usbradioplus-asl3105
+Replaces: usbradioplus-asl3105
+Homepage: https://github.com/cpeter1207/USBRadioPlus
+Priority: optional
+Section: hamradio
+Filename: pool/main/u/usbradioplus/usbradioplus_0.1.0~alpha24-1.deb13_arm64.deb
+Size: 445988
+SHA256: 2d47c94b7f8ea9b6e2b1f5edc12cef169bf034791e23b50be4b9d69f821d3224
+SHA1: 5d8334ddf0eeda72778d40e69df997b79b92aac2
+MD5sum: 616a2522eb4bc4698dab3b2b0d0f7cfe
+Description: enhanced USB radio channel driver for AllStarLink
+ USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
+ filtering and dynamics processing for amateur-radio and land-mobile interfaces
+ using CM119-class USB audio devices.
+
+Package: usbradioplus-dbgsym
+Source: usbradioplus
+Version: 0.1.0~alpha24-1.deb13
+Auto-Built-Package: debug-symbols
+Architecture: arm64
+Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
+Installed-Size: 5431
+Depends: usbradioplus (= 0.1.0~alpha24-1.deb13)
+Priority: optional
+Section: debug
+Filename: pool/main/u/usbradioplus/usbradioplus-dbgsym_0.1.0~alpha24-1.deb13_arm64.deb
+Size: 4365944
+SHA256: 584c4ebd6ed2183eb1ee5768cd3574021f4a48aee6c5234d377986171d3647ad
+SHA1: 86aa0550f66eae70614b7d00f1eeef33ac97416a
+MD5sum: b58362cfe399d17ed78e8266f1d34add
+Description: debug symbols for usbradioplus
+Build-Ids: 9e0e7bec67ff3747e0dc48e876f7b4829fe8af0e aa83fdf0bbd4e7f7403ae1ee41a7e8e92fe91ee5 c43da4eb3ffb7235cd53d7285c60b1c4fd6369a2
+

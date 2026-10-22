@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_CONFIG_PATH","DEFAULT_LOCK_PATH","HELP"],"enum":["ArgumentError","ParseOutcome"],"struct":["Arguments"]};

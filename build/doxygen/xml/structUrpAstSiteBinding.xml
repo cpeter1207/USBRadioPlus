@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstSiteBinding" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstSiteBinding</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1af317e79c35e156fe19ffd061cf33673f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteBinding::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstSiteBinding::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete structure size. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="868" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="868" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1a0fe7930800ea57699a59b0560185c488" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteBinding::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstSiteBinding::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Product record ABI, one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="869" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="869" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1ae3dba7d91012204c09934b2839d49759" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstSiteBinding::generation</definition>
+        <argsstring></argsstring>
+        <name>generation</name>
+        <qualifiedname>UrpAstSiteBinding::generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Expected current owner generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="870" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="870" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1a2a005b2156d1aa4d4531e827fd9a1798" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteBinding::output_mask</definition>
+        <argsstring></argsstring>
+        <name>output_mask</name>
+        <qualifiedname>UrpAstSiteBinding::output_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Spare pins to claim; reserved pins are rejected. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="871" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="871" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1ae6933d2454ca19df9c32d1db681cfed1" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteBinding::initial_high_mask</definition>
+        <argsstring></argsstring>
+        <name>initial_high_mask</name>
+        <qualifiedname>UrpAstSiteBinding::initial_high_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical high levels for newly claimed pins. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="872" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="872" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstSiteBinding_1a8e4ef5995a6840525cdda8e540ea84a9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstSiteBinding::safe_high_mask</definition>
+        <argsstring></argsstring>
+        <name>safe_high_mask</name>
+        <qualifiedname>UrpAstSiteBinding::safe_high_mask</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical high levels when pins are released. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="873" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="873" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Replace ownership on the existing hardware worker; acceptance only means queued. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="867" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="867" bodyend="874"/>
+    <listofallmembers>
+      <member refid="structUrpAstSiteBinding_1a0fe7930800ea57699a59b0560185c488" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>abi_version</name></member>
+      <member refid="structUrpAstSiteBinding_1ae3dba7d91012204c09934b2839d49759" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>generation</name></member>
+      <member refid="structUrpAstSiteBinding_1ae6933d2454ca19df9c32d1db681cfed1" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>initial_high_mask</name></member>
+      <member refid="structUrpAstSiteBinding_1a2a005b2156d1aa4d4531e827fd9a1798" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>output_mask</name></member>
+      <member refid="structUrpAstSiteBinding_1a8e4ef5995a6840525cdda8e540ea84a9" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>safe_high_mask</name></member>
+      <member refid="structUrpAstSiteBinding_1af317e79c35e156fe19ffd061cf33673f" prot="public" virt="non-virtual"><scope>UrpAstSiteBinding</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
