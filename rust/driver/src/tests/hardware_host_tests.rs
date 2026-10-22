@@ -263,6 +263,7 @@ fn configured_hardware_gains_validate_before_adapter_access_and_skip_omitted_con
             Err(AudioError::InvalidArgument)
         ));
     }
+    reset_test_state();
 }
 
 #[test]
