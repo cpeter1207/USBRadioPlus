@@ -1,0 +1,29 @@
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: trixie
+Codename: trixie
+Date: Fri, 23 Oct 2026 23:29:56 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ f77bc9bc8bf80cf3a3e2ba453b3225d9 56468 main/binary-amd64/Packages
+ e2afbd0404847aa1b2f0f66534bd15f9 11909 main/binary-amd64/Packages.gz
+ d54f289013b4dd2d2fc1ad9476d88868 143 main/binary-amd64/Release
+ d63586ffe3855fc2a9765b49dbd8321a 56469 main/binary-arm64/Packages
+ 186d286eb5382e6f4a70ddaf00c97a55 11877 main/binary-arm64/Packages.gz
+ 93c3386fbe84ff69eaa186077beaa099 143 main/binary-arm64/Release
+SHA1:
+ 0ee9f49afb5dc7095894f58e723372c20cb5a6b9 56468 main/binary-amd64/Packages
+ 24ecb9310056ed46c2281f1c9224fe973510fcbf 11909 main/binary-amd64/Packages.gz
+ 5c3b7e0ccfa25bb832d1ace63468e9f21d9f1482 143 main/binary-amd64/Release
+ 712567f99201a299844a58e66b8c374766c8efd4 56469 main/binary-arm64/Packages
+ 0d17fd5a1c81ec525e82dcbddfe76c7097973f85 11877 main/binary-arm64/Packages.gz
+ 234a7acd006c30c3dd33e966c9ca4f633beea1e9 143 main/binary-arm64/Release
+SHA256:
+ 81a8c9745a55de153aa200a48d6baa3e691374007437eb1d9275d462c26a8d50 56468 main/binary-amd64/Packages
+ 47dfe92029f5bba6425ccd68e516b8736b0451264d0d36e5b5c2dbf55f639d39 11909 main/binary-amd64/Packages.gz
+ 525681390319dc959bc0d941df033274e21b1dab533424b9761470f79a7bfc0d 143 main/binary-amd64/Release
+ 07d65ad605cbaf64db617c365128f85483530c4c75a7ab94447b904236bc514f 56469 main/binary-arm64/Packages
+ ae05228e06d3636ac722e205f2bd303b932ae6b2499af5509bb7601f82da9ab2 11877 main/binary-arm64/Packages.gz
+ 4c38a8e8ecc7bae18bdc031fd8aea866c11ab38f33db530244cad1e460c44a23 143 main/binary-arm64/Release
