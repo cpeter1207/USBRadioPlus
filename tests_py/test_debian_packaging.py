@@ -483,6 +483,27 @@ def test_repository_workflow_builds_and_verifies_all_targets():
     assert "source_ref: ${{ needs.release.outputs.tag_name }}" in release
 
 
+def test_manual_index_refresh_forwards_the_published_repository_and_tag():
+    """Forward published provider identity to the existing index-only route."""
+    workflow = read(".github/workflows/packages.yml")
+    manual = workflow.split("  workflow_dispatch:\n", 1)[1].split("  repository_dispatch:", 1)[0]
+    caller = workflow.split("  packages:\n", 1)[1].split("  refresh-after-shared-release:", 1)[0]
+    for name in ("released_repository", "released_tag"):
+        assert re.search(rf"(?m)^      {name}:\n", manual)
+        assert f"{name}: ${{{{ inputs.{name} }}}}" in caller
+    assert "include_debian12: ${{ inputs.include_debian12 }}" in caller
+    assert "APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}" in caller
+
+
+def test_automatic_index_refresh_accepts_echo_and_codec_releases():
+    """Keep the source-owned event receiver aligned with publisher support."""
+    workflow = read(".github/workflows/packages.yml")
+    receiver = workflow.split("  refresh-after-shared-release:\n", 1)[1]
+    allowlist = re.search(r"contains\(fromJSON\('([^']+)'\)", receiver).group(1)
+    for repository in ("librptadvecholink", "rptadv-codec-adapters"):
+        assert f'"cpeter1207/{repository}"' in allowlist
+
+
 def test_static_site_can_publish_without_rebuilding_packages():
     """Verify static site can publish without rebuilding packages."""
     workflow = read(".github/workflows/site.yml")
