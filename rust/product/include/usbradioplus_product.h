@@ -13,7 +13,7 @@
 struct rptadv_radio_session_config;
 
 /** Current resolved native station request ABI. */
-#define URP_NATIVE_CONFIG_ABI_VERSION 2U
+#define URP_NATIVE_CONFIG_ABI_VERSION 3U
 /** Apply the configured hardware capture gain at native startup. */
 #define URP_NATIVE_HARDWARE_GAIN_INPUT 1U
 /** Apply the configured hardware output-A gain at native startup. */
@@ -84,7 +84,40 @@ typedef struct UrpNativeStationConfig {
 	double hardware_output_a_gain_db;
 	/** Output-B hardware gain, finite minus 30 through 30 dB when selected. */
 	double hardware_output_b_gain_db;
+	/** UTF-8 shared processing sections, borrowed during create. */
+	const uint8_t *processing_configuration;
+	/** Processing configuration byte count; zero preserves raw graphs. */
+	uint32_t processing_configuration_length;
+	/** UTF-8 node selecting scoped or named processing profiles. */
+	const uint8_t *processing_node;
+	/** Processing node byte count. */
+	uint32_t processing_node_length;
+	/** Enable pre-emphasis for an explicit voice/telemetry profile, zero or one. */
+	uint32_t transmit_preemphasis;
+	/** Transmit pre-emphasis corner, greater than zero through 500 Hz. */
+	double transmit_preemphasis_corner_hz;
+	/** Receive de-emphasis corner, greater than zero through 500 Hz. */
+	double receive_deemphasis_corner_hz;
 } UrpNativeStationConfig;
+
+/** Borrowed processing sections and node selectors, without hardware settings. */
+typedef struct UrpNativeProcessingArgs {
+	/** Complete structure size in bytes. */
+	uint32_t struct_size;
+	/** Processing request ABI, one. */
+	uint32_t abi_version;
+	/** UTF-8 processing configuration, not NUL terminated. */
+	const uint8_t *configuration;
+	/** Configuration byte count; zero selects no explicit profiles. */
+	uint32_t configuration_length;
+	/** UTF-8 node name, not NUL terminated. */
+	const uint8_t *node;
+	/** Node-name byte count. */
+	uint32_t node_length;
+} UrpNativeProcessingArgs;
+
+/** Synchronous non-audio diagnostic; text is borrowed only for the call. */
+typedef void (*UrpNativeProcessingDiagnostic)(void *context, const uint8_t *text, uint32_t length);
 
 /** CTCSS decoder calibration reference in normalized F32 PCM. */
 #define URP_AST_CTCSS_CALIBRATION_TARGET (2400.0f / 32768.0f)
@@ -1114,6 +1147,19 @@ typedef struct UrpAstDescriptor {
 	/** Read channel cached state on the same owner, never on audio callbacks. */
 	int (*channel_site_snapshot)(void *channel, uint32_t bank,
 				     struct UrpAstSiteSnapshot *output);
+	/** Validate shared source profiles without opening devices or graphs. */
+	int (*native_processing_validate)(const struct UrpNativeProcessingArgs *args,
+					  UrpNativeProcessingDiagnostic diagnostic, void *context);
+	/** Prepare a native 48 kHz link graph; absent profiles return a null handle.
+	 * The caller retains the FFmpeg provider until link_destroy has returned.
+	 */
+	int (*native_link_prepare)(const struct UrpNativeProcessingArgs *args, const void *ffmpeg,
+				   uint32_t maximum_frames, void **output);
+	/** Process normalized-F32 PCM with the same direction and bounds as link_process.
+	 * One serial owner calls this operation; it must quiesce before link_destroy.
+	 */
+	int (*link_process_f32)(void *link, uint32_t direction, uint32_t sample_rate_hz,
+				float *samples, uint32_t sample_count);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

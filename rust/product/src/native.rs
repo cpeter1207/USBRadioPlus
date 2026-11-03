@@ -13,13 +13,14 @@ use usbradioplus_gpio::{Cm119Profile, GpioAdapter};
 use usbradioplus_radio::{
     RadioProvider, ReceiveSignaling, SessionConfig, SubaudibleSource, TransmitSignaling,
 };
+use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_runtime::{ExplicitNativeProcessingPlan, NativeProcessingFactory};
 use usbradioplus_station::{
     Cm119Plan, HardwarePlan, NativeStationMedia, StationControl, StationRuntime,
 };
 
 /// Current resolved native station request ABI.
-pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 2;
+pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 3;
 /// Select hardware capture gain at native startup.
 pub const URP_NATIVE_HARDWARE_GAIN_INPUT: u32 = 1;
 /// Select hardware output-A gain at native startup.
@@ -34,7 +35,7 @@ pub const URP_NATIVE_HARDWARE_GAIN_OUTPUT_B: u32 = 4;
 pub struct UrpNativeStationConfig {
     /// Exact structure size.
     pub struct_size: u32,
-    /// Native request ABI, currently two.
+    /// Native request ABI, currently three.
     pub abi_version: u32,
     /// Pointer to the released `rptadv_radio_session_config` ABI-4 template.
     /// Effective settings are preserved except lifecycle generation, frame bounds
@@ -88,6 +89,20 @@ pub struct UrpNativeStationConfig {
     pub hardware_output_a_gain_db: f64,
     /// Hardware output-B gain, finite -30 through 30 dB when selected.
     pub hardware_output_b_gain_db: f64,
+    /// UTF-8 shared local/link/voice_telemetry profile sections, not NUL terminated.
+    pub processing_configuration: *const u8,
+    /// Processing-configuration byte count; zero preserves raw graphs.
+    pub processing_configuration_length: u32,
+    /// UTF-8 node used to select scoped/named processing profiles.
+    pub processing_node: *const u8,
+    /// Processing-node byte count.
+    pub processing_node_length: u32,
+    /// Apply pre-emphasis when a voice/telemetry profile is present, zero or one.
+    pub transmit_preemphasis: u32,
+    /// Transmit pre-emphasis corner, greater than zero through 500 Hz.
+    pub transmit_preemphasis_corner_hz: f64,
+    /// Receive de-emphasis corner, greater than zero through 500 Hz.
+    pub receive_deemphasis_corner_hz: f64,
 }
 
 /// Synchronous stopped native station creation; all request data is copied.
@@ -100,7 +115,7 @@ pub struct UrpNativeCreateArgs {
     pub abi_version: u32,
     /// Resolved frontend configuration.
     pub config: *const UrpNativeStationConfig,
-    /// Released radio, graph, audio and GPIO descriptors; other entries are unused.
+    /// Released radio, graph, audio and GPIO descriptors; RNNoise is needed only when enabled.
     pub providers: *const UrpAstProviderManifest,
     /// Exact-frame native callback pair, retained until synchronous destroy.
     pub callbacks: *const UrpAstDirectCallbacks,
@@ -190,8 +205,19 @@ pub(crate) unsafe extern "C" fn create(
         radio.maximum_receive_frame_count = args.maximum_frames;
         radio.maximum_transmit_frame_count = args.maximum_frames;
         radio.publication_interval_milliseconds = 50;
+        // SAFETY: configuration spans are retained through this synchronous creation.
+        let profiles = unsafe {
+            crate::native_processing::Profiles::resolve(
+                &text(
+                    config.processing_configuration,
+                    config.processing_configuration_length,
+                )?,
+                &text(config.processing_node, config.processing_node_length)?,
+            )?
+        };
         // SAFETY: the synchronous request owns every advertised text span.
-        let (hardware, processing) = unsafe { resolve(&config, &radio)? };
+        let (hardware, mut processing) = unsafe { resolve(&config, &radio)? };
+        profiles.apply(&mut radio, &mut processing);
         let gain_values = [
             config.hardware_input_gain_db,
             config.hardware_output_a_gain_db,
@@ -212,9 +238,23 @@ pub(crate) unsafe extern "C" fn create(
                 GpioAdapter::from_raw(providers.gpio).map_err(|_| Status::IncompatibleAbi)?,
             )
         };
-        let processing =
-            NativeProcessingFactory::prepare_explicit(graph, &processing, args.maximum_frames)
-                .map_err(|_| Status::SetupFailed)?;
+        let denoise = if providers.rnnoise.is_null() {
+            None
+        } else {
+            Some(
+                // SAFETY: the provider descriptor remains loaded through processing teardown.
+                unsafe { DenoiseProvider::from_raw_descriptor(providers.rnnoise) }
+                    .map_err(|_| Status::IncompatibleAbi)?,
+            )
+        };
+        let processing = NativeProcessingFactory::prepare_explicit(
+            graph,
+            denoise,
+            crate::native_processing::agc_plugin_path(),
+            &processing,
+            args.maximum_frames,
+        )
+        .map_err(|_| Status::SetupFailed)?;
         let media =
             // SAFETY: the caller retains callback contexts through synchronous destroy.
             unsafe { NativeStationMedia::prepare(radio, processing, radio_provider, callbacks) }
@@ -270,7 +310,7 @@ pub(crate) unsafe extern "C" fn destroy(handle: *mut c_void) {
     });
 }
 
-unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Status> {
+pub(super) unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Status> {
     if length == 0 {
         return Ok(String::new());
     }
@@ -282,7 +322,7 @@ unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Status> {
     Ok(value.to_owned())
 }
 
-/// Admit the sized ABI-2 request before reading any of its new gain fields.
+/// Admit the sized ABI-3 request before reading shared-processing fields.
 unsafe fn copy_native_config(
     raw: *const UrpNativeStationConfig,
 ) -> Result<UrpNativeStationConfig, Status> {
@@ -313,6 +353,13 @@ unsafe fn resolve(
         || config.output_extra_buffer_ms > 500
         || config.ptt_inverted > 1
         || config.receive_deemphasis > 1
+        || config.transmit_preemphasis > 1
+        || !config.transmit_preemphasis_corner_hz.is_finite()
+        || config.transmit_preemphasis_corner_hz <= 0.0
+        || config.transmit_preemphasis_corner_hz > 500.0
+        || !config.receive_deemphasis_corner_hz.is_finite()
+        || config.receive_deemphasis_corner_hz <= 0.0
+        || config.receive_deemphasis_corner_hz > 500.0
         || !(-30..=30).contains(&config.receive_output_gain_db)
         || config.gpio_output_enable_mask > 255
         || config.gpio_output_initial_mask > 255
@@ -393,9 +440,14 @@ unsafe fn resolve(
     Ok((
         hardware,
         ExplicitNativeProcessingPlan {
+            local: None,
+            voice_telemetry: None,
             receive_graph,
             transmit_graph,
             receive_deemphasis: config.receive_deemphasis != 0,
+            receive_deemphasis_corner_hz: config.receive_deemphasis_corner_hz,
+            transmit_preemphasis: config.transmit_preemphasis != 0,
+            transmit_preemphasis_corner_hz: config.transmit_preemphasis_corner_hz,
             receive_output_gain_db: config.receive_output_gain_db,
             receive_ctcss_mask,
             transmit_dcs: matches!(radio.transmit.signaling, TransmitSignaling::Dcs(_)),

@@ -111,16 +111,26 @@ pub struct NativeProcessingPlan {
     pub preemphasis_corner_hz: f64,
 }
 
-/// Explicit native frontend graph settings, without ASL chain defaults.
+/// Native frontend profiles with exact raw-graph fallbacks for unconfigured roles.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExplicitNativeProcessingPlan {
-    /// Exact configured mono receive graph.
+    /// Shared local profile; replaces the raw receive graph and output gain when present.
+    pub local: Option<ProcessingChain>,
+    /// Shared voice/telemetry profile; replaces the raw transmit graph when present.
+    pub voice_telemetry: Option<ProcessingChain>,
+    /// Exact configured mono receive graph when no local profile is selected.
     pub receive_graph: String,
-    /// Exact configured mono transmit graph.
+    /// Exact configured mono transmit graph when no voice/telemetry profile is selected.
     pub transmit_graph: String,
-    /// Apply the established 300 Hz deemphasis before receive gain/filtering.
+    /// Apply receiver de-emphasis before receive gain/filtering.
     pub receive_deemphasis: bool,
-    /// Gain after receive filtering, in decibels.
+    /// Receiver de-emphasis corner in Hz.
+    pub receive_deemphasis_corner_hz: f64,
+    /// Apply transmitter pre-emphasis when a voice/telemetry profile is selected.
+    pub transmit_preemphasis: bool,
+    /// Transmitter pre-emphasis corner in Hz for the shared voice/telemetry profile.
+    pub transmit_preemphasis_corner_hz: f64,
+    /// Gain after raw receive filtering, in decibels; unused with a local profile.
     pub receive_output_gain_db: i32,
     /// CTCSS table entries requiring decoded-tone rejection.
     pub receive_ctcss_mask: u64,
@@ -138,27 +148,65 @@ pub struct NativeProcessingFactory {
 }
 
 impl NativeProcessingFactory {
-    /// Prepare explicit native graphs with the same processor ownership and
-    /// fixed signaling curves as the ASL station, without a denoiser provider.
+    /// Prepare native profiles through the shared USBRadioPlus graph builders.
+    ///
+    /// Unconfigured roles retain their exact raw graph behavior. Configured roles
+    /// replace those graphs rather than stacking their filtering and gains. RNNoise
+    /// requires its provider only when enabled by the selected local profile.
     pub fn prepare_explicit(
         provider: GraphProvider,
+        denoise_provider: Option<DenoiseProvider>,
+        agc_plugin_path: &str,
+        plan: &ExplicitNativeProcessingPlan,
+        maximum_frame_count: u32,
+    ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
+        let descriptions = GraphDescriptionFactory::new(agc_plugin_path)?;
+        Self::prepare_explicit_graphs(
+            provider,
+            denoise_provider,
+            &descriptions,
+            plan,
+            maximum_frame_count,
+        )
+    }
+
+    fn prepare_explicit_graphs(
+        provider: GraphProvider,
+        denoise_provider: Option<DenoiseProvider>,
+        descriptions: &GraphDescriptionFactory,
         plan: &ExplicitNativeProcessingPlan,
         maximum_frame_count: u32,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
         NativeStreamSpec::new(48_000, maximum_frame_count)?;
-        // Explicit graphs never synthesize an AGC stage or refer to its path.
-        let descriptions = GraphDescriptionFactory::new("")?;
+        for (role, chain) in [
+            (ChainRole::LocalReceive, plan.local.as_ref()),
+            (ChainRole::VoiceTelemetry, plan.voice_telemetry.as_ref()),
+        ] {
+            if let Some(chain) = chain {
+                if chain.role != role {
+                    return Err(ProcessingRuntimeError::IncorrectChainRole);
+                }
+                chain.validate()?;
+            }
+        }
         let prepare = |description| prepare_graph(provider, description, maximum_frame_count);
+        let (notch_mask, notch_width) = match &plan.local {
+            Some(local) if local.receive.pl_filter == PlFilter::DecodedToneNotch => {
+                (plan.receive_ctcss_mask, local.receive.notch_width_hz)
+            }
+            Some(_) => (0, 10.0),
+            None => (plan.receive_ctcss_mask, 10.0),
+        };
         let mut notches = std::array::from_fn(|_| None);
         for tone in CtcssTone::supported() {
-            if plan.receive_ctcss_mask & (1 << tone.table_index()) != 0 {
+            if notch_mask & (1 << tone.table_index()) != 0 {
                 notches[tone.table_index()] = Some(prepare(
-                    descriptions.decoded_tone_notch(f64::from(tone.as_hz()), 10.0)?,
+                    descriptions.decoded_tone_notch(f64::from(tone.as_hz()), notch_width)?,
                 )?);
             }
         }
-        let tail = (plan.receive_ctcss_mask != 0)
-            .then(|| prepare(descriptions.decoded_tone_notch(55.0, 10.0)?))
+        let tail = (notch_mask != 0)
+            .then(|| prepare(descriptions.decoded_tone_notch(55.0, notch_width)?))
             .transpose()?;
         let dcs = |turnoff| {
             if plan.transmit_dcs {
@@ -169,18 +217,42 @@ impl NativeProcessingFactory {
         };
         Ok(ProcessingGeneration {
             receive_deemphasis: prepare(
-                descriptions.receive_deemphasis(plan.receive_deemphasis, 300.0)?,
+                descriptions.receive_deemphasis(
+                    plan.receive_deemphasis,
+                    plan.receive_deemphasis_corner_hz,
+                )?,
             )?,
-            receive_filter: prepare(plan.receive_graph.clone())?,
+            receive_filter: prepare(match &plan.local {
+                Some(local) => descriptions.receive_filter(local)?,
+                None => plan.receive_graph.clone(),
+            })?,
             receive_ctcss_notch: notches,
             receive_ctcss_tail_notch: tail,
-            receive_noise_reduction: None,
-            receive_dynamics: prepare(if plan.receive_output_gain_db == 0 {
-                "anull".to_owned()
+            receive_noise_reduction: if plan
+                .local
+                .as_ref()
+                .is_some_and(|local| local.rnnoise_enabled)
+            {
+                Some(prepare_denoise(
+                    denoise_provider.ok_or(DenoiseError::IncompatibleAdapter)?,
+                    false,
+                )?)
             } else {
-                format!("volume={}dB", plan.receive_output_gain_db)
+                None
+            },
+            receive_dynamics: prepare(match &plan.local {
+                Some(local) => descriptions.dynamics(local)?,
+                None if plan.receive_output_gain_db == 0 => "anull".to_owned(),
+                None => format!("volume={}dB", plan.receive_output_gain_db),
             })?,
-            transmit_program: prepare(plan.transmit_graph.clone())?,
+            transmit_program: prepare(match &plan.voice_telemetry {
+                Some(voice) => descriptions.transmitter(
+                    voice,
+                    plan.transmit_preemphasis,
+                    plan.transmit_preemphasis_corner_hz,
+                )?,
+                None => plan.transmit_graph.clone(),
+            })?,
             transmit_dcs_normal_filter: prepare(dcs(false))?,
             transmit_dcs_turnoff_filter: prepare(dcs(true))?,
         })
@@ -211,61 +283,25 @@ impl NativeProcessingFactory {
         &self,
         plan: &NativeProcessingPlan,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
-        validate_plan(plan)?;
-        let maximum = self.stream.maximum_frame_count();
-        let mut notches = std::array::from_fn(|_| None);
-        let mut tail_notch = None;
-        if plan.local.receive.pl_filter == PlFilter::DecodedToneNotch {
-            for tone in CtcssTone::supported() {
-                notches[tone.table_index()] = Some(self.prepare_graph(
-                    self.descriptions.decoded_tone_notch(
-                        f64::from(tone.as_hz()),
-                        plan.local.receive.notch_width_hz,
-                    )?,
-                    maximum,
-                )?);
-            }
-            // A 55 Hz tail closes CTCSS decode before the regular decoded-tone
-            // port can be selected, so prepare its fixed rejection graph here.
-            tail_notch = Some(
-                self.prepare_graph(
-                    self.descriptions
-                        .decoded_tone_notch(55.0, plan.local.receive.notch_width_hz)?,
-                    maximum,
-                )?,
-            );
-        }
-
-        Ok(ProcessingGeneration {
-            receive_deemphasis: self.prepare_graph(
-                self.descriptions
-                    .receive_deemphasis(plan.deemphasis_enabled, plan.deemphasis_corner_hz)?,
-                maximum,
-            )?,
-            receive_filter: self
-                .prepare_graph(self.descriptions.receive_filter(&plan.local)?, maximum)?,
-            receive_ctcss_notch: notches,
-            receive_ctcss_tail_notch: tail_notch,
-            receive_noise_reduction: plan
-                .local
-                .rnnoise_enabled
-                .then(|| self.prepare_denoise(false))
-                .transpose()?,
-            receive_dynamics: self
-                .prepare_graph(self.descriptions.dynamics(&plan.local)?, maximum)?,
-            transmit_program: self.prepare_graph(
-                self.descriptions.transmitter(
-                    &plan.voice_telemetry,
-                    plan.preemphasis_enabled,
-                    plan.preemphasis_corner_hz,
-                )?,
-                maximum,
-            )?,
-            transmit_dcs_normal_filter: self
-                .prepare_graph(self.descriptions.dcs_filter(false), maximum)?,
-            transmit_dcs_turnoff_filter: self
-                .prepare_graph(self.descriptions.dcs_filter(true), maximum)?,
-        })
+        Self::prepare_explicit_graphs(
+            self.graph_provider,
+            Some(self.denoise_provider),
+            &self.descriptions,
+            &ExplicitNativeProcessingPlan {
+                local: Some(plan.local.clone()),
+                voice_telemetry: Some(plan.voice_telemetry.clone()),
+                receive_graph: String::new(),
+                transmit_graph: String::new(),
+                receive_deemphasis: plan.deemphasis_enabled,
+                receive_deemphasis_corner_hz: plan.deemphasis_corner_hz,
+                transmit_preemphasis: plan.preemphasis_enabled,
+                transmit_preemphasis_corner_hz: plan.preemphasis_corner_hz,
+                receive_output_gain_db: 0,
+                receive_ctcss_mask: (1_u64 << CTCSS_TONE_COUNT) - 1,
+                transmit_dcs: true,
+            },
+            self.stream.maximum_frame_count(),
+        )
     }
 
     /// Prepare a replacement for the same serial receive and transmit owners.
@@ -458,10 +494,7 @@ impl NativeProcessingFactory {
     }
 
     fn prepare_denoise(&self, activate: bool) -> Result<SharedDenoise, ProcessingRuntimeError> {
-        Ok(SharedDenoise::new(
-            SharedProcessor::new(self.denoise_provider.prepare()?),
-            activate,
-        ))
+        prepare_denoise(self.denoise_provider, activate)
     }
 
     fn transition_graph(
@@ -514,6 +547,16 @@ impl NativeProcessingFactory {
     ) -> Result<PreparedGraph, ProcessingRuntimeError> {
         prepare_warmed_graph(self.graph_provider, description, maximum_frame_count)
     }
+}
+
+fn prepare_denoise(
+    provider: DenoiseProvider,
+    activate: bool,
+) -> Result<SharedDenoise, ProcessingRuntimeError> {
+    Ok(SharedDenoise::new(
+        SharedProcessor::new(provider.prepare()?),
+        activate,
+    ))
 }
 
 fn prepare_warmed_graph(

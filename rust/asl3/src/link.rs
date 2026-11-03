@@ -1,4 +1,4 @@
-//! Per-remote-link processing owned behind an Asterisk audiohook.
+//! Per-remote-link processing shared by native PCM and Asterisk audiohooks.
 
 use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -62,8 +62,8 @@ pub struct LinkObservation {
 
 /// One prepared exact-rate link graph and its callback workspaces.
 ///
-/// The Asterisk datastore owns this value. Detaching and quiescing the
-/// audiohook before drop keeps graph lifetime out of the callback ABI.
+/// One serial PCM owner retains this value. Detaching and quiescing that owner
+/// before drop keeps graph lifetime out of the callback ABI.
 pub struct PreparedLink {
     sample_rate_hz: u32,
     input: Box<[f32]>,
@@ -106,6 +106,36 @@ impl PreparedLink {
         sample_rate_hz: u32,
         pcm: &mut [i16],
     ) -> LinkProcessOutcome {
+        self.process(direction, sample_rate_hz, pcm, s16_to_f32, f32_to_s16)
+    }
+
+    /// Process one normalized native-F32 voice frame in place without quantization.
+    ///
+    /// The same exact-rate, read-direction and frame-bound checks as the signed-16
+    /// boundary apply. Prepared workspaces retain the original PCM on graph failure.
+    pub fn process_f32(
+        &mut self,
+        direction: LinkDirection,
+        sample_rate_hz: u32,
+        pcm: &mut [f32],
+    ) -> LinkProcessOutcome {
+        self.process(
+            direction,
+            sample_rate_hz,
+            pcm,
+            std::convert::identity,
+            std::convert::identity,
+        )
+    }
+
+    fn process<T: Copy>(
+        &mut self,
+        direction: LinkDirection,
+        sample_rate_hz: u32,
+        pcm: &mut [T],
+        to_float: impl Fn(T) -> f32,
+        from_float: impl Fn(f32) -> T,
+    ) -> LinkProcessOutcome {
         if direction != LinkDirection::Read
             || sample_rate_hz != self.sample_rate_hz
             || pcm.is_empty()
@@ -115,7 +145,7 @@ impl PreparedLink {
             return LinkProcessOutcome::Bypassed;
         }
         for (output, input) in self.input[..pcm.len()].iter_mut().zip(pcm.iter()) {
-            *output = s16_to_f32(*input);
+            *output = to_float(*input);
         }
         if !self
             .graph
@@ -125,7 +155,7 @@ impl PreparedLink {
             return LinkProcessOutcome::GraphFailed;
         }
         for (output, processed) in pcm.iter_mut().zip(&self.output) {
-            *output = f32_to_s16(*processed);
+            *output = from_float(*processed);
         }
         self.processed_blocks.fetch_add(1, Ordering::Relaxed);
         LinkProcessOutcome::Processed

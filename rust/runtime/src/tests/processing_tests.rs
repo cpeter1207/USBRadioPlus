@@ -12,16 +12,26 @@ fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() 
     DENOISE_CREATES.set(0);
     GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
     let plan = ExplicitNativeProcessingPlan {
+        local: None,
+        voice_telemetry: None,
         receive_graph: "highpass=f=60,lowpass=f=5500".to_owned(),
         transmit_graph: "volume=-2dB".to_owned(),
         receive_deemphasis: true,
+        receive_deemphasis_corner_hz: 300.0,
+        transmit_preemphasis: false,
+        transmit_preemphasis_corner_hz: 300.0,
         receive_output_gain_db: -6,
         receive_ctcss_mask: 1,
         transmit_dcs: true,
     };
-    let generation =
-        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960)
-            .unwrap();
+    let generation = NativeProcessingFactory::prepare_explicit(
+        graph_provider(&GRAPH_DESCRIPTOR),
+        None,
+        "",
+        &plan,
+        960,
+    )
+    .unwrap();
     let descriptions = GRAPH_DESCRIPTIONS.with(|values| values.borrow().clone());
     assert!(descriptions.contains(&plan.receive_graph));
     assert!(descriptions.contains(&plan.transmit_graph));
@@ -48,16 +58,26 @@ fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() 
 fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failure() {
     GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
     let mut plan = ExplicitNativeProcessingPlan {
+        local: None,
+        voice_telemetry: None,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: false,
+        receive_deemphasis_corner_hz: 300.0,
+        transmit_preemphasis: false,
+        transmit_preemphasis_corner_hz: 300.0,
         receive_output_gain_db: 0,
         receive_ctcss_mask: 0,
         transmit_dcs: false,
     };
-    let generation =
-        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960)
-            .unwrap();
+    let generation = NativeProcessingFactory::prepare_explicit(
+        graph_provider(&GRAPH_DESCRIPTOR),
+        None,
+        "",
+        &plan,
+        960,
+    )
+    .unwrap();
     assert!(generation.receive_ctcss_notch.iter().all(Option::is_none));
     GRAPH_DESCRIPTIONS.with(|values| assert_eq!(values.borrow()[2], "anull"));
     drop(generation);
@@ -66,7 +86,13 @@ fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failur
     GRAPH_CREATES.set(0);
     GRAPH_CREATE_FAIL_AT.set(1);
     assert!(matches!(
-        NativeProcessingFactory::prepare_explicit(graph_provider(&GRAPH_DESCRIPTOR), &plan, 960),
+        NativeProcessingFactory::prepare_explicit(
+            graph_provider(&GRAPH_DESCRIPTOR),
+            None,
+            "",
+            &plan,
+            960
+        ),
         Err(ProcessingRuntimeError::GraphAdapter(_))
     ));
     GRAPH_CREATE_FAIL_AT.set(0);
@@ -75,20 +101,27 @@ fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failur
 #[test]
 fn explicit_native_graph_reports_deemphasis_and_receive_gain_prepare_failures() {
     let plan = ExplicitNativeProcessingPlan {
+        local: None,
+        voice_telemetry: None,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: true,
+        receive_deemphasis_corner_hz: 300.0,
+        transmit_preemphasis: false,
+        transmit_preemphasis_corner_hz: 300.0,
         receive_output_gain_db: -6,
         receive_ctcss_mask: 0,
         transmit_dcs: false,
     };
     // De-emphasis and receive filtering precede the receive-gain graph.
-    for failed_ordinal in [1, 3] {
+    for (failed_ordinal, expected) in [(1, "biquad"), (2, "anull"), (3, "volume=-6dB")] {
         GRAPH_CREATES.set(0);
         GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
         GRAPH_CREATE_FAIL_AT.set(failed_ordinal);
         let result = NativeProcessingFactory::prepare_explicit(
             graph_provider(&GRAPH_DESCRIPTOR),
+            None,
+            "",
             &plan,
             960,
         );
@@ -99,12 +132,133 @@ fn explicit_native_graph_reports_deemphasis_and_receive_gain_prepare_failures() 
         ));
         GRAPH_DESCRIPTIONS.with(|values| {
             let values = values.borrow();
-            if failed_ordinal == 1 {
-                assert!(values[0].contains("biquad"));
-            } else {
-                assert_eq!(values[2], "volume=-6dB");
-            }
+            assert!(values[failed_ordinal - 1].contains(expected));
         });
+    }
+}
+
+#[test]
+fn explicit_native_profiles_use_the_same_prepared_chains_and_conditioning() {
+    GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+    DENOISE_CREATES.set(0);
+    let mut profile = plan();
+    profile.local.rnnoise_enabled = true;
+    profile.local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    profile.local.input_gain_db = -3.0;
+    profile.local.output_gain_db = -8.0;
+    profile.local.agc.enabled = true;
+    profile.local.limiter.enabled = true;
+    profile.voice_telemetry.limiter.enabled = true;
+    profile.voice_telemetry.transmit_tail.bandpass_enabled = true;
+    let reference = factory().prepare(&profile).unwrap();
+    let expected = GRAPH_DESCRIPTIONS.with(|values| values.borrow().clone());
+    drop(reference);
+    GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+    let request = ExplicitNativeProcessingPlan {
+        local: Some(profile.local),
+        voice_telemetry: Some(profile.voice_telemetry),
+        receive_graph: "unused receive graph".to_owned(),
+        transmit_graph: "unused transmit graph".to_owned(),
+        receive_deemphasis: profile.deemphasis_enabled,
+        receive_deemphasis_corner_hz: profile.deemphasis_corner_hz,
+        transmit_preemphasis: profile.preemphasis_enabled,
+        transmit_preemphasis_corner_hz: profile.preemphasis_corner_hz,
+        receive_output_gain_db: 17,
+        receive_ctcss_mask: (1_u64 << CTCSS_TONE_COUNT) - 1,
+        transmit_dcs: true,
+    };
+    let native = NativeProcessingFactory::prepare_explicit(
+        graph_provider(&GRAPH_DESCRIPTOR),
+        Some(denoise_provider(&DENOISE_DESCRIPTOR)),
+        "agc.so",
+        &request,
+        960,
+    )
+    .unwrap();
+    assert_eq!(
+        GRAPH_DESCRIPTIONS.with(|values| values.borrow().clone()),
+        expected
+    );
+    assert!(
+        expected
+            .iter()
+            .any(|graph| graph.contains("ladspa=file='agc.so'"))
+    );
+    assert!(expected.iter().any(|graph| graph.contains("acompressor=")));
+    assert!(!expected.contains(&request.receive_graph));
+    assert!(!expected.contains(&request.transmit_graph));
+    assert_eq!(DENOISE_CREATES.get(), 2);
+    assert!(native.receive_noise_reduction.is_some());
+}
+
+#[test]
+fn explicit_native_profiles_preserve_unconfigured_roles_and_require_denoise_when_enabled() {
+    for local_present in [false, true] {
+        let mut local = ProcessingChain::shipped(ChainRole::LocalReceive);
+        local.receive.pl_filter = PlFilter::Disabled;
+        let request = ExplicitNativeProcessingPlan {
+            local: local_present.then_some(local),
+            voice_telemetry: (!local_present)
+                .then(|| ProcessingChain::shipped(ChainRole::VoiceTelemetry)),
+            receive_graph: "volume=0.4".to_owned(),
+            transmit_graph: "volume=0.5".to_owned(),
+            receive_deemphasis: true,
+            receive_deemphasis_corner_hz: 250.0,
+            transmit_preemphasis: false,
+            transmit_preemphasis_corner_hz: 300.0,
+            receive_output_gain_db: -7,
+            receive_ctcss_mask: 1,
+            transmit_dcs: false,
+        };
+        GRAPH_DESCRIPTIONS.with(|values| values.borrow_mut().clear());
+        let generation = NativeProcessingFactory::prepare_explicit(
+            graph_provider(&GRAPH_DESCRIPTOR),
+            None,
+            "",
+            &request,
+            960,
+        )
+        .unwrap();
+        let descriptions = GRAPH_DESCRIPTIONS.with(|values| values.borrow().clone());
+        assert_eq!(
+            descriptions.contains(&request.receive_graph),
+            !local_present
+        );
+        assert_eq!(
+            descriptions.contains(&"volume=-7dB".to_owned()),
+            !local_present
+        );
+        assert_eq!(
+            descriptions.contains(&request.transmit_graph),
+            local_present
+        );
+        assert_eq!(
+            generation.receive_ctcss_tail_notch.is_some(),
+            !local_present
+        );
+        assert!(descriptions.iter().any(|graph| {
+            graph
+                == &GraphDescriptionFactory::new("")
+                    .unwrap()
+                    .receive_deemphasis(true, 250.0)
+                    .unwrap()
+        }));
+        if local_present {
+            let mut invalid = request;
+            invalid.local.as_mut().unwrap().rnnoise_enabled = true;
+            assert!(matches!(
+                NativeProcessingFactory::prepare_explicit(
+                    graph_provider(&GRAPH_DESCRIPTOR),
+                    None,
+                    "",
+                    &invalid,
+                    960
+                ),
+                Err(ProcessingRuntimeError::DenoiseAdapter(
+                    DenoiseError::IncompatibleAdapter
+                ))
+            ));
+        }
     }
 }
 
@@ -419,10 +573,18 @@ fn only_local_and_voice_telemetry_roles_are_accepted() {
         validate_plan(&invalid),
         Err(ProcessingRuntimeError::IncorrectChainRole)
     ));
+    assert!(matches!(
+        factory().prepare(&invalid),
+        Err(ProcessingRuntimeError::IncorrectChainRole)
+    ));
     invalid = plan();
     invalid.voice_telemetry.role = ChainRole::Link;
     assert!(matches!(
         validate_plan(&invalid),
+        Err(ProcessingRuntimeError::IncorrectChainRole)
+    ));
+    assert!(matches!(
+        factory().prepare(&invalid),
         Err(ProcessingRuntimeError::IncorrectChainRole)
     ));
     assert!(validate_plan(&plan()).is_ok());

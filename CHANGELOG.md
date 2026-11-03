@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0~alpha26 - 2026-11-03
+
+- Share local receive, incoming-link, and voice/telemetry processing with
+  standalone controllers using the same profile settings and graph builders.
+- Expose native 48 kHz F32 link processing and profile validation with inherited
+  defaults and configuration warnings.
+- Use native station request ABI 3. Keep shared-product descriptor ABI 1 and
+  SONAME 1, with new sized descriptor-tail operations for native consumers.
+- Preserve raw graphs for unconfigured roles and keep disabled receive muted.
+  ASL3 channel configuration and processing behavior are unchanged.
+
 ## 0.1.0~alpha25 - 2026-10-22
 
 - Initialize explicitly configured native capture and transmitter hardware

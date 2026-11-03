@@ -39,7 +39,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  librptadv-gpio-adapter1 (>= 0.1.0~alpha4),
  librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2)
 Breaks: usbradioplus (<< ${binary:Version}),
- rpt-advanced (<< 0.1.0~alpha16-1), librptadv-product1 (<< 0.1.0~alpha16-1)
+ rpt-advanced (<< 0.1.0~alpha19-1), librptadv-product1 (<< 0.1.0~alpha16-1)
 Replaces: usbradioplus (<< ${binary:Version})
 Description: shared USBRadioPlus radio product
  Versioned radio configuration, processing, and station lifecycle library with
