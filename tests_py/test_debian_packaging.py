@@ -107,6 +107,8 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
         assert "usbradioplus (= " not in dependency
     assert "libusbradioplus-product1 (= ${binary:Version})" in development
     assert "librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3)" in runtime
+    assert "rpt-advanced (<< 0.1.0~alpha19-1)" in runtime
+    assert "librptadv-product2 (<<" not in runtime
 
     integration_files = read("debian/usbradioplus.install").splitlines()
     runtime_files = read("debian/libusbradioplus-product1.install").splitlines()

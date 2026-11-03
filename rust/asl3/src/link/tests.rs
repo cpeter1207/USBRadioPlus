@@ -92,3 +92,55 @@ fn graph_failure_retains_original_pcm() {
     assert_eq!(pcm, [123, -456]);
     assert_eq!(link.observe().failed_blocks, 1);
 }
+
+#[test]
+fn native_float_frames_preserve_precision_without_integer_conversion() {
+    let mut link = PreparedLink::new(48_000, 4, graph(2.0, true)).unwrap();
+    let mut pcm = [-0.5, -0.123_456_79, 0.123_456_79, 0.5];
+    assert_eq!(
+        link.process_f32(LinkDirection::Read, 48_000, &mut pcm),
+        LinkProcessOutcome::Processed
+    );
+    assert_eq!(pcm, [-1.0, -0.246_913_58, 0.246_913_58, 1.0]);
+    assert_eq!(
+        link.observe(),
+        LinkObservation {
+            processed_blocks: 1,
+            bypassed_blocks: 0,
+            failed_blocks: 0,
+        }
+    );
+}
+
+#[test]
+fn native_float_rejections_and_graph_failure_retain_original_pcm() {
+    let mut link = PreparedLink::new(48_000, 2, graph(0.0, false)).unwrap();
+    for (direction, rate, mut pcm) in [
+        (LinkDirection::Write, 48_000, vec![0.25]),
+        (LinkDirection::Read, 8_000, vec![0.5]),
+        (LinkDirection::Read, 48_000, vec![]),
+        (LinkDirection::Read, 48_000, vec![0.75; 3]),
+    ] {
+        let original = pcm.clone();
+        assert_eq!(
+            link.process_f32(direction, rate, &mut pcm),
+            LinkProcessOutcome::Bypassed
+        );
+        assert_eq!(pcm, original);
+    }
+    let mut pcm = [-0.123_456_79, 0.987_654_3];
+    let original = pcm;
+    assert_eq!(
+        link.process_f32(LinkDirection::Read, 48_000, &mut pcm),
+        LinkProcessOutcome::GraphFailed
+    );
+    assert_eq!(pcm, original);
+    assert_eq!(
+        link.observe(),
+        LinkObservation {
+            processed_blocks: 0,
+            bypassed_blocks: 4,
+            failed_blocks: 1,
+        }
+    );
+}

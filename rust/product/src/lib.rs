@@ -6,11 +6,13 @@
 #![deny(warnings)]
 
 mod native;
+mod native_processing;
 pub use native::{
     URP_NATIVE_CONFIG_ABI_VERSION, URP_NATIVE_HARDWARE_GAIN_INPUT,
     URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
     UrpNativeStationConfig,
 };
+pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnostic};
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
 
@@ -711,12 +713,35 @@ pub struct UrpAstDescriptor {
     pub channel_site_publish: Option<UrpAstSitePublish>,
     /// Read channel-site state on that same owner, without physical I/O.
     pub channel_site_snapshot: Option<UrpAstSiteRead>,
+    /// Validate shared native source profiles without opening devices or graph providers.
+    pub native_processing_validate: Option<
+        unsafe extern "C" fn(
+            *const UrpNativeProcessingArgs,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
+    /// Prepare a native 48 kHz incoming-link profile; absent profiles return a null handle.
+    pub native_link_prepare: Option<
+        unsafe extern "C" fn(
+            *const UrpNativeProcessingArgs,
+            *const c_void,
+            u32,
+            *mut *mut c_void,
+        ) -> c_int,
+    >,
+    /// Process normalized-F32 incoming link PCM using the prepared shared graph.
+    pub link_process_f32:
+        Option<unsafe extern "C" fn(*mut c_void, u32, u32, *mut f32, u32) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_processing_validate: Some(native_processing::validate),
+    native_link_prepare: Some(native_processing::link_prepare),
+    link_process_f32: Some(native_processing::link_process_f32),
     native_create: Some(native::create),
     native_start: Some(native::start),
     native_stop: Some(native::stop),

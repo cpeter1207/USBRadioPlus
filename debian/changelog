@@ -1,3 +1,12 @@
+usbradioplus (0.1.0~alpha26-1) unstable; urgency=medium
+
+  * Share processing profiles and native F32 link graphs with standalone.
+  * Validate profile inheritance through the shared configuration resolver.
+  * Use native station configuration ABI 3 and sized descriptor-tail operations.
+  * Preserve raw graph fallbacks, disabled receive, and ASL3 channel behavior.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Tue, 03 Nov 2026 09:00:00 -0600
+
 usbradioplus (0.1.0~alpha25-1) unstable; urgency=medium
 
   * Apply explicitly configured native hardware gains before each station start.

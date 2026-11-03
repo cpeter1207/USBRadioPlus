@@ -131,6 +131,13 @@ fn request(radio: &RawSessionConfig) -> UrpNativeStationConfig {
         hardware_input_gain_db: 0.0,
         hardware_output_a_gain_db: 0.0,
         hardware_output_b_gain_db: 0.0,
+        processing_configuration: ptr::null(),
+        processing_configuration_length: 0,
+        processing_node: ptr::null(),
+        processing_node_length: 0,
+        transmit_preemphasis: 0,
+        transmit_preemphasis_corner_hz: 300.0,
+        receive_deemphasis_corner_hz: 300.0,
     }
 }
 
@@ -144,12 +151,19 @@ fn create_pointer(config: *const UrpNativeStationConfig) -> (c_int, *mut c_void)
     providers.ring = ptr::null();
     providers.samplerate = ptr::null();
     providers.rnnoise = ptr::null();
+    create_with_providers(config, &providers)
+}
+
+fn create_with_providers(
+    config: *const UrpNativeStationConfig,
+    providers: &UrpAstProviderManifest,
+) -> (c_int, *mut c_void) {
     let callbacks = direct_callbacks();
     let args = UrpNativeCreateArgs {
         struct_size: size_of::<UrpNativeCreateArgs>() as u32,
         abi_version: 1,
         config,
-        providers: &providers,
+        providers,
         callbacks: &callbacks,
         generation_id: 8,
         maximum_frames: 960,
@@ -161,16 +175,51 @@ fn create_pointer(config: *const UrpNativeStationConfig) -> (c_int, *mut c_void)
 }
 
 #[test]
-fn native_create_accepts_the_current_mixer_configuration_abi() {
+fn native_create_accepts_the_current_processing_configuration_abi() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();
     let raw = radio();
     let mut config = request(&raw);
-    config.abi_version = 2;
+    config.abi_version = 3;
     let (status, handle) = create(&config);
     assert_eq!(status, URP_AST_OK);
     // SAFETY: successful creation transfers the uniquely owned native handle.
     unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+}
+
+#[test]
+fn native_create_uses_shared_profiles_and_requires_enabled_noise_reduction() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let text = b"[524950]\n[local]\ninput_gain_db=-3\noutput_gain_db=-2\nrnnoise_enabled=yes\nlimiter_enabled=invalid\n[voice_telemetry]\ninput_gain_db=0\noutput_gain_db=-1\n";
+    let mut config = request(&raw);
+    config.processing_configuration = text.as_ptr();
+    config.processing_configuration_length = text.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let (status, handle) = create(&config);
+    assert_eq!(
+        status, URP_AST_SETUP_FAILED,
+        "enabled RNNoise cannot be bypassed"
+    );
+    assert!(handle.is_null());
+    let mut providers = fixture::manifest();
+    let (status, handle) = create_with_providers(&config, &providers);
+    assert_eq!(status, URP_AST_OK);
+    // SAFETY: native creation returned one exclusively owned, stopped station.
+    unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+    providers.rnnoise = providers.ffmpeg;
+    let (status, handle) = create_with_providers(&config, &providers);
+    assert_eq!(status, URP_AST_INCOMPATIBLE_ABI);
+    assert!(handle.is_null());
+    let invalid =
+        b"[524950]\n[link]\nlimiter_low_crossover_hz=2000\nlimiter_high_crossover_hz=100\n";
+    config.processing_configuration = invalid.as_ptr();
+    config.processing_configuration_length = invalid.len() as u32;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_INVALID_CONFIGURATION);
+    assert!(handle.is_null());
 }
 
 #[test]
@@ -344,7 +393,7 @@ fn native_create_rejects_old_or_short_configurations_before_reading_the_gain_tai
     assert!(handle.is_null());
     let raw = radio();
     let mut config = request(&raw);
-    for version in [1, 3] {
+    for version in [1, 2, 4] {
         config.abi_version = version;
         let (status, handle) = create(&config);
         assert_eq!(status, URP_AST_INCOMPATIBLE_ABI);
@@ -533,6 +582,25 @@ fn native_create_rejects_invalid_selection_and_processing_fields() {
         ("multiple clip gpios", |c| c.clip_led_mask = 3),
         ("receive graph", |c| c.receive_graph_length = 0),
         ("transmit graph", |c| c.transmit_graph_length = 0),
+        ("transmit emphasis flag", |c| c.transmit_preemphasis = 2),
+        ("transmit emphasis NaN", |c| {
+            c.transmit_preemphasis_corner_hz = f64::NAN
+        }),
+        ("transmit emphasis zero", |c| {
+            c.transmit_preemphasis_corner_hz = 0.0
+        }),
+        ("transmit emphasis high", |c| {
+            c.transmit_preemphasis_corner_hz = 501.0
+        }),
+        ("receive emphasis NaN", |c| {
+            c.receive_deemphasis_corner_hz = f64::NAN
+        }),
+        ("receive emphasis zero", |c| {
+            c.receive_deemphasis_corner_hz = 0.0
+        }),
+        ("receive emphasis high", |c| {
+            c.receive_deemphasis_corner_hz = 501.0
+        }),
         ("selection policy", |c| c.device_selection = 2),
         ("exact selection", |c| c.device_selection = 0),
         ("input channels", |c| c.input_device_channels = 3),

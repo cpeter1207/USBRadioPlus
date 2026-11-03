@@ -15,7 +15,7 @@ gain.
 
 The ASL3 channel applies its configured capture and output-A/output-B hardware
 gains when it opens the station, using startup EEPROM tuning when enabled.
-Native consumers can select the same three gains in the ABI-2
+Native consumers can select the same three gains in the ABI-3
 `UrpNativeStationConfig` request. The native station applies selected gains
 before GPIO and audio start, and reapplies them after a successful stop/start.
 Creation and configuration preparation do not change mixer controls. A repeated
@@ -35,6 +35,48 @@ is `round(500 * 10^(gain_db / 20))`, clamped to 0 through 999, and the ALSA
 step is `floor(maximum_step * level / 1000)`. For capture maximum 16 and
 playback maximum 151, gains of 0, +6.012, and +3 dB respectively select raw
 capture 8, output A 150, and output B 106.
+
+## Standalone audio profiles
+
+Set standalone audio processing in `rpt_advanced.conf`. The standalone service
+does not read audio profiles from `usbradioplus.conf`.
+
+| Section | Audio path |
+| --- | --- |
+| `[local]` | Local receiver filtering and dynamics |
+| `[link]` | Each incoming link before mixing |
+| `[voice_telemetry]` | Mixed voice and telemetry sent to the transmitter |
+
+These sections accept the same audio controls as USBRadioPlus. Use the plain
+section name for shared defaults. Add a node number, such as `[link 524950]`,
+to override those defaults for one node. A node can select a named profile
+with `local_profile`, `link_profile`, or `voice_telemetry_profile` in its node
+section.
+
+For example, this enables a three-band link limiter with each threshold at
+minus 10 dBFS:
+
+```ini
+[524950]
+
+[link 524950]
+limiter_enabled = yes
+limiter_bands = 3
+limiter_low_threshold_dbfs = -10
+limiter_mid_threshold_dbfs = -10
+limiter_high_threshold_dbfs = -10
+```
+
+A local profile supplies its own filtering and input/output gains. When one is
+set, the `[radio]` receive graph and receive gain settings do not also apply.
+A voice/telemetry profile supplies its own gains, dynamics, and final filter.
+When one is set, the `[radio]` transmit graph does not also apply. Without a
+profile for that path, the service uses its `[radio]` graph settings.
+
+Use `[radio]` or `[radio <node>]` to set receive de-emphasis and transmit
+pre-emphasis. Transmit pre-emphasis applies with a voice/telemetry profile.
+Disabled receive stays muted even when a local profile has positive gain.
+RNNoise needs its adapter when enabled; setup fails if that adapter is missing.
 
 ## DSP preparation
 
