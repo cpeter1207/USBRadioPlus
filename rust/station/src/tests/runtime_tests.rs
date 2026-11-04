@@ -16,8 +16,8 @@ use usbradioplus_runtime::NativeProcessingFactory;
 use crate::ControllerSetup;
 use crate::control::tests::{factory, resolved};
 use crate::media::tests::{
-    RECEIVE_FAILING_GENERATION, RECEIVE_UPDATE_FAILING_GENERATION, TRANSMIT_FAILING_GENERATION,
-    TRANSMIT_UPDATE_FAILING_GENERATION, prepared, radio_provider,
+    DESTROYED_SEVEN, RECEIVE_FAILING_GENERATION, RECEIVE_UPDATE_FAILING_GENERATION,
+    TRANSMIT_FAILING_GENERATION, TRANSMIT_UPDATE_FAILING_GENERATION, prepared, radio_provider,
 };
 use crate::program::tests::provider as ring_provider;
 
@@ -97,6 +97,43 @@ fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
         },
         Err(crate::StationMediaError::ControllerTransportMismatch)
     ));
+}
+
+#[test]
+fn native_planned_media_rejects_mismatched_radio_before_audio_open() {
+    CREATES.set(0);
+    DESTROYED_SEVEN.set(0);
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::null_mut(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::null_mut(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: rejection occurs before either direct callback can be invoked.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let mut radio = *plan.radio();
+    radio.generation_id += 1;
+    let mismatched = StationPlan::native(
+        "native",
+        plan.configuration().clone(),
+        plan.hardware().clone(),
+        radio,
+        plan.processing(),
+    );
+    let result =
+        StationRuntime::open_native_planned(media, mismatched, &selected, audio_provider());
+    assert_eq!(CREATES.get(), 0, "mismatched media must not open audio");
+    assert!(matches!(result, Err(AudioError::InvalidArgument)));
+    assert_eq!(DESTROYED_SEVEN.get(), 1, "rejected media must be released");
 }
 
 #[test]
@@ -457,6 +494,7 @@ fn update_errors_explain_every_failure() {
 const AUDIO_ABI: u32 = 2;
 const AUDIO_OK: c_int = 0;
 thread_local! {
+    static CREATES: Cell<u32> = const { Cell::new(0) };
     static STARTS: Cell<u32> = const { Cell::new(0) };
     static STOPS: Cell<u32> = const { Cell::new(0) };
     static DESTROYS: Cell<u32> = const { Cell::new(0) };
@@ -578,6 +616,7 @@ unsafe extern "C" fn stream_create(
     config: *const RawStreamConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    CREATES.set(CREATES.get() + 1);
     if CREATE_FAILS.get() {
         return -1;
     }

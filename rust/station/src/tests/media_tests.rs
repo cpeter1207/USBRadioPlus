@@ -25,7 +25,7 @@ const ABI_VERSION: u32 = 4;
 const CHANNELS: usize = 2;
 
 thread_local! {
-    static DESTROYED_SEVEN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    pub(crate) static DESTROYED_SEVEN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static DESTROYED_FAILURE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static PROGRAM_SAMPLE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.25) };
 }
