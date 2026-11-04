@@ -2,6 +2,20 @@
 use super::*;
 use provider_support as fixture;
 
+#[path = "native_maintenance.rs"]
+mod maintenance_contract;
+
+#[test]
+fn descriptor_exposes_owned_native_configuration_resolution() {
+    let prefix = std::mem::offset_of!(UrpAstDescriptor, link_process_f32)
+        + std::mem::size_of::<Option<unsafe extern "C" fn()>>();
+    let minimum = prefix + 3 * std::mem::size_of::<Option<unsafe extern "C" fn()>>();
+    assert!(
+        (DESCRIPTOR.struct_size as usize) >= minimum,
+        "the shared native resolver, visitor and destroy operations are missing"
+    );
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct RawReceiveConfig {
@@ -185,6 +199,565 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
     assert_eq!(status, URP_AST_OK);
     // SAFETY: successful creation transfers the uniquely owned native handle.
     unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+}
+
+#[test]
+fn native_configuration_visit_preserves_shared_gpio_identity_fallback_through_create() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let source =
+        b"[1000]\nhardware_profile=site\n[hardware site]\nhardware_gpio_usb_port_path=3-1:1.0\n";
+    let args = UrpNativeProcessingArgs {
+        struct_size: size_of::<UrpNativeProcessingArgs>() as u32,
+        abi_version: 1,
+        configuration: source.as_ptr(),
+        configuration_length: source.len() as u32,
+        node: b"1000".as_ptr(),
+        node_length: 4,
+    };
+    struct Result {
+        status: c_int,
+        handle: *mut c_void,
+        identifier: String,
+    }
+    unsafe extern "C" fn visit(
+        context: *mut c_void,
+        request: *const UrpNativeStationConfig,
+    ) -> c_int {
+        // SAFETY: the caller retains this context and the SDK borrows a complete request for this call.
+        let (result, request) = unsafe { (&mut *context.cast::<Result>(), &*request) };
+        // SAFETY: the SDK borrows this identifier through the synchronous visitor.
+        result.identifier = unsafe {
+            crate::native::text(request.device_identifier, request.device_identifier_length)
+        }
+        .unwrap_or_default();
+        (result.status, result.handle) = create(request);
+        0
+    }
+    let api = product_descriptor();
+    let mut owner = ptr::null_mut();
+    let mut result = Result {
+        status: -99,
+        handle: ptr::null_mut(),
+        identifier: String::new(),
+    };
+    // SAFETY: all source/owner/context storage is live; each successful handle is consumed once.
+    unsafe {
+        assert_eq!(
+            api.native_configuration_resolve.unwrap()(&args, None, ptr::null_mut(), &mut owner),
+            URP_AST_OK
+        );
+        assert_eq!(
+            api.native_configuration_visit.unwrap()(
+                owner,
+                Some(visit),
+                ptr::from_mut(&mut result).cast()
+            ),
+            URP_AST_OK
+        );
+        api.native_configuration_destroy.unwrap()(owner);
+        if !result.handle.is_null() {
+            api.native_destroy.unwrap()(result.handle);
+        }
+    }
+    assert_eq!(
+        result.status, URP_AST_OK,
+        "the shared audio selector must survive the inspection request"
+    );
+    assert_eq!(result.identifier, "3-1:1.0");
+    assert_eq!(fixture::audio_streams(), 0);
+}
+
+#[test]
+fn native_physical_commands_snapshot_and_manual_cleanup_share_the_owner() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    // SAFETY: this initialized command contains only scalar ABI fields.
+    let mut command: UrpAstChannelCommand = unsafe { std::mem::zeroed() };
+    command.struct_size = size_of::<UrpAstChannelCommand>() as u32;
+    command.abi_version = ABI_VERSION;
+    command.command = URP_AST_COMMAND_GET_MIXER;
+    command.target = URP_AST_MIXER_RECEIVE;
+    // SAFETY: the unique stopped native handle and command live for all calls.
+    unsafe {
+        assert_eq!(
+            crate::native::command(handle, &mut command),
+            URP_AST_NOT_READY
+        );
+        assert_eq!(crate::native::start(handle), URP_AST_OK);
+        assert_eq!(crate::native::command(handle, &mut command), URP_AST_OK);
+        assert_eq!(command.value, 750);
+        command.command = URP_AST_COMMAND_SET_MIXER;
+        command.value = 222;
+        assert_eq!(crate::native::command(handle, &mut command), URP_AST_OK);
+        let physical = crate::native::snapshot(handle).unwrap();
+        assert_eq!(physical.running, 1);
+        assert_eq!(physical.receive_mixer_level, 222);
+        unsafe extern "C" fn append(context: *mut c_void, text: *const u8, length: u32) {
+            // SAFETY: the synchronous call retains this owned output and span.
+            let (output, text) = unsafe {
+                (
+                    &mut *context.cast::<String>(),
+                    std::slice::from_raw_parts(text, length as usize),
+                )
+            };
+            output.push_str(std::str::from_utf8(text).unwrap());
+        }
+        let mut processing = String::new();
+        assert_eq!(
+            product_descriptor().native_processing_status_text.unwrap()(
+                handle,
+                Some(append),
+                ptr::from_mut(&mut processing).cast()
+            ),
+            URP_AST_OK
+        );
+        assert!(processing.contains("radio_receive_calls=1"));
+        assert!(processing.contains("radio_transmit_calls=1"));
+        assert!(processing.contains("radio_receive_failures=0"));
+        assert_eq!(crate::native::set_transmit(handle, 1, 1_000), URP_AST_OK);
+        command.command = URP_AST_COMMAND_SET_TEST_TONE;
+        command.value = 1;
+        assert_eq!(crate::native::command(handle, &mut command), URP_AST_OK);
+        assert_eq!(crate::native::clear_manual(handle), URP_AST_OK);
+        assert_eq!(crate::native::stop(handle), URP_AST_OK);
+        assert_eq!(
+            crate::native::set_transmit(handle, 1, 1_000),
+            URP_AST_NOT_READY
+        );
+        crate::native::destroy(handle);
+    }
+}
+
+#[test]
+fn native_full_source_enables_shared_eeprom_preflight_before_preparation() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let raw = radio();
+    let source = b"[524950]\n[radio]\nhardware_eeprom_enabled=yes\nparallel_port_device=/dev/parport0\nparallel_pin_2_assignment=out0\nparallel_pin_10_assignment=in\n";
+    let mut config = request(&raw);
+    config.processing_configuration = source.as_ptr();
+    config.processing_configuration_length = source.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+    // SAFETY: native creation transferred this single handle and fixture providers.
+    unsafe {
+        assert_eq!(crate::native::start(handle), URP_AST_OK);
+        assert_eq!(fixture::mixer_levels(), [321, 411, 512]);
+        let mut parallel = UrpAstSiteSnapshot {
+            struct_size: size_of::<UrpAstSiteSnapshot>() as u32,
+            abi_version: ABI_VERSION,
+            ..UrpAstSiteSnapshot::default()
+        };
+        assert_eq!(
+            product_descriptor().native_site_snapshot.unwrap()(handle, 1, &mut parallel),
+            URP_AST_OK
+        );
+        assert_eq!(parallel.output_mask, 1);
+        // A physical read reaches the same live owner used by preflight.
+        let mut command: UrpAstChannelCommand = std::mem::zeroed();
+        command.struct_size = size_of::<UrpAstChannelCommand>() as u32;
+        command.abi_version = ABI_VERSION;
+        command.command = URP_AST_COMMAND_READ_EEPROM;
+        assert_eq!(crate::native::command(handle, &mut command), URP_AST_OK);
+        assert_eq!(command.eeprom_words[60], 654);
+        crate::native::destroy(handle);
+    }
+}
+
+#[test]
+fn native_prepared_updates_commit_and_rollback_without_reopening_audio() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::exclusive_audio(true);
+    fixture::periodic_audio(true);
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let raw = radio();
+    let config = request(&raw);
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let mut next = config;
+    next.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+    next.hardware_input_gain_db = 3.0;
+    let mut args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &next,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 9,
+        maximum_frames: 960,
+    };
+    // SAFETY: all request spans, providers and native handles remain live and
+    // control operations are serialized while the independent callbacks run.
+    unsafe {
+        assert_eq!(crate::native::start(handle), URP_AST_OK);
+        let base = next;
+        type StructuralCase = (&'static str, fn(&mut UrpNativeStationConfig));
+        let structural: &[StructuralCase] = &[
+            ("audio selector", |c| {
+                c.device_selection = 0;
+                c.device_identifier = b"another-device".as_ptr();
+                c.device_identifier_length = 14;
+            }),
+            ("HID serial", |c| {
+                c.usb_serial = b"other".as_ptr();
+                c.usb_serial_length = 5;
+            }),
+            ("channel layout", |c| c.input_device_channels = 1),
+            ("audio buffering", |c| c.input_extra_buffer_ms = 1),
+            ("CM119 wiring", |c| c.cm119_profile = 1),
+        ];
+        for (name, change) in structural {
+            next = base;
+            change(&mut next);
+            args.config = &next;
+            let mut update = 1_usize as *mut c_void;
+            assert_eq!(
+                product_descriptor().native_prepare_update.unwrap()(handle, &args, &mut update),
+                URP_AST_INVALID_CONFIGURATION,
+                "{name} requires controlled device handoff"
+            );
+            assert!(update.is_null(), "{name} transferred no update owner");
+            assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        }
+        next = base;
+        for (commit, gain) in [(true, 3.0), (false, 6.0)] {
+            next.hardware_input_gain_db = gain;
+            args.config = &next;
+            let mut update = ptr::null_mut();
+            assert_eq!(
+                crate::native::prepare_update(handle, &args, &mut update),
+                URP_AST_OK
+            );
+            assert!(!update.is_null());
+            assert_eq!(crate::native::begin_update(handle, update), URP_AST_OK);
+            crate::native::destroy_update(update);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+            loop {
+                let result = crate::native::accept_update(handle);
+                if result == URP_AST_OK {
+                    break;
+                }
+                assert_eq!(result, URP_AST_RELOAD_PENDING);
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::yield_now();
+            }
+            loop {
+                let result = crate::native::finish_update(handle, u32::from(commit));
+                if result == URP_AST_OK {
+                    break;
+                }
+                assert_eq!(result, URP_AST_RELOAD_PENDING);
+                assert!(std::time::Instant::now() < deadline);
+                std::thread::yield_now();
+            }
+            assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        }
+        assert_eq!(fixture::mixer_levels(), [706, 795, 245]);
+        crate::native::destroy(handle);
+    }
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(false);
+}
+
+#[test]
+fn native_stop_rolls_back_an_unacknowledged_update_before_restart() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let raw = radio();
+    let config = request(&raw);
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let mut next = config;
+    next.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+    next.hardware_input_gain_db = 3.0;
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &next,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 9,
+        maximum_frames: 960,
+    };
+    // SAFETY: fixture callbacks run synchronously at start and the stopped
+    // runtime retains both callback contexts while rollback adopts its ports.
+    unsafe {
+        assert_eq!(crate::native::start(handle), URP_AST_OK);
+        let mut update = ptr::null_mut();
+        assert_eq!(
+            crate::native::prepare_update(handle, &args, &mut update),
+            URP_AST_OK
+        );
+        assert_eq!(crate::native::begin_update(handle, update), URP_AST_OK);
+        crate::native::destroy_update(update);
+        assert_eq!(fixture::mixer_levels()[0], 706);
+        assert_eq!(crate::native::stop(handle), URP_AST_OK);
+        assert_eq!(fixture::mixer_levels()[0], 750);
+        assert_eq!(crate::native::start(handle), URP_AST_OK);
+        let mut replacement = ptr::null_mut();
+        assert_eq!(
+            crate::native::prepare_update(handle, &args, &mut replacement),
+            URP_AST_OK
+        );
+        crate::native::destroy_update(replacement);
+        crate::native::destroy(handle);
+    }
+}
+
+#[test]
+fn native_update_admission_preserves_running_state_for_bad_busy_and_stale_requests() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(true);
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let raw = radio();
+    let config = request(&raw);
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let mut next = config;
+    let mut args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &next,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 9,
+        maximum_frames: 960,
+    };
+    let api = product_descriptor();
+    // SAFETY: this test retains all request spans and serializes the unique native owner/tokens.
+    unsafe {
+        let mut output = ptr::dangling_mut();
+        assert_eq!(
+            api.native_prepare_update.unwrap()(ptr::null_mut(), &args, &mut output),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert!(output.is_null());
+        assert_eq!(
+            api.native_begin_update.unwrap()(handle, ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_begin_update.unwrap()(ptr::null_mut(), ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_accept_update.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_finish_update.unwrap()(ptr::null_mut(), 0),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_clear_manual.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_set_transmit.unwrap()(ptr::null_mut(), 0, 0),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut output),
+            URP_AST_NOT_READY
+        );
+        assert!(output.is_null());
+        assert_eq!(api.native_finish_update.unwrap()(handle, 0), URP_AST_OK);
+        api.native_destroy_update.unwrap()(ptr::null_mut());
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_set_transmit.unwrap()(handle, 0, 0), URP_AST_OK);
+        for (keyed, tone) in [(2, 0), (1, u32::MAX), (1, 450)] {
+            assert_eq!(
+                api.native_set_transmit.unwrap()(handle, keyed, tone),
+                URP_AST_INVALID_ARGUMENT
+            );
+        }
+        for (generation, maximum) in [(0, 960), (9, 959)] {
+            args.generation_id = generation;
+            args.maximum_frames = maximum;
+            output = ptr::dangling_mut();
+            assert_eq!(
+                api.native_prepare_update.unwrap()(handle, &args, &mut output),
+                URP_AST_INVALID_ARGUMENT
+            );
+            assert!(output.is_null());
+        }
+        args.generation_id = 9;
+        args.maximum_frames = 960;
+        let eeprom = b"[1000]\n[radio]\nhardware_eeprom_enabled=yes\n";
+        next.processing_configuration = eeprom.as_ptr();
+        next.processing_configuration_length = eeprom.len() as u32;
+        next.processing_node = b"1000".as_ptr();
+        next.processing_node_length = 4;
+        args.config = &next;
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut output),
+            URP_AST_INVALID_CONFIGURATION
+        );
+        assert!(output.is_null());
+        next = config;
+        next.receive_graph = b"volume=0.5".as_ptr();
+        next.receive_graph_length = 10;
+        args.config = &next;
+        fixture::set_failure(fixture::FAIL_GRAPH);
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut output),
+            URP_AST_SETUP_FAILED
+        );
+        assert!(output.is_null());
+        fixture::clear_failure();
+        next = config;
+        next.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+        next.hardware_input_gain_db = 3.0;
+        args.config = &next;
+        let mut first = ptr::null_mut();
+        let mut stale = ptr::null_mut();
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut first),
+            URP_AST_OK
+        );
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut stale),
+            URP_AST_OK
+        );
+        assert_eq!(api.native_begin_update.unwrap()(handle, first), URP_AST_OK);
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut output),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert!(output.is_null());
+        assert_eq!(
+            api.native_begin_update.unwrap()(handle, stale),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(
+            api.native_accept_update.unwrap()(handle),
+            URP_AST_RELOAD_PENDING
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_begin_update.unwrap()(handle, stale),
+            URP_AST_NOT_READY
+        );
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_begin_update.unwrap()(handle, stale),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(
+            api.native_begin_update.unwrap()(handle, first),
+            URP_AST_INVALID_ARGUMENT
+        );
+        api.native_destroy_update.unwrap()(first);
+        api.native_destroy_update.unwrap()(stale);
+        assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::exclusive_audio(false);
+}
+
+fn wait_for_native_update(mut operation: impl FnMut() -> c_int) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        let result = operation();
+        if result == URP_AST_OK {
+            return;
+        }
+        assert_eq!(result, URP_AST_RELOAD_PENDING);
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+}
+
+#[test]
+fn native_updates_retain_eeprom_tuning_when_raw_processing_changes() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let document = usbradioplus_core::ConfigDocument::new("[native]\n");
+    let mut channel =
+        usbradioplus_core::ResolvedNativeConfiguration::from_document(&document, "test", "native")
+            .unwrap()
+            .into_config();
+    channel.station.receive.squelch_level = 654;
+    let matching_squelch = usbradioplus_station::native_radio_session_config(&channel, 8, 960)
+        .unwrap()
+        .receive
+        .squelch_open_level;
+    fixture::periodic_audio(true);
+    for squelch in [0, matching_squelch] {
+        fixture::exclusive_audio(true);
+        fixture::restored_mixer_levels([750, 795, 245]);
+        let mut raw = radio();
+        raw.receive.squelch_open_level = squelch;
+        let mut config = request(&raw);
+        let source = b"[1000]\n[radio]\nhardware_eeprom_enabled=yes\n";
+        config.processing_configuration = source.as_ptr();
+        config.processing_configuration_length = source.len() as u32;
+        config.processing_node = b"1000".as_ptr();
+        config.processing_node_length = 4;
+        let (status, handle) = create(&config);
+        assert_eq!(status, URP_AST_OK);
+        let providers = fixture::manifest();
+        let callbacks = direct_callbacks();
+        let mut next = config;
+        next.receive_graph = b"volume=0.5".as_ptr();
+        next.receive_graph_length = 10;
+        let args = UrpNativeCreateArgs {
+            struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+            abi_version: 1,
+            config: &next,
+            providers: &providers,
+            callbacks: &callbacks,
+            generation_id: 9,
+            maximum_frames: 960,
+        };
+        let api = product_descriptor();
+        // SAFETY: the serialized owner retains request/providers while its independent callbacks run.
+        unsafe {
+            assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+            let before = fixture::mixer_levels();
+            let mut update = ptr::null_mut();
+            assert_eq!(
+                api.native_prepare_update.unwrap()(handle, &args, &mut update),
+                URP_AST_OK
+            );
+            assert_eq!(api.native_begin_update.unwrap()(handle, update), URP_AST_OK);
+            api.native_destroy_update.unwrap()(update);
+            wait_for_native_update(|| api.native_accept_update.unwrap()(handle));
+            wait_for_native_update(|| api.native_finish_update.unwrap()(handle, 1));
+            assert_eq!(fixture::mixer_levels(), before);
+            assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+            assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+            assert_eq!(
+                fixture::mixer_levels(),
+                before,
+                "committed EEPROM intentions survive restart"
+            );
+            assert_eq!(fixture::audio_lifecycle(), (1, 0));
+            api.native_destroy.unwrap()(handle);
+        }
+        fixture::exclusive_audio(false);
+    }
+    fixture::periodic_audio(false);
 }
 
 #[test]
@@ -401,6 +974,23 @@ fn native_create_rejects_old_or_short_configurations_before_reading_the_gain_tai
     }
 }
 
+/// Cache publication can legitimately reject a concurrent control read as busy.
+/// Retry only that admission status; successful writes are never submitted twice.
+fn retry_site_busy(mut operation: impl FnMut() -> c_int) -> c_int {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        let result = operation();
+        if result != URP_AST_CHANNEL_BUSY {
+            return result;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "site cache did not admit a coherent read"
+        );
+        std::thread::yield_now();
+    }
+}
+
 #[test]
 fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
@@ -420,12 +1010,12 @@ fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service
     // SAFETY: serialized native owner and fully initialized ABI records live until destroy.
     unsafe {
         assert_eq!(
-            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            retry_site_busy(|| api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot)),
             URP_AST_NOT_READY
         );
         assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
         assert_eq!(
-            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            retry_site_busy(|| api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot)),
             URP_AST_OK
         );
         assert_eq!(snapshot.output_mask, 0x21);
@@ -441,18 +1031,19 @@ fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service
             safe_high_mask: 0,
         };
         assert_eq!(
-            api.native_site_bind.unwrap()(handle, 0, &binding),
+            retry_site_busy(|| api.native_site_bind.unwrap()(handle, 0, &binding)),
             URP_AST_NOT_READY
         );
         binding.output_mask = 0x20;
         binding.initial_high_mask = 0x20;
         assert_eq!(
-            api.native_site_bind.unwrap()(handle, 0, &binding),
+            retry_site_busy(|| api.native_site_bind.unwrap()(handle, 0, &binding)),
             URP_AST_OK
         );
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
-            let result = api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot);
+            let result =
+                retry_site_busy(|| api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot));
             if result == URP_AST_OK
                 && snapshot.generation != old_generation
                 && snapshot.serviced_generation == snapshot.generation
@@ -475,7 +1066,7 @@ fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service
             high_mask: 0,
         };
         assert_eq!(
-            api.native_site_publish.unwrap()(handle, 0, &request),
+            retry_site_busy(|| api.native_site_publish.unwrap()(handle, 0, &request)),
             URP_AST_NOT_READY
         );
         let request = UrpAstSiteRequest {
@@ -483,7 +1074,7 @@ fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service
             ..request
         };
         assert_eq!(
-            api.native_site_publish.unwrap()(handle, 0, &request),
+            retry_site_busy(|| api.native_site_publish.unwrap()(handle, 0, &request)),
             URP_AST_OK
         );
         assert_eq!(
@@ -496,7 +1087,7 @@ fn native_site_bridge_rejects_reserved_and_stale_writes_and_acknowledges_service
         );
         snapshot.struct_size = 8;
         assert_eq!(
-            api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot),
+            retry_site_busy(|| api.native_site_snapshot.unwrap()(handle, 0, &mut snapshot)),
             URP_AST_INCOMPATIBLE_ABI
         );
         assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
@@ -632,6 +1223,8 @@ fn native_create_accepts_released_device_profiles_and_exact_selectors() {
     for profile in 0..=3 {
         let mut config = request(&raw);
         config.cm119_profile = profile;
+        config.gpio_output_enable_mask = 1;
+        config.gpio_output_initial_mask = 1;
         let (status, handle) = create(&config);
         assert_eq!(status, URP_AST_OK, "CM119 profile {profile}");
         // SAFETY: successful creation transfers one owned station handle.

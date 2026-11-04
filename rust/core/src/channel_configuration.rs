@@ -74,13 +74,36 @@ impl ResolvedChannelConfiguration {
         source: impl Into<String>,
         channel: &str,
     ) -> Result<Self, ChannelConfigurationError> {
+        Self::from_document_with_defaults(
+            document,
+            source,
+            channel,
+            StationConfig::default(),
+            ProcessingChain::shipped(ChainRole::LocalReceive),
+        )
+    }
+
+    /// Apply a composition baseline while retaining one common resolver.
+    pub(crate) fn from_document_with_defaults(
+        document: &ConfigDocument,
+        source: impl Into<String>,
+        channel: &str,
+        defaults: StationConfig,
+        local_defaults: ProcessingChain,
+    ) -> Result<Self, ChannelConfigurationError> {
         let source = source.into();
-        let station = ResolvedStationConfig::from_document(document, source.clone(), channel)?;
-        let local = ResolvedProfile::from_document(
+        let station = ResolvedStationConfig::from_document_with_defaults(
+            document,
+            source.clone(),
+            channel,
+            defaults,
+        )?;
+        let local = ResolvedProfile::from_document_with_defaults(
             document,
             source.clone(),
             channel,
             ChainRole::LocalReceive,
+            local_defaults,
         )?;
         let link =
             ResolvedProfile::from_document(document, source.clone(), channel, ChainRole::Link)?;

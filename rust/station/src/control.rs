@@ -5,7 +5,8 @@ use std::fmt;
 use usbradioplus_core::ChannelConfiguration;
 use usbradioplus_radio::{RadioError, SessionConfig};
 use usbradioplus_runtime::{
-    NativeProcessingFactory, NativeProcessingPlan, ProcessingGeneration, ProcessingRuntimeError,
+    ExplicitNativeProcessingPlan, NativeProcessingFactory, ProcessingGeneration,
+    ProcessingRuntimeError,
 };
 
 use crate::{
@@ -65,10 +66,34 @@ pub struct StationPlan {
     hardware: HardwarePlan,
     program_ring: ProgramRingPlan,
     radio: SessionConfig,
-    processing: NativeProcessingPlan,
+    processing: ExplicitNativeProcessingPlan,
 }
 
 impl StationPlan {
+    /// Retain shared native builder outputs for the existing live-update owner.
+    ///
+    /// The caller resolves composition defaults and validates the radio and
+    /// processing descriptions before preparing media. This constructor stores
+    /// those exact descriptions; it neither reconstructs them nor opens devices.
+    #[must_use]
+    pub fn native(
+        channel: impl Into<String>,
+        configuration: ChannelConfiguration,
+        hardware: HardwarePlan,
+        radio: SessionConfig,
+        processing: impl Into<ExplicitNativeProcessingPlan>,
+    ) -> Self {
+        Self {
+            channel: channel.into(),
+            transport: ControllerTransport::RptAdvanced,
+            configuration,
+            hardware,
+            program_ring: program_ring_plan(ControllerTransport::RptAdvanced),
+            radio,
+            processing: processing.into(),
+        }
+    }
+
     /// Translate one already-resolved channel into a complete preparation plan.
     ///
     /// # Errors
@@ -94,7 +119,7 @@ impl StationPlan {
                 generation_id,
                 maximum_frame_count,
             )?,
-            processing: native_processing_plan(&configuration),
+            processing: native_processing_plan(&configuration).into(),
             channel: channel.into(),
             transport,
             configuration,
@@ -139,8 +164,15 @@ impl StationPlan {
 
     /// Return the immutable native-processing plan.
     #[must_use]
-    pub const fn processing(&self) -> &NativeProcessingPlan {
+    pub const fn processing(&self) -> &ExplicitNativeProcessingPlan {
         &self.processing
+    }
+
+    /// Retain the exact native raw/profile selection for initial and later preparation.
+    #[must_use]
+    pub fn with_explicit_processing(mut self, processing: ExplicitNativeProcessingPlan) -> Self {
+        self.processing = processing;
+        self
     }
 
     /// Prepare and warm the plan's selected processing outside audio callbacks.

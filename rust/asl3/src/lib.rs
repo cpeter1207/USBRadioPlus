@@ -26,7 +26,8 @@ pub use handoff::{
     Consumer, HandoffError, HandoffObservation, LatestHandoff, Producer, PublishOutcome,
 };
 pub use link::{
-    ExactRateGraph, LinkDirection, LinkError, LinkObservation, LinkProcessOutcome, PreparedLink,
+    ExactRateGraph, LinkDirection, LinkError, LinkObservation, LinkObserver, LinkProcessOutcome,
+    PreparedLink,
 };
 pub use pcm::{
     ADVANCED_FRAME_SAMPLES, APP_RPT_FRAME_SAMPLES, AsteriskPcmMode, ControllerPcmFrame,

@@ -5,13 +5,17 @@
 
 #![deny(warnings)]
 
+mod maintenance;
 mod native;
+pub use maintenance::UrpNativePhysicalStatus;
+mod native_configuration;
 mod native_processing;
 pub use native::{
     URP_NATIVE_CONFIG_ABI_VERSION, URP_NATIVE_HARDWARE_GAIN_INPUT,
     URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
     UrpNativeStationConfig,
 };
+pub use native_configuration::UrpNativeConfigurationSink;
 pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnostic};
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
@@ -28,7 +32,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use usbradioplus_asl3::{
     AsteriskPcmMode, ControllerPcmFrame, ControllerReloadState, CtcssTone, DeliveryAction,
     DtmfAction, DtmfEvent, DtmfEventKind, EchoConfiguration, LatestHandoff, LinkDirection,
-    LinkObservation, PreparedLink, Producer,
+    LinkObservation, LinkObserver, PreparedLink, Producer,
 };
 use usbradioplus_audio::AudioProvider;
 use usbradioplus_core::{AsteriskConfig, JitterBufferImplementation};
@@ -115,37 +119,16 @@ pub const URP_AST_LOG_WARNING: u32 = 2;
 /// Operation failure.
 pub const URP_AST_LOG_ERROR: u32 = 3;
 
-/// Read one hardware mixer level into the command value.
-pub const URP_AST_COMMAND_GET_MIXER: u32 = 1;
-/// Set one hardware mixer level from the command value.
-pub const URP_AST_COMMAND_SET_MIXER: u32 = 2;
-/// Enable or disable the calibrated transmitter test tone.
-pub const URP_AST_COMMAND_SET_TEST_TONE: u32 = 3;
-/// Read the complete hardware tuning EEPROM image.
-pub const URP_AST_COMMAND_READ_EEPROM: u32 = 4;
-/// Write the complete hardware tuning EEPROM image.
-pub const URP_AST_COMMAND_WRITE_EEPROM: u32 = 5;
-/// Temporarily inhibit or restore transmit CTCSS generation.
-pub const URP_AST_COMMAND_SET_CTCSS_INHIBIT: u32 = 7;
-/// Temporarily bypass or restore receive subaudible qualification.
-pub const URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE: u32 = 8;
-/// Persist the current live mixer, CTCSS, and squelch tuning to EEPROM.
-pub const URP_AST_COMMAND_SAVE_TUNING_EEPROM: u32 = 9;
+pub use usbradioplus_core::radio_control::{
+    URP_AST_COMMAND_GET_MIXER, URP_AST_COMMAND_READ_EEPROM, URP_AST_COMMAND_SAVE_TUNING_EEPROM,
+    URP_AST_COMMAND_SET_CTCSS_INHIBIT, URP_AST_COMMAND_SET_MIXER,
+    URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE, URP_AST_COMMAND_SET_TEST_TONE,
+    URP_AST_COMMAND_WRITE_EEPROM, URP_AST_EEPROM_CHECKSUM_VALID, URP_AST_EEPROM_MAGIC_VALID,
+    URP_AST_MIXER_RECEIVE, URP_AST_MIXER_TRANSMIT_A, URP_AST_MIXER_TRANSMIT_B,
+};
 
 /// Normalized CTCSS decoder peak used by the established 2,400-code calibration.
 pub const URP_AST_CTCSS_CALIBRATION_TARGET: f32 = usbradioplus_radio::CTCSS_CALIBRATION_TARGET;
-
-/// Receiver ADC mixer.
-pub const URP_AST_MIXER_RECEIVE: u32 = 1;
-/// Transmitter DAC A mixer.
-pub const URP_AST_MIXER_TRANSMIT_A: u32 = 2;
-/// Transmitter DAC B mixer.
-pub const URP_AST_MIXER_TRANSMIT_B: u32 = 3;
-
-/// EEPROM image has a valid checksum.
-pub const URP_AST_EEPROM_CHECKSUM_VALID: u32 = 1 << 0;
-/// EEPROM image has the established tuning magic value.
-pub const URP_AST_EEPROM_MAGIC_VALID: u32 = 1 << 1;
 
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -733,6 +716,72 @@ pub struct UrpAstDescriptor {
     /// Process normalized-F32 incoming link PCM using the prepared shared graph.
     pub link_process_f32:
         Option<unsafe extern "C" fn(*mut c_void, u32, u32, *mut f32, u32) -> c_int>,
+    /// Resolve shared native settings without device I/O; transfers one owned handle.
+    pub native_configuration_resolve: Option<
+        unsafe extern "C" fn(
+            *const UrpNativeProcessingArgs,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+            *mut *mut c_void,
+        ) -> c_int,
+    >,
+    /// Visit one borrowed resolved request; it and all spans expire on callback return.
+    pub native_configuration_visit: Option<
+        unsafe extern "C" fn(
+            *const c_void,
+            Option<UrpNativeConfigurationSink>,
+            *mut c_void,
+        ) -> c_int,
+    >,
+    /// Release a resolved owner after all visitors return; null is harmless.
+    pub native_configuration_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+
+    /// Read a coherent physical snapshot on the serialized control owner.
+    pub native_get_status:
+        Option<unsafe extern "C" fn(*mut c_void, *mut UrpNativePhysicalStatus) -> c_int>,
+    /// Execute the same typed maintenance catalog as the channel adapter.
+    pub native_command:
+        Option<unsafe extern "C" fn(*mut c_void, *mut UrpAstChannelCommand) -> c_int>,
+    /// Set only temporary maintenance PTT and optional forced CTCSS intent.
+    pub native_set_transmit: Option<unsafe extern "C" fn(*mut c_void, u32, u32) -> c_int>,
+    /// Clear maintenance-only key/tone/override intent, preserving controller demand.
+    pub native_clear_manual: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Prepare a same-device replacement without publishing it to callbacks.
+    pub native_prepare_update: Option<
+        unsafe extern "C" fn(*mut c_void, *const UrpNativeCreateArgs, *mut *mut c_void) -> c_int,
+    >,
+    /// Transfer a prepared replacement into the existing callback mailbox.
+    pub native_begin_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
+    /// Return ReloadPending until receive and transmit acknowledge the replacement.
+    pub native_accept_update: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Commit or roll back; pending rollback retains its owners until callback acknowledgments.
+    pub native_finish_update: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    /// Release a prepared token; a consumed token no longer owns callback state.
+    pub native_destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// Format physical status through the same shared measurement owner.
+    pub native_status_text: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
+
+    /// Emit existing native callback counters without borrowing callback-owned graphs.
+    pub native_processing_status_text: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
+    /// Retain counters from a quiescent link before publication; output is cleared on failure.
+    pub link_observer_create: Option<unsafe extern "C" fn(*mut c_void, *mut *mut c_void) -> c_int>,
+    /// Read an independent observer during PCM processing or after graph destruction.
+    pub link_observer_read:
+        Option<unsafe extern "C" fn(*const c_void, *mut UrpAstLinkObservation) -> c_int>,
+    /// Release an observer only after its reads return; null is harmless.
+    pub link_observer_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
@@ -742,6 +791,23 @@ static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
     native_processing_validate: Some(native_processing::validate),
     native_link_prepare: Some(native_processing::link_prepare),
     link_process_f32: Some(native_processing::link_process_f32),
+    native_configuration_resolve: Some(native_configuration::resolve),
+    native_configuration_visit: Some(native_configuration::visit),
+    native_configuration_destroy: Some(native_configuration::destroy),
+    native_get_status: Some(native::get_status),
+    native_command: Some(native::command),
+    native_set_transmit: Some(native::set_transmit),
+    native_clear_manual: Some(native::clear_manual),
+    native_prepare_update: Some(native::prepare_update),
+    native_begin_update: Some(native::begin_update),
+    native_accept_update: Some(native::accept_update),
+    native_finish_update: Some(native::finish_update),
+    native_destroy_update: Some(native::destroy_update),
+    native_status_text: Some(maintenance::native_status_text),
+    native_processing_status_text: Some(native::processing_status_text),
+    link_observer_create: Some(link_observer_create),
+    link_observer_read: Some(link_observer_read),
+    link_observer_destroy: Some(link_observer_destroy),
     native_create: Some(native::create),
     native_start: Some(native::start),
     native_stop: Some(native::stop),
@@ -1609,6 +1675,40 @@ unsafe extern "C" fn link_observe(link: *mut c_void, output: *mut UrpAstLinkObse
     })
 }
 
+unsafe extern "C" fn link_observer_create(link: *mut c_void, output: *mut *mut c_void) -> c_int {
+    ffi_status(|| {
+        let output = output_pointer(output)?;
+        // SAFETY: creation borrows a retained quiescent link before publication to PCM.
+        let link = unsafe { link.cast::<LinkHandle>().as_ref() }.ok_or(Status::InvalidArgument)?;
+        let observer = Box::new(link.processing.observer());
+        // SAFETY: validated output transfers one independent owner, released by its destroy operation.
+        unsafe { output.as_ptr().write(Box::into_raw(observer).cast()) };
+        Ok(())
+    })
+}
+
+unsafe extern "C" fn link_observer_read(
+    observer: *const c_void,
+    output: *mut UrpAstLinkObservation,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the caller retains this immutable observer until all concurrent reads return.
+        let observer = unsafe { observer.cast::<LinkObserver>().as_ref() };
+        let observer = observer.ok_or(Status::InvalidArgument)?;
+        // SAFETY: the caller supplies initialized writable ABI storage; no graph is borrowed.
+        unsafe { write_abi(output, link_observation(observer.observe())) }
+    })
+}
+
+unsafe extern "C" fn link_observer_destroy(observer: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        if !observer.is_null() {
+            // SAFETY: creation transferred this sole observer lease; all of its reads have returned.
+            drop(unsafe { Box::from_raw(observer.cast::<LinkObserver>()) });
+        }
+    }));
+}
+
 unsafe extern "C" fn link_destroy(link: *mut c_void) {
     let _ = catch_unwind(AssertUnwindSafe(|| {
         if !link.is_null() {
@@ -2377,59 +2477,16 @@ unsafe extern "C" fn channel_command(
         // SAFETY: the caller supplies initialized writable ABI storage.
         let mut command_value = unsafe { copy_abi(command.cast_const())? };
         let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
-        match command_value.command {
-            URP_AST_COMMAND_GET_MIXER => {
-                command_value.value = i64::from(
-                    hardware
-                        .mixer_level(mixer(command_value.target)?)
-                        .map_err(|error| command_error(channel, error))?,
-                );
-            }
-            URP_AST_COMMAND_SET_MIXER => {
-                let level = u32::try_from(command_value.value)
-                    .ok()
-                    .filter(|value| *value <= 999)
-                    .ok_or(Status::InvalidArgument)?;
-                hardware
-                    .set_mixer_level(mixer(command_value.target)?, level)
-                    .map_err(|error| command_error(channel, error))?;
-            }
-            URP_AST_COMMAND_SET_TEST_TONE => {
-                hardware.set_calibrated_test_tone(switch(command_value.value)?);
-            }
-            URP_AST_COMMAND_READ_EEPROM => {
-                let image = hardware
-                    .read_eeprom()
-                    .map_err(|error| command_error(channel, error))?;
-                command_value.eeprom_words = image.words;
-                command_value.flags = eeprom_flags(&image);
-            }
-            URP_AST_COMMAND_WRITE_EEPROM => {
-                let mut image = EepromImage {
-                    checksum_valid: command_value.flags & URP_AST_EEPROM_CHECKSUM_VALID != 0,
-                    magic_valid: command_value.flags & URP_AST_EEPROM_MAGIC_VALID != 0,
-                    words: command_value.eeprom_words,
-                };
-                hardware
-                    .write_eeprom(&mut image)
-                    .map_err(|error| command_error(channel, error))?;
-                command_value.eeprom_words = image.words;
-                command_value.flags = eeprom_flags(&image);
-            }
-            URP_AST_COMMAND_SET_CTCSS_INHIBIT => {
-                hardware.set_ctcss_inhibited(switch(command_value.value)?);
-            }
-            URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE => {
-                hardware.set_subaudible_override(switch(command_value.value)?);
-            }
-            URP_AST_COMMAND_SAVE_TUNING_EEPROM => {
-                hardware
-                    .save_current_tuning_to_eeprom()
-                    .map_err(|error| command_error(channel, error))?;
-                command_value.value = 1;
-            }
-            _ => return Err(Status::InvalidArgument),
-        }
+        let configuration = hardware.configuration().clone();
+        maintenance::execute(
+            hardware.maintenance_mut(),
+            &configuration,
+            &mut command_value,
+        )
+        .map_err(|error| match error {
+            maintenance::CommandError::Status(status) => status,
+            maintenance::CommandError::Hardware(error) => command_error(channel, error),
+        })?;
         // SAFETY: the same complete writable command storage was validated above.
         unsafe { write_abi(command, command_value) }
     })
@@ -2481,37 +2538,14 @@ unsafe extern "C" fn channel_get_status(
                     channel.log_error(&error.to_string());
                     Status::SetupFailed
                 })?;
-            status.receive_input_peak = radio.receive_input_peak;
-            status.receive_input_rms = radio.receive_input_rms;
-            status.receive_output_peak = radio.receive_output_peak;
-            status.receive_output_rms = radio.receive_output_rms;
-            status.receive_input_rail_samples = diagnostics.receive.input_rail_samples;
-            status.receive_output_rail_samples = diagnostics.receive.output_rail_samples;
-            status.receive_ctcss_decoder_peak = diagnostics.receive.ctcss_decoder_peak;
-            status.receive_rssi_peak = i32::from(diagnostics.receive.rssi_peak);
-            status.receive_rssi_updated = u32::from(diagnostics.receive.rssi_updated);
-            status.transmit_program_peak = radio.transmit_program_peak;
-            status.transmit_program_rms = radio.transmit_program_rms;
-            status.transmit_output_peak = radio.transmit_output_peak;
-            status.transmit_output_rms = radio.transmit_output_rms;
-            status.input_overflow_count = diagnostics.runtime.audio.input_overflow_count;
-            status.output_underflow_count = diagnostics.runtime.audio.output_underflow_count;
-            status.input_clip_sample_count = diagnostics.runtime.audio.input_clip_sample_count;
-            status.output_clip_sample_count = diagnostics.runtime.audio.output_clip_sample_count;
-            status.callback_last_duration_ns = diagnostics.runtime.audio.callback_last_duration_ns;
-            status.callback_max_duration_ns = diagnostics.runtime.audio.callback_max_duration_ns;
-            status.callback_last_start_delay_ns =
-                diagnostics.runtime.audio.callback_last_start_delay_ns;
-            status.callback_max_start_delay_ns =
-                diagnostics.runtime.audio.callback_max_start_delay_ns;
-            status.callback_late_start_count = diagnostics.runtime.audio.callback_late_start_count;
-            status.last_input_xrun_monotonic_ns =
-                diagnostics.runtime.audio.last_input_xrun_monotonic_ns;
-            status.last_output_xrun_monotonic_ns =
-                diagnostics.runtime.audio.last_output_xrun_monotonic_ns;
-            status.input_latency_seconds = diagnostics.timing.input_latency_seconds;
-            status.output_latency_seconds = diagnostics.timing.output_latency_seconds;
-            status.native_sample_rate_hz = diagnostics.timing.sample_rate_hz;
+            let physical = maintenance::collect_physical_status(
+                hardware.maintenance_mut(),
+                diagnostics,
+                &radio,
+                control.running,
+            )
+            .map_err(|error| command_error(channel, error))?;
+            maintenance::copy_physical_status(&physical, &mut status);
             status.ring_occupancy_frames = radio.program_ring.occupancy_frames;
             status.ring_reserve_frames = radio.program_ring.reserve_frames;
             status.ring_target_frames = radio.program_ring.target_frames;
@@ -2520,22 +2554,6 @@ unsafe extern "C" fn channel_get_status(
             status.ring_underrun_samples = radio.program_ring.underrun_samples;
             status.ring_overrun_samples = radio.program_ring.overrun_samples;
             status.ring_concealment_samples = radio.program_ring.concealment_samples;
-            status.carrier_active = u32::from(radio.carrier_active);
-            status.subaudible_active = u32::from(radio.subaudible_active);
-            status.receiver_keyed = u32::from(radio.receiver_keyed);
-            status.logical_ptt = u32::from(radio.logical_ptt);
-            status.ctcss_decode_index =
-                radio.ctcss_decoded.map_or(-1, |tone| i32::from(tone.get()));
-            status.dcs_valid = u32::from(radio.dcs_valid);
-            status.receive_mixer_level = hardware
-                .mixer_level(HardwareMixer::Receive)
-                .map_err(|error| command_error(channel, error))?;
-            status.transmit_a_mixer_level = hardware
-                .mixer_level(HardwareMixer::TransmitA)
-                .map_err(|error| command_error(channel, error))?;
-            status.transmit_b_mixer_level = hardware
-                .mixer_level(HardwareMixer::TransmitB)
-                .map_err(|error| command_error(channel, error))?;
         }
         // SAFETY: caller initialized writable ABI-sized output storage.
         unsafe { write_abi(output, status) }

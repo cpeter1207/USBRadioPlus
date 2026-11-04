@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 usbradioplus-core = { path = "../core" }
+serde_json = "1.0"
 
 [lib]
 name = "usbradioplus_tune"

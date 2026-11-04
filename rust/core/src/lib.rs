@@ -4,9 +4,13 @@
 //! Asterisk and external C-library types outside the core. Complete objects
 //! move here as their former C owners are removed.
 
+/// Stable typed radio-maintenance identifiers for host adapters.
+pub mod radio_control;
+
 mod channel_configuration;
 mod config_document;
 mod ffmpeg_graph;
+mod native_configuration;
 mod native_stream;
 mod processing_profile;
 mod profile_resolution;
@@ -18,6 +22,11 @@ pub use channel_configuration::{
 };
 pub use config_document::{ConfigDocument, ConfigError};
 pub use ffmpeg_graph::{GraphDescriptionError, GraphDescriptionFactory};
+pub use native_configuration::{
+    NativeDeviceSelection, NativePhysicalOptions, ResolvedNativeConfiguration,
+    native_configured_nodes, native_processing_profile_configured,
+    native_radio_setting_destination, native_radio_setting_value,
+};
 pub use native_stream::{NATIVE_SAMPLE_RATE_HZ, NativeStreamSpec, StreamSpecError};
 pub use processing_profile::{
     Agc, BandLayout, ChainRole, Compressor, Deesser, DynamicsBand, Equalizer, Expander, Limiter,
@@ -35,3 +44,7 @@ pub use station_config::{
     ParallelPortConfig, RadioDuplexMode, ReceiveAudioSource, ReceiveConfig, ResolvedStationConfig,
     SignalingMethod, StationConfig, StationConfigError, StationValidationError, TransmitConfig,
 };
+
+#[cfg(test)]
+#[path = "tests/native_configuration_tests.rs"]
+mod native_configuration_tests;

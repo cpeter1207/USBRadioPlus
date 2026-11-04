@@ -565,6 +565,108 @@ fn plan() -> NativeProcessingPlan {
     }
 }
 
+fn explicit_raw_plan() -> ExplicitNativeProcessingPlan {
+    ExplicitNativeProcessingPlan {
+        local: None,
+        voice_telemetry: None,
+        receive_graph: "highpass=f=60".to_owned(),
+        transmit_graph: "volume=-2dB".to_owned(),
+        receive_deemphasis: false,
+        receive_deemphasis_corner_hz: 300.0,
+        transmit_preemphasis: false,
+        transmit_preemphasis_corner_hz: 300.0,
+        receive_output_gain_db: 0,
+        receive_ctcss_mask: 0,
+        transmit_dcs: false,
+    }
+}
+
+#[test]
+fn explicit_replacement_keeps_unchanged_raw_stages_and_restores_exact_graphs() {
+    let factory = NativeProcessingFactory::new_explicit(
+        graph_provider(&GRAPH_DESCRIPTOR),
+        None,
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let original_plan = explicit_raw_plan();
+    let original = factory.prepare(&original_plan).unwrap();
+    GRAPH_CREATES.set(0);
+    GRAPH_PROCESSES.set(0);
+    let unchanged =
+        // SAFETY: all generations retain the same sole serial RX/TX owners.
+        unsafe { factory.prepare_replacement(&original_plan, &original_plan, &original) }.unwrap();
+    assert_eq!(GRAPH_CREATES.get(), 0);
+    assert_eq!(GRAPH_PROCESSES.get(), 0);
+    drop(unchanged);
+    let mut changed = original_plan.clone();
+    changed.receive_graph = "highpass=f=120".to_owned();
+    let forward =
+        // SAFETY: this replacement is prepared for those same serial owners.
+        unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    assert_eq!(GRAPH_CREATES.get(), 1);
+    assert_eq!(GRAPH_PROCESSES.get(), GRAPH_WARMUP_BLOCKS);
+    assert_eq!(
+        forward.transmit_program.0.primary.pointer(),
+        original.transmit_program.0.primary.pointer()
+    );
+    assert_ne!(
+        forward.receive_filter.0.primary.pointer(),
+        original.receive_filter.0.primary.pointer()
+    );
+    GRAPH_CREATES.set(0);
+    GRAPH_PROCESSES.set(0);
+    // SAFETY: rollback immediately follows its matching forward generation.
+    let restored = unsafe { factory.prepare_restore(&original_plan, &original, &forward) }.unwrap();
+    assert_eq!(
+        restored.receive_filter.0.primary.pointer(),
+        original.receive_filter.0.primary.pointer()
+    );
+    assert_eq!(GRAPH_CREATES.get(), 0);
+    assert_eq!(GRAPH_PROCESSES.get(), 0);
+}
+
+#[test]
+fn explicit_replacement_supports_profile_notch_dcs_and_denoise_transitions() {
+    let factory = factory();
+    let original_plan = explicit_raw_plan();
+    let original = factory.prepare(&original_plan).unwrap();
+    let mut changed = original_plan.clone();
+    let mut local = ProcessingChain::shipped(ChainRole::LocalReceive);
+    local.rnnoise_enabled = true;
+    local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    changed.local = Some(local);
+    changed.voice_telemetry = Some(ProcessingChain::shipped(ChainRole::VoiceTelemetry));
+    changed.receive_ctcss_mask = 1;
+    changed.transmit_dcs = true;
+    let forward =
+        // SAFETY: the replacement retains the same serial audio owners.
+        unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    assert!(forward.receive_noise_reduction.is_some());
+    assert_eq!(
+        forward
+            .receive_ctcss_notch
+            .iter()
+            .filter(|notch| notch.is_some())
+            .count(),
+        1
+    );
+    assert!(forward.receive_ctcss_tail_notch.is_some());
+    assert_ne!(
+        forward.transmit_dcs_normal_filter.0.primary.pointer(),
+        original.transmit_dcs_normal_filter.0.primary.pointer()
+    );
+    // SAFETY: the inverse immediately follows its matching replacement.
+    let restored = unsafe { factory.prepare_restore(&original_plan, &original, &forward) }.unwrap();
+    assert!(restored.receive_noise_reduction.is_none());
+    assert!(restored.receive_ctcss_notch.iter().all(Option::is_none));
+    assert_eq!(
+        restored.transmit_dcs_normal_filter.0.primary.pointer(),
+        original.transmit_dcs_normal_filter.0.primary.pointer()
+    );
+}
+
 #[test]
 fn only_local_and_voice_telemetry_roles_are_accepted() {
     let mut invalid = plan();
@@ -587,7 +689,7 @@ fn only_local_and_voice_telemetry_roles_are_accepted() {
         factory().prepare(&invalid),
         Err(ProcessingRuntimeError::IncorrectChainRole)
     ));
-    assert!(validate_plan(&plan()).is_ok());
+    assert!(validate_plan(plan()).is_ok());
 }
 
 #[test]
@@ -595,7 +697,7 @@ fn preparation_owns_only_the_processors_selected_by_the_plan() {
     GRAPH_CREATES.set(0);
     GRAPH_PROCESSES.set(0);
     GRAPH_DESTROYS.set(0);
-    let mut generation = factory().prepare(&plan()).unwrap();
+    let mut generation = factory().prepare(plan()).unwrap();
     assert!(generation.receive_ctcss_notch.iter().all(Option::is_none));
     assert!(generation.receive_ctcss_tail_notch.is_none());
     assert!(generation.receive_noise_reduction.is_none());
@@ -1542,7 +1644,7 @@ fn setup_errors_remain_specific_and_human_readable() {
 
     GRAPH_CREATES.set(0);
     GRAPH_CREATE_FAIL_AT.set(1);
-    let graph_error = factory().prepare(&plan()).err().unwrap();
+    let graph_error = factory().prepare(plan()).err().unwrap();
     GRAPH_CREATE_FAIL_AT.set(0);
     assert!(matches!(
         graph_error,
@@ -1556,7 +1658,7 @@ fn setup_errors_remain_specific_and_human_readable() {
 
     GRAPH_CREATES.set(0);
     GRAPH_CREATE_FAIL_AT.set(4);
-    let transmit_graph_error = factory().prepare(&plan()).err().unwrap();
+    let transmit_graph_error = factory().prepare(plan()).err().unwrap();
     GRAPH_CREATE_FAIL_AT.set(0);
     assert!(matches!(
         transmit_graph_error,
@@ -1577,7 +1679,7 @@ fn setup_errors_remain_specific_and_human_readable() {
 
     GRAPH_PROCESS_FAILS.set(true);
     assert!(matches!(
-        factory().prepare(&plan()),
+        factory().prepare(plan()),
         Err(ProcessingRuntimeError::GraphAdapter(_))
     ));
     GRAPH_PROCESS_FAILS.set(false);

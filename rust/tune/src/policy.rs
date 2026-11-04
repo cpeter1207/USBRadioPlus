@@ -1,5 +1,6 @@
 //! Testable prerequisite and terminal policy for the tuning utility.
 
+use crate::arguments::Backend;
 use std::env;
 use std::fmt;
 use std::io::{self, IsTerminal};
@@ -93,11 +94,24 @@ pub fn validate_check_environment<E: RuntimeEnvironment + ?Sized>(
     environment: &E,
     offline: bool,
 ) -> Result<(), PolicyError> {
+    validate_backend_check_environment(environment, offline, Backend::Asterisk)
+}
+
+/// Check executables for the selected backend without requiring Asterisk in standalone mode.
+///
+/// # Errors
+/// Returns the ordered missing-command diagnostic for online checks.
+pub fn validate_backend_check_environment<E: RuntimeEnvironment + ?Sized>(
+    environment: &E,
+    offline: bool,
+    backend: Backend,
+) -> Result<(), PolicyError> {
     if offline {
         return Ok(());
     }
     let missing = ["whiptail", "asterisk"]
         .into_iter()
+        .filter(|command| backend == Backend::Asterisk || *command != "asterisk")
         .filter(|command| !environment.command_available(command))
         .map(str::to_owned)
         .collect::<Vec<_>>();
@@ -117,7 +131,18 @@ pub fn validate_check_environment<E: RuntimeEnvironment + ?Sized>(
 pub fn validate_interactive_environment<E: RuntimeEnvironment + ?Sized>(
     environment: &E,
 ) -> Result<(), PolicyError> {
-    if environment.effective_user_id() != 0 {
+    validate_backend_interactive_environment(environment, Backend::Asterisk)
+}
+
+/// Check the terminal while leaving standalone account admission to the owned socket.
+///
+/// # Errors
+/// Returns root, executable, or terminal diagnostics for the selected backend.
+pub fn validate_backend_interactive_environment<E: RuntimeEnvironment + ?Sized>(
+    environment: &E,
+    backend: Backend,
+) -> Result<(), PolicyError> {
+    if backend == Backend::Asterisk && environment.effective_user_id() != 0 {
         return Err(PolicyError::RootRequired);
     }
     if !environment.command_available("whiptail") {
@@ -271,6 +296,31 @@ mod tests {
             validate_check_environment(&environment, false),
             Err(PolicyError::MissingCommands(vec!["asterisk".to_owned()]))
         );
+    }
+
+    #[test]
+    fn standalone_terminal_policy_leaves_account_authorization_to_the_owned_socket() {
+        let environment = FakeEnvironment {
+            uid: 1000,
+            ..FakeEnvironment::default()
+        };
+        assert!(
+            validate_backend_interactive_environment(&environment, Backend::Standalone).is_ok()
+        );
+        assert_eq!(
+            validate_interactive_environment(&environment),
+            Err(PolicyError::RootRequired)
+        );
+    }
+
+    #[test]
+    fn standalone_checks_only_require_the_menu_executable() {
+        let mut environment = FakeEnvironment::default();
+        environment.commands.remove("asterisk");
+        assert!(
+            validate_backend_check_environment(&environment, false, Backend::Standalone).is_ok()
+        );
+        assert!(validate_check_environment(&environment, false).is_err());
     }
 
     #[test]

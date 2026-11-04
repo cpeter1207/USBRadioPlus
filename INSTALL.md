@@ -30,6 +30,31 @@ translate an existing `chan_usbradio` or earlier USBRadioPlus configuration.
 Keep a backup and create `usbradioplus.conf` from the shipped sample before
 manual activation.
 
+## Standalone tuner package
+
+The `usbradioplus-tune` binary package can be installed without Asterisk, the
+channel adapter, or a controller package. With the matching standalone service
+already configured and running, use:
+
+```text
+sudo apt install usbradioplus-tune
+sudo usbradioplus-tune --backend standalone --node 1000
+```
+
+Replace `1000` with the radio node to tune. The default local socket is
+`/run/rpt-advanced/radio-control.sock`; the service's socket is mode 0600 inside
+its mode-0700 runtime directory. Root and the service account can connect.
+The tuner asks the service for its canonical configuration path before editing;
+an explicit `--config` must match that path. Package installation does not start,
+reload, restart, or activate either radio host.
+
+The `usbradioplus` channel package depends on the exact matching tuner version,
+so ASL installations retain the same utility. Its default backend remains
+Asterisk. See [Standalone tuning](doc/standalone-tuner.md) for profiles,
+calibration, EEPROM opt-in and live measurements.
+
+## Source installation on ASL3
+
 After uploading and extracting the tarball on an ASL3 node, run:
 
 ```text

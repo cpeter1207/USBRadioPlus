@@ -21,11 +21,17 @@ before GPIO and audio start, and reapplies them after a successful stop/start.
 Creation and configuration preparation do not change mixer controls. A repeated
 start while audio remains active does not reapply gains.
 
-The standalone controller resolves optional `hardware_input_gain_db`,
+The standalone composition uses the shared resolver for optional `hardware_input_gain_db`,
 `hardware_output_a_gain_db`, and `hardware_output_b_gain_db` values from its
-`[radio]` defaults and `[radio <node>]` overrides. It does not load ASL3's
-`usbradioplus.conf` hardware profiles. An omitted gain preserves that control's
-current value; native startup also preserves switches, sidetone, and EEPROM.
+`[radio]` defaults and `[radio <node>]` overrides. Shared hardware and signaling
+profiles belong in the standalone file; it does not read ASL3's
+`usbradioplus.conf`. An omitted gain preserves that control's
+current value unless valid enabled EEPROM tuning supplies it. Native EEPROM
+defaults to disabled. Setting `hardware_eeprom_enabled=yes` in `[radio]` or
+`[radio NODE]` is an explicit operator choice;
+a valid image overrides capture gain, output A/B gains, transmit CTCSS level
+and squelch threshold. Invalid or unreadable images leave file tuning in effect.
+Startup never writes EEPROM and preserves switches and sidetone.
 If applying a selected gain fails, startup fails before callbacks begin.
 Successful writes preceding a later startup failure remain applied.
 
@@ -77,6 +83,22 @@ Use `[radio]` or `[radio <node>]` to set receive de-emphasis and transmit
 pre-emphasis. Transmit pre-emphasis applies with a voice/telemetry profile.
 Disabled receive stays muted even when a local profile has positive gain.
 RNNoise needs its adapter when enabled; setup fails if that adapter is missing.
+
+## Shared standalone tuner and maintenance
+
+Install `usbradioplus-tune` independently and select `--backend standalone` to
+use the same accessible menus and RX/TX calibration algorithms as the ASL3
+channel. It connects through the service-owned private Unix socket; no Asterisk
+adapter is required. The service supplies its canonical configuration path,
+and radio/profile edits use the shared resolver's actual destinations.
+See [Standalone tuning](standalone-tuner.md) for installation, session cleanup,
+EEPROM opt-in, live measurements and the service-monitor procedure.
+
+The independent receive/transmit CPU savers and configured parallel inputs and
+outputs use the same radio and hardware owners. Parallel hardware is not opened
+when unconfigured. Physical status and shared processing counters come from
+those owners rather than substitute controller-ring measurements. Supported
+same-device edits use prepared updates without a second audio/HID owner.
 
 ## DSP preparation
 

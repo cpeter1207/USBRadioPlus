@@ -1,22 +1,28 @@
-//! Native product requests, independent of Asterisk delivery and configuration syntax.
+//! Native ABI projection onto the shared configuration, physical and update owners.
 
 use crate::{
-    AbiHeader, Status, UrpAstDirectCallbacks, UrpAstProviderManifest, copy_abi, ffi_status,
-    output_pointer, required_utf8,
+    AbiHeader, Status, UrpAstChannelCommand, UrpAstDirectCallbacks, UrpAstProviderManifest,
+    copy_abi, ffi_status, output_pointer, required_utf8, write_abi,
 };
 use std::ffi::{c_int, c_void};
 use std::mem::{align_of, size_of};
-use usbradioplus_audio::{AudioProvider, ChannelCount, DeviceSelector, SelectionPolicy};
-use usbradioplus_driver::{HardwareService, apply_hardware_gains, select_native_hardware};
+use usbradioplus_audio::AudioProvider;
+use usbradioplus_core::{
+    ChannelConfiguration, ConfigDocument, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
+    ResolvedNativeConfiguration,
+};
+use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService};
 use usbradioplus_ffmpeg::GraphProvider;
-use usbradioplus_gpio::{Cm119Profile, GpioAdapter};
+use usbradioplus_gpio::GpioAdapter;
 use usbradioplus_radio::{
     RadioProvider, ReceiveSignaling, SessionConfig, SubaudibleSource, TransmitSignaling,
 };
 use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_runtime::{ExplicitNativeProcessingPlan, NativeProcessingFactory};
 use usbradioplus_station::{
-    Cm119Plan, HardwarePlan, NativeStationMedia, StationControl, StationRuntime,
+    HardwarePlan, NativeStationMedia, StationControlHost, StationPlan, StationRuntime,
+    StationUpdate, StationUpdateError, apply_native_radio_tuning,
+    apply_native_tuning_configuration, native_hardware_plan,
 };
 
 /// Current resolved native station request ABI.
@@ -89,7 +95,8 @@ pub struct UrpNativeStationConfig {
     pub hardware_output_a_gain_db: f64,
     /// Hardware output-B gain, finite -30 through 30 dB when selected.
     pub hardware_output_b_gain_db: f64,
-    /// UTF-8 shared local/link/voice_telemetry profile sections, not NUL terminated.
+    /// Original UTF-8 native configuration, including shared profiles and physical
+    /// settings, not NUL terminated. Generated normalized aliases are not source.
     pub processing_configuration: *const u8,
     /// Processing-configuration byte count; zero preserves raw graphs.
     pub processing_configuration_length: u32,
@@ -126,23 +133,26 @@ pub struct UrpNativeCreateArgs {
 }
 
 struct NativeStation {
-    service: HardwareService,
+    maintenance: HardwareMaintenance,
     runtime: StationRuntime,
-    _control: StationControl,
-    audio: AudioProvider,
-    interface: String,
+    control: StationControlHost,
+    factory: NativeProcessingFactory,
+    radio_provider: RadioProvider,
+    file_configuration: ChannelConfiguration,
     gains: [Option<f64>; 3],
+    pending: Option<NativeUpdateConfiguration>,
 }
 
 impl NativeStation {
     fn start(&mut self) -> Result<(), Status> {
-        if !self.runtime.running() {
-            apply_hardware_gains(self.audio, &self.interface, self.gains)
-                .map_err(|_| Status::SetupFailed)?;
+        if self.runtime.running() {
+            self.maintenance.start_preserving_gains()
+        } else {
+            self.maintenance.start()
         }
-        self.service.start().map_err(|_| Status::SetupFailed)?;
+        .map_err(|_| Status::SetupFailed)?;
         if self.runtime.start().is_err() {
-            let _ = self.service.stop();
+            let _ = self.maintenance.stop();
             return Err(Status::SetupFailed);
         }
         Ok(())
@@ -150,8 +160,19 @@ impl NativeStation {
 
     fn stop(&mut self) -> Result<(), Status> {
         let audio = self.runtime.stop();
-        let hardware = self.service.stop();
+        let hardware = self.maintenance.stop();
         audio.map_err(|_| Status::SetupFailed)?;
+        if self.pending.is_some() {
+            // Successful stop quiesces both owners. The common mailbox drains
+            // any unacknowledged forward slot before restoring its reverse.
+            self.runtime
+                .finish_update(&mut self.control, false)
+                .map_err(update_error)?;
+            self.maintenance
+                .finish_mixer_update(false)
+                .map_err(|_| Status::SetupFailed)?;
+            self.pending = None;
+        }
         hardware.map_err(|_| Status::SetupFailed)
     }
 }
@@ -159,7 +180,7 @@ impl NativeStation {
 pub(super) unsafe fn site_service<'a>(handle: *mut c_void) -> Result<&'a HardwareService, Status> {
     // SAFETY: the synchronous caller owns a live native station and serializes control.
     unsafe { handle.cast::<NativeStation>().as_ref() }
-        .map(|station| &station.service)
+        .map(|station| station.maintenance.service())
         .ok_or(Status::InvalidArgument)
 }
 
@@ -198,34 +219,15 @@ pub(crate) unsafe extern "C" fn create(
         {
             return Err(Status::InvalidArgument);
         }
-        // SAFETY: the request points to the complete released radio template.
-        let mut radio = unsafe { SessionConfig::from_abi(config.radio) }
-            .map_err(|_| Status::InvalidConfiguration)?;
-        radio.generation_id = args.generation_id;
-        radio.maximum_receive_frame_count = args.maximum_frames;
-        radio.maximum_transmit_frame_count = args.maximum_frames;
-        radio.publication_interval_milliseconds = 50;
-        // SAFETY: configuration spans are retained through this synchronous creation.
-        let profiles = unsafe {
-            crate::native_processing::Profiles::resolve(
-                &text(
-                    config.processing_configuration,
-                    config.processing_configuration_length,
-                )?,
-                &text(config.processing_node, config.processing_node_length)?,
-            )?
-        };
-        // SAFETY: the synchronous request owns every advertised text span.
-        let (hardware, mut processing) = unsafe { resolve(&config, &radio)? };
-        profiles.apply(&mut radio, &mut processing);
-        let gain_values = [
-            config.hardware_input_gain_db,
-            config.hardware_output_a_gain_db,
-            config.hardware_output_b_gain_db,
-        ];
-        let gains = std::array::from_fn(|index| {
-            (config.hardware_gain_mask & (1 << index) != 0).then_some(gain_values[index])
-        });
+        // SAFETY: every configuration span remains readable through creation.
+        let ResolvedRequest {
+            mut configuration,
+            hardware,
+            processing,
+            mut radio,
+            gains,
+        } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        let file_configuration = configuration.clone();
         // SAFETY: providers and executable functions remain loaded through destroy.
         let (graph, radio_provider, audio, gpio) = unsafe {
             (
@@ -247,32 +249,54 @@ pub(crate) unsafe extern "C" fn create(
                     .map_err(|_| Status::IncompatibleAbi)?,
             )
         };
-        let processing = NativeProcessingFactory::prepare_explicit(
+        let (preflight, selected) = HardwarePreflight::native(
+            &hardware,
+            configuration.station.hardware.eeprom_enabled,
+            audio,
+            gpio,
+            args.maximum_frames.min(960),
+        )
+        .map_err(|_| Status::SetupFailed)?;
+        if preflight.apply_startup_tuning(&mut configuration) {
+            apply_native_radio_tuning(&configuration, &mut radio);
+        }
+        let plan =
+            StationPlan::native("native", configuration, hardware.clone(), radio, processing);
+        let factory = NativeProcessingFactory::new_explicit(
             graph,
             denoise,
             crate::native_processing::agc_plugin_path(),
-            &processing,
             args.maximum_frames,
         )
         .map_err(|_| Status::SetupFailed)?;
+        let processing = factory
+            .prepare(plan.processing())
+            .map_err(|_| Status::SetupFailed)?;
         let media =
             // SAFETY: the caller retains callback contexts through synchronous destroy.
             unsafe { NativeStationMedia::prepare(radio, processing, radio_provider, callbacks) }
                 .map_err(|_| Status::SetupFailed)?;
-        let (device, selected) =
-            select_native_hardware(&hardware, audio, gpio, args.maximum_frames.min(960))
-                .map_err(|_| Status::SetupFailed)?;
-        let (runtime, control) = StationRuntime::open_native(media, &selected, audio)
+        let (runtime, control) = StationRuntime::open_native_planned(media, plan, &selected, audio)
             .map_err(|_| Status::SetupFailed)?;
-        let interface = device.interface_path;
-        let service = HardwareService::native(&hardware, selected, runtime.hardware_state(), gpio);
-        let station = Box::new(NativeStation {
-            service,
-            runtime,
-            _control: control,
+        let maintenance = HardwareMaintenance::native(
+            &hardware,
+            preflight,
+            selected,
+            runtime.hardware_state(),
             audio,
-            interface,
+            gpio,
             gains,
+        )
+        .map_err(|_| Status::SetupFailed)?;
+        let station = Box::new(NativeStation {
+            maintenance,
+            runtime,
+            control,
+            factory,
+            radio_provider,
+            file_configuration,
+            gains,
+            pending: None,
         });
         // SAFETY: output storage was validated and the caller receives sole ownership.
         unsafe {
@@ -310,6 +334,326 @@ pub(crate) unsafe extern "C" fn destroy(handle: *mut c_void) {
     });
 }
 
+/// Collect the portable record once for binary and formatted SDK consumers.
+pub(crate) unsafe fn snapshot(
+    handle: *mut c_void,
+) -> Result<crate::maintenance::UrpNativePhysicalStatus, Status> {
+    // SAFETY: callers serialize access to their still-owned native handle.
+    let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+    let station = station.ok_or(Status::InvalidArgument)?;
+    let diagnostics = station
+        .maintenance
+        .diagnostics(&station.runtime)
+        .map_err(|_| Status::SetupFailed)?;
+    let radio = station
+        .control
+        .radio()
+        .radio()
+        .snapshot()
+        .map_err(|_| Status::SetupFailed)?;
+    crate::maintenance::collect_physical_status(
+        &mut station.maintenance,
+        diagnostics,
+        &radio,
+        station.runtime.running(),
+    )
+    .map_err(|_| Status::SetupFailed)
+}
+
+pub(crate) unsafe extern "C" fn get_status(
+    handle: *mut c_void,
+    output: *mut crate::maintenance::UrpNativePhysicalStatus,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: native ownership and the initialized writable record are borrowed
+        // synchronously by the serialized control executor.
+        unsafe { write_abi(output, snapshot(handle)?) }
+    })
+}
+
+/// Forward the existing lock-free callback observations, without introducing
+/// another processing counter or reading callback-owned graph state.
+pub(crate) unsafe extern "C" fn processing_status_text(
+    handle: *mut c_void,
+    sink: Option<crate::UrpNativeProcessingDiagnostic>,
+    context: *mut c_void,
+) -> c_int {
+    ffi_status(|| {
+        let sink = sink.ok_or(Status::InvalidArgument)?;
+        // SAFETY: the serialized caller retains this native handle and sink.
+        let station = unsafe { handle.cast::<NativeStation>().as_ref() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        let observation = station.runtime.hardware_state().callback_statistics();
+        let text = format!(
+            "radio_receive_calls={}\nradio_transmit_calls={}\nradio_receive_failures={}\nradio_transmit_failures={}\n",
+            observation.receive_calls,
+            observation.transmit_calls,
+            observation.receive_failures,
+            observation.transmit_failures,
+        );
+        // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
+        unsafe { sink(context, text.as_ptr(), text.len() as u32) };
+        Ok(())
+    })
+}
+
+pub(crate) unsafe extern "C" fn command(
+    handle: *mut c_void,
+    command: *mut UrpAstChannelCommand,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the caller retains its unique handle and initialized command.
+        let (station, mut value) = unsafe {
+            (
+                handle
+                    .cast::<NativeStation>()
+                    .as_mut()
+                    .ok_or(Status::InvalidArgument)?,
+                copy_abi(command.cast_const())?,
+            )
+        };
+        if !station.runtime.running() {
+            return Err(Status::NotReady);
+        }
+        crate::maintenance::execute(
+            &mut station.maintenance,
+            station.control.plan().configuration(),
+            &mut value,
+        )
+        .map_err(|error| error.status())?;
+        // SAFETY: admission above validated this same writable command record.
+        unsafe { write_abi(command, value) }
+    })
+}
+
+pub(crate) unsafe extern "C" fn set_transmit(
+    handle: *mut c_void,
+    keyed: u32,
+    ctcss_tenths_hz: u32,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller retains the native station through return.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        if !station.runtime.running() {
+            return Err(Status::NotReady);
+        }
+        let keyed = crate::switch(i64::from(keyed))?;
+        let tone = if ctcss_tenths_hz == 0 {
+            None
+        } else {
+            Some(
+                u16::try_from(ctcss_tenths_hz)
+                    .ok()
+                    .and_then(usbradioplus_asl3::CtcssTone::from_tenths_hz)
+                    .ok_or(Status::InvalidArgument)?,
+            )
+        };
+        station.maintenance.set_transmit_request(keyed, true, tone);
+        Ok(())
+    })
+}
+
+pub(crate) unsafe extern "C" fn clear_manual(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: cleanup is serialized before the caller destroys its handle.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        station.maintenance.clear_manual_requests();
+        Ok(())
+    })
+}
+
+struct NativeUpdateConfiguration {
+    file: ChannelConfiguration,
+    gains: [Option<f64>; 3],
+}
+
+struct NativeUpdate {
+    prepared: Option<StationUpdate>,
+    configuration: NativeUpdateConfiguration,
+    changed_mixers: [bool; 3],
+}
+
+fn update_error(error: StationUpdateError) -> Status {
+    match error {
+        StationUpdateError::Pending => Status::ReloadPending,
+        StationUpdateError::Busy => Status::ChannelBusy,
+        StationUpdateError::Incompatible => Status::InvalidConfiguration,
+        _ => Status::SetupFailed,
+    }
+}
+
+/// Prepare only immutable radio/processing state. The existing native owner
+/// retains its providers and callbacks; request provider/callback fields are not
+/// retained, reopened or invoked by update preparation.
+pub(crate) unsafe extern "C" fn prepare_update(
+    handle: *mut c_void,
+    args: *const UrpNativeCreateArgs,
+    output: *mut *mut c_void,
+) -> c_int {
+    ffi_status(|| {
+        let output = output_pointer(output)?;
+        // SAFETY: the caller retains a serialized native owner and the complete
+        // synchronous request, including every borrowed configuration span.
+        let (station, args, config) = unsafe {
+            let station = handle
+                .cast::<NativeStation>()
+                .as_mut()
+                .ok_or(Status::InvalidArgument)?;
+            let args = copy_abi(args)?;
+            (station, args, copy_native_config(args.config)?)
+        };
+        if !station.runtime.running() {
+            return Err(Status::NotReady);
+        }
+        if args.generation_id == 0
+            || args.maximum_frames != station.control.plan().radio().maximum_receive_frame_count
+        {
+            return Err(Status::InvalidArgument);
+        }
+        if station.pending.is_some() {
+            return Err(Status::ChannelBusy);
+        }
+        // SAFETY: validated request storage remains borrowed through this call.
+        let ResolvedRequest {
+            mut configuration,
+            hardware,
+            processing,
+            mut radio,
+            gains,
+        } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        if configuration.station.hardware.eeprom_enabled
+            != station
+                .control
+                .plan()
+                .configuration()
+                .station
+                .hardware
+                .eeprom_enabled
+        {
+            return Err(Status::InvalidConfiguration);
+        }
+        let file = configuration.clone();
+        HardwareMaintenance::preserve_startup_tuning(
+            &station.file_configuration,
+            station.control.plan().configuration(),
+            &mut configuration,
+        );
+        if configuration.station.receive.squelch_level != file.station.receive.squelch_level
+            || configuration.station.ctcss.transmit_peak_dbfs
+                != file.station.ctcss.transmit_peak_dbfs
+        {
+            apply_native_radio_tuning(&configuration, &mut radio);
+        }
+        let plan = StationPlan::native("native", configuration, hardware, radio, processing);
+        let prepared = station
+            .runtime
+            .snapshot_update(&station.control, &station.factory, station.radio_provider)
+            .map_err(update_error)?
+            .prepare(plan)
+            .map_err(update_error)?;
+        let update = Box::new(NativeUpdate {
+            prepared: Some(prepared),
+            configuration: NativeUpdateConfiguration { file, gains },
+            changed_mixers: std::array::from_fn(|index| station.gains[index] != gains[index]),
+        });
+        // SAFETY: the admitted caller receives ownership of this one update token.
+        unsafe { output.as_ptr().write(Box::into_raw(update).cast()) };
+        Ok(())
+    })
+}
+
+pub(crate) unsafe extern "C" fn begin_update(handle: *mut c_void, update: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the caller serializes both still-owned opaque handles.
+        let (station, update) = unsafe {
+            (
+                handle
+                    .cast::<NativeStation>()
+                    .as_mut()
+                    .ok_or(Status::InvalidArgument)?,
+                update
+                    .cast::<NativeUpdate>()
+                    .as_mut()
+                    .ok_or(Status::InvalidArgument)?,
+            )
+        };
+        if !station.runtime.running() {
+            return Err(Status::NotReady);
+        }
+        if station.pending.is_some() {
+            return Err(Status::ChannelBusy);
+        }
+        let prepared = update.prepared.take().ok_or(Status::InvalidArgument)?;
+        let old = station.control.plan().configuration().clone();
+        let next = prepared.plan().configuration().clone();
+        station
+            .runtime
+            .begin_update(&station.control, prepared)
+            .map_err(update_error)?;
+        station.pending = Some(NativeUpdateConfiguration {
+            file: update.configuration.file.clone(),
+            gains: update.configuration.gains,
+        });
+        station
+            .maintenance
+            .begin_mixer_update(&old, &next, update.changed_mixers)
+            .map_err(|_| Status::SetupFailed)
+    })
+}
+
+pub(crate) unsafe extern "C" fn accept_update(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the owning control executor serializes this live station handle.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        station
+            .runtime
+            .accept_update(&mut station.control)
+            .map_err(update_error)
+    })
+}
+
+pub(crate) unsafe extern "C" fn finish_update(handle: *mut c_void, commit: u32) -> c_int {
+    ffi_status(|| {
+        // SAFETY: ownership remains with the serialized caller until destruction.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        let commit = crate::switch(i64::from(commit))?;
+        station
+            .runtime
+            .finish_update(&mut station.control, commit)
+            .map_err(update_error)?;
+        station
+            .maintenance
+            .finish_mixer_update(commit)
+            .map_err(|_| Status::SetupFailed)?;
+        if let Some(configuration) = station.pending.take() {
+            if commit {
+                station.file_configuration = configuration.file;
+                station.gains = configuration.gains;
+                station.maintenance.adopt_native_gain_intents(
+                    station.gains,
+                    station.control.plan().configuration(),
+                );
+            }
+        }
+        Ok(())
+    })
+}
+
+pub(crate) unsafe extern "C" fn destroy_update(update: *mut c_void) {
+    let _ = ffi_status(|| {
+        if !update.is_null() {
+            // SAFETY: the caller transfers this token exactly once. After begin,
+            // its prepared owner lives in the runtime's acknowledged mailbox.
+            drop(unsafe { Box::from_raw(update.cast::<NativeUpdate>()) });
+        }
+        Ok(())
+    });
+}
+
 pub(super) unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Status> {
     if length == 0 {
         return Ok(String::new());
@@ -320,6 +664,57 @@ pub(super) unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Sta
         return Err(Status::InvalidConfiguration);
     }
     Ok(value.to_owned())
+}
+
+struct ResolvedRequest {
+    configuration: ChannelConfiguration,
+    hardware: HardwarePlan,
+    processing: ExplicitNativeProcessingPlan,
+    radio: SessionConfig,
+    gains: [Option<f64>; 3],
+}
+
+unsafe fn resolve_request(
+    config: &UrpNativeStationConfig,
+    generation_id: u64,
+    maximum_frames: u32,
+) -> Result<ResolvedRequest, Status> {
+    // SAFETY: the request points to the complete released radio template.
+    let mut radio = unsafe { SessionConfig::from_abi(config.radio) }
+        .map_err(|_| Status::InvalidConfiguration)?;
+    radio.generation_id = generation_id;
+    radio.maximum_receive_frame_count = maximum_frames;
+    radio.maximum_transmit_frame_count = maximum_frames;
+    radio.publication_interval_milliseconds = 50;
+    // SAFETY: configuration spans are retained through this synchronous creation.
+    let profiles = unsafe {
+        crate::native_processing::Profiles::resolve(
+            &text(
+                config.processing_configuration,
+                config.processing_configuration_length,
+            )?,
+            &text(config.processing_node, config.processing_node_length)?,
+        )?
+    };
+    // SAFETY: the synchronous request owns every advertised text span.
+    let (mut configuration, hardware, mut processing) = unsafe { resolve(config, &radio)? };
+    profiles.apply(&mut radio, &mut processing);
+    apply_native_tuning_configuration(&radio, &mut configuration);
+    let gain_values = [
+        config.hardware_input_gain_db,
+        config.hardware_output_a_gain_db,
+        config.hardware_output_b_gain_db,
+    ];
+    let gains = std::array::from_fn(|index| {
+        (config.hardware_gain_mask & (1 << index) != 0).then_some(gain_values[index])
+    });
+    Ok(ResolvedRequest {
+        configuration,
+        hardware,
+        processing,
+        radio,
+        gains,
+    })
 }
 
 /// Admit the sized ABI-3 request before reading shared-processing fields.
@@ -343,13 +738,17 @@ unsafe fn copy_native_config(
 unsafe fn resolve(
     config: &UrpNativeStationConfig,
     radio: &SessionConfig,
-) -> Result<(HardwarePlan, ExplicitNativeProcessingPlan), Status> {
-    let channels = |value| match value {
-        1 => Ok(ChannelCount::Mono),
-        2 => Ok(ChannelCount::Stereo),
-        _ => Err(Status::InvalidConfiguration),
-    };
-    if config.input_extra_buffer_ms > 500
+) -> Result<
+    (
+        ChannelConfiguration,
+        HardwarePlan,
+        ExplicitNativeProcessingPlan,
+    ),
+    Status,
+> {
+    if !matches!(config.input_device_channels, 1 | 2)
+        || !matches!(config.output_device_channels, 1 | 2)
+        || config.input_extra_buffer_ms > 500
         || config.output_extra_buffer_ms > 500
         || config.ptt_inverted > 1
         || config.receive_deemphasis > 1
@@ -392,43 +791,82 @@ unsafe fn resolve(
         return Err(Status::InvalidConfiguration);
     }
     let policy = match config.device_selection {
-        0 => SelectionPolicy::Exact,
-        1 => SelectionPolicy::Automatic,
+        0 => NativeDeviceSelection::Exact,
+        1 => NativeDeviceSelection::AutomaticLowestAlsaCard,
         _ => return Err(Status::InvalidConfiguration),
     };
-    if policy == SelectionPolicy::Exact && identifier.is_empty() && serial.is_empty() {
+    if policy == NativeDeviceSelection::Exact && identifier.is_empty() && serial.is_empty() {
         return Err(Status::InvalidConfiguration);
     }
-    let serial = (!serial.is_empty()).then_some(serial);
-    let output_enable_mask = (config.gpio_output_enable_mask | config.clip_led_mask) as u8;
-    let hardware = HardwarePlan {
-        audio_selector: DeviceSelector {
-            policy,
-            identifier: (!identifier.is_empty()).then_some(identifier),
-            serial: serial.clone(),
-            input_channels: channels(config.input_device_channels)?,
-            output_channels: channels(config.output_device_channels)?,
-        },
-        input_extra_buffer_ms: config.input_extra_buffer_ms,
-        output_extra_buffer_ms: config.output_extra_buffer_ms,
-        cm119: Cm119Plan {
-            required_usb_port_path: None,
-            required_serial: serial,
-            profile: match config.cm119_profile {
-                0 => Cm119Profile::DudeUsb,
-                1 => Cm119Profile::SphUsb,
-                2 => Cm119Profile::Nhrc,
-                3 => Cm119Profile::Custom,
-                _ => return Err(Status::InvalidConfiguration),
-            },
-            ptt_inverted: config.ptt_inverted != 0,
-            output_enable_mask,
-            output_initial_mask: config.gpio_output_initial_mask as u8,
-            input_mask: !output_enable_mask,
-            clip_led_mask: config.clip_led_mask as u8,
-        },
-        parallel: None,
+    // SAFETY: these source spans are borrowed only during this request.
+    let (source, node) = unsafe {
+        (
+            text(
+                config.processing_configuration,
+                config.processing_configuration_length,
+            )?,
+            text(config.processing_node, config.processing_node_length)?,
+        )
     };
+    let node = if node.is_empty() {
+        "native"
+    } else {
+        node.as_str()
+    };
+    let document = ConfigDocument::new(if source.is_empty() {
+        format!("[{node}]\n")
+    } else {
+        source
+    });
+    let resolved = ResolvedNativeConfiguration::from_document(&document, "rpt_advanced.conf", node)
+        .map_err(|_| Status::InvalidConfiguration)?;
+    let mut physical = resolved.physical().clone();
+    physical.device_selection = policy;
+    physical.input_device_channels = config.input_device_channels;
+    physical.output_device_channels = config.output_device_channels;
+    let mut channel = resolved.into_config();
+    let hardware = &mut channel.station.hardware;
+    hardware.device_identifier = identifier;
+    hardware.serial = serial;
+    hardware.input_extra_buffer_ms = config.input_extra_buffer_ms;
+    hardware.output_extra_buffer_ms = config.output_extra_buffer_ms;
+    hardware.ptt_inverted = config.ptt_inverted != 0;
+    hardware.interface_type = match config.cm119_profile {
+        0 => HardwareInterfaceType::DudeUsb,
+        1 => HardwareInterfaceType::SphUsb,
+        2 => HardwareInterfaceType::Nhrc,
+        3 => HardwareInterfaceType::Custom,
+        _ => return Err(Status::InvalidConfiguration),
+    };
+    hardware.gpio_modes = std::array::from_fn(|index| {
+        let bit = 1 << index;
+        if config.gpio_output_enable_mask & bit == 0 {
+            GpioMode::Input
+        } else if config.gpio_output_initial_mask & bit != 0 {
+            GpioMode::OutputHigh
+        } else {
+            GpioMode::OutputLow
+        }
+    });
+    hardware.clip_led_gpio =
+        (config.clip_led_mask != 0).then(|| config.clip_led_mask.trailing_zeros() as u8 + 1);
+    for (index, target) in [
+        &mut hardware.input_gain_db,
+        &mut hardware.output_a_gain_db,
+        &mut hardware.output_b_gain_db,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if config.hardware_gain_mask & (1 << index) != 0 {
+            *target = [
+                config.hardware_input_gain_db,
+                config.hardware_output_a_gain_db,
+                config.hardware_output_b_gain_db,
+            ][index];
+        }
+    }
+    let hardware = native_hardware_plan(&channel, &physical);
     let receive_ctcss_mask = match radio.receive.signaling {
         ReceiveSignaling::Ctcss(ctcss)
             if radio.qualification.subaudible_source == SubaudibleSource::Dsp =>
@@ -438,6 +876,7 @@ unsafe fn resolve(
         _ => 0,
     };
     Ok((
+        channel,
         hardware,
         ExplicitNativeProcessingPlan {
             local: None,

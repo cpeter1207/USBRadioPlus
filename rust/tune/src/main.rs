@@ -11,13 +11,14 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use usbradioplus_tune::arguments::{Arguments, HELP, ParseOutcome};
-use usbradioplus_tune::catalog::configuration_catalog;
+use usbradioplus_tune::arguments::{Arguments, Backend, HELP, ParseOutcome};
+use usbradioplus_tune::catalog::{configuration_catalog, standalone_configuration_catalog};
+use usbradioplus_tune::configuration::NativeConfiguration;
 use usbradioplus_tune::control::{AsteriskRuntime, SessionLock};
 use usbradioplus_tune::menus::TunerApp;
 use usbradioplus_tune::policy::{
-    RuntimeEnvironment, SystemEnvironment, validate_check_environment,
-    validate_interactive_environment,
+    RuntimeEnvironment, SystemEnvironment, validate_backend_check_environment,
+    validate_backend_interactive_environment,
 };
 use usbradioplus_tune::repository::ConfigRepository;
 use usbradioplus_tune::ui::{AccessibleUi, WhiptailBackend};
@@ -63,17 +64,26 @@ fn run_with(
         }
         ParseOutcome::Run(arguments) => arguments,
     };
-    let repository = ConfigRepository::new(&arguments.config_path, sample_candidates);
-    repository
-        .ensure_exists()
-        .map_err(|error| error.to_string())?;
+    let mut repository = ConfigRepository::new(&arguments.config_path, sample_candidates);
+    if arguments.backend == Backend::Asterisk {
+        repository
+            .ensure_exists()
+            .map_err(|error| error.to_string())?;
+    } else if arguments.check {
+        #[cfg(unix)]
+        if !arguments.offline {
+            repository = standalone_repository(&arguments)?.1;
+        }
+        repository.read().map_err(|error| error.to_string())?;
+    }
     if arguments.check {
-        validate_check_environment(environment, arguments.offline)
+        validate_backend_check_environment(environment, arguments.offline, arguments.backend)
             .map_err(|error| error.to_string())?;
         println!("usbradioplus-tune: configuration storage and prerequisites are valid");
         return Ok(());
     }
-    validate_interactive_environment(environment).map_err(|error| error.to_string())?;
+    validate_backend_interactive_environment(environment, arguments.backend)
+        .map_err(|error| error.to_string())?;
     start_session(&arguments, repository)
 }
 
@@ -82,7 +92,30 @@ fn interactive_session(
     repository: ConfigRepository,
     backend: WhiptailBackend,
 ) -> Result<(), String> {
-    let _lock = SessionLock::acquire(&arguments.lock_path).map_err(|error| error.to_string())?;
+    let _lock = if arguments.backend == Backend::Standalone {
+        SessionLock::acquire_service(&arguments.lock_path)
+    } else {
+        SessionLock::acquire(&arguments.lock_path)
+    }
+    .map_err(|error| error.to_string())?;
+    if arguments.backend == Backend::Standalone {
+        #[cfg(unix)]
+        {
+            let (runtime, repository) = standalone_repository(arguments)?;
+            return TunerApp::with_configuration(
+                AccessibleUi::new(backend),
+                repository,
+                runtime.clone(),
+                runtime,
+                arguments.node.clone(),
+                NativeConfiguration,
+            )
+            .browse_tree(&standalone_configuration_catalog())
+            .map_err(|error| error.to_string());
+        }
+        #[cfg(not(unix))]
+        return Err("standalone control requires Unix-domain sockets".to_owned());
+    }
     let runtime = AsteriskRuntime::default();
     let mut application = TunerApp::new(
         AccessibleUi::new(backend),
@@ -94,6 +127,42 @@ fn interactive_session(
     application
         .browse_tree(&configuration_catalog())
         .map_err(|error| error.to_string())
+}
+
+#[cfg(unix)]
+fn standalone_repository(
+    arguments: &Arguments,
+) -> Result<
+    (
+        usbradioplus_tune::standalone::StandaloneRuntime,
+        ConfigRepository,
+    ),
+    String,
+> {
+    let runtime =
+        usbradioplus_tune::standalone::StandaloneRuntime::connect(&arguments.socket_path)?;
+    let path = runtime.configuration_path()?;
+    let server_path = path
+        .canonicalize()
+        .map_err(|error| format!("resolve service configuration {}: {error}", path.display()))?;
+    if arguments.config_explicit {
+        let supplied = arguments.config_path.canonicalize().map_err(|error| {
+            format!(
+                "resolve selected configuration {}: {error}",
+                arguments.config_path.display()
+            )
+        })?;
+        if supplied != server_path {
+            return Err(format!(
+                "selected configuration {} differs from service configuration {}",
+                supplied.display(),
+                server_path.display()
+            ));
+        }
+    }
+    let repository = ConfigRepository::new(server_path, std::iter::empty::<PathBuf>());
+    repository.read().map_err(|error| error.to_string())?;
+    Ok((runtime, repository))
 }
 
 fn sample_candidates() -> Vec<PathBuf> {
@@ -177,6 +246,175 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn standalone_offline_check_requires_existing_native_storage() {
+        let directory = TestDirectory::new();
+        let config = directory.0.join("native.conf");
+        let sample = directory.0.join("asl.sample");
+        fs::write(&sample, "[hardware]\n").unwrap();
+        let mut no_session =
+            |_: &Arguments, _: ConfigRepository| panic!("offline check must not start a session");
+        let arguments = vec![
+            "--backend=standalone".into(),
+            "--check".into(),
+            "--offline".into(),
+            "--config".into(),
+            config.clone().into_os_string(),
+        ];
+        assert!(
+            run_with(
+                arguments.clone(),
+                &FakeEnvironment::default(),
+                vec![sample.clone()],
+                &mut no_session
+            )
+            .is_err()
+        );
+        assert!(!config.exists());
+        fs::write(&config, "[1000]\n[radio]\n").unwrap();
+        let mut environment = FakeEnvironment::default();
+        environment.commands.clear();
+        assert!(run_with(arguments, &environment, vec![sample], &mut no_session).is_ok());
+        assert_eq!(fs::read_to_string(config).unwrap(), "[1000]\n[radio]\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn standalone_startup_uses_service_path_and_rejects_other_edit_destinations() {
+        use std::io::{Read, Write};
+        use std::os::unix::net::UnixListener;
+        let directory = TestDirectory::new();
+        let config = directory.0.join("service.conf");
+        let other = directory.0.join("other.conf");
+        let socket = directory.0.join("radio.sock");
+        fs::write(&config, "[1000]\n").unwrap();
+        fs::write(&other, "untouched\n").unwrap();
+        let server_path = config.canonicalize().unwrap();
+        let listener = UnixListener::bind(&socket).unwrap();
+        let response =
+            serde_json::to_vec(&serde_json::json!({"version":1,"ok":true,"result":server_path}))
+                .unwrap();
+        let handle = std::thread::spawn(move || {
+            for _ in 0..4 {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut prefix = [0; 4];
+                stream.read_exact(&mut prefix).unwrap();
+                let mut request = vec![0; u32::from_be_bytes(prefix) as usize];
+                stream.read_exact(&mut request).unwrap();
+                let request: serde_json::Value = serde_json::from_slice(&request).unwrap();
+                assert_eq!(
+                    request,
+                    serde_json::json!({"version":1,"operation":"configuration-path"})
+                );
+                stream
+                    .write_all(&(response.len() as u32).to_be_bytes())
+                    .unwrap();
+                stream.write_all(&response).unwrap();
+            }
+        });
+        let mut arguments = Arguments {
+            backend: Backend::Standalone,
+            socket_path: socket,
+            ..Arguments::default()
+        };
+        let (_, repository) = standalone_repository(&arguments).unwrap();
+        assert_eq!(repository.path(), server_path);
+        arguments.config_explicit = true;
+        arguments.config_path = other.clone();
+        assert!(
+            standalone_repository(&arguments)
+                .unwrap_err()
+                .contains("differs from service configuration")
+        );
+        arguments.config_path = directory.0.join("missing.conf");
+        assert!(
+            standalone_repository(&arguments)
+                .unwrap_err()
+                .contains("resolve selected configuration")
+        );
+        arguments.config_path = config;
+        assert!(standalone_repository(&arguments).is_ok());
+        assert_eq!(fs::read_to_string(other).unwrap(), "untouched\n");
+        handle.join().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn coverage_native_online_check_and_interactive_dispatch_use_service_storage() {
+        use std::io::{Read, Write};
+        use std::os::unix::net::UnixListener;
+        let directory = TestDirectory::new();
+        let config = directory.0.join("service.conf");
+        let socket = directory.0.join("radio.sock");
+        fs::write(&config, "[1000]\n[radio]\n").unwrap();
+        let listener = UnixListener::bind(&socket).unwrap();
+        let server_path = config.canonicalize().unwrap();
+        let handle = std::thread::spawn(move || {
+            let mut operations = Vec::new();
+            for _ in 0..2 {
+                let (mut stream, _) = listener.accept().unwrap();
+                loop {
+                    let mut prefix = [0; 4];
+                    match stream.read_exact(&mut prefix) {
+                        Ok(()) => {}
+                        Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => break,
+                        Err(error) => panic!("control socket: {error}"),
+                    }
+                    let mut request = vec![0; u32::from_be_bytes(prefix) as usize];
+                    stream.read_exact(&mut request).unwrap();
+                    let request: serde_json::Value = serde_json::from_slice(&request).unwrap();
+                    let operation = request["operation"].as_str().unwrap();
+                    let result = match operation {
+                        "configuration-path" => serde_json::json!(server_path),
+                        "nodes" => serde_json::json!(["1000"]),
+                        other => panic!("unexpected startup operation {other}"),
+                    };
+                    operations.push(operation.to_owned());
+                    let response = serde_json::to_vec(
+                        &serde_json::json!({"version":1,"ok":true,"result":result}),
+                    )
+                    .unwrap();
+                    stream
+                        .write_all(&(response.len() as u32).to_be_bytes())
+                        .unwrap();
+                    stream.write_all(&response).unwrap();
+                }
+            }
+            operations
+        });
+        let common = vec![
+            "--backend=standalone".into(),
+            "--socket".into(),
+            socket.into_os_string(),
+        ];
+        let mut check = common.clone();
+        check.push("--check".into());
+        run_with(check, &FakeEnvironment::default(), vec![], &mut |_, _| {
+            panic!("check must not enter UI")
+        })
+        .unwrap();
+        let mut interactive = common;
+        interactive.extend([
+            "--lock".into(),
+            directory.0.join("tune.lock").into_os_string(),
+            "--node=1000".into(),
+        ]);
+        run_with(
+            interactive,
+            &FakeEnvironment::default(),
+            vec![],
+            &mut |arguments, repository| {
+                interactive_session(arguments, repository, WhiptailBackend::new("/bin/false"))
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            handle.join().unwrap(),
+            ["configuration-path", "configuration-path", "nodes"]
+        );
+        assert_eq!(fs::read_to_string(config).unwrap(), "[1000]\n[radio]\n");
     }
 
     #[test]

@@ -242,12 +242,20 @@ impl ResolvedProfile {
         flat: &RawOverlay,
         scoped: Option<&RawOverlay>,
     ) -> Result<Self, ProfileResolutionError> {
+        Self::resolve_with_defaults(role, flat, scoped, ProcessingChain::shipped(role))
+    }
+
+    fn resolve_with_defaults(
+        role: ChainRole,
+        flat: &RawOverlay,
+        scoped: Option<&RawOverlay>,
+        mut chain: ProcessingChain,
+    ) -> Result<Self, ProfileResolutionError> {
         require_overlay(flat, role, OverlayLayer::Flat)?;
         if let Some(overlay) = scoped {
             require_overlay(overlay, role, OverlayLayer::Scoped)?;
         }
 
-        let mut chain = ProcessingChain::shipped(role);
         let mut warnings = Vec::new();
         apply_overlay(&mut chain, flat, &mut warnings)?;
         if let Some(overlay) = scoped {
@@ -264,6 +272,23 @@ impl ResolvedProfile {
         channel: &str,
         role: ChainRole,
     ) -> Result<Self, ProfileResolutionError> {
+        Self::from_document_with_defaults(
+            document,
+            source,
+            channel,
+            role,
+            ProcessingChain::shipped(role),
+        )
+    }
+
+    /// Apply composition-specific gain defaults through the same profile parser.
+    pub(crate) fn from_document_with_defaults(
+        document: &ConfigDocument,
+        source: impl Into<String>,
+        channel: &str,
+        role: ChainRole,
+        defaults: ProcessingChain,
+    ) -> Result<Self, ProfileResolutionError> {
         let source = source.into();
         let kind = role_section(role);
         reject_ambiguous_selector(document, channel, kind)?;
@@ -278,7 +303,7 @@ impl ResolvedProfile {
                 document.explicit_values(&resolved_section),
             )
         });
-        let mut result = Self::resolve(role, &flat, scoped.as_ref())?;
+        let mut result = Self::resolve_with_defaults(role, &flat, scoped.as_ref(), defaults)?;
         warnings.append(&mut result.warnings);
         result.warnings = warnings;
         Ok(result)

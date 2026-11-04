@@ -9,8 +9,10 @@ Every channel requires the released PortAudio/ALSA and GPIO adapters, bound
 to one USB identity. The single ASL3 implementation has no `res_usbradio.so`
 dependency.
 
-The `usbradioplus` Debian package contains the ASL3 channel and tuner. It
-depends on `libusbradioplus-product1`, the versioned radio-processing and
+The `usbradioplus` Debian package contains the ASL3 channel and installs the
+matching `usbradioplus-tune` package. The tuner can also be installed independently
+for a standalone service, without pulling in Asterisk or the channel adapter.
+The channel depends on `libusbradioplus-product1`, the versioned radio-processing and
 station library also used by the standalone rpt_advanced controller. The
 `libusbradioplus-product-dev` package supplies the C header and pkg-config
 metadata for consumers; the shared product has no Asterisk dependency.
@@ -54,6 +56,8 @@ commands.
   channels, hardware profiles, signaling, routing, and audio processing.
 - [The tuning manual](man/usbradioplus-tune.8) covers the tuning utilities and
   service-monitor procedure.
+- [Standalone tuning](doc/standalone-tuner.md) covers the private local socket,
+  configuration scopes, calibration, EEPROM and diagnostics.
 - [The configuration example](examples/usbradioplus.conf.sample) is an annotated
   multi-channel-capable starting point.
 - [Packaging notes](doc/packaging.md) describe the upstream archive and current

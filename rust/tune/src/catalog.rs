@@ -143,6 +143,41 @@ pub fn configuration_catalog() -> MenuPage {
     )
 }
 
+/// Reuse the complete menu hierarchy while omitting Asterisk-owned controls.
+#[must_use]
+pub fn standalone_configuration_catalog() -> MenuPage {
+    fn retain_shared(page: &mut MenuPage) {
+        page.entries.retain_mut(|entry| match entry {
+            MenuEntry::Page(child) => {
+                retain_shared(child);
+                !child.entries.is_empty()
+            }
+            MenuEntry::Section(section) => {
+                if matches!(section.section.as_str(), "asterisk" | "general") {
+                    return false;
+                }
+                section.settings.retain(|setting| {
+                    !matches!(
+                        setting.key.as_str(),
+                        "duplex_local_repeat_level"
+                            | "hardware_voter_reporting"
+                            | "squelch_delay_ms"
+                    )
+                });
+                !section.settings.is_empty()
+            }
+            MenuEntry::Action(action) => !matches!(
+                action.action,
+                MenuAction::ToggleEcho | MenuAction::SwapUsbDevice
+            ),
+        });
+    }
+    let mut catalog = configuration_catalog();
+    catalog.title = "Standalone radio configuration".to_owned();
+    retain_shared(&mut catalog);
+    catalog
+}
+
 fn processing_page(role: ChainRole, title: &str) -> MenuPage {
     let chain = ProcessingChain::shipped(role);
     let section_name = role_name(role);
@@ -1973,6 +2008,32 @@ mod tests {
             }
         }
         found
+    }
+
+    #[test]
+    fn standalone_catalog_keeps_calibration_and_omits_host_owned_controls() {
+        let catalog = standalone_configuration_catalog();
+        for section in sections(&catalog) {
+            assert!(!matches!(section.section.as_str(), "asterisk" | "general"));
+            assert!(!section.settings.iter().any(|setting| matches!(
+                setting.key.as_str(),
+                "duplex_local_repeat_level" | "hardware_voter_reporting" | "squelch_delay_ms"
+            )));
+        }
+        let supported = actions(&catalog);
+        assert!(!supported.contains(&MenuAction::ToggleEcho));
+        assert!(!supported.contains(&MenuAction::SwapUsbDevice));
+        for action in [
+            MenuAction::Live(LiveAction::CalibrateReceiveNoise),
+            MenuAction::Live(LiveAction::CalibrateReceiveVoice),
+            MenuAction::Live(LiveAction::CalibrateReceiveCtcss),
+            MenuAction::AdjustTransmitVoice,
+            MenuAction::AdjustTransmitCtcss,
+            MenuAction::AdjustAuxiliaryOutput,
+            MenuAction::Live(LiveAction::SaveRadioTuning),
+        ] {
+            assert!(supported.contains(&action));
+        }
     }
 
     #[test]

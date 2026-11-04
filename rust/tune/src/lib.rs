@@ -8,8 +8,11 @@
 
 pub mod arguments;
 pub mod catalog;
+pub mod configuration;
 pub mod control;
 pub mod menus;
 pub mod policy;
 pub mod repository;
+#[cfg(unix)]
+pub mod standalone;
 pub mod ui;

@@ -44,6 +44,61 @@ fn defaults_select_automatically_and_prepare_no_optional_outputs() {
 }
 
 #[test]
+fn native_hardware_keeps_composition_defaults_and_the_common_parallel_plan() {
+    use usbradioplus_core::{ConfigDocument, ResolvedNativeConfiguration};
+
+    for (options, policy, input, output, profile, ordinary_outputs) in [
+        (
+            "",
+            SelectionPolicy::Exact,
+            ChannelCount::Mono,
+            ChannelCount::Mono,
+            Cm119Profile::DudeUsb,
+            0,
+        ),
+        (
+            "device_selection=automatic_lowest_alsa_card\ninput_device_channels=2\noutput_device_channels=2\n",
+            SelectionPolicy::Automatic,
+            ChannelCount::Stereo,
+            ChannelCount::Stereo,
+            Cm119Profile::DudeUsb,
+            0,
+        ),
+        (
+            "cm119_profile=nhrc\ncm119_gpio_1_mode=out1\n",
+            SelectionPolicy::Exact,
+            ChannelCount::Mono,
+            ChannelCount::Mono,
+            Cm119Profile::Nhrc,
+            0,
+        ),
+        (
+            "cm119_profile=custom\ncm119_gpio_1_mode=out1\n",
+            SelectionPolicy::Exact,
+            ChannelCount::Mono,
+            ChannelCount::Mono,
+            Cm119Profile::Custom,
+            1,
+        ),
+    ] {
+        let document = ConfigDocument::new(format!(
+            "[1000]\n[radio]\n{options}hardware_parallel_pin_2_assignment=ptt\nhardware_parallel_pin_10_assignment=cor\n"
+        ));
+        let resolved =
+            ResolvedNativeConfiguration::from_document(&document, "native.conf", "1000").unwrap();
+        let plan = native_hardware_plan(resolved.config(), resolved.physical());
+        assert_eq!(plan.audio_selector.policy, policy);
+        assert_eq!(plan.audio_selector.input_channels, input);
+        assert_eq!(plan.audio_selector.output_channels, output);
+        assert_eq!(plan.cm119.profile, profile);
+        assert_eq!(plan.cm119.output_enable_mask, ordinary_outputs);
+        assert_eq!(plan.cm119.output_initial_mask, ordinary_outputs);
+        assert!(plan.parallel.is_some());
+        assert_eq!(plan.parallel, hardware_plan(resolved.config()).parallel);
+    }
+}
+
+#[test]
 fn selected_stream_preserves_each_requested_physical_channel_layout() {
     for input in [ChannelCount::Mono, ChannelCount::Stereo] {
         for output in [ChannelCount::Mono, ChannelCount::Stereo] {
