@@ -195,7 +195,10 @@ fn plan_preserves_resolution_and_derives_every_station_request() {
     );
     assert_eq!(plan.program_ring().input_rate_hz, 8_000);
     assert_eq!(plan.radio().generation_id, 9);
-    assert_eq!(plan.processing().local.role, ChainRole::LocalReceive);
+    assert_eq!(
+        plan.processing().local.as_ref().unwrap().role,
+        ChainRole::LocalReceive
+    );
 }
 
 #[test]

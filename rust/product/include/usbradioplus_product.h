@@ -22,9 +22,10 @@ struct rptadv_radio_session_config;
 #define URP_NATIVE_HARDWARE_GAIN_OUTPUT_B 4U
 
 /** Resolved native request. All byte spans and radio are borrowed during create.
- * Native creation never changes mixer settings or reads tuning EEPROM. Each
- * stopped-to-started transition applies only explicitly selected hardware gains
- * before GPIO or audio starts; omitted controls and all switches are preserved.
+ * Native creation never changes mixer settings. It reads tuning EEPROM only
+ * when shared source configuration explicitly enables it. Each stopped-to-started
+ * transition applies selected gains and valid EEPROM tuning before GPIO or audio
+ * starts; omitted controls and all switches are preserved.
  * Radio generation/frame bounds/publication cadence are set by native lifecycle;
  * effective released ABI-4 radio settings are otherwise preserved. Inactive
  * signaling fields are normalized by the typed radio configuration.
@@ -976,6 +977,93 @@ typedef struct UrpAstSiteControl {
 } UrpAstSiteControl;
 
 /** Immutable shared-product entry points. Site operations are serialized control-only. */
+/** Physical-only native measurements; controller rings remain with the controller. */
+typedef struct UrpNativePhysicalStatus {
+	/** Size of this structure in bytes. */
+	uint32_t struct_size;
+	/** Must equal the adapter ABI version. */
+	uint32_t abi_version;
+	/** Nonzero while the physical station is started. */
+	uint32_t running;
+	/** Latest raw receive peak. */
+	float receive_input_peak;
+	/** Latest raw receive RMS. */
+	float receive_input_rms;
+	/** Latest processed receive peak. */
+	float receive_output_peak;
+	/** Latest processed receive RMS. */
+	float receive_output_rms;
+	/** Raw receive samples at a hardware rail in the latest callback. */
+	uint64_t receive_input_rail_samples;
+	/** Processed receive samples at a hardware rail in the latest callback. */
+	uint64_t receive_output_rail_samples;
+	/** Post-decoder-gain CTCSS half peak-to-peak level as normalized PCM. */
+	float receive_ctcss_decoder_peak;
+	/** Latest compatibility discriminator-noise measurement. */
+	int32_t receive_rssi_peak;
+	/** Nonzero when the latest callback completed an RSSI integration window. */
+	uint32_t receive_rssi_updated;
+	/** Latest post-processing transmitter-program peak. */
+	float transmit_program_peak;
+	/** Latest post-processing transmitter-program RMS. */
+	float transmit_program_rms;
+	/** Latest routed transmitter peak. */
+	float transmit_output_peak;
+	/** Latest routed transmitter RMS. */
+	float transmit_output_rms;
+	/** Cumulative PortAudio input overflows. */
+	uint64_t input_overflow_count;
+	/** Cumulative PortAudio output underflows. */
+	uint64_t output_underflow_count;
+	/** Cumulative raw input samples at or beyond full scale. */
+	uint64_t input_clip_sample_count;
+	/** Cumulative output samples at or beyond full scale. */
+	uint64_t output_clip_sample_count;
+	/** Most recent audio-callback duration in nanoseconds. */
+	uint64_t callback_last_duration_ns;
+	/** Maximum audio-callback duration in nanoseconds. */
+	uint64_t callback_max_duration_ns;
+	/** Most recent callback start-gap excess in nanoseconds. */
+	uint64_t callback_last_start_delay_ns;
+	/** Maximum callback start-gap excess in nanoseconds. */
+	uint64_t callback_max_start_delay_ns;
+	/** Cumulative late callback starts. */
+	uint64_t callback_late_start_count;
+	/** Latest input-xrun monotonic timestamp in nanoseconds. */
+	uint64_t last_input_xrun_monotonic_ns;
+	/** Latest output-xrun monotonic timestamp in nanoseconds. */
+	uint64_t last_output_xrun_monotonic_ns;
+	/** PortAudio input-latency estimate in seconds. */
+	double input_latency_seconds;
+	/** PortAudio output-latency estimate in seconds. */
+	double output_latency_seconds;
+	/** Actual hardware-stream sample rate in hertz. */
+	double native_sample_rate_hz;
+	/** Nonzero while carrier is detected. */
+	uint32_t carrier_active;
+	/** Nonzero while CTCSS or DCS qualification is detected. */
+	uint32_t subaudible_active;
+	/** Nonzero while the local receiver is qualified. */
+	uint32_t receiver_keyed;
+	/** Nonzero while logical PTT is active. */
+	uint32_t logical_ptt;
+	/** Decoded CTCSS table index, or -1 when absent. */
+	int32_t ctcss_decode_index;
+	/** Nonzero while the configured DCS code is valid. */
+	uint32_t dcs_valid;
+	/** Normalized receiver hardware mixer level. */
+	uint32_t receive_mixer_level;
+	/** Normalized transmitter-A hardware mixer level. */
+	uint32_t transmit_a_mixer_level;
+	/** Normalized transmitter-B hardware mixer level. */
+	uint32_t transmit_b_mixer_level;
+} UrpNativePhysicalStatus;
+
+/** Synchronous resolved-request visitor; borrowed storage expires on return. */
+typedef int (*UrpNativeConfigurationSink)(void *context,
+					  const struct UrpNativeStationConfig *config);
+
+/** Versioned product operations. Check struct_size before accessing an appended tail. */
 typedef struct UrpAstDescriptor {
 	/**
 	 * Size of this structure in bytes.
@@ -1160,6 +1248,53 @@ typedef struct UrpAstDescriptor {
 	 */
 	int (*link_process_f32)(void *link, uint32_t direction, uint32_t sample_rate_hz,
 				float *samples, uint32_t sample_count);
+	/** Resolve native settings without hardware access. Output is cleared on failure;
+	 * success transfers an owner released only through native_configuration_destroy. */
+	int (*native_configuration_resolve)(const struct UrpNativeProcessingArgs *args,
+					    UrpNativeProcessingDiagnostic diagnostic,
+					    void *diagnostic_context, void **output);
+	/** Visit a borrowed request; retain no pointer after the callback returns. */
+	int (*native_configuration_visit)(const void *configuration,
+					  UrpNativeConfigurationSink sink, void *context);
+	/** Release an owned resolution after its visitors return; null is harmless. */
+	void (*native_configuration_destroy)(void *configuration);
+	/** Read a physical snapshot on the serialized control owner. */
+	int (*native_get_status)(void *native, struct UrpNativePhysicalStatus *output);
+	/** Execute the shared maintenance catalog, with mutable command results. */
+	int (*native_command)(void *native, struct UrpAstChannelCommand *command);
+	/** Publish only manual PTT and optional forced CTCSS; neither changes controller demand. */
+	int (*native_set_transmit)(void *native, uint32_t keyed, uint32_t forced_ctcss_tenths_hz);
+	/** Release temporary maintenance intent; ordinary controller activity remains. */
+	int (*native_clear_manual)(void *native);
+	/** Prepare a same-device update using this station's retained providers/callbacks. */
+	int (*native_prepare_update)(void *native, const struct UrpNativeCreateArgs *args,
+				     void **output);
+	/** Transfer prepared ownership into the existing callback mailbox. */
+	int (*native_begin_update)(void *native, void *prepared);
+	/** Return ReloadPending until both callbacks acknowledge adoption. */
+	int (*native_accept_update)(void *native);
+	/** Commit or roll back, retaining rollback state while callback acknowledgments are
+	 * pending. */
+	int (*native_finish_update)(void *native, uint32_t commit);
+	/** Release an unconsumed or already transferred prepared token; null is harmless. */
+	void (*native_destroy_update)(void *prepared);
+	/** Emit existing physical measurement keys; borrowed text expires on callback return. */
+	int (*native_status_text)(void *native, UrpNativeProcessingDiagnostic sink, void *context);
+	/** Emit the existing native callback counters; borrowed text expires on callback return. */
+	int (*native_processing_status_text)(void *native, UrpNativeProcessingDiagnostic sink,
+					     void *context);
+	/** Retain existing counters before publishing a quiescent link to PCM processing.
+	 * Success transfers one independent observer lease. Output is cleared on failure.
+	 * This control-plane allocation neither retains nor accesses the graph/provider.
+	 */
+	int (*link_observer_create)(void *link, void **output);
+	/** Read counters concurrently with PCM processing, other reads or graph destruction.
+	 * The observer remains valid after link_destroy; retain it until all reads return.
+	 * Output must be initialized UrpAstLinkObservation ABI 1 storage.
+	 */
+	int (*link_observer_read)(const void *observer, struct UrpAstLinkObservation *output);
+	/** Destroy one independent observer after its reads return; null is harmless. */
+	void (*link_observer_destroy)(void *observer);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus
@@ -1167,7 +1302,7 @@ extern "C" {
 #endif // __cplusplus
 
 /**
- * Return the immutable process-lifetime product descriptor (ABI 1).
+ * @brief Return the immutable process-lifetime product descriptor (ABI 1).
  * @return Pointer to the process-lifetime descriptor.
  */
 const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);

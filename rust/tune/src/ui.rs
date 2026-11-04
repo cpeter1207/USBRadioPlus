@@ -3,7 +3,13 @@
 use std::ffi::OsString;
 use std::fmt;
 use std::io;
+#[cfg(unix)]
+use std::io::Read;
+use std::io::Write;
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 /// One tagged item in a navigation or selection list.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -130,6 +136,28 @@ pub trait DialogBackend {
     ///
     /// Returns [`UiError`] when the backend cannot display or read the dialog.
     fn show(&mut self, request: &DialogRequest) -> Result<DialogResponse, UiError>;
+
+    /// Present live text without retaining an unbounded snapshot history.
+    ///
+    /// Backends without a live surface may show one modal message and stop.
+    ///
+    /// # Errors
+    /// Returns an error when the output surface is unavailable.
+    fn live_status(&mut self, title: &str, body: &str) -> Result<(), UiError> {
+        self.show(&DialogRequest::Message {
+            title: title.to_owned(),
+            body: body.to_owned(),
+        })
+        .map(|_| ())
+    }
+
+    /// Wait at most the supplied duration; return true when live output should stop.
+    ///
+    /// # Errors
+    /// Returns an error when input cannot be observed safely.
+    fn wait_for_live_exit(&mut self, _timeout: Duration) -> Result<bool, UiError> {
+        Ok(true)
+    }
 }
 
 /// Accessible high-level UI whose widgets use one button and focus convention.
@@ -143,6 +171,22 @@ impl AccessibleUi {
         Self {
             backend: Box::new(backend),
         }
+    }
+
+    /// Present an accessible live-text header or snapshot.
+    ///
+    /// # Errors
+    /// Returns the live surface's output error.
+    pub fn live_status(&mut self, title: &str, body: &str) -> Result<(), UiError> {
+        self.backend.live_status(title, body)
+    }
+
+    /// Wait for cancellation or the next bounded live refresh interval.
+    ///
+    /// # Errors
+    /// Returns the live surface's input error.
+    pub fn wait_for_live_exit(&mut self, timeout: Duration) -> Result<bool, UiError> {
+        self.backend.wait_for_live_exit(timeout)
     }
 
     /// Show a section-navigation menu using Select and Back.
@@ -418,6 +462,62 @@ impl DialogBackend for WhiptailBackend {
             Ok(DialogResponse::Cancelled)
         }
     }
+
+    fn live_status(&mut self, title: &str, body: &str) -> Result<(), UiError> {
+        write_live_status(&mut io::stdout().lock(), title, body)
+            .map_err(|error| UiError::process("write live radio status", error))
+    }
+
+    fn wait_for_live_exit(&mut self, timeout: Duration) -> Result<bool, UiError> {
+        #[cfg(unix)]
+        {
+            wait_for_live_input(&mut io::stdin().lock(), timeout)
+                .map_err(|error| UiError::process("wait for live radio input", error))
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = timeout;
+            Err(UiError::message("live radio input requires Unix"))
+        }
+    }
+}
+
+fn write_live_status(output: &mut impl Write, title: &str, body: &str) -> io::Result<()> {
+    if !title.is_empty() {
+        writeln!(output, "{title}")?;
+    }
+    writeln!(output, "{body}")?;
+    output.flush()
+}
+
+#[cfg(unix)]
+fn wait_for_live_input(input: &mut (impl Read + AsRawFd), timeout: Duration) -> io::Result<bool> {
+    #[repr(C)]
+    struct PollFd {
+        fd: i32,
+        events: i16,
+        revents: i16,
+    }
+    unsafe extern "C" {
+        fn poll(fds: *mut PollFd, count: usize, timeout_ms: i32) -> i32;
+    }
+    let mut descriptor = PollFd {
+        fd: input.as_raw_fd(),
+        events: 1,
+        revents: 0,
+    };
+    let timeout_ms = timeout.as_millis().min(i32::MAX as u128) as i32;
+    // SAFETY: this is one initialized pollfd with a descriptor borrowed from
+    // the live input owner. Debian's nfds_t is an unsigned machine word.
+    let ready = unsafe { poll(&raw mut descriptor, 1, timeout_ms) };
+    if ready < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if ready == 0 {
+        return Ok(false);
+    }
+    let mut line = [0; 256];
+    input.read(&mut line).map(|_| true)
 }
 
 fn strings<const N: usize>(values: [&str; N]) -> Vec<OsString> {
@@ -479,6 +579,128 @@ mod tests {
                 .pop_front()
                 .unwrap_or_else(|| Err(UiError::message("script exhausted")))
         }
+    }
+
+    #[test]
+    fn live_status_writes_plain_snapshots_without_escape_sequences_or_history() {
+        let mut output = Vec::new();
+        write_live_status(&mut output, "Live radio meters", "Press Enter to stop.").unwrap();
+        write_live_status(&mut output, "", "receive_input_peak=0.25").unwrap();
+        assert_eq!(
+            String::from_utf8(output).unwrap(),
+            "Live radio meters\nPress Enter to stop.\nreceive_input_peak=0.25\n"
+        );
+        struct FailedOutput;
+        impl Write for FailedOutput {
+            fn write(&mut self, _buffer: &[u8]) -> io::Result<usize> {
+                Err(io::Error::other("output unavailable"))
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Err(io::Error::other("flush unavailable"))
+            }
+        }
+        assert!(write_live_status(&mut FailedOutput, "Meters", "status").is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn coverage_whiptail_live_port_with_process_input_and_interrupted_poll() {
+        const CHILD_MODE: &str = "USBRADIOPLUS_TEST_LIVE_PORT";
+        if let Ok(mode) = std::env::var(CHILD_MODE) {
+            let mut backend = WhiptailBackend::default();
+            backend
+                .live_status("Meters", "receive_input_peak=0.25")
+                .unwrap();
+            if mode == "eof" {
+                assert!(backend.wait_for_live_exit(Duration::from_secs(1)).unwrap());
+                return;
+            }
+            use std::sync::{
+                Arc,
+                atomic::{AtomicBool, Ordering},
+            };
+            unsafe extern "C" {
+                fn signal(number: i32, handler: extern "C" fn(i32)) -> usize;
+                fn pthread_self() -> usize;
+                fn pthread_kill(thread: usize, number: i32) -> i32;
+            }
+            extern "C" fn handle_signal(_: i32) {}
+            // SAFETY: the no-op handler has the required C signal-handler ABI;
+            // only this isolated child process installs it.
+            unsafe {
+                signal(10, handle_signal);
+            }
+            // SAFETY: pthread_self returns the caller's live thread identifier.
+            let thread = unsafe { pthread_self() };
+            let done = Arc::new(AtomicBool::new(false));
+            let stop = Arc::clone(&done);
+            let sender = std::thread::spawn(move || {
+                while !stop.load(Ordering::Acquire) {
+                    std::thread::sleep(Duration::from_millis(1));
+                    // SAFETY: the test thread remains alive until this sender joins.
+                    assert_eq!(unsafe { pthread_kill(thread, 10) }, 0);
+                }
+            });
+            let result = backend.wait_for_live_exit(Duration::from_secs(2));
+            done.store(true, Ordering::Release);
+            sender.join().unwrap();
+            let error = result.unwrap_err();
+            assert!(error.to_string().contains("wait for live radio input"));
+            assert_eq!(
+                std::error::Error::source(&error)
+                    .unwrap()
+                    .downcast_ref::<io::Error>()
+                    .unwrap()
+                    .kind(),
+                io::ErrorKind::Interrupted
+            );
+            return;
+        }
+        for mode in ["eof", "interrupt"] {
+            let mut child = Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "ui::tests::coverage_whiptail_live_port_with_process_input_and_interrupted_poll", "--nocapture"])
+                .env(CHILD_MODE, mode)
+                .stdin(if mode == "eof" { Stdio::null() } else { Stdio::piped() })
+                .stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+            // Keep the interrupt child's input pipe open until it finishes polling.
+            let _input = child.stdin.take();
+            let output = child.wait_with_output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                String::from_utf8_lossy(&output.stdout)
+                    .contains("Meters\nreceive_input_peak=0.25\n")
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn live_input_wait_is_bounded_consumes_cancellation_and_stops_on_eof() {
+        use std::os::unix::net::UnixStream;
+        let (mut input, mut peer) = UnixStream::pair().unwrap();
+        assert!(!wait_for_live_input(&mut input, Duration::from_millis(1)).unwrap());
+        peer.write_all(b"stop\n").unwrap();
+        assert!(wait_for_live_input(&mut input, Duration::from_secs(1)).unwrap());
+        assert!(!wait_for_live_input(&mut input, Duration::ZERO).unwrap());
+        drop(peer);
+        // A concurrent child launch can briefly inherit the peer between fork
+        // and exec; allow its close-on-exec descriptor to reach EOF.
+        assert!(wait_for_live_input(&mut input, Duration::from_secs(1)).unwrap());
+    }
+
+    #[test]
+    fn live_port_defaults_keep_modal_backends_usable() {
+        let backend = ScriptedBackend::with_responses([DialogResponse::Accepted(String::new())]);
+        let mut ui = AccessibleUi::new(backend.clone());
+        ui.live_status("Meters", "snapshot").unwrap();
+        assert!(ui.wait_for_live_exit(Duration::from_secs(1)).unwrap());
+        assert!(
+            matches!(&backend.0.borrow().requests[0], DialogRequest::Message { title, body } if title == "Meters" && body == "snapshot")
+        );
     }
 
     #[test]

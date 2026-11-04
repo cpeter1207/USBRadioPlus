@@ -11,8 +11,8 @@ use usbradioplus_audio::{
     ChannelCount, DeviceSelector, SelectedDevice, SelectionPolicy, StreamConfig,
 };
 use usbradioplus_core::{
-    ChannelConfiguration, GpioMode, HardwareInterfaceType, ParallelInputAssignment,
-    ParallelOutputAssignment,
+    ChannelConfiguration, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
+    NativePhysicalOptions, ParallelInputAssignment, ParallelOutputAssignment,
 };
 use usbradioplus_gpio::{Cm119Config, Cm119Profile, ParallelConfig, ParallelTransport};
 
@@ -182,6 +182,8 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
     let profile = match hardware.interface_type {
         HardwareInterfaceType::DudeUsb => Cm119Profile::DudeUsb,
         HardwareInterfaceType::SphUsb => Cm119Profile::SphUsb,
+        HardwareInterfaceType::Nhrc => Cm119Profile::Nhrc,
+        HardwareInterfaceType::Custom => Cm119Profile::Custom,
     };
     let (ptt_mask, ordinary_mask) = profile_masks(hardware.interface_type);
     let requested_output_mask = gpio_output_mask(hardware.gpio_modes)
@@ -219,6 +221,33 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
     }
 }
 
+/// Apply explicit standalone device policy to the common hardware plan.
+///
+/// GPIO, parallel transport and device identity retain the same shared builder;
+/// only standalone's selection and physical channel defaults differ.
+#[must_use]
+pub fn native_hardware_plan(
+    channel: &ChannelConfiguration,
+    physical: &NativePhysicalOptions,
+) -> HardwarePlan {
+    let mut plan = hardware_plan(channel);
+    plan.audio_selector.policy = match physical.device_selection {
+        NativeDeviceSelection::Exact => SelectionPolicy::Exact,
+        NativeDeviceSelection::AutomaticLowestAlsaCard => SelectionPolicy::Automatic,
+    };
+    plan.audio_selector.input_channels = if physical.input_device_channels == 2 {
+        ChannelCount::Stereo
+    } else {
+        ChannelCount::Mono
+    };
+    plan.audio_selector.output_channels = if physical.output_device_channels == 2 {
+        ChannelCount::Stereo
+    } else {
+        ChannelCount::Mono
+    };
+    plan
+}
+
 fn optional_text(value: &str) -> Option<String> {
     (!value.is_empty()).then(|| value.to_owned())
 }
@@ -227,6 +256,8 @@ const fn profile_masks(profile: HardwareInterfaceType) -> (u8, u8) {
     match profile {
         HardwareInterfaceType::DudeUsb => (DUDE_USB_PTT_MASK, DUDE_USB_ORDINARY_GPIO_MASK),
         HardwareInterfaceType::SphUsb => (SPH_USB_PTT_MASK, SPH_USB_ORDINARY_GPIO_MASK),
+        HardwareInterfaceType::Nhrc => (DUDE_USB_PTT_MASK, 0),
+        HardwareInterfaceType::Custom => (DUDE_USB_PTT_MASK, 1),
     }
 }
 

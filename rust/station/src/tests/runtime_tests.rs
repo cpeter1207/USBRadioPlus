@@ -204,6 +204,213 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
 }
 
+#[test]
+fn native_manual_key_and_ctcss_intent_survive_direct_controller_results() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut capture = DirectCapture::default();
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: capture stays live until the stopped runtime is destroyed.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    let tone = CtcssTone::from_tenths_hz(1_000).unwrap();
+    for (manual_key, inhibited, controller_key, controller_ctcss, expected_inhibit) in [
+        (true, false, 0, 0, false),
+        (false, true, 1, 1, true),
+        (false, false, 1, 0, true),
+        (false, false, 1, 1, false),
+    ] {
+        runtime.hardware.publish_requests(ControllerRequests {
+            transmit: manual_key,
+            calibrated_test_tone: manual_key,
+            forced_ctcss: manual_key.then_some(tone),
+            ctcss_inhibit: inhibited,
+            ..ControllerRequests::default()
+        });
+        capture.tx_keyed = controller_key;
+        capture.ctcss_enabled = controller_ctcss;
+        let mut output = [0.0; 8];
+        assert_eq!(
+            // SAFETY: the stopped runtime exclusively owns both callback contexts.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    4,
+                )
+            },
+            CALLBACK_OK
+        );
+        assert_eq!(
+            output,
+            if expected_inhibit {
+                [0.5; 8]
+            } else {
+                [-0.375; 8]
+            }
+        );
+        assert!(runtime.hardware.outputs().logical_ptt);
+    }
+    // Session cleanup clears the manually published intent; the controller callback
+    // still requests ordinary transmission and retains its CTCSS setting.
+    runtime
+        .hardware
+        .publish_requests(ControllerRequests::default());
+    capture.tx_keyed = 1;
+    capture.ctcss_enabled = 1;
+    let mut output = [0.0; 8];
+    assert_eq!(
+        // SAFETY: callback contexts and the stereo output span remain exclusively owned.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_OK
+    );
+    assert!(runtime.hardware.outputs().logical_ptt);
+    assert_eq!(runtime.hardware.requests(), ControllerRequests::default());
+}
+
+#[test]
+fn native_planned_updates_share_acknowledgments_rollback_and_stream_ownership() {
+    STARTS.set(0);
+    STOPS.set(0);
+    DESTROYS.set(0);
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, _) = prepared.into_parts();
+    let mut exact = plan.processing().clone();
+    exact.local = None;
+    exact.voice_telemetry = None;
+    exact.receive_graph = "highpass=f=60".to_owned();
+    exact.transmit_graph = "volume=-2dB".to_owned();
+    let processing = factory().prepare(&exact).unwrap();
+    let plan = StationPlan::native(
+        "native",
+        plan.configuration().clone(),
+        plan.hardware().clone(),
+        *plan.radio(),
+        exact.clone(),
+    );
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        ..DirectCapture::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: callback capture outlives synchronous stream shutdown.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let original = plan.clone();
+    let (mut runtime, mut control) =
+        StationRuntime::open_native_planned(media, plan, &selected, audio_provider()).unwrap();
+    runtime.start().unwrap();
+    let mut config = original.configuration().clone();
+    config.local.input_gain_db = 3.0;
+    exact.receive_graph = "highpass=f=120".to_owned();
+    let candidate = StationPlan::new("native", config, original.transport(), 25, 960)
+        .unwrap()
+        .with_explicit_processing(exact);
+    let update = runtime
+        .prepare_update(&control, candidate, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    assert!(matches!(
+        runtime.update_result(),
+        Err(StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    assert!(matches!(
+        runtime.update_result(),
+        Err(StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, false);
+    runtime.accept_update(&mut control).unwrap();
+    assert_eq!(control.plan().configuration().local.input_gain_db, 3.0);
+    assert_eq!(control.plan().processing().receive_graph, "highpass=f=120");
+    assert!(matches!(
+        runtime.finish_update(&mut control, false),
+        Err(StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime.finish_update(&mut control, false).unwrap();
+    assert_eq!(control.plan(), &original);
+    assert!(runtime.hardware.outputs().logical_ptt);
+    assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
+}
+
+#[test]
+fn stopped_pending_update_drains_both_owners_before_rollback_and_restart() {
+    for partial in [None, Some(true), Some(false)] {
+        let (mut runtime, mut control) = runtime(20);
+        let original = control.plan().clone();
+        runtime.start().unwrap();
+        let candidate = StationPlan::new(
+            "usb",
+            original.configuration().clone(),
+            original.transport(),
+            21,
+            960,
+        )
+        .unwrap();
+        let update = runtime
+            .prepare_update(&control, candidate, &factory(), radio_provider())
+            .unwrap();
+        runtime.begin_update(&control, update).unwrap();
+        if let Some(receive) = partial {
+            update_tick(&mut runtime, receive);
+        }
+        assert!(matches!(
+            runtime.update_result(),
+            Err(StationUpdateError::Pending)
+        ));
+        runtime.stop().unwrap();
+        runtime.finish_update(&mut control, false).unwrap();
+        assert_eq!(control.plan(), &original);
+        runtime.start().unwrap();
+        let candidate = StationPlan::new(
+            "usb",
+            original.configuration().clone(),
+            original.transport(),
+            22,
+            960,
+        )
+        .unwrap();
+        assert!(
+            runtime
+                .prepare_update(&control, candidate, &factory(), radio_provider())
+                .is_ok()
+        );
+    }
+}
+
 impl StationRuntime {
     // Tests have no delivery task; join the production snapshot/preparation steps.
     fn prepare_update(

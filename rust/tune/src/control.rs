@@ -109,17 +109,7 @@ impl ChannelControl for AsteriskRuntime {
 
     fn radio_status(&mut self) -> Result<RadioStatus, String> {
         let output = self.channel_status()?;
-        Ok(RadioStatus {
-            receive_input_peak: parsed_value(&output, "receive_input_peak")?,
-            receive_input_rms: parsed_value(&output, "receive_input_rms")?,
-            receive_output_peak: parsed_value(&output, "receive_output_peak")?,
-            receive_output_rms: parsed_value(&output, "receive_output_rms")?,
-            receive_ctcss_decoder_peak: parsed_value(&output, "receive_ctcss_decoder_peak")?,
-            receive_rssi_peak: parsed_value(&output, "receive_rssi_peak")?,
-            receive_rssi_updated: parsed_switch(&output, "receive_rssi_updated")?,
-            receive_input_rail_samples: parsed_value(&output, "receive_input_rail_samples")?,
-            receive_mixer_level: parsed_value(&output, "receive_mixer_level")?,
-        })
+        parse_radio_status(&output)
     }
 
     fn set_hardware_mixer(&mut self, mixer: HardwareMixer, level: u32) -> Result<(), String> {
@@ -163,16 +153,14 @@ impl ChannelControl for AsteriskRuntime {
         match action {
             LiveAction::ProcessingStatistics => self.run_asterisk("radioplus processing stats"),
             LiveAction::ActiveConfiguration | LiveAction::RadioStatus => self.channel_status(),
-            LiveAction::FlashTransmitter => self.run_asterisk("radioplus channel flash"),
-            LiveAction::CalibrateReceiveNoise
+            LiveAction::FlashTransmitter
+            | LiveAction::ContinuousRadioMeters
+            | LiveAction::CalibrateReceiveNoise
             | LiveAction::CalibrateReceiveVoice
             | LiveAction::CalibrateReceiveCtcss => Err(
                 "the Rust tuner must compose this operation from typed live controls".to_owned(),
             ),
             LiveAction::SaveRadioTuning => self.save_current_tuning_to_eeprom(),
-            LiveAction::ContinuousRadioMeters => {
-                self.run_asterisk("radioplus channel status follow")
-            }
         }
     }
 
@@ -188,6 +176,21 @@ impl ChannelControl for AsteriskRuntime {
     fn set_echo_enabled(&mut self, enabled: bool) -> Result<String, String> {
         self.run_asterisk(&format!("radioplus channel echo {}", u8::from(enabled)))
     }
+}
+
+/// Parse the physical status spelling shared by both runtime adapters.
+pub(crate) fn parse_radio_status(output: &str) -> Result<RadioStatus, String> {
+    Ok(RadioStatus {
+        receive_input_peak: parsed_value(output, "receive_input_peak")?,
+        receive_input_rms: parsed_value(output, "receive_input_rms")?,
+        receive_output_peak: parsed_value(output, "receive_output_peak")?,
+        receive_output_rms: parsed_value(output, "receive_output_rms")?,
+        receive_ctcss_decoder_peak: parsed_value(output, "receive_ctcss_decoder_peak")?,
+        receive_rssi_peak: parsed_value(output, "receive_rssi_peak")?,
+        receive_rssi_updated: parsed_switch(output, "receive_rssi_updated")?,
+        receive_input_rail_samples: parsed_value(output, "receive_input_rail_samples")?,
+        receive_mixer_level: parsed_value(output, "receive_mixer_level")?,
+    })
 }
 
 fn key_value<'a>(output: &'a str, key: &str) -> &'a str {
@@ -252,6 +255,21 @@ impl SessionLock {
     /// Returns [`SessionLockError::AlreadyRunning`] when another tuner owns the
     /// lock, or [`SessionLockError::Io`] when the path cannot be created or locked.
     pub fn acquire(path: &Path) -> Result<Self, SessionLockError> {
+        Self::acquire_with_access(path, false)
+    }
+
+    /// Lock the service-owned native path without requiring write access to an existing lock.
+    ///
+    /// New native lock files are 0644. Existing ownership and permissions are
+    /// retained; Linux `flock` supports an exclusive lock on a read-only descriptor.
+    ///
+    /// # Errors
+    /// Returns the same filesystem and exclusion errors as [`Self::acquire`].
+    pub fn acquire_service(path: &Path) -> Result<Self, SessionLockError> {
+        Self::acquire_with_access(path, true)
+    }
+
+    fn acquire_with_access(path: &Path, service: bool) -> Result<Self, SessionLockError> {
         let path = path.to_path_buf();
         let parent = path
             .parent()
@@ -261,16 +279,20 @@ impl SessionLock {
             path: parent.to_path_buf(),
             source,
         })?;
-        let file = OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(&path)
-            .map_err(|source| SessionLockError::Io {
-                path: path.clone(),
-                source,
-            })?;
+        let file = if service {
+            service_lock_file(&path)
+        } else {
+            OpenOptions::new()
+                .create(true)
+                .truncate(false)
+                .read(true)
+                .write(true)
+                .open(&path)
+        }
+        .map_err(|source| SessionLockError::Io {
+            path: path.clone(),
+            source,
+        })?;
         lock_file(&file).map_err(|source| lock_error(&path, source))?;
         Ok(Self { _file: file, path })
     }
@@ -279,6 +301,35 @@ impl SessionLock {
     #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+fn service_lock_file(path: &Path) -> io::Result<File> {
+    match OpenOptions::new()
+        .create_new(true)
+        .read(true)
+        .write(true)
+        .open(path)
+    {
+        Ok(file) => {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                file.set_permissions(fs::Permissions::from_mode(0o644))?;
+            }
+            Ok(file)
+        }
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+            let file = File::open(path)?;
+            if !file.metadata()?.is_file() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "session lock is not a regular file",
+                ));
+            }
+            Ok(file)
+        }
+        Err(error) => Err(error),
     }
 }
 
@@ -382,6 +433,15 @@ mod tests {
 
     static LOCK_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn coverage_service_lock_reports_creation_error() {
+        let path = Path::new("/proc/self/usbradioplus-tune.lock");
+        assert!(
+            matches!(SessionLock::acquire_service(path), Err(SessionLockError::Io { path: actual, .. }) if actual == path)
+        );
+    }
+
     #[cfg(unix)]
     fn executable(directory: &Path, name: &str, source: &str) -> PathBuf {
         let path = directory.join(name);
@@ -390,6 +450,44 @@ mod tests {
         permissions.set_mode(0o700);
         fs::set_permissions(&path, permissions).unwrap();
         path
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn service_lock_opens_existing_root_created_file_read_only_and_stays_exclusive() {
+        let root = std::env::temp_dir().join(format!(
+            "usbradioplus-service-lock-{}-{}",
+            std::process::id(),
+            LOCK_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("tune.lock");
+        fs::write(&path, "").unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o444)).unwrap();
+        let held = SessionLock::acquire_service(&path).unwrap();
+        unsafe extern "C" {
+            fn fcntl(fd: i32, command: i32, ...) -> i32;
+        }
+        // SAFETY: F_GETFL only inspects this live borrowed descriptor.
+        assert_eq!(unsafe { fcntl(held._file.as_raw_fd(), 3) } & 3, 0);
+        assert!(matches!(
+            SessionLock::acquire_service(&path),
+            Err(SessionLockError::AlreadyRunning(_))
+        ));
+        assert_eq!(
+            fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o444
+        );
+        drop(held);
+        assert!(SessionLock::acquire_service(&path).is_ok());
+        assert!(SessionLock::acquire_service(&root).is_err());
+        let created = root.join("new.lock");
+        drop(SessionLock::acquire_service(&created).unwrap());
+        assert_eq!(
+            fs::metadata(created).unwrap().permissions().mode() & 0o777,
+            0o644
+        );
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(unix)]
@@ -471,12 +569,12 @@ mod tests {
             LiveAction::ProcessingStatistics,
             LiveAction::ActiveConfiguration,
             LiveAction::RadioStatus,
-            LiveAction::FlashTransmitter,
-            LiveAction::ContinuousRadioMeters,
         ] {
             assert!(!runtime.perform(action).unwrap().is_empty());
         }
         for action in [
+            LiveAction::FlashTransmitter,
+            LiveAction::ContinuousRadioMeters,
             LiveAction::CalibrateReceiveNoise,
             LiveAction::CalibrateReceiveVoice,
             LiveAction::CalibrateReceiveCtcss,

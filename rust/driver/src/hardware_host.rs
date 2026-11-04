@@ -11,6 +11,7 @@ use crate::hardware_site::{
     SiteBank, SiteBankState, SiteCache, SiteDigitalBinding, SiteDigitalRequest,
     SiteDigitalSnapshot, SiteError,
 };
+use std::cell::{Cell, RefCell, RefMut};
 use std::fmt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicU64, Ordering};
@@ -467,6 +468,7 @@ impl EepromTuning {
 pub struct HardwarePreflight {
     selected: SelectedDevice,
     startup_tuning: Option<EepromTuning>,
+    eeprom_enabled: bool,
 }
 
 impl HardwarePreflight {
@@ -475,7 +477,26 @@ impl HardwarePreflight {
         Self {
             selected,
             startup_tuning,
+            eeprom_enabled: false,
         }
+    }
+
+    /// Resolve native audio/GPIO identity and optional startup EEPROM before
+    /// immutable radio preparation. The temporary HID owner closes on return;
+    /// disabled, unreadable or invalid tuning never changes file configuration.
+    pub fn native(
+        plan: &HardwarePlan,
+        eeprom_enabled: bool,
+        audio: AudioProvider,
+        gpio: GpioAdapter,
+        maximum_frame_count: u32,
+    ) -> Result<(Self, SelectedHardwarePlan), HardwareStationError> {
+        let (selected, selected_plan) =
+            select_native_hardware(plan, audio, gpio, maximum_frame_count)?;
+        let startup_eeprom = read_startup_eeprom(&selected_plan, eeprom_enabled, gpio)?;
+        let mut preflight = Self::new(selected, startup_eeprom);
+        preflight.eeprom_enabled = eeprom_enabled;
+        Ok((preflight, selected_plan))
     }
 
     /// Apply startup EEPROM tuning before immutable station preparation.
@@ -489,6 +510,26 @@ impl HardwarePreflight {
             false
         }
     }
+}
+
+fn read_startup_eeprom(
+    selected: &SelectedHardwarePlan,
+    enabled: bool,
+    gpio: GpioAdapter,
+) -> Result<Option<EepromImage>, HardwareStationError> {
+    if !enabled {
+        return Ok(None);
+    }
+    let mut device =
+        gpio.open_cm119(&selected.cm119)
+            .map_err(|source| HardwareStationError::Gpio {
+                operation: HardwareOperation::OpenCm119,
+                source,
+            })?;
+    Ok(device
+        .read_eeprom()
+        .ok()
+        .filter(|image| image.magic_valid && image.checksum_valid))
 }
 
 /// Select and cross-check native audio/GPIO identity without opening a device or tuning it.
@@ -534,12 +575,9 @@ pub fn select_native_hardware(
 
 /// One selected CM119, its mixers, hardware service, and native station stream.
 pub struct HardwareStation {
-    selected: SelectedDevice,
     runtime: StationRuntime,
     control: StationControlHost,
-    service: HardwareService,
-    mixers: HardwareMixers,
-    update_mixers: Option<[u32; 3]>,
+    maintenance: HardwareMaintenance,
 }
 
 impl HardwareStation {
@@ -560,20 +598,7 @@ impl HardwareStation {
     ) -> Result<HardwarePreflight, HardwareStationError> {
         let selected = audio.select_device(&plan.audio_selector)?;
         let selected_plan = plan.select(&selected, 1)?;
-        let startup_eeprom = if eeprom_enabled {
-            let mut device = gpio.open_cm119(&selected_plan.cm119).map_err(|source| {
-                HardwareStationError::Gpio {
-                    operation: HardwareOperation::OpenCm119,
-                    source,
-                }
-            })?;
-            device
-                .read_eeprom()
-                .ok()
-                .filter(|image| image.magic_valid && image.checksum_valid)
-        } else {
-            None
-        };
+        let startup_eeprom = read_startup_eeprom(&selected_plan, eeprom_enabled, gpio)?;
         Ok(HardwarePreflight::new(selected, startup_eeprom))
     }
 
@@ -594,18 +619,13 @@ impl HardwareStation {
         gpio: GpioAdapter,
     ) -> Result<HardwarePreflight, HardwareStationError> {
         let selected = audio.select_device(&plan.audio_selector)?;
-        plan.select(&selected, 1)?;
-        if selected.interface_path != self.selected.interface_path || !self.service.running() {
-            return Self::preflight(plan, eeprom_enabled, audio, gpio);
-        }
-        let startup_eeprom = if eeprom_enabled {
-            self.service
-                .read_eeprom_for_preflight()?
-                .filter(|image| image.magic_valid && image.checksum_valid)
-        } else {
-            None
-        };
-        Ok(HardwarePreflight::new(selected, startup_eeprom))
+        let selected_plan = plan.select(&selected, 1)?;
+        self.maintenance.preflight_selected_replacement(
+            selected,
+            &selected_plan,
+            eeprom_enabled,
+            gpio,
+        )
     }
 
     /// Prepare a station from a previously completed canonical-device preflight.
@@ -652,13 +672,18 @@ impl HardwareStation {
                 initial_remote_radio,
             },
         );
+        let maintenance = HardwareMaintenance {
+            service,
+            mixers: RefCell::new(Some(mixers)),
+            native_mixers: None,
+            hardware: runtime.hardware_state(),
+            selected: selected.clone(),
+            update_mixers: None,
+        };
         Ok(Self {
-            selected,
             runtime,
             control,
-            service,
-            mixers,
-            update_mixers: None,
+            maintenance,
         })
     }
 
@@ -670,12 +695,12 @@ impl HardwareStation {
     ///
     /// Returns a GPIO open/service failure or a PortAudio start failure.
     pub fn start(&mut self) -> Result<(), HardwareStationError> {
-        if self.service.running() {
+        if self.maintenance.service.running() {
             return Ok(());
         }
-        self.service.start()?;
+        self.maintenance.service.start()?;
         if let Err(error) = self.runtime.start() {
-            let _ = self.service.stop();
+            let _ = self.maintenance.service.stop();
             return Err(error.into());
         }
         Ok(())
@@ -690,7 +715,7 @@ impl HardwareStation {
     /// Returns an audio stop failure or an unexpected service-thread panic.
     pub fn stop(&mut self) -> Result<(), HardwareStationError> {
         let audio = self.runtime.stop().map_err(HardwareStationError::Audio);
-        let hardware = self.service.stop();
+        let hardware = self.maintenance.service.stop();
         audio.and(hardware)
     }
 
@@ -721,10 +746,21 @@ impl HardwareStation {
         &mut self.control
     }
 
+    /// Borrow the active immutable station configuration for shared maintenance.
+    #[must_use]
+    pub fn configuration(&self) -> &ChannelConfiguration {
+        self.control.plan().configuration()
+    }
+
+    /// Borrow the shared physical maintenance owner on the serialized control path.
+    pub fn maintenance_mut(&mut self) -> &mut HardwareMaintenance {
+        &mut self.maintenance
+    }
+
     /// Borrow the existing hardware owner for control-only site queues/snapshots.
     /// This shared reference cannot stop, reopen or duplicate the device owner.
     pub fn site_service(&self) -> &HardwareService {
-        &self.service
+        &self.maintenance.service
     }
 
     /// Whether the existing stream and control-service owners can adopt this plan.
@@ -752,7 +788,340 @@ impl HardwareStation {
         previous: &ChannelConfiguration,
         candidate: &mut ChannelConfiguration,
     ) {
-        let current = &self.control.plan().configuration().station;
+        HardwareMaintenance::preserve_startup_tuning(
+            previous,
+            self.control.plan().configuration(),
+            candidate,
+        );
+    }
+
+    /// Capture safe graph ownership for construction outside the control-delivery task.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an overlapping update or incompatible provider state.
+    pub fn update_snapshot(
+        &self,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+    ) -> Result<StationUpdatePreparation, StationUpdateError> {
+        self.runtime
+            .snapshot_update(&self.control, factory, provider)
+    }
+
+    /// Publish a prepared update without stopping audio or the GPIO service.
+    ///
+    /// Only explicitly changed mixer settings are written; unrelated unsaved
+    /// calibration remains live. The original levels are retained for rollback.
+    ///
+    /// # Errors
+    ///
+    /// Returns the runtime publication or hardware mixer failure.
+    pub fn begin_update(
+        &mut self,
+        update: StationUpdate,
+        explicitly_changed_mixers: [bool; 3],
+    ) -> Result<(), HardwareStationError> {
+        let old = self.control.plan().configuration().clone();
+        let next = update.plan().configuration().clone();
+        self.runtime.begin_update(&self.control, update)?;
+        self.maintenance
+            .begin_mixer_update(&old, &next, explicitly_changed_mixers)
+    }
+
+    /// Accept the candidate after both audio owners have adopted it.
+    ///
+    /// # Errors
+    ///
+    /// `Pending` means callbacks have not yet reached their update boundaries.
+    pub fn accept_update(&mut self) -> Result<(), StationUpdateError> {
+        self.runtime.accept_update(&mut self.control)
+    }
+
+    /// Commit or roll back a live update; pending rollback can be retried.
+    ///
+    /// # Errors
+    ///
+    /// Returns pending callback adoption, a radio failure, or a mixer failure.
+    pub fn finish_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
+        self.runtime.finish_update(&mut self.control, commit)?;
+        self.maintenance.finish_mixer_update(commit)
+    }
+
+    /// Clone the lock-free state shared with the native callbacks.
+    #[must_use]
+    pub fn hardware_state(&self) -> SharedHardwareState {
+        self.runtime.hardware_state()
+    }
+
+    /// Read the last applied value on the established zero-through-999 scale.
+    ///
+    /// # Errors
+    ///
+    /// Retains a result type shared with mixer mutation for a uniform tuner API.
+    pub fn mixer_level(&self, mixer: HardwareMixer) -> Result<u32, HardwareStationError> {
+        self.maintenance.mixer_level(mixer)
+    }
+
+    /// Set one hardware mixer on its normalized zero-through-999 scale.
+    ///
+    /// All paths representing the selected logical mixer are changed together.
+    ///
+    /// # Errors
+    ///
+    /// Returns an audio-adapter error when the value or mixer operation is invalid.
+    pub fn set_mixer_level(
+        &mut self,
+        mixer: HardwareMixer,
+        level: u32,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.set_mixer_level(mixer, level)
+    }
+
+    /// Read the latest complete native receive measurement without locking.
+    #[must_use]
+    pub fn receive_observation(&self) -> ReceiveObservation {
+        self.maintenance.receive_observation()
+    }
+
+    /// Publish controller PTT and audio-admission intent atomically.
+    ///
+    /// DAC admission remains independent of PTT so an unkeyed callback can
+    /// finish transmitter signaling and release the hardware.
+    pub fn set_transmit_request(
+        &self,
+        transmit: bool,
+        render_admitted: bool,
+        forced_ctcss: Option<CtcssTone>,
+    ) {
+        self.maintenance
+            .set_transmit_request(transmit, render_admitted, forced_ctcss)
+    }
+
+    /// Enable or disable the calibrated transmitter test tone.
+    pub fn set_calibrated_test_tone(&self, enabled: bool) {
+        self.maintenance.set_calibrated_test_tone(enabled)
+    }
+
+    /// Temporarily inhibit or restore configured transmit CTCSS generation.
+    pub fn set_ctcss_inhibited(&self, inhibited: bool) {
+        self.maintenance.set_ctcss_inhibited(inhibited)
+    }
+
+    /// Temporarily bypass or restore receive subaudible qualification.
+    pub fn set_subaudible_override(&self, enabled: bool) {
+        self.maintenance.set_subaudible_override(enabled)
+    }
+
+    /// Apply one translated controller request through its single hardware boundary.
+    ///
+    /// Controller state and lock-free native callback controls are updated
+    /// before any bounded GPIO or parallel-port work is queued.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a requested GPIO or parallel operation is not
+    /// configured, the hardware service is stopped, or its bounded queue is full.
+    pub fn apply_control(
+        &mut self,
+        message: ControlMessage,
+    ) -> Result<ControlAction, HardwareStationError> {
+        let action = self.control.controller().apply_control(message);
+        match action {
+            ControlAction::SetTransmit {
+                keyed,
+                forced_ctcss,
+            } => {
+                // A live DAC callback remains admitted while the radio core
+                // finishes its tone-off sequence and releases logical PTT.
+                self.set_transmit_request(keyed, true, forced_ctcss);
+            }
+            ControlAction::SelectChannel(channel) => self.select_channel(channel)?,
+            ControlAction::SetReceiveCtcss(enabled) => self.set_subaudible_override(!enabled),
+            ControlAction::SetTransmitCtcss(enabled) => {
+                self.set_ctcss_inhibited(!enabled);
+            }
+            ControlAction::SetGpio(pin, request) => self.set_gpio(pin, request)?,
+            ControlAction::SetParallel(pin, request) => self.set_parallel(pin, request)?,
+            ControlAction::ConfigureRemoteRadio(settings) => {
+                self.configure_remote_radio(settings)?;
+            }
+        }
+        Ok(action)
+    }
+
+    /// Queue one persistent or timed CM119 GPIO request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the pin is not a configured ordinary output, the
+    /// pulse duration overflows, or the bounded service queue cannot accept it.
+    pub fn set_gpio(
+        &self,
+        pin: GpioPin,
+        request: OutputRequest,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.set_gpio(pin, request)
+    }
+
+    /// Queue one persistent or timed parallel-port output request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the pin is unavailable or reserved for PTT, the
+    /// pulse duration overflows, or the bounded service queue cannot accept it.
+    pub fn set_parallel(
+        &self,
+        pin: ParallelPin,
+        request: OutputRequest,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.set_parallel(pin, request)
+    }
+
+    /// Queue one established active-low parallel channel selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no parallel transport is configured or the
+    /// bounded service queue cannot accept the request.
+    pub fn select_channel(&self, channel: u8) -> Result<(), HardwareStationError> {
+        self.maintenance.select_channel(channel)
+    }
+
+    /// Queue one complete parallel-port remote-radio request.
+    ///
+    /// The service owner reapplies this request whenever logical PTT changes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no parallel transport is configured or the
+    /// bounded service queue cannot accept the request.
+    pub fn configure_remote_radio(
+        &self,
+        settings: RemoteRadio,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.configure_remote_radio(settings)
+    }
+
+    /// Read tuning EEPROM through the serialized hardware service owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when EEPROM is disabled, hardware is stopped, the
+    /// request times out, or the GPIO adapter rejects the transfer.
+    pub fn read_eeprom(&self) -> Result<EepromImage, HardwareStationError> {
+        self.maintenance.read_eeprom()
+    }
+
+    /// Write tuning EEPROM through the serialized hardware service owner.
+    ///
+    /// The adapter returns any checksum or metadata changes in `image`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when EEPROM is disabled, hardware is stopped, the
+    /// request times out, or the GPIO adapter rejects the transfer.
+    pub fn write_eeprom(&self, image: &mut EepromImage) -> Result<(), HardwareStationError> {
+        self.maintenance.write_eeprom(image)
+    }
+
+    /// Encode and persist current live radio tuning through the hardware owner.
+    ///
+    /// The tuner need not know EEPROM offsets or checksum policy. Mixer values
+    /// are read live; CTCSS and squelch values come from the active immutable
+    /// station generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns a mixer, service-state, timeout, or EEPROM adapter failure.
+    pub fn save_current_tuning_to_eeprom(&self) -> Result<EepromTuning, HardwareStationError> {
+        self.maintenance
+            .save_current_tuning_to_eeprom(self.control.plan().configuration())
+    }
+
+    /// Take the next ordinary CM119 or parallel input edge without waiting.
+    #[must_use]
+    pub fn take_input_event(&self) -> Option<HardwareInputEvent> {
+        self.maintenance.take_input_event()
+    }
+
+    /// Capture persistent GPIO, parallel-channel, and remote-radio state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the service is stopped, busy, or unavailable.
+    pub fn transient_state(&self) -> Result<HardwareTransientState, HardwareStationError> {
+        self.maintenance.transient_state()
+    }
+
+    /// Stage persistent state for the next hardware-service start.
+    ///
+    /// Reload calls this on a stopped generation before [`Self::start`]. It
+    /// only replaces pending state; it never queues work to a running service.
+    pub fn stage_transient_state(&mut self, state: HardwareTransientState) {
+        self.maintenance.stage_transient_state(state)
+    }
+
+    /// Apply persistent state captured from the station being replaced.
+    ///
+    /// This may be called before [`Self::start`], avoiding an initial-output
+    /// glitch during a prepared hot reload. Timed pulses intentionally restart
+    /// inactive.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a running service cannot accept the request.
+    pub fn restore_transient_state(
+        &mut self,
+        state: HardwareTransientState,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.restore_transient_state(state)
+    }
+
+    /// Read runtime, stream-timing, and hardware-service diagnostics.
+    ///
+    /// # Errors
+    ///
+    /// Returns an audio adapter failure if its statistics cannot be read.
+    pub fn diagnostics(&self) -> Result<HardwareStationDiagnostics, HardwareStationError> {
+        self.maintenance.diagnostics(&self.runtime)
+    }
+}
+
+impl Drop for HardwareStation {
+    fn drop(&mut self) {
+        let _ = self.stop();
+    }
+}
+
+/// Single physical maintenance owner shared by ASL3 and native compositions.
+/// Mixer conversion, EEPROM coding and bounded GPIO commands have one implementation.
+/// Audio callbacks only read its shared atomic request and measurement snapshots.
+pub struct HardwareMaintenance {
+    service: HardwareService,
+    mixers: RefCell<Option<HardwareMixers>>,
+    native_mixers: Option<NativeMixerSetup>,
+    hardware: SharedHardwareState,
+    selected: SelectedDevice,
+    update_mixers: Option<[u32; 3]>,
+}
+
+struct NativeMixerSetup {
+    audio: AudioProvider,
+    gains: [Option<f64>; 3],
+    tuning: Cell<Option<EepromTuning>>,
+}
+
+impl HardwareMaintenance {
+    /// Preserve current EEPROM-derived tuning only where the candidate file has
+    /// not explicitly changed its previous setting. Both compositions share this
+    /// precedence rule before preparing immutable update state.
+    pub fn preserve_startup_tuning(
+        previous: &ChannelConfiguration,
+        active: &ChannelConfiguration,
+        candidate: &mut ChannelConfiguration,
+    ) {
+        let current = &active.station;
         let previous = &previous.station;
         let candidate = &mut candidate.station;
         for (old, active, next) in [
@@ -784,42 +1153,131 @@ impl HardwareStation {
         }
     }
 
-    /// Capture safe graph ownership for construction outside the control-delivery task.
-    ///
-    /// # Errors
-    ///
-    /// Rejects an overlapping update or incompatible provider state.
-    pub fn update_snapshot(
-        &self,
-        factory: &NativeProcessingFactory,
-        provider: RadioProvider,
-    ) -> Result<StationUpdatePreparation, StationUpdateError> {
-        self.runtime
-            .snapshot_update(&self.control, factory, provider)
+    /// Retain committed native gain intentions for the next stopped/start cycle.
+    /// EEPROM-enabled generations retain the effective shared tuning values.
+    pub fn adopt_native_gain_intents(
+        &mut self,
+        gains: [Option<f64>; 3],
+        configuration: &ChannelConfiguration,
+    ) {
+        if let Some(setup) = &mut self.native_mixers {
+            let hardware = &configuration.station.hardware;
+            setup.gains = if hardware.eeprom_enabled {
+                [
+                    Some(hardware.input_gain_db),
+                    Some(hardware.output_a_gain_db),
+                    Some(hardware.output_b_gain_db),
+                ]
+            } else {
+                gains
+            };
+            setup.tuning.set(None);
+        }
     }
 
-    /// Publish a prepared update without stopping audio or the GPIO service.
-    ///
-    /// Only explicitly changed mixer settings are written; unrelated unsaved
-    /// calibration remains live. The original levels are retained for rollback.
-    ///
-    /// # Errors
-    ///
-    /// Returns the runtime publication or hardware mixer failure.
-    pub fn begin_update(
+    /// Bind native maintenance to the already selected physical device and its
+    /// callback state. EEPROM-derived mixer values override configured gains;
+    /// omitted gains preserve existing hardware levels. This never opens HID,
+    /// changes mixer switches, restores hardware repeat or configures sidetone.
+    pub fn native(
+        plan: &HardwarePlan,
+        preflight: HardwarePreflight,
+        selected: SelectedHardwarePlan,
+        state: SharedHardwareState,
+        audio: AudioProvider,
+        gpio: GpioAdapter,
+        gains: [Option<f64>; 3],
+    ) -> Result<Self, HardwareStationError> {
+        if selected.stream.input_device_index != preflight.selected.input_device_index
+            || selected.stream.output_device_index != preflight.selected.output_device_index
+            || preflight.selected.interface_path.split(':').next()
+                != Some(selected.cm119.usb_port_path.as_str())
+        {
+            return Err(HardwarePlanError::UsbIdentityMismatch.into());
+        }
+        if gains
+            .iter()
+            .flatten()
+            .any(|gain| !(-30.0..=30.0).contains(gain))
+        {
+            return Err(AudioError::InvalidArgument.into());
+        }
+        let mut service = HardwareService::native(plan, selected, state.clone(), gpio);
+        service.eeprom_enabled = preflight.eeprom_enabled;
+        Ok(Self {
+            service,
+            mixers: RefCell::new(None),
+            native_mixers: Some(NativeMixerSetup {
+                audio,
+                gains,
+                tuning: Cell::new(preflight.startup_tuning),
+            }),
+            hardware: state,
+            selected: preflight.selected,
+            update_mixers: None,
+        })
+    }
+
+    /// Read replacement EEPROM through the current bounded owner for the same
+    /// selected interface. A distinct device uses the ordinary startup preflight.
+    pub fn preflight_replacement(
+        &self,
+        plan: &HardwarePlan,
+        eeprom_enabled: bool,
+        audio: AudioProvider,
+        gpio: GpioAdapter,
+        maximum_frame_count: u32,
+    ) -> Result<(HardwarePreflight, SelectedHardwarePlan), HardwareStationError> {
+        let (selected, selected_plan) =
+            select_native_hardware(plan, audio, gpio, maximum_frame_count)?;
+        let preflight =
+            self.preflight_selected_replacement(selected, &selected_plan, eeprom_enabled, gpio)?;
+        Ok((preflight, selected_plan))
+    }
+
+    fn preflight_selected_replacement(
+        &self,
+        selected: SelectedDevice,
+        selected_plan: &SelectedHardwarePlan,
+        eeprom_enabled: bool,
+        gpio: GpioAdapter,
+    ) -> Result<HardwarePreflight, HardwareStationError> {
+        let image =
+            if selected.interface_path == self.selected.interface_path && self.service.running() {
+                if eeprom_enabled {
+                    self.service.read_eeprom_for_preflight()?
+                } else {
+                    None
+                }
+            } else {
+                read_startup_eeprom(selected_plan, eeprom_enabled, gpio)?
+            };
+        let mut preflight = HardwarePreflight::new(selected, image);
+        preflight.eeprom_enabled = eeprom_enabled;
+        Ok(preflight)
+    }
+
+    /// Apply changed configuration gains while retaining unsaved calibration on
+    /// unchanged paths. Call after the runtime has admitted its prepared update.
+    /// The original levels remain owned here until commit or completed rollback.
+    pub fn begin_mixer_update(
         &mut self,
-        update: StationUpdate,
+        previous: &ChannelConfiguration,
+        next: &ChannelConfiguration,
         explicitly_changed_mixers: [bool; 3],
     ) -> Result<(), HardwareStationError> {
-        let old = &self.control.plan().configuration().station.hardware;
-        let next = &update.plan().configuration().station.hardware;
+        if self.update_mixers.is_some() {
+            return Err(StationUpdateError::Busy.into());
+        }
+        let old = &previous.station.hardware;
+        let next = &next.station.hardware;
         let gains = [
             (old.input_gain_db, next.input_gain_db),
             (old.output_a_gain_db, next.output_a_gain_db),
             (old.output_b_gain_db, next.output_b_gain_db),
         ];
-        self.runtime.begin_update(&self.control, update)?;
-        self.update_mixers = Some(self.mixers.levels);
+        let levels = self.mixers()?.levels;
+        self.update_mixers = Some(levels);
         for ((mixer, (old, next)), changed) in [
             HardwareMixer::Receive,
             HardwareMixer::TransmitA,
@@ -836,22 +1294,9 @@ impl HardwareStation {
         Ok(())
     }
 
-    /// Accept the candidate after both audio owners have adopted it.
-    ///
-    /// # Errors
-    ///
-    /// `Pending` means callbacks have not yet reached their update boundaries.
-    pub fn accept_update(&mut self) -> Result<(), StationUpdateError> {
-        self.runtime.accept_update(&mut self.control)
-    }
-
-    /// Commit or roll back a live update; pending rollback can be retried.
-    ///
-    /// # Errors
-    ///
-    /// Returns pending callback adoption, a radio failure, or a mixer failure.
-    pub fn finish_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
-        self.runtime.finish_update(&mut self.control, commit)?;
+    /// Commit mixer levels or restore the retained originals after both radio
+    /// callbacks acknowledge rollback. Failed restores remain retryable.
+    pub fn finish_mixer_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
         if let Some(levels) = self.update_mixers {
             if !commit {
                 for (mixer, level) in [
@@ -870,10 +1315,64 @@ impl HardwareStation {
         Ok(())
     }
 
-    /// Clone the lock-free state shared with the native callbacks.
+    /// Clone the callback-safe physical request and observation surface.
     #[must_use]
     pub fn hardware_state(&self) -> SharedHardwareState {
-        self.runtime.hardware_state()
+        self.hardware.clone()
+    }
+
+    /// Borrow the existing serialized GPIO owner without opening another device.
+    #[must_use]
+    pub fn service(&self) -> &HardwareService {
+        &self.service
+    }
+
+    /// Apply native startup gains before acquiring GPIO and starting callbacks.
+    /// Omitted controls skip discovery entirely; a failure remains retryable.
+    pub fn start(&mut self) -> Result<(), HardwareStationError> {
+        if self.service.running() {
+            return Ok(());
+        }
+        if let Some(setup) = &self.native_mixers {
+            HardwareMixers::apply_native_gains(
+                setup.audio,
+                &self.selected.interface_path,
+                setup.gains,
+                setup.tuning.get(),
+            )?;
+            self.mixers.borrow_mut().take();
+        }
+        self.service.start()
+    }
+
+    /// Reacquire GPIO after an audio-stop failure without writing gains beneath
+    /// callbacks which remain started. Ordinary first/start-after-stop uses start.
+    pub fn start_preserving_gains(&mut self) -> Result<(), HardwareStationError> {
+        self.service.start()
+    }
+
+    fn mixers(&self) -> Result<RefMut<'_, HardwareMixers>, HardwareStationError> {
+        let mut mixers = self.mixers.borrow_mut();
+        if mixers.is_none() {
+            let setup = self.native_mixers.as_ref().expect("native lazy mixers");
+            *mixers = Some(HardwareMixers::native(setup.audio, &self.selected)?);
+        }
+        Ok(RefMut::map(mixers, |mixers| {
+            mixers.as_mut().expect("initialized mixer owner")
+        }))
+    }
+
+    /// Clear session intent and synchronously stop the fail-safe hardware owner.
+    pub fn stop(&mut self) -> Result<(), HardwareStationError> {
+        self.clear_manual_requests();
+        self.service.stop()
+    }
+
+    /// Release temporary tuner intent while direct controller callbacks retain
+    /// their independent key and CTCSS results.
+    pub fn clear_manual_requests(&self) {
+        self.hardware
+            .publish_requests(usbradioplus_station::ControllerRequests::default());
     }
 
     /// Read the last applied value on the established zero-through-999 scale.
@@ -882,7 +1381,16 @@ impl HardwareStation {
     ///
     /// Retains a result type shared with mixer mutation for a uniform tuner API.
     pub fn mixer_level(&self, mixer: HardwareMixer) -> Result<u32, HardwareStationError> {
-        Ok(self.mixers.level(mixer))
+        Ok(self.mixers()?.level(mixer))
+    }
+
+    /// Read receive, transmitter-A and transmitter-B levels from one retained mixer snapshot.
+    ///
+    /// # Errors
+    ///
+    /// Returns an audio-adapter error if lazy mixer discovery or initialization fails.
+    pub fn mixer_levels(&self) -> Result<[u32; 3], HardwareStationError> {
+        Ok(self.mixers()?.levels)
     }
 
     /// Set one hardware mixer on its normalized zero-through-999 scale.
@@ -897,7 +1405,7 @@ impl HardwareStation {
         mixer: HardwareMixer,
         level: u32,
     ) -> Result<(), HardwareStationError> {
-        self.mixers.set_level(mixer, level)?;
+        self.mixers()?.set_level(mixer, level)?;
         Ok(())
     }
 
@@ -937,43 +1445,6 @@ impl HardwareStation {
     /// Temporarily bypass or restore receive subaudible qualification.
     pub fn set_subaudible_override(&self, enabled: bool) {
         self.update_requests(|requests| requests.subaudible_override = enabled);
-    }
-
-    /// Apply one translated controller request through its single hardware boundary.
-    ///
-    /// Controller state and lock-free native callback controls are updated
-    /// before any bounded GPIO or parallel-port work is queued.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when a requested GPIO or parallel operation is not
-    /// configured, the hardware service is stopped, or its bounded queue is full.
-    pub fn apply_control(
-        &mut self,
-        message: ControlMessage,
-    ) -> Result<ControlAction, HardwareStationError> {
-        let action = self.control.controller().apply_control(message);
-        match action {
-            ControlAction::SetTransmit {
-                keyed,
-                forced_ctcss,
-            } => {
-                // A live DAC callback remains admitted while the radio core
-                // finishes its tone-off sequence and releases logical PTT.
-                self.set_transmit_request(keyed, true, forced_ctcss);
-            }
-            ControlAction::SelectChannel(channel) => self.select_channel(channel)?,
-            ControlAction::SetReceiveCtcss(enabled) => self.set_subaudible_override(!enabled),
-            ControlAction::SetTransmitCtcss(enabled) => {
-                self.set_ctcss_inhibited(!enabled);
-            }
-            ControlAction::SetGpio(pin, request) => self.set_gpio(pin, request)?,
-            ControlAction::SetParallel(pin, request) => self.set_parallel(pin, request)?,
-            ControlAction::ConfigureRemoteRadio(settings) => {
-                self.configure_remote_radio(settings)?;
-            }
-        }
-        Ok(action)
     }
 
     fn update_requests(&self, update: impl FnOnce(&mut usbradioplus_station::ControllerRequests)) {
@@ -1059,24 +1530,33 @@ impl HardwareStation {
     /// Returns an error when EEPROM is disabled, hardware is stopped, the
     /// request times out, or the GPIO adapter rejects the transfer.
     pub fn write_eeprom(&self, image: &mut EepromImage) -> Result<(), HardwareStationError> {
-        self.service.write_eeprom(image)
+        self.service.write_eeprom(image)?;
+        if let Some(setup) = &self.native_mixers {
+            // Successful persistence becomes the next native startup image.
+            // Invalid images preserve the existing file-gain fallback rule.
+            setup.tuning.set(EepromTuning::decode(image));
+        }
+        Ok(())
     }
 
     /// Encode and persist current live radio tuning through the hardware owner.
     ///
     /// The tuner need not know EEPROM offsets or checksum policy. Mixer values
     /// are read live; CTCSS and squelch values come from the active immutable
-    /// station generation.
+    /// station generation supplied by the serialized composition owner.
     ///
     /// # Errors
     ///
     /// Returns a mixer, service-state, timeout, or EEPROM adapter failure.
-    pub fn save_current_tuning_to_eeprom(&self) -> Result<EepromTuning, HardwareStationError> {
-        let station = &self.control.plan().configuration().station;
+    pub fn save_current_tuning_to_eeprom(
+        &self,
+        configuration: &ChannelConfiguration,
+    ) -> Result<EepromTuning, HardwareStationError> {
+        let station = &configuration.station;
         let tuning = EepromTuning {
-            receive_mixer_level: self.mixers.level(HardwareMixer::Receive) as u16,
-            transmit_a_mixer_level: self.mixers.level(HardwareMixer::TransmitA) as u16,
-            transmit_b_mixer_level: self.mixers.level(HardwareMixer::TransmitB) as u16,
+            receive_mixer_level: self.mixer_level(HardwareMixer::Receive)? as u16,
+            transmit_a_mixer_level: self.mixer_level(HardwareMixer::TransmitA)? as u16,
+            transmit_b_mixer_level: self.mixer_level(HardwareMixer::TransmitB)? as u16,
             transmit_ctcss_level: ctcss_dbfs_to_level(station.ctcss.transmit_peak_dbfs),
             receive_squelch_level: station.receive.squelch_level,
         };
@@ -1129,19 +1609,16 @@ impl HardwareStation {
     /// # Errors
     ///
     /// Returns an audio adapter failure if its statistics cannot be read.
-    pub fn diagnostics(&self) -> Result<HardwareStationDiagnostics, HardwareStationError> {
+    pub fn diagnostics(
+        &self,
+        runtime: &StationRuntime,
+    ) -> Result<HardwareStationDiagnostics, HardwareStationError> {
         Ok(HardwareStationDiagnostics {
-            runtime: self.runtime.statistics()?,
-            timing: self.runtime.timing()?,
+            runtime: runtime.statistics()?,
+            timing: runtime.timing()?,
             hardware: self.service.statistics(),
             receive: self.receive_observation(),
         })
-    }
-}
-
-impl Drop for HardwareStation {
-    fn drop(&mut self) {
-        let _ = self.stop();
     }
 }
 
@@ -1153,6 +1630,69 @@ struct HardwareMixers {
 }
 
 impl HardwareMixers {
+    fn native(provider: AudioProvider, selected: &SelectedDevice) -> Result<Self, AudioError> {
+        let paths = provider.cm119_mixer_paths(&selected.interface_path)?;
+        // AudioProvider already rejects an empty receive-path list.
+        if paths.transmit.len() != 2 {
+            return Err(AudioError::Unsupported);
+        }
+        let receive = open_paths(provider, &selected.interface_path, &paths.receive)?;
+        let transmit = open_paths(provider, &selected.interface_path, &paths.transmit)?;
+        Ok(Self {
+            levels: [
+                receive[0].normalized()?,
+                transmit[0].normalized()?,
+                transmit[1].normalized()?,
+            ],
+            receive,
+            transmit,
+            _receive_compatibility: Vec::new(),
+        })
+    }
+
+    fn apply_native_gains(
+        provider: AudioProvider,
+        interface: &str,
+        gains: [Option<f64>; 3],
+        tuning: Option<EepromTuning>,
+    ) -> Result<(), AudioError> {
+        if gains
+            .iter()
+            .flatten()
+            .any(|gain| !(-30.0..=30.0).contains(gain))
+        {
+            return Err(AudioError::InvalidArgument);
+        }
+        let levels = tuning.map_or_else(
+            || gains.map(|gain| gain.map(mixer_level)),
+            |tuning| {
+                [
+                    Some(u32::from(tuning.receive_mixer_level)),
+                    Some(u32::from(tuning.transmit_a_mixer_level)),
+                    Some(u32::from(tuning.transmit_b_mixer_level)),
+                ]
+            },
+        );
+        if levels.iter().all(Option::is_none) {
+            return Ok(());
+        }
+        let paths = provider.cm119_mixer_paths(interface)?;
+        for (index, level) in levels.into_iter().enumerate() {
+            if let Some(level) = level {
+                let selected = if index == 0 {
+                    paths.receive.as_slice()
+                } else {
+                    paths
+                        .transmit
+                        .get(index - 1..index)
+                        .ok_or(AudioError::Unsupported)?
+                };
+                apply_gain(&mut open_paths(provider, interface, selected)?, level)?;
+            }
+        }
+        Ok(())
+    }
+
     fn open(
         provider: AudioProvider,
         selected: &SelectedDevice,
@@ -1244,50 +1784,6 @@ fn open_paths(
 fn apply_gain(mixers: &mut [Mixer], level: u32) -> Result<(), AudioError> {
     for mixer in mixers {
         mixer.set_hardware_level(level)?;
-    }
-    Ok(())
-}
-
-/// Apply optional capture, output-A and output-B hardware gains before audio starts.
-///
-/// Uses the established radio calibration without changing mixer switches,
-/// sidetone, or EEPROM. An entirely omitted set performs no mixer operations.
-///
-/// # Errors
-///
-/// Returns an audio-adapter error for invalid gains, missing selected paths,
-/// or mixer discovery, opening, or writes. Earlier successful writes are retained.
-pub fn apply_hardware_gains(
-    provider: AudioProvider,
-    interface: &str,
-    gains: [Option<f64>; 3],
-) -> Result<(), AudioError> {
-    if gains.iter().all(Option::is_none) {
-        return Ok(());
-    }
-    if gains
-        .iter()
-        .flatten()
-        .any(|gain| !(-30.0..=30.0).contains(gain))
-    {
-        return Err(AudioError::InvalidArgument);
-    }
-    let paths = provider.cm119_mixer_paths(interface)?;
-    for (index, gain) in gains.into_iter().enumerate() {
-        if let Some(gain) = gain {
-            let selected = if index == 0 {
-                paths.receive.as_slice()
-            } else {
-                paths
-                    .transmit
-                    .get(index - 1..index)
-                    .ok_or(AudioError::Unsupported)?
-            };
-            apply_gain(
-                &mut open_paths(provider, interface, selected)?,
-                mixer_level(gain),
-            )?;
-        }
     }
     Ok(())
 }

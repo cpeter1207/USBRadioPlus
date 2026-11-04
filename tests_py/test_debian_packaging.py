@@ -23,7 +23,7 @@ def read(path):
 def test_usbradioplus_debian_package_is_nonactivating():
     """Verify usbradioplus debian package is nonactivating."""
     control = read("debian/control")
-    binary_control = control.split("\nPackage: usbradioplus\n", maxsplit=1)[1]
+    binary_control = control.split("\nPackage: usbradioplus\n", maxsplit=1)[1].split("\n\n", 1)[0]
     makefile = read("Makefile")
     rules = read("debian/rules")
     assert "Architecture: amd64 arm64" in control
@@ -53,11 +53,11 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "dpkg-architecture -qDEB_HOST_MULTIARCH" in rules
     assert "asteriskmoduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/asterisk/modules" in rules
     assert "${usbradioplus:ASLDepends}" in control
-    assert ", whiptail" in binary_control
+    assert "usbradioplus-tune (= ${binary:Version})" in binary_control
     assert "ASL3_ASTERISK_VERSION" in rules
     assert "DEB_BINARY_PACKAGE" not in rules
     assert "debian/tmp" in rules
-    assert control.count("\nPackage: ") == 3
+    assert control.count("\nPackage: ") == 4
     assert "\nPackage: usbradioplus\n" in control
     assert "asl3-asterisk (= $(ASL3_ASTERISK_VERSION))" in rules
     for document in (
@@ -96,6 +96,7 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
     }
     assert set(packages) == {
         "usbradioplus",
+        "usbradioplus-tune",
         "libusbradioplus-product1",
         "libusbradioplus-product-dev",
     }
@@ -115,7 +116,10 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
     development_files = read("debian/libusbradioplus-product-dev.install").splitlines()
     assert "usr/lib/*/asterisk/modules/chan_usbradioplus.so" in integration_files
     assert "usr/lib/*/libusbradioplus_asterisk.so.1" in integration_files
-    assert "usr/sbin/usbradioplus-tune" in integration_files
+    assert "usr/sbin/usbradioplus-tune" not in integration_files
+    tuner_files = read("debian/usbradioplus-tune.install").splitlines()
+    assert "usr/sbin/usbradioplus-tune" in tuner_files
+    assert "usr/share/man/man8/usbradioplus-tune.8" in tuner_files
     assert runtime_files == [
         "usr/lib/*/libusbradioplus_product.so.1",
         "usr/lib/*/usbradioplus/usbradioplus_agc.so*",
@@ -127,8 +131,8 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
     ]
 
 
-def test_staged_install_exposes_product_development_files_and_preserves_configuration(tmp_path):
-    """Exercise Make's installation paths without compiling the supplied artifact fixtures."""
+def staged_install_fixture(tmp_path):
+    """Stage actual Make installation rules using hardware-free payload fixtures."""
     source = tmp_path / "source"
     stage = tmp_path / "stage"
     source.mkdir()
@@ -140,6 +144,7 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
         "CHANGELOG.md",
         "doc/native-radio.md",
         "doc/agc.md",
+        "doc/standalone-tuner.md",
         "examples/usbradioplus.conf.sample",
         "man/usbradioplus.conf.5",
         "man/usbradioplus.7",
@@ -197,6 +202,14 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
         text=True,
     )
 
+    return source, stage
+
+
+def test_staged_install_exposes_product_development_files_and_preserves_configuration(tmp_path):
+    """Exercise Make's installation paths without compiling the supplied artifact fixtures."""
+    source, stage = staged_install_fixture(tmp_path)
+    configuration = stage / "etc/asterisk/usbradioplus.conf"
+
     library = stage / "usr/lib/x86_64-linux-gnu"
     assert (library / "libusbradioplus_product.so").readlink() == Path(
         "libusbradioplus_product.so.1"
@@ -250,6 +263,131 @@ int main(void) {
         )
         assert result.stdout.strip() == expected
     assert configuration.read_text(encoding="utf-8") == "existing operator configuration\n"
+
+
+def build_binary_package(source, stage, package, output):
+    """Build actual Debian metadata and file lists around the staged test payload."""
+    result = subprocess.run(
+        ["dh_install", f"-p{package}", f"--sourcedir={stage}"],
+        cwd=source,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    package_root = source / "debian" / package
+    (package_root / "DEBIAN").mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "dpkg-gencontrol",
+            f"-p{package}",
+            f"-P{package_root}",
+            "-Vshlibs:Depends=libc6",
+            "-Vmisc:Depends=",
+            "-Vusbradioplus:ASLDepends=asl3-asterisk (= 0.0.1)",
+        ],
+        cwd=source,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    subprocess.run(
+        ["dpkg-deb", "--build", str(package_root), str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return output
+
+
+def fixture_package(directory, package, version, payload=None):
+    """Provide an old file owner or a base-system dependency inside the test root."""
+    root = directory / package
+    (root / "DEBIAN").mkdir(parents=True)
+    (root / "DEBIAN/control").write_text(
+        f"Package: {package}\nVersion: {version}\nArchitecture: all\n"
+        "Maintainer: Package test <test@example.invalid>\n"
+        "Description: isolated package transition fixture\n",
+        encoding="utf-8",
+    )
+    for name, text in (payload or {}).items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    output = directory / f"{package}.deb"
+    subprocess.run(
+        ["dpkg-deb", "--build", str(root), str(output)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return output
+
+
+def dpkg_in_root(root, *arguments):
+    """Run package transactions against an isolated database and filesystem."""
+    database = root / "var/lib/dpkg"
+    database.mkdir(parents=True, exist_ok=True)
+    (database / "status").touch(exist_ok=True)
+    return subprocess.run(
+        ["dpkg", f"--root={root}", *map(str, arguments)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_tuner_installs_without_asterisk_and_takes_over_the_old_file_ownership(tmp_path):
+    """Configure the tuner alone, then exercise the real monolithic-package transition."""
+    source, stage = staged_install_fixture(tmp_path)
+    shutil.copytree(ROOT / "debian", source / "debian")
+    # Match source-archive data modes when a Windows bind mount exposes +x.
+    for manifest in (source / "debian").glob("*.install"):
+        manifest.chmod(0o644)
+    tuner = build_binary_package(source, stage, "usbradioplus-tune", tmp_path / "tuner.deb")
+    channel = build_binary_package(source, stage, "usbradioplus", tmp_path / "channel.deb")
+    version = subprocess.check_output(["dpkg-deb", "-f", str(tuner), "Version"], text=True).strip()
+    dependencies = subprocess.check_output(["dpkg-deb", "-f", str(tuner), "Depends"], text=True)
+    assert "whiptail" in dependencies
+    assert not any(name in dependencies for name in ("asterisk", "usbradioplus", "rpt-advanced"))
+    channel_dependencies = subprocess.check_output(
+        ["dpkg-deb", "-f", str(channel), "Depends"], text=True
+    )
+    assert f"usbradioplus-tune (= {version})" in channel_dependencies
+
+    fixtures = tmp_path / "fixture-packages"
+    fixtures.mkdir()
+    libc = fixture_package(fixtures, "libc6", "999.0")
+    whiptail = fixture_package(fixtures, "whiptail", "999.0")
+    standalone = tmp_path / "standalone-root"
+    dpkg_in_root(standalone, "--install", libc, whiptail, tuner)
+    installed = subprocess.check_output(
+        ["dpkg-query", f"--admindir={standalone / 'var/lib/dpkg'}", "-W", "-f=${binary:Package}\n"],
+        text=True,
+    ).splitlines()
+    assert set(installed) == {"libc6", "whiptail", "usbradioplus-tune"}
+
+    previous_version = re.findall(r"(?m)^usbradioplus \(([^)]+)\)", read("debian/changelog"))[1]
+    previous = fixture_package(
+        fixtures,
+        "usbradioplus",
+        previous_version,
+        {
+            "usr/sbin/usbradioplus-tune": "old tuner\n",
+            "usr/share/man/man8/usbradioplus-tune.8": "old tuner manual\n",
+        },
+    )
+    upgrade = tmp_path / "upgrade-root"
+    dpkg_in_root(upgrade, "--install", libc, whiptail, previous)
+    dpkg_in_root(upgrade, "--auto-deconfigure", "--unpack", tuner, channel)
+    dpkg_in_root(upgrade, "--configure", "usbradioplus-tune")
+    for path in ("usr/sbin/usbradioplus-tune", "usr/share/man/man8/usbradioplus-tune.8"):
+        owner = subprocess.check_output(
+            ["dpkg-query", f"--admindir={upgrade / 'var/lib/dpkg'}", "-S", f"/{path}"],
+            text=True,
+        ).strip()
+        assert owner == f"usbradioplus-tune: /{path}"
+        assert (upgrade / path).read_bytes() == (stage / path).read_bytes()
 
 
 def test_rust_bindgen_build_dependency_is_declared():

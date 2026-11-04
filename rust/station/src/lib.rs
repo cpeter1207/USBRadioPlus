@@ -30,6 +30,7 @@ use usbradioplus_runtime::NativeProcessingPlan;
 pub use control::{PreparedStation, StationPlan, StationPreparationError};
 pub use hardware::{
     Cm119Plan, HardwarePlan, HardwarePlanError, ParallelPlan, SelectedHardwarePlan, hardware_plan,
+    native_hardware_plan,
 };
 pub use media::{
     ControllerSetup, DirectCallbacks, NativeStationMedia, StationControl, StationMedia,
@@ -91,8 +92,7 @@ pub fn radio_session_config(
             0 => NoiseFilterProfile::Standard,
             _ => NoiseFilterProfile::Alternate,
         },
-        squelch_open_level: (u32::from(999 - receive.squelch_level) * SIGNED_PCM_MAXIMUM)
-            / TUNING_SCALE_MAXIMUM,
+        squelch_open_level: squelch_open_level(receive.squelch_level),
         squelch_hysteresis: u32::from(receive.noise_squelch_hysteresis),
         ctcss_decoder_gain: db_to_linear(station.ctcss.receive_decoder_gain_db),
         vox_threshold: i32::from(receive.vox_threshold),
@@ -121,6 +121,55 @@ pub fn radio_session_config(
         output_b: output_config(station.hardware.output_b_assignment),
     };
     Ok(result)
+}
+
+/// Resolve the common radio policy while leaving the receive delay to standalone's controller.
+pub fn native_radio_session_config(
+    channel: &ChannelConfiguration,
+    generation_id: u64,
+    maximum_frame_count: u32,
+) -> Result<SessionConfig, RadioError> {
+    let mut radio = radio_session_config(
+        channel,
+        ControllerTransport::RptAdvanced,
+        generation_id,
+        maximum_frame_count,
+    )?;
+    radio.receive.native_squelch_delay_frames = 0;
+    Ok(radio)
+}
+
+/// Project native ABI tuning into the shared configuration before EEPROM save or update.
+///
+/// The integer squelch inverse retains every value on the established 0–999
+/// scale. An active CTCSS peak is normalized to the shared -90 through 0 dBFS
+/// range; inactive signaling retains the file's CTCSS tuning metadata.
+pub fn apply_native_tuning_configuration(
+    radio: &SessionConfig,
+    channel: &mut ChannelConfiguration,
+) {
+    let native_level = radio
+        .receive
+        .squelch_open_level
+        .saturating_mul(TUNING_SCALE_MAXIMUM)
+        .div_ceil(SIGNED_PCM_MAXIMUM);
+    channel.station.receive.squelch_level = 999_u32.saturating_sub(native_level) as u16;
+    if let TransmitSignaling::Ctcss(ctcss) = radio.transmit.signaling {
+        channel.station.ctcss.transmit_peak_dbfs =
+            (20.0 * f64::from(ctcss.peak).log10()).clamp(-90.0, 0.0);
+    }
+}
+
+/// Apply shared tuning to an existing native session without changing its signaling choices.
+pub fn apply_native_radio_tuning(channel: &ChannelConfiguration, radio: &mut SessionConfig) {
+    radio.receive.squelch_open_level = squelch_open_level(channel.station.receive.squelch_level);
+    if let TransmitSignaling::Ctcss(ctcss) = &mut radio.transmit.signaling {
+        ctcss.peak = db_to_linear(channel.station.ctcss.transmit_peak_dbfs);
+    }
+}
+
+fn squelch_open_level(level: u16) -> u32 {
+    (u32::from(999 - level) * SIGNED_PCM_MAXIMUM) / TUNING_SCALE_MAXIMUM
 }
 
 fn db_to_linear(db: f64) -> f32 {

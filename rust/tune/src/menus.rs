@@ -5,10 +5,11 @@ use std::fmt;
 use std::time::Duration;
 
 use usbradioplus_core::{
-    CarrierSource, ChainRole, ConfigDocument, ConfigError, CtcssTone, DcsCode,
-    HardwareOutputAssignment, ReceiveAudioSource, ResolutionWarning, ResolutionWarningKind,
-    ResolvedProfile, ResolvedStationConfig, SignalingMethod, StageOrder,
+    CarrierSource, ConfigDocument, ConfigError, CtcssTone, DcsCode, HardwareOutputAssignment,
+    ReceiveAudioSource, ResolutionWarning, ResolvedStationConfig, SignalingMethod, StageOrder,
 };
+
+use crate::configuration::{AslConfiguration, ConfigurationResolver, SettingDestination};
 
 const PCM_SCALE: f32 = 32_768.0;
 const RX_NOISE_TARGET: f32 = 27_000.0 / PCM_SCALE;
@@ -82,9 +83,9 @@ use crate::ui::{AccessibleUi, ChoiceItem, UiError};
 /// Runtime action required after a configuration edit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ApplyMode {
-    /// Reload the active module configuration in place.
+    /// Reload the selected runtime configuration in place.
     Reload,
-    /// Restart Asterisk because construction-time state changed.
+    /// Reconstruct host-owned state through the selected runtime adapter.
     Restart,
 }
 
@@ -460,6 +461,8 @@ pub enum MenuError {
     Ui(UiError),
     /// Configuration structure could not be resolved or edited.
     Configuration(ConfigError),
+    /// The selected composition's shared resolver rejected configuration.
+    Resolution(String),
     /// Durable configuration storage failed.
     Storage(String),
     /// Live module or service control failed.
@@ -471,6 +474,7 @@ impl fmt::Display for MenuError {
         match self {
             Self::Ui(error) => write!(formatter, "user interface failed: {error}"),
             Self::Configuration(error) => write!(formatter, "configuration failed: {error}"),
+            Self::Resolution(error) => write!(formatter, "configuration failed: {error}"),
             Self::Storage(error) => write!(formatter, "configuration storage failed: {error}"),
             Self::Control(error) => write!(formatter, "live control failed: {error}"),
         }
@@ -482,7 +486,7 @@ impl std::error::Error for MenuError {
         match self {
             Self::Ui(error) => Some(error),
             Self::Configuration(error) => Some(error),
-            Self::Storage(_) | Self::Control(_) => None,
+            Self::Resolution(_) | Self::Storage(_) | Self::Control(_) => None,
         }
     }
 }
@@ -505,6 +509,7 @@ pub struct TunerApp {
     store: Box<dyn ConfigurationStore>,
     applier: Box<dyn ConfigurationApplier>,
     channels: Box<dyn ChannelControl>,
+    configuration: Box<dyn ConfigurationResolver>,
     selected_channel: Option<String>,
     top_cursor: String,
     page_cursors: BTreeMap<String, String>,
@@ -522,11 +527,34 @@ impl TunerApp {
         channels: impl ChannelControl + 'static,
         selected_channel: Option<String>,
     ) -> Self {
+        Self::with_configuration(
+            ui,
+            store,
+            applier,
+            channels,
+            selected_channel,
+            AslConfiguration,
+        )
+    }
+
+    /// Construct the same menus and calibration loops for another composition.
+    ///
+    /// The configuration adapter selects shared resolution and file destinations;
+    /// storage and runtime adapters retain atomic writes and apply rollback.
+    pub fn with_configuration(
+        ui: AccessibleUi,
+        store: impl ConfigurationStore + 'static,
+        applier: impl ConfigurationApplier + 'static,
+        channels: impl ChannelControl + 'static,
+        selected_channel: Option<String>,
+        configuration: impl ConfigurationResolver + 'static,
+    ) -> Self {
         Self {
             ui,
             store: Box::new(store),
             applier: Box::new(applier),
             channels: Box::new(channels),
+            configuration: Box::new(configuration),
             selected_channel,
             top_cursor: "1".to_owned(),
             page_cursors: BTreeMap::new(),
@@ -637,6 +665,8 @@ impl TunerApp {
             LiveAction::CalibrateReceiveNoise => self.calibrate_receive_noise(),
             LiveAction::CalibrateReceiveVoice => self.calibrate_receive_voice(),
             LiveAction::CalibrateReceiveCtcss => self.calibrate_receive_ctcss(),
+            LiveAction::FlashTransmitter => self.flash_transmitter(),
+            LiveAction::ContinuousRadioMeters => self.follow_radio_meters(),
             _ => self.channels.perform(live),
         };
         match result {
@@ -649,28 +679,119 @@ impl TunerApp {
         Ok(())
     }
 
+    /// Both compositions follow physical snapshots without buffering a history.
+    fn follow_radio_meters(&mut self) -> Result<String, String> {
+        self.ui
+            .live_status(
+                "Continuous radio meters",
+                "Press Enter to return to the menu.",
+            )
+            .map_err(|error| error.to_string())?;
+        loop {
+            let snapshot = self.channels.perform(LiveAction::RadioStatus)?;
+            self.ui
+                .live_status("", &snapshot)
+                .map_err(|error| error.to_string())?;
+            if self
+                .ui
+                .wait_for_live_exit(Duration::from_secs(1))
+                .map_err(|error| error.to_string())?
+            {
+                return Ok("Radio meter display stopped.".to_owned());
+            }
+        }
+    }
+
+    /// Preserve the existing ASL burst/tone timing through semantic controls.
+    fn flash_transmitter(&mut self) -> Result<String, String> {
+        self.calibration_channel()?;
+        self.ui
+            .live_status(
+                "Transmitter calibration bursts",
+                "Three 1-second test-tone bursts with 1.5-second pauses. Press Enter to stop.",
+            )
+            .map_err(|error| error.to_string())?;
+        let result: Result<bool, String> = (|| {
+            for burst in 0..3 {
+                self.ui
+                    .live_status("", &format!("Burst {} of 3", burst + 1))
+                    .map_err(|error| error.to_string())?;
+                self.channels.set_test_tone(true)?;
+                self.channels.set_transmit(true, None)?;
+                if self
+                    .ui
+                    .wait_for_live_exit(Duration::from_secs(1))
+                    .map_err(|error| error.to_string())?
+                {
+                    return Ok(false);
+                }
+                self.channels.set_transmit(false, None)?;
+                self.channels.set_test_tone(false)?;
+                if burst < 2
+                    && self
+                        .ui
+                        .wait_for_live_exit(Duration::from_millis(1_500))
+                        .map_err(|error| error.to_string())?
+                {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        })();
+        // As in the existing CLI, final cleanup runs after success, cancellation,
+        // failed keying, failed input, or failed intermediate unkey/tone changes.
+        let unkey = self.channels.set_transmit(false, None);
+        let tone_off = self.channels.set_test_tone(false);
+        match (result, unkey.and(tone_off)) {
+            (Ok(true), Ok(())) => Ok("Transmitter calibration bursts completed.".to_owned()),
+            (Ok(false), Ok(())) => Ok("Transmitter calibration bursts stopped.".to_owned()),
+            (Err(error), Ok(())) => Err(error),
+            (Ok(_), Err(cleanup)) => Err(format!("Transmitter cleanup failed: {cleanup}")),
+            (Err(error), Err(cleanup)) => {
+                Err(format!("{error}\n\nTransmitter cleanup failed: {cleanup}"))
+            }
+        }
+    }
+
     fn complete_active_configuration(&mut self) -> Result<String, String> {
         let channel = self.calibration_channel()?;
         let document = ConfigDocument::new(self.store.read_config()?);
         let mut effective = BTreeMap::<String, BTreeMap<String, String>>::new();
         let mut warnings = Vec::new();
         effective.insert(channel.clone(), document.explicit_values(&channel));
-        let catalog = crate::catalog::configuration_catalog();
+        let catalog = self.configuration_catalog();
         let mut sections = Vec::new();
         collect_sections(&catalog, &mut sections);
         for section in sections {
-            let (target, values) = self
+            let (_, values) = self
                 .section_values(&document, &section.section, &mut warnings)
                 .map_err(|error| error.to_string())?;
-            let assignments = effective.entry(target).or_default();
             for setting in &section.settings {
-                assignments.insert(
-                    setting.key.clone(),
-                    values
-                        .get(&setting.key)
-                        .cloned()
-                        .unwrap_or_else(|| setting.default_value.clone()),
+                let destination = self
+                    .configuration
+                    .setting_destination(
+                        &document,
+                        &self.store.source_name(),
+                        Some(&channel),
+                        &section.section,
+                        &setting.key,
+                        &mut warnings,
+                    )
+                    .map_err(|error| error.to_string())?;
+                let value = values
+                    .get(&setting.key)
+                    .cloned()
+                    .unwrap_or_else(|| setting.default_value.clone());
+                let value = self.configuration.setting_value(
+                    &section.section,
+                    &setting.key,
+                    &destination,
+                    &value,
                 );
+                effective
+                    .entry(destination.section)
+                    .or_default()
+                    .insert(destination.key, value);
             }
         }
         let mut output = format!("Active channel: {channel}\n");
@@ -692,14 +813,15 @@ impl TunerApp {
         let channel = self.calibration_channel()?;
         let original = self.store.read_config()?;
         let document = ConfigDocument::new(original.clone());
-        let station = ResolvedStationConfig::from_document(&document, "configuration", &channel)
-            .map_err(|error| error.to_string())?;
-        if station.config().receive.audio_source != ReceiveAudioSource::Flat {
+        let station =
+            self.configuration
+                .station_config(&document, &self.store.source_name(), &channel)?;
+        if station.receive.audio_source != ReceiveAudioSource::Flat {
             return Err("RX noise calibration requires receive_audio_source = flat".to_owned());
         }
-        let hardware = self.calibration_target(&document, "hardware")?;
-        let receive = if station.config().receive.cos_assignment == CarrierSource::Dsp {
-            Some(self.calibration_target(&document, "receive")?)
+        let hardware = self.calibration_target(&document, "hardware", "hardware_input_gain_db")?;
+        let receive = if station.receive.cos_assignment == CarrierSource::Dsp {
+            Some(self.calibration_target(&document, "receive", "squelch_level")?)
         } else {
             None
         };
@@ -745,7 +867,7 @@ impl TunerApp {
         };
         self.channels
             .set_hardware_mixer(HardwareMixer::Receive, level)?;
-        if station.config().receive.cos_assignment == CarrierSource::Dsp {
+        if station.receive.cos_assignment == CarrierSource::Dsp {
             let mut updated = false;
             for _ in 0..20 {
                 self.channels.wait(Duration::from_millis(20));
@@ -763,8 +885,8 @@ impl TunerApp {
         let mut updated = document;
         updated
             .set_value(
-                &hardware,
-                "hardware_input_gain_db",
+                &hardware.section,
+                &hardware.key,
                 &format_decimal(mixer_gain_db(level)),
             )
             .map_err(|error| error.to_string())?;
@@ -774,12 +896,12 @@ impl TunerApp {
                 .clamp(0, 999) as u16;
             let threshold = normalized.saturating_add(150).min(999);
             updated
-                .set_value(&receive, "squelch_level", &threshold.to_string())
+                .set_value(&receive.section, &receive.key, &threshold.to_string())
                 .map_err(|error| error.to_string())?;
             squelch = Some((normalized, threshold));
         }
-        ResolvedStationConfig::from_document(&updated, "configuration", &channel)
-            .map_err(|error| error.to_string())?;
+        self.configuration
+            .station_config(&updated, &self.store.source_name(), &channel)?;
         self.apply_generation(&original, updated.as_str(), ApplyMode::Reload)?;
 
         let peak_dbfs = dbfs(measured);
@@ -839,8 +961,11 @@ impl TunerApp {
         self.calibration_channel()?;
         let original = self.store.read_config()?;
         let mut current = original.clone();
-        let target_section =
-            self.calibration_target(&ConfigDocument::new(&original), calibration.section)?;
+        let target = self.calibration_target(
+            &ConfigDocument::new(&original),
+            calibration.section,
+            calibration.key,
+        )?;
         let mut multiplier = calibration.initial;
         let mut measured = 0.0_f32;
         let mut attempts = 0_u32;
@@ -850,9 +975,9 @@ impl TunerApp {
             let mut candidate = ConfigDocument::new(current.clone());
             let gain_db = 20.0 * (calibration.base_multiplier * multiplier).log10();
             candidate
-                .set_value(&target_section, calibration.key, &format_decimal(gain_db))
+                .set_value(&target.section, &target.key, &format_decimal(gain_db))
                 .map_err(|error| error.to_string())?;
-            self.validate_candidate(&candidate, calibration.section, calibration.key)?;
+            self.validate_candidate(&candidate, &target.section, &target.key)?;
             if let Err(error) =
                 self.apply_generation(&current, candidate.as_str(), ApplyMode::Reload)
             {
@@ -1168,9 +1293,8 @@ impl TunerApp {
     fn station_for_calibration(&self) -> Result<usbradioplus_core::StationConfig, String> {
         let channel = self.calibration_channel()?;
         let document = ConfigDocument::new(self.store.read_config()?);
-        ResolvedStationConfig::from_document(&document, "configuration", &channel)
-            .map(ResolvedStationConfig::into_config)
-            .map_err(|error| error.to_string())
+        self.configuration
+            .station_config(&document, &self.store.source_name(), &channel)
     }
 
     fn adjust_keyed_setting(
@@ -1213,7 +1337,7 @@ impl TunerApp {
         key: &str,
         label: &str,
     ) -> Result<(), MenuError> {
-        let catalog = crate::catalog::configuration_catalog();
+        let catalog = self.configuration_catalog();
         let mut sections = Vec::new();
         collect_sections(&catalog, &mut sections);
         let section = sections
@@ -1242,11 +1366,16 @@ impl TunerApp {
             )?;
             return Ok(());
         };
+        let selectors = PROFILE_SELECTORS
+            .iter()
+            .filter(|(key, _, _)| !self.configuration.standalone() || *key != "asterisk_profile")
+            .copied()
+            .collect::<Vec<_>>();
         let mut cursor = "1".to_owned();
         loop {
             let mut document = self.document()?;
             let configured = document.explicit_values(&channel);
-            let items = PROFILE_SELECTORS
+            let items = selectors
                 .iter()
                 .enumerate()
                 .map(|(index, (key, label, _))| {
@@ -1266,12 +1395,12 @@ impl TunerApp {
                 return Ok(());
             };
             cursor.clone_from(&choice);
-            let Some(index) = menu_index(&choice, PROFILE_SELECTORS.len()) else {
+            let Some(index) = menu_index(&choice, selectors.len()) else {
                 self.ui
                     .message("Invalid selection", "Select a listed profile type.")?;
                 continue;
             };
-            let (key, label, section) = PROFILE_SELECTORS[index];
+            let (key, label, section) = selectors[index];
             let names = profile_names(&document, section);
             let mut choices = vec![ChoiceItem::new(
                 INHERIT_VALUE,
@@ -1306,7 +1435,7 @@ impl TunerApp {
 
     fn initialize_channel(&mut self) -> Result<(), MenuError> {
         let document = self.document()?;
-        let configured = document.configured_channels();
+        let configured = self.configuration.configured_channels(&document);
         if let Some(channel) = self.selected_channel.as_ref() {
             if let Some(canonical) = find_channel(&configured, channel) {
                 let canonical = canonical.to_owned();
@@ -1327,7 +1456,7 @@ impl TunerApp {
 
     fn choose_channel(&mut self) -> Result<(), MenuError> {
         let document = self.document()?;
-        let channels = document.configured_channels();
+        let channels = self.configuration.configured_channels(&document);
         if channels.is_empty() {
             self.ui
                 .message("Radio channel", "No named radio channels are configured.")?;
@@ -1372,9 +1501,24 @@ impl TunerApp {
         loop {
             let document = self.document()?;
             let mut warnings = Vec::new();
-            let (target, values) =
-                self.section_values(&document, &section.section, &mut warnings)?;
+            let (_, values) = self.section_values(&document, &section.section, &mut warnings)?;
             let visible = visible_settings(section, &values);
+            let mut destinations = std::collections::BTreeSet::new();
+            for setting in &visible.settings {
+                destinations.insert(
+                    self.configuration
+                        .setting_destination(
+                            &document,
+                            &self.store.source_name(),
+                            self.selected_channel.as_deref(),
+                            &section.section,
+                            &setting.key,
+                            &mut warnings,
+                        )
+                        .map_err(MenuError::Resolution)?
+                        .section,
+                );
+            }
             let items = visible
                 .settings
                 .iter()
@@ -1392,12 +1536,17 @@ impl TunerApp {
             let prompt = format!(
                 "{}\n{}",
                 section.title,
-                profile_destination(
-                    &self.store.source_name(),
-                    &section.section,
-                    &target,
-                    &warnings
-                )
+                destinations
+                    .iter()
+                    .map(|target| profile_destination(
+                        &self.store.source_name(),
+                        &section.section,
+                        target,
+                        &warnings,
+                        self.configuration.standalone(),
+                    ))
+                    .collect::<Vec<_>>()
+                    .join("\n")
             );
             let choice = self.ui.navigation(&prompt, &cursor, items)?;
             let Some(choice) = choice else {
@@ -1424,7 +1573,18 @@ impl TunerApp {
         let original = self.store.read_config().map_err(MenuError::Storage)?;
         let mut document = ConfigDocument::new(&original);
         let mut warnings = Vec::new();
-        let (target, values) = self.section_values(&document, &section.section, &mut warnings)?;
+        let (_, values) = self.section_values(&document, &section.section, &mut warnings)?;
+        let destination = self
+            .configuration
+            .setting_destination(
+                &document,
+                &self.store.source_name(),
+                self.selected_channel.as_deref(),
+                &section.section,
+                &setting.key,
+                &mut warnings,
+            )
+            .map_err(MenuError::Resolution)?;
         let current = values
             .get(&setting.key)
             .map_or(setting.default_value.as_str(), String::as_str);
@@ -1435,19 +1595,28 @@ impl TunerApp {
             profile_destination(
                 &self.store.source_name(),
                 &section.section,
-                &target,
-                &warnings
+                &destination.section,
+                &warnings,
+                self.configuration.standalone(),
             )
         );
         let Some(value) = self.prompt_setting(&editor, current)? else {
             return Ok(());
         };
         if matches!(setting.kind, SettingKind::OptionalEnumeration(_)) && value == INHERIT_VALUE {
-            document.remove_value(&target, &setting.key)?;
+            document.remove_value(&destination.section, &destination.key)?;
         } else {
-            document.set_value(&target, &setting.key, &value)?;
+            let value = self.configuration.setting_value(
+                &section.section,
+                &setting.key,
+                &destination,
+                &value,
+            );
+            document.set_value(&destination.section, &destination.key, &value)?;
         }
-        if let Err(message) = self.validate_candidate(&document, &target, &setting.key) {
+        if let Err(message) =
+            self.validate_candidate(&document, &destination.section, &destination.key)
+        {
             self.ui.message("Invalid configuration", message)?;
             return Ok(());
         }
@@ -1609,18 +1778,13 @@ impl TunerApp {
         target: &str,
         key: &str,
     ) -> Result<(), String> {
-        let Some(channel) = self.selected_channel.as_deref() else {
-            return Ok(());
-        };
-        if let Some(role) = processing_role(target) {
-            let resolved = ResolvedProfile::from_document(document, "configuration", channel, role)
-                .map_err(|error| error.to_string())?;
-            reject_setting_warning(resolved.warnings(), target, key)
-        } else {
-            let resolved = ResolvedStationConfig::from_document(document, "configuration", channel)
-                .map_err(|error| error.to_string())?;
-            reject_setting_warning(resolved.warnings(), target, key)
-        }
+        self.configuration.validate_candidate(
+            document,
+            "configuration",
+            self.selected_channel.as_deref(),
+            target,
+            key,
+        )
     }
 
     fn apply_edit(
@@ -1639,7 +1803,11 @@ impl TunerApp {
         if mode == ApplyMode::Restart {
             self.ui.message(
                 "Configuration saved",
-                "The setting was saved and Asterisk was restarted.",
+                if self.configuration.standalone() {
+                    "The setting was saved and standalone configuration was reloaded."
+                } else {
+                    "The setting was saved and Asterisk was restarted."
+                },
             )?;
         }
         Ok(true)
@@ -1675,30 +1843,29 @@ impl TunerApp {
             .map_err(MenuError::Storage)
     }
 
+    fn configuration_catalog(&self) -> MenuPage {
+        if self.configuration.standalone() {
+            crate::catalog::standalone_configuration_catalog()
+        } else {
+            crate::catalog::configuration_catalog()
+        }
+    }
+
     fn section_values(
         &self,
         document: &ConfigDocument,
         section: &str,
         warnings: &mut Vec<ResolutionWarning>,
     ) -> Result<(String, BTreeMap<String, String>), MenuError> {
-        let Some(channel) = self.selected_channel.as_deref() else {
-            return Ok((section.to_owned(), document.explicit_values(section)));
-        };
-        let source = self.store.source_name();
-        let target = document.resolved_section(channel, section, &source, warnings)?;
-        let mut values = document.resolved_values(channel, section, &source, warnings)?;
-        if let Some(role) = processing_role(section) {
-            if let Ok(resolved) =
-                ResolvedProfile::from_document(document, "configuration", channel, role)
-            {
-                apply_warning_fallbacks(&mut values, resolved.warnings());
-            }
-        } else if let Ok(resolved) =
-            ResolvedStationConfig::from_document(document, "configuration", channel)
-        {
-            apply_warning_fallbacks(&mut values, resolved.warnings());
-        }
-        Ok((target, values))
+        self.configuration
+            .section_values(
+                document,
+                &self.store.source_name(),
+                self.selected_channel.as_deref(),
+                section,
+                warnings,
+            )
+            .map_err(MenuError::Resolution)
     }
 
     /// Report a missing selector before calibration can change live state or shared defaults.
@@ -1706,13 +1873,22 @@ impl TunerApp {
         &mut self,
         document: &ConfigDocument,
         section: &str,
-    ) -> Result<String, String> {
+        key: &str,
+    ) -> Result<SettingDestination, String> {
         let channel = self.calibration_channel()?;
         let mut warnings = Vec::new();
-        let target = document
-            .resolved_section(&channel, section, &self.store.source_name(), &mut warnings)
+        let target = self
+            .configuration
+            .setting_destination(
+                document,
+                &self.store.source_name(),
+                Some(&channel),
+                section,
+                key,
+                &mut warnings,
+            )
             .map_err(|error| error.to_string())?;
-        self.show_profile_fallback(section, &target, &warnings)
+        self.show_profile_fallback(section, &target.section, &warnings)
             .map_err(|error| error.to_string())?;
         Ok(target)
     }
@@ -1726,7 +1902,13 @@ impl TunerApp {
         if !warnings.is_empty() {
             self.ui.message(
                 "Configuration fallback",
-                profile_destination(&self.store.source_name(), section, target, warnings),
+                profile_destination(
+                    &self.store.source_name(),
+                    section,
+                    target,
+                    warnings,
+                    self.configuration.standalone(),
+                ),
             )?;
         }
         Ok(())
@@ -1743,9 +1925,11 @@ fn profile_destination(
     section: &str,
     target: &str,
     warnings: &[ResolutionWarning],
+    standalone: bool,
 ) -> String {
     let mut context = format!("Writes to {source} [{target}].");
-    if section.eq_ignore_ascii_case(target) {
+    if section.eq_ignore_ascii_case(target) || (standalone && target.eq_ignore_ascii_case("radio"))
+    {
         context.push_str(" These are shared defaults; edits affect every channel inheriting them.");
     }
     for warning in warning_messages(warnings) {
@@ -1883,46 +2067,6 @@ fn visible_settings<'a>(
         })
         .collect();
     VisibleSettings { settings }
-}
-
-fn processing_role(section: &str) -> Option<ChainRole> {
-    let kind = section.split_once(' ').map_or(section, |(kind, _)| kind);
-    match kind {
-        "local" => Some(ChainRole::LocalReceive),
-        "link" => Some(ChainRole::Link),
-        "voice_telemetry" => Some(ChainRole::VoiceTelemetry),
-        _ => None,
-    }
-}
-
-fn reject_setting_warning(
-    warnings: &[usbradioplus_core::ResolutionWarning],
-    target: &str,
-    key: &str,
-) -> Result<(), String> {
-    warnings
-        .iter()
-        .find(|warning| {
-            warning.section.eq_ignore_ascii_case(target)
-                && warning.name.eq_ignore_ascii_case(key)
-                && warning.kind != ResolutionWarningKind::UnknownOption
-        })
-        .map_or(Ok(()), |warning| Err(warning.to_string()))
-}
-
-fn apply_warning_fallbacks(
-    values: &mut BTreeMap<String, String>,
-    warnings: &[usbradioplus_core::ResolutionWarning],
-) {
-    for warning in warnings {
-        if warning.kind != ResolutionWarningKind::UnknownOption
-            && values
-                .get(&warning.name)
-                .is_some_and(|value| value == &warning.supplied_value)
-        {
-            values.insert(warning.name.clone(), warning.fallback.clone());
-        }
-    }
 }
 
 fn menu_index(choice: &str, count: usize) -> Option<usize> {
@@ -2213,10 +2357,114 @@ fn format_float(value: f64) -> String {
 #[cfg_attr(coverage, coverage(off))]
 mod tests {
     use super::*;
+    use crate::configuration::{
+        NativeConfiguration, apply_warning_fallbacks, processing_role, reject_setting_warning,
+    };
     use crate::ui::{DialogRequest, DialogResponse};
     use std::cell::RefCell;
     use std::collections::VecDeque;
     use std::rc::Rc;
+    use usbradioplus_core::{ChainRole, ResolutionWarningKind, StationConfig};
+
+    #[derive(Default)]
+    struct SecondComposition {
+        station: StationConfig,
+    }
+
+    // This fake deliberately uses different option names from the menu catalog.
+    // Production aliases and defaults belong to the core's native resolver.
+    const SECOND_DESTINATIONS: [(&str, &str, &str); 6] = [
+        ("hardware", "hardware_input_gain_db", "capture_gain_db"),
+        ("receive", "squelch_level", "threshold"),
+        ("ctcss", "receive_decoder_gain_db", "decoder_gain_db"),
+        ("hardware", "hardware_output_a_gain_db", "output_a_db"),
+        ("hardware", "hardware_output_b_gain_db", "output_b_db"),
+        ("ctcss", "transmit_peak_dbfs", "tx_tone_db"),
+    ];
+
+    impl ConfigurationResolver for SecondComposition {
+        fn configured_channels(&self, _document: &ConfigDocument) -> Vec<String> {
+            vec!["one".to_owned()]
+        }
+
+        fn station_config(
+            &self,
+            _document: &ConfigDocument,
+            _source: &str,
+            _channel: &str,
+        ) -> Result<StationConfig, String> {
+            Ok(self.station.clone())
+        }
+
+        fn section_values(
+            &self,
+            document: &ConfigDocument,
+            source: &str,
+            channel: Option<&str>,
+            section: &str,
+            warnings: &mut Vec<ResolutionWarning>,
+        ) -> Result<(String, BTreeMap<String, String>), String> {
+            if matches!(section, "hardware" | "receive" | "ctcss") {
+                let values = document.explicit_values("radio one");
+                let canonical = SECOND_DESTINATIONS
+                    .iter()
+                    .filter(|(kind, _, _)| *kind == section)
+                    .filter_map(|(_, key, alias)| {
+                        values
+                            .get(*alias)
+                            .map(|value| ((*key).to_owned(), value.clone()))
+                    })
+                    .collect();
+                Ok(("radio one".to_owned(), canonical))
+            } else {
+                AslConfiguration.section_values(document, source, channel, section, warnings)
+            }
+        }
+
+        fn setting_destination(
+            &self,
+            document: &ConfigDocument,
+            source: &str,
+            channel: Option<&str>,
+            section: &str,
+            key: &str,
+            warnings: &mut Vec<ResolutionWarning>,
+        ) -> Result<SettingDestination, String> {
+            if let Some((_, _, alias)) = SECOND_DESTINATIONS
+                .iter()
+                .find(|(kind, canonical, _)| *kind == section && *canonical == key)
+            {
+                Ok(SettingDestination {
+                    section: "radio one".to_owned(),
+                    key: (*alias).to_owned(),
+                })
+            } else {
+                AslConfiguration
+                    .setting_destination(document, source, channel, section, key, warnings)
+            }
+        }
+
+        fn validate_candidate(
+            &self,
+            document: &ConfigDocument,
+            source: &str,
+            channel: Option<&str>,
+            section: &str,
+            key: &str,
+        ) -> Result<(), String> {
+            if section == "radio one" {
+                let values = document.explicit_values(section);
+                values
+                    .get(key)
+                    .ok_or_else(|| format!("missing edited assignment {section}.{key}"))?
+                    .parse::<f32>()
+                    .map_err(|error| error.to_string())?;
+                Ok(())
+            } else {
+                AslConfiguration.validate_candidate(document, source, channel, section, key)
+            }
+        }
+    }
 
     impl TunerApp {
         fn selected_channel(&self) -> Option<&str> {
@@ -2432,6 +2680,10 @@ mod tests {
     struct ScriptState {
         responses: VecDeque<Result<DialogResponse, UiError>>,
         requests: Vec<DialogRequest>,
+        live_output: Vec<(String, String)>,
+        live_waits: Vec<Duration>,
+        live_exit: VecDeque<Result<bool, UiError>>,
+        live_output_errors: VecDeque<Result<(), UiError>>,
     }
 
     impl ScriptedBackend {
@@ -2445,6 +2697,7 @@ mod tests {
             Self(Rc::new(RefCell::new(ScriptState {
                 responses: responses.into_iter().collect(),
                 requests: Vec::new(),
+                ..ScriptState::default()
             })))
         }
     }
@@ -2457,6 +2710,18 @@ mod tests {
                 .responses
                 .pop_front()
                 .unwrap_or_else(|| Err(UiError::message("script exhausted")))
+        }
+
+        fn live_status(&mut self, title: &str, body: &str) -> Result<(), UiError> {
+            let mut state = self.0.borrow_mut();
+            state.live_output.push((title.to_owned(), body.to_owned()));
+            state.live_output_errors.pop_front().unwrap_or(Ok(()))
+        }
+
+        fn wait_for_live_exit(&mut self, timeout: Duration) -> Result<bool, UiError> {
+            let mut state = self.0.borrow_mut();
+            state.live_waits.push(timeout);
+            state.live_exit.pop_front().unwrap_or(Ok(true))
         }
     }
 
@@ -3213,6 +3478,648 @@ mod tests {
         assert!(validate_text("100.0, 101.0", TextSyntax::CtcssToneList).is_err());
         assert!(validate_text("equalizer,agc", TextSyntax::StageOrder).is_ok());
         assert!(validate_text("equalizer,equalizer", TextSyntax::StageOrder).is_err());
+    }
+
+    #[test]
+    fn second_composition_receive_calibrations_use_its_radio_and_profile_destinations() {
+        let store = SharedStore::with_text(
+            "[one]\nlocal_profile = studio\n[local studio]\ninput_gain_db = -2\n\
+             [radio one]\ncapture_gain_db = -4\ndecoder_gain_db = -3\n",
+        );
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().radio_status = (0..6)
+            .map(|_| {
+                Ok(RadioStatus {
+                    receive_output_peak: RX_VOICE_TARGET,
+                    ..RadioStatus::default()
+                })
+            })
+            .collect();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::default()),
+            store.clone(),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+            SecondComposition::default(),
+        );
+        app.calibrate_receive_voice().unwrap();
+        assert_eq!(
+            ConfigDocument::new(store.read_config().unwrap()).explicit_values("local studio")["input_gain_db"],
+            "6.0206"
+        );
+
+        channels.0.borrow_mut().radio_status = (0..6)
+            .map(|_| {
+                Ok(RadioStatus {
+                    receive_ctcss_decoder_peak: RX_CTCSS_TARGET,
+                    ..RadioStatus::default()
+                })
+            })
+            .collect();
+        app.calibrate_receive_ctcss().unwrap();
+        let updated = ConfigDocument::new(store.read_config().unwrap());
+        assert_eq!(updated.explicit_values("radio one")["decoder_gain_db"], "0");
+        assert!(!updated.section_names().iter().any(|name| name == "ctcss"));
+    }
+
+    #[test]
+    fn frontend_flash_uses_typed_keying_with_the_existing_burst_count() {
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().action_results = VecDeque::from([Ok("flash complete".to_owned())]);
+        let backend = ScriptedBackend::new([DialogResponse::Accepted(String::new())]);
+        backend.0.borrow_mut().live_exit = (0..5).map(|_| Ok(false)).collect();
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        app.run_live_action(
+            &ActionSpec {
+                label: "Flash".to_owned(),
+                result_title: "Flash".to_owned(),
+                action: MenuAction::Live(LiveAction::FlashTransmitter),
+            },
+            LiveAction::FlashTransmitter,
+        )
+        .unwrap();
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [
+                (true, None),
+                (false, None),
+                (true, None),
+                (false, None),
+                (true, None),
+                (false, None),
+                (false, None)
+            ]
+        );
+        assert!(channels.0.borrow().actions.is_empty());
+        assert_eq!(
+            channels.0.borrow().test_tone_changes,
+            [true, false, true, false, true, false, false]
+        );
+        assert_eq!(
+            backend.0.borrow().live_waits,
+            [
+                Duration::from_secs(1),
+                Duration::from_millis(1_500),
+                Duration::from_secs(1),
+                Duration::from_millis(1_500),
+                Duration::from_secs(1)
+            ]
+        );
+    }
+
+    #[test]
+    fn frontend_continuous_meters_fetch_snapshots_until_cancelled() {
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().action_results = VecDeque::from([
+            Ok("first meter snapshot".to_owned()),
+            Ok("second meter snapshot".to_owned()),
+        ]);
+        let backend = ScriptedBackend::new([DialogResponse::Accepted(String::new())]);
+        backend.0.borrow_mut().live_exit = VecDeque::from([Ok(false), Ok(true)]);
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        app.run_live_action(
+            &ActionSpec {
+                label: "Meters".to_owned(),
+                result_title: "Meters".to_owned(),
+                action: MenuAction::Live(LiveAction::ContinuousRadioMeters),
+            },
+            LiveAction::ContinuousRadioMeters,
+        )
+        .unwrap();
+        assert_eq!(
+            channels.0.borrow().actions,
+            [LiveAction::RadioStatus, LiveAction::RadioStatus]
+        );
+        let state = backend.0.borrow();
+        assert_eq!(state.live_output[1].1, "first meter snapshot");
+        assert_eq!(state.live_output[2].1, "second meter snapshot");
+        assert_eq!(
+            state.live_waits,
+            [Duration::from_secs(1), Duration::from_secs(1)]
+        );
+    }
+
+    #[test]
+    fn frontend_flash_cancellation_or_input_failure_always_cleans_up() {
+        for input in [Ok(true), Err(UiError::message("input unavailable"))] {
+            let cancelled = input.is_ok();
+            let backend = ScriptedBackend::default();
+            backend.0.borrow_mut().live_exit = VecDeque::from([input]);
+            let channels = SharedChannels::default();
+            let mut app = TunerApp::new(
+                AccessibleUi::new(backend),
+                SharedStore::with_text(config()),
+                SharedApplier::default(),
+                channels.clone(),
+                Some("one".to_owned()),
+            );
+            let result = app.flash_transmitter();
+            if cancelled {
+                assert!(result.unwrap().contains("stopped"));
+            } else {
+                assert!(result.unwrap_err().contains("input unavailable"));
+            }
+            assert_eq!(
+                channels.0.borrow().transmit_changes,
+                [(true, None), (false, None)]
+            );
+            assert_eq!(channels.0.borrow().test_tone_changes, [true, false]);
+        }
+    }
+
+    #[test]
+    fn frontend_flash_pause_cancellation_stops_before_the_next_burst() {
+        let backend = ScriptedBackend::default();
+        backend.0.borrow_mut().live_exit = VecDeque::from([Ok(false), Ok(true)]);
+        let channels = SharedChannels::default();
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend.clone()),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        assert!(app.flash_transmitter().unwrap().contains("stopped"));
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [(true, None), (false, None), (false, None)]
+        );
+        assert_eq!(channels.0.borrow().test_tone_changes, [true, false, false]);
+        assert_eq!(
+            backend.0.borrow().live_waits,
+            [Duration::from_secs(1), Duration::from_millis(1_500)]
+        );
+    }
+
+    #[test]
+    fn frontend_flash_reports_key_and_cleanup_failures_and_attempts_tone_off() {
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().transmit_results = VecDeque::from([
+            Err("key unavailable".to_owned()),
+            Err("unkey unavailable".to_owned()),
+        ]);
+        let mut app = TunerApp::new(
+            AccessibleUi::new(ScriptedBackend::default()),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        let error = app.flash_transmitter().unwrap_err();
+        assert!(error.contains("key unavailable") && error.contains("unkey unavailable"));
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [(true, None), (false, None)]
+        );
+        assert_eq!(channels.0.borrow().test_tone_changes, [true, false]);
+
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().test_tone_results =
+            VecDeque::from([Ok(()), Err("tone cleanup unavailable".to_owned())]);
+        let mut app = TunerApp::new(
+            AccessibleUi::new(ScriptedBackend::default()),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        assert!(
+            app.flash_transmitter()
+                .unwrap_err()
+                .contains("tone cleanup unavailable")
+        );
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [(true, None), (false, None)]
+        );
+    }
+
+    #[test]
+    fn frontend_follow_reports_snapshot_and_presentation_failures() {
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().action_results =
+            VecDeque::from([Ok("first".to_owned()), Err("status unavailable".to_owned())]);
+        let backend = ScriptedBackend::default();
+        backend.0.borrow_mut().live_exit = VecDeque::from([Ok(false)]);
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        assert!(
+            app.follow_radio_meters()
+                .unwrap_err()
+                .contains("status unavailable")
+        );
+        assert_eq!(
+            channels.0.borrow().actions,
+            [LiveAction::RadioStatus, LiveAction::RadioStatus]
+        );
+        assert!(channels.0.borrow().transmit_changes.is_empty());
+
+        let backend = ScriptedBackend::default();
+        backend.0.borrow_mut().live_output_errors =
+            VecDeque::from([Err(UiError::message("display unavailable"))]);
+        let channels = SharedChannels::default();
+        let mut app = TunerApp::new(
+            AccessibleUi::new(backend),
+            SharedStore::with_text(config()),
+            SharedApplier::default(),
+            channels.clone(),
+            Some("one".to_owned()),
+        );
+        assert!(
+            app.follow_radio_meters()
+                .unwrap_err()
+                .contains("display unavailable")
+        );
+        assert!(channels.0.borrow().actions.is_empty());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn native_socket_uses_the_shared_follow_and_burst_workflows() {
+        let (runtime, server) = crate::standalone::tests::calibration_runtime();
+        let backend = ScriptedBackend::default();
+        backend.0.borrow_mut().live_exit = (0..6)
+            .map(|_| Ok(false))
+            .chain(std::iter::once(Ok(true)))
+            .collect();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(backend.clone()),
+            SharedStore::with_text("[1000]\n"),
+            runtime.clone(),
+            runtime,
+            Some("1000".to_owned()),
+            NativeConfiguration,
+        );
+        app.initialize_channel().unwrap();
+        assert!(app.flash_transmitter().unwrap().contains("completed"));
+        assert!(app.follow_radio_meters().unwrap().contains("stopped"));
+        assert_eq!(
+            backend.0.borrow().live_waits,
+            [
+                Duration::from_secs(1),
+                Duration::from_millis(1_500),
+                Duration::from_secs(1),
+                Duration::from_millis(1_500),
+                Duration::from_secs(1),
+                Duration::from_secs(1),
+                Duration::from_secs(1)
+            ]
+        );
+        drop(app);
+        let requests = server.join().unwrap();
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|request| request["operation"] == "status")
+                .count(),
+            2
+        );
+        let transmit = requests
+            .iter()
+            .filter(|request| request["operation"] == "transmit")
+            .collect::<Vec<_>>();
+        assert_eq!(
+            transmit
+                .iter()
+                .map(|request| request["keyed"].as_bool().unwrap())
+                .collect::<Vec<_>>(),
+            [true, false, true, false, true, false, false]
+        );
+        let tones = requests
+            .iter()
+            .filter(|request| request["operation"] == "command" && request["command"] == 3)
+            .map(|request| request["value"].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(tones, [1, 0, 1, 0, 1, 0, 0]);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn coverage_remote_rejection_keeps_common_calibration_rollback_and_cleanup_usable() {
+        let (runtime, server) =
+            crate::standalone::tests::calibration_runtime_with_rejected_reload(true);
+        let original = "[1000]\n[radio]\nhardware_output_a_gain_db=-2\n";
+        let store = SharedStore::with_text(original);
+        let backend = ScriptedBackend::new([
+            DialogResponse::Accepted("-3".to_owned()),
+            DialogResponse::Accepted(String::new()),
+            DialogResponse::Accepted(String::new()),
+        ]);
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            runtime.clone(),
+            runtime,
+            Some("1000".to_owned()),
+            NativeConfiguration,
+        );
+        app.initialize_channel().unwrap();
+        app.adjust_transmit(TransmitCalibration::Voice).unwrap();
+        assert_eq!(store.read_config().unwrap(), original);
+        assert!(
+            app.channels.radio_status().is_ok(),
+            "ordinary rejection must leave rollback and subsequent controls connected"
+        );
+        assert!(backend.0.borrow().requests.iter().any(|request| matches!(request, DialogRequest::Message { body, .. } if body.contains("candidate rejected") && body.contains("previous configuration was restored"))));
+        drop(app);
+        let requests = server.join().unwrap();
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|request| request["operation"] == "reload")
+                .count(),
+            2
+        );
+        let transmit = requests
+            .iter()
+            .filter(|request| request["operation"] == "transmit")
+            .map(|request| request["keyed"].as_bool().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(transmit, [true, false]);
+        let tone = requests
+            .iter()
+            .filter(|request| request["operation"] == "command" && request["command"] == 3)
+            .map(|request| request["value"].as_i64().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(tone, [1, 0]);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn native_socket_runs_the_same_receive_and_transmit_calibration_workflows() {
+        let (runtime, server) = crate::standalone::tests::calibration_runtime();
+        let store = SharedStore::with_text(
+            "[1000]\nlocal_profile=studio\n[local studio]\ninput_gain_db=-2\n[radio 1000]\nreceive_audio=flat\ncarrier_source=dsp\ntransmit_signaling=ctcss\ntransmit_output_a_assignment=composite\ntransmit_output_b_assignment=auxiliary_voice\ntransmit_ctcss_default_hz=100.0\neeprom_enabled=yes\n",
+        );
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::new([
+                DialogResponse::Accepted("-3".to_owned()),
+                DialogResponse::Accepted("-30".to_owned()),
+                DialogResponse::Accepted("-6".to_owned()),
+            ])),
+            store.clone(),
+            runtime.clone(),
+            runtime,
+            Some("1000".to_owned()),
+            NativeConfiguration,
+        );
+        app.initialize_channel().unwrap();
+        app.calibrate_receive_voice().unwrap();
+        app.calibrate_receive_ctcss().unwrap();
+        app.calibrate_receive_noise().unwrap();
+        app.adjust_transmit(TransmitCalibration::Voice).unwrap();
+        app.adjust_transmit(TransmitCalibration::Ctcss).unwrap();
+        app.adjust_transmit(TransmitCalibration::Auxiliary).unwrap();
+        app.channels.save_current_tuning_to_eeprom().unwrap();
+        let updated = ConfigDocument::new(store.read_config().unwrap());
+        assert_eq!(
+            updated.explicit_values("local studio")["input_gain_db"],
+            "6.0206"
+        );
+        let radio = updated.explicit_values("radio 1000");
+        for (key, expected) in [
+            ("hardware_input_gain_db", "0"),
+            ("squelch_level", "539"),
+            ("ctcss_decoder_gain_db", "0"),
+            ("hardware_output_a_gain_db", "-3"),
+            ("hardware_output_b_gain_db", "-6"),
+            ("transmit_ctcss_level_dbfs", "-30"),
+        ] {
+            assert_eq!(radio[key], expected);
+        }
+        assert_eq!(
+            updated.section_names(),
+            ["1000", "local studio", "radio 1000"]
+        );
+        drop(app);
+        let requests = server.join().unwrap();
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|request| request["operation"] == "reload")
+                .count(),
+            16
+        );
+        let transmit = requests
+            .iter()
+            .filter(|request| request["operation"] == "transmit")
+            .collect::<Vec<_>>();
+        assert_eq!(transmit.len(), 6);
+        assert_eq!(transmit[2]["forced_ctcss_tenths_hz"], 1000);
+        assert!(
+            transmit
+                .iter()
+                .skip(1)
+                .step_by(2)
+                .all(|request| request["keyed"] == false)
+        );
+    }
+
+    #[test]
+    fn native_browse_names_actual_shared_radio_destination() {
+        let catalog = crate::catalog::standalone_configuration_catalog();
+        let mut sections = Vec::new();
+        collect_sections(&catalog, &mut sections);
+        let section = sections
+            .into_iter()
+            .find(|section| {
+                section
+                    .settings
+                    .iter()
+                    .any(|setting| setting.key == "hardware_input_gain_db")
+            })
+            .unwrap();
+        let backend = ScriptedBackend::new([DialogResponse::Cancelled]);
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(backend.clone()),
+            SharedStore::with_text("[1000]\n[radio]\n"),
+            SharedApplier::default(),
+            SharedChannels::default(),
+            Some("1000".to_owned()),
+            NativeConfiguration,
+        );
+        app.browse_section(section).unwrap();
+        assert!(backend.0.borrow().requests.iter().any(|request| matches!(request, DialogRequest::Menu { prompt, .. } if prompt.contains("[radio]") && prompt.contains("shared defaults") && !prompt.contains("[hardware]"))));
+    }
+
+    #[test]
+    fn native_composition_ctcss_calibration_edits_the_shared_radio_alias() {
+        let store = SharedStore::with_text("[524950]\n[radio]\nctcss_decoder_gain_db = -3\n");
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().radio_status = (0..6)
+            .map(|_| {
+                Ok(RadioStatus {
+                    receive_ctcss_decoder_peak: RX_CTCSS_TARGET,
+                    ..RadioStatus::default()
+                })
+            })
+            .collect();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::default()),
+            store.clone(),
+            SharedApplier::default(),
+            channels,
+            Some("524950".to_owned()),
+            NativeConfiguration,
+        );
+        app.calibrate_receive_ctcss().unwrap();
+        let updated = ConfigDocument::new(store.read_config().unwrap());
+        assert_eq!(
+            updated.explicit_values("radio")["ctcss_decoder_gain_db"],
+            "0"
+        );
+        assert!(
+            !updated
+                .section_names()
+                .iter()
+                .any(|section| section == "ctcss")
+        );
+    }
+
+    #[test]
+    fn second_composition_active_configuration_reports_actual_assignment_names() {
+        let store = SharedStore::with_text("[one]\n[radio one]\ncapture_gain_db = -4\n");
+        let channels = SharedChannels::default();
+        channels.0.borrow_mut().action_results = VecDeque::from([Ok("running=1\n".to_owned())]);
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::default()),
+            store,
+            SharedApplier::default(),
+            channels,
+            Some("one".to_owned()),
+            SecondComposition::default(),
+        );
+        let report = app.complete_active_configuration().unwrap();
+        assert!(report.contains("capture_gain_db = -4\n"));
+        assert!(!report.contains("hardware_input_gain_db ="));
+    }
+
+    #[test]
+    fn second_composition_noise_calibration_writes_radio_aliases() {
+        let store = SharedStore::with_text("[radio one]\ncapture_gain_db = -4\nthreshold = 500\n");
+        let channels = SharedChannels::default();
+        let initial = RadioStatus {
+            receive_input_peak: RX_NOISE_TARGET * 2.0 / 500.0,
+            receive_rssi_peak: 20_000,
+            receive_rssi_updated: true,
+            ..RadioStatus::default()
+        };
+        let settled = RadioStatus {
+            receive_input_peak: RX_NOISE_TARGET,
+            receive_rssi_peak: 20_000,
+            receive_rssi_updated: true,
+            receive_mixer_level: 500,
+            ..RadioStatus::default()
+        };
+        channels.0.borrow_mut().radio_status = std::iter::once(Ok(initial))
+            .chain((0..7).map(|_| Ok(settled)))
+            .collect();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::default()),
+            store.clone(),
+            SharedApplier::default(),
+            channels,
+            Some("one".to_owned()),
+            SecondComposition::default(),
+        );
+        app.initialize_channel().unwrap();
+        assert!(
+            app.calibrate_receive_noise()
+                .unwrap()
+                .contains("Hardware input: 500/999")
+        );
+        let updated = ConfigDocument::new(store.read_config().unwrap());
+        assert_eq!(updated.explicit_values("radio one")["capture_gain_db"], "0");
+        assert_eq!(updated.explicit_values("radio one")["threshold"], "539");
+        assert_eq!(updated.section_names(), ["radio one"]);
+    }
+
+    #[test]
+    fn second_composition_transmit_calibrations_share_routing_and_cleanup() {
+        for (kind, key, value) in [
+            (TransmitCalibration::Voice, "output_a_db", "-3"),
+            (TransmitCalibration::Auxiliary, "output_b_db", "-6"),
+            (TransmitCalibration::Ctcss, "tx_tone_db", "-30"),
+        ] {
+            let mut station = StationConfig::default();
+            station.hardware.output_b_assignment = HardwareOutputAssignment::AuxiliaryVoice;
+            station.transmit.signaling_method = SignalingMethod::Ctcss;
+            station.ctcss.transmit_default = "100.0".parse().unwrap();
+            let store = SharedStore::with_text("[radio one]\n");
+            let channels = SharedChannels::default();
+            let mut app = TunerApp::with_configuration(
+                AccessibleUi::new(ScriptedBackend::new([DialogResponse::Accepted(
+                    value.to_owned(),
+                )])),
+                store.clone(),
+                SharedApplier::default(),
+                channels.clone(),
+                Some("one".to_owned()),
+                SecondComposition { station },
+            );
+            app.adjust_transmit(kind).unwrap();
+            let updated = ConfigDocument::new(store.read_config().unwrap());
+            assert_eq!(updated.explicit_values("radio one")[key], value);
+            assert_eq!(updated.section_names(), ["radio one"]);
+            let state = channels.0.borrow();
+            let tone = matches!(kind, TransmitCalibration::Ctcss).then(|| "100.0".parse().unwrap());
+            assert_eq!(state.transmit_changes, [(true, tone), (false, None)]);
+            if tone.is_some() {
+                assert!(state.test_tone_changes.is_empty());
+            } else {
+                assert_eq!(state.test_tone_changes, [true, false]);
+            }
+        }
+    }
+
+    #[test]
+    fn second_composition_failed_apply_restores_radio_file_and_clears_keying() {
+        let original = "[radio one]\noutput_a_db = -2\n";
+        let store = SharedStore::with_text(original);
+        let applier = SharedApplier::default();
+        applier.0.borrow_mut().results =
+            VecDeque::from([Err("rejected generation".to_owned()), Ok(())]);
+        let channels = SharedChannels::default();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(ScriptedBackend::new([
+                DialogResponse::Accepted("-3".to_owned()),
+                DialogResponse::Accepted(String::new()),
+            ])),
+            store.clone(),
+            applier.clone(),
+            channels.clone(),
+            Some("one".to_owned()),
+            SecondComposition::default(),
+        );
+        app.adjust_transmit(TransmitCalibration::Voice).unwrap();
+        assert_eq!(store.read_config().unwrap(), original);
+        assert_eq!(
+            applier.0.borrow().calls,
+            [ApplyMode::Reload, ApplyMode::Reload]
+        );
+        assert_eq!(
+            channels.0.borrow().transmit_changes,
+            [(true, None), (false, None)]
+        );
+        assert_eq!(channels.0.borrow().test_tone_changes, [true, false]);
     }
 
     #[test]
@@ -4479,6 +5386,71 @@ mod tests {
     }
 
     #[test]
+    fn coverage_native_profile_menu_edits_hardware_and_reports_reload() {
+        let backend = ScriptedBackend::new([
+            DialogResponse::Accepted("1".to_owned()),
+            DialogResponse::Accepted("site".to_owned()),
+            DialogResponse::Accepted(String::new()),
+            DialogResponse::Cancelled,
+        ]);
+        let store = SharedStore::with_text("[1000]\n[hardware site]\n");
+        let applier = SharedApplier::default();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(backend.clone()),
+            store.clone(),
+            applier.clone(),
+            SharedChannels::default(),
+            Some("1000".to_owned()),
+            crate::configuration::NativeConfiguration,
+        );
+        app.select_profiles().unwrap();
+        let document = ConfigDocument::new(store.0.borrow().text.clone());
+        assert_eq!(document.explicit_values("1000")["hardware_profile"], "site");
+        assert!(
+            !document
+                .explicit_values("1000")
+                .contains_key("asterisk_profile")
+        );
+        assert_eq!(applier.0.borrow().calls, [ApplyMode::Restart]);
+        let state = backend.0.borrow();
+        assert!(matches!(&state.requests[0], DialogRequest::Menu {items, ..}
+            if !items.iter().any(|item| item.description.contains("Asterisk"))));
+        assert!(state.requests.iter().any(|request| matches!(request,
+            DialogRequest::Message {body, ..} if body.contains("standalone configuration was reloaded"))));
+    }
+
+    #[test]
+    fn coverage_profile_confirmation_failure_preserves_the_applied_configuration() {
+        let backend = ScriptedBackend::with_results([
+            Ok(DialogResponse::Accepted("1".to_owned())),
+            Ok(DialogResponse::Accepted("site".to_owned())),
+            Err(UiError::message("confirmation output unavailable")),
+        ]);
+        let store = SharedStore::with_text("[1000]\n[hardware site]\n");
+        let applier = SharedApplier::default();
+        let mut app = TunerApp::with_configuration(
+            AccessibleUi::new(backend),
+            store.clone(),
+            applier.clone(),
+            SharedChannels::default(),
+            Some("1000".to_owned()),
+            crate::configuration::NativeConfiguration,
+        );
+        let error = app.select_profiles().unwrap_err();
+        assert!(matches!(error, MenuError::Ui(_)));
+        assert!(
+            error
+                .to_string()
+                .contains("confirmation output unavailable")
+        );
+        assert_eq!(
+            ConfigDocument::new(store.0.borrow().text.clone()).explicit_values("1000")["hardware_profile"],
+            "site"
+        );
+        assert_eq!(applier.0.borrow().calls, [ApplyMode::Restart]);
+    }
+
+    #[test]
     fn error_types_have_complete_semantics() {
         let ui = MenuError::from(UiError::message("broken"));
         assert_eq!(ui.to_string(), "user interface failed: broken");
@@ -4489,6 +5461,7 @@ mod tests {
         for error in [
             MenuError::Storage("disk".to_owned()),
             MenuError::Control("runtime".to_owned()),
+            MenuError::Resolution("native configuration rejected".to_owned()),
         ] {
             assert!(!error.to_string().is_empty());
             assert!(std::error::Error::source(&error).is_none());

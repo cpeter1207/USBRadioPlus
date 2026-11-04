@@ -278,6 +278,14 @@ pub(super) struct Functions {
 }
 
 impl SessionConfig {
+    /// Visit the released ABI-4 representation without duplicating its encoding.
+    ///
+    /// The pointer is readable only for the callback and must not be retained.
+    pub fn with_abi<T>(&self, visit: impl FnOnce(*const c_void) -> T) -> T {
+        let raw = self.as_raw();
+        visit(std::ptr::from_ref(&raw).cast())
+    }
+
     /// Copy a released ABI-4 configuration into the typed station request.
     ///
     /// # Safety

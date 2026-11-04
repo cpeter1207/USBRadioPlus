@@ -130,6 +130,92 @@ fn ctcss_session_keeps_tone_map_levels_and_tail_policy() {
 }
 
 #[test]
+fn native_resolver_uses_shared_rx_indexed_ctcss_and_independent_cpu_savers() {
+    use usbradioplus_core::{ConfigDocument, ResolvedNativeConfiguration};
+
+    for (receive, transmit) in [("yes", "no"), ("no", "yes")] {
+        let document = ConfigDocument::new(format!(
+            "[1000]\n[radio]\nreceive_signaling=ctcss\ntransmit_signaling=ctcss\nreceive_ctcss_tones_hz=100.0,103.5\ntransmit_ctcss_tones_hz=123.0,127.3\nreceive_cpu_saver_enabled={receive}\ntransmit_cpu_saver_enabled={transmit}\n"
+        ));
+        let resolved =
+            ResolvedNativeConfiguration::from_document(&document, "native.conf", "1000").unwrap();
+        let radio =
+            radio_session_config(resolved.config(), ControllerTransport::RptAdvanced, 1, 480)
+                .unwrap();
+        assert_eq!(radio.receive.cpu_saver_enabled, receive == "yes");
+        assert_eq!(radio.transmit.cpu_saver_enabled, transmit == "yes");
+        let TransmitSignaling::Ctcss(ctcss) = radio.transmit.signaling else {
+            panic!("CTCSS expected");
+        };
+        assert_eq!(ctcss.mapped_frequencies_tenths_hz[11], 1230);
+        assert_eq!(ctcss.mapped_frequencies_tenths_hz[12], 1273);
+        assert_eq!(ctcss.mapped_frequencies_tenths_hz[15], 0);
+    }
+}
+
+#[test]
+fn native_radio_leaves_receive_delay_with_the_controller() {
+    let mut config = channel();
+    config.station.receive.squelch_delay_ms = 17;
+    assert_eq!(
+        radio_session_config(&config, ControllerTransport::AppRpt, 1, 480)
+            .unwrap()
+            .receive
+            .native_squelch_delay_frames,
+        17 * 48
+    );
+    assert_eq!(
+        native_radio_session_config(&config, 1, 480)
+            .unwrap()
+            .receive
+            .native_squelch_delay_frames,
+        0
+    );
+}
+
+#[test]
+fn native_tuning_projection_round_trips_every_squelch_level_and_ctcss_peak() {
+    for level in 0..=999 {
+        let mut config = channel();
+        config.station.receive.squelch_level = level;
+        let radio = native_radio_session_config(&config, 1, 480).unwrap();
+        let mut restored = channel();
+        apply_native_tuning_configuration(&radio, &mut restored);
+        assert_eq!(restored.station.receive.squelch_level, level);
+        let mut applied = radio;
+        apply_native_radio_tuning(&restored, &mut applied);
+        assert_eq!(
+            applied.receive.squelch_open_level,
+            radio.receive.squelch_open_level
+        );
+    }
+    for (peak, expected) in [(0.0, -90.0), (0.1, -20.0), (1.0, 0.0)] {
+        let mut radio = native_radio_session_config(&channel(), 1, 480).unwrap();
+        radio.transmit.signaling = TransmitSignaling::Ctcss(CtcssTransmitConfig {
+            peak,
+            ..CtcssTransmitConfig::default()
+        });
+        let mut restored = channel();
+        apply_native_tuning_configuration(&radio, &mut restored);
+        assert!((restored.station.ctcss.transmit_peak_dbfs - expected).abs() < 0.00001);
+    }
+    let mut config = channel();
+    config.station.ctcss.transmit_peak_dbfs = -20.0;
+    let mut radio = native_radio_session_config(&channel(), 1, 480).unwrap();
+    radio.transmit.signaling = TransmitSignaling::Ctcss(CtcssTransmitConfig {
+        peak: 0.01,
+        default_frequency_tenths_hz: 1230,
+        ..CtcssTransmitConfig::default()
+    });
+    apply_native_radio_tuning(&config, &mut radio);
+    let TransmitSignaling::Ctcss(ctcss) = radio.transmit.signaling else {
+        panic!("raw CTCSS choice must remain active");
+    };
+    assert!((ctcss.peak - 0.1).abs() < 0.00001);
+    assert_eq!(ctcss.default_frequency_tenths_hz, 1230);
+}
+
+#[test]
 fn dcs_session_and_every_route_translate_without_compatibility_state() {
     let mut input = channel();
     input.station.receive.signaling_method = SignalingMethod::Dcs;

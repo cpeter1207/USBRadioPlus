@@ -97,6 +97,10 @@ pub enum HardwareInterfaceType {
     DudeUsb,
     /// SphUSB-compatible wiring layout (configuration value `1`).
     SphUsb,
+    /// NHRC/N1KDO wiring layout (configuration value `2`).
+    Nhrc,
+    /// Custom CM119 wiring layout (configuration value `3`).
+    Custom,
 }
 
 impl fmt::Display for HardwareInterfaceType {
@@ -104,6 +108,8 @@ impl fmt::Display for HardwareInterfaceType {
         formatter.write_str(match self {
             Self::DudeUsb => "0",
             Self::SphUsb => "1",
+            Self::Nhrc => "2",
+            Self::Custom => "3",
         })
     }
 }
@@ -949,10 +955,19 @@ impl ResolvedStationConfig {
         source: impl Into<String>,
         channel: &str,
     ) -> Result<Self, StationConfigError> {
+        Self::from_document_with_defaults(document, source, channel, StationConfig::default())
+    }
+
+    /// Resolve a composition's explicit baseline through the same overlays and validation.
+    pub(crate) fn from_document_with_defaults(
+        document: &ConfigDocument,
+        source: impl Into<String>,
+        channel: &str,
+        mut config: StationConfig,
+    ) -> Result<Self, StationConfigError> {
         let source = source.into();
         let mut warnings = Vec::new();
         document.resolved_section(channel, "general", &source, &mut warnings)?;
-        let mut config = StationConfig::default();
 
         for (kind, _) in PROFILE_KINDS {
             reject_ambiguous_selector(document, channel, kind)?;
@@ -1056,17 +1071,17 @@ impl StationConfig {
 }
 
 #[derive(Clone, Copy)]
-struct Setting<'a> {
-    source: &'a str,
-    section: &'a str,
-    name: &'a str,
-    value: &'a str,
+pub(crate) struct Setting<'a> {
+    pub(crate) source: &'a str,
+    pub(crate) section: &'a str,
+    pub(crate) name: &'a str,
+    pub(crate) value: &'a str,
 }
 
 type SettingApplier =
     for<'a> fn(&mut StationConfig, &str, Setting<'a>, &mut Vec<ResolutionWarning>);
 
-fn reject_ambiguous_selector(
+pub(crate) fn reject_ambiguous_selector(
     document: &ConfigDocument,
     channel: &str,
     kind: &str,
@@ -1105,19 +1120,9 @@ fn apply_overlay(
         if SILENTLY_IGNORED_SETTINGS.contains(&name.as_str()) {
             continue;
         }
-        if let Some(previous) = seen.get(&name) {
-            if previous.trim() != value.trim() {
-                return Err(StationConfigError::ConflictingAssignment {
-                    source: source.to_owned(),
-                    section: section.to_owned(),
-                    name,
-                    first: previous.clone(),
-                    second: value.clone(),
-                });
-            }
+        if !record_assignment(&mut seen, source, section, &name, value)? {
             continue;
         }
-        seen.insert(name.clone(), value.clone());
         let setting = Setting {
             source,
             section,
@@ -1127,6 +1132,30 @@ fn apply_overlay(
         apply(config, &name, setting, warnings);
     }
     Ok(())
+}
+
+/// Retain the shared case-insensitive assignment conflict rule across compositions.
+pub(crate) fn record_assignment(
+    seen: &mut BTreeMap<String, String>,
+    source: &str,
+    section: &str,
+    name: &str,
+    value: &str,
+) -> Result<bool, StationConfigError> {
+    if let Some(previous) = seen.get(name) {
+        if previous.trim() != value.trim() {
+            return Err(StationConfigError::ConflictingAssignment {
+                source: source.to_owned(),
+                section: section.to_owned(),
+                name: name.to_owned(),
+                first: previous.clone(),
+                second: value.to_owned(),
+            });
+        }
+        return Ok(false);
+    }
+    seen.insert(name.to_owned(), value.to_owned());
+    Ok(true)
 }
 
 fn apply_general(
@@ -1626,7 +1655,7 @@ fn assign_u16(
     }
 }
 
-fn assign_u32(
+pub(crate) fn assign_u32(
     target: &mut u32,
     minimum: u32,
     maximum: u32,
@@ -1689,7 +1718,7 @@ fn parse_c_magnitude(text: &str) -> Result<u64, ()> {
     u64::from_str_radix(digits, radix).map_err(|_| ())
 }
 
-fn assign_f64(
+pub(crate) fn assign_f64(
     target: &mut f64,
     minimum: f64,
     maximum: f64,
@@ -1741,7 +1770,7 @@ fn assign_positive_bounded_f64(
     }
 }
 
-fn assign_display<T>(
+pub(crate) fn assign_display<T>(
     target: &mut T,
     setting: Setting<'_>,
     warnings: &mut Vec<ResolutionWarning>,
@@ -1840,7 +1869,9 @@ fn parse_hardware_interface(value: &str) -> Result<HardwareInterfaceType, String
     match parse_c_unsigned(value) {
         Ok(0) => Ok(HardwareInterfaceType::DudeUsb),
         Ok(1) => Ok(HardwareInterfaceType::SphUsb),
-        _ => Err("requires 0 or 1".to_owned()),
+        Ok(2) => Ok(HardwareInterfaceType::Nhrc),
+        Ok(3) => Ok(HardwareInterfaceType::Custom),
+        _ => Err("requires 0, 1, 2, or 3".to_owned()),
     }
 }
 
@@ -2013,7 +2044,7 @@ fn parallel_input_index(name: &str) -> Option<usize> {
     NAMES.iter().position(|candidate| *candidate == name)
 }
 
-fn yes_no(value: bool) -> String {
+pub(crate) fn yes_no(value: bool) -> String {
     if value { "yes" } else { "no" }.to_owned()
 }
 
@@ -2021,7 +2052,7 @@ fn format_number(value: f64) -> String {
     value.to_string()
 }
 
-fn invalid_warning(
+pub(crate) fn invalid_warning(
     warnings: &mut Vec<ResolutionWarning>,
     setting: Setting<'_>,
     fallback: String,
@@ -2038,7 +2069,7 @@ fn invalid_warning(
     });
 }
 
-fn unknown_warning(warnings: &mut Vec<ResolutionWarning>, setting: Setting<'_>) {
+pub(crate) fn unknown_warning(warnings: &mut Vec<ResolutionWarning>, setting: Setting<'_>) {
     warnings.push(ResolutionWarning {
         kind: ResolutionWarningKind::UnknownOption,
         source: setting.source.to_owned(),

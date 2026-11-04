@@ -1,6 +1,7 @@
 //! Per-remote-link processing shared by native PCM and Asterisk audiohooks.
 
 use std::fmt;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{f32_to_s16, s16_to_f32};
@@ -60,6 +61,30 @@ pub struct LinkObservation {
     pub failed_blocks: u64,
 }
 
+#[derive(Default)]
+struct LinkCounters {
+    processed_blocks: AtomicU64,
+    bypassed_blocks: AtomicU64,
+    failed_blocks: AtomicU64,
+}
+
+/// Immutable ownership of the existing counters, independent of graph/provider lifetime.
+#[derive(Clone)]
+pub struct LinkObserver {
+    counters: Arc<LinkCounters>,
+}
+
+impl LinkObserver {
+    /// Read a best-effort set of independent counters while audio runs or after graph drop.
+    pub fn observe(&self) -> LinkObservation {
+        LinkObservation {
+            processed_blocks: self.counters.processed_blocks.load(Ordering::Relaxed),
+            bypassed_blocks: self.counters.bypassed_blocks.load(Ordering::Relaxed),
+            failed_blocks: self.counters.failed_blocks.load(Ordering::Relaxed),
+        }
+    }
+}
+
 /// One prepared exact-rate link graph and its callback workspaces.
 ///
 /// One serial PCM owner retains this value. Detaching and quiescing that owner
@@ -69,9 +94,7 @@ pub struct PreparedLink {
     input: Box<[f32]>,
     output: Box<[f32]>,
     graph: Box<dyn ExactRateGraph>,
-    processed_blocks: AtomicU64,
-    bypassed_blocks: AtomicU64,
-    failed_blocks: AtomicU64,
+    observation: LinkObserver,
 }
 
 impl PreparedLink {
@@ -89,9 +112,9 @@ impl PreparedLink {
             input: vec![0.0; maximum_frame_count].into_boxed_slice(),
             output: vec![0.0; maximum_frame_count].into_boxed_slice(),
             graph,
-            processed_blocks: AtomicU64::new(0),
-            bypassed_blocks: AtomicU64::new(0),
-            failed_blocks: AtomicU64::new(0),
+            observation: LinkObserver {
+                counters: Arc::new(LinkCounters::default()),
+            },
         })
     }
 
@@ -141,7 +164,10 @@ impl PreparedLink {
             || pcm.is_empty()
             || pcm.len() > self.input.len()
         {
-            self.bypassed_blocks.fetch_add(1, Ordering::Relaxed);
+            self.observation
+                .counters
+                .bypassed_blocks
+                .fetch_add(1, Ordering::Relaxed);
             return LinkProcessOutcome::Bypassed;
         }
         for (output, input) in self.input[..pcm.len()].iter_mut().zip(pcm.iter()) {
@@ -151,23 +177,30 @@ impl PreparedLink {
             .graph
             .process_exact(&self.input[..pcm.len()], &mut self.output[..pcm.len()])
         {
-            self.failed_blocks.fetch_add(1, Ordering::Relaxed);
+            self.observation
+                .counters
+                .failed_blocks
+                .fetch_add(1, Ordering::Relaxed);
             return LinkProcessOutcome::GraphFailed;
         }
         for (output, processed) in pcm.iter_mut().zip(&self.output) {
             *output = from_float(*processed);
         }
-        self.processed_blocks.fetch_add(1, Ordering::Relaxed);
+        self.observation
+            .counters
+            .processed_blocks
+            .fetch_add(1, Ordering::Relaxed);
         LinkProcessOutcome::Processed
     }
 
     /// Read one coherent-enough set of independent diagnostic counters.
     pub fn observe(&self) -> LinkObservation {
-        LinkObservation {
-            processed_blocks: self.processed_blocks.load(Ordering::Relaxed),
-            bypassed_blocks: self.bypassed_blocks.load(Ordering::Relaxed),
-            failed_blocks: self.failed_blocks.load(Ordering::Relaxed),
-        }
+        self.observation.observe()
+    }
+
+    /// Retain diagnostics on the control plane before transferring this graph to audio.
+    pub fn observer(&self) -> LinkObserver {
+        self.observation.clone()
     }
 }
 

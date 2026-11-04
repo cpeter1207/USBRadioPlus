@@ -4,7 +4,6 @@ use std::error::Error;
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
 use std::ptr;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use usbradioplus_asl3::{
     ADVANCED_FRAME_SAMPLES, APP_RPT_FRAME_SAMPLES, AdapterError, AsteriskPcmMode,
@@ -24,10 +23,10 @@ pub(crate) const RECEIVE_UPDATE_FAILING_GENERATION: u64 = 96;
 pub(crate) const TRANSMIT_UPDATE_FAILING_GENERATION: u64 = 95;
 const ABI_VERSION: u32 = 4;
 const CHANNELS: usize = 2;
-static DESTROYED_SEVEN: AtomicUsize = AtomicUsize::new(0);
-static DESTROYED_FAILURE: AtomicUsize = AtomicUsize::new(0);
 
 thread_local! {
+    static DESTROYED_SEVEN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static DESTROYED_FAILURE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static PROGRAM_SAMPLE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.25) };
 }
 
@@ -499,12 +498,12 @@ unsafe extern "C" fn destroy(session: *mut c_void) {
     if !session.is_null() {
         // SAFETY: create transfers each allocation here exactly once.
         let session = unsafe { Box::from_raw(session.cast::<FakeSession>()) };
-        match session.generation_id {
+        let counter = match session.generation_id {
             7 => &DESTROYED_SEVEN,
             FAILING_GENERATION => &DESTROYED_FAILURE,
             _ => return,
-        }
-        .fetch_add(1, Ordering::Relaxed);
+        };
+        counter.set(counter.get() + 1);
     }
 }
 
@@ -570,7 +569,7 @@ fn advanced_binding_exposes_all_serial_owners_and_keeps_resources_alive() {
     require_send::<StationReceive>();
     require_send::<StationTransmit>();
     require_send::<StationControl>();
-    DESTROYED_SEVEN.store(0, Ordering::Relaxed);
+    DESTROYED_SEVEN.set(0);
     let media = prepared(ControllerTransport::RptAdvanced, 7)
         .bind_media(
             ring_provider(),
@@ -620,9 +619,9 @@ fn advanced_binding_exposes_all_serial_owners_and_keeps_resources_alive() {
 
     drop(receive);
     drop(transmit);
-    assert_eq!(DESTROYED_SEVEN.load(Ordering::Relaxed), 0);
+    assert_eq!(DESTROYED_SEVEN.get(), 0);
     drop(control);
-    assert_eq!(DESTROYED_SEVEN.load(Ordering::Relaxed), 1);
+    assert_eq!(DESTROYED_SEVEN.get(), 1);
 }
 
 #[test]
@@ -692,7 +691,7 @@ fn binding_rejects_mismatch_controller_setup_and_provider_failures() {
     assert!(matches!(handoff, StationMediaError::Controller(_)));
     assert!(handoff.source().is_some());
 
-    DESTROYED_FAILURE.store(0, Ordering::Relaxed);
+    DESTROYED_FAILURE.set(0);
     let radio = prepared(ControllerTransport::RptAdvanced, FAILING_GENERATION)
         .bind_media(
             ring_provider(),
@@ -704,7 +703,7 @@ fn binding_rejects_mismatch_controller_setup_and_provider_failures() {
     assert!(matches!(radio, StationMediaError::Radio(_)));
     assert!(radio.to_string().starts_with("radio session setup failed:"));
     assert!(radio.source().is_some());
-    assert_eq!(DESTROYED_FAILURE.load(Ordering::Relaxed), 1);
+    assert_eq!(DESTROYED_FAILURE.get(), 1);
 
     let ring = StationMediaError::from(ProgramRingSetupError(
         usbradioplus_ring::RingError::NoMemory,

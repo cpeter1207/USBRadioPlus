@@ -1150,7 +1150,7 @@ unsafe extern "C" fn audio_mixer_create(
     // SAFETY: the wrapper supplies writable handle storage.
     unsafe {
         *output = Box::into_raw(Box::new(FakeMixer {
-            normalized: 500,
+            normalized: index.map_or(500, |index| MIXER_LEVELS[index].load(Ordering::Acquire)),
             enabled: 0,
             index,
         }))

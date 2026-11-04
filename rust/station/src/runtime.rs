@@ -422,7 +422,7 @@ pub struct StationRuntime {
 pub struct StationControlHost {
     plan: StationPlan,
     control: StationControl,
-    controller: usbradioplus_asl3::ControllerState,
+    controller: Option<usbradioplus_asl3::ControllerState>,
     hardware: SharedHardwareState,
     _updates: Arc<UpdateMailbox>,
 }
@@ -435,8 +435,11 @@ impl StationControlHost {
     }
 
     /// Borrow serialized ASL3 controller state.
+    ///
+    /// # Panics
+    /// Panics for native media, whose controller remains in its attaching host.
     pub fn controller(&mut self) -> &mut usbradioplus_asl3::ControllerState {
-        &mut self.controller
+        self.controller.as_mut().expect("ASL3 controller media")
     }
 
     /// Borrow the radio event and diagnostic observer.
@@ -483,6 +486,32 @@ impl StationRuntime {
         Ok((runtime, control))
     }
 
+    /// Open native media with the same prepared forward/reverse update owner as
+    /// ASL3. No ASL controller or delivery worker is allocated.
+    ///
+    /// # Errors
+    /// Rejects a plan that differs from the prepared radio description, or an
+    /// audio-adapter failure. Callers retain one physical device selection.
+    pub fn open_native_planned(
+        media: crate::NativeStationMedia,
+        plan: StationPlan,
+        selected: &SelectedHardwarePlan,
+        provider: AudioProvider,
+    ) -> Result<(Self, StationControlHost), AudioError> {
+        if media.config != *plan.radio() {
+            return Err(AudioError::InvalidArgument);
+        }
+        let (runtime, control) = Self::open_native(media, selected, provider)?;
+        let control = StationControlHost {
+            plan,
+            control,
+            controller: None,
+            hardware: runtime.hardware.clone(),
+            _updates: Arc::clone(&runtime.updates),
+        };
+        Ok((runtime, control))
+    }
+
     /// Open a stopped stream around one fully prepared station.
     ///
     /// # Errors
@@ -515,7 +544,7 @@ impl StationRuntime {
         let control = StationControlHost {
             plan,
             control,
-            controller,
+            controller: Some(controller),
             hardware: runtime.hardware.clone(),
             _updates: Arc::clone(&runtime.updates),
         };
@@ -807,8 +836,10 @@ unsafe extern "C" fn transmit_callback(
                 return CALLBACK_FAILED;
             }
         } else {
+            // A manual tuner key owns its CTCSS intent even while the ordinary
+            // controller is idle. Explicit inhibition still wins over both keys.
+            controls.ctcss_inhibit |= ctcss_enabled == 0 && !controls.external_ptt_request;
             controls.external_ptt_request |= keyed != 0;
-            controls.ctcss_inhibit = ctcss_enabled == 0;
         }
         station.stage_direct(mono);
         // The direct source is already staged for this hardware callback, so no

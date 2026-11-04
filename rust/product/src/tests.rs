@@ -5,6 +5,9 @@ use super::*;
 #[path = "tests/native.rs"]
 mod native;
 
+#[path = "tests/link_observer.rs"]
+mod link_observer;
+
 #[test]
 fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();

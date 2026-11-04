@@ -138,12 +138,105 @@ pub struct ExplicitNativeProcessingPlan {
     pub transmit_dcs: bool,
 }
 
+impl From<&NativeProcessingPlan> for ExplicitNativeProcessingPlan {
+    fn from(plan: &NativeProcessingPlan) -> Self {
+        Self {
+            local: Some(plan.local.clone()),
+            voice_telemetry: Some(plan.voice_telemetry.clone()),
+            receive_graph: String::new(),
+            transmit_graph: String::new(),
+            receive_deemphasis: plan.deemphasis_enabled,
+            receive_deemphasis_corner_hz: plan.deemphasis_corner_hz,
+            transmit_preemphasis: plan.preemphasis_enabled,
+            transmit_preemphasis_corner_hz: plan.preemphasis_corner_hz,
+            receive_output_gain_db: 0,
+            receive_ctcss_mask: (1_u64 << CTCSS_TONE_COUNT) - 1,
+            transmit_dcs: true,
+        }
+    }
+}
+
+impl From<NativeProcessingPlan> for ExplicitNativeProcessingPlan {
+    fn from(plan: NativeProcessingPlan) -> Self {
+        Self::from(&plan)
+    }
+}
+
+impl From<&ExplicitNativeProcessingPlan> for ExplicitNativeProcessingPlan {
+    fn from(plan: &ExplicitNativeProcessingPlan) -> Self {
+        plan.clone()
+    }
+}
+
+impl ExplicitNativeProcessingPlan {
+    fn notch_settings(&self) -> (u64, f64) {
+        match &self.local {
+            Some(local) if local.receive.pl_filter == PlFilter::DecodedToneNotch => {
+                (self.receive_ctcss_mask, local.receive.notch_width_hz)
+            }
+            Some(_) => (0, 10.0),
+            None => (self.receive_ctcss_mask, 10.0),
+        }
+    }
+
+    fn receive_filter(
+        &self,
+        descriptions: &GraphDescriptionFactory,
+    ) -> Result<String, GraphDescriptionError> {
+        self.local.as_ref().map_or_else(
+            || Ok(self.receive_graph.clone()),
+            |local| descriptions.receive_filter(local),
+        )
+    }
+
+    fn receive_dynamics(
+        &self,
+        descriptions: &GraphDescriptionFactory,
+    ) -> Result<String, GraphDescriptionError> {
+        match &self.local {
+            Some(local) => descriptions.dynamics(local),
+            None if self.receive_output_gain_db == 0 => Ok("anull".to_owned()),
+            None => Ok(format!("volume={}dB", self.receive_output_gain_db)),
+        }
+    }
+
+    fn transmitter(
+        &self,
+        descriptions: &GraphDescriptionFactory,
+    ) -> Result<String, GraphDescriptionError> {
+        self.voice_telemetry.as_ref().map_or_else(
+            || Ok(self.transmit_graph.clone()),
+            |voice| {
+                descriptions.transmitter(
+                    voice,
+                    self.transmit_preemphasis,
+                    self.transmit_preemphasis_corner_hz,
+                )
+            },
+        )
+    }
+
+    fn dcs_filter(&self, descriptions: &GraphDescriptionFactory, turnoff: bool) -> String {
+        if self.transmit_dcs {
+            descriptions.dcs_filter(turnoff)
+        } else {
+            "anull".to_owned()
+        }
+    }
+
+    fn rnnoise_enabled(&self) -> bool {
+        self.local
+            .as_ref()
+            .is_some_and(|local| local.rnnoise_enabled)
+    }
+}
+
 /// Reusable control-plane factory for prepared processing generations.
 #[derive(Clone)]
 pub struct NativeProcessingFactory {
     descriptions: GraphDescriptionFactory,
     graph_provider: GraphProvider,
-    denoise_provider: DenoiseProvider,
+    denoise_provider: Option<DenoiseProvider>,
     stream: NativeStreamSpec,
 }
 
@@ -178,25 +271,9 @@ impl NativeProcessingFactory {
         maximum_frame_count: u32,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
         NativeStreamSpec::new(48_000, maximum_frame_count)?;
-        for (role, chain) in [
-            (ChainRole::LocalReceive, plan.local.as_ref()),
-            (ChainRole::VoiceTelemetry, plan.voice_telemetry.as_ref()),
-        ] {
-            if let Some(chain) = chain {
-                if chain.role != role {
-                    return Err(ProcessingRuntimeError::IncorrectChainRole);
-                }
-                chain.validate()?;
-            }
-        }
+        validate_plan(plan)?;
         let prepare = |description| prepare_graph(provider, description, maximum_frame_count);
-        let (notch_mask, notch_width) = match &plan.local {
-            Some(local) if local.receive.pl_filter == PlFilter::DecodedToneNotch => {
-                (plan.receive_ctcss_mask, local.receive.notch_width_hz)
-            }
-            Some(_) => (0, 10.0),
-            None => (plan.receive_ctcss_mask, 10.0),
-        };
+        let (notch_mask, notch_width) = plan.notch_settings();
         let mut notches = std::array::from_fn(|_| None);
         for tone in CtcssTone::supported() {
             if notch_mask & (1 << tone.table_index()) != 0 {
@@ -208,13 +285,6 @@ impl NativeProcessingFactory {
         let tail = (notch_mask != 0)
             .then(|| prepare(descriptions.decoded_tone_notch(55.0, notch_width)?))
             .transpose()?;
-        let dcs = |turnoff| {
-            if plan.transmit_dcs {
-                descriptions.dcs_filter(turnoff)
-            } else {
-                "anull".to_owned()
-            }
-        };
         Ok(ProcessingGeneration {
             receive_deemphasis: prepare(
                 descriptions.receive_deemphasis(
@@ -222,17 +292,10 @@ impl NativeProcessingFactory {
                     plan.receive_deemphasis_corner_hz,
                 )?,
             )?,
-            receive_filter: prepare(match &plan.local {
-                Some(local) => descriptions.receive_filter(local)?,
-                None => plan.receive_graph.clone(),
-            })?,
+            receive_filter: prepare(plan.receive_filter(descriptions)?)?,
             receive_ctcss_notch: notches,
             receive_ctcss_tail_notch: tail,
-            receive_noise_reduction: if plan
-                .local
-                .as_ref()
-                .is_some_and(|local| local.rnnoise_enabled)
-            {
+            receive_noise_reduction: if plan.rnnoise_enabled() {
                 Some(prepare_denoise(
                     denoise_provider.ok_or(DenoiseError::IncompatibleAdapter)?,
                     false,
@@ -240,21 +303,10 @@ impl NativeProcessingFactory {
             } else {
                 None
             },
-            receive_dynamics: prepare(match &plan.local {
-                Some(local) => descriptions.dynamics(local)?,
-                None if plan.receive_output_gain_db == 0 => "anull".to_owned(),
-                None => format!("volume={}dB", plan.receive_output_gain_db),
-            })?,
-            transmit_program: prepare(match &plan.voice_telemetry {
-                Some(voice) => descriptions.transmitter(
-                    voice,
-                    plan.transmit_preemphasis,
-                    plan.transmit_preemphasis_corner_hz,
-                )?,
-                None => plan.transmit_graph.clone(),
-            })?,
-            transmit_dcs_normal_filter: prepare(dcs(false))?,
-            transmit_dcs_turnoff_filter: prepare(dcs(true))?,
+            receive_dynamics: prepare(plan.receive_dynamics(descriptions)?)?,
+            transmit_program: prepare(plan.transmitter(descriptions)?)?,
+            transmit_dcs_normal_filter: prepare(plan.dcs_filter(descriptions, false))?,
+            transmit_dcs_turnoff_filter: prepare(plan.dcs_filter(descriptions, true))?,
         })
     }
 
@@ -262,6 +314,21 @@ impl NativeProcessingFactory {
     pub fn new(
         graph_provider: GraphProvider,
         denoise_provider: DenoiseProvider,
+        agc_plugin_path: impl Into<String>,
+        maximum_frame_count: u32,
+    ) -> Result<Self, ProcessingRuntimeError> {
+        Self::new_explicit(
+            graph_provider,
+            Some(denoise_provider),
+            agc_plugin_path,
+            maximum_frame_count,
+        )
+    }
+
+    /// Construct a reusable native factory; RNNoise is required only by enabled profiles.
+    pub fn new_explicit(
+        graph_provider: GraphProvider,
+        denoise_provider: Option<DenoiseProvider>,
         agc_plugin_path: impl Into<String>,
         maximum_frame_count: u32,
     ) -> Result<Self, ProcessingRuntimeError> {
@@ -281,25 +348,13 @@ impl NativeProcessingFactory {
     /// Prepare and warm every processor before publication to audio owners.
     pub fn prepare(
         &self,
-        plan: &NativeProcessingPlan,
+        plan: impl Into<ExplicitNativeProcessingPlan>,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
         Self::prepare_explicit_graphs(
             self.graph_provider,
-            Some(self.denoise_provider),
+            self.denoise_provider,
             &self.descriptions,
-            &ExplicitNativeProcessingPlan {
-                local: Some(plan.local.clone()),
-                voice_telemetry: Some(plan.voice_telemetry.clone()),
-                receive_graph: String::new(),
-                transmit_graph: String::new(),
-                receive_deemphasis: plan.deemphasis_enabled,
-                receive_deemphasis_corner_hz: plan.deemphasis_corner_hz,
-                transmit_preemphasis: plan.preemphasis_enabled,
-                transmit_preemphasis_corner_hz: plan.preemphasis_corner_hz,
-                receive_output_gain_db: 0,
-                receive_ctcss_mask: (1_u64 << CTCSS_TONE_COUNT) - 1,
-                transmit_dcs: true,
-            },
+            &plan.into(),
             self.stream.maximum_frame_count(),
         )
     }
@@ -317,67 +372,66 @@ impl NativeProcessingFactory {
     /// intended for a callback-boundary handoff, not a second radio session.
     pub unsafe fn prepare_replacement(
         &self,
-        plan: &NativeProcessingPlan,
-        previous_plan: &NativeProcessingPlan,
+        plan: impl Into<ExplicitNativeProcessingPlan>,
+        previous_plan: impl Into<ExplicitNativeProcessingPlan>,
         previous: &ProcessingGeneration,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
+        let plan = plan.into();
+        let previous_plan = previous_plan.into();
         if plan == previous_plan {
-            // The admission contract supplies the already-validated old plan.
-            // In particular, a control snapshot need not format the notch bank.
+            // A control snapshot retains validated leases without formatting graphs.
             return Ok(previous.clone_for_owner());
         }
-        validate_plan(plan)?;
+        validate_plan(&plan)?;
         let maximum = self.stream.maximum_frame_count();
+        let (notch_mask, notch_width) = plan.notch_settings();
         let mut notches = std::array::from_fn(|_| None);
-        let mut tail_notch = None;
-        if plan.local.receive.pl_filter == PlFilter::DecodedToneNotch {
-            for tone in CtcssTone::supported() {
-                notches[tone.table_index()] = Some(
-                    if let Some(old) = &previous.receive_ctcss_notch[tone.table_index()] {
-                        // Valid plans fix notch width at 10 Hz, so the same
-                        // tone retains the exact previous graph and history.
-                        old.clone()
-                    } else {
-                        self.prepare_graph(
-                            self.descriptions.decoded_tone_notch(
-                                f64::from(tone.as_hz()),
-                                plan.local.receive.notch_width_hz,
-                            )?,
-                            maximum,
-                        )?
-                    },
-                );
+        for tone in CtcssTone::supported() {
+            if notch_mask & (1 << tone.table_index()) != 0 {
+                let old = previous.receive_ctcss_notch[tone.table_index()].as_ref();
+                notches[tone.table_index()] = Some(match old {
+                    Some(old) => old.clone(),
+                    _ => self.prepare_graph(
+                        self.descriptions
+                            .decoded_tone_notch(f64::from(tone.as_hz()), notch_width)?,
+                        maximum,
+                    )?,
+                });
             }
-            tail_notch = Some(if let Some(old) = &previous.receive_ctcss_tail_notch {
-                old.clone()
-            } else {
-                self.prepare_graph(
-                    self.descriptions
-                        .decoded_tone_notch(55.0, plan.local.receive.notch_width_hz)?,
-                    maximum,
-                )?
-            });
         }
+        let tail_notch = if notch_mask == 0 {
+            None
+        } else {
+            Some(match &previous.receive_ctcss_tail_notch {
+                Some(old) => old.clone(),
+                _ => self.prepare_graph(
+                    self.descriptions.decoded_tone_notch(55.0, notch_width)?,
+                    maximum,
+                )?,
+            })
+        };
         Ok(ProcessingGeneration {
             receive_deemphasis: self.replacement_graph(
-                self.descriptions
-                    .receive_deemphasis(plan.deemphasis_enabled, plan.deemphasis_corner_hz)?,
                 self.descriptions.receive_deemphasis(
-                    previous_plan.deemphasis_enabled,
-                    previous_plan.deemphasis_corner_hz,
+                    plan.receive_deemphasis,
+                    plan.receive_deemphasis_corner_hz,
+                )?,
+                self.descriptions.receive_deemphasis(
+                    previous_plan.receive_deemphasis,
+                    previous_plan.receive_deemphasis_corner_hz,
                 )?,
                 &previous.receive_deemphasis,
                 0,
             )?,
             receive_filter: self.replacement_graph(
-                self.descriptions.receive_filter(&plan.local)?,
-                self.descriptions.receive_filter(&previous_plan.local)?,
+                plan.receive_filter(&self.descriptions)?,
+                previous_plan.receive_filter(&self.descriptions)?,
                 &previous.receive_filter,
                 0,
             )?,
             receive_ctcss_notch: notches,
             receive_ctcss_tail_notch: tail_notch,
-            receive_noise_reduction: if plan.local.rnnoise_enabled {
+            receive_noise_reduction: if plan.rnnoise_enabled() {
                 Some(match &previous.receive_noise_reduction {
                     Some(old) => old.clone(),
                     None => self.prepare_denoise(true)?,
@@ -386,27 +440,29 @@ impl NativeProcessingFactory {
                 None
             },
             receive_dynamics: self.replacement_graph(
-                self.descriptions.dynamics(&plan.local)?,
-                self.descriptions.dynamics(&previous_plan.local)?,
+                plan.receive_dynamics(&self.descriptions)?,
+                previous_plan.receive_dynamics(&self.descriptions)?,
                 &previous.receive_dynamics,
                 0,
             )?,
             transmit_program: self.replacement_graph(
-                self.descriptions.transmitter(
-                    &plan.voice_telemetry,
-                    plan.preemphasis_enabled,
-                    plan.preemphasis_corner_hz,
-                )?,
-                self.descriptions.transmitter(
-                    &previous_plan.voice_telemetry,
-                    previous_plan.preemphasis_enabled,
-                    previous_plan.preemphasis_corner_hz,
-                )?,
+                plan.transmitter(&self.descriptions)?,
+                previous_plan.transmitter(&self.descriptions)?,
                 &previous.transmit_program,
-                transmit_lookahead_frames(plan),
+                transmit_lookahead_frames(&plan),
             )?,
-            transmit_dcs_normal_filter: previous.transmit_dcs_normal_filter.clone(),
-            transmit_dcs_turnoff_filter: previous.transmit_dcs_turnoff_filter.clone(),
+            transmit_dcs_normal_filter: self.replacement_graph(
+                plan.dcs_filter(&self.descriptions, false),
+                previous_plan.dcs_filter(&self.descriptions, false),
+                &previous.transmit_dcs_normal_filter,
+                0,
+            )?,
+            transmit_dcs_turnoff_filter: self.replacement_graph(
+                plan.dcs_filter(&self.descriptions, true),
+                previous_plan.dcs_filter(&self.descriptions, true),
+                &previous.transmit_dcs_turnoff_filter,
+                0,
+            )?,
         })
     }
 
@@ -420,11 +476,12 @@ impl NativeProcessingFactory {
     /// original owner active instead; the inverse also handles that case.
     pub unsafe fn prepare_restore(
         &self,
-        target_plan: &NativeProcessingPlan,
+        target_plan: impl Into<ExplicitNativeProcessingPlan>,
         target: &ProcessingGeneration,
         current: &ProcessingGeneration,
     ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
-        validate_plan(target_plan)?;
+        let target_plan = target_plan.into();
+        validate_plan(&target_plan)?;
         let restore = |target: &SharedGraph, current: &SharedGraph, lookahead| {
             if target.0.primary.pointer() == current.0.primary.pointer() {
                 Ok(target.clone())
@@ -470,10 +527,18 @@ impl NativeProcessingFactory {
             transmit_program: restore(
                 &target.transmit_program,
                 &current.transmit_program,
-                transmit_lookahead_frames(target_plan),
+                transmit_lookahead_frames(&target_plan),
             )?,
-            transmit_dcs_normal_filter: target.transmit_dcs_normal_filter.clone(),
-            transmit_dcs_turnoff_filter: target.transmit_dcs_turnoff_filter.clone(),
+            transmit_dcs_normal_filter: restore(
+                &target.transmit_dcs_normal_filter,
+                &current.transmit_dcs_normal_filter,
+                0,
+            )?,
+            transmit_dcs_turnoff_filter: restore(
+                &target.transmit_dcs_turnoff_filter,
+                &current.transmit_dcs_turnoff_filter,
+                0,
+            )?,
         })
     }
 
@@ -494,7 +559,11 @@ impl NativeProcessingFactory {
     }
 
     fn prepare_denoise(&self, activate: bool) -> Result<SharedDenoise, ProcessingRuntimeError> {
-        prepare_denoise(self.denoise_provider, activate)
+        prepare_denoise(
+            self.denoise_provider
+                .ok_or(DenoiseError::IncompatibleAdapter)?,
+            activate,
+        )
     }
 
     fn transition_graph(
@@ -766,23 +835,31 @@ impl ProcessingGeneration {
     }
 }
 
-fn validate_plan(plan: &NativeProcessingPlan) -> Result<(), ProcessingRuntimeError> {
-    if plan.local.role != ChainRole::LocalReceive
-        || plan.voice_telemetry.role != ChainRole::VoiceTelemetry
-    {
-        return Err(ProcessingRuntimeError::IncorrectChainRole);
+fn validate_plan(
+    plan: impl Into<ExplicitNativeProcessingPlan>,
+) -> Result<(), ProcessingRuntimeError> {
+    let plan = plan.into();
+    for (role, chain) in [
+        (ChainRole::LocalReceive, plan.local.as_ref()),
+        (ChainRole::VoiceTelemetry, plan.voice_telemetry.as_ref()),
+    ] {
+        if let Some(chain) = chain {
+            if chain.role != role {
+                return Err(ProcessingRuntimeError::IncorrectChainRole);
+            }
+            chain.validate()?;
+        }
     }
-    plan.local.validate()?;
-    plan.voice_telemetry.validate()?;
     Ok(())
 }
 
-fn transmit_lookahead_frames(plan: &NativeProcessingPlan) -> usize {
-    if plan.voice_telemetry.transmit_tail.limiter_enabled {
-        (plan.voice_telemetry.transmit_tail.lookahead_ms * 48.0).ceil() as usize
-    } else {
-        0
-    }
+fn transmit_lookahead_frames(plan: &ExplicitNativeProcessingPlan) -> usize {
+    plan.voice_telemetry
+        .as_ref()
+        .filter(|voice| voice.transmit_tail.limiter_enabled)
+        .map_or(0, |voice| {
+            (voice.transmit_tail.lookahead_ms * 48.0).ceil() as usize
+        })
 }
 
 fn graph_port(graph: &mut SharedGraph) -> ProcessorPort<'_> {

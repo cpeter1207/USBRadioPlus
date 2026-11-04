@@ -26,7 +26,11 @@ static FAILURE: AtomicU32 = AtomicU32::new(0);
 static MIXER_PATHS_MODE: AtomicU32 = AtomicU32::new(0);
 static DEVICE_INTERFACE_MODE: AtomicU32 = AtomicU32::new(0);
 static EEPROM_FLAGS: AtomicU32 = AtomicU32::new(3);
+static EEPROM_WRITES: AtomicU32 = AtomicU32::new(0);
 static NATIVE_IDENTITY_MODE: AtomicU32 = AtomicU32::new(0);
+static MIXER_LEVELS: [AtomicU32; 3] = [const { AtomicU32::new(500) }; 3];
+static MIXER_LEVEL_WRITES: AtomicU32 = AtomicU32::new(0);
+static MIXER_SWITCH_WRITES: AtomicU32 = AtomicU32::new(0);
 static TUNING_IO_CALLS: AtomicU32 = AtomicU32::new(0);
 static GPIO_OPENS: AtomicU32 = AtomicU32::new(0);
 static GPIO_INITIAL_BYTE: AtomicU32 = AtomicU32::new(0);
@@ -89,7 +93,13 @@ fn reset_test_state() {
     MIXER_PATHS_MODE.store(0, Ordering::Release);
     DEVICE_INTERFACE_MODE.store(0, Ordering::Release);
     EEPROM_FLAGS.store(3, Ordering::Release);
+    EEPROM_WRITES.store(0, Ordering::Release);
     NATIVE_IDENTITY_MODE.store(0, Ordering::Release);
+    for level in &MIXER_LEVELS {
+        level.store(500, Ordering::Release);
+    }
+    MIXER_LEVEL_WRITES.store(0, Ordering::Release);
+    MIXER_SWITCH_WRITES.store(0, Ordering::Release);
     TUNING_IO_CALLS.store(0, Ordering::Release);
     GPIO_OPENS.store(0, Ordering::Release);
     GPIO_INITIAL_BYTE.store(0, Ordering::Release);
@@ -255,13 +265,49 @@ fn mixer_db_scale_preserves_the_established_midpoint() {
 fn configured_hardware_gains_validate_before_adapter_access_and_skip_omitted_controls() {
     let _guard = test_guard();
     reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    let selected = audio_provider()
+        .select_device(&plan.audio_selector)
+        .unwrap();
     FAILURE.store(FAIL_AUDIO_PATHS, Ordering::Release);
-    assert!(apply_hardware_gains(audio_provider(), "3-1:1.0", [None; 3]).is_ok());
     for gain in [-30.01, 30.01, f64::NAN, f64::INFINITY] {
         assert!(matches!(
-            apply_hardware_gains(audio_provider(), "3-1:1.0", [Some(gain), None, None]),
+            HardwareMixers::apply_native_gains(
+                audio_provider(),
+                &selected.interface_path,
+                [Some(gain), None, None],
+                None
+            ),
             Err(AudioError::InvalidArgument)
         ));
+    }
+    HardwareMixers::apply_native_gains(audio_provider(), &selected.interface_path, [None; 3], None)
+        .unwrap();
+    assert_eq!(FAILURE.swap(0, Ordering::AcqRel), FAIL_AUDIO_PATHS);
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
+    HardwareMixers::apply_native_gains(
+        audio_provider(),
+        &selected.interface_path,
+        [Some(3.0), None, Some(-3.0)],
+        None,
+    )
+    .unwrap();
+    let configured = HardwareMixers::native(audio_provider(), &selected).unwrap();
+    assert_eq!(
+        configured.levels,
+        [mixer_level(3.0), 500, mixer_level(-3.0)]
+    );
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 2);
+    assert_eq!(MIXER_SWITCH_WRITES.load(Ordering::Acquire), 0);
+    for (mode, expected) in [
+        (1, AudioError::Unsupported),
+        (3, AudioError::AdapterFailure),
+    ] {
+        MIXER_PATHS_MODE.store(mode, Ordering::Release);
+        assert_eq!(
+            HardwareMixers::native(audio_provider(), &selected).err(),
+            Some(expected)
+        );
     }
     reset_test_state();
 }
@@ -949,7 +995,11 @@ unsafe extern "C" fn audio_mixer_create(
     // SAFETY: the wrapper supplies writable handle storage.
     unsafe {
         *output = Box::into_raw(Box::new(FakeMixer {
-            normalized: 500,
+            normalized: if (1..=3).contains(&kind) {
+                MIXER_LEVELS[kind as usize - 1].load(Ordering::Acquire)
+            } else {
+                500
+            },
             enabled: 0,
             kind,
         }))
@@ -978,6 +1028,7 @@ unsafe extern "C" fn audio_mixer_get_i64(mixer: *const c_void, value: *mut i64) 
 }
 
 unsafe extern "C" fn audio_mixer_set_i64(mixer: *mut c_void, value: i64) -> c_int {
+    MIXER_LEVEL_WRITES.fetch_add(1, Ordering::AcqRel);
     // SAFETY: the handle originates from audio_mixer_create.
     let kind = unsafe { (*mixer.cast::<FakeMixer>()).kind };
     if fail_once(FAIL_MIXER_LEVEL)
@@ -988,6 +1039,9 @@ unsafe extern "C" fn audio_mixer_set_i64(mixer: *mut c_void, value: i64) -> c_in
     }
     // SAFETY: the handle is exclusively owned by the wrapper.
     unsafe { (*mixer.cast::<FakeMixer>()).normalized = (value / 2) as u32 };
+    if (1..=3).contains(&kind) {
+        MIXER_LEVELS[kind as usize - 1].store((value / 2) as u32, Ordering::Release);
+    }
     OK
 }
 
@@ -998,11 +1052,17 @@ unsafe extern "C" fn audio_mixer_get(mixer: *const c_void, value: *mut u32) -> c
 }
 
 unsafe extern "C" fn audio_mixer_set(mixer: *mut c_void, value: u32) -> c_int {
+    MIXER_LEVEL_WRITES.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_MIXER_LEVEL) {
         return -1;
     }
     // SAFETY: the handle is exclusively owned by the wrapper.
     unsafe { (*mixer.cast::<FakeMixer>()).normalized = value };
+    // SAFETY: the uniquely owned fake handle supplies its selected hardware path.
+    let kind = unsafe { (*mixer.cast::<FakeMixer>()).kind };
+    if (1..=3).contains(&kind) {
+        MIXER_LEVELS[kind as usize - 1].store(value, Ordering::Release);
+    }
     OK
 }
 
@@ -1013,6 +1073,7 @@ unsafe extern "C" fn audio_mixer_get_switch(mixer: *const c_void, value: *mut u3
 }
 
 unsafe extern "C" fn audio_mixer_set_switch(mixer: *mut c_void, value: u32) -> c_int {
+    MIXER_SWITCH_WRITES.fetch_add(1, Ordering::AcqRel);
     // SAFETY: the handle originates from audio_mixer_create.
     let kind = unsafe { (*mixer.cast::<FakeMixer>()).kind };
     if fail_once(FAIL_MIXER_SWITCH)
@@ -1077,8 +1138,8 @@ unsafe extern "C" fn audio_mixer_paths(
     // SAFETY: the wrapper supplies writable result storage.
     let output = unsafe { &mut *output };
     output.abi_version = AUDIO_ABI;
-    output.receive_count = 1;
     let mode = MIXER_PATHS_MODE.load(Ordering::Acquire);
+    output.receive_count = if mode == 3 { 0 } else { 1 };
     output.transmit_count = if mode == 1 { 1 } else { 2 };
     output.sidetone_count = 1;
     output.compatibility_count = 1;
@@ -1482,6 +1543,7 @@ unsafe extern "C" fn gpio_read_eeprom(_device: *mut c_void, image: *mut GpioEepr
 }
 
 unsafe extern "C" fn gpio_write_eeprom(_device: *mut c_void, image: *mut GpioEeprom) -> c_int {
+    EEPROM_WRITES.fetch_add(1, Ordering::AcqRel);
     TUNING_IO_CALLS.fetch_add(1, Ordering::AcqRel);
     if fail_once(FAIL_EEPROM_WRITE) {
         return -1;
@@ -1953,6 +2015,327 @@ fn native_service_publishes_inputs_and_unkeys_without_mixer_or_eeprom_io() {
     service.stop().unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 0);
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn native_maintenance_reuses_preflight_mixers_eeprom_and_live_device_owner() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(true);
+    let (preflight, selected) =
+        HardwarePreflight::native(&plan, true, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut configuration = resolved_hardware_channel().into_config();
+    assert!(preflight.apply_startup_tuning(&mut configuration));
+    assert_eq!(configuration.station.receive.squelch_level, 654);
+    assert_eq!(EEPROM_WRITES.load(Ordering::Acquire), 0);
+    let state = SharedHardwareState::default();
+    // Native startup must not acquire sidetone/compatibility mixer paths.
+    FAILURE.store(FAIL_OPEN_SIDETONE, Ordering::Release);
+    let mut maintenance = HardwareMaintenance::native(
+        &plan,
+        preflight,
+        selected,
+        state.clone(),
+        audio_provider(),
+        gpio_provider(),
+        [None; 3],
+    )
+    .unwrap();
+    assert_eq!(FAILURE.swap(0, Ordering::AcqRel), FAIL_OPEN_SIDETONE);
+    assert_eq!(EEPROM_WRITES.load(Ordering::Acquire), 0);
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
+    assert!(matches!(
+        maintenance.read_eeprom(),
+        Err(HardwareStationError::NotRunning)
+    ));
+    maintenance.start().unwrap();
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+        321
+    );
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    let replacement = maintenance
+        .preflight_replacement(&plan, true, audio_provider(), gpio_provider(), 960)
+        .unwrap();
+    assert!(replacement.0.apply_startup_tuning(&mut configuration));
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    maintenance
+        .set_mixer_level(HardwareMixer::Receive, 222)
+        .unwrap();
+    maintenance
+        .set_mixer_level(HardwareMixer::TransmitA, 333)
+        .unwrap();
+    let tuning = maintenance
+        .save_current_tuning_to_eeprom(&configuration)
+        .unwrap();
+    assert_eq!(tuning.receive_mixer_level(), 222);
+    assert_eq!(tuning.transmit_a_mixer_level(), 333);
+    assert_eq!(EEPROM_WRITES.load(Ordering::Acquire), 1);
+    maintenance.stop().unwrap();
+    maintenance.start().unwrap();
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+        222
+    );
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::TransmitA).unwrap(),
+        333
+    );
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    let mut next = configuration.clone();
+    next.station.hardware.input_gain_db = 3.0;
+    maintenance
+        .begin_mixer_update(&configuration, &next, [false; 3])
+        .unwrap();
+    assert!(matches!(
+        maintenance.begin_mixer_update(&configuration, &next, [false; 3]),
+        Err(HardwareStationError::Update(StationUpdateError::Busy))
+    ));
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+        mixer_level(3.0)
+    );
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::TransmitA).unwrap(),
+        333
+    );
+    maintenance.finish_mixer_update(false).unwrap();
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+        222
+    );
+    maintenance
+        .begin_mixer_update(&configuration, &next, [false; 3])
+        .unwrap();
+    maintenance.finish_mixer_update(true).unwrap();
+    assert_eq!(
+        maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+        mixer_level(3.0)
+    );
+    let mut image = maintenance.read_eeprom().unwrap();
+    maintenance.write_eeprom(&mut image).unwrap();
+    maintenance.set_transmit_request(true, true, CtcssTone::from_tenths_hz(1_000));
+    maintenance.set_calibrated_test_tone(true);
+    maintenance.set_ctcss_inhibited(true);
+    maintenance.set_subaudible_override(true);
+    assert!(state.requests().transmit && state.requests().calibrated_test_tone);
+    assert!(state.requests().ctcss_inhibit && state.requests().subaudible_override);
+    maintenance.clear_manual_requests();
+    assert_eq!(
+        state.requests(),
+        usbradioplus_station::ControllerRequests::default()
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    maintenance.stop().unwrap();
+    assert!(matches!(
+        maintenance.read_eeprom(),
+        Err(HardwareStationError::NotRunning)
+    ));
+}
+
+#[test]
+fn native_maintenance_rejects_changed_identity_and_invalid_gains_before_acquisition() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    let (preflight, selected) =
+        HardwarePreflight::native(&plan, false, audio_provider(), gpio_provider(), 960).unwrap();
+    for field in 0..3 {
+        let mut changed = selected.clone();
+        match field {
+            0 => changed.stream.input_device_index += 1,
+            1 => changed.stream.output_device_index += 1,
+            _ => changed.cm119.usb_port_path = "another-device".to_owned(),
+        }
+        assert!(matches!(
+            HardwareMaintenance::native(
+                &plan,
+                preflight.clone(),
+                changed,
+                SharedHardwareState::default(),
+                audio_provider(),
+                gpio_provider(),
+                [None; 3],
+            ),
+            Err(HardwareStationError::Plan(
+                HardwarePlanError::UsbIdentityMismatch
+            ))
+        ));
+    }
+    for gain in [-30.01, 30.01, f64::NAN, f64::INFINITY] {
+        assert!(matches!(
+            HardwareMaintenance::native(
+                &plan,
+                preflight.clone(),
+                selected.clone(),
+                SharedHardwareState::default(),
+                audio_provider(),
+                gpio_provider(),
+                [Some(gain), None, None],
+            ),
+            Err(HardwareStationError::Audio(AudioError::InvalidArgument))
+        ));
+    }
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), 0);
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn committed_native_gain_intents_replace_startup_tuning_without_rewriting_running_mixers() {
+    let _guard = test_guard();
+    for eeprom_enabled in [true, false] {
+        reset_test_state();
+        let (plan, _) = selected_hardware(false);
+        let (preflight, selected) = HardwarePreflight::native(
+            &plan,
+            eeprom_enabled,
+            audio_provider(),
+            gpio_provider(),
+            960,
+        )
+        .unwrap();
+        let mut configuration = resolved_hardware_channel().into_config();
+        configuration.station.hardware.eeprom_enabled = eeprom_enabled;
+        configuration.station.hardware.input_gain_db = 3.0;
+        configuration.station.hardware.output_a_gain_db = -6.0;
+        configuration.station.hardware.output_b_gain_db = 0.0;
+        let mut maintenance = HardwareMaintenance::native(
+            &plan,
+            preflight,
+            selected,
+            SharedHardwareState::default(),
+            audio_provider(),
+            gpio_provider(),
+            [None; 3],
+        )
+        .unwrap();
+        maintenance.start().unwrap();
+        let writes = MIXER_LEVEL_WRITES.load(Ordering::Acquire);
+        maintenance.adopt_native_gain_intents([Some(-12.0), None, Some(6.0)], &configuration);
+        assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), writes);
+        assert_eq!(
+            maintenance.mixer_level(HardwareMixer::Receive).unwrap(),
+            if eeprom_enabled { 321 } else { 500 }
+        );
+        maintenance.stop().unwrap();
+        maintenance.start().unwrap();
+        let expected = if eeprom_enabled {
+            [mixer_level(3.0), mixer_level(-6.0), mixer_level(0.0)]
+        } else {
+            [mixer_level(-12.0), 500, mixer_level(6.0)]
+        };
+        for (mixer, level) in [
+            HardwareMixer::Receive,
+            HardwareMixer::TransmitA,
+            HardwareMixer::TransmitB,
+        ]
+        .into_iter()
+        .zip(expected)
+        {
+            assert_eq!(maintenance.mixer_level(mixer).unwrap(), level);
+        }
+        let opens = GPIO_OPENS.load(Ordering::Acquire);
+        let writes = MIXER_LEVEL_WRITES.load(Ordering::Acquire);
+        maintenance.start().unwrap();
+        assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+        assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), writes);
+        assert_eq!(MIXER_SWITCH_WRITES.load(Ordering::Acquire), 0);
+        maintenance.stop().unwrap();
+    }
+}
+
+#[test]
+fn shared_maintenance_preserves_asl_mixers_when_native_gain_intents_are_inapplicable() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let configuration = station.configuration().clone();
+    let writes = MIXER_LEVEL_WRITES.load(Ordering::Acquire);
+    let maintenance = station.maintenance_mut();
+    maintenance.adopt_native_gain_intents([Some(-12.0); 3], &configuration);
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), writes);
+    for (mixer, level) in [
+        (HardwareMixer::Receive, 321),
+        (HardwareMixer::TransmitA, 411),
+        (HardwareMixer::TransmitB, 512),
+    ] {
+        assert_eq!(maintenance.mixer_level(mixer).unwrap(), level);
+    }
+    maintenance.start().unwrap();
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    maintenance.start().unwrap();
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    maintenance.stop().unwrap();
+}
+
+#[test]
+fn native_mixer_snapshot_retries_failed_discovery_and_reuses_its_retained_controls() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    let (preflight, selected) =
+        HardwarePreflight::native(&plan, false, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut maintenance = HardwareMaintenance::native(
+        &plan,
+        preflight,
+        selected,
+        SharedHardwareState::default(),
+        audio_provider(),
+        gpio_provider(),
+        [None; 3],
+    )
+    .unwrap();
+    maintenance.start().unwrap();
+    for (mode, expected) in [
+        (1, AudioError::Unsupported),
+        (3, AudioError::AdapterFailure),
+    ] {
+        MIXER_PATHS_MODE.store(mode, Ordering::Release);
+        assert!(matches!(
+            maintenance.mixer_levels(),
+            Err(HardwareStationError::Audio(error)) if error == expected
+        ));
+    }
+    MIXER_PATHS_MODE.store(0, Ordering::Release);
+    for (mixer, level) in MIXER_LEVELS.iter().zip([222, 333, 444]) {
+        mixer.store(level, Ordering::Release);
+    }
+    let discoveries = TUNING_IO_CALLS.load(Ordering::Acquire);
+    assert_eq!(maintenance.mixer_levels().unwrap(), [222, 333, 444]);
+    let initialized = TUNING_IO_CALLS.load(Ordering::Acquire);
+    assert!(initialized > discoveries);
+    assert_eq!(maintenance.mixer_levels().unwrap(), [222, 333, 444]);
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), initialized);
+    assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
+    maintenance.stop().unwrap();
+}
+
+#[test]
+fn native_preflight_disabled_invalid_and_unreadable_eeprom_preserve_file_tuning() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(false);
+    let original = resolved_hardware_channel().into_config();
+    let (disabled, _) =
+        HardwarePreflight::native(&plan, false, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut configuration = original.clone();
+    assert!(!disabled.apply_startup_tuning(&mut configuration));
+    assert_eq!(configuration, original);
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+    for flags in [0, 1, 2] {
+        EEPROM_FLAGS.store(flags, Ordering::Release);
+        let (invalid, _) =
+            HardwarePreflight::native(&plan, true, audio_provider(), gpio_provider(), 960).unwrap();
+        assert!(!invalid.apply_startup_tuning(&mut configuration));
+        assert_eq!(configuration, original);
+    }
+    FAILURE.store(FAIL_EEPROM_READ, Ordering::Release);
+    let (unreadable, _) =
+        HardwarePreflight::native(&plan, true, audio_provider(), gpio_provider(), 960).unwrap();
+    assert!(!unreadable.apply_startup_tuning(&mut configuration));
+    assert_eq!(configuration, original);
+    assert_eq!(EEPROM_WRITES.load(Ordering::Acquire), 0);
 }
 
 #[test]
@@ -3901,6 +4284,7 @@ fn hardware_station_preflights_runs_controls_and_stops_cleanly() {
     assert_eq!(diagnostics.runtime.audio.callback_count, 2);
     assert_eq!(diagnostics.timing.sample_rate_hz, 48_000.0);
     assert_eq!(diagnostics.receive.input_peak, 0.5);
+    assert_eq!(station.receive_observation(), diagnostics.receive);
     station
         .apply_control(ControlMessage::TransmitUnkey)
         .unwrap();

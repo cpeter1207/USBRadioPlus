@@ -10,6 +10,7 @@ libdir ?= $(exec_prefix)/lib
 includedir ?= $(prefix)/include
 datarootdir ?= $(prefix)/share
 docdir ?= $(datarootdir)/doc/$(PACKAGE)
+tunerdocdir ?= $(datarootdir)/doc/usbradioplus-tune
 mandir ?= $(datarootdir)/man
 sysconfdir ?= /etc
 MULTIARCH ?= $(strip $(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null))
@@ -365,6 +366,7 @@ $(AGC_PLUGIN): $(AGC_PLUGIN_VERSIONED)
 
 check: all
 	$(PYTHON) -m pytest -q tests_py
+	URP_BUILD_DIR="$(abspath $(BUILD_DIR))" $(PYTHON) tests/test_product_dso.py TunerInstallTests
 	CARGO_TARGET_DIR="$(CARGO_TARGET_DIR)" URP_PRODUCT_DSO="$(abspath $(PRODUCT_VERSIONED))" \
 		$(CARGO) test --workspace --all-targets --locked
 	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
@@ -446,6 +448,7 @@ coverage: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_
 		RPTADV_FFMPEG_CFLAGS="$(RPTADV_FFMPEG_CFLAGS)" RPTADV_FFMPEG_LIBS="$(RPTADV_FFMPEG_LIBS)" \
 		sh ./tests/run_c_tests.sh
 	$(MAKE) -j$(PARALLEL_JOBS) all CFLAGS="--coverage -O0 -g" LDFLAGS="--coverage"
+	URP_BUILD_DIR="$(abspath $(BUILD_DIR))" $(PYTHON) tests/test_product_dso.py TunerInstallTests
 	LD_LIBRARY_PATH="$(if $(strip $(RPCR_SOURCE)),$(RPCR_PREFIX)/lib:)$(if $(strip $(RPTADV_RADIO_SOURCE)),$(RPTADV_RADIO_LIBDIR):)$(if $(strip $(RPTADV_SAMPLERATE_SOURCE)),$(RPTADV_SAMPLERATE_LIBDIR):)$(if $(strip $(RPTADV_FFMPEG_SOURCE)),$(RPTADV_FFMPEG_LIBDIR):)$${LD_LIBRARY_PATH:-}" \
 		sh ./tests/run_coverage_integration.sh
 	# The smoke run validates real Asterisk startup. Measure coverage from the
@@ -508,7 +511,7 @@ install: all
 	$(INSTALL) -d $(DESTDIR)$(asteriskmoduledir) $(DESTDIR)$(USBRADIOPLUS_LIBDIR) \
 		$(DESTDIR)$(USBRADIOPLUS_LIBDIR)/pkgconfig $(DESTDIR)$(includedir) \
 		$(DESTDIR)$(agcplugindir) $(DESTDIR)$(sbindir) \
-		$(DESTDIR)$(docdir) $(DESTDIR)$(mandir)/man5 \
+		$(DESTDIR)$(docdir) $(DESTDIR)$(tunerdocdir) $(DESTDIR)$(mandir)/man5 \
 		$(DESTDIR)$(mandir)/man7 $(DESTDIR)$(mandir)/man8 \
 		$(DESTDIR)$(sysconfdir)/asterisk
 	$(INSTALL_DATA) $(MODULE) $(DESTDIR)$(asteriskmoduledir)/chan_usbradioplus.so
@@ -527,6 +530,7 @@ install: all
 	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/agc.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/standalone-tuner.md $(DESTDIR)$(tunerdocdir)/
 	@if test ! -e $(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; then \
 		$(INSTALL_DATA) examples/usbradioplus.conf.sample \
 			$(DESTDIR)$(sysconfdir)/asterisk/usbradioplus.conf; \
@@ -561,7 +565,8 @@ uninstall:
 		$(DESTDIR)$(docdir)/CHANGELOG.md \
 		$(DESTDIR)$(docdir)/native-radio.md \
 		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
-		$(DESTDIR)$(docdir)/agc.md
+		$(DESTDIR)$(docdir)/agc.md \
+		$(DESTDIR)$(tunerdocdir)/standalone-tuner.md
 
 dist: $(TARBALL)
 

@@ -603,6 +603,8 @@ fn public_enum_text_and_error_context_are_complete() {
         (JitterBufferImplementation::Adaptive.to_string(), "adaptive"),
         (HardwareInterfaceType::DudeUsb.to_string(), "0"),
         (HardwareInterfaceType::SphUsb.to_string(), "1"),
+        (HardwareInterfaceType::Nhrc.to_string(), "2"),
+        (HardwareInterfaceType::Custom.to_string(), "3"),
         (HardwareOutputAssignment::Off.to_string(), "off"),
         (HardwareOutputAssignment::Voice.to_string(), "voice"),
         (HardwareOutputAssignment::Ctcss.to_string(), "ctcss"),
@@ -722,7 +724,15 @@ fn private_value_parsers_cover_every_supported_spelling_and_failure() {
         parse_hardware_interface("1").unwrap(),
         HardwareInterfaceType::SphUsb
     );
-    assert!(parse_hardware_interface("2").is_err());
+    assert_eq!(
+        parse_hardware_interface("2").unwrap(),
+        HardwareInterfaceType::Nhrc
+    );
+    assert_eq!(
+        parse_hardware_interface("3").unwrap(),
+        HardwareInterfaceType::Custom
+    );
+    assert!(parse_hardware_interface("4").is_err());
 
     for (text, expected) in [
         ("off", HardwareOutputAssignment::Off),

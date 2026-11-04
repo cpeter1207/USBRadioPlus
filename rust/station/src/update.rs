@@ -344,6 +344,9 @@ impl StationRuntime {
         if !Arc::ptr_eq(&self.updates, &control._updates) {
             return Err(StationUpdateError::Incompatible);
         }
+        // Successful stop quiesces both owners. Drain any forward half before
+        // deciding whether its retained reverse generation can be retired.
+        self.apply_stopped_update();
         let mut storage = self
             .updates
             .storage

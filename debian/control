@@ -21,11 +21,23 @@ Architecture: amd64 arm64
 Conflicts: usbradioplus-asl3105
 Replaces: usbradioplus-asl3105
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${usbradioplus:ASLDepends},
- libusbradioplus-product1 (= ${binary:Version}), whiptail
+ libusbradioplus-product1 (= ${binary:Version}),
+ usbradioplus-tune (= ${binary:Version})
 Description: enhanced USB radio channel driver for AllStarLink
  USBRadioPlus is an AllStarLink USB radio channel driver with configurable audio
  filtering and dynamics processing for amateur-radio and land-mobile interfaces
  using CM119-class USB audio devices.
+
+Package: usbradioplus-tune
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}, whiptail
+Breaks: usbradioplus (<< ${binary:Version})
+Replaces: usbradioplus (<< ${binary:Version})
+Description: accessible radio and processing tuner for USBRadioPlus and standalone
+ One keyboard-operated tuner provides configuration editing, calibration and
+ live radio measurements through either the ASL3 channel or the standalone
+ service's private local control socket. Installing it does not require
+ Asterisk or install a radio controller.
 
 Package: libusbradioplus-product1
 Architecture: amd64 arm64
