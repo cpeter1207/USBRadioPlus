@@ -21,13 +21,14 @@ use std::sync::mpsc::{
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use usbradioplus_asl3::{
-    ControlAction, ControlMessage, CtcssTone, GpioPin, OutputRequest, ParallelPin, RemoteRadio,
-};
+use usbradioplus_asl3::{ControlAction, ControlMessage};
 use usbradioplus_audio::{
     AudioError, AudioProvider, Mixer, MixerPath, SelectedDevice, StreamTiming,
 };
 use usbradioplus_core::ChannelConfiguration;
+use usbradioplus_core::radio_control::{
+    CtcssTone, GpioPin, OutputRequest, ParallelPin, ParallelRadioRequest, RemoteRadio,
+};
 use usbradioplus_gpio::{
     Cm119Device, Cm119Inputs, Cm119Outputs, Cm119Pulse, Cm119Statistics, EepromImage, GpioAdapter,
     GpioError, ParallelDevice, ParallelInputs, ParallelOutputs, ParallelPulse, ParallelRtx,
@@ -978,6 +979,18 @@ impl HardwareStation {
         self.maintenance.set_parallel(pin, request)
     }
 
+    /// Submit a typed parallel request through this host's existing physical owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns the existing unavailable-output, stopped-service, or full-queue error.
+    pub fn remote_radio_request(
+        &self,
+        request: ParallelRadioRequest,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.remote_radio_request(request)
+    }
+
     /// Queue one established active-low parallel channel selection.
     ///
     /// # Errors
@@ -1482,6 +1495,21 @@ impl HardwareMaintenance {
     ) -> Result<(), HardwareStationError> {
         let bit = 1_u8 << (pin.get() - 2);
         self.service.queue(OutputCommand::Parallel(bit, request))
+    }
+
+    /// Submit a source-neutral parallel request through this existing physical owner.
+    ///
+    /// # Errors
+    ///
+    /// Returns the existing unavailable-output, stopped-service, or full-queue error.
+    pub fn remote_radio_request(
+        &self,
+        request: ParallelRadioRequest,
+    ) -> Result<(), HardwareStationError> {
+        match request {
+            ParallelRadioRequest::SelectChannel(channel) => self.select_channel(channel),
+            ParallelRadioRequest::Configure(settings) => self.configure_remote_radio(settings),
+        }
     }
 
     /// Queue one established active-low parallel channel selection.
@@ -3047,7 +3075,6 @@ fn service_once(
         .statistics()
         .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
 
-    outputs.service_remote_radio(devices, radio.logical_ptt)?;
     let parallel_inputs = service_parallel_once(devices, outputs, worker, radio.logical_ptt)?;
 
     worker.state.publish_inputs(hardware_inputs(
@@ -3074,6 +3101,7 @@ fn service_parallel_once(
     worker: &ServiceWorker,
     logical_ptt: bool,
 ) -> Result<Option<ParallelInputs>, ServiceFailure> {
+    outputs.service_remote_radio(devices, logical_ptt)?;
     if let Some(plan) = worker.parallel.as_ref() {
         let device = devices
             .parallel

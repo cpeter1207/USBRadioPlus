@@ -2,91 +2,9 @@
 
 use std::fmt;
 
-/// A CTCSS frequency represented in tenths of one hertz.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct CtcssTone(u16);
-
-impl CtcssTone {
-    /// Construct a standard positive CTCSS-frequency value.
-    pub const fn from_tenths_hz(tenths_hz: u16) -> Option<Self> {
-        if tenths_hz >= 500 && tenths_hz <= 3_000 {
-            Some(Self(tenths_hz))
-        } else {
-            None
-        }
-    }
-
-    /// Frequency in tenths of one hertz.
-    pub const fn tenths_hz(self) -> u16 {
-        self.0
-    }
-}
-
-/// Valid one-based CM119 GPIO pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct GpioPin(u8);
-
-impl GpioPin {
-    /// Construct a pin in the supported one-through-eight range.
-    pub const fn new(pin: u8) -> Option<Self> {
-        if pin >= 1 && pin <= 8 {
-            Some(Self(pin))
-        } else {
-            None
-        }
-    }
-
-    /// One-based pin number.
-    pub const fn get(self) -> u8 {
-        self.0
-    }
-}
-
-/// Valid parallel-port output pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ParallelPin(u8);
-
-impl ParallelPin {
-    /// Construct a pin in the supported two-through-nine range.
-    pub const fn new(pin: u8) -> Option<Self> {
-        if pin >= 2 && pin <= 9 {
-            Some(Self(pin))
-        } else {
-            None
-        }
-    }
-
-    /// Physical pin number.
-    pub const fn get(self) -> u8 {
-        self.0
-    }
-}
-
-/// Persistent or timed digital-output request.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum OutputRequest {
-    /// Set the persistent inactive level.
-    Inactive,
-    /// Set the persistent active level.
-    Active,
-    /// Pulse active for this positive number of 100 ms ticks.
-    Pulse(u32),
-}
-
-/// Complete remote-radio frequency request from app_rpt.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct RemoteRadio {
-    /// Receive carrier frequency in whole hertz.
-    pub receive_hz: u32,
-    /// Transmit carrier frequency in whole hertz.
-    pub transmit_hz: u32,
-    /// Receive CTCSS frequency, when requested.
-    pub receive_ctcss: Option<CtcssTone>,
-    /// Transmit CTCSS frequency, when requested.
-    pub transmit_ctcss: Option<CtcssTone>,
-    /// Whether the high-power setting was requested.
-    pub high_power: bool,
-}
+pub use usbradioplus_core::radio_control::{
+    CtcssTone, GpioPin, OutputRequest, ParallelPin, RemoteRadio,
+};
 
 /// Radio-specific controller input after Asterisk frame translation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

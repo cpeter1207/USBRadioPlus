@@ -41,6 +41,7 @@ static GPIO_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_CLOSE_BLOCKED: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_RAW_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_REMOTE_RECEIVE: AtomicU32 = AtomicU32::new(0);
 
 const FAIL_AUDIO_START: u32 = 1;
 const FAIL_AUDIO_SELECT: u32 = 2;
@@ -110,6 +111,7 @@ fn reset_test_state() {
     PARALLEL_FINAL_BYTE.store(0, Ordering::Release);
     PARALLEL_CLOSE_BLOCKED.store(0, Ordering::Release);
     PARALLEL_RAW_CLOSES.store(0, Ordering::Release);
+    PARALLEL_REMOTE_RECEIVE.store(0, Ordering::Release);
 }
 
 fn test_guard() -> std::sync::MutexGuard<'static, ()> {
@@ -1634,7 +1636,7 @@ unsafe extern "C" fn parallel_set_channel(_device: *mut c_void, _channel: u8) ->
 
 unsafe extern "C" fn parallel_program_rtx(
     _device: *mut c_void,
-    _receive_hz: u32,
+    receive_hz: u32,
     _transmit_hz: u32,
     _transmitting: u32,
     _high_power: u32,
@@ -1642,6 +1644,7 @@ unsafe extern "C" fn parallel_program_rtx(
     if fail_once(FAIL_PROGRAM_REMOTE) {
         return -1;
     }
+    PARALLEL_REMOTE_RECEIVE.store(receive_hz, Ordering::Release);
     OK
 }
 
@@ -1986,6 +1989,52 @@ fn native_selection_rejects_absent_mismatched_and_failed_identity_probes() {
     exact.audio_selector.serial = Some("OTHER".to_owned());
     assert!(select_native_hardware(&exact, audio_provider(), gpio_provider(), 960).is_err());
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn remote_parallel_is_available_to_native_without_another_owner() {
+    use usbradioplus_core::radio_control::ParallelRadioRequest;
+
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(true);
+    let (preflight, selected) =
+        HardwarePreflight::native(&plan, false, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut maintenance = HardwareMaintenance::native(
+        &plan,
+        preflight,
+        selected,
+        SharedHardwareState::default(),
+        audio_provider(),
+        gpio_provider(),
+        [None; 3],
+    )
+    .unwrap();
+    maintenance.start().unwrap();
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    maintenance
+        .remote_radio_request(ParallelRadioRequest::SelectChannel(3))
+        .unwrap();
+    let settings = remote_radio(146_520_000);
+    maintenance
+        .remote_radio_request(ParallelRadioRequest::Configure(settings))
+        .unwrap();
+    let snapshot = maintenance.transient_state().unwrap();
+    assert_eq!(snapshot.parallel_output_mask() & 0xf0, 0xc0);
+    assert_eq!(snapshot.remote_radio(), Some(settings));
+    let deadline = Instant::now() + Duration::from_millis(100);
+    while PARALLEL_REMOTE_RECEIVE.load(Ordering::Acquire) != settings.receive_hz
+        && Instant::now() < deadline
+    {
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        PARALLEL_REMOTE_RECEIVE.load(Ordering::Acquire),
+        settings.receive_hz
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    maintenance.stop().unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
 }
 
 #[test]
