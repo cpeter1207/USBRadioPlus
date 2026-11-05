@@ -79,6 +79,29 @@ pub struct HamlibProvider {
 }
 
 impl HamlibProvider {
+    /// Check the installed canonical model enumeration without opening a rig.
+    pub fn has_model(&self, name: &str) -> Result<bool, CallError> {
+        // SAFETY: the admitted table and static names live with this provider.
+        let count = unsafe { self.api.model_count.unwrap()() };
+        for index in 0..count {
+            let mut model = raw::rptadv_hamlib_string {
+                data: std::ptr::null(),
+                size: 0,
+            };
+            // SAFETY: each enumerated index and complete writable output are valid.
+            hamlib::check(unsafe { self.api.model_name.unwrap()(index, &mut model) })?;
+            if model.data.is_null() || model.size > isize::MAX as usize {
+                return Err(CallError(-1003));
+            }
+            // SAFETY: this admitted provider lends the complete static name span.
+            if unsafe { std::slice::from_raw_parts(model.data.cast::<u8>(), model.size) }
+                == name.as_bytes()
+            {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
     /// Load the released SONAME, without opening any rig or transport.
     pub fn load() -> Result<Self, ProviderError> {
         Self::load_from("librptadv_hamlib_adapter.so.1")

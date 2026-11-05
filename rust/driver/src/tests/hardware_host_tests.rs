@@ -2551,6 +2551,63 @@ fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_
 }
 
 #[test]
+fn remote_unkey_requires_serviced_outputs_and_preserves_site_baselines() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, mut selected) = selected_hardware(false);
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Usb),
+        key: false,
+    });
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.cm119 = 0x20;
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+    assert_eq!(
+        PTT.load(Ordering::Acquire),
+        0,
+        "published off is not yet proof of service"
+    );
+    assert_eq!(GPIO_FINAL_BYTE.load(Ordering::Acquire), 0x20);
+    GPIO_APPLIED_PTT.store(0, Ordering::Release);
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    assert!(!outputs.native_outputs.unwrap().ptt_asserted);
+    assert_eq!(outputs.cm119, 0x20);
+    FAILURE.store(FAIL_CM119_SERVICE, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+}
+
+#[test]
+fn remote_parallel_unkey_confirms_every_inverted_ptt_bit() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(true);
+    plan.parallel.as_mut().unwrap().ptt_mask = 3;
+    plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+    selected.cm119 = None;
+    selected.ptt_inverted = true;
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Parallel),
+        key: false,
+    });
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.parallel = 0x10;
+    PARALLEL_APPLIED_MASK.store(1, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+    PARALLEL_APPLIED_MASK.store(0x13, Ordering::Release);
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    assert_eq!(outputs.parallel, 0x10);
+}
+
+#[test]
 fn site_owner_spare_writes_share_native_handle_and_report_read_failure() {
     let _guard = test_guard();
     reset_test_state();

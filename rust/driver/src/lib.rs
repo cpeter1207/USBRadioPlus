@@ -13,7 +13,9 @@ mod registry;
 mod remote_base;
 mod remote_hardware;
 mod remote_owner;
+mod remote_setup;
 pub use remote_owner::{RemoteDevice, RemoteOwner};
+pub use remote_setup::{RemoteSetup, RemoteSetupError};
 mod remote_request;
 pub use remote_base::{
     RemoteQueue, RemoteReply, RemoteRequestError, RemoteSource, RemoteSourceLease, RemoteTicket,

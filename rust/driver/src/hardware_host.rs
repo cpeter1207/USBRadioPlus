@@ -104,6 +104,10 @@ pub enum HardwareOperation {
     ClearRemoteRadioTransmit,
     /// Applying CM119 hardware local-repeat gain or switching.
     ApplySidetone,
+    /// Confirming the serviced CM119 PTT level before remote retune.
+    ConfirmCm119Ptt,
+    /// Confirming all serviced parallel PTT bits before remote retune.
+    ConfirmParallelPtt,
 }
 
 impl HardwareOperation {
@@ -127,6 +131,8 @@ impl HardwareOperation {
             16 => Some(Self::ProgramRemoteRadio),
             17 => Some(Self::ClearRemoteRadioTransmit),
             18 => Some(Self::ApplySidetone),
+            19 => Some(Self::ConfirmCm119Ptt),
+            20 => Some(Self::ConfirmParallelPtt),
             _ => None,
         }
     }
@@ -153,6 +159,8 @@ impl fmt::Display for HardwareOperation {
             Self::ProgramRemoteRadio => "program parallel remote radio",
             Self::ClearRemoteRadioTransmit => "release parallel remote-radio transmitter",
             Self::ApplySidetone => "apply CM119 hardware local repeat",
+            Self::ConfirmCm119Ptt => "confirm serviced CM119 PTT",
+            Self::ConfirmParallelPtt => "confirm serviced parallel PTT",
         })
     }
 }
@@ -2148,7 +2156,8 @@ impl HardwareService {
         let mut outputs = OutputState::new(
             &self.selected,
             self.parallel.as_ref(),
-            self.initial_remote_radio,
+            self.initial_remote_radio
+                .filter(|_| !self.state.remote_control().enabled),
         );
         if let Some(state) = self.pending_transient {
             outputs.restore(state, &self.selected, self.parallel.as_ref());
@@ -3036,7 +3045,19 @@ impl ServiceWorker {
         mut sidetone: Option<HardwareSidetone>,
     ) -> ServiceExit {
         let mut devices = Some(initial_devices);
-        let mut retiring = false;
+        // A remote generation starts with every dedicated PTT output proven
+        // inactive before its rig owner can perform a tune transaction.
+        let mut retiring = if matches!(self.ptt_control.get(), PhysicalPttControl::Remote { .. }) {
+            match service_remote_ptt(devices.as_mut().unwrap(), &mut outputs, &self) {
+                Ok(()) => false,
+                Err(failure) => {
+                    self.statistics.failure(failure);
+                    true
+                }
+            }
+        } else {
+            false
+        };
         while !self.stop.load(Ordering::Acquire) {
             if retiring {
                 let current = devices.as_mut().expect("retirement retains its owner");
@@ -3246,6 +3267,82 @@ fn service_once(
         .statistics
         .success(snapshot.map(|(_, statistics)| statistics));
     Ok(())
+}
+
+/// Synchronous physical output proof used by remote key/unkey transactions.
+/// Publication alone is not confirmation. Preserve site baselines/pulses and
+/// attempt both banks even when the first fails; only reserved PTT pulses clear.
+fn service_remote_ptt(
+    devices: &mut ServiceDevices,
+    outputs: &mut OutputState,
+    worker: &ServiceWorker,
+) -> Result<(), ServiceFailure> {
+    let cm119 = (|| {
+        let Some(device) = &devices.cm119 else {
+            return Ok(());
+        };
+        let desired = Cm119Outputs {
+            ptt_asserted: worker.ptt_for(RemotePttSource::Usb, false),
+            gpio_output_mask: outputs.cm119,
+        };
+        outputs.native_outputs = None;
+        device
+            .schedule_pulse(Cm119Pulse {
+                cancel_ptt: true,
+                ..Default::default()
+            })
+            .map_err(|error| ServiceFailure(HardwareOperation::PulseCm119, error))?;
+        device
+            .publish_outputs(desired)
+            .map_err(|error| ServiceFailure(HardwareOperation::PublishCm119, error))?;
+        outputs.site[0].submitted(u32::from(desired.gpio_output_mask));
+        let snapshot = devices.cm119_snapshot()?;
+        observe_cm119(outputs, snapshot, worker.now_ms());
+        let (input, statistics) = snapshot.expect("the CM119 owner was retained");
+        worker.statistics.success(Some(statistics));
+        if !input.online || !statistics.online || statistics.ptt_applied != desired.ptt_asserted {
+            return Err(ServiceFailure(
+                HardwareOperation::ConfirmCm119Ptt,
+                GpioError::Usb,
+            ));
+        }
+        outputs.native_outputs = Some(desired);
+        Ok(())
+    })();
+    let parallel = (|| {
+        let Some(plan) = worker.parallel.as_ref() else {
+            return Ok(());
+        };
+        let device = devices
+            .parallel
+            .as_ref()
+            .expect("a parallel plan retains its owner");
+        device
+            .schedule_pulse(ParallelPulse {
+                cancel_mask: plan.ptt_mask,
+                ..Default::default()
+            })
+            .map_err(|error| ServiceFailure(HardwareOperation::PulseParallel, error))?;
+        let key = worker.ptt_for(RemotePttSource::Parallel, false);
+        service_parallel_once(devices, outputs, worker, key)?;
+        let statistics = devices
+            .parallel
+            .as_ref()
+            .expect("the parallel owner was retained")
+            .statistics()
+            .map_err(|error| ServiceFailure(HardwareOperation::ReadParallelStatistics, error))?;
+        let expected = parallel_output(plan, outputs.parallel, key, devices.ptt_inverted);
+        if !statistics.online
+            || statistics.applied_output_mask & plan.ptt_mask != expected & plan.ptt_mask
+        {
+            return Err(ServiceFailure(
+                HardwareOperation::ConfirmParallelPtt,
+                GpioError::Io,
+            ));
+        }
+        Ok(())
+    })();
+    cm119.and(parallel)
 }
 
 fn observe_cm119(
