@@ -161,13 +161,26 @@ pub struct RemoteRadioControl {
     pub non_fm: bool,
 }
 
+impl RemoteRadioControl {
+    fn flags(self) -> u32 {
+        u32::from(self.enabled)
+            | (u32::from(self.receive_permitted) << 1)
+            | (u32::from(self.transmit_permitted) << 2)
+            | (u32::from(self.non_fm) << 3)
+    }
+}
+
 /// Raw source and intent state, distinct from routed audio and signaling tails.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RemoteRadioActivity {
     /// Latest qualified local source, before remote admission muting.
     pub local_receiving: bool,
+    /// Current linked-source activity before controller timeout/muting.
+    pub linked_receiving: bool,
     /// Controller demand before the radio renderer and remote inhibition.
     pub transmit_requested: bool,
+    /// Independent controller CTCSS intent, including command-response delay.
+    pub ctcss_requested: bool,
     /// Rising-edge epoch, published atomically with requested key state.
     pub transmit_epoch: u64,
 }
@@ -198,13 +211,9 @@ pub struct ReceiveObservation {
 impl SharedHardwareState {
     /// Publish one applied remote policy before any blocking retune operation.
     pub fn publish_remote_control(&self, value: RemoteRadioControl) {
-        self.0.remote_control.store(
-            u32::from(value.enabled)
-                | (u32::from(value.receive_permitted) << 1)
-                | (u32::from(value.transmit_permitted) << 2)
-                | (u32::from(value.non_fm) << 3),
-            Ordering::Release,
-        );
+        self.0
+            .remote_control
+            .store(value.flags(), Ordering::Release);
     }
     /// Read the current complete remote policy without a lock or allocation.
     pub fn remote_control(&self) -> RemoteRadioControl {
@@ -221,20 +230,25 @@ impl SharedHardwareState {
         let transmit = self.0.remote_transmit.load(Ordering::Acquire);
         RemoteRadioActivity {
             local_receiving: self.0.receiver_keyed.load(Ordering::Acquire) != 0,
+            linked_receiving: transmit & 4 != 0,
             transmit_requested: transmit & 1 != 0,
-            transmit_epoch: transmit >> 1,
+            ctcss_requested: transmit & 2 != 0,
+            transmit_epoch: transmit >> 3,
         }
     }
-    fn publish_transmit_intent(&self, requested: bool) {
+    fn publish_transmit_intent(&self, requested: bool, ctcss: bool, linked: bool) {
         // TX is the sole writer. A single word keeps demand and its rising-edge
         // epoch coherent even if the worker samples during the publication.
         let previous = self.0.remote_transmit.load(Ordering::Relaxed);
         let next = if requested {
-            previous.wrapping_add(if previous & 1 == 0 { 2 } else { 0 }) | 1
+            previous.wrapping_add(if previous & 1 == 0 { 8 } else { 0 }) | 1
         } else {
             previous & !1
         };
-        self.0.remote_transmit.store(next, Ordering::Release);
+        self.0.remote_transmit.store(
+            (next & !6) | (u64::from(ctcss) << 1) | (u64::from(linked) << 2),
+            Ordering::Release,
+        );
     }
     /// Publish the latest already-read hardware inputs.
     pub fn publish_inputs(&self, inputs: HardwareInputs) {
@@ -360,7 +374,7 @@ impl SharedHardwareState {
         // independently of the radio renderer's tone-off or drain state.
         self.0.outputs.store(0, Ordering::Release);
         self.0.transmit_ctcss_ready.store(0, Ordering::Release);
-        self.publish_transmit_intent(false);
+        self.publish_transmit_intent(false, false, false);
     }
 
     fn publish_receiver_keyed(&self, receiver_keyed: bool) {
@@ -851,6 +865,23 @@ unsafe extern "C" fn receive_callback(
     CALLBACK_OK
 }
 
+unsafe fn exchange_remote_metadata(
+    callbacks: crate::DirectCallbacks,
+    control: RemoteRadioControl,
+) -> Result<bool, ()> {
+    let Some(metadata) = callbacks.metadata else {
+        return Ok(false);
+    };
+    let mut linked = 0;
+    // SAFETY: the caller retains this endpoint and invokes it on its serial TX owner.
+    let result = unsafe { metadata(callbacks.transmit_context, control.flags(), &mut linked) };
+    if result == CALLBACK_OK && linked <= 1 {
+        Ok(linked != 0)
+    } else {
+        Err(())
+    }
+}
+
 unsafe extern "C" fn transmit_callback(
     context: *mut c_void,
     output: *mut f32,
@@ -881,23 +912,33 @@ unsafe extern "C" fn transmit_callback(
     let station = &mut context.station;
     let mut controls = context.hardware.transmit_controls();
     let mut direct_failed = false;
+    let mut linked_activity = false;
     if let Some(direct) = station.direct {
         let mono = &mut context.mono[..frames];
         mono.fill(0.0);
         let mut keyed = 0;
         let mut ctcss_enabled = 0;
-        // SAFETY: attachment keeps the endpoint live and uniquely TX-owned;
-        // scratch and key are writable only for this synchronous invocation.
-        let status = unsafe {
-            (direct.transmit.expect("validated direct transmit"))(
-                direct.transmit_context,
-                mono.as_mut_ptr(),
-                frame_count,
-                &mut keyed,
-                &mut ctcss_enabled,
-            )
+        let remote = context.hardware.remote_control();
+        // SAFETY: the retained metadata endpoint belongs to this same serial TX owner.
+        let before = unsafe { exchange_remote_metadata(direct, remote) };
+        let status = if before.is_ok() {
+            // SAFETY: attachment retains the serial TX endpoint; scratch and
+            // result storage remain writable for this synchronous invocation.
+            unsafe {
+                (direct.transmit.expect("validated direct transmit"))(
+                    direct.transmit_context,
+                    mono.as_mut_ptr(),
+                    frame_count,
+                    &mut keyed,
+                    &mut ctcss_enabled,
+                )
+            }
+        } else {
+            CALLBACK_FAILED
         };
-        if status != CALLBACK_OK || keyed > 1 || ctcss_enabled > 1 {
+        // SAFETY: query after rendering so published source activity belongs to this frame.
+        let after = unsafe { exchange_remote_metadata(direct, remote) };
+        if status != CALLBACK_OK || keyed > 1 || ctcss_enabled > 1 || after.is_err() {
             direct_failed = true;
             mono.fill(0.0);
             controls.external_ptt_request = false;
@@ -910,6 +951,7 @@ unsafe extern "C" fn transmit_callback(
                 return CALLBACK_FAILED;
             }
         } else {
+            linked_activity = after.unwrap_or(false);
             // A manual tuner key owns its CTCSS intent even while the ordinary
             // controller is idle. Explicit inhibition still wins over both keys.
             controls.ctcss_inhibit |= ctcss_enabled == 0 && !controls.external_ptt_request;
@@ -924,9 +966,11 @@ unsafe extern "C" fn transmit_callback(
         // Asterisk playout admission is needed (including during signaling tails).
         controls.render_admitted = true;
     }
-    context
-        .hardware
-        .publish_transmit_intent(controls.external_ptt_request);
+    context.hardware.publish_transmit_intent(
+        controls.external_ptt_request,
+        !controls.ctcss_inhibit,
+        linked_activity,
+    );
     let remote = context.hardware.remote_control();
     if remote.enabled && !remote.transmit_permitted {
         context.remote_burst_admitted = false;

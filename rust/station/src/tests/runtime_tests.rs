@@ -56,6 +56,7 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
         receive: Some(receive),
         transmit_context: ptr::from_mut(&mut transmitted).cast(),
         transmit: Some(transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: callback storage outlives the synchronous runtime below.
@@ -83,6 +84,7 @@ fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
         receive: Some(direct_receive),
         transmit_context: ptr::null_mut(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     assert!(matches!(
@@ -113,6 +115,7 @@ fn native_planned_media_rejects_mismatched_radio_before_audio_open() {
         receive: Some(direct_receive),
         transmit_context: ptr::null_mut(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: rejection occurs before either direct callback can be invoked.
@@ -154,6 +157,7 @@ fn native_failed_render_and_oversized_callback_clear_key_and_output() {
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
             transmit: Some(direct_transmit),
+            metadata: None,
             accepted_abi_version: 0,
         };
         // SAFETY: this serial fixture retains callback storage through runtime teardown.
@@ -214,6 +218,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: capture remains live through the stopped runtime's synchronous callback.
@@ -223,7 +228,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     .unwrap();
     let (runtime, _control) =
         StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
-    runtime.hardware.publish_transmit_intent(true);
+    runtime.hardware.publish_transmit_intent(true, false, false);
     let mut output = [1.0; 8];
     assert_eq!(
         // SAFETY: the stopped runtime owns the live context and exact stereo span.
@@ -256,6 +261,7 @@ fn native_manual_key_and_ctcss_intent_survive_direct_controller_results() {
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: capture stays live until the stopped runtime is destroyed.
@@ -359,6 +365,7 @@ fn native_planned_updates_share_acknowledgments_rollback_and_stream_ownership() 
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: callback capture outlives synchronous stream shutdown.
@@ -1278,7 +1285,7 @@ fn remote_radio_admission_keeps_requested_edges_separate_from_rendered_tails() {
     assert!(!state.remote_control().enabled);
     assert_eq!(state.remote_activity().transmit_epoch, 0);
     for (requested, epoch) in [(true, 1), (true, 1), (false, 1), (true, 2)] {
-        state.publish_transmit_intent(requested);
+        state.publish_transmit_intent(requested, false, false);
         let activity = state.remote_activity();
         assert_eq!(activity.transmit_requested, requested);
         assert_eq!(activity.transmit_epoch, epoch);
@@ -1305,6 +1312,7 @@ fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
     let mut capture = DirectCapture {
         tx_keyed: 1,
         ctcss_enabled: 1,
+        metadata_source: 1,
         ..DirectCapture::default()
     };
     let callbacks = crate::DirectCallbacks {
@@ -1314,6 +1322,7 @@ fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: Some(direct_metadata),
         accepted_abi_version: 0,
     };
     // SAFETY: capture outlives these serial callbacks and synchronous teardown.
@@ -1359,6 +1368,30 @@ fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
     assert!(!runtime.hardware.outputs().logical_ptt);
     assert!(runtime.hardware.remote_activity().transmit_requested);
     assert_eq!(runtime.hardware.remote_activity().transmit_epoch, 1);
+    assert_eq!(capture.metadata_flags, 9);
+    assert!(runtime.hardware.remote_activity().linked_receiving);
+    assert!(runtime.hardware.remote_activity().ctcss_requested);
+    let calls = capture.transmit_calls;
+    capture.metadata_source = 2;
+    output.fill(1.0);
+    assert_eq!(
+        // SAFETY: the stopped runtime retains this TX context and writable stereo span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_FAILED,
+    );
+    assert_eq!(
+        capture.transmit_calls, calls,
+        "invalid metadata never enters audio rendering"
+    );
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.remote_activity().ctcss_requested);
+    assert!(!runtime.hardware.remote_activity().linked_receiving);
 }
 
 #[test]
@@ -1484,6 +1517,18 @@ struct DirectCapture {
     tx_status: c_int,
     receive_calls: u32,
     transmit_calls: u32,
+    metadata_flags: u32,
+    metadata_source: u32,
+}
+
+unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *mut u32) -> c_int {
+    // SAFETY: the test retains this exclusive TX context and writable output.
+    unsafe {
+        let capture = &mut *context.cast::<DirectCapture>();
+        capture.metadata_flags = flags;
+        *source = capture.metadata_source;
+    }
+    0
 }
 
 unsafe extern "C" fn direct_receive(
@@ -1542,6 +1587,7 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
             transmit: Some(direct_transmit),
+            metadata: None,
             accepted_abi_version: 0,
         };
         // SAFETY: the context outlives the runtime and calls below are serial.
@@ -1608,6 +1654,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     let mut legacy = prepared(crate::ControllerTransport::AppRpt, 25)

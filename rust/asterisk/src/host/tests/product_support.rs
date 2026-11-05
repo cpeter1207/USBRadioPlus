@@ -85,6 +85,7 @@ pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
         receive: Some(receive_noop),
         transmit_context: ptr::dangling_mut::<u8>().cast(),
         transmit: Some(transmit_noop),
+        metadata: None,
         accepted_abi_version: 0,
     }
 }

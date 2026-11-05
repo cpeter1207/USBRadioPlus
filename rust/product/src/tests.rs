@@ -150,6 +150,7 @@ pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
         receive: Some(direct_receive_noop),
         transmit_context: NonNull::<u8>::dangling().as_ptr().cast(),
         transmit: Some(direct_transmit_noop),
+        metadata: None,
         accepted_abi_version: 0,
     }
 }
