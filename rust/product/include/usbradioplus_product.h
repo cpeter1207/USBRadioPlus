@@ -1113,6 +1113,16 @@ typedef struct UrpAstRemoteControl {
 	UrpRemoteTicket ticket; /**< Output only; success transfers unique ownership. */
 } UrpAstRemoteControl;
 
+/** Command policy from the shared source resolver, with no physical I/O. */
+typedef struct UrpRemoteCommandOptions {
+	uint32_t struct_size; /**< Exact complete record size. Initialize before inspection. */
+	uint32_t abi_version; /**< One. */
+	uint32_t enabled; /**< One only for a configured remote composition. */
+	uint32_t access; /**< Zero disabled, one open, two source-specific unlock. */
+	uint32_t prefix_length; /**< ASCII digit count, excluding the leading star. */
+	uint8_t prefix[64]; /**< At most 63 digits; unused bytes are zero. */
+} UrpRemoteCommandOptions;
+
 /** Versioned product operations. Check struct_size before accessing an appended tail. */
 typedef struct UrpAstDescriptor {
 	/**
@@ -1371,6 +1381,9 @@ typedef struct UrpAstDescriptor {
 	int (*native_quiesce)(void *native);
 	/** Same retirement on the channel's serialized taskprocessor. */
 	int (*channel_quiesce)(void *channel);
+	/** Inspect controller command policy on an existing native_configuration_resolve owner.
+	 * Output is an initialized complete ABI-one record; no device or rig is opened. */
+	int (*native_configuration_remote_options)(void *configuration, UrpRemoteCommandOptions *output);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

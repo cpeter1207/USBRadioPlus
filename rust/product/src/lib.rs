@@ -17,7 +17,7 @@ pub use native::{
     URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
     UrpNativeStationConfig,
 };
-pub use native_configuration::UrpNativeConfigurationSink;
+pub use native_configuration::{UrpNativeConfigurationSink, UrpRemoteCommandOptions};
 pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnostic};
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
@@ -807,12 +807,16 @@ pub struct UrpAstDescriptor {
     pub native_quiesce: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     /// Poll the same retirement on the serialized ASL taskprocessor.
     pub channel_quiesce: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Inspect canonical command policy from an existing resolved configuration.
+    pub native_configuration_remote_options:
+        Option<unsafe extern "C" fn(*mut c_void, *mut UrpRemoteCommandOptions) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_configuration_remote_options: Some(native_configuration::remote_options),
     native_quiesce: Some(native::quiesce),
     channel_quiesce: Some(channel_quiesce),
     native_remote_submit: Some(remote::native_submit),

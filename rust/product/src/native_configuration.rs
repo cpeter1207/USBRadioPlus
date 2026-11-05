@@ -9,6 +9,64 @@ use std::mem::size_of;
 use usbradioplus_core::{
     ConfigDocument, NativeDeviceSelection, ReceiveAudioSource, ResolvedNativeConfiguration,
 };
+
+/// Controller-facing command settings copied from the shared remote resolver.
+/// No rig, device or callback is opened by this inspection.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct UrpRemoteCommandOptions {
+    /// Exact complete record size.
+    pub struct_size: u32,
+    /// One.
+    pub abi_version: u32,
+    /// One only when this source enables a remote-base composition.
+    pub enabled: u32,
+    /// Zero disabled, one public administration, two source-specific unlock.
+    pub access: u32,
+    /// Number of prefix digits, excluding the leading star.
+    pub prefix_length: u32,
+    /// At most 63 ASCII digits; unused bytes are zero.
+    pub prefix: [u8; 64],
+}
+
+pub(crate) unsafe extern "C" fn remote_options(
+    configuration: *mut c_void,
+    output: *mut UrpRemoteCommandOptions,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the caller serializes this live resolved configuration owner.
+        let owner = unsafe { configuration.cast::<Resolved>().as_ref() };
+        let owner = owner.ok_or(Status::InvalidArgument)?;
+        let remote = usbradioplus_core::ResolvedRemoteConfiguration::from_document(
+            owner.configuration.source_document(),
+            "rpt_advanced.conf",
+            &owner.node,
+            &owner.configuration.config().station,
+        )
+        .map_err(|_| Status::InvalidConfiguration)?;
+        let mut options = UrpRemoteCommandOptions {
+            struct_size: size_of::<UrpRemoteCommandOptions>() as u32,
+            abi_version: 1,
+            enabled: 0,
+            access: 0,
+            prefix_length: 0,
+            prefix: [0; 64],
+        };
+        if let Some(remote) = remote {
+            options.enabled = 1;
+            options.access = match remote.dtmf_access {
+                usbradioplus_core::RemoteDtmfAccess::Disabled => 0,
+                usbradioplus_core::RemoteDtmfAccess::Open => 1,
+                usbradioplus_core::RemoteDtmfAccess::Locked => 2,
+            };
+            let prefix = remote.dtmf_prefix.as_bytes();
+            options.prefix_length = prefix.len() as u32;
+            options.prefix[..prefix.len()].copy_from_slice(prefix);
+        }
+        // SAFETY: write_abi validates the caller's complete initialized output header.
+        unsafe { crate::write_abi(output, options) }
+    })
+}
 use usbradioplus_gpio::Cm119Profile;
 
 /// A synchronous visitor of a borrowed, complete native configuration request.

@@ -5,6 +5,7 @@ struct Observed {
     remote: Option<usbradioplus_core::ResolvedRemoteConfiguration>,
     has_hid: bool,
     error: Option<c_int>,
+    commands: Option<crate::UrpRemoteCommandOptions>,
 }
 
 unsafe extern "C" fn inspect(
@@ -50,9 +51,62 @@ fn resolve_remote(source: &str) -> Observed {
             ),
             0
         );
+        // SAFETY: this initialized output and retained configuration remain live.
+        let mut commands: crate::UrpRemoteCommandOptions = std::mem::zeroed();
+        commands.struct_size = size_of::<crate::UrpRemoteCommandOptions>() as u32;
+        commands.abi_version = 1;
+        let code = crate::product_descriptor()
+            .native_configuration_remote_options
+            .unwrap()(owner, &mut commands);
+        if code == 0 {
+            observed.commands = Some(commands);
+            assert_eq!(
+                crate::product_descriptor()
+                    .native_configuration_remote_options
+                    .unwrap()(owner, std::ptr::null_mut()),
+                crate::URP_AST_INVALID_ARGUMENT
+            );
+            commands.struct_size -= 1;
+            assert_eq!(
+                crate::product_descriptor()
+                    .native_configuration_remote_options
+                    .unwrap()(owner, &mut commands),
+                crate::URP_AST_INCOMPATIBLE_ABI
+            );
+        } else {
+            observed.error = Some(code);
+        }
         crate::native_configuration::destroy(owner);
     }
     observed
+}
+
+#[test]
+fn native_remote_command_options_use_the_shared_resolver_before_hardware() {
+    let source = "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    for (source, access, prefix) in [
+        (source.to_owned(), 2, "6"),
+        (
+            source.replace(
+                "backend=hamlib",
+                "backend=hamlib\ndtmf_access=open\ndtmf_prefix=65",
+            ),
+            1,
+            "65",
+        ),
+    ] {
+        let options = resolve_remote(&source).commands.unwrap();
+        assert_eq!((options.enabled, options.access), (1, access));
+        assert_eq!(
+            &options.prefix[..options.prefix_length as usize],
+            prefix.as_bytes()
+        );
+    }
+    let options = resolve_remote("[524950]\n").commands.unwrap();
+    assert_eq!(
+        (options.enabled, options.access, options.prefix_length),
+        (0, 0, 0)
+    );
 }
 
 #[test]

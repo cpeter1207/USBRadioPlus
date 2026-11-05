@@ -707,7 +707,10 @@ impl ResolvedRemoteConfiguration {
             _ => return Err(values.error("dtmf_access")),
         };
         let dtmf_prefix = values.text("dtmf_prefix").unwrap_or("6").to_owned();
-        if dtmf_prefix.is_empty() || !dtmf_prefix.bytes().all(|byte| byte.is_ascii_digit()) {
+        if dtmf_prefix.is_empty()
+            || dtmf_prefix.len() > 63
+            || !dtmf_prefix.bytes().all(|byte| byte.is_ascii_digit())
+        {
             return Err(values.error("dtmf_prefix"));
         }
         let tune_duration_ms = values.number("tune_duration_ms", 1000)?;
@@ -874,7 +877,9 @@ fn valid_value(key: &str, value: &str) -> bool {
         "audio_source" => matches!(value, "cm119" | "alsa"),
         "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
         "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
-        "dtmf_prefix" => !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()),
+        "dtmf_prefix" => {
+            (1..=63).contains(&value.len()) && value.bytes().all(|byte| byte.is_ascii_digit())
+        }
         "timeout_ms" => value
             .parse::<u32>()
             .is_ok_and(|value| (1..=10000).contains(&value)),

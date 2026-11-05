@@ -27,6 +27,29 @@ fn remote_memory_incremental_offsets_have_independent_enable_settings() {
 }
 
 #[test]
+fn remote_command_prefix_uses_the_existing_63_digit_collector_bound() {
+    let source = CONFIG.replace(
+        "backend=hamlib",
+        &format!("backend=hamlib\ndtmf_prefix={}", "6".repeat(64)),
+    );
+    let configuration = ResolvedRemoteConfiguration::from_document(
+        &ConfigDocument::new(source),
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(configuration.dtmf_prefix, "6");
+    assert!(
+        configuration
+            .warnings
+            .iter()
+            .any(|warning| warning.name == "dtmf_prefix")
+    );
+}
+
+#[test]
 fn remote_memory_split_is_explicit_with_frequency_based_default() {
     for (source, expected) in [
         (CONFIG.to_owned(), false),
