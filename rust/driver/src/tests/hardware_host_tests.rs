@@ -161,9 +161,18 @@ fn hardware_errors_and_operations_are_complete_and_diagnostic() {
             HardwareOperation::ApplySidetone,
             "apply CM119 hardware local repeat",
         ),
+        (
+            HardwareOperation::ConfirmCm119Ptt,
+            "confirm serviced CM119 PTT",
+        ),
+        (
+            HardwareOperation::ConfirmParallelPtt,
+            "confirm serviced parallel PTT",
+        ),
+        (HardwareOperation::RemoteControl, "service remote radio"),
     ];
     assert_eq!(HardwareOperation::from_u8(0), None);
-    assert_eq!(HardwareOperation::from_u8(19), None);
+    assert_eq!(HardwareOperation::from_u8(22), None);
     for (index, (operation, description)) in operations.into_iter().enumerate() {
         assert_eq!(HardwareOperation::from_u8(index as u8 + 1), Some(operation));
         assert_eq!(operation.to_string(), description);
@@ -2980,14 +2989,21 @@ fn site_owner_parallel_native_acquisition_and_commands_preserve_reserved_pins() 
             146_520_000,
         )))
         .unwrap();
-    service_commands(
-        &worker.receiver,
-        &mut outputs,
-        &mut devices,
-        &selected,
-        plan.parallel.as_ref(),
-    )
-    .unwrap();
+    for operation in [
+        HardwareOperation::SelectChannel,
+        HardwareOperation::ProgramRemoteRadio,
+    ] {
+        assert!(matches!(
+            service_commands(
+                &worker.receiver,
+                &mut outputs,
+                &mut devices,
+                &selected,
+                plan.parallel.as_ref(),
+            ),
+            Err(ServiceFailure(actual, GpioError::Unsupported)) if actual == operation
+        ));
+    }
     assert_eq!(
         outputs.parallel, 0x10,
         "legacy channel commands cannot overwrite site pins"
