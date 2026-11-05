@@ -97,6 +97,16 @@ impl TicketState {
 /// Caller-owned request lease. Dropping it revokes pending/in-flight command work;
 /// it never waits for device I/O, a worker, or a completion consumer.
 pub struct RemoteTicket(Arc<TicketState>);
+/// Read-only source lifetime retained by blocking physical work. It never owns
+/// a controller/peer pointer and does not revoke the caller when dropped.
+#[derive(Clone)]
+pub struct RemoteSourceLease(Arc<TicketState>);
+impl RemoteSourceLease {
+    /// Copy current source state; caller retirement/revocation is terminal.
+    pub fn source(&self) -> RemoteSource {
+        self.0.source()
+    }
+}
 impl RemoteTicket {
     /// Publish source-key and authorization state. A revoked source cannot revive.
     pub fn source_state(&self, active: bool, valid: bool) {
@@ -129,6 +139,10 @@ pub struct RemoteWork {
     state: Arc<TicketState>,
 }
 impl RemoteWork {
+    /// Retain only atomic source validity for stop checks between device calls.
+    pub fn source_lease(&self) -> RemoteSourceLease {
+        RemoteSourceLease(Arc::clone(&self.state))
+    }
     /// Borrow the complete pointer-free input.
     pub const fn operation(&self) -> RemoteOperation {
         self.operation
@@ -140,10 +154,12 @@ impl RemoteWork {
     /// Publish exactly one final result. A retired generation cannot report success.
     pub fn complete(self, result: Result<RemoteReply, RemoteRequestError>) {
         self.state
-            .complete(if self.state.generation.load(Ordering::Acquire) {
-                result
-            } else {
+            .complete(if !self.state.generation.load(Ordering::Acquire) {
                 Err(RemoteRequestError::Stopped)
+            } else if result.is_ok() && !self.source().valid {
+                Err(RemoteRequestError::StaleSource)
+            } else {
+                result
             });
     }
 }
@@ -205,6 +221,18 @@ impl RemoteQueue {
     /// Take urgent work first. Only the existing physical worker consumes this port.
     pub fn next(&self) -> Option<RemoteWork> {
         self.urgent.pop().or_else(|| self.ordinary.pop())
+    }
+    /// Take only reserved safety work before servicing physical demand.
+    pub fn next_urgent(&self) -> Option<RemoteWork> {
+        self.urgent.pop()
+    }
+    /// Take at most one ordinary operation per physical service iteration.
+    pub fn next_ordinary(&self) -> Option<RemoteWork> {
+        self.ordinary.pop()
+    }
+    /// Cheap physical-owner cancellation check between blocking exchanges.
+    pub fn has_urgent(&self) -> bool {
+        !self.urgent.is_empty()
     }
     /// Revoke the generation before safe shutdown. Pending tickets become terminal
     /// without waiting for slow device I/O or requiring another controller pump.
@@ -308,6 +336,23 @@ mod tests {
         assert!(matches!(
             inflight.take_completion(),
             Some(Err(RemoteRequestError::Stopped))
+        ));
+    }
+
+    #[test]
+    fn remote_queue_revocation_during_io_cannot_report_success() {
+        let queue = RemoteQueue::new(1);
+        let ticket = queue
+            .submit(RemoteOperation::new(Kind::Tune), false, false)
+            .unwrap();
+        let work = queue.next().unwrap();
+        let lease = work.source_lease();
+        ticket.source_state(false, false);
+        assert!(!lease.source().valid);
+        work.complete(Ok(RemoteReply::Applied));
+        assert!(matches!(
+            ticket.take_completion(),
+            Some(Err(RemoteRequestError::StaleSource))
         ));
     }
 }
