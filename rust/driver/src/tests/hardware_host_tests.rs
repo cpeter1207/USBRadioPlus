@@ -1943,7 +1943,6 @@ fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan
 fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
     use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
     use usbradioplus_core::CarrierSource;
-    use usbradioplus_radio::SubaudibleSource;
     let _guard = test_guard();
     reset_test_state();
     let (plan, selected) = selected_hardware(false);
@@ -1951,7 +1950,7 @@ fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
         configuration(),
         plan.clone(),
         CarrierSource::Dsp,
-        SubaudibleSource::Disabled,
+        usbradioplus_radio::QualificationConfig::default(),
     )
     .unwrap();
     let state = SharedHardwareState::default();
@@ -1982,7 +1981,6 @@ fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
 fn remote_generation_keeps_audio_closed_when_dsp_owner_is_gone() {
     use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
     use usbradioplus_core::CarrierSource;
-    use usbradioplus_radio::SubaudibleSource;
     let _guard = test_guard();
     reset_test_state();
     let (plan, selected) = selected_hardware(false);
@@ -1990,7 +1988,7 @@ fn remote_generation_keeps_audio_closed_when_dsp_owner_is_gone() {
         configuration(),
         plan.clone(),
         CarrierSource::Dsp,
-        SubaudibleSource::Disabled,
+        usbradioplus_radio::QualificationConfig::default(),
     )
     .unwrap();
     drop(control);
@@ -2025,7 +2023,6 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
         CarrierSource,
         remote_operation::{RemoteOperation, RemoteOperationKind},
     };
-    use usbradioplus_radio::SubaudibleSource;
     let _guard = test_guard();
     reset_test_state();
     let mut station = open_hardware_station();
@@ -2043,7 +2040,7 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
         configuration,
         station.control().plan().hardware().clone(),
         CarrierSource::Dsp,
-        SubaudibleSource::Disabled,
+        usbradioplus_radio::QualificationConfig::default(),
     )
     .unwrap();
     station.bind_remote(setup, control).unwrap();

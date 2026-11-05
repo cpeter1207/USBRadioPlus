@@ -28,6 +28,12 @@ fn failure(_: ServiceFailure) -> CallError {
     CallError(-1101)
 }
 
+/// Unknown physical PTT cannot release half-duplex non-FM receive. FM retains
+/// its ordinary DSP qualification and genuine full-duplex radios remain open.
+fn receive_allowed(engine: bool, mode: u32, duplex: bool, physical: Option<bool>) -> bool {
+    engine && (matches!(mode, 1 | 9 | 10) || duplex || physical == Some(false))
+}
+
 fn dsp_failure(error: usbradioplus_station::RemoteDspError) -> CallError {
     use usbradioplus_station::RemoteDspError;
     // Bridge-owned causes are distinct from portable engine and Hamlib codes:
@@ -247,8 +253,31 @@ impl RemoteGeneration {
             },
             &mut backend,
         );
+        if result.is_ok()
+            && self.signal_poll.is_none_or(|last| {
+                worker.now_ms().saturating_sub(last) >= self.setup.configuration().poll_interval_ms
+            })
+        {
+            if wiring.rig_carrier {
+                let carrier = backend.rig.as_mut().ok_or(CallError(-6))?.rig().get(21);
+                let mut signals = worker.state.remote_signals();
+                signals.carrier = carrier.as_ref().ok().map(|value| *value != 0);
+                worker.state.publish_remote_signals(signals);
+                carrier?;
+            }
+            if wiring.ptt == RemotePttSource::Rig {
+                backend.transmit_idle()?;
+            }
+            // Slow exchanges count toward service time, not the next poll's gap.
+            self.signal_poll = Some(worker.now_ms());
+        }
         let snapshot = self.snapshot()?;
-        let allowed = result.is_ok() && snapshot.flags & raw::RPTADV_REMOTE_RECEIVE_PERMITTED != 0;
+        let allowed = receive_allowed(
+            result.is_ok() && snapshot.flags & raw::RPTADV_REMOTE_RECEIVE_PERMITTED != 0,
+            snapshot.applied.mode,
+            self.setup.physical_duplex(),
+            worker.state.remote_signals().physical_ptt,
+        );
         worker.state.publish_remote_control(RemoteRadioControl {
             enabled: true,
             receive_permitted: allowed,
@@ -267,18 +296,6 @@ impl RemoteGeneration {
             } else {
                 error
             });
-        }
-        if self.signal_poll.is_none_or(|last| {
-            worker.now_ms().saturating_sub(last) >= self.setup.configuration().poll_interval_ms
-        }) {
-            self.signal_poll = Some(worker.now_ms());
-            if self.wiring.rig_carrier {
-                let carrier = self.rig.as_mut().ok_or(CallError(-6))?.rig().get(21);
-                let mut signals = worker.state.remote_signals();
-                signals.carrier = carrier.as_ref().ok().map(|value| *value != 0);
-                worker.state.publish_remote_signals(signals);
-                carrier?;
-            }
         }
         let encode = self.current.encode;
         outputs.set_encoder(
@@ -311,6 +328,7 @@ impl RemoteGeneration {
         devices: &mut ServiceDevices,
         outputs: &mut OutputState,
     ) -> Result<(), CallError> {
+        outputs.set_encoder(false);
         worker.state.publish_remote_control(RemoteRadioControl {
             enabled: true,
             ..Default::default()
@@ -329,7 +347,14 @@ impl RemoteGeneration {
             failure(error)
         });
         let rig = if self.wiring.ptt == RemotePttSource::Rig {
-            self.rig.as_mut().map_or(Ok(()), |rig| rig.rig().set(20, 0))
+            let rig = self.rig.as_mut().ok_or(CallError(-6))?.rig();
+            rig.set(20, 0).and_then(|()| {
+                if rig.get(20)? == 0 {
+                    Ok(())
+                } else {
+                    Err(CallError(-1101))
+                }
+            })
         } else {
             Ok(())
         };
@@ -514,11 +539,14 @@ impl OperatingIo for PhysicalBackend<'_> {
             return gpio;
         }
         let rig = if self.wiring.ptt == RemotePttSource::Rig {
-            self.rig
-                .as_mut()
-                .ok_or(CallError(-6))?
-                .rig()
-                .set(20, i64::from(keyed))
+            let rig = self.rig.as_mut().ok_or(CallError(-6))?.rig();
+            rig.set(20, i64::from(keyed)).and_then(|()| {
+                if (rig.get(20)? != 0) == keyed {
+                    Ok(())
+                } else {
+                    Err(CallError(-1101))
+                }
+            })
         } else {
             Ok(())
         };
@@ -596,5 +624,24 @@ impl RemoteDevice for PhysicalBackend<'_> {
             .ok_or(CallError(-6))?
             .rig()
             .set(selector, value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn non_fm_half_duplex_receive_waits_for_confirmed_physical_unkey() {
+        for mode in [1, 3] {
+            for duplex in [false, true] {
+                for physical in [None, Some(false), Some(true)] {
+                    assert_eq!(
+                        receive_allowed(true, mode, duplex, physical),
+                        mode == 1 || duplex || physical == Some(false)
+                    );
+                    assert!(!receive_allowed(false, mode, duplex, physical));
+                }
+            }
+        }
     }
 }

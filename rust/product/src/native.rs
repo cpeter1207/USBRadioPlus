@@ -249,6 +249,9 @@ pub(crate) unsafe extern "C" fn create(
             gains,
             remote,
         } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        if remote.is_some() && callbacks.metadata.is_none() {
+            return Err(Status::IncompatibleAbi);
+        }
         let file_configuration = configuration.clone();
         // SAFETY: providers and executable functions remain loaded through destroy.
         let (graph, radio_provider, audio, gpio) = unsafe {
@@ -281,7 +284,7 @@ pub(crate) unsafe extern "C" fn create(
                     remote.clone(),
                     hardware.clone(),
                     configuration.station.receive.cos_assignment,
-                    radio.qualification.subaudible_source,
+                    radio.qualification,
                 )
             })
             .transpose()

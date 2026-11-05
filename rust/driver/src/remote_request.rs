@@ -107,6 +107,21 @@ fn scalar(setting: &Setting, operation: RemoteOperation) -> Result<i64, RemoteRe
         value /= divisor;
     }
     let value: i64 = value.try_into().map_err(|_| invalid())?;
+    let value = if setting.units == 3 {
+        // Keypads enter the printed octal digits. Every shared ABI continues to
+        // carry the actual nine bits, matching the Hamlib adapter contract.
+        if operation.decimal_places != 0 {
+            return Err(invalid());
+        }
+        i64::from(
+            format!("{value:03}N")
+                .parse::<usbradioplus_core::DcsCode>()
+                .map_err(|_| invalid())?
+                .value(),
+        )
+    } else {
+        value
+    };
     if value < setting.minimum
         || value > setting.maximum
         || !setting.choices.is_empty() && !setting.choices.contains(&value)
@@ -196,6 +211,9 @@ pub fn prepare_remote_operation(
                 (&mut request.state.decode, 11)
             };
             if kind == Kind::Tone {
+                if signal.control_source == 2 || signal.control_source == 0 && signal.source == 2 {
+                    return Err(unsupported());
+                }
                 if !(500..=3000).contains(&operation.magnitude) {
                     return Err(invalid());
                 }
@@ -326,6 +344,16 @@ pub fn prepare_remote_operation(
                     } else {
                         &mut request.state.decode
                     };
+                    let programming = if signal.control_source == 0 {
+                        signal.source
+                    } else {
+                        signal.control_source
+                    };
+                    if matches!(operation.selector, 12..=15) && programming == 2
+                        || matches!(operation.selector, 14 | 15) && programming == 3
+                    {
+                        return Err(unsupported());
+                    }
                     match operation.selector {
                         12 | 13 => {
                             signal.ctcss_tenths_hz =
@@ -338,6 +366,21 @@ pub fn prepare_remote_operation(
                             signal.ctcss_tenths_hz = 0;
                         }
                         _ => signal.enabled = positive()?.try_into().map_err(|_| invalid())?,
+                    }
+                    request.fields = if encode { 1024 } else { 2048 };
+                }
+                400..=404 => {
+                    let encode = matches!(operation.selector, 400 | 403);
+                    let signal = if encode {
+                        &mut request.state.encode
+                    } else {
+                        &mut request.state.decode
+                    };
+                    let value = positive()?.try_into().map_err(|_| invalid())?;
+                    match operation.selector {
+                        400 | 401 => signal.source = value,
+                        402 => signal.control_source = value,
+                        _ => signal.inverted = value,
                     }
                     request.fields = if encode { 1024 } else { 2048 };
                 }
@@ -460,6 +503,70 @@ pub(crate) mod tests {
             panic!("not a core operation")
         };
         request
+    }
+    #[test]
+    fn remote_signal_scalars_preserve_octal_codes_and_use_whole_signal_transactions() {
+        let caps = usbradioplus_remote::SelectedCapabilities {
+            encode_sources: 2 | 4 | 8,
+            decode_sources: 2 | 4,
+            decode_control_sources: 2 | 4 | 8,
+            ..Default::default()
+        };
+        let settings = crate::remote_catalog::controller_catalog(vec![], &caps);
+        for (selector, magnitude) in [
+            (14, 245),
+            (15, 777),
+            (400, 2),
+            (401, 2),
+            (402, 3),
+            (403, 1),
+            (404, 1),
+        ] {
+            let mut operation = RemoteOperation::new(Kind::SetSetting);
+            operation.selector = selector;
+            operation.magnitude = magnitude;
+            let PreparedRemoteOperation::Core(request) =
+                prepare_remote_operation(&configuration(), &current(), None, &settings, operation)
+                    .unwrap()
+            else {
+                panic!("signal controls cannot bypass the engine")
+            };
+            let encode = matches!(selector, 14 | 400 | 403);
+            assert_eq!(request.fields, if encode { 1024 } else { 2048 });
+            match selector {
+                14 => assert_eq!(request.state.encode.dcs_code, 0o245),
+                15 => assert_eq!(request.state.decode.dcs_code, 0o777),
+                400 => assert_eq!(request.state.encode.source, 2),
+                401 => assert_eq!(request.state.decode.source, 2),
+                402 => assert_eq!(request.state.decode.control_source, 3),
+                403 => assert_eq!(request.state.encode.inverted, 1),
+                404 => assert_eq!(request.state.decode.inverted, 1),
+                _ => unreachable!(),
+            }
+        }
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = 14;
+        operation.magnitude = 888;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &settings, operation)
+                .is_err()
+        );
+        operation.selector = 401;
+        operation.magnitude = 3;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &settings, operation)
+                .is_err()
+        );
+        let mut external = current();
+        external.applied.encode.source = 2;
+        operation.selector = 12;
+        operation.magnitude = 1148;
+        operation.decimal_places = 1;
+        assert!(
+            prepare_remote_operation(&configuration(), &external, None, &settings, operation)
+                .is_err(),
+            "a GPIO enable cannot program an external tone generator"
+        );
     }
     #[test]
     fn remote_operands_become_one_complete_engine_patch_without_io() {

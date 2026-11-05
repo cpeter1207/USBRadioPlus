@@ -11,6 +11,7 @@ mod hardware_site;
 mod link;
 mod registry;
 mod remote_base;
+mod remote_catalog;
 mod remote_hardware;
 mod remote_owner;
 mod remote_setup;

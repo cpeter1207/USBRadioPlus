@@ -37,6 +37,7 @@ pub struct RemoteSetup {
     plan: HardwarePlan,
     carrier: CarrierSource,
     external_decode: SubaudibleSource,
+    physical_duplex: bool,
     dsp: Arc<RemoteDspPort>,
 }
 impl RemoteSetup {
@@ -46,7 +47,7 @@ impl RemoteSetup {
         configuration: ResolvedRemoteConfiguration,
         mut plan: HardwarePlan,
         carrier: CarrierSource,
-        external_decode: SubaudibleSource,
+        qualification: usbradioplus_radio::QualificationConfig,
     ) -> Result<(Self, RemoteDspControl), RemoteSetupError> {
         if configuration.audio_source == usbradioplus_core::RemoteAudioSource::Alsa {
             plan.cm119 = None;
@@ -74,7 +75,8 @@ impl RemoteSetup {
                 hamlib,
                 plan,
                 carrier,
-                external_decode,
+                external_decode: qualification.subaudible_source,
+                physical_duplex: qualification.radio_duplex,
                 dsp: control.port(),
             },
             control,
@@ -95,6 +97,10 @@ impl RemoteSetup {
     /// Inherited external qualifier, independent of Hamlib DCD.
     pub fn external_decode(&self) -> SubaudibleSource {
         self.external_decode
+    }
+    /// Physical radio duplex, independent of the controller's software routing.
+    pub fn physical_duplex(&self) -> bool {
+        self.physical_duplex
     }
     /// Worker port for graph preparation and existing callback adoption ACKs.
     pub fn dsp(&self) -> &RemoteDspPort {
@@ -133,7 +139,6 @@ mod tests {
     use super::*;
     use crate::{DriverConfiguration, remote_request::tests::configuration};
     use usbradioplus_core::{CarrierSource, RemoteBackend};
-    use usbradioplus_radio::SubaudibleSource;
 
     fn plan() -> usbradioplus_station::HardwarePlan {
         let config = DriverConfiguration::parse("test", "[usb]\n").unwrap();
@@ -146,7 +151,7 @@ mod tests {
             config,
             plan(),
             CarrierSource::Dsp,
-            SubaudibleSource::Disabled,
+            usbradioplus_radio::QualificationConfig::default(),
         )
         .unwrap();
         assert!(setup.hamlib.is_some());
@@ -161,7 +166,7 @@ mod tests {
             config,
             plan(),
             CarrierSource::Dsp,
-            SubaudibleSource::Disabled,
+            usbradioplus_radio::QualificationConfig::default(),
         )
         .unwrap();
         assert!(setup.hamlib.is_none());
@@ -175,7 +180,7 @@ mod tests {
                 config,
                 plan(),
                 CarrierSource::Dsp,
-                SubaudibleSource::Disabled
+                usbradioplus_radio::QualificationConfig::default()
             ),
             Err(RemoteSetupError::Call(usbradioplus_remote::CallError(
                 -1001
@@ -190,7 +195,7 @@ mod tests {
             config,
             plan(),
             CarrierSource::Dsp,
-            SubaudibleSource::Disabled,
+            usbradioplus_radio::QualificationConfig::default(),
         )
         .unwrap();
         assert!(setup.hardware().cm119.is_none());

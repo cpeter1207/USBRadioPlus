@@ -90,7 +90,7 @@ impl RemoteOwner {
             auxiliary: None,
             configuration,
             session,
-            settings,
+            settings: crate::remote_catalog::controller_catalog(settings, caps),
             queue,
             pending: Vec::with_capacity(2),
         })
@@ -251,9 +251,16 @@ impl RemoteOwner {
                     .find(|setting| setting.selector == operation.selector && setting.readable)
                     .ok_or_else(|| rejected(-6))?
                     .clone();
-                let value = device
-                    .get_setting(operation.selector, &snapshot)
-                    .map_err(|error| rejected(error.0))?;
+                let value = match crate::remote_catalog::signal_value(
+                    &snapshot.applied,
+                    operation.selector,
+                ) {
+                    Some(value) if snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0 => value,
+                    Some(_) => return Err(rejected(-6)),
+                    None => device
+                        .get_setting(operation.selector, &snapshot)
+                        .map_err(|error| rejected(error.0))?,
+                };
                 RemoteReply::Value { setting, value }
             }
             Kind::Memory => RemoteReply::Memories(vec![
@@ -377,6 +384,35 @@ mod tests {
             struct_size: size_of::<raw::RptAdvRemoteActivity>() as u32,
             flags: 0,
         }
+    }
+
+    #[test]
+    fn remote_owner_reads_applied_dsp_signaling_without_a_native_scalar_call() {
+        let (mut owner, queue, mut device) = owner();
+        owner.service(0, activity(), &mut device).unwrap();
+        let state = owner.snapshot().unwrap().applied;
+        for (selector, expected) in [
+            (12, i64::from(state.encode.ctcss_tenths_hz)),
+            (14, i64::from(state.encode.dcs_code)),
+            (16, i64::from(state.encode.enabled)),
+            (400, i64::from(state.encode.source)),
+            (401, i64::from(state.decode.source)),
+            (402, i64::from(state.decode.control_source)),
+            (403, i64::from(state.encode.inverted)),
+        ] {
+            let mut operation = RemoteOperation::new(Kind::GetSetting);
+            operation.selector = selector;
+            let ticket = queue.submit(operation, true, false).unwrap();
+            owner.service(1, activity(), &mut device).unwrap();
+            match ticket.take_completion() {
+                Some(Ok(RemoteReply::Value { value, .. })) => {
+                    assert_eq!(value, expected, "selector {selector}")
+                }
+                Some(Err(error)) => panic!("selector {selector}: {error:?}"),
+                _ => panic!("selector {selector} did not complete with a scalar"),
+            }
+        }
+        assert_eq!(device.scalar, 500000);
     }
 
     #[test]
@@ -557,7 +593,7 @@ mod tests {
         let ticket = queue.submit(query, true, false).unwrap();
         owner.service(1, activity(), &mut device).unwrap();
         assert!(
-            matches!(ticket.take_completion(), Some(Ok(RemoteReply::Capabilities(entries))) if entries.len() == 1)
+            matches!(ticket.take_completion(), Some(Ok(RemoteReply::Capabilities(entries))) if entries.len() == 5)
         );
         let waiting = queue
             .submit(RemoteOperation::new(Kind::Status), true, false)

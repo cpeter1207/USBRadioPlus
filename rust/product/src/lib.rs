@@ -1154,7 +1154,7 @@ fn prepare_remote(plan: &StationPlan) -> Result<Option<RemotePreparation>, Remot
                 configuration.clone(),
                 plan.hardware().clone(),
                 plan.configuration().station.receive.cos_assignment,
-                plan.radio().qualification.subaudible_source,
+                plan.radio().qualification,
             )
         })
         .transpose()

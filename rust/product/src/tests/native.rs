@@ -202,6 +202,35 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
 }
 
 #[test]
+fn remote_native_requires_metadata_before_opening_any_device() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    let raw = radio();
+    let mut config = request(&raw);
+    let source = b"[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    config.processing_configuration = source.as_ptr();
+    config.processing_configuration_length = source.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let providers = fixture::manifest();
+    let mut callbacks = direct_callbacks();
+    callbacks.metadata = None;
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let mut handle = ptr::null_mut();
+    // SAFETY: complete borrowed records and byte spans live through this call.
+    let result = unsafe { product_descriptor().native_create.unwrap()(&args, &mut handle) };
+    assert_eq!(result, URP_AST_INCOMPATIBLE_ABI);
+    assert!(handle.is_null());
+}
+
+#[test]
 fn native_service_advances_only_the_existing_control_owner() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();
