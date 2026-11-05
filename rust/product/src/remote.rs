@@ -13,6 +13,29 @@ pub use usbradioplus_core::remote_operation::RemoteOperation as UrpRemoteOperati
 pub type UrpRemoteSubmit =
     unsafe extern "C" fn(*mut c_void, *const UrpRemoteOperation, u32, *mut *mut c_void) -> c_int;
 
+fn activation_status(service: &HardwareService) -> c_int {
+    match service.remote_ready() {
+        Ok(true) => 0,
+        Ok(false) => 1,
+        Err(cause) => cause,
+    }
+}
+pub(crate) unsafe extern "C" fn native_activation_status(handle: *mut c_void) -> c_int {
+    crate::ffi_code(|| {
+        // SAFETY: the serialized host retains this already-created native owner.
+        let service = unsafe { crate::native::site_service(handle)? };
+        Ok(activation_status(service))
+    })
+}
+pub(crate) unsafe extern "C" fn channel_activation_status(handle: *mut c_void) -> c_int {
+    crate::ffi_code(|| {
+        // SAFETY: the serialized taskprocessor retains this live channel handle.
+        let (_, channel) = unsafe { crate::channel_control(handle)? };
+        let station = channel.hardware.as_mut().ok_or(Status::NotReady)?;
+        Ok(activation_status(station.maintenance_mut().service()))
+    })
+}
+
 fn submit(
     service: &HardwareService,
     operation: UrpRemoteOperation,
@@ -234,6 +257,22 @@ mod tests {
     use crate::*;
     use usbradioplus_core::remote_operation::{RemoteOperation, RemoteOperationKind};
     use usbradioplus_driver::{RemoteQueue, RemoteReply};
+
+    #[test]
+    fn activation_status_queries_reject_absent_handles_without_io() {
+        let api = product_descriptor();
+        // SAFETY: null handles must reject before any owner or device is accessed.
+        unsafe {
+            assert_eq!(
+                api.native_activation_status.unwrap()(ptr::null_mut()),
+                URP_AST_INVALID_ARGUMENT
+            );
+            assert_eq!(
+                api.channel_activation_status.unwrap()(ptr::null_mut()),
+                URP_AST_INVALID_ARGUMENT
+            );
+        }
+    }
 
     unsafe extern "C" fn copy_text(context: *mut c_void, data: *const u8, length: u32) {
         // SAFETY: the test lends its owned String and the SDK lends UTF-8 through return.

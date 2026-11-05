@@ -1105,6 +1105,8 @@ typedef struct UrpRemoteTicket {
 #define URP_AST_REMOTE_QUIESCE 2u
 /** Submit a copied operation and return an independently owned ticket. */
 #define URP_AST_REMOTE_SUBMIT 3u
+/** Observe activation: zero ready, one opening, negative original cause. */
+#define URP_AST_REMOTE_READY 4u
 /** Synchronous taskprocessor envelope; contains no retained caller buffer.
  * accepted_abi_version acknowledges recognized dispatch even when pending/error.
  */
@@ -1112,7 +1114,7 @@ typedef struct UrpAstRemoteControl {
 	uint32_t struct_size;	       /**< Exact complete envelope size. */
 	uint32_t abi_version;	       /**< One. */
 	uint32_t accepted_abi_version; /**< Zero on input, one after recognized dispatch. */
-	uint32_t operation;	       /**< SERVICE, QUIESCE, or SUBMIT. */
+	uint32_t operation;	       /**< SERVICE, QUIESCE, SUBMIT, or READY. */
 	uint32_t source_flags;	       /**< SUBMIT: local1, active2. */
 	UrpRemoteOperation request;    /**< Borrowed operation copied during SUBMIT. */
 	UrpRemoteTicket ticket;	       /**< Output only; success transfers unique ownership. */
@@ -1390,6 +1392,12 @@ typedef struct UrpAstDescriptor {
 	 * Output is an initialized complete ABI-one record; no device or rig is opened. */
 	int (*native_configuration_remote_options)(void *configuration,
 						   UrpRemoteCommandOptions *output);
+	/** Copy activation readiness without I/O: zero after initial RF/DSP admission,
+	 * one while opening, or the original negative failure. Pump native_service
+	 * separately; thread creation alone is not readiness. */
+	int (*native_activation_status)(void *native);
+	/** Same readiness observation on the existing channel control owner. */
+	int (*channel_activation_status)(void *channel);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

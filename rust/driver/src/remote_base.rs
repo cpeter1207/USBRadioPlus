@@ -200,6 +200,7 @@ impl Drop for RemoteWork {
 /// Bounded per-rig command port, shared by control producers and the existing
 /// physical owner. No rig context, I/O, callback, or controller reference is stored.
 pub struct RemoteQueue {
+    ready: AtomicBool,
     parallel_error: Arc<AtomicI32>,
     accepting: Arc<AtomicBool>,
     ordinary: ArrayQueue<RemoteWork>,
@@ -209,11 +210,20 @@ impl RemoteQueue {
     /// Allocate ordinary slots and one reserved urgent slot before admitting work.
     pub fn new(capacity: usize) -> Self {
         Self {
+            ready: AtomicBool::new(false),
             parallel_error: Arc::new(AtomicI32::new(0)),
             accepting: Arc::new(AtomicBool::new(true)),
             ordinary: ArrayQueue::new(capacity),
             urgent: ArrayQueue::new(1),
         }
+    }
+    /// Initial complete RF/DSP state was committed by this physical owner.
+    pub(crate) fn mark_ready(&self) {
+        self.ready.store(true, Ordering::Release);
+    }
+    /// Retirement is terminal even if a final in-flight operation acknowledges.
+    pub fn ready(&self) -> bool {
+        self.accepting.load(Ordering::Acquire) && self.ready.load(Ordering::Acquire)
     }
     /// Admit a complete request, or report full/stopped/invalid input immediately.
     pub fn submit(
@@ -296,6 +306,17 @@ impl RemoteQueue {
 mod tests {
     use super::*;
     use usbradioplus_core::remote_operation::{RemoteOperation, RemoteOperationKind as Kind};
+
+    #[test]
+    fn remote_activation_requires_initial_commit_and_cannot_revive_retired_owners() {
+        let queue = RemoteQueue::new(1);
+        assert!(!queue.ready());
+        queue.mark_ready();
+        assert!(queue.ready());
+        queue.retire();
+        queue.mark_ready();
+        assert!(!queue.ready());
+    }
 
     #[test]
     fn legacy_parallel_work_keeps_generation_ownership_without_a_caller_ticket() {

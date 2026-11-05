@@ -195,7 +195,8 @@ unsafe fn execute(
             }
             ControlOperation::Remote(mut request) => {
                 use super::super::{
-                    URP_AST_REMOTE_QUIESCE, URP_AST_REMOTE_SERVICE, URP_AST_REMOTE_SUBMIT,
+                    URP_AST_REMOTE_QUIESCE, URP_AST_REMOTE_READY, URP_AST_REMOTE_SERVICE,
+                    URP_AST_REMOTE_SUBMIT,
                 };
                 let result = match request.operation {
                     URP_AST_REMOTE_SERVICE => {
@@ -204,6 +205,11 @@ unsafe fn execute(
                     URP_AST_REMOTE_QUIESCE => {
                         status(descriptor.channel_quiesce.map(|call| call(channel)))
                     }
+                    URP_AST_REMOTE_READY => status(
+                        descriptor
+                            .channel_activation_status
+                            .map(|call| call(channel)),
+                    ),
                     URP_AST_REMOTE_SUBMIT => match (
                         descriptor.channel_remote_submit,
                         descriptor.remote_source,

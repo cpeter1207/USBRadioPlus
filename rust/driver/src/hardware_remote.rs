@@ -327,6 +327,9 @@ impl RemoteGeneration {
                 self.encode_gate = Some(enabled);
             }
         }
+        if snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0 {
+            self.queue.mark_ready();
+        }
         Ok(())
     }
 

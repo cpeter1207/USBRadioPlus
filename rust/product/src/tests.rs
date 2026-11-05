@@ -163,6 +163,95 @@ fn remote_only_reload_rejects_unavailable_model_without_stopping_audio() {
     }
 }
 
+#[test]
+fn asl_activation_waits_for_worker_admission_before_start_or_reload_success() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    // A valid model with a refused loopback transport fails only on its physical owner.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    drop(listener);
+    let remote = format!(
+        "[usb]\n[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_NETRIGCTL\nhamlib_device={address}\ntimeout_ms=1\nretries=0\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n"
+    );
+    let mut results = Vec::new();
+    for reloading in [false, true] {
+        let context = RefCell::new(Calls::default());
+        let configuration = if reloading { "[usb]\n" } else { &remote };
+        let driver = create_driver(&context, configuration.as_bytes());
+        // SAFETY: the test serializes the complete lifecycle and destroys both owners.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            let result = if reloading {
+                assert_eq!(channel_start(channel), URP_AST_OK);
+                assert_eq!(stage_reload(driver, remote.as_bytes()), URP_AST_OK);
+                assert_eq!(prepare_reload(channel), URP_AST_OK);
+                let activation = activate_reload(channel);
+                assert_eq!(finish_reload(channel, 0), URP_AST_OK);
+                assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+                assert_eq!(channel_start(channel), URP_AST_OK);
+                activation
+            } else {
+                await_reload(|| channel_start(channel))
+            };
+            channel_destroy(channel);
+            driver_destroy(driver);
+            results.push(result);
+        }
+    }
+    assert!(
+        results.iter().all(|code| *code < 0),
+        "worker failures were reported as ready: {results:?}"
+    );
+}
+
+#[test]
+fn asl_remote_rollback_waits_until_the_previous_worker_is_ready() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    for failure in [0, provider_support::FAIL_START_ONCE] {
+        provider_support::clear_failure();
+        provider_support::periodic_audio(true);
+        let source = "[usb]\n[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nhamlib_option_ptt_type=RIG\nptt_source=usb\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\npower_w=5\nmode=FM\n";
+        let context = RefCell::new(Calls::default());
+        let driver = create_driver(&context, source.as_bytes());
+        // SAFETY: periodic fake callbacks and handles are joined before releasing fixtures.
+        let restored = unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            let started = await_reload(|| channel_start(channel));
+            if started != URP_AST_OK {
+                channel_destroy(channel);
+                driver_destroy(driver);
+                provider_support::periodic_audio(false);
+                panic!("dummy rig startup failed: {started}");
+            }
+            let candidate = source.replace("146520000", "146940000");
+            assert_eq!(stage_reload(driver, candidate.as_bytes()), URP_AST_OK);
+            assert_eq!(prepare_reload(channel), URP_AST_OK);
+            provider_support::set_failure(failure);
+            assert_eq!(
+                activate_reload(channel),
+                if failure == 0 {
+                    URP_AST_OK
+                } else {
+                    URP_AST_SETUP_FAILED
+                }
+            );
+            provider_support::clear_failure();
+            assert_eq!(finish_reload(channel, 0), URP_AST_OK);
+            let restored = remote::channel_activation_status(channel);
+            assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+            channel_destroy(channel);
+            driver_destroy(driver);
+            restored
+        };
+        provider_support::periodic_audio(false);
+        assert_eq!(
+            restored, 0,
+            "rollback completed while the previous rig was still opening"
+        );
+    }
+}
+
 use std::cell::RefCell;
 use std::ffi::CStr;
 

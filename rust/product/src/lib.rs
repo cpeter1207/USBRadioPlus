@@ -810,12 +810,19 @@ pub struct UrpAstDescriptor {
     /// Inspect canonical command policy from an existing resolved configuration.
     pub native_configuration_remote_options:
         Option<unsafe extern "C" fn(*mut c_void, *mut UrpRemoteCommandOptions) -> c_int>,
+    /// Zero only after initial remote RF/DSP admission; one opening, negative first cause.
+    /// Copies worker state only. Call native_service separately to advance DSP preparation.
+    pub native_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Same observation on the existing channel control owner, without changing service status.
+    pub channel_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_activation_status: Some(remote::native_activation_status),
+    channel_activation_status: Some(remote::channel_activation_status),
     native_configuration_remote_options: Some(native_configuration::remote_options),
     native_quiesce: Some(native::quiesce),
     channel_quiesce: Some(channel_quiesce),
@@ -1134,6 +1141,7 @@ struct AdoptedChannelReload {
 enum PreviousChannelGeneration {
     Unchanged,
     Live,
+    Restoring,
     Prepared {
         media: Box<StationMedia>,
         preflight: HardwarePreflight,
@@ -1297,6 +1305,7 @@ impl ReservationState {
 
 #[derive(Clone, Copy, Debug)]
 enum Status {
+    Activation(c_int),
     ReloadPending,
     InvalidArgument,
     IncompatibleAbi,
@@ -1312,6 +1321,7 @@ enum Status {
 impl Status {
     const fn code(self) -> c_int {
         match self {
+            Self::Activation(cause) => cause,
             Self::ReloadPending => URP_AST_RELOAD_PENDING,
             Self::InvalidArgument => URP_AST_INVALID_ARGUMENT,
             Self::IncompatibleAbi => URP_AST_INCOMPATIBLE_ABI,
@@ -1884,7 +1894,8 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
             if result.is_ok() {
                 control.running = true;
             }
-            return result;
+            result?;
+            return channel_activation_ready(channel, control);
         }
         let media = control.media.take().ok_or(Status::NotReady)?;
         let preflight = control.preflight.take().ok_or(Status::NotReady)?;
@@ -1912,7 +1923,8 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
         if result.is_ok() {
             control.running = true;
         }
-        result
+        result?;
+        channel_activation_ready(channel, control)
     })
 }
 
@@ -2137,6 +2149,17 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
+        let replacement = channel
+            .rollback
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|adopted| {
+                matches!(adopted.previous, PreviousChannelGeneration::Hardware { .. })
+            });
+        if replacement {
+            return channel_activation_ready(channel, control);
+        }
         if channel
             .rollback
             .lock()
@@ -2249,6 +2272,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             )
             .unwrap_or(false);
             control.reload = Some(PreparedChannelReload::Replacement(prepared));
+            retain_restoration(channel, control);
             return Err(Status::SetupFailed);
         }
         if let Err(status) = drain_receive(channel, control) {
@@ -2262,6 +2286,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             )
             .unwrap_or(false);
             control.reload = Some(PreparedChannelReload::Replacement(prepared));
+            retain_restoration(channel, control);
             return Err(status);
         }
         let retained = RetainedControllerState::capture(control.controller()?);
@@ -2287,6 +2312,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                 control.running =
                     restore_previous(channel, &mut previous, transient).unwrap_or(false);
                 control.hardware = Some(previous);
+                retain_restoration(channel, control);
                 return Err(Status::SetupFailed);
             }
         };
@@ -2301,6 +2327,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                 control.running =
                     restore_previous(channel, &mut previous, transient).unwrap_or(false);
                 control.hardware = Some(previous);
+                retain_restoration(channel, control);
                 return Err(Status::SetupFailed);
             }
         }
@@ -2317,8 +2344,28 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             },
             jitter,
         });
-        Ok(())
+        channel_activation_ready(channel, control)
     })
+}
+
+/// Physical/DSP admission is completed by the existing worker, not by spawning it.
+fn channel_activation_ready(
+    channel: &ChannelHandle,
+    control: &mut ChannelControl,
+) -> Result<(), Status> {
+    if !control.running {
+        return Ok(());
+    }
+    let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
+    channel.driver().factory.service_remote(hardware);
+    match hardware.site_service().remote_ready() {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(Status::ReloadPending),
+        Err(cause) => {
+            channel.log_error(&format!("remote activation failed: {cause}"));
+            Err(Status::Activation(cause))
+        }
+    }
 }
 
 unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) -> c_int {
@@ -2394,6 +2441,17 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
         control.jitter = adopted.jitter;
         match adopted.previous {
             PreviousChannelGeneration::Unchanged | PreviousChannelGeneration::Live => Ok(()),
+            PreviousChannelGeneration::Restoring => {
+                *channel
+                    .rollback
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                    Some(AdoptedChannelReload {
+                        previous: PreviousChannelGeneration::Restoring,
+                        jitter: adopted.jitter,
+                    });
+                finish_restoring(channel, control)
+            }
             PreviousChannelGeneration::Prepared {
                 media,
                 preflight,
@@ -2408,10 +2466,16 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                 mut hardware,
                 transient,
             } => {
-                if let Err(error) = control.stop_hardware() {
-                    channel.log_error(&format!(
-                        "configuration reload rollback could not stop the candidate generation: {error}"
-                    ));
+                let stopped = control
+                    .hardware
+                    .as_mut()
+                    .map_or(Ok(true), HardwareStation::poll_stop);
+                if !matches!(stopped, Ok(true)) {
+                    if let Err(error) = &stopped {
+                        channel.log_error(&format!(
+                            "configuration reload rollback could not stop the candidate generation: {error}"
+                        ));
+                    }
                     // Preserve both generations. A failed safe write must not
                     // release the candidate owner or reopen the previous one.
                     *channel
@@ -2425,8 +2489,13 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                             },
                             jitter: adopted.jitter,
                         });
-                    return Err(Status::SetupFailed);
+                    return Err(if stopped.is_ok() {
+                        Status::ReloadPending
+                    } else {
+                        Status::SetupFailed
+                    });
                 }
+                control.running = false;
                 drop(control.hardware.take());
                 let restored = restore_previous(channel, &mut hardware, transient);
                 let degraded = restored.is_err();
@@ -2435,11 +2504,57 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
                 if degraded {
                     Err(Status::SetupFailed)
                 } else {
-                    Ok(())
+                    *channel
+                        .rollback
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) =
+                        Some(AdoptedChannelReload {
+                            previous: PreviousChannelGeneration::Restoring,
+                            jitter: adopted.jitter,
+                        });
+                    finish_restoring(channel, control)
                 }
             }
         }
     })
+}
+
+/// Keep the rollback marker until the reopened worker is admitted or safely stopped.
+fn retain_restoration(channel: &ChannelHandle, control: &mut ChannelControl) {
+    control.reload = None;
+    *channel
+        .rollback
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(AdoptedChannelReload {
+        previous: PreviousChannelGeneration::Restoring,
+        jitter: control.jitter,
+    });
+}
+
+/// Poll the restored generation without relinquishing its cleanup obligation.
+fn finish_restoring(channel: &ChannelHandle, control: &mut ChannelControl) -> Result<(), Status> {
+    let result = channel_activation_ready(channel, control);
+    if matches!(result, Err(Status::ReloadPending)) {
+        return result;
+    }
+    if result.is_err() {
+        let stopped = control
+            .hardware
+            .as_mut()
+            .ok_or(Status::NotReady)?
+            .poll_stop()
+            .map_err(|error| channel.setup_error(error))?;
+        if !stopped {
+            return Err(Status::ReloadPending);
+        }
+        control.running = false;
+    }
+    channel
+        .rollback
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take();
+    result
 }
 
 fn update_status(channel: &ChannelHandle, error: StationUpdateError) -> Status {
@@ -3005,8 +3120,12 @@ unsafe fn validate_providers(
 }
 
 fn ffi_status(operation: impl FnOnce() -> Result<(), Status>) -> c_int {
+    ffi_code(|| operation().map(|()| URP_AST_OK))
+}
+
+fn ffi_code(operation: impl FnOnce() -> Result<c_int, Status>) -> c_int {
     match catch_unwind(AssertUnwindSafe(operation)) {
-        Ok(Ok(())) => URP_AST_OK,
+        Ok(Ok(code)) => code,
         Ok(Err(status)) => status.code(),
         Err(_) => Status::InternalFailure.code(),
     }

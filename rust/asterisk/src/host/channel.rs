@@ -999,7 +999,7 @@ unsafe extern "C" fn call(
     }
     if start_media(
         channel.direct.load(Ordering::Acquire),
-        || channel.control_status(ControlOperation::Start),
+        || super::reload::complete_phase(|| channel.control_status(ControlOperation::Start)),
         || {
             channel.delivery_stop.store(false, Ordering::Release);
             channel.service_failed.store(false, Ordering::Release);
@@ -1289,7 +1289,7 @@ unsafe extern "C" fn setoption(
         let mut request = unsafe { data.cast::<UrpAstRemoteControl>().read_unaligned() };
         if request.struct_size as usize != size_of::<UrpAstRemoteControl>()
             || request.abi_version != URP_AST_REMOTE_OPTION_ABI_VERSION
-            || !(1..=3).contains(&request.operation)
+            || !(1..=4).contains(&request.operation)
             || request.source_flags & !3 != 0
         {
             return -1;

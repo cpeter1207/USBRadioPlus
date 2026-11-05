@@ -28,6 +28,23 @@ fn remote_control_dispatch_preserves_pending_and_ticket_ownership() {
     };
     assert_eq!(result.status(), 1);
     assert!(matches!(result, ControlResult::Remote(1, _)));
+    for expected in [0, 1, -123] {
+        unsafe extern "C" fn activation(_: *mut c_void) -> i32 {
+            TRANSMIT.load(Ordering::Acquire) as i32
+        }
+        TRANSMIT.store(expected as u32, Ordering::Release);
+        descriptor.channel_activation_status = Some(activation);
+        request.operation = crate::URP_AST_REMOTE_READY;
+        // SAFETY: the complete descriptor and request remain borrowed for dispatch.
+        let result = unsafe {
+            execute(
+                &descriptor,
+                ptr::null_mut(),
+                ControlOperation::Remote(request),
+            )
+        };
+        assert_eq!(result.status(), expected);
+    }
 }
 
 unsafe extern "C" fn start(_channel: *mut c_void) -> i32 {

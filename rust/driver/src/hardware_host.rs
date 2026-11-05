@@ -2247,6 +2247,21 @@ impl HardwareService {
     pub fn remote_error(&self) -> i32 {
         self.remote_error.load(Ordering::Acquire)
     }
+    /// Nonblocking activation observation, not a thread-start acknowledgment.
+    /// Non-remote radios are immediately ready; failures retain their first cause.
+    pub fn remote_ready(&self) -> Result<bool, i32> {
+        if self.remote.is_none() {
+            return Ok(true);
+        }
+        let failure = self.remote_error();
+        if failure != 0 {
+            return Err(failure);
+        }
+        Ok(self
+            .remote_queue
+            .as_ref()
+            .is_some_and(|queue| queue.ready()))
+    }
 
     /// Open GPIO and start its single service owner.
     ///
