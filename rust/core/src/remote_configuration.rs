@@ -1,8 +1,27 @@
 //! One remote-base configuration resolver for channel and standalone hosts.
 
+use crate::radio_control::{GpioPin, ParallelPin};
 use crate::{ConfigDocument, CtcssSource, DcsCode, DcsPolarity, SignalingMethod, StationConfig};
 use crate::{ResolutionWarning, ResolutionWarningKind};
 use std::{collections::BTreeMap, fmt};
+
+/// One ordinary output that enables a separately wired external tone encoder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RemoteEncoderOutput {
+    /// Configured CM119 output, using its one-based physical GPIO number.
+    Usb(GpioPin),
+    /// Configured parallel data output, using its connector pin number.
+    Parallel(ParallelPin),
+}
+fn encoder_output(value: &str) -> Option<RemoteEncoderOutput> {
+    let (bank, pin) = value.split_once(':')?;
+    let pin = pin.parse().ok()?;
+    match bank {
+        "usb" => GpioPin::new(pin).map(RemoteEncoderOutput::Usb),
+        "parallel" => ParallelPin::new(pin).map(RemoteEncoderOutput::Parallel),
+        _ => None,
+    }
+}
 
 /// Explicit physical control backend; parallel operations retain their existing owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -160,6 +179,10 @@ pub struct ResolvedRemoteConfiguration {
     pub ptt_source: Option<String>,
     /// Optional explicit COR provider: rig, dsp, usb, parallel, or open.
     pub cor_source: Option<String>,
+    /// Optional independently wired external encoder enable output.
+    pub external_encode_output: Option<RemoteEncoderOutput>,
+    /// Physical low enables the selected encoder when true.
+    pub external_encode_inverted: bool,
     /// Inclusive permitted receive intervals.
     pub receive_ranges: Vec<(u64, u64)>,
     /// Inclusive permitted transmit intervals.
@@ -739,6 +762,13 @@ impl ResolvedRemoteConfiguration {
             poll_interval_ms,
             ptt_source,
             cor_source,
+            external_encode_output: values
+                .text("external_encode_output")
+                .and_then(encoder_output),
+            external_encode_inverted: bool_value(
+                values.text("external_encode_inverted").unwrap_or("no"),
+            )
+            .unwrap_or(false),
             receive_ranges,
             transmit_ranges: ranges(&values, "allowed_tx_ranges_hz")?,
             receive_only_ranges: ranges(&values, "receive_only_ranges_hz")?,
@@ -873,7 +903,10 @@ fn overlay(
 
 fn valid_value(key: &str, value: &str) -> bool {
     match key {
-        "enabled" | "split" | "rit_enabled" | "xit_enabled" => bool_value(value).is_some(),
+        "enabled" | "split" | "rit_enabled" | "xit_enabled" | "external_encode_inverted" => {
+            bool_value(value).is_some()
+        }
+        "external_encode_output" => value.is_empty() || encoder_output(value).is_some(),
         "audio_source" => matches!(value, "cm119" | "alsa"),
         "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
         "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
@@ -915,6 +948,8 @@ fn valid_value(key: &str, value: &str) -> bool {
 }
 
 const BASE_DEFAULTS: &[(&str, &str)] = &[
+    ("external_encode_output", ""),
+    ("external_encode_inverted", "no"),
     ("enabled", "no"),
     ("audio_source", "cm119"),
     ("dtmf_access", "locked"),
@@ -941,6 +976,8 @@ const SCAN_DEFAULTS: &[(&str, &str)] = &[
 ];
 
 const BASE_KEYS: &[&str] = &[
+    "external_encode_output",
+    "external_encode_inverted",
     "enabled",
     "backend",
     "hamlib_model",

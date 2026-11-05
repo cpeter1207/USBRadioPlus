@@ -1,5 +1,37 @@
 use super::*;
 
+#[test]
+fn remote_external_encoder_pin_has_one_typed_bank_and_safe_fallback() {
+    for (value, present, warning) in [
+        ("usb:1", true, false),
+        ("usb:8", true, false),
+        ("parallel:2", true, false),
+        ("parallel:9", true, false),
+        ("", false, false),
+        ("usb:0", false, true),
+        ("parallel:1", false, true),
+        ("other:1", false, true),
+    ] {
+        let source = CONFIG.replace(
+            "backend=hamlib",
+            &format!(
+                "backend=hamlib\nexternal_encode_output={value}\nexternal_encode_inverted=yes"
+            ),
+        );
+        let config = ResolvedRemoteConfiguration::from_document(
+            &ConfigDocument::new(source),
+            "test",
+            "524950",
+            &StationConfig::default(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(config.external_encode_output.is_some(), present, "{value}");
+        assert!(config.external_encode_inverted);
+        assert_eq!(!config.warnings.is_empty(), warning, "{value}");
+    }
+}
+
 const CONFIG: &str = "[524950]\n[remote_base]\nenabled=no\ndtmf_access=locked\npoll_interval_ms=600\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_IC9700\nhamlib_device=/dev/serial/by-id/rig\nhamlib_option_serial_speed=115200\nstartup_memory=local\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\nallowed_modes=FM,USB\nmax_power_w=10\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\npower_w=5\nctcss_encode_source=dsp\nctcss_encode_hz=114.8\nctcss_decode_source=external\n[remote_scan 524950 local_channels]\nselector=1\nmembers=local\ndwell_ms=500\nresume_delay_ms=2000\n";
 
 #[test]

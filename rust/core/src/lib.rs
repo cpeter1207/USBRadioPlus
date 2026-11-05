@@ -17,9 +17,9 @@ mod native_stream;
 mod processing_profile;
 mod remote_configuration;
 pub use remote_configuration::{
-    RemoteAudioSource, RemoteBackend, RemoteConfigurationError, RemoteDtmfAccess, RemoteMemory,
-    RemoteOperatingState, RemoteScanList, RemoteSignal, RemoteSignalSource,
-    ResolvedRemoteConfiguration,
+    RemoteAudioSource, RemoteBackend, RemoteConfigurationError, RemoteDtmfAccess,
+    RemoteEncoderOutput, RemoteMemory, RemoteOperatingState, RemoteScanList, RemoteSignal,
+    RemoteSignalSource, ResolvedRemoteConfiguration,
 };
 mod profile_resolution;
 mod stage_order;
