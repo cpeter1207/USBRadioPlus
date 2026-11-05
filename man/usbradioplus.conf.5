@@ -932,6 +932,16 @@ post_limiter_bandpass_enabled = yes
 post_limiter_bandpass_highpass_hz = 0
 post_limiter_bandpass_lowpass_hz = 5000
 .fi
+.SH REMOTE BASE
+Put shared radio limits and transport settings in
+.B "[remote_base node]".
+Define memories in
+.B "[remote_memory node name]"
+and scan lists in
+.B "[remote_scan node name]".
+The remote-base operating guide is installed under
+.BR /usr/share/doc/libusbradioplus-product1/ .
+It lists all settings and the RPT Advanced DTMF commands.
 .SH FILES
 .B /etc/asterisk/usbradioplus.conf
 .SH SEE ALSO

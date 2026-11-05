@@ -1,5 +1,8 @@
 # Native radio detection and signaling
 
+For radio frequency, mode, tone, memory, and scan settings, see
+[Operate a remote-base radio](remote-base.md).
+
 USBRadioPlus contains its carrier, CTCSS, DCS, measurement, and transmitter-control
 implementation. It does not link to or ship XPMR.
 
