@@ -160,6 +160,7 @@ unsafe fn admit_hamlib(
         || api.close.is_none() || api.destroy.is_none() || api.setting.is_none()
         || api.choice.is_none() || api.get.is_none() || api.set.is_none()
         || api.transport_budget_ms.is_none() || api.range.is_none()
+        || api.set_mode_width.is_none() || api.set_split_vfos.is_none() || api.set_power_mw.is_none()
     {
         return Err(ProviderError::Incompatible);
     }
@@ -168,3 +169,19 @@ unsafe fn admit_hamlib(
 
 #[cfg(test)]
 mod tests;
+
+mod hamlib;
+pub use hamlib::{CallError, HamlibRig, Setting};
+mod session;
+pub use session::RemoteSession;
+
+// SAFETY: these owners retain immutable descriptor tables and loaded executable
+// storage only. Rig/session contexts are separate, uniquely owned and not Send.
+unsafe impl Send for RemoteProvider {}
+// SAFETY: no mutable context is stored in the shared provider descriptor.
+unsafe impl Sync for RemoteProvider {}
+// SAFETY: Hamlib serializes its frontend lifecycle; per-rig contexts stay on
+// their creating owner thread. This object contains only immutable API storage.
+unsafe impl Send for HamlibProvider {}
+// SAFETY: sharing the immutable function table never shares an opened rig.
+unsafe impl Sync for HamlibProvider {}
