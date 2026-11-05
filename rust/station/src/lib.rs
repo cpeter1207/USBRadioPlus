@@ -12,6 +12,7 @@ mod control;
 mod hardware;
 mod media;
 mod program;
+mod remote_plan;
 mod runtime;
 
 use usbradioplus_core::{
