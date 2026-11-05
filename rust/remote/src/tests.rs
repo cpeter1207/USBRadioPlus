@@ -153,3 +153,53 @@ fn remote_owned_client_copies_setup_and_destroys_before_unloading_provider() {
     session.retire().unwrap();
     assert!(session.configured_memory(99).is_err());
 }
+
+#[test]
+fn configured_remote_client_resolves_available_signal_providers_once() {
+    use usbradioplus_core::{ConfigDocument, ResolvedRemoteConfiguration, StationConfig};
+    let document = ConfigDocument::new(
+        "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=one\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 one]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\nctcss_encode_source=auto\nctcss_encode_hz=114.8\nctcss_decode_source=auto\nctcss_decode_hz=114.8\n",
+    );
+    let config = ResolvedRemoteConfiguration::from_document(
+        &document,
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    let coverage = raw::RptAdvRemoteCoverage {
+        minimum: 144_000_000,
+        maximum: 148_000_000,
+        mode_mask: 2,
+        flags: 0,
+        minimum_power_mw: 0,
+        maximum_power_mw: 0,
+    };
+    let caps = SelectedCapabilities {
+        receive: vec![coverage],
+        transmit: vec![coverage],
+        modes: 2,
+        encode_sources: (1 << 1) | (1 << 3),
+        decode_sources: 1 << 1,
+        decode_control_sources: (1 << 1) | (1 << 3),
+        ..SelectedCapabilities::default()
+    };
+    let session = RemoteSession::configured(
+        std::sync::Arc::new(RemoteProvider::load().unwrap()),
+        &config,
+        &caps,
+    )
+    .unwrap();
+    let memory = session.configured_memory(1).unwrap();
+    assert_eq!(memory.encode.source, 3);
+    assert_eq!(
+        memory.decode.source, 1,
+        "Hamlib busy indication is not qualified tone decode"
+    );
+    assert_eq!(memory.encode.ctcss_tenths_hz, 1148);
+    assert_eq!(
+        config.memories[0].state.encode.source,
+        usbradioplus_core::RemoteSignalSource::Automatic
+    );
+}

@@ -174,6 +174,8 @@ mod hamlib;
 pub use hamlib::{CallError, HamlibRig, Setting};
 mod session;
 pub use session::RemoteSession;
+mod configuration;
+pub use configuration::SelectedCapabilities;
 
 // SAFETY: these owners retain immutable descriptor tables and loaded executable
 // storage only. Rig/session contexts are separate, uniquely owned and not Send.

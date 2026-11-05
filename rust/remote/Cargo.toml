@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 libloading = "0.8"
+usbradioplus-core = { path = "../core" }
 
 [build-dependencies]
 bindgen = "0.72.1"

@@ -350,6 +350,7 @@ version = "0.1.0-alpha19"
 dependencies = [
  "bindgen",
  "libloading",
+ "usbradioplus-core",
 ]
 
 [[package]]
