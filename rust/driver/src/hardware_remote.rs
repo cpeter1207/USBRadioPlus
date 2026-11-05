@@ -135,7 +135,7 @@ impl RemoteGeneration {
                 caps.transmit = ranges(&setup.configuration().transmit_ranges);
             }
             caps.scan_modes = match wiring.carrier {
-                CarrierSource::Disabled => 0,
+                CarrierSource::Disabled | CarrierSource::Open => 0,
                 CarrierSource::Dsp => caps.modes & ((1 << 1) | (1 << 9) | (1 << 10)),
                 _ => caps.modes,
             };

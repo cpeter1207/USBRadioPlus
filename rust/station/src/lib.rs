@@ -186,6 +186,7 @@ fn carrier_source(source: ConfigCarrierSource) -> CarrierSource {
         ConfigCarrierSource::Dsp => CarrierSource::DspNoise,
         ConfigCarrierSource::Vox => CarrierSource::Vox,
         ConfigCarrierSource::External => CarrierSource::External,
+        ConfigCarrierSource::Open => CarrierSource::Open,
         ConfigCarrierSource::Usb => CarrierSource::Usb,
         ConfigCarrierSource::UsbInverted => CarrierSource::UsbInverted,
         ConfigCarrierSource::Parallel => CarrierSource::Parallel,

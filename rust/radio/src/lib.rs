@@ -128,6 +128,8 @@ pub enum CarrierSource {
     ParallelInverted = 6,
     /// Independent normalized carrier, requiring a valid external snapshot.
     External = 7,
+    /// Explicitly unqualified carrier; configured tone qualification still applies.
+    Open = 8,
 }
 
 /// Receive subaudible-indication source.

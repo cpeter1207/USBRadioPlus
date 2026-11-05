@@ -82,7 +82,7 @@ impl RemotePhysicalWiring {
         };
         let (carrier, rig_carrier) = match config.cor_source.as_deref() {
             Some("hamlib") | None if rig_carrier => (CarrierSource::External, true),
-            Some("open") => (CarrierSource::Disabled, false),
+            Some("open") => (CarrierSource::Open, false),
             Some("dsp") => (CarrierSource::Dsp, false),
             Some("usb") => (
                 if inherited_carrier == CarrierSource::UsbInverted {
@@ -201,6 +201,22 @@ mod tests {
     }
 
     #[test]
+    fn explicit_open_receive_is_not_a_disabled_carrier_source() {
+        let mut config = configuration();
+        config.cor_source = Some("open".into());
+        let wiring = RemotePhysicalWiring::select(
+            &config,
+            &plan(),
+            CarrierSource::Dsp,
+            SubaudibleSource::Disabled,
+            &[],
+        )
+        .unwrap();
+        assert_eq!(wiring.carrier.to_string(), "open");
+        assert!(!wiring.rig_carrier);
+    }
+
+    #[test]
     fn remote_wiring_rejects_missing_explicit_sources_and_keeps_qualification_separate() {
         let mut config = configuration();
         let mut plan = plan();
@@ -240,7 +256,7 @@ mod tests {
             &settings,
         )
         .unwrap();
-        assert_eq!(wiring.carrier, CarrierSource::Disabled);
+        assert_eq!(wiring.carrier, CarrierSource::Open);
         assert_eq!(wiring.external_decode, SubaudibleSource::Disabled);
         config.cor_source = Some("hamlib".into());
         assert!(
