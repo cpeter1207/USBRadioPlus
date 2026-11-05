@@ -7,6 +7,8 @@
 /// Stable typed radio-maintenance identifiers for host adapters.
 pub mod radio_control;
 
+pub mod remote_operation;
+
 mod channel_configuration;
 mod config_document;
 mod ffmpeg_graph;

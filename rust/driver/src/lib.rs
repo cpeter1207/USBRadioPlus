@@ -10,6 +10,10 @@ mod hardware_host;
 mod hardware_site;
 mod link;
 mod registry;
+mod remote_base;
+pub use remote_base::{
+    RemoteQueue, RemoteReply, RemoteRequestError, RemoteSource, RemoteTicket, RemoteWork,
+};
 
 pub use configuration::{DriverConfiguration, DriverConfigurationError};
 pub use conversion::prepare_app_rpt_converter;
