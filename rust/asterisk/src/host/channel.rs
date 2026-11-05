@@ -999,7 +999,7 @@ unsafe extern "C" fn call(
     }
     if start_media(
         channel.direct.load(Ordering::Acquire),
-        || super::reload::complete_phase(|| channel.control_status(ControlOperation::Start)),
+        || channel.control_status(ControlOperation::Start),
         || {
             channel.delivery_stop.store(false, Ordering::Release);
             channel.service_failed.store(false, Ordering::Release);
@@ -1029,11 +1029,18 @@ unsafe extern "C" fn call(
 
 fn start_media(
     direct: bool,
-    start: impl FnOnce() -> c_int,
+    mut start: impl FnMut() -> c_int,
     delivery: impl FnOnce() -> Result<(), ()>,
     stop: impl FnOnce(),
 ) -> Result<(), ()> {
-    if start() != URP_AST_OK {
+    // Direct controllers retain and poll readiness themselves. app_rpt needs
+    // an admitted station before its legacy delivery worker can be started.
+    let status = if direct {
+        start()
+    } else {
+        super::reload::complete_phase(start)
+    };
+    if status != URP_AST_OK && !(direct && status == super::super::URP_AST_RELOAD_PENDING) {
         return Err(());
     }
     if !direct && delivery().is_err() {

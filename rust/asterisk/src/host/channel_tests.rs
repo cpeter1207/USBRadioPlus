@@ -1650,6 +1650,47 @@ fn direct_call_starts_station_without_delivery_worker() {
 }
 
 #[test]
+fn direct_call_leaves_pending_activation_to_the_controller_pump() {
+    let starts = std::cell::Cell::new(0);
+    let delivery = std::cell::Cell::new(false);
+    let result = start_media(
+        true,
+        || {
+            starts.set(starts.get() + 1);
+            crate::URP_AST_RELOAD_PENDING
+        },
+        || {
+            delivery.set(true);
+            Ok(())
+        },
+        || panic!("pending activation retains its owner"),
+    );
+    assert!(result.is_ok());
+    assert_eq!(starts.get(), 1);
+    assert!(!delivery.get());
+    starts.set(0);
+    let result = start_media(
+        false,
+        || {
+            starts.set(starts.get() + 1);
+            if starts.get() == 1 {
+                crate::URP_AST_RELOAD_PENDING
+            } else {
+                URP_AST_OK
+            }
+        },
+        || {
+            delivery.set(true);
+            Ok(())
+        },
+        || panic!("successful startup must retain its owner"),
+    );
+    assert!(result.is_ok());
+    assert_eq!(starts.get(), 2);
+    assert!(delivery.get());
+}
+
+#[test]
 fn failed_delivery_start_stops_the_station() {
     let events = RefCell::new(Vec::new());
     assert!(
