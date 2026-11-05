@@ -1,6 +1,39 @@
 use super::*;
 
 #[test]
+fn remote_hardware_signals_preserve_gpio_and_require_selected_ptt_confirmation() {
+    let state = SharedHardwareState::default();
+    let gpio = HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        physical_ptt: true,
+        ..HardwareInputs::default()
+    };
+    state.publish_inputs(gpio);
+    assert!(state.transmit_controls().physical_ptt_applied);
+    assert_eq!(state.receive_controls().external_carrier, None);
+    for observed in [None, Some(false), Some(true)] {
+        let signals = RemoteHardwareSignals {
+            carrier: observed,
+            ptt_selected: true,
+            physical_ptt: observed,
+        };
+        state.publish_remote_signals(signals);
+        assert_eq!(state.remote_signals(), signals);
+        assert_eq!(state.inputs(), gpio);
+        assert_eq!(state.receive_controls().external_carrier, observed);
+        assert!(state.receive_controls().hardware_subaudible);
+        assert!(!state.receive_controls().subaudible_override);
+        assert_eq!(
+            state.transmit_controls().physical_ptt_applied,
+            observed == Some(true)
+        );
+    }
+    state.publish_remote_signals(RemoteHardwareSignals::default());
+    assert!(state.transmit_controls().physical_ptt_applied);
+}
+
+#[test]
 fn remote_radio_plan_update_preserves_physical_and_processing_ownership() {
     for transport in [
         crate::ControllerTransport::AppRpt,

@@ -126,6 +126,7 @@ struct HardwareAtomics {
     receiver_keyed: AtomicU32,
     remote_control: AtomicU32,
     remote_transmit: AtomicU64,
+    remote_signals: AtomicU32,
     transmit_ctcss_ready: AtomicU32,
     receive_clip_events: AtomicU64,
     receive_observation_sequence: AtomicU64,
@@ -185,6 +186,19 @@ pub struct RemoteRadioActivity {
     pub transmit_epoch: u64,
 }
 
+/// Confirmed independent radio-control observations, never raw GPIO substitutes.
+/// The selected PTT source is a generation property: keep it selected on failure
+/// and publish `None`, rather than falling back to another provider.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RemoteHardwareSignals {
+    /// Normalized carrier snapshot; None means unavailable or stale.
+    pub carrier: Option<bool>,
+    /// This generation explicitly selected independent radio-control PTT.
+    pub ptt_selected: bool,
+    /// Successfully serviced/observed PTT state, not logical transmit intent.
+    pub physical_ptt: Option<bool>,
+}
+
 /// Latest complete receive measurement published by the native callback.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReceiveObservation {
@@ -209,6 +223,24 @@ pub struct ReceiveObservation {
 }
 
 impl SharedHardwareState {
+    /// Publish independent snapshots in one coherent callback-safe atomic word.
+    pub fn publish_remote_signals(&self, value: RemoteHardwareSignals) {
+        let flags = u32::from(value.carrier.is_some())
+            | (u32::from(value.carrier == Some(true)) << 1)
+            | (u32::from(value.physical_ptt.is_some()) << 2)
+            | (u32::from(value.physical_ptt == Some(true)) << 3)
+            | (u32::from(value.ptt_selected) << 4);
+        self.0.remote_signals.store(flags, Ordering::Release);
+    }
+    /// Copy independent source observations without changing GPIO diagnostics.
+    pub fn remote_signals(&self) -> RemoteHardwareSignals {
+        let flags = self.0.remote_signals.load(Ordering::Acquire);
+        RemoteHardwareSignals {
+            carrier: (flags & 1 != 0).then_some(flags & 2 != 0),
+            physical_ptt: (flags & 4 != 0).then_some(flags & 8 != 0),
+            ptt_selected: flags & 16 != 0,
+        }
+    }
     /// Publish one applied remote policy before any blocking retune operation.
     pub fn publish_remote_control(&self, value: RemoteRadioControl) {
         self.0
@@ -329,6 +361,7 @@ impl SharedHardwareState {
         let inputs = self.inputs();
         let requests = self.requests();
         ReceiveControls {
+            external_carrier: self.remote_signals().carrier,
             hardware_carrier: inputs.carrier,
             parallel_carrier: inputs.parallel_carrier,
             hardware_subaudible: inputs.subaudible,
@@ -340,9 +373,14 @@ impl SharedHardwareState {
     fn transmit_controls(&self) -> TransmitControls {
         let inputs = self.inputs();
         let requests = self.requests();
+        let remote = self.remote_signals();
         TransmitControls {
             external_ptt_request: requests.transmit,
-            physical_ptt_applied: inputs.physical_ptt,
+            physical_ptt_applied: if remote.ptt_selected {
+                remote.physical_ptt == Some(true)
+            } else {
+                inputs.physical_ptt
+            },
             render_admitted: requests.render_admitted,
             ctcss_inhibit: requests.ctcss_inhibit,
             calibrated_test_tone: requests.calibrated_test_tone,

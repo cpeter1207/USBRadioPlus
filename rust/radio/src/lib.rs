@@ -126,6 +126,8 @@ pub enum CarrierSource {
     Parallel = 5,
     /// Inverted parallel-port carrier indication.
     ParallelInverted = 6,
+    /// Independent normalized carrier, requiring a valid external snapshot.
+    External = 7,
 }
 
 /// Receive subaudible-indication source.
@@ -454,6 +456,9 @@ impl SessionConfig {
 /// Hardware state sampled for one receive callback.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ReceiveControls {
+    /// Independent normalized carrier. None is unavailable/stale, never a
+    /// request to fall back to GPIO or a DSP detector.
+    pub external_carrier: Option<bool>,
     /// Normal USB GPIO carrier input.
     pub hardware_carrier: bool,
     /// Normal parallel-port carrier input.

@@ -43,9 +43,9 @@ pub use program::{
 };
 pub use runtime::{
     CallbackStatistics, ControllerRequests, HardwareInputs, HardwareOutputs, ReceiveObservation,
-    RemoteRadioActivity, RemoteRadioControl, SharedHardwareState, StationControlHost,
-    StationRuntime, StationRuntimeStatistics, StationUpdate, StationUpdateError,
-    StationUpdatePreparation,
+    RemoteHardwareSignals, RemoteRadioActivity, RemoteRadioControl, SharedHardwareState,
+    StationControlHost, StationRuntime, StationRuntimeStatistics, StationUpdate,
+    StationUpdateError, StationUpdatePreparation,
 };
 
 const TUNING_SCALE_MAXIMUM: u32 = 1_000;
