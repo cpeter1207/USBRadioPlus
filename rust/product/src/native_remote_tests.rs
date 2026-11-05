@@ -39,10 +39,13 @@ fn resolve_remote(source: &str) -> Observed {
     let mut observed = Observed::default();
     // SAFETY: source, node and all callback storage outlive this owned resolution/visit.
     unsafe {
-        assert_eq!(
-            crate::native_configuration::resolve(&args, None, std::ptr::null_mut(), &mut owner),
-            0
-        );
+        let code =
+            crate::native_configuration::resolve(&args, None, std::ptr::null_mut(), &mut owner);
+        if code != 0 {
+            assert!(owner.is_null());
+            observed.error = Some(code);
+            return observed;
+        }
         assert_eq!(
             crate::native_configuration::visit(
                 owner,
