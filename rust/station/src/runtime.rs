@@ -127,6 +127,7 @@ struct HardwareAtomics {
     remote_control: AtomicU32,
     remote_transmit: AtomicU64,
     remote_signals: AtomicU32,
+    remote_tune: AtomicU32,
     transmit_ctcss_ready: AtomicU32,
     receive_clip_events: AtomicU64,
     receive_observation_sequence: AtomicU64,
@@ -223,6 +224,13 @@ pub struct ReceiveObservation {
 }
 
 impl SharedHardwareState {
+    /// Publish bounded remote tune intent independently of controller/tuner
+    /// requests. Existing radio rendering owns tone generation and PTT tails.
+    pub fn publish_remote_tune(&self, enabled: bool) {
+        self.0
+            .remote_tune
+            .store(u32::from(enabled), Ordering::Release);
+    }
     /// Publish independent snapshots in one coherent callback-safe atomic word.
     pub fn publish_remote_signals(&self, value: RemoteHardwareSignals) {
         let flags = u32::from(value.carrier.is_some())
@@ -374,16 +382,17 @@ impl SharedHardwareState {
         let inputs = self.inputs();
         let requests = self.requests();
         let remote = self.remote_signals();
+        let tune = self.0.remote_tune.load(Ordering::Acquire) != 0;
         TransmitControls {
-            external_ptt_request: requests.transmit,
+            external_ptt_request: requests.transmit || tune,
             physical_ptt_applied: if remote.ptt_selected {
                 remote.physical_ptt == Some(true)
             } else {
                 inputs.physical_ptt
             },
-            render_admitted: requests.render_admitted,
+            render_admitted: requests.render_admitted || tune,
             ctcss_inhibit: requests.ctcss_inhibit,
-            calibrated_test_tone: requests.calibrated_test_tone,
+            calibrated_test_tone: requests.calibrated_test_tone || tune,
             forced_ctcss_tenths_hz: requests
                 .forced_ctcss
                 .map_or(0, |tone| i32::from(tone.tenths_hz())),

@@ -1563,6 +1563,31 @@ fn remote_radio_admission_keeps_requested_edges_separate_from_rendered_tails() {
 }
 
 #[test]
+fn remote_tune_intent_does_not_overwrite_controller_or_tuner_requests() {
+    let state = SharedHardwareState::default();
+    state.publish_remote_tune(true);
+    assert!(state.transmit_controls().external_ptt_request);
+    assert!(state.transmit_controls().calibrated_test_tone);
+    assert!(state.transmit_controls().render_admitted);
+    assert_eq!(state.requests(), ControllerRequests::default());
+    let requests = ControllerRequests {
+        transmit: true,
+        ctcss_inhibit: true,
+        calibrated_test_tone: true,
+        ..ControllerRequests::default()
+    };
+    state.publish_requests(requests);
+    state.publish_remote_tune(false);
+    assert_eq!(state.requests(), requests);
+    assert!(state.transmit_controls().external_ptt_request);
+    assert!(state.transmit_controls().calibrated_test_tone);
+    assert!(state.transmit_controls().ctcss_inhibit);
+    state.publish_requests(ControllerRequests::default());
+    assert!(!state.transmit_controls().external_ptt_request);
+    assert!(!state.transmit_controls().calibrated_test_tone);
+}
+
+#[test]
 fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
     let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
     let selected = selected(&prepared, 960);
