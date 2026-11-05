@@ -345,6 +345,14 @@ name = "usbradioplus-radio"
 version = "0.1.0-alpha19"
 
 [[package]]
+name = "usbradioplus-remote"
+version = "0.1.0-alpha19"
+dependencies = [
+ "bindgen",
+ "libloading",
+]
+
+[[package]]
 name = "usbradioplus-ring"
 version = "0.1.0-alpha19"
 
