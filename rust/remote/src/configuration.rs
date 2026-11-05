@@ -1,6 +1,6 @@
 //! Copy shared resolved configuration across the released operating-engine ABI.
 
-use crate::{CallError, RemoteProvider, RemoteSession, raw};
+use crate::{CallError, HamlibProvider, HamlibRig, RemoteProvider, RemoteSession, raw};
 use std::{mem::size_of, sync::Arc};
 use usbradioplus_core::{
     RemoteOperatingState, RemoteSignal, RemoteSignalSource, ResolvedRemoteConfiguration,
@@ -30,6 +30,43 @@ pub struct SelectedCapabilities {
     pub decode_sources: u32,
     /// Independent decoder programming providers.
     pub decode_control_sources: u32,
+}
+
+impl HamlibRig {
+    /// Copy the shared resolver's symbolic model, named transport options and
+    /// finite retry settings into the dependency adapter on this physical owner.
+    pub fn configured(
+        provider: Arc<HamlibProvider>,
+        config: &ResolvedRemoteConfiguration,
+    ) -> Result<Self, CallError> {
+        let span = |value: &str| raw::rptadv_hamlib_string {
+            data: value.as_ptr().cast(),
+            size: value.len(),
+        };
+        let options: Vec<_> = config
+            .hamlib_options
+            .iter()
+            .map(|(name, value)| raw::rptadv_hamlib_option {
+                name: span(name),
+                value: span(value),
+            })
+            .collect();
+        let setup = raw::rptadv_hamlib_config {
+            struct_size: size_of::<raw::rptadv_hamlib_config>(),
+            abi_version: 1,
+            reserved: 0,
+            model: span(&config.hamlib_model),
+            options: options.as_ptr(),
+            option_count: options.len(),
+            timeout_ms: config.timeout_ms,
+            retries: config.retries,
+            timeout_retries: config.timeout_retries,
+            reserved2: 0,
+        };
+        // SAFETY: every borrowed string/option remains readable through open;
+        // the dependency copies its configuration and retains no client pointers.
+        unsafe { Self::open(provider, &setup) }
+    }
 }
 
 fn mode_mask(modes: &[u32]) -> Result<u64, CallError> {

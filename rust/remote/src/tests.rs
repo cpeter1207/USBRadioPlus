@@ -182,6 +182,20 @@ fn configured_remote_client_resolves_available_signal_providers_once() {
     )
     .unwrap()
     .unwrap();
+    let mut rig = HamlibRig::configured(
+        std::sync::Arc::new(HamlibProvider::load().unwrap()),
+        &config,
+    )
+    .unwrap();
+    rig.set(1, 146_520_000).unwrap();
+    assert_eq!(rig.get(1), Ok(146_520_000));
+    assert_eq!(
+        rig.transport_budget_ms(),
+        Ok(u64::from(config.timeout_ms)
+            * u64::from(config.retries + 1)
+            * u64::from(config.timeout_retries + 1))
+    );
+    rig.close().unwrap();
     let coverage = raw::RptAdvRemoteCoverage {
         minimum: 144_000_000,
         maximum: 148_000_000,
