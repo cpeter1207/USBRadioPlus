@@ -223,6 +223,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     .unwrap();
     let (runtime, _control) =
         StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_transmit_intent(true);
     let mut output = [1.0; 8];
     assert_eq!(
         // SAFETY: the stopped runtime owns the live context and exact stereo span.
@@ -239,6 +240,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     assert_eq!(output, [0.0; 8]);
     assert!(!runtime.hardware.outputs().logical_ptt);
     assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
+    assert!(!runtime.hardware.remote_activity().transmit_requested);
 }
 
 #[test]
@@ -1268,6 +1270,95 @@ fn shared_hardware_state_round_trips_complete_atomic_snapshots() {
 
     state.publish_transmit_result(transmit_result(false, -1));
     assert_eq!(state.outputs(), HardwareOutputs::default());
+}
+
+#[test]
+fn remote_radio_admission_keeps_requested_edges_separate_from_rendered_tails() {
+    let state = SharedHardwareState::default();
+    assert!(!state.remote_control().enabled);
+    assert_eq!(state.remote_activity().transmit_epoch, 0);
+    for (requested, epoch) in [(true, 1), (true, 1), (false, 1), (true, 2)] {
+        state.publish_transmit_intent(requested);
+        let activity = state.remote_activity();
+        assert_eq!(activity.transmit_requested, requested);
+        assert_eq!(activity.transmit_epoch, epoch);
+    }
+    state.publish_transmit_result(transmit_result(false, 0));
+    assert!(state.remote_activity().transmit_requested);
+    let control = RemoteRadioControl {
+        enabled: true,
+        receive_permitted: false,
+        transmit_permitted: false,
+        non_fm: true,
+    };
+    state.publish_remote_control(control);
+    assert_eq!(state.remote_control(), control);
+    state.publish_receiver_keyed(true);
+    assert!(state.remote_activity().local_receiving);
+}
+
+#[test]
+fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        ..DirectCapture::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: capture outlives these serial callbacks and synchronous teardown.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_remote_control(RemoteRadioControl {
+        enabled: true,
+        receive_permitted: false,
+        transmit_permitted: false,
+        non_fm: true,
+    });
+    runtime.hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        ..HardwareInputs::default()
+    });
+    let input = [0.5_f32; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the context and exact stereo input span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_OK
+    );
+    assert_eq!(capture.keyed, 0);
+    assert_eq!(capture.samples, [0.0; 4]);
+    assert!(runtime.hardware.remote_activity().local_receiving);
+    let mut output = [0.5_f32; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the context and exact stereo output span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_OK
+    );
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    assert!(runtime.hardware.remote_activity().transmit_requested);
+    assert_eq!(runtime.hardware.remote_activity().transmit_epoch, 1);
 }
 
 #[test]

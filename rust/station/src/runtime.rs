@@ -124,6 +124,8 @@ struct HardwareAtomics {
     requests: AtomicU32,
     outputs: AtomicU32,
     receiver_keyed: AtomicU32,
+    remote_control: AtomicU32,
+    remote_transmit: AtomicU64,
     transmit_ctcss_ready: AtomicU32,
     receive_clip_events: AtomicU64,
     receive_observation_sequence: AtomicU64,
@@ -145,6 +147,30 @@ struct HardwareAtomics {
 /// Shared lock-free control surface between audio and hardware owners.
 #[derive(Clone, Default)]
 pub struct SharedHardwareState(Arc<HardwareAtomics>);
+
+/// One coherent applied rig-policy publication. Disabled preserves ordinary operation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RemoteRadioControl {
+    /// A configured remote-base owner controls admission.
+    pub enabled: bool,
+    /// The current receive state is safe to route.
+    pub receive_permitted: bool,
+    /// The current applied state permits new transmit demand.
+    pub transmit_permitted: bool,
+    /// Applied mode requires transmit admission independent of open receive.
+    pub non_fm: bool,
+}
+
+/// Raw source and intent state, distinct from routed audio and signaling tails.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RemoteRadioActivity {
+    /// Latest qualified local source, before remote admission muting.
+    pub local_receiving: bool,
+    /// Controller demand before the radio renderer and remote inhibition.
+    pub transmit_requested: bool,
+    /// Rising-edge epoch, published atomically with requested key state.
+    pub transmit_epoch: u64,
+}
 
 /// Latest complete receive measurement published by the native callback.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -170,6 +196,46 @@ pub struct ReceiveObservation {
 }
 
 impl SharedHardwareState {
+    /// Publish one applied remote policy before any blocking retune operation.
+    pub fn publish_remote_control(&self, value: RemoteRadioControl) {
+        self.0.remote_control.store(
+            u32::from(value.enabled)
+                | (u32::from(value.receive_permitted) << 1)
+                | (u32::from(value.transmit_permitted) << 2)
+                | (u32::from(value.non_fm) << 3),
+            Ordering::Release,
+        );
+    }
+    /// Read the current complete remote policy without a lock or allocation.
+    pub fn remote_control(&self) -> RemoteRadioControl {
+        let flags = self.0.remote_control.load(Ordering::Acquire);
+        RemoteRadioControl {
+            enabled: flags & 1 != 0,
+            receive_permitted: flags & 2 != 0,
+            transmit_permitted: flags & 4 != 0,
+            non_fm: flags & 8 != 0,
+        }
+    }
+    /// Read requested activity; radio-rendered PTT tails never advance its epoch.
+    pub fn remote_activity(&self) -> RemoteRadioActivity {
+        let transmit = self.0.remote_transmit.load(Ordering::Acquire);
+        RemoteRadioActivity {
+            local_receiving: self.0.receiver_keyed.load(Ordering::Acquire) != 0,
+            transmit_requested: transmit & 1 != 0,
+            transmit_epoch: transmit >> 1,
+        }
+    }
+    fn publish_transmit_intent(&self, requested: bool) {
+        // TX is the sole writer. A single word keeps demand and its rising-edge
+        // epoch coherent even if the worker samples during the publication.
+        let previous = self.0.remote_transmit.load(Ordering::Relaxed);
+        let next = if requested {
+            previous.wrapping_add(if previous & 1 == 0 { 2 } else { 0 }) | 1
+        } else {
+            previous & !1
+        };
+        self.0.remote_transmit.store(next, Ordering::Release);
+    }
     /// Publish the latest already-read hardware inputs.
     pub fn publish_inputs(&self, inputs: HardwareInputs) {
         self.0.inputs.store(pack_inputs(inputs), Ordering::Release);
@@ -294,6 +360,7 @@ impl SharedHardwareState {
         // independently of the radio renderer's tone-off or drain state.
         self.0.outputs.store(0, Ordering::Release);
         self.0.transmit_ctcss_ready.store(0, Ordering::Release);
+        self.publish_transmit_intent(false);
     }
 
     fn publish_receiver_keyed(&self, receiver_keyed: bool) {
@@ -398,6 +465,7 @@ struct TransmitContext {
     mono: Box<[f32]>,
     hardware: SharedHardwareState,
     updates: Arc<UpdateMailbox>,
+    remote_burst_admitted: bool,
 }
 
 /// One stopped, running, or reload-suspended direct PortAudio station composition.
@@ -584,6 +652,7 @@ impl StationRuntime {
             mono: vec![0.0; stream.maximum_transmit_frame_count as usize].into_boxed_slice(),
             hardware: hardware.clone(),
             updates: Arc::clone(&updates),
+            remote_burst_admitted: true,
         }));
         let mut runtime = Self {
             stream: None,
@@ -718,7 +787,7 @@ unsafe extern "C" fn receive_callback(
         &mut context.voter_reporting,
     );
     let station = &mut context.station;
-    let result = match station.radio().process(
+    let mut result = match station.radio().process(
         input,
         &mut context.mono[..frames],
         context.hardware.receive_controls(),
@@ -730,12 +799,6 @@ unsafe extern "C" fn receive_callback(
             return CALLBACK_FAILED;
         }
     };
-    let metadata = receive_metadata(
-        result,
-        &context.controller_ctcss,
-        context.voter_reporting,
-        &context.hardware,
-    );
     context
         .hardware
         .publish_receiver_keyed(result.receiver_keyed);
@@ -743,6 +806,17 @@ unsafe extern "C" fn receive_callback(
         .hardware
         .publish_receive_clipping(result.input_rail_samples);
     context.hardware.publish_receive_observation(result);
+    let remote = context.hardware.remote_control();
+    if remote.enabled && !remote.receive_permitted {
+        context.mono[..frames].fill(0.0);
+        result.receiver_keyed = false;
+    }
+    let metadata = receive_metadata(
+        result,
+        &context.controller_ctcss,
+        context.voter_reporting,
+        &context.hardware,
+    );
     if let Some(direct) = station.direct {
         station.publish_qualification(metadata.qualification);
         // SAFETY: attachment validated and retained these endpoints until stream
@@ -841,19 +915,42 @@ unsafe extern "C" fn transmit_callback(
             controls.ctcss_inhibit |= ctcss_enabled == 0 && !controls.external_ptt_request;
             controls.external_ptt_request |= keyed != 0;
         }
+        let remote = context.hardware.remote_control();
+        if remote.enabled && !remote.transmit_permitted {
+            mono.fill(0.0);
+        }
         station.stage_direct(mono);
         // The direct source is already staged for this hardware callback, so no
         // Asterisk playout admission is needed (including during signaling tails).
         controls.render_admitted = true;
     }
+    context
+        .hardware
+        .publish_transmit_intent(controls.external_ptt_request);
+    let remote = context.hardware.remote_control();
+    if remote.enabled && !remote.transmit_permitted {
+        context.remote_burst_admitted = false;
+        controls.external_ptt_request = false;
+        controls.calibrated_test_tone = false;
+        controls.forced_ctcss_tenths_hz = 0;
+        controls.ctcss_inhibit = true;
+        controls.render_admitted = true;
+    } else if controls.external_ptt_request || !remote.enabled {
+        context.remote_burst_admitted = true;
+    }
     match station.radio().render(output, controls) {
-        Ok(result) => {
+        Ok(mut result) => {
             if direct_failed {
                 // Advance the radio with silent, unkeyed program above, but do
                 // not let its retained signaling tail reassert PTT or PCM.
                 output.fill(0.0);
                 context.hardware.note_transmit(true);
                 return CALLBACK_FAILED;
+            }
+            if !context.remote_burst_admitted {
+                output.fill(0.0);
+                result.logical_ptt = false;
+                result.selected_ctcss_tenths_hz = 0;
             }
             context.hardware.publish_transmit_result(result);
             context.hardware.note_transmit(false);
