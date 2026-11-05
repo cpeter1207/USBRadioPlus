@@ -434,10 +434,20 @@ impl OperatingIo for PhysicalBackend<'_> {
                         .map_err(failure)?;
                 }
                 RemoteBackend::ParallelRtx => {
-                    let transmit = state
-                        .transmit_hz
-                        .checked_add_signed(state.offset_hz)
-                        .ok_or(CallError(-6))?;
+                    let transmit = if state.flags & 1 == 0 {
+                        0
+                    } else {
+                        state
+                            .transmit_hz
+                            .checked_add_signed(state.offset_hz)
+                            .ok_or(CallError(-6))?
+                    };
+                    if !crate::remote_hardware::rtx_frequencies_representable(
+                        state.receive_hz,
+                        transmit,
+                    ) {
+                        return Err(CallError(-6));
+                    }
                     self.outputs.configure_remote_radio(RemoteRadio {
                         receive_hz: state.receive_hz.try_into().map_err(|_| CallError(-6))?,
                         transmit_hz: transmit.try_into().map_err(|_| CallError(-6))?,

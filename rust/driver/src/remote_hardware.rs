@@ -1,7 +1,7 @@
 //! Explicit signal ownership selected once from actual physical capabilities.
 
 use crate::RemoteRequestError;
-use usbradioplus_core::{CarrierSource, ResolvedRemoteConfiguration};
+use usbradioplus_core::{CarrierSource, RemoteBackend, ResolvedRemoteConfiguration};
 use usbradioplus_radio::SubaudibleSource;
 use usbradioplus_remote::Setting;
 use usbradioplus_station::HardwarePlan;
@@ -49,6 +49,21 @@ pub struct RemotePhysicalWiring {
     pub external_decode: SubaudibleSource,
 }
 
+/// Register representability only, never a claim about a radio's RF coverage.
+/// RX selects the existing RTX encoder's reference and grid for both words.
+pub(crate) fn rtx_frequencies_representable(receive: u64, transmit: u64) -> bool {
+    let (step, intermediate) = if receive > 200_000_000 {
+        (12_500, 21_400_000)
+    } else {
+        (5_000, 10_700_000)
+    };
+    receive
+        .checked_sub(intermediate)
+        .is_some_and(|value| value % step == 0 && value / step <= 262_143)
+        && transmit % step == 0
+        && transmit / step <= 262_143
+}
+
 impl RemotePhysicalWiring {
     /// Select once against actual admitted settings and hardware assignments.
     /// Missing explicit providers reject setup; they never acquire a fallback.
@@ -80,6 +95,40 @@ impl RemotePhysicalWiring {
             None if parallel_ptt => RemotePttSource::Parallel,
             _ => return Err(unavailable()),
         };
+        if config.backend != RemoteBackend::Hamlib {
+            let parallel = plan.parallel.as_ref().ok_or_else(unavailable)?;
+            let owned = if config.backend == RemoteBackend::ParallelChannel {
+                0xf0
+            } else {
+                0x1f
+            };
+            if parallel.config.output_enable_mask & owned != owned
+                || config.backend == RemoteBackend::ParallelChannel
+                    && parallel.ptt_mask & owned != 0
+                || config.backend == RemoteBackend::ParallelRtx
+                    && (ptt != RemotePttSource::Parallel
+                        || parallel.ptt_mask != 8
+                        || plan.ptt_inverted)
+            {
+                return Err(unavailable());
+            }
+            for memory in &config.memories {
+                let state = &memory.state;
+                if config.backend == RemoteBackend::ParallelChannel {
+                    if state.channel.is_none_or(|channel| channel > 15) {
+                        return Err(unavailable());
+                    }
+                } else {
+                    let transmit = state
+                        .transmit_hz
+                        .map_or(Some(0), |value| value.checked_add_signed(state.offset_hz))
+                        .ok_or_else(unavailable)?;
+                    if !rtx_frequencies_representable(state.receive_hz, transmit) {
+                        return Err(unavailable());
+                    }
+                }
+            }
+        }
         let (carrier, rig_carrier) = match config.cor_source.as_deref() {
             Some("hamlib") | None if rig_carrier => (CarrierSource::External, true),
             Some("open") => (CarrierSource::Open, false),
@@ -145,6 +194,61 @@ mod tests {
     fn plan() -> HardwarePlan {
         let config = crate::DriverConfiguration::parse("test", "[usb]\n").unwrap();
         usbradioplus_station::hardware_plan(config.channel("usb").unwrap().config())
+    }
+
+    #[test]
+    fn remote_parallel_setup_checks_owned_pins_and_exact_register_grid() {
+        use usbradioplus_core::RemoteBackend;
+        let mut source = String::from("[usb]\n[hardware]\n");
+        for pin in 2..=9 {
+            source.push_str(&format!(
+                "hardware_parallel_pin_{pin}_assignment={}\n",
+                if pin == 5 { "ptt" } else { "out0" }
+            ));
+        }
+        let station = crate::DriverConfiguration::parse("test", &source).unwrap();
+        let plan = usbradioplus_station::hardware_plan(station.channel("usb").unwrap().config());
+        let mut config = configuration();
+        config.ptt_source = Some("parallel".into());
+        config.backend = RemoteBackend::ParallelRtx;
+        let select = |config: &ResolvedRemoteConfiguration, plan: &HardwarePlan| {
+            RemotePhysicalWiring::select(
+                config,
+                plan,
+                CarrierSource::Dsp,
+                SubaudibleSource::Dsp,
+                &[],
+            )
+        };
+        assert!(
+            select(&config, &plan).is_ok(),
+            "{:?} {:?} {:?}",
+            select(&config, &plan),
+            plan,
+            config.cor_source
+        );
+        config.memories[0].state.receive_hz += 1;
+        assert!(
+            select(&config, &plan).is_err(),
+            "off-grid RTX must not be acknowledged"
+        );
+        config.memories[0].state.receive_hz -= 1;
+        for (mask, ptt, inverted) in [(0x1e, 8, false), (0xff, 4, false), (0xff, 8, true)] {
+            let mut invalid = plan.clone();
+            invalid.parallel.as_mut().unwrap().config.output_enable_mask = mask;
+            invalid.parallel.as_mut().unwrap().ptt_mask = ptt;
+            invalid.ptt_inverted = inverted;
+            assert!(select(&config, &invalid).is_err());
+        }
+        config.backend = RemoteBackend::ParallelChannel;
+        config.memories[0].state.channel = Some(15);
+        assert!(select(&config, &plan).is_ok());
+        config.memories[0].state.channel = Some(16);
+        assert!(select(&config, &plan).is_err());
+        config.memories[0].state.channel = Some(15);
+        let mut conflict = plan.clone();
+        conflict.parallel.as_mut().unwrap().ptt_mask = 0x80;
+        assert!(select(&config, &conflict).is_err());
     }
 
     fn setting(selector: u32, readable: bool, writable: bool) -> usbradioplus_remote::Setting {
