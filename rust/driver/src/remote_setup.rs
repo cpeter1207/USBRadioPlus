@@ -51,6 +51,8 @@ impl RemoteSetup {
         if configuration.audio_source == usbradioplus_core::RemoteAudioSource::Alsa {
             plan.cm119 = None;
         }
+        crate::remote_hardware::external_encoder(&configuration, &plan)
+            .map_err(|_| RemoteSetupError::Call(CallError(-6)))?;
         let engine = Arc::new(RemoteProvider::load().map_err(RemoteSetupError::Provider)?);
         let hamlib = if configuration.backend == RemoteBackend::Hamlib {
             let provider = Arc::new(HamlibProvider::load().map_err(RemoteSetupError::Provider)?);

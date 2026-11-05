@@ -70,6 +70,10 @@ impl RemoteGeneration {
             selected: None,
             key: false,
         });
+        let encoder =
+            crate::remote_hardware::external_encoder(setup.configuration(), setup.hardware())
+                .map_err(|_| CallError(-6))?;
+        outputs.bind_encoder(encoder, devices).map_err(failure)?;
         let mut rig = setup.open_hamlib_on_owner()?;
         let prepared = (|| {
             let settings = rig
@@ -90,6 +94,9 @@ impl RemoteGeneration {
                 decode_control_sources: 1 << 1,
                 ..SelectedCapabilities::default()
             };
+            if wiring.external_encode.is_some() {
+                caps.encode_sources |= 1 << 2;
+            }
             if wiring.external_decode != SubaudibleSource::Disabled {
                 caps.decode_sources |= 1 << 2;
                 caps.decode_control_sources |= 1 << 2;
@@ -254,6 +261,7 @@ impl RemoteGeneration {
                 && snapshot.applied.decode.enabled == 0,
         });
         if let Err(error) = result {
+            outputs.set_encoder(false);
             return Err(if snapshot.failure_code != 0 {
                 CallError(snapshot.failure_code)
             } else {
@@ -273,6 +281,12 @@ impl RemoteGeneration {
             }
         }
         let encode = self.current.encode;
+        outputs.set_encoder(
+            encode.source == 2
+                && encode.enabled != 0
+                && activity.ctcss_requested
+                && worker.state.remote_control().transmit_permitted,
+        );
         if encode.source == 3 || encode.control_source == 3 {
             let enabled = encode.enabled != 0
                 && activity.ctcss_requested
@@ -478,6 +492,9 @@ impl OperatingIo for PhysicalBackend<'_> {
         Ok(())
     }
     fn set_ptt(&mut self, keyed: bool) -> Result<(), CallError> {
+        if !keyed {
+            self.outputs.set_encoder(false);
+        }
         self.worker
             .state
             .publish_remote_signals(RemoteHardwareSignals {

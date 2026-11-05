@@ -3634,6 +3634,58 @@ fn site_owner_stop_clears_unclaimed_parallel_bits_and_deasserts_inverted_ptt() {
     }
 }
 
+#[test]
+fn external_encoder_owns_its_pin_and_closes_inactive_for_both_polarities() {
+    let _guard = test_guard();
+    reset_test_state();
+    for bank in [SiteBank::Cm119, SiteBank::Parallel] {
+        for inverted in [false, true] {
+            let (mut plan, selected) = selected_hardware(true);
+            plan.parallel.as_mut().unwrap().config.output_enable_mask = 255;
+            plan.parallel.as_mut().unwrap().ptt_mask = 1;
+            let mut devices =
+                ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+            let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+            outputs.site[bank.index()] = SiteBankState::new(0, 255, 0, 0);
+            let encoder = crate::remote_hardware::ExternalEncoder {
+                bank,
+                mask: 2,
+                inverted,
+            };
+            outputs.bind_encoder(Some(encoder), &devices).unwrap();
+            outputs.set_encoder(true);
+            let bits = if bank == SiteBank::Cm119 {
+                outputs.cm119
+            } else {
+                outputs.parallel
+            };
+            assert_eq!(bits & 2 != 0, !inverted);
+            let command = if bank == SiteBank::Cm119 {
+                OutputCommand::Cm119(2, OutputRequest::Pulse(1))
+            } else {
+                OutputCommand::Parallel(2, OutputRequest::Pulse(1))
+            };
+            assert!(outputs.apply(command, &devices).is_err());
+            outputs.retire_site();
+            let bits = if bank == SiteBank::Cm119 {
+                outputs.cm119
+            } else {
+                outputs.parallel
+            };
+            assert_eq!(bits & 2 != 0, inverted);
+            devices
+                .close_outputs(plan.parallel.as_ref(), &mut outputs)
+                .unwrap();
+            if bank == SiteBank::Parallel {
+                assert_eq!(
+                    PARALLEL_FINAL_BYTE.load(Ordering::Acquire) & 2 != 0,
+                    inverted
+                );
+            }
+        }
+    }
+}
+
 fn service_worker(
     plan: &HardwarePlan,
     selected: &SelectedHardwarePlan,

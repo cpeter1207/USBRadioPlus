@@ -2494,6 +2494,19 @@ impl HardwareService {
     }
 
     fn validate_command(&self, command: OutputCommand) -> Result<(), HardwareStationError> {
+        let encoder = self.remote.as_ref().and_then(|setup| {
+            crate::remote_hardware::ExternalEncoder::configured(setup.configuration())
+        });
+        if encoder.is_some_and(|encoder| match command {
+            OutputCommand::Cm119(bit, _) => {
+                encoder.bank == SiteBank::Cm119 && encoder.mask & bit != 0
+            }
+            OutputCommand::Parallel(bit, _) => {
+                encoder.bank == SiteBank::Parallel && encoder.mask & bit != 0
+            }
+        }) {
+            return Err(HardwareStationError::UnavailableOutput);
+        }
         let (available, request) = match command {
             OutputCommand::Cm119(bit, request) => (
                 self.selected
@@ -2706,6 +2719,7 @@ impl ServiceDevices {
         parallel: Option<&ParallelPlan>,
         outputs: &mut OutputState,
     ) -> Result<(), ServiceFailure> {
+        outputs.set_encoder(false);
         let cm119 = if let Some(device) = &mut self.cm119 {
             let result = device
                 .schedule_pulse(Cm119Pulse {
@@ -2742,7 +2756,14 @@ impl ServiceDevices {
             let plan = parallel.expect("an owned parallel device has a plan");
             // Retain only configured site safe levels. Other data bits keep the
             // existing close-to-low policy; PTT is deasserted with its polarity.
-            let persistent = outputs.site[1].safe_high();
+            let mut persistent = outputs.site[1].safe_high();
+            if let Some(encoder) = outputs
+                .encoder
+                .filter(|encoder| encoder.bank == SiteBank::Parallel)
+            {
+                persistent =
+                    (persistent & !encoder.mask) | (u8::from(encoder.inverted) * encoder.mask);
+            }
             let value = parallel_output(plan, persistent, false, self.ptt_inverted);
             match device.close_outputs(value) {
                 Ok(()) => {
@@ -2765,6 +2786,7 @@ impl ServiceDevices {
 }
 
 struct OutputState {
+    encoder: Option<crate::remote_hardware::ExternalEncoder>,
     native_outputs: Option<Cm119Outputs>,
     cm119: u8,
     parallel: u8,
@@ -2777,7 +2799,71 @@ struct OutputState {
 }
 
 impl OutputState {
+    fn set_encoder(&mut self, active: bool) {
+        if let Some(encoder) = self.encoder {
+            let output = match encoder.bank {
+                SiteBank::Cm119 => &mut self.cm119,
+                SiteBank::Parallel => &mut self.parallel,
+            };
+            if active != encoder.inverted {
+                *output |= encoder.mask;
+            } else {
+                *output &= !encoder.mask;
+            }
+        }
+    }
+    fn bind_encoder(
+        &mut self,
+        encoder: Option<crate::remote_hardware::ExternalEncoder>,
+        devices: &ServiceDevices,
+    ) -> Result<(), ServiceFailure> {
+        if let Some(encoder) = encoder {
+            if !self.site[encoder.bank.index()].reserve(u32::from(encoder.mask)) {
+                return Err(ServiceFailure(
+                    HardwareOperation::RemoteControl,
+                    GpioError::Unsupported,
+                ));
+            }
+            self.set_encoder(false);
+            self.encoder = Some(encoder);
+            self.set_encoder(false);
+            Self::cancel_pulses(encoder.bank, encoder.mask, devices)?;
+        } else {
+            self.set_encoder(false);
+            self.encoder = None;
+        }
+        Ok(())
+    }
+    // Shared with site takeover: no old pulse may override the new steady owner.
+    fn cancel_pulses(
+        bank: SiteBank,
+        mask: u8,
+        devices: &ServiceDevices,
+    ) -> Result<(), ServiceFailure> {
+        match bank {
+            SiteBank::Cm119 => devices
+                .cm119(HardwareOperation::PulseCm119)?
+                .schedule_pulse(Cm119Pulse {
+                    cancel_gpio_mask: mask,
+                    ..Cm119Pulse::default()
+                })
+                .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source)),
+            SiteBank::Parallel => devices
+                .parallel
+                .as_ref()
+                .ok_or(ServiceFailure(
+                    HardwareOperation::PulseParallel,
+                    GpioError::Unsupported,
+                ))?
+                .schedule_pulse(ParallelPulse {
+                    cancel_mask: mask,
+                    ..ParallelPulse::default()
+                })
+                .map_err(|source| ServiceFailure(HardwareOperation::PulseParallel, source)),
+        }
+    }
     fn retire_site(&mut self) {
+        self.set_encoder(false);
         self.site[0].retire(&mut self.cm119);
         self.site[1].retire(&mut self.parallel);
         self.native_outputs = None;
@@ -2788,6 +2874,7 @@ impl OutputState {
         remote_radio: Option<RemoteRadio>,
     ) -> Self {
         Self {
+            encoder: None,
             native_outputs: None,
             cm119: selected
                 .cm119
@@ -2889,27 +2976,7 @@ impl OutputState {
         // A pulse queued by the former owner must not change a newly claimed pin.
         let mask = (state.snapshot().claimed_mask | binding.output_mask) as u8;
         if mask != 0 {
-            let result = match bank {
-                SiteBank::Cm119 => devices
-                    .cm119(HardwareOperation::PulseCm119)?
-                    .schedule_pulse(Cm119Pulse {
-                        cancel_gpio_mask: mask,
-                        ..Cm119Pulse::default()
-                    })
-                    .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source)),
-                SiteBank::Parallel => devices
-                    .parallel
-                    .as_ref()
-                    .ok_or(ServiceFailure(
-                        HardwareOperation::PulseParallel,
-                        GpioError::Unsupported,
-                    ))?
-                    .schedule_pulse(ParallelPulse {
-                        cancel_mask: mask,
-                        ..ParallelPulse::default()
-                    })
-                    .map_err(|source| ServiceFailure(HardwareOperation::PulseParallel, source)),
-            };
+            let result = Self::cancel_pulses(bank, mask, devices);
             if let Err(error) = result {
                 state.reject(SiteError::Fault);
                 return Err(error);
@@ -2941,6 +3008,19 @@ impl OutputState {
         command: OutputCommand,
         devices: &ServiceDevices,
     ) -> Result<(), ServiceFailure> {
+        if self.encoder.is_some_and(|encoder| match command {
+            OutputCommand::Cm119(bit, _) => {
+                encoder.bank == SiteBank::Cm119 && encoder.mask & bit != 0
+            }
+            OutputCommand::Parallel(bit, _) => {
+                encoder.bank == SiteBank::Parallel && encoder.mask & bit != 0
+            }
+        }) {
+            return Err(ServiceFailure(
+                HardwareOperation::RemoteControl,
+                GpioError::Unsupported,
+            ));
+        }
         let (bank, bit) = match command {
             OutputCommand::Cm119(bit, _) => (0, bit),
             OutputCommand::Parallel(bit, _) => (1, bit),

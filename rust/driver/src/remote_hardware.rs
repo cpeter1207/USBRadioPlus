@@ -1,7 +1,9 @@
 //! Explicit signal ownership selected once from actual physical capabilities.
 
 use crate::RemoteRequestError;
-use usbradioplus_core::{CarrierSource, RemoteBackend, ResolvedRemoteConfiguration};
+use usbradioplus_core::{
+    CarrierSource, RemoteBackend, RemoteEncoderOutput, ResolvedRemoteConfiguration,
+};
 use usbradioplus_radio::SubaudibleSource;
 use usbradioplus_remote::Setting;
 use usbradioplus_station::HardwarePlan;
@@ -39,6 +41,7 @@ impl PhysicalPttControl {
 /// Effective signal ownership. A failed observation never changes these choices.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RemotePhysicalWiring {
+    pub(crate) external_encode: Option<ExternalEncoder>,
     /// The one provider permitted to drive PTT.
     pub ptt: RemotePttSource,
     /// Effective receive carrier input, including configured GPIO polarity.
@@ -47,6 +50,60 @@ pub struct RemotePhysicalWiring {
     pub rig_carrier: bool,
     /// Actual selected external tone qualifier, independent of rig DCD.
     pub external_decode: SubaudibleSource,
+}
+
+/// One admitted output on this radio's existing GPIO owner.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ExternalEncoder {
+    pub bank: crate::SiteBank,
+    pub mask: u8,
+    pub inverted: bool,
+}
+impl ExternalEncoder {
+    pub(crate) fn configured(config: &ResolvedRemoteConfiguration) -> Option<Self> {
+        let (bank, mask) = match config.external_encode_output? {
+            RemoteEncoderOutput::Usb(pin) => (crate::SiteBank::Cm119, 1 << (pin.get() - 1)),
+            RemoteEncoderOutput::Parallel(pin) => (crate::SiteBank::Parallel, 1 << (pin.get() - 2)),
+        };
+        Some(Self {
+            bank,
+            mask,
+            inverted: config.external_encode_inverted,
+        })
+    }
+}
+
+/// Inspect existing pin capabilities without opening a device or claiming I/O.
+pub(crate) fn external_encoder(
+    config: &ResolvedRemoteConfiguration,
+    plan: &HardwarePlan,
+) -> Result<Option<ExternalEncoder>, RemoteRequestError> {
+    let unavailable = || RemoteRequestError::Rejected(-6);
+    let Some(output) = ExternalEncoder::configured(config) else {
+        return Ok(None);
+    };
+    let mask = output.mask;
+    match output.bank {
+        crate::SiteBank::Cm119 => {
+            let plan = plan.cm119.as_ref().ok_or_else(unavailable)?;
+            if plan.output_enable_mask & mask == 0 || plan.clip_led_mask & mask != 0 {
+                return Err(unavailable());
+            }
+        }
+        crate::SiteBank::Parallel => {
+            let plan = plan.parallel.as_ref().ok_or_else(unavailable)?;
+            let reserved = match config.backend {
+                RemoteBackend::ParallelChannel => 0xf0,
+                RemoteBackend::ParallelRtx => 0x1f,
+                RemoteBackend::Hamlib => 0,
+            };
+            if plan.config.output_enable_mask & mask == 0 || (plan.ptt_mask | reserved) & mask != 0
+            {
+                return Err(unavailable());
+            }
+        }
+    }
+    Ok(Some(output))
 }
 
 /// Register representability only, never a claim about a radio's RF coverage.
@@ -74,6 +131,7 @@ impl RemotePhysicalWiring {
         inherited_decode: SubaudibleSource,
         settings: &[Setting],
     ) -> Result<Self, RemoteRequestError> {
+        let external_encode = external_encoder(config, plan)?;
         let unavailable = || RemoteRequestError::Rejected(-6);
         let rig_ptt = settings
             .iter()
@@ -177,6 +235,7 @@ impl RemotePhysicalWiring {
             _ => SubaudibleSource::Disabled,
         };
         Ok(Self {
+            external_encode,
             ptt,
             carrier,
             rig_carrier,
@@ -194,6 +253,31 @@ mod tests {
     fn plan() -> HardwarePlan {
         let config = crate::DriverConfiguration::parse("test", "[usb]\n").unwrap();
         usbradioplus_station::hardware_plan(config.channel("usb").unwrap().config())
+    }
+
+    #[test]
+    fn external_encoder_requires_an_unshared_configured_output() {
+        use usbradioplus_core::{RemoteEncoderOutput, radio_control::GpioPin};
+        let mut config = configuration();
+        let mut plan = plan();
+        config.external_encode_output = Some(RemoteEncoderOutput::Usb(GpioPin::new(1).unwrap()));
+        plan.cm119.as_mut().unwrap().output_enable_mask = 1;
+        let settings = [setting(20, true, true)];
+        let select = |plan: &HardwarePlan| {
+            RemotePhysicalWiring::select(
+                &config,
+                plan,
+                CarrierSource::Dsp,
+                SubaudibleSource::Dsp,
+                &settings,
+            )
+        };
+        assert!(select(&plan).unwrap().external_encode.is_some());
+        plan.cm119.as_mut().unwrap().clip_led_mask = 1;
+        assert!(select(&plan).is_err());
+        plan.cm119.as_mut().unwrap().clip_led_mask = 0;
+        plan.cm119.as_mut().unwrap().output_enable_mask = 0;
+        assert!(select(&plan).is_err());
     }
 
     #[test]
