@@ -1205,18 +1205,6 @@ fn owner_callbacks_publish_state_and_retry_failed_jitter() {
     with_state(|state| assert_eq!(state.unlocks, 4));
 }
 
-#[repr(C)]
-struct DirectV4 {
-    struct_size: u32,
-    abi_version: u32,
-    receive_context: *mut c_void,
-    receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
-    transmit_context: *mut c_void,
-    transmit: Option<unsafe extern "C" fn(*mut c_void, *mut f32, u32, *mut u32, *mut u32) -> c_int>,
-    accepted_abi_version: u32,
-    metadata: Option<unsafe extern "C" fn(*mut c_void, u32, *mut u32) -> c_int>,
-}
-
 unsafe extern "C" fn retain_direct(
     channel: *mut c_void,
     _: *const crate::UrpAstDirectCallbacks,
@@ -1264,20 +1252,11 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         channel
             .rust_channel
             .store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
-        let mut direct = DirectV4 {
-            struct_size: size_of::<DirectV4>() as u32,
-            abi_version: 4,
-            receive_context: callbacks.receive_context,
-            receive: callbacks.receive,
-            transmit_context: callbacks.transmit_context,
-            transmit: callbacks.transmit,
-            accepted_abi_version: 0,
-            metadata: None,
-        };
-        let mut length = size_of::<DirectV4>() as c_int;
+        let mut direct = callbacks;
+        let mut length = size_of::<crate::UrpAstDirectCallbacks>() as c_int;
         match case {
             0 => direct.struct_size -= 1,
-            1 => direct.abi_version = 3,
+            1 => direct.abi_version -= 1,
             2 => direct.receive = None,
             3 => direct.transmit = None,
             4 => direct.receive_context = ptr::null_mut(),
@@ -1286,9 +1265,14 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
             _ => {}
         }
         // The host option must also accept byte-aligned Asterisk payloads.
-        let mut storage = vec![0u8; size_of::<DirectV4>() + 1];
+        let mut storage = vec![0u8; size_of::<crate::UrpAstDirectCallbacks>() + 1];
         // SAFETY: the allocation includes the byte offset and complete descriptor.
-        let data = unsafe { storage.as_mut_ptr().add(1).cast::<DirectV4>() };
+        let data = unsafe {
+            storage
+                .as_mut_ptr()
+                .add(1)
+                .cast::<crate::UrpAstDirectCallbacks>()
+        };
         // SAFETY: the byte buffer reserves a complete, possibly unaligned descriptor.
         unsafe { data.write_unaligned(direct) };
         // SAFETY: the fake owner, descriptor, and retention context remain live.
@@ -1302,7 +1286,15 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
         };
         // SAFETY: setoption returned synchronously; the complete buffer remains live.
         let accepted = unsafe { data.read_unaligned().accepted_abi_version };
-        assert_eq!(accepted, if case == 8 { 4 } else { 0 }, "case {case}");
+        assert_eq!(
+            accepted,
+            if case == 8 {
+                crate::UrpAstDirectCallbacks::ABI_VERSION
+            } else {
+                0
+            },
+            "case {case}"
+        );
         assert_eq!(result == 0, case == 8, "case {case}");
     }
 }
