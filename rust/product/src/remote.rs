@@ -197,6 +197,7 @@ fn reply(result: Result<RemoteReply, RemoteRequestError>) -> Value {
         }) => json!({"kind":"scan","selector":definition.selector,
             "name":definition.name,"members":definition.members,"state":scan(current.as_ref())}),
         Ok(RemoteReply::Status {
+            request_error,
             snapshot,
             scan: current,
         }) => {
@@ -207,7 +208,7 @@ fn reply(result: Result<RemoteReply, RemoteRequestError>) -> Value {
                 convert(&snapshot.observed),
             ) {
                 (Ok(requested), Ok(applied), Ok(observed)) => {
-                    json!({"kind":"status","flags":snapshot.flags,
+                    json!({"kind":"status","flags":snapshot.flags,"request_error":request_error,
                     "tx_inhibited":snapshot.flags & raw::RPTADV_REMOTE_INHIBITED != 0,
                     "receive_permitted":snapshot.flags & raw::RPTADV_REMOTE_RECEIVE_PERMITTED != 0,
                     "serviced_ptt":if snapshot.flags & raw::RPTADV_REMOTE_PTT_APPLIED != 0 { json!(snapshot.flags & raw::RPTADV_REMOTE_PTT_HIGH != 0) } else { Value::Null },
@@ -345,6 +346,7 @@ mod tests {
         snapshot.requested.encode.enabled = 1;
         snapshot.requested.encode.ctcss_tenths_hz = 1148;
         let value = reply(Ok(RemoteReply::Status {
+            request_error: 0,
             snapshot: Box::new(snapshot),
             scan: None,
         }));
@@ -358,6 +360,7 @@ mod tests {
         snapshot.observed = snapshot.requested;
         snapshot.observed_fields = 1;
         let value = reply(Ok(RemoteReply::Status {
+            request_error: -123,
             snapshot: Box::new(snapshot),
             scan: None,
         }));

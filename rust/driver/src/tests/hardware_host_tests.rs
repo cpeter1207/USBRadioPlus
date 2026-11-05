@@ -3723,6 +3723,37 @@ fn remote_radio(receive_hz: u32) -> RemoteRadio {
 }
 
 #[test]
+fn reserved_parallel_radio_pins_report_failure_instead_of_acknowledging_no_write() {
+    let (plan, selected) = selected_hardware(true);
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.site[1] = SiteBankState::new(0, 255, 0, 0);
+    let generation = outputs.site[1].snapshot().generation;
+    let mut byte = 0;
+    outputs.site[1]
+        .bind(
+            SiteDigitalBinding {
+                generation,
+                output_mask: 16,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+            &mut byte,
+        )
+        .unwrap();
+    let mut devices = ServiceDevices {
+        cm119: None,
+        parallel: None,
+        ptt_inverted: false,
+    };
+    assert!(outputs.select_channel(1, &mut devices).is_err());
+    assert!(
+        outputs
+            .configure_remote_radio(remote_radio(146520000))
+            .is_err()
+    );
+}
+
+#[test]
 fn service_devices_and_output_state_cover_all_hardware_operations() {
     let _guard = test_guard();
     reset_test_state();
@@ -3800,7 +3831,9 @@ fn service_devices_and_output_state_cover_all_hardware_operations() {
 
     let mut no_remote = OutputState::new(&selected, plan.parallel.as_ref(), None);
     no_remote.service_remote_radio(&mut devices, false).unwrap();
-    no_remote.configure_remote_radio(remote_radio(146_520_000));
+    no_remote
+        .configure_remote_radio(remote_radio(146_520_000))
+        .unwrap();
     no_remote.service_remote_radio(&mut devices, true).unwrap();
     no_remote.service_remote_radio(&mut devices, true).unwrap();
     no_remote.service_remote_radio(&mut devices, false).unwrap();
@@ -3811,7 +3844,7 @@ fn service_devices_and_output_state_cover_all_hardware_operations() {
         HardwareOperation::ProgramRemoteRadio
     );
 
-    no_remote.configure_remote_radio(remote_radio(0));
+    no_remote.configure_remote_radio(remote_radio(0)).unwrap();
     no_remote.remote_radio_ptt = None;
     no_remote.service_remote_radio(&mut devices, false).unwrap();
     no_remote.remote_radio_dirty = true;
@@ -3966,7 +3999,9 @@ fn one_service_cycle_identifies_each_adapter_failure() {
         HardwareOperation::PulseCm119
     );
     outputs.clip_events_seen = 0;
-    outputs.configure_remote_radio(remote_radio(146_520_000));
+    outputs
+        .configure_remote_radio(remote_radio(146_520_000))
+        .unwrap();
     FAILURE.store(FAIL_PROGRAM_REMOTE, Ordering::Release);
     assert_eq!(
         failed_operation(service_once(

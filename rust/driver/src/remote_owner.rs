@@ -90,7 +90,12 @@ impl RemoteOwner {
     pub fn pending_source(&self) -> Option<RemoteSourceLease> {
         self.pending
             .iter()
-            .find(|pending| !pending.work.operation().urgent())
+            .find(|pending| {
+                !pending
+                    .work
+                    .operation()
+                    .is_some_and(|operation| operation.urgent())
+            })
             .map(|pending| pending.work.source_lease())
     }
     /// Copy current engine state without physical I/O.
@@ -160,7 +165,16 @@ impl RemoteOwner {
         work: &RemoteWork,
         device: &mut D,
     ) -> Result<Ready, RemoteRequestError> {
-        let operation = work.operation();
+        if let Some(request) = work.parallel_request() {
+            let snapshot = self.session.snapshot().map_err(|error| rejected(error.0))?;
+            return crate::remote_request::prepare_parallel_request(
+                &self.configuration,
+                &snapshot,
+                request,
+            )
+            .map(Ready::Core);
+        }
+        let operation = work.operation().expect("one typed request variant");
         let kind = operation.kind().ok_or_else(|| rejected(-1003))?;
         let mut snapshot = self.session.snapshot().map_err(|error| rejected(error.0))?;
         let scan = self
@@ -169,6 +183,7 @@ impl RemoteOwner {
             .map_err(|error| rejected(error.0))?;
         let reply = match kind {
             Kind::Status | Kind::CurrentStatus => RemoteReply::Status {
+                request_error: self.queue.parallel_error(),
                 snapshot: Box::new(snapshot),
                 scan,
             },

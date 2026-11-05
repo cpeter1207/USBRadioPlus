@@ -3,9 +3,12 @@
 use crossbeam_queue::ArrayQueue;
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU8, Ordering},
+    atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering},
 };
-use usbradioplus_core::{RemoteMemory, RemoteScanList, remote_operation::RemoteOperation};
+use usbradioplus_core::{
+    RemoteMemory, RemoteScanList, radio_control::ParallelRadioRequest,
+    remote_operation::RemoteOperation,
+};
 use usbradioplus_remote::{Setting, raw};
 
 /// Final owned result, copied off the physical worker before presentation.
@@ -21,6 +24,8 @@ pub enum RemoteReply {
     },
     /// Complete requested/applied/observed state and current scan state.
     Status {
+        /// First detached legacy command error, independent of radio fault/inhibit.
+        request_error: i32,
         /// Copied engine snapshot, with truthful observation masks.
         snapshot: Box<raw::RptAdvRemoteSnapshot>,
         /// Current selected scan, if any.
@@ -66,6 +71,7 @@ pub struct RemoteSource {
 }
 
 struct TicketState {
+    detached_error: Option<Arc<AtomicI32>>,
     generation: Arc<AtomicBool>,
     local: bool,
     source: AtomicU8,
@@ -88,6 +94,14 @@ impl TicketState {
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .is_ok()
         {
+            if let (Some(error), Err(result)) = (&self.detached_error, &result) {
+                let code = match result {
+                    RemoteRequestError::Rejected(code) => *code,
+                    RemoteRequestError::Busy => -9,
+                    RemoteRequestError::Stopped | RemoteRequestError::StaleSource => -10,
+                };
+                let _ = error.compare_exchange(0, code, Ordering::AcqRel, Ordering::Acquire);
+            }
             // Only the successful claimant publishes once into this preallocated slot.
             let _ = self.result.push(result);
         }
@@ -135,8 +149,12 @@ impl Drop for RemoteTicket {
 /// One dequeued request retained exclusively by the physical worker. Abandoning
 /// work completes it as stopped, so callers cannot wait forever for a lost owner.
 pub struct RemoteWork {
-    operation: RemoteOperation,
+    input: RemoteInput,
     state: Arc<TicketState>,
+}
+enum RemoteInput {
+    Command(RemoteOperation),
+    Parallel(ParallelRadioRequest),
 }
 impl RemoteWork {
     /// Retain only atomic source validity for stop checks between device calls.
@@ -144,8 +162,18 @@ impl RemoteWork {
         RemoteSourceLease(Arc::clone(&self.state))
     }
     /// Borrow the complete pointer-free input.
-    pub const fn operation(&self) -> RemoteOperation {
-        self.operation
+    pub const fn operation(&self) -> Option<RemoteOperation> {
+        match self.input {
+            RemoteInput::Command(operation) => Some(operation),
+            RemoteInput::Parallel(_) => None,
+        }
+    }
+    /// Existing ASL text request, never encoded in a fake numeric rig operation.
+    pub const fn parallel_request(&self) -> Option<ParallelRadioRequest> {
+        match self.input {
+            RemoteInput::Parallel(request) => Some(request),
+            RemoteInput::Command(_) => None,
+        }
     }
     /// Read current source validity immediately before applying physical changes.
     pub fn source(&self) -> RemoteSource {
@@ -172,6 +200,7 @@ impl Drop for RemoteWork {
 /// Bounded per-rig command port, shared by control producers and the existing
 /// physical owner. No rig context, I/O, callback, or controller reference is stored.
 pub struct RemoteQueue {
+    parallel_error: Arc<AtomicI32>,
     accepting: Arc<AtomicBool>,
     ordinary: ArrayQueue<RemoteWork>,
     urgent: ArrayQueue<RemoteWork>,
@@ -180,6 +209,7 @@ impl RemoteQueue {
     /// Allocate ordinary slots and one reserved urgent slot before admitting work.
     pub fn new(capacity: usize) -> Self {
         Self {
+            parallel_error: Arc::new(AtomicI32::new(0)),
             accepting: Arc::new(AtomicBool::new(true)),
             ordinary: ArrayQueue::new(capacity),
             urgent: ArrayQueue::new(1),
@@ -192,31 +222,52 @@ impl RemoteQueue {
         local: bool,
         active: bool,
     ) -> Result<RemoteTicket, RemoteRequestError> {
+        self.enqueue(RemoteInput::Command(operation), local, active)
+            .map(RemoteTicket)
+    }
+    /// Submit an already-authorized complete legacy controller frame. Its owner
+    /// is this hardware generation, not a caller ticket that would cancel on drop.
+    pub fn submit_parallel(&self, request: ParallelRadioRequest) -> Result<(), RemoteRequestError> {
+        self.enqueue(RemoteInput::Parallel(request), true, false)
+            .map(drop)
+    }
+    /// First legacy request failure, independent of the physical radio's health.
+    pub fn parallel_error(&self) -> i32 {
+        self.parallel_error.load(Ordering::Acquire)
+    }
+    fn enqueue(
+        &self,
+        input: RemoteInput,
+        local: bool,
+        active: bool,
+    ) -> Result<Arc<TicketState>, RemoteRequestError> {
         if !self.accepting.load(Ordering::Acquire) {
             return Err(RemoteRequestError::Stopped);
         }
-        if operation.kind().is_none() {
+        if matches!(input, RemoteInput::Command(operation) if operation.kind().is_none()) {
             return Err(RemoteRequestError::Rejected(-1003));
         }
         let state = Arc::new(TicketState {
+            detached_error: matches!(input, RemoteInput::Parallel(_))
+                .then(|| Arc::clone(&self.parallel_error)),
             generation: Arc::clone(&self.accepting),
             local,
             source: AtomicU8::new(1 | (u8::from(active) << 1)),
             completed: AtomicBool::new(false),
             result: ArrayQueue::new(1),
         });
-        let queue = if operation.urgent() {
+        let queue = if matches!(input, RemoteInput::Command(operation) if operation.urgent()) {
             &self.urgent
         } else {
             &self.ordinary
         };
         queue
             .push(RemoteWork {
-                operation,
+                input,
                 state: Arc::clone(&state),
             })
             .map_err(|_| RemoteRequestError::Busy)?;
-        Ok(RemoteTicket(state))
+        Ok(state)
     }
     /// Take urgent work first. Only the existing physical worker consumes this port.
     pub fn next(&self) -> Option<RemoteWork> {
@@ -247,6 +298,24 @@ mod tests {
     use usbradioplus_core::remote_operation::{RemoteOperation, RemoteOperationKind as Kind};
 
     #[test]
+    fn legacy_parallel_work_keeps_generation_ownership_without_a_caller_ticket() {
+        let queue = RemoteQueue::new(1);
+        let request = ParallelRadioRequest::SelectChannel(7);
+        queue.submit_parallel(request).unwrap();
+        let work = queue.next_ordinary().unwrap();
+        assert_eq!(work.parallel_request(), Some(request));
+        assert!(work.source().valid && !work.source().active);
+        work.complete(Err(RemoteRequestError::Rejected(-123)));
+        assert_eq!(queue.parallel_error(), -123);
+        queue.submit_parallel(request).unwrap();
+        queue.retire();
+        let work = queue.next_ordinary().unwrap();
+        assert!(!work.source().valid);
+        drop(work);
+        assert_eq!(queue.parallel_error(), -123);
+    }
+
+    #[test]
     fn remote_queue_has_explicit_backpressure_and_reserved_stop() {
         let queue = RemoteQueue::new(2);
         let request = RemoteOperation::new(Kind::Tune);
@@ -264,7 +333,7 @@ mod tests {
             Err(RemoteRequestError::Busy)
         ));
         let work = queue.next().unwrap();
-        assert_eq!(work.operation().kind(), Some(Kind::StopScan));
+        assert_eq!(work.operation().unwrap().kind(), Some(Kind::StopScan));
         work.complete(Ok(RemoteReply::Applied));
         assert!(matches!(
             stop.take_completion(),

@@ -448,13 +448,15 @@ impl OperatingIo for PhysicalBackend<'_> {
                     ) {
                         return Err(CallError(-6));
                     }
-                    self.outputs.configure_remote_radio(RemoteRadio {
-                        receive_hz: state.receive_hz.try_into().map_err(|_| CallError(-6))?,
-                        transmit_hz: transmit.try_into().map_err(|_| CallError(-6))?,
-                        receive_ctcss: None,
-                        transmit_ctcss: None,
-                        high_power: false,
-                    });
+                    self.outputs
+                        .configure_remote_radio(RemoteRadio {
+                            receive_hz: state.receive_hz.try_into().map_err(|_| CallError(-6))?,
+                            transmit_hz: transmit.try_into().map_err(|_| CallError(-6))?,
+                            receive_ctcss: None,
+                            transmit_ctcss: None,
+                            high_power: false,
+                        })
+                        .map_err(failure)?;
                     self.outputs
                         .service_remote_radio(self.devices, false)
                         .map_err(failure)?;

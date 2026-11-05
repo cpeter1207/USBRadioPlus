@@ -28,6 +28,60 @@ fn unsupported() -> RemoteRequestError {
     RemoteRequestError::Rejected(-6)
 }
 
+/// Adapt one complete legacy frame into the same atomic RF transaction. The
+/// legacy RTX backend has no power control; its H/L field remains non-operational.
+pub(crate) fn prepare_parallel_request(
+    config: &ResolvedRemoteConfiguration,
+    snapshot: &raw::RptAdvRemoteSnapshot,
+    input: usbradioplus_core::radio_control::ParallelRadioRequest,
+) -> Result<raw::RptAdvRemoteRequest, RemoteRequestError> {
+    use usbradioplus_core::radio_control::ParallelRadioRequest;
+    // SAFETY: this complete request and its state contain only scalar fields.
+    let mut request: raw::RptAdvRemoteRequest = unsafe { std::mem::zeroed() };
+    request.struct_size = size_of::<raw::RptAdvRemoteRequest>() as u32;
+    request.abi_version = 1;
+    match input {
+        ParallelRadioRequest::SelectChannel(channel) => {
+            if channel > 15 {
+                return Err(invalid());
+            }
+            request.kind = raw::RptAdvRemoteRequestKind_RPTADV_REMOTE_RECALL;
+            request.selector = config
+                .memories
+                .iter()
+                .find(|memory| memory.state.channel == Some(channel))
+                .ok_or_else(unsupported)?
+                .selector;
+        }
+        ParallelRadioRequest::Configure(input) => {
+            request.kind = raw::RptAdvRemoteRequestKind_RPTADV_REMOTE_SET;
+            request.state = if snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0 {
+                snapshot.applied
+            } else {
+                snapshot.requested
+            };
+            request.state.receive_hz = u64::from(input.receive_hz);
+            request.state.transmit_hz = u64::from(input.transmit_hz);
+            request.state.flags = (request.state.flags & !1) | u32::from(input.transmit_hz != 0);
+            request.state.offset_hz = 0;
+            request.state.mode = 1;
+            request.fields = 1 | 2 | 4 | 64 | 1024 | 2048;
+            for (signal, tone) in [
+                (&mut request.state.encode, input.transmit_ctcss),
+                (&mut request.state.decode, input.receive_ctcss),
+            ] {
+                signal.enabled = u32::from(tone.is_some());
+                if let Some(tone) = tone {
+                    signal.ctcss_tenths_hz = u32::from(tone.tenths_hz());
+                    signal.dcs_code = 0;
+                    signal.inverted = 0;
+                }
+            }
+        }
+    }
+    Ok(request)
+}
+
 fn scalar(setting: &Setting, operation: RemoteOperation) -> Result<i64, RemoteRequestError> {
     if !setting.writable || !(1..=5).contains(&setting.value_kind) {
         return Err(unsupported());
@@ -326,6 +380,78 @@ pub(crate) mod tests {
         snapshot.applied.encode.source = 1;
         snapshot.applied.decode.source = 1;
         snapshot
+    }
+
+    #[test]
+    fn legacy_parallel_frames_enter_one_complete_shared_request() {
+        use usbradioplus_core::radio_control::{CtcssTone, ParallelRadioRequest, RemoteRadio};
+        let mut config = configuration();
+        config.memories[0].state.channel = Some(7);
+        let recall =
+            prepare_parallel_request(&config, &current(), ParallelRadioRequest::SelectChannel(7))
+                .unwrap();
+        assert_eq!(
+            (recall.kind, recall.selector),
+            (raw::RptAdvRemoteRequestKind_RPTADV_REMOTE_RECALL, 1)
+        );
+        assert!(
+            prepare_parallel_request(&config, &current(), ParallelRadioRequest::SelectChannel(16))
+                .is_err()
+        );
+        assert!(
+            prepare_parallel_request(&config, &current(), ParallelRadioRequest::SelectChannel(8))
+                .is_err()
+        );
+        let input = RemoteRadio {
+            receive_hz: 146940000,
+            transmit_hz: 146340000,
+            receive_ctcss: CtcssTone::from_tenths_hz(1148),
+            transmit_ctcss: CtcssTone::from_tenths_hz(1230),
+            high_power: true,
+        };
+        let request =
+            prepare_parallel_request(&config, &current(), ParallelRadioRequest::Configure(input))
+                .unwrap();
+        assert_eq!(request.fields, 1 | 2 | 4 | 64 | 1024 | 2048);
+        assert_eq!(
+            (
+                request.state.receive_hz,
+                request.state.transmit_hz,
+                request.state.offset_hz
+            ),
+            (146940000, 146340000, 0)
+        );
+        assert_eq!(
+            (
+                request.state.encode.ctcss_tenths_hz,
+                request.state.decode.ctcss_tenths_hz
+            ),
+            (1230, 1148)
+        );
+        assert_eq!(
+            (request.state.encode.enabled, request.state.decode.enabled),
+            (1, 1)
+        );
+        let input = RemoteRadio {
+            transmit_hz: 0,
+            receive_ctcss: None,
+            transmit_ctcss: None,
+            ..input
+        };
+        let mut snapshot = current();
+        snapshot.flags = 0;
+        snapshot.requested = snapshot.applied;
+        let request =
+            prepare_parallel_request(&config, &snapshot, ParallelRadioRequest::Configure(input))
+                .unwrap();
+        assert_eq!(
+            (
+                request.state.flags & 1,
+                request.state.encode.enabled,
+                request.state.decode.enabled
+            ),
+            (0, 0, 0)
+        );
     }
     fn core(operation: RemoteOperation) -> raw::RptAdvRemoteRequest {
         let PreparedRemoteOperation::Core(request) =

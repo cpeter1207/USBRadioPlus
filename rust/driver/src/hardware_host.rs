@@ -1598,10 +1598,25 @@ impl HardwareMaintenance {
         &self,
         request: ParallelRadioRequest,
     ) -> Result<(), HardwareStationError> {
-        match request {
-            ParallelRadioRequest::SelectChannel(channel) => self.select_channel(channel),
-            ParallelRadioRequest::Configure(settings) => self.configure_remote_radio(settings),
+        if let Some(queue) = &self.service.remote_queue {
+            queue.submit_parallel(request).map_err(|error| {
+                if error == RemoteRequestError::Stopped {
+                    HardwareStationError::NotRunning
+                } else {
+                    HardwareStationError::ControlQueueFull
+                }
+            })?;
+            if let Some(worker) = &self.service.worker {
+                worker.thread().unpark();
+            }
+            return Ok(());
         }
+        self.service.queue_service(match request {
+            ParallelRadioRequest::SelectChannel(channel) => ServiceCommand::SelectChannel(channel),
+            ParallelRadioRequest::Configure(settings) => {
+                ServiceCommand::ConfigureRemoteRadio(settings)
+            }
+        })
     }
 
     /// Queue one established active-low parallel channel selection.
@@ -1611,8 +1626,7 @@ impl HardwareMaintenance {
     /// Returns an error when no parallel transport is configured or the
     /// bounded service queue cannot accept the request.
     pub fn select_channel(&self, channel: u8) -> Result<(), HardwareStationError> {
-        self.service
-            .queue_service(ServiceCommand::SelectChannel(channel))
+        self.remote_radio_request(ParallelRadioRequest::SelectChannel(channel))
     }
 
     /// Queue one complete parallel-port remote-radio request.
@@ -1627,8 +1641,7 @@ impl HardwareMaintenance {
         &self,
         settings: RemoteRadio,
     ) -> Result<(), HardwareStationError> {
-        self.service
-            .queue_service(ServiceCommand::ConfigureRemoteRadio(settings))
+        self.remote_radio_request(ParallelRadioRequest::Configure(settings))
     }
 
     /// Read tuning EEPROM through the serialized hardware service owner.
@@ -3024,7 +3037,10 @@ impl OutputState {
         devices: &mut ServiceDevices,
     ) -> Result<(), ServiceFailure> {
         if !self.site[1].reserve(u32::from(PARALLEL_BINARY_MASK)) {
-            return Ok(());
+            return Err(ServiceFailure(
+                HardwareOperation::SelectChannel,
+                GpioError::Unsupported,
+            ));
         }
         let device = devices.parallel.as_mut().ok_or(ServiceFailure(
             HardwareOperation::SelectChannel,
@@ -3037,12 +3053,16 @@ impl OutputState {
         Ok(())
     }
 
-    fn configure_remote_radio(&mut self, settings: RemoteRadio) {
+    fn configure_remote_radio(&mut self, settings: RemoteRadio) -> Result<(), ServiceFailure> {
         if !self.site[1].reserve(u32::from(PARALLEL_RTX_CONTROL_MASK)) {
-            return;
+            return Err(ServiceFailure(
+                HardwareOperation::ProgramRemoteRadio,
+                GpioError::Unsupported,
+            ));
         }
         self.remote_radio = Some(settings);
         self.remote_radio_dirty = true;
+        Ok(())
     }
 
     fn service_remote_radio(
@@ -3418,7 +3438,7 @@ fn service_commands(
                 outputs.select_channel(channel, devices)?;
             }
             Ok(ServiceCommand::ConfigureRemoteRadio(settings)) => {
-                outputs.configure_remote_radio(settings);
+                outputs.configure_remote_radio(settings)?;
             }
             Ok(ServiceCommand::Snapshot(response)) => {
                 let _ = response.send(outputs.snapshot());
