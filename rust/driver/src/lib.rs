@@ -11,9 +11,11 @@ mod hardware_site;
 mod link;
 mod registry;
 mod remote_base;
+mod remote_request;
 pub use remote_base::{
     RemoteQueue, RemoteReply, RemoteRequestError, RemoteSource, RemoteTicket, RemoteWork,
 };
+pub use remote_request::{PreparedRemoteOperation, prepare_remote_operation};
 
 pub use configuration::{DriverConfiguration, DriverConfigurationError};
 pub use conversion::prepare_app_rpt_converter;
