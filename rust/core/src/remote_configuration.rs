@@ -91,8 +91,12 @@ pub struct RemoteOperatingState {
     pub offset_hz: i64,
     /// Receive incremental tuning in hertz.
     pub rit_hz: i64,
+    /// Apply RIT; a stored offset alone is not an enabled RF shift.
+    pub rit_enabled: bool,
     /// Transmit incremental tuning in hertz.
     pub xit_hz: i64,
+    /// Apply XIT independently of RIT.
+    pub xit_enabled: bool,
     /// Configured RF power in milliwatts, when established.
     pub power_mw: Option<u32>,
     /// Independent encode request.
@@ -619,6 +623,14 @@ impl ResolvedRemoteConfiguration {
                     offset_hz: memory.number("offset_hz", 0)?,
                     rit_hz: memory.number("rit_hz", 0)?,
                     xit_hz: memory.number("xit_hz", 0)?,
+                    rit_enabled: memory
+                        .text("rit_enabled")
+                        .and_then(bool_value)
+                        .unwrap_or(memory.number::<i64>("rit_hz", 0)? != 0),
+                    xit_enabled: memory
+                        .text("xit_enabled")
+                        .and_then(bool_value)
+                        .unwrap_or(memory.number::<i64>("xit_hz", 0)? != 0),
                     power_mw: memory.scaled("power_w", 3)?,
                     encode: signal(&memory, true, encode)?,
                     decode: signal(&memory, false, decode)?,
@@ -858,7 +870,7 @@ fn overlay(
 
 fn valid_value(key: &str, value: &str) -> bool {
     match key {
-        "enabled" | "split" => bool_value(value).is_some(),
+        "enabled" | "split" | "rit_enabled" | "xit_enabled" => bool_value(value).is_some(),
         "audio_source" => matches!(value, "cm119" | "alsa"),
         "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
         "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
@@ -974,6 +986,8 @@ const MEMORY_KEYS: &[&str] = &[
     "offset_hz",
     "rit_hz",
     "xit_hz",
+    "rit_enabled",
+    "xit_enabled",
     "channel",
     "ctcss_encode_hz",
     "ctcss_decode_hz",

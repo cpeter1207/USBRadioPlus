@@ -8,6 +8,7 @@ pub struct HamlibOperating {
     rig: HamlibRig,
     settings: Vec<Setting>,
     readback: u64,
+    last_observed: Option<raw::RptAdvRemoteState>,
 }
 
 fn supported(settings: &[Setting], selector: u32, write: bool) -> bool {
@@ -36,6 +37,8 @@ impl HamlibOperating {
             (9, 7),
             (10, 8),
             (7, 13),
+            (307, 14),
+            (308, 15),
         ] {
             if supported(&settings, selector, false) {
                 readback |= 1 << bit;
@@ -59,6 +62,7 @@ impl HamlibOperating {
             rig,
             settings,
             readback,
+            last_observed: None,
         })
     }
     /// Borrow the one rig for selected PTT, DCD and declared auxiliary operations.
@@ -98,6 +102,11 @@ impl HamlibOperating {
         self.require(8, state.offset_hz != 0)?;
         self.require(9, state.rit_hz != 0)?;
         self.require(10, state.xit_hz != 0)?;
+        self.require(307, state.flags & 16 != 0)?;
+        self.require(308, state.flags & 32 != 0)?;
+        if state.flags & 4 != 0 {
+            return Err(CallError(-6));
+        }
         self.require(11, state.flags & 3 == 3)?;
         if !split && state.flags & 1 != 0 && state.receive_hz != state.transmit_hz {
             return Err(CallError(-6));
@@ -163,16 +172,52 @@ impl HamlibOperating {
                     .set_split_mode_width(i64::from(state.mode), state.bandwidth_hz)
             );
         }
-        for (selector, value) in [(8, state.offset_hz), (9, state.rit_hz), (10, state.xit_hz)] {
-            if self.writable(selector) {
+        if self.writable(8) {
+            call!(self.rig.set(8, state.offset_hz));
+        }
+        // Some radios share one RIT/XIT register. Do not overwrite an active
+        // offset with an unchanged inactive companion. Restore enable state
+        // after offset writes because some backends enable RIT as a side effect.
+        let mut offsets = [
+            (
+                9,
+                state.rit_hz,
+                16,
+                self.last_observed.as_ref().map(|old| old.rit_hz),
+            ),
+            (
+                10,
+                state.xit_hz,
+                32,
+                self.last_observed.as_ref().map(|old| old.xit_hz),
+            ),
+        ];
+        // An active register wins when only one side is enabled. If both are
+        // enabled with incompatible values, actual readback rejects the tune.
+        offsets.sort_by_key(|(_, _, flag, _)| state.flags & flag != 0);
+        for (selector, value, flag, previous) in offsets {
+            if self.writable(selector)
+                && (state.flags & flag != 0 || previous.is_none_or(|old| old != value))
+            {
                 call!(self.rig.set(selector, value));
+            }
+        }
+        for (selector, flag) in [(307, 16), (308, 32)] {
+            if self.writable(selector) {
+                call!(self.rig.set(selector, i64::from(state.flags & flag != 0)));
             }
         }
         if state.flags & 3 == 3 {
             let transmit = state
                 .transmit_hz
                 .checked_add_signed(state.offset_hz)
-                .and_then(|value| value.checked_add_signed(state.xit_hz))
+                .and_then(|value| {
+                    value.checked_add_signed(if state.flags & 32 != 0 {
+                        state.xit_hz
+                    } else {
+                        0
+                    })
+                })
                 .ok_or(CallError(-1003))?;
             call!(
                 self.rig
@@ -255,6 +300,11 @@ impl HamlibOperating {
         if self.readback & 256 != 0 {
             state.xit_hz = get!(10);
         }
+        for (selector, field, flag) in [(307, 14, 16), (308, 15, 32)] {
+            if self.readback & (1 << field) != 0 {
+                state.flags = (state.flags & !flag) | if get!(selector) != 0 { flag } else { 0 };
+            }
+        }
         if self.readback & 512 != 0 {
             if cancelled() {
                 return Err(CallError(-10));
@@ -262,11 +312,18 @@ impl HamlibOperating {
             let transmit = state
                 .transmit_hz
                 .checked_add_signed(state.offset_hz)
-                .and_then(|value| value.checked_add_signed(state.xit_hz))
+                .and_then(|value| {
+                    value.checked_add_signed(if state.flags & 32 != 0 {
+                        state.xit_hz
+                    } else {
+                        0
+                    })
+                })
                 .ok_or(CallError(-1003))?;
             state.power_mw = self.rig.get_power_mw(transmit, i64::from(state.mode))?;
             state.flags |= 2;
         }
+        self.last_observed = Some(state);
         Ok(state)
     }
 }

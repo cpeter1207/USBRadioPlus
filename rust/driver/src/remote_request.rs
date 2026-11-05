@@ -247,6 +247,19 @@ pub fn prepare_remote_operation(
                     request.fields = 256;
                     request.state.xit_hz = value;
                 }
+                307 | 308 => {
+                    let (bit, flag) = if operation.selector == 307 {
+                        (14, 16)
+                    } else {
+                        (15, 32)
+                    };
+                    request.fields = 1 << bit;
+                    request.state.flags =
+                        (request.state.flags & !flag) | if value != 0 { flag } else { 0 };
+                }
+                // Internal split-mode companions never bypass complete-state
+                // admission through the generic auxiliary-setting path.
+                22 | 23 => return Err(unsupported()),
                 11 => {
                     request.fields = 512;
                     request.state.power_mw = positive()?.try_into().map_err(|_| invalid())?;
@@ -295,6 +308,9 @@ pub(crate) mod tests {
     pub(crate) fn configuration() -> ResolvedRemoteConfiguration {
         let document = DriverConfiguration::parse("test", "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM,USB\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n").unwrap();
         let mut configuration = document.remote("524950").unwrap().clone();
+        configuration
+            .hamlib_options
+            .insert("ptt_type".into(), "RIG".into());
         configuration.offset_magnitude_hz = Some(600_000);
         configuration.power_presets_mw = [Some(2500), None, Some(10000)];
         configuration
@@ -467,6 +483,44 @@ pub(crate) mod tests {
             panic!("RF-affecting settings must not bypass engine admission")
         };
         assert_eq!((request.fields, request.state.rit_hz), (128, -250));
+    }
+
+    #[test]
+    fn remote_incremental_enables_cannot_bypass_rf_admission() {
+        for (selector, field, flag) in [(307, 14, 16), (308, 15, 32)] {
+            let setting = Setting {
+                selector,
+                name: "incremental enabled".into(),
+                readable: true,
+                writable: true,
+                value_kind: 1,
+                units: 0,
+                decimal_places: 0,
+                minimum: 0,
+                maximum: 1,
+                choices: vec![],
+            };
+            for enabled in [0, 1] {
+                let mut operation = RemoteOperation::new(Kind::SetSetting);
+                operation.selector = selector;
+                operation.magnitude = enabled;
+                let PreparedRemoteOperation::Core(request) = prepare_remote_operation(
+                    &configuration(),
+                    &current(),
+                    None,
+                    std::slice::from_ref(&setting),
+                    operation,
+                )
+                .unwrap() else {
+                    panic!("incremental enable must use complete-state validation")
+                };
+                assert_eq!(request.fields, 1 << field);
+                assert_eq!(
+                    request.state.flags & flag,
+                    if enabled == 1 { flag } else { 0 }
+                );
+            }
+        }
     }
 
     #[test]

@@ -62,7 +62,7 @@ impl RemotePhysicalWiring {
         let unavailable = || RemoteRequestError::Rejected(-6);
         let rig_ptt = settings
             .iter()
-            .any(|setting| setting.selector == 20 && setting.writable);
+            .any(|setting| setting.selector == 20 && setting.writable && setting.readable);
         let rig_carrier = settings
             .iter()
             .any(|setting| setting.selector == 21 && setting.readable);

@@ -123,7 +123,9 @@ pub fn operating_state(
         flags: u32::from(value.transmit_hz.is_some())
             | (u32::from(value.power_mw.is_some()) << 1)
             | (u32::from(value.channel.is_some()) << 2)
-            | (u32::from(value.split) << 3),
+            | (u32::from(value.split) << 3)
+            | (u32::from(value.rit_enabled) << 4)
+            | (u32::from(value.xit_enabled) << 5),
         mode: value.mode,
         bandwidth_hz: value.bandwidth_hz,
         receive_vfo: value.receive_vfo,
@@ -166,7 +168,7 @@ pub fn operating_configuration(
             inverted: signal.inverted != 0,
         })
     };
-    if value.flags & !15 != 0 || value.flags & 4 != 0 && value.channel > 15 {
+    if value.flags & !63 != 0 || value.flags & 4 != 0 && value.channel > 15 {
         return Err(CallError(-1003));
     }
     Ok(RemoteOperatingState {
@@ -182,6 +184,8 @@ pub fn operating_configuration(
         offset_hz: value.offset_hz,
         rit_hz: value.rit_hz,
         xit_hz: value.xit_hz,
+        rit_enabled: value.flags & 16 != 0,
+        xit_enabled: value.flags & 32 != 0,
         encode: signal(value.encode)?,
         decode: signal(value.decode)?,
     })

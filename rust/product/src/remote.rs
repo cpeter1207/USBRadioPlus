@@ -118,6 +118,7 @@ fn state(value: &RemoteOperatingState) -> Value {
     json!({"rx_hz":value.receive_hz,"tx_hz":value.transmit_hz,"mode":value.mode,
         "bandwidth_hz":value.bandwidth_hz,"rx_vfo":value.receive_vfo,"tx_vfo":value.transmit_vfo,
         "split":value.split,"offset_hz":value.offset_hz,"rit_hz":value.rit_hz,"xit_hz":value.xit_hz,
+        "rit_enabled":value.rit_enabled,"xit_enabled":value.xit_enabled,
         "power_mw":value.power_mw,"channel":value.channel,"encode":signal(value.encode),"decode":signal(value.decode)})
 }
 fn setting(value: &Setting) -> Value {

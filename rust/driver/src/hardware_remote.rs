@@ -407,7 +407,7 @@ impl OperatingIo for PhysicalBackend<'_> {
                 || state.transmit_vfo != 0
                 || state.rit_hz != 0
                 || state.xit_hz != 0
-                || state.flags & 2 != 0
+                || state.flags & (2 | 16 | 32) != 0
             {
                 return Err(CallError(-6));
             }
@@ -525,7 +525,13 @@ impl RemoteDevice for PhysicalBackend<'_> {
             let transmit = state
                 .transmit_hz
                 .checked_add_signed(state.offset_hz)
-                .and_then(|value| value.checked_add_signed(state.xit_hz))
+                .and_then(|value| {
+                    value.checked_add_signed(if state.flags & 32 != 0 {
+                        state.xit_hz
+                    } else {
+                        0
+                    })
+                })
                 .ok_or(CallError(-6))?;
             rig.get_power_mw(transmit, i64::from(state.mode))
                 .map(i64::from)

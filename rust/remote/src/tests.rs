@@ -9,6 +9,8 @@ fn remote_operating_state_projection_retains_split_and_signal_ownership() {
         receive_hz: 146520000,
         transmit_hz: Some(146520000),
         split: true,
+        rit_enabled: true,
+        rit_hz: 125,
         mode: 1,
         encode: RemoteSignal {
             enabled: true,
@@ -23,9 +25,9 @@ fn remote_operating_state_projection_retains_split_and_signal_ownership() {
         ..Default::default()
     };
     let mut projected = operating_state(&state, &caps).unwrap();
-    assert_eq!(projected.flags, 1 | 8);
+    assert_eq!(projected.flags, 1 | 8 | 16);
     assert_eq!(operating_configuration(&projected).unwrap(), state);
-    projected.flags |= 16;
+    projected.flags |= 64;
     assert!(operating_configuration(&projected).is_err());
 }
 
@@ -164,6 +166,26 @@ fn hamlib_operating_bridge_applies_complete_state_and_reports_real_readback() {
     let readback = bridge.read(&state, || false).unwrap();
     assert_eq!(readback.transmit_hz, state.transmit_hz);
     assert_ne!(readback.flags & 8, 0);
+}
+
+#[test]
+fn hamlib_incremental_offsets_are_observed_separately_from_enable_state() {
+    let mut bridge = HamlibOperating::new(dummy_rig()).unwrap();
+    // SAFETY: all fields are fixed-width scalar state.
+    let mut state: raw::RptAdvRemoteState = unsafe { std::mem::zeroed() };
+    state.receive_hz = 146520000;
+    state.transmit_hz = state.receive_hz;
+    state.flags = 1 | 16;
+    state.mode = 1;
+    state.rit_hz = 125;
+    state.xit_hz = -250;
+    bridge.apply(&state, || false).unwrap();
+    let observed = bridge.read(&state, || false).unwrap();
+    assert_eq!((observed.rit_hz, observed.xit_hz), (125, -250));
+    assert_eq!(observed.flags & 48, 16);
+    assert_eq!(bridge.rig().get(307), Ok(1));
+    assert_eq!(bridge.rig().get(308), Ok(0));
+    assert_eq!(bridge.readback_fields() & (3 << 14), 3 << 14);
 }
 
 #[test]
