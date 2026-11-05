@@ -37,13 +37,7 @@ pub(crate) unsafe extern "C" fn remote_options(
         // SAFETY: the caller serializes this live resolved configuration owner.
         let owner = unsafe { configuration.cast::<Resolved>().as_ref() };
         let owner = owner.ok_or(Status::InvalidArgument)?;
-        let remote = usbradioplus_core::ResolvedRemoteConfiguration::from_document(
-            owner.configuration.source_document(),
-            "rpt_advanced.conf",
-            &owner.node,
-            &owner.configuration.config().station,
-        )
-        .map_err(|_| Status::InvalidConfiguration)?;
+        let remote = owner.remote.as_ref();
         let mut options = UrpRemoteCommandOptions {
             struct_size: size_of::<UrpRemoteCommandOptions>() as u32,
             abi_version: 1,
@@ -76,6 +70,7 @@ pub type UrpNativeConfigurationSink =
 struct Resolved {
     configuration: ResolvedNativeConfiguration,
     node: String,
+    remote: Option<usbradioplus_core::ResolvedRemoteConfiguration>,
 }
 
 pub(crate) unsafe extern "C" fn resolve(
@@ -101,6 +96,22 @@ pub(crate) unsafe extern "C" fn resolve(
             &node,
         )
         .map_err(|_| Status::InvalidConfiguration)?;
+        let remote = usbradioplus_core::ResolvedRemoteConfiguration::from_document(
+            configuration.source_document(),
+            "rpt_advanced.conf",
+            &node,
+            &configuration.config().station,
+        )
+        .map_err(|_| Status::InvalidConfiguration)?;
+        if let Some(remote) = &remote {
+            let provider =
+                usbradioplus_remote::RemoteProvider::load().map_err(|_| Status::IncompatibleAbi)?;
+            usbradioplus_remote::RemoteSession::validate_policy(
+                std::sync::Arc::new(provider),
+                remote,
+            )
+            .map_err(|_| Status::InvalidConfiguration)?;
+        }
         if let Some(diagnostic) = diagnostic {
             for warning in configuration.warnings() {
                 let message = warning.to_string();
@@ -111,6 +122,7 @@ pub(crate) unsafe extern "C" fn resolve(
         let resolved = Box::new(Resolved {
             configuration,
             node,
+            remote,
         });
         // SAFETY: ownership transfers to native_configuration_destroy.
         unsafe { output.as_ptr().write(Box::into_raw(resolved).cast()) };

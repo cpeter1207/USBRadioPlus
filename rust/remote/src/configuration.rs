@@ -202,6 +202,49 @@ fn ranges(values: &[(u64, u64)]) -> Vec<raw::RptAdvRemoteRange> {
 }
 
 impl RemoteSession {
+    /// Validate configuration-only RF policy before a host releases its current
+    /// radio. These permissive synthetic capabilities establish no hardware fact;
+    /// the physical owner must still admit actual capabilities before activation.
+    pub fn validate_policy(
+        provider: Arc<RemoteProvider>,
+        config: &ResolvedRemoteConfiguration,
+    ) -> Result<(), CallError> {
+        let mut policy = config.clone();
+        for memory in &mut policy.memories {
+            for signal in [&mut memory.state.encode, &mut memory.state.decode] {
+                // An automatic provider is unresolved here. DSP avoids assuming
+                // a particular rig's signaling limits during pure validation.
+                if signal.source == RemoteSignalSource::Automatic {
+                    signal.source = RemoteSignalSource::Dsp;
+                }
+                if signal.control_source == Some(RemoteSignalSource::Automatic) {
+                    signal.control_source = Some(RemoteSignalSource::Dsp);
+                }
+            }
+        }
+        let coverage = raw::RptAdvRemoteCoverage {
+            minimum: 1,
+            maximum: u64::MAX,
+            mode_mask: 0x1ffe,
+            flags: 0,
+            minimum_power_mw: 0,
+            maximum_power_mw: 0,
+        };
+        let caps = SelectedCapabilities {
+            receive: vec![coverage],
+            transmit: vec![coverage],
+            modes: 0x1ffe,
+            scan_modes: 0x1ffe,
+            power_mw: true,
+            manual_tune: true,
+            encode_sources: 14,
+            decode_sources: 14,
+            decode_control_sources: 14,
+            ..Default::default()
+        };
+        Self::configured(provider, &policy, &caps).map(drop)
+    }
+
     /// Copy the existing shared resolver's definitions into the dynamic engine.
     /// The engine alone validates RF policy, memories and scan membership.
     pub fn configured(

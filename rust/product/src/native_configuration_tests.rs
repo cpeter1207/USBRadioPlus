@@ -63,6 +63,27 @@ fn args(text: &str, node: &str) -> UrpNativeProcessingArgs {
 }
 
 #[test]
+fn remote_resolution_rejects_out_of_policy_memory_before_any_handoff() {
+    for (frequency, expected) in [
+        (146_520_000, 0),
+        (140_000_000, Status::InvalidConfiguration.code()),
+    ] {
+        let source = format!(
+            "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=one\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 one]\nselector=1\nrx_frequency_hz={frequency}\ntx_frequency_hz=146520000\nmode=FM\n"
+        );
+        let request = args(&source, "524950");
+        let mut owner = ptr::null_mut();
+        // SAFETY: this test retains the complete request, text and writable output.
+        let result = unsafe { resolve(&request, None, ptr::null_mut(), &mut owner) };
+        let absent = owner.is_null();
+        // SAFETY: resolution transfers unique ownership; null destruction is permitted.
+        unsafe { destroy(owner) };
+        assert_eq!(result, expected);
+        assert_eq!(absent, expected != 0);
+    }
+}
+
+#[test]
 fn owned_resolution_visits_common_radio_policy_and_preserves_original_profile_presence() {
     let source = "[1000]\nvoice_telemetry_profile=limited\n[radio]\nreceive_signaling=ctcss\nreceive_ctcss_tones_hz=100.0,123.0\ntransmit_signaling=ctcss\ntransmit_ctcss_tones_hz=103.5,136.5\ntransmit_ctcss_default_hz=103.5\nreceive_cpu_saver_enabled=yes\ntransmit_cpu_saver_enabled=yes\nreceive_input_gain_db=-2\nreceive_graph=highpass=f=60\n[radio 1000]\nhardware_input_gain_db=1.5\noutput_device_channels=2\n[voice_telemetry limited]\noutput_gain_db=-3\n";
     let request = args(source, "1000");
