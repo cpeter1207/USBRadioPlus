@@ -57,6 +57,9 @@ pub enum RemoteSignalSource {
 pub struct RemoteSignal {
     /// Provider, with automatic resolved before creating the shared engine.
     pub source: RemoteSignalSource,
+    /// Optional decoder-programming provider, separate from actual qualification.
+    /// Absent follows `source`; encoders never use this override.
+    pub control_source: Option<RemoteSignalSource>,
     /// Configured enablement, distinct from activity-scoped physical encode gating.
     pub enabled: bool,
     /// CTCSS in tenths of hertz; zero selects DCS/no tone.
@@ -368,6 +371,12 @@ fn signal(
         return Err(values.error(&source_key));
     }
     let mut result = inherited;
+    if !encode {
+        if let Some(value) = values.text("decode_control_source") {
+            result.control_source =
+                Some(source(value).ok_or_else(|| values.error("decode_control_source"))?);
+        }
+    }
     if let Some(tone) = values.scaled(&tone_key, 1)? {
         if !(500..=3000).contains(&tone) || values.text(&code_key).is_some() {
             return Err(values.error(&tone_key));
@@ -874,6 +883,7 @@ fn valid_value(key: &str, value: &str) -> bool {
         | "ctcss_decode_source"
         | "dcs_encode_source"
         | "dcs_decode_source" => self::source(value).is_some(),
+        "decode_control_source" => self::source(value).is_some(),
         "power_low_w" | "power_medium_w" | "power_high_w" | "max_power_w" | "power_w" => {
             scaled(value, 3).is_some()
         }
@@ -943,6 +953,7 @@ const BASE_KEYS: &[&str] = &[
     "dcs_decode_code",
     "dcs_encode_source",
     "dcs_decode_source",
+    "decode_control_source",
 ];
 const MEMORY_KEYS: &[&str] = &[
     "selector",
@@ -965,6 +976,7 @@ const MEMORY_KEYS: &[&str] = &[
     "dcs_decode_code",
     "dcs_encode_source",
     "dcs_decode_source",
+    "decode_control_source",
 ];
 const SCAN_KEYS: &[&str] = &[
     "selector",

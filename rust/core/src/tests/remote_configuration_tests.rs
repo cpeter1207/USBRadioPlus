@@ -181,3 +181,24 @@ fn remote_configuration_uses_the_adr_alsa_audio_category() {
     assert_eq!(format!("{:?}", config.audio_source), "Alsa");
     assert!(config.warnings.is_empty());
 }
+
+#[test]
+fn remote_configuration_separates_decoder_programming_from_qualification() {
+    let text = CONFIG.replace(
+        "ctcss_decode_source=external",
+        "ctcss_decode_source=external\nctcss_decode_hz=114.8\ndecode_control_source=hamlib",
+    );
+    let config = ResolvedRemoteConfiguration::from_document(
+        &ConfigDocument::new(text),
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    let decode = config.memories[0].state.decode;
+    assert_eq!(decode.source, RemoteSignalSource::External);
+    assert_eq!(decode.control_source, Some(RemoteSignalSource::Rig));
+    assert_eq!(decode.tone_tenths_hz, 1148);
+    assert!(config.warnings.is_empty());
+}
