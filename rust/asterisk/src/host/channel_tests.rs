@@ -1573,6 +1573,53 @@ fn site_option_serializes_owned_requests_and_returns_only_acknowledged_snapshots
 }
 
 #[test]
+fn remote_option_acknowledges_pending_retirement_and_rejects_partial_envelopes() {
+    let _fixture = Fixture::new();
+    unsafe extern "C" fn quiesce(_: *mut c_void) -> i32 {
+        crate::URP_AST_RELOAD_PENDING
+    }
+    let mut descriptor = callback_descriptor();
+    descriptor.channel_quiesce = Some(quiesce);
+    let calls = Mutex::new(DriverCalls::default());
+    let (_channel, mut owner) = callback_channel(&descriptor, &calls);
+    for case in 0..5 {
+        // SAFETY: all zero fields are valid empty inputs or nullable output pointers.
+        let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
+        request.struct_size = size_of::<crate::UrpAstRemoteControl>() as u32;
+        request.abi_version = 1;
+        request.operation = crate::URP_AST_REMOTE_QUIESCE;
+        let mut length = size_of::<crate::UrpAstRemoteControl>() as c_int;
+        match case {
+            1 => length -= 1,
+            2 => request.struct_size -= 1,
+            3 => request.abi_version = 2,
+            4 => request.source_flags = 4,
+            _ => (),
+        }
+        // SAFETY: the retained owner and complete writable request outlive dispatch.
+        let result = unsafe {
+            setoption(
+                owner.as_ptr(),
+                crate::URP_AST_OPTION_REMOTE_CONTROL as c_int,
+                ptr::from_mut(&mut request).cast(),
+                length,
+            )
+        };
+        assert_eq!(
+            result,
+            if case == 0 {
+                crate::URP_AST_RELOAD_PENDING
+            } else {
+                -1
+            },
+            "case {case}"
+        );
+        assert_eq!(request.accepted_abi_version, u32::from(case == 0));
+        assert!(request.ticket.context.is_null());
+    }
+}
+
+#[test]
 fn direct_call_starts_station_without_delivery_worker() {
     for direct in [true, false] {
         let events = RefCell::new(Vec::new());

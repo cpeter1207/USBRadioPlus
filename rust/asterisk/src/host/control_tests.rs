@@ -8,6 +8,28 @@ use super::*;
 
 static TRANSMIT: AtomicU32 = AtomicU32::new(0);
 
+#[test]
+fn remote_control_dispatch_preserves_pending_and_ticket_ownership() {
+    unsafe extern "C" fn pending(_: *mut c_void) -> i32 {
+        1
+    }
+    let mut descriptor = descriptor();
+    descriptor.channel_quiesce = Some(pending);
+    // SAFETY: zero initializes the pointer-free request and empty result ticket.
+    let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
+    request.operation = crate::URP_AST_REMOTE_QUIESCE;
+    // SAFETY: the complete retained descriptor's fake callback ignores its context.
+    let result = unsafe {
+        execute(
+            &descriptor,
+            ptr::null_mut(),
+            ControlOperation::Remote(request),
+        )
+    };
+    assert_eq!(result.status(), 1);
+    assert!(matches!(result, ControlResult::Remote(1, _)));
+}
+
 unsafe extern "C" fn start(_channel: *mut c_void) -> i32 {
     17
 }

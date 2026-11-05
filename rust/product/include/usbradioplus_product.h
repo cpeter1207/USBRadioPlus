@@ -1080,6 +1080,39 @@ typedef struct UrpRemoteOperation {
 	uint32_t flags; /**< Operation-specific direction/enable/sign flags. */
 } UrpRemoteOperation;
 
+/** Owned nonblocking remote ticket; callback functions remain live through destroy. */
+typedef struct UrpRemoteTicket {
+	uint32_t struct_size; /**< Exact complete record size. */
+	uint32_t abi_version; /**< One. */
+	void *context; /**< Unique SDK ticket, never the channel or peer. */
+	int (*source)(void *ticket, uint32_t flags); /**< Active1/valid2, terminal revocation. */
+	int (*take)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context); /**< Copy JSON. */
+	void (*destroy)(void *ticket); /**< Cancel and release without waiting. */
+} UrpRemoteTicket;
+
+/** Serialized control-only Asterisk option, using block zero. */
+#define URP_AST_OPTION_REMOTE_CONTROL 0x52505243
+/** Exact remote-control envelope version. */
+#define URP_AST_REMOTE_OPTION_ABI_VERSION 1u
+/** Pump the existing DSP-control mailbox. */
+#define URP_AST_REMOTE_SERVICE 1u
+/** Poll safe retirement; one means pending and retains channel/context ownership. */
+#define URP_AST_REMOTE_QUIESCE 2u
+/** Submit a copied operation and return an independently owned ticket. */
+#define URP_AST_REMOTE_SUBMIT 3u
+/** Synchronous taskprocessor envelope; contains no retained caller buffer.
+ * accepted_abi_version acknowledges recognized dispatch even when pending/error.
+ */
+typedef struct UrpAstRemoteControl {
+	uint32_t struct_size; /**< Exact complete envelope size. */
+	uint32_t abi_version; /**< One. */
+	uint32_t accepted_abi_version; /**< Zero on input, one after recognized dispatch. */
+	uint32_t operation; /**< SERVICE, QUIESCE, or SUBMIT. */
+	uint32_t source_flags; /**< SUBMIT: local1, active2. */
+	UrpRemoteOperation request; /**< Borrowed operation copied during SUBMIT. */
+	UrpRemoteTicket ticket; /**< Output only; success transfers unique ownership. */
+} UrpAstRemoteControl;
+
 /** Versioned product operations. Check struct_size before accessing an appended tail. */
 typedef struct UrpAstDescriptor {
 	/**
