@@ -526,6 +526,25 @@ impl OperatingIo for PhysicalBackend<'_> {
     }
 }
 impl RemoteDevice for PhysicalBackend<'_> {
+    fn transmit_idle(&mut self) -> Result<bool, CallError> {
+        if self.wiring.ptt != RemotePttSource::Rig {
+            return Ok(self.worker.state.remote_signals().physical_ptt == Some(false));
+        }
+        let active = self
+            .rig
+            .as_mut()
+            .ok_or(CallError(-6))?
+            .rig()
+            .get(20)
+            .map(|value| value != 0);
+        self.worker
+            .state
+            .publish_remote_signals(RemoteHardwareSignals {
+                physical_ptt: active.as_ref().ok().copied(),
+                ..self.worker.state.remote_signals()
+            });
+        active.map(|active| !active)
+    }
     fn get_setting(
         &mut self,
         selector: u32,

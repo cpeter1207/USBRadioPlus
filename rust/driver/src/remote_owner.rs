@@ -16,6 +16,9 @@ use usbradioplus_remote::{
 /// Declared scalar operations on the same non-audio physical device owner.
 /// RF-affecting operating fields enter the dynamic engine instead of this path.
 pub trait RemoteDevice: OperatingIo {
+    /// Confirm the selected physical PTT output is off before an auxiliary write.
+    /// Unknown state is not idle; implementations must never key to answer this.
+    fn transmit_idle(&mut self) -> Result<bool, CallError>;
     /// Read one actual supported control using current applied/observed context.
     fn get_setting(
         &mut self,
@@ -30,11 +33,17 @@ struct Pending {
     id: u64,
     work: RemoteWork,
 }
+struct Auxiliary {
+    work: RemoteWork,
+    selector: u32,
+    value: i64,
+}
 
 /// One creating-thread-owned command bridge to the portable remote engine.
 /// It adds no tune/scan policy and no device thread. Slow presentation consumes
 /// copied completions without retaining the physical owner or foreign callbacks.
 pub struct RemoteOwner {
+    auxiliary: Option<Auxiliary>,
     configuration: ResolvedRemoteConfiguration,
     session: RemoteSession,
     settings: Vec<Setting>,
@@ -78,6 +87,7 @@ impl RemoteOwner {
             memory.state = operating_configuration(&session.configured_memory(memory.selector)?)?;
         }
         Ok(Self {
+            auxiliary: None,
             configuration,
             session,
             settings,
@@ -106,6 +116,7 @@ impl RemoteOwner {
     /// tickets become stopped even while the physical unkey is being retried.
     pub fn retire(&mut self) -> Result<(), CallError> {
         self.queue.retire();
+        self.auxiliary = None;
         self.pending.clear();
         self.session.retire()
     }
@@ -139,8 +150,47 @@ impl RemoteOwner {
                 });
             }
         }
-        if let Some(work) = self.queue.next_ordinary() {
-            self.admit(work, now, device);
+        if self.auxiliary.is_none() {
+            if let Some(work) = self.queue.next_ordinary() {
+                self.admit(work, now, device);
+            }
+        }
+        if result.is_ok() {
+            if let Some(waiting) = self.auxiliary.take() {
+                let snapshot = self.session.snapshot()?;
+                if !waiting.work.source().valid {
+                    waiting.work.complete(Err(RemoteRequestError::StaleSource));
+                } else if waiting.work.source().active
+                    || snapshot.flags & raw::RPTADV_REMOTE_PENDING != 0
+                    || activity.flags
+                        & (raw::RPTADV_REMOTE_PHYSICAL_PTT | raw::RPTADV_REMOTE_RENDERED_PTT)
+                        != 0
+                {
+                    self.auxiliary = Some(waiting);
+                } else {
+                    match device.transmit_idle() {
+                        Ok(false) => self.auxiliary = Some(waiting),
+                        Ok(true) => {
+                            // The physical exchange may block while the initiating
+                            // connection, administrative grant or key state changes.
+                            let source = waiting.work.source();
+                            if !source.valid {
+                                waiting.work.complete(Err(RemoteRequestError::StaleSource));
+                            } else if source.active {
+                                self.auxiliary = Some(waiting);
+                            } else {
+                                waiting.work.complete(
+                                    device
+                                        .set_setting(waiting.selector, waiting.value)
+                                        .map(|()| RemoteReply::Applied)
+                                        .map_err(|error| rejected(error.0)),
+                                );
+                            }
+                        }
+                        Err(error) => waiting.work.complete(Err(rejected(error.0))),
+                    }
+                }
+            }
         }
         result?;
         self.session.snapshot()
@@ -153,6 +203,13 @@ impl RemoteOwner {
         let result = self.prepare(&work, device);
         match result {
             Ok(Ready::Reply(reply)) => work.complete(Ok(reply)),
+            Ok(Ready::Auxiliary { selector, value }) => {
+                self.auxiliary = Some(Auxiliary {
+                    work,
+                    selector,
+                    value,
+                })
+            }
             Ok(Ready::Core(request)) => match self.session.request(&request, now) {
                 Ok(id) => self.pending.push(Pending { id, work }),
                 Err(error) => work.complete(Err(rejected(error.0))),
@@ -238,10 +295,7 @@ impl RemoteOwner {
                 )? {
                     PreparedRemoteOperation::Core(request) => Ok(Ready::Core(request)),
                     PreparedRemoteOperation::Auxiliary { selector, value } => {
-                        device
-                            .set_setting(selector, value)
-                            .map_err(|error| rejected(error.0))?;
-                        Ok(Ready::Reply(RemoteReply::Applied))
+                        Ok(Ready::Auxiliary { selector, value })
                     }
                 };
             }
@@ -250,6 +304,7 @@ impl RemoteOwner {
     }
 }
 enum Ready {
+    Auxiliary { selector: u32, value: i64 },
     Reply(RemoteReply),
     Core(raw::RptAdvRemoteRequest),
 }
@@ -273,6 +328,7 @@ mod tests {
     };
 
     struct Device {
+        idle_change: Option<(Arc<crate::RemoteTicket>, bool)>,
         state: raw::RptAdvRemoteState,
         writes: usize,
         scalar: i64,
@@ -302,6 +358,12 @@ mod tests {
         }
     }
     impl RemoteDevice for Device {
+        fn transmit_idle(&mut self) -> Result<bool, CallError> {
+            if let Some((ticket, rekey)) = self.idle_change.take() {
+                ticket.source_state(rekey, rekey);
+            }
+            Ok(!self.keyed)
+        }
         fn get_setting(&mut self, _: u32, _: &raw::RptAdvRemoteSnapshot) -> Result<i64, CallError> {
             Ok(self.scalar)
         }
@@ -314,6 +376,59 @@ mod tests {
         raw::RptAdvRemoteActivity {
             struct_size: size_of::<raw::RptAdvRemoteActivity>() as u32,
             flags: 0,
+        }
+    }
+
+    #[test]
+    fn auxiliary_radio_writes_wait_for_command_unkey_and_serviced_ptt_off() {
+        let (mut owner, queue, mut device) = owner();
+        owner.service(0, activity(), &mut device).unwrap();
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = 100;
+        operation.magnitude = 250000;
+        operation.decimal_places = 6;
+        let ticket = queue.submit(operation, true, true).unwrap();
+        owner.service(1, activity(), &mut device).unwrap();
+        assert_eq!(device.scalar, 500000, "no CAT write before source unkeys");
+        assert!(ticket.take_completion().is_none());
+        ticket.source_state(false, true);
+        let mut keyed = activity();
+        keyed.flags = raw::RPTADV_REMOTE_PHYSICAL_PTT
+            | raw::RPTADV_REMOTE_RENDERED_PTT
+            | raw::RPTADV_REMOTE_REQUEST_PTT;
+        owner.service(2, keyed, &mut device).unwrap();
+        assert_eq!(device.scalar, 500000, "no live-transmitter auxiliary write");
+        owner.service(3, activity(), &mut device).unwrap();
+        assert_eq!(device.scalar, 250000);
+        assert!(matches!(
+            ticket.take_completion(),
+            Some(Ok(RemoteReply::Applied))
+        ));
+    }
+    #[test]
+    fn auxiliary_radio_rechecks_source_after_the_physical_idle_exchange() {
+        for rekey in [false, true] {
+            let (mut owner, queue, mut device) = owner();
+            owner.service(0, activity(), &mut device).unwrap();
+            let mut operation = RemoteOperation::new(Kind::SetSetting);
+            operation.selector = 100;
+            operation.magnitude = 250000;
+            operation.decimal_places = 6;
+            let ticket = Arc::new(queue.submit(operation, true, false).unwrap());
+            device.idle_change = Some((Arc::clone(&ticket), rekey));
+            owner.service(1, activity(), &mut device).unwrap();
+            assert_eq!(device.scalar, 500000);
+            if rekey {
+                assert!(ticket.take_completion().is_none());
+                ticket.source_state(false, true);
+                owner.service(2, activity(), &mut device).unwrap();
+                assert_eq!(device.scalar, 250000);
+            } else {
+                assert!(matches!(
+                    ticket.take_completion(),
+                    Some(Err(RemoteRequestError::StaleSource))
+                ));
+            }
         }
     }
     fn owner() -> (RemoteOwner, Arc<RemoteQueue>, Device) {
@@ -357,6 +472,7 @@ mod tests {
         )
         .unwrap();
         let device = Device {
+            idle_change: None,
             // SAFETY: all fields are scalar C records.
             state: unsafe { std::mem::zeroed() },
             writes: 0,
