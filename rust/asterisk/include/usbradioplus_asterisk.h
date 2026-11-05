@@ -6,6 +6,7 @@
 #define USBRADIOPLUS_ASTERISK_H
 
 #include <stdint.h>
+#include "usbradioplus_product.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,8 +23,6 @@ extern "C" {
 
 /** Private initial-alpha Asterisk option ID; call ast_channel_setoption with block=0. */
 #define URP_AST_OPTION_DIRECT_CALLBACKS 0x52504144
-/** Exact direct callback descriptor ABI. */
-#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(3)
 
 /**
  * @brief Borrowed direct RadioPlusAdvanced PCM endpoints, copied before call().
@@ -36,17 +35,7 @@ extern "C" {
  * or hangup returns; USBRadioPlus never owns or frees contexts. Reload copies the
  * same attachment before starting the replacement stream. No DSO lookup is used.
  */
-struct urp_ast_direct_callbacks {
-	uint32_t struct_size;  /**< Exact sizeof(struct urp_ast_direct_callbacks). */
-	uint32_t abi_version;  /**< Exact URP_AST_DIRECT_CALLBACKS_ABI_VERSION. */
-	void *receive_context; /**< Caller-owned RX context. */
-	int (*receive)(void *context, uint32_t receiver_keyed, float *samples,
-		       uint32_t frame_count); /**< Process qualified USB receive output. */
-	void *transmit_context;		      /**< Caller-owned TX context. */
-	int (*transmit)(void *context, float *samples, uint32_t frame_count, uint32_t *keyed,
-			uint32_t *ctcss_enabled); /**< Fill audio and return PTT/CTCSS enable. */
-	uint32_t accepted_abi_version; /**< Initialize to zero; host acknowledges retained ABI. */
-};
+typedef UrpAstDirectCallbacks urp_ast_direct_callbacks;
 
 /** Peer binding option; call ast_channel_setoption on the reserved radio with block=0. */
 #define URP_AST_OPTION_LINK_ATTACH 0x52504C41

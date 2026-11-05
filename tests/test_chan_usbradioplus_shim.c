@@ -14,6 +14,11 @@
 #include "usbradioplus_asterisk.h"
 #include "usbradioplus_product.h"
 
+_Static_assert(URP_AST_DIRECT_CALLBACKS_ABI_VERSION == 5,
+	       "direct callback ABI must include remote metadata");
+_Static_assert(sizeof(urp_ast_direct_callbacks) == sizeof(UrpAstDirectCallbacks),
+	       "one shared callback layout");
+
 static struct ast_module fake_module;
 static struct ast_module_info_fixture fake_module_info = {.self = &fake_module};
 struct ast_module_info_fixture *ast_module_info = &fake_module_info;
