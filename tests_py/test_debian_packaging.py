@@ -108,8 +108,12 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
         assert "usbradioplus (= " not in dependency
     assert "libusbradioplus-product1 (= ${binary:Version})" in development
     assert "librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3)" in runtime
-    assert "rpt-advanced (<< 0.1.0~alpha19-1)" in runtime
-    assert "librptadv-product2 (<<" not in runtime
+    for provider in ("librptadvremote", "librptadv-hamlib-adapter"):
+        assert f"{provider}1 (>= 0.1.0~alpha1)" in runtime
+        assert f"{provider}-dev (>= 0.1.0~alpha1)" in paragraphs[0]
+    # Native callback ABI5 requires the coordinated controller consumers.
+    assert "rpt-advanced (<< 0.1.0~alpha20-1)" in runtime
+    assert "librptadv-product2 (<< 0.1.0~alpha20-1)" in runtime
 
     integration_files = read("debian/usbradioplus.install").splitlines()
     runtime_files = read("debian/libusbradioplus-product1.install").splitlines()
@@ -640,7 +644,12 @@ def test_automatic_index_refresh_accepts_echo_and_codec_releases():
     workflow = read(".github/workflows/packages.yml")
     receiver = workflow.split("  refresh-after-shared-release:\n", 1)[1]
     allowlist = re.search(r"contains\(fromJSON\('([^']+)'\)", receiver).group(1)
-    for repository in ("librptadvecholink", "rptadv-codec-adapters"):
+    for repository in (
+        "librptadvecholink",
+        "rptadv-codec-adapters",
+        "librptadvremote",
+        "rptadv-hamlib-adapter",
+    ):
         assert f'"cpeter1207/{repository}"' in allowlist
 
 
