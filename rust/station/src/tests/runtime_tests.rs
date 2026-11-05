@@ -1,5 +1,200 @@
 use super::*;
 
+fn remote_dsp_target() -> usbradioplus_core::RemoteOperatingState {
+    use usbradioplus_core::{RemoteSignal, RemoteSignalSource};
+    usbradioplus_core::RemoteOperatingState {
+        mode: 1,
+        decode: RemoteSignal {
+            source: RemoteSignalSource::Dsp,
+            enabled: true,
+            tone_tenths_hz: 1000,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+fn remote_dsp_render(runtime: &mut StationRuntime, transmit: bool) {
+    let input = [0.0; 1920];
+    assert_eq!(
+        // SAFETY: the fixture has no background audio worker; this test is its sole RX owner.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 960) },
+        0
+    );
+    if transmit {
+        let mut output = [0.0; 1920];
+        assert_eq!(
+            // SAFETY: this test exclusively owns the fixture's TX callback and full output span.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+    }
+}
+
+#[test]
+fn remote_dsp_prepares_off_owner_and_commits_after_both_callback_acknowledgments() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let before = control.plan().clone();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let worker = std::thread::spawn(move || {
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::from_secs(2),
+            || false,
+        )
+    });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !worker.is_finished() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        remote_dsp_render(&mut runtime, true);
+        std::thread::yield_now();
+    }
+    assert!(worker.join().unwrap().is_ok());
+    assert_ne!(
+        control.plan().radio().receive.signaling,
+        before.radio().receive.signaling
+    );
+    assert_eq!(control.plan().hardware(), before.hardware());
+    assert!(!dsp.is_busy());
+}
+
+#[test]
+fn remote_dsp_cancelled_half_update_retains_storage_until_reverse_acknowledgments() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let before = control.plan().clone();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let cancelled = cancel.clone();
+    let worker = std::thread::spawn(move || {
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::from_secs(2),
+            || cancelled.load(std::sync::atomic::Ordering::Acquire),
+        )
+    });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !dsp.awaiting_callbacks() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        std::thread::yield_now();
+    }
+    remote_dsp_render(&mut runtime, false);
+    cancel.store(true, std::sync::atomic::Ordering::Release);
+    assert!(matches!(
+        worker.join().unwrap(),
+        Err(crate::RemoteDspError::Cancelled)
+    ));
+    dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    assert!(dsp.is_busy(), "a half-adopted update cannot be reclaimed");
+    while dsp.is_busy() {
+        assert!(std::time::Instant::now() < deadline);
+        remote_dsp_render(&mut runtime, true);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    }
+    assert_eq!(control.plan(), &before);
+}
+
+#[test]
+fn remote_dsp_timeout_keeps_admission_bounded_and_control_retirement_terminal() {
+    let control = crate::RemoteDspControl::new();
+    let port = control.port();
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Timeout)
+    ));
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Busy)
+    ));
+    drop(control);
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Stopped)
+    ));
+}
+
+#[test]
+fn remote_dsp_recaptures_a_revised_generation_without_overwriting_tuner_settings() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let (waiting, wait) = std::sync::mpsc::sync_channel(1);
+    let (release, released) = std::sync::mpsc::sync_channel(1);
+    let worker = std::thread::spawn(move || {
+        let mut first = Some((waiting, released));
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            std::time::Duration::from_secs(2),
+            || {
+                if let Some((waiting, released)) = first.take() {
+                    waiting.send(()).unwrap();
+                    released.recv().unwrap();
+                }
+                false
+            },
+        )
+    });
+    wait.recv_timeout(std::time::Duration::from_secs(1))
+        .unwrap();
+    dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    let mut changed = control.plan().configuration().clone();
+    changed.voice_telemetry.output_gain_db = -3.0;
+    let candidate = StationPlan::new("usb", changed, control.plan().transport(), 41, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, candidate, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    remote_dsp_render(&mut runtime, true);
+    runtime.finish_update(&mut control, true).unwrap();
+    release.send(()).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !worker.is_finished() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        remote_dsp_render(&mut runtime, true);
+        std::thread::yield_now();
+    }
+    assert!(worker.join().unwrap().is_ok());
+    assert_eq!(
+        control
+            .plan()
+            .configuration()
+            .voice_telemetry
+            .output_gain_db,
+        -3.0
+    );
+}
+
 #[test]
 fn remote_hardware_signals_preserve_gpio_and_require_selected_ptt_confirmation() {
     let state = SharedHardwareState::default();

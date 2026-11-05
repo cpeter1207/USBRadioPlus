@@ -66,6 +66,12 @@ pub struct StationUpdatePreparation {
 }
 
 impl StationUpdatePreparation {
+    /// Exact generation captured by the original control owner. Build replacements
+    /// from this plan so concurrent tuning/reloads cannot overwrite newer settings.
+    pub const fn plan(&self) -> &StationPlan {
+        &self.previous
+    }
+
     /// Prepare forward/rollback updates without accessing a live station owner.
     pub fn prepare(self, plan: StationPlan) -> Result<StationUpdate, StationUpdateError> {
         // StationPlan::new gives RX and TX the same immutable frame maximum.

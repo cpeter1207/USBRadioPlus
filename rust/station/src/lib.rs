@@ -12,7 +12,9 @@ mod control;
 mod hardware;
 mod media;
 mod program;
+mod remote_dsp;
 mod remote_plan;
+pub use remote_dsp::{RemoteDspControl, RemoteDspError, RemoteDspPort};
 mod runtime;
 
 use usbradioplus_core::{

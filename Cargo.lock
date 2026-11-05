@@ -396,6 +396,7 @@ version = "0.1.0-alpha19"
 name = "usbradioplus-station"
 version = "0.1.0-alpha19"
 dependencies = [
+ "crossbeam-queue",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",
