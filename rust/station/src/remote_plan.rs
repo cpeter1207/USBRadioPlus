@@ -128,6 +128,10 @@ impl StationPlan {
         radio.transmit.signaling = crate::transmit_signaling(&configuration);
         let mut processing = self.processing().clone();
         let fm = matches!(state.mode, 1 | 9 | 10);
+        // Software transport duplex cannot override a physically half-duplex
+        // non-FM radio. Genuine full duplex remains independently configured.
+        radio.qualification.advanced_transport =
+            fm && self.transport() == crate::ControllerTransport::RptAdvanced;
         processing.receive_deemphasis = fm
             && configuration.station.receive.audio_source
                 == usbradioplus_core::ReceiveAudioSource::Flat;
@@ -315,6 +319,11 @@ mod tests {
             .unwrap();
         assert!(!updated.processing().receive_deemphasis);
         assert!(!updated.processing().transmit_preemphasis);
+        assert!(
+            !updated.radio().qualification.advanced_transport,
+            "non-FM half-duplex receive must close during local transmission"
+        );
+        assert!(!updated.radio().qualification.radio_duplex);
         assert_eq!(
             updated.processing().receive_deemphasis_corner_hz,
             original.processing().receive_deemphasis_corner_hz
@@ -342,6 +351,15 @@ mod tests {
         let restored = updated
             .with_remote_signaling(&state(), SubaudibleSource::Disabled)
             .unwrap();
+        assert!(restored.radio().qualification.advanced_transport);
+        let mut full_radio = *original.radio();
+        full_radio.qualification.radio_duplex = true;
+        let full = original
+            .clone()
+            .with_radio_configuration(original.configuration().clone(), full_radio)
+            .with_remote_signaling(&requested, SubaudibleSource::Disabled)
+            .unwrap();
+        assert!(full.radio().qualification.radio_duplex);
         assert_eq!(
             restored.processing().receive_deemphasis,
             original.configuration().station.receive.audio_source

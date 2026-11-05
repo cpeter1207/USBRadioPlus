@@ -549,7 +549,7 @@ typedef struct UrpAstDirectCallbacks {
 	 */
 	uint32_t struct_size;
 	/**
-	 * Exact direct-callback contract version, currently four.
+	 * Exact direct-callback contract version, currently five.
 	 */
 	uint32_t abi_version;
 	/**
@@ -573,7 +573,7 @@ typedef struct UrpAstDirectCallbacks {
 	 */
 	uint32_t accepted_abi_version;
 	/** TX-owner metadata exchange. Controls: remote enabled1, RX permitted2,
-	 * TX permitted4, non-FM8. Output is zero/one linked-source activity before
+	 * TX permitted4, non-FM8, unqualified local open16. Output is zero/one linked-source activity before
 	 * controller muting. Required only for a configured remote-base composition. */
 	int (*metadata)(void *, uint32_t, uint32_t *);
 } UrpAstDirectCallbacks;

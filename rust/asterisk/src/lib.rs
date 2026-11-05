@@ -70,7 +70,7 @@ pub struct UrpAstLinkAttach {
 
 impl UrpAstDirectCallbacks {
     /// Exact borrowed direct PCM endpoint ABI.
-    pub const ABI_VERSION: u32 = 4;
+    pub const ABI_VERSION: u32 = 5;
 
     /// Check the complete two-endpoint attachment before retaining its contexts.
     pub fn is_valid(&self) -> bool {

@@ -1574,6 +1574,7 @@ fn remote_radio_admission_keeps_requested_edges_separate_from_rendered_tails() {
         receive_permitted: false,
         transmit_permitted: false,
         non_fm: true,
+        local_unqualified_open: true,
     };
     state.publish_remote_control(control);
     assert_eq!(state.remote_control(), control);
@@ -1639,6 +1640,7 @@ fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
         receive_permitted: false,
         transmit_permitted: false,
         non_fm: true,
+        local_unqualified_open: false,
     });
     runtime.hardware.publish_inputs(HardwareInputs {
         carrier: true,

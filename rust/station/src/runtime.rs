@@ -161,6 +161,9 @@ pub struct RemoteRadioControl {
     pub transmit_permitted: bool,
     /// Applied mode requires transmit admission independent of open receive.
     pub non_fm: bool,
+    /// The configured local carrier is explicitly open with no enabled tone qualifier.
+    /// This is a source fact, not an assertion that all non-FM reception is idle.
+    pub local_unqualified_open: bool,
 }
 
 impl RemoteRadioControl {
@@ -169,6 +172,7 @@ impl RemoteRadioControl {
             | (u32::from(self.receive_permitted) << 1)
             | (u32::from(self.transmit_permitted) << 2)
             | (u32::from(self.non_fm) << 3)
+            | (u32::from(self.local_unqualified_open) << 4)
     }
 }
 
@@ -263,6 +267,7 @@ impl SharedHardwareState {
             receive_permitted: flags & 2 != 0,
             transmit_permitted: flags & 4 != 0,
             non_fm: flags & 8 != 0,
+            local_unqualified_open: flags & 16 != 0,
         }
     }
     /// Read requested activity; radio-rendered PTT tails never advance its epoch.

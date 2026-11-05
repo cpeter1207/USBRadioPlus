@@ -27,7 +27,7 @@ use crate::{
 pub struct DirectCallbacks {
     /// Exact byte size of this descriptor.
     pub struct_size: u32,
-    /// Exact direct-callback contract version, currently four.
+    /// Exact direct-callback contract version, currently five.
     pub abi_version: u32,
     /// Borrowed receive context, valid until synchronous stream shutdown.
     pub receive_context: *mut c_void,
@@ -41,7 +41,7 @@ pub struct DirectCallbacks {
     /// Host writes the accepted version only after successful synchronous retention.
     pub accepted_abi_version: u32,
     /// Optional TX-owner metadata exchange. Input flags: remote enabled1,
-    /// receive permitted2, transmit permitted4, non-FM8. Output is zero/one
+    /// receive permitted2, transmit permitted4, non-FM8, local unqualified open16. Output is zero/one
     /// linked-source activity before controller muting, including buffered tails.
     pub metadata: Option<unsafe extern "C" fn(*mut c_void, u32, *mut u32) -> c_int>,
 }
@@ -55,7 +55,7 @@ unsafe impl Sync for DirectCallbacks {}
 
 impl DirectCallbacks {
     /// Exact direct-callback contract including separate PTT and CTCSS outputs.
-    pub const ABI_VERSION: u32 = 4;
+    pub const ABI_VERSION: u32 = 5;
 
     /// Validate the exact initial-alpha boundary before copying callback pointers.
     #[must_use]

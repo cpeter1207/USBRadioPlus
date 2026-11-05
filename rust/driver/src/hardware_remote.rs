@@ -249,6 +249,9 @@ impl RemoteGeneration {
                 && snapshot.flags & raw::RPTADV_REMOTE_INHIBITED == 0,
             non_fm: snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0
                 && !matches!(snapshot.applied.mode, 1 | 9 | 10),
+            local_unqualified_open: snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0
+                && self.wiring.carrier == CarrierSource::Open
+                && snapshot.applied.decode.enabled == 0,
         });
         if let Err(error) = result {
             return Err(if snapshot.failure_code != 0 {
