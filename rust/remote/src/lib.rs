@@ -176,7 +176,7 @@ pub use hamlib::{CallError, HamlibRig, Setting};
 mod operating;
 pub use operating::HamlibOperating;
 mod session;
-pub use session::RemoteSession;
+pub use session::{OperatingIo, RemoteSession};
 mod configuration;
 pub use configuration::{SelectedCapabilities, operating_configuration};
 

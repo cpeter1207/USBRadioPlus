@@ -3,6 +3,84 @@
 use crate::{CallError, RemoteProvider, hamlib::check, raw};
 use std::{ffi::c_void, mem::size_of, ptr::NonNull, sync::Arc};
 
+/// Synchronous operations supplied by one existing non-audio physical owner.
+/// The dynamic engine owns all tune/scan policy. Calls must not reenter it;
+/// audio/control callbacks never implement or invoke this interface.
+pub trait OperatingIo {
+    /// Actual fields, qualified by the session's admitted readback mask.
+    fn read_state(&mut self) -> Result<raw::RptAdvRemoteState, CallError>;
+    /// Apply complete CAT/GPIO state and acknowledge the existing DSP update.
+    fn apply_state(&mut self, state: &raw::RptAdvRemoteState) -> Result<(), CallError>;
+    /// Synchronously service the selected physical PTT output.
+    fn set_ptt(&mut self, keyed: bool) -> Result<(), CallError>;
+    /// Publish existing bounded manual key/tone intent for native rendering.
+    fn set_tune(&mut self, enabled: bool) -> Result<(), CallError>;
+    /// Owner clock after potentially blocking operations, in advance's time base.
+    fn monotonic_ms(&self) -> u64;
+    /// Callback-published raw transmit rising-edge count.
+    fn transmit_epoch(&self) -> u64;
+}
+
+struct BorrowedBackend<'a> {
+    io: &'a mut dyn OperatingIo,
+    panicked: bool,
+}
+
+fn invoke<T>(
+    context: *mut c_void,
+    call: impl FnOnce(&mut dyn OperatingIo) -> Result<T, CallError>,
+) -> Result<T, i32> {
+    if context.is_null() || !context.cast::<BorrowedBackend<'_>>().is_aligned() {
+        return Err(-1003);
+    }
+    // SAFETY: advance_with exclusively lends this stack owner during synchronous advance.
+    let borrowed = unsafe { &mut *context.cast::<BorrowedBackend<'_>>() };
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| call(borrowed.io))) {
+        Ok(result) => result.map_err(|error| error.0),
+        Err(_) => {
+            borrowed.panicked = true;
+            Err(-1003)
+        }
+    }
+}
+unsafe extern "C" fn read(context: *mut c_void, out: *mut raw::RptAdvRemoteState) -> i32 {
+    if out.is_null() || !out.is_aligned() {
+        return -1003;
+    }
+    invoke(context, |io| {
+        let state = io.read_state()?;
+        // SAFETY: the admitted engine lends one complete writable state.
+        unsafe { out.write(state) };
+        Ok(())
+    })
+    .map_or_else(|error| error, |()| 0)
+}
+unsafe extern "C" fn apply(context: *mut c_void, state: *const raw::RptAdvRemoteState) -> i32 {
+    if state.is_null() || !state.is_aligned() {
+        return -1003;
+    }
+    // SAFETY: the admitted engine lends one complete state throughout this synchronous call.
+    invoke(context, |io| io.apply_state(unsafe { &*state })).map_or_else(|error| error, |()| 0)
+}
+unsafe extern "C" fn ptt(context: *mut c_void, enabled: u32) -> i32 {
+    if enabled > 1 {
+        return -1003;
+    }
+    invoke(context, |io| io.set_ptt(enabled != 0)).map_or_else(|error| error, |()| 0)
+}
+unsafe extern "C" fn tune(context: *mut c_void, enabled: u32) -> i32 {
+    if enabled > 1 {
+        return -1003;
+    }
+    invoke(context, |io| io.set_tune(enabled != 0)).map_or_else(|error| error, |()| 0)
+}
+unsafe extern "C" fn clock(context: *mut c_void) -> u64 {
+    invoke(context, |io| Ok(io.monotonic_ms())).unwrap_or(0)
+}
+unsafe extern "C" fn epoch(context: *mut c_void) -> u64 {
+    invoke(context, |io| Ok(io.transmit_epoch())).unwrap_or(0)
+}
+
 /// One physical owner's remote state machine. The opaque handle is deliberately
 /// not Send; create, service, retire and destroy it on that same worker.
 pub struct RemoteSession {
@@ -10,6 +88,40 @@ pub struct RemoteSession {
     context: NonNull<c_void>,
 }
 impl RemoteSession {
+    /// Project the creating worker's borrowed operations onto the installed C
+    /// callback contract. No Rust trait or reference is retained by the provider.
+    /// A dependency panic is contained before the C boundary and reported as a
+    /// failed operation; the physical owner must retain closed admission.
+    pub fn advance_with(
+        &mut self,
+        now: u64,
+        activity: &raw::RptAdvRemoteActivity,
+        io: &mut dyn OperatingIo,
+    ) -> Result<(), CallError> {
+        let mut borrowed = BorrowedBackend {
+            io,
+            panicked: false,
+        };
+        let backend = raw::RptAdvRemoteBackend {
+            struct_size: size_of::<raw::RptAdvRemoteBackend>() as u32,
+            abi_version: 1,
+            context: (&mut borrowed as *mut BorrowedBackend<'_>).cast(),
+            read_state: Some(read),
+            apply_state: Some(apply),
+            set_ptt: Some(ptt),
+            monotonic_ms: Some(clock),
+            transmit_epoch: Some(epoch),
+            set_tune: Some(tune),
+        };
+        // SAFETY: borrowed operations and their exclusive context outlive this call;
+        // the engine calls them serially and retains none of these stack pointers.
+        let result = unsafe { self.advance(now, activity, &backend) };
+        if borrowed.panicked {
+            Err(CallError(-1003))
+        } else {
+            result
+        }
+    }
     /// Validate and copy a complete selected composition, without physical I/O.
     ///
     /// # Safety

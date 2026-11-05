@@ -237,15 +237,79 @@ fn remote_owned_client_copies_setup_and_destroys_before_unloading_provider() {
     setup.startup_memory = 1;
     // SAFETY: every setup span remains readable through synchronous copying.
     let mut session = unsafe { RemoteSession::open(provider, &setup) }.unwrap();
+    let mut backend = OperatingFixture {
+        state,
+        keyed: false,
+        tune: false,
+        fail: false,
+    };
+    let activity = raw::RptAdvRemoteActivity {
+        struct_size: size_of::<raw::RptAdvRemoteActivity>() as u32,
+        flags: 0,
+    };
+    session.advance_with(0, &activity, &mut backend).unwrap();
+    assert!(!backend.keyed);
+    assert_eq!(backend.state.receive_hz, state.receive_hz);
     assert_eq!(
         session.configured_memory(1).unwrap().receive_hz,
         state.receive_hz
     );
-    assert!(session.snapshot().unwrap().flags & raw::RPTADV_REMOTE_PENDING != 0);
+    assert!(session.snapshot().unwrap().flags & raw::RPTADV_REMOTE_APPLIED != 0);
     assert!(session.take_completion().unwrap().is_none());
     assert!(session.scan_snapshot().unwrap().is_none());
+    // SAFETY: request and nested state contain only scalar fields.
+    let mut request: raw::RptAdvRemoteRequest = unsafe { std::mem::zeroed() };
+    request.struct_size = size_of::<raw::RptAdvRemoteRequest>() as u32;
+    request.abi_version = 1;
+    request.kind = raw::RptAdvRemoteRequestKind_RPTADV_REMOTE_RECALL;
+    request.selector = 1;
+    let id = session.request(&request, 1).unwrap();
+    backend.fail = true;
+    assert_eq!(
+        session.advance_with(1, &activity, &mut backend),
+        Err(CallError(-1003))
+    );
+    assert_eq!(session.snapshot().unwrap().failure_code, -1003);
+    let completion = session.take_completion().unwrap().unwrap();
+    assert_eq!((completion.request_id, completion.result), (id, -8));
+    backend.fail = false;
     session.retire().unwrap();
+    assert_eq!(
+        session.advance_with(1, &activity, &mut backend),
+        Err(CallError(-10))
+    );
     assert!(session.configured_memory(99).is_err());
+}
+
+struct OperatingFixture {
+    state: raw::RptAdvRemoteState,
+    keyed: bool,
+    tune: bool,
+    fail: bool,
+}
+impl OperatingIo for OperatingFixture {
+    fn read_state(&mut self) -> Result<raw::RptAdvRemoteState, CallError> {
+        Ok(self.state)
+    }
+    fn apply_state(&mut self, state: &raw::RptAdvRemoteState) -> Result<(), CallError> {
+        assert!(!self.fail, "controlled dependency panic");
+        self.state = *state;
+        Ok(())
+    }
+    fn set_ptt(&mut self, keyed: bool) -> Result<(), CallError> {
+        self.keyed = keyed;
+        Ok(())
+    }
+    fn set_tune(&mut self, enabled: bool) -> Result<(), CallError> {
+        self.tune = enabled;
+        Ok(())
+    }
+    fn monotonic_ms(&self) -> u64 {
+        0
+    }
+    fn transmit_epoch(&self) -> u64 {
+        0
+    }
 }
 
 #[test]
