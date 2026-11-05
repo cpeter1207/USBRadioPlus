@@ -31,6 +31,10 @@ pub struct Setting {
     pub readable: bool,
     /// Actual setter is available; complete-state writes supply companion values.
     pub writable: bool,
+    /// One declared RPTADV_HAMLIB value kind, independent of native flags.
+    pub value_kind: u32,
+    /// One declared RPTADV_HAMLIB unit; normalized gain controls are ratios.
+    pub units: u32,
     /// Integer units are divided by ten to this power.
     pub decimal_places: u32,
     /// Inclusive lower bound in declared units.
@@ -177,6 +181,8 @@ impl HamlibRig {
                 name,
                 readable: entry.access & 1 != 0,
                 writable: entry.access & 2 != 0,
+                value_kind: entry.value_kind,
+                units: entry.units,
                 decimal_places: entry.decimal_places,
                 minimum: entry.minimum,
                 maximum: entry.maximum,

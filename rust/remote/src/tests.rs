@@ -89,6 +89,20 @@ fn hamlib_owned_client_keeps_one_thread_and_complete_state_calls() {
     );
     assert!(!rig.coverage(false).unwrap().is_empty());
     assert_eq!(rig.transport_budget_ms(), Ok(100));
+    let settings = rig.settings().unwrap();
+    let af = settings
+        .iter()
+        .find(|setting| setting.selector == 100)
+        .unwrap();
+    assert_eq!((af.value_kind, af.units, af.decimal_places), (4, 6, 6));
+    let tone = settings
+        .iter()
+        .find(|setting| setting.selector == 12)
+        .unwrap();
+    assert_eq!(
+        (tone.value_kind, tone.units, tone.decimal_places),
+        (4, 1, 1)
+    );
     rig.close().unwrap();
     assert!(rig.get(1).is_err());
 }
