@@ -85,6 +85,8 @@ pub struct RemoteOperatingState {
     pub receive_vfo: u32,
     /// Shared transmit VFO selector.
     pub transmit_vfo: u32,
+    /// Split-VFO routing, independent of repeater shift and VFO values.
+    pub split: bool,
     /// Signed repeater shift in hertz.
     pub offset_hz: i64,
     /// Receive incremental tuning in hertz.
@@ -610,6 +612,10 @@ impl ResolvedRemoteConfiguration {
                     bandwidth_hz: memory.number("bandwidth_hz", 0)?,
                     receive_vfo: vfo(&memory, "receive_vfo")?,
                     transmit_vfo: vfo(&memory, "transmit_vfo")?,
+                    split: memory
+                        .text("split")
+                        .and_then(bool_value)
+                        .unwrap_or(transmit_hz.is_some_and(|transmit| transmit != receive_hz)),
                     offset_hz: memory.number("offset_hz", 0)?,
                     rit_hz: memory.number("rit_hz", 0)?,
                     xit_hz: memory.number("xit_hz", 0)?,
@@ -852,7 +858,7 @@ fn overlay(
 
 fn valid_value(key: &str, value: &str) -> bool {
     match key {
-        "enabled" => bool_value(value).is_some(),
+        "enabled" | "split" => bool_value(value).is_some(),
         "audio_source" => matches!(value, "cm119" | "alsa"),
         "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
         "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
@@ -964,6 +970,7 @@ const MEMORY_KEYS: &[&str] = &[
     "bandwidth_hz",
     "receive_vfo",
     "transmit_vfo",
+    "split",
     "offset_hz",
     "rit_hz",
     "xit_hz",

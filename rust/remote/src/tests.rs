@@ -2,6 +2,34 @@ use super::*;
 use std::mem::{offset_of, size_of};
 
 #[test]
+fn remote_operating_state_projection_retains_split_and_signal_ownership() {
+    use crate::configuration::{operating_configuration, operating_state};
+    use usbradioplus_core::{RemoteOperatingState, RemoteSignal, RemoteSignalSource};
+    let state = RemoteOperatingState {
+        receive_hz: 146520000,
+        transmit_hz: Some(146520000),
+        split: true,
+        mode: 1,
+        encode: RemoteSignal {
+            enabled: true,
+            source: RemoteSignalSource::Dsp,
+            tone_tenths_hz: 1148,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let caps = SelectedCapabilities {
+        encode_sources: 2,
+        ..Default::default()
+    };
+    let mut projected = operating_state(&state, &caps).unwrap();
+    assert_eq!(projected.flags, 1 | 8);
+    assert_eq!(operating_configuration(&projected).unwrap(), state);
+    projected.flags |= 16;
+    assert!(operating_configuration(&projected).is_err());
+}
+
+#[test]
 fn remote_dynamic_client_admits_only_complete_current_contracts() {
     assert!(RemoteProvider::load_from("/missing-rptadv-fixture.so").is_err());
     let provider = RemoteProvider::load().unwrap();

@@ -122,7 +122,8 @@ pub fn operating_state(
         xit_hz: value.xit_hz,
         flags: u32::from(value.transmit_hz.is_some())
             | (u32::from(value.power_mw.is_some()) << 1)
-            | (u32::from(value.channel.is_some()) << 2),
+            | (u32::from(value.channel.is_some()) << 2)
+            | (u32::from(value.split) << 3),
         mode: value.mode,
         bandwidth_hz: value.bandwidth_hz,
         receive_vfo: value.receive_vfo,
@@ -135,6 +136,54 @@ pub fn operating_state(
             caps.decode_sources,
             caps.decode_control_sources,
         )?,
+    })
+}
+
+/// Copy a validated engine state into the existing DSP configuration model.
+/// Source selection has already completed; automatic providers cannot reappear.
+pub fn operating_configuration(
+    value: &raw::RptAdvRemoteState,
+) -> Result<RemoteOperatingState, CallError> {
+    let source = |value| match value {
+        0 => Ok(RemoteSignalSource::Disabled),
+        1 => Ok(RemoteSignalSource::Dsp),
+        2 => Ok(RemoteSignalSource::External),
+        3 => Ok(RemoteSignalSource::Rig),
+        _ => Err(CallError(-1003)),
+    };
+    let signal = |signal: raw::RptAdvRemoteSignal| {
+        if signal.enabled > 1 || signal.inverted > 1 {
+            return Err(CallError(-1003));
+        }
+        Ok(RemoteSignal {
+            source: source(signal.source)?,
+            control_source: (signal.control_source != 0)
+                .then(|| source(signal.control_source))
+                .transpose()?,
+            enabled: signal.enabled != 0,
+            tone_tenths_hz: signal.ctcss_tenths_hz,
+            dcs_code: signal.dcs_code,
+            inverted: signal.inverted != 0,
+        })
+    };
+    if value.flags & !15 != 0 || value.flags & 4 != 0 && value.channel > 15 {
+        return Err(CallError(-1003));
+    }
+    Ok(RemoteOperatingState {
+        receive_hz: value.receive_hz,
+        transmit_hz: (value.flags & 1 != 0).then_some(value.transmit_hz),
+        power_mw: (value.flags & 2 != 0).then_some(value.power_mw),
+        channel: (value.flags & 4 != 0).then_some(value.channel as u8),
+        split: value.flags & 8 != 0,
+        mode: value.mode,
+        bandwidth_hz: value.bandwidth_hz,
+        receive_vfo: value.receive_vfo,
+        transmit_vfo: value.transmit_vfo,
+        offset_hz: value.offset_hz,
+        rit_hz: value.rit_hz,
+        xit_hz: value.xit_hz,
+        encode: signal(value.encode)?,
+        decode: signal(value.decode)?,
     })
 }
 
