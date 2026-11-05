@@ -1,5 +1,9 @@
 //! Native ABI projection onto the shared configuration, physical and update owners.
 
+#[cfg(test)]
+#[path = "native_remote_tests.rs"]
+mod remote_tests;
+
 use crate::{
     AbiHeader, Status, UrpAstChannelCommand, UrpAstDirectCallbacks, UrpAstProviderManifest,
     copy_abi, ffi_status, output_pointer, required_utf8, write_abi,
@@ -9,7 +13,7 @@ use std::mem::{align_of, size_of};
 use usbradioplus_audio::AudioProvider;
 use usbradioplus_core::{
     ChannelConfiguration, ConfigDocument, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
-    ResolvedNativeConfiguration,
+    ResolvedNativeConfiguration, ResolvedRemoteConfiguration,
 };
 use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService};
 use usbradioplus_ffmpeg::GraphProvider;
@@ -141,6 +145,7 @@ struct NativeStation {
     file_configuration: ChannelConfiguration,
     gains: [Option<f64>; 3],
     pending: Option<NativeUpdateConfiguration>,
+    remote: Option<ResolvedRemoteConfiguration>,
 }
 
 impl NativeStation {
@@ -226,6 +231,7 @@ pub(crate) unsafe extern "C" fn create(
             processing,
             mut radio,
             gains,
+            remote,
         } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
         let file_configuration = configuration.clone();
         // SAFETY: providers and executable functions remain loaded through destroy.
@@ -297,6 +303,7 @@ pub(crate) unsafe extern "C" fn create(
             file_configuration,
             gains,
             pending: None,
+            remote,
         });
         // SAFETY: output storage was validated and the caller receives sole ownership.
         unsafe {
@@ -522,7 +529,13 @@ pub(crate) unsafe extern "C" fn prepare_update(
             processing,
             mut radio,
             gains,
+            remote,
         } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        if remote != station.remote {
+            // Changed remote definitions require their physical-owner generation
+            // handoff; an ordinary DSP update must not silently retain old policy.
+            return Err(Status::InvalidConfiguration);
+        }
         if configuration.station.hardware.eeprom_enabled
             != station
                 .control
@@ -672,6 +685,7 @@ struct ResolvedRequest {
     processing: ExplicitNativeProcessingPlan,
     radio: SessionConfig,
     gains: [Option<f64>; 3],
+    remote: Option<ResolvedRemoteConfiguration>,
 }
 
 unsafe fn resolve_request(
@@ -697,7 +711,7 @@ unsafe fn resolve_request(
         )?
     };
     // SAFETY: the synchronous request owns every advertised text span.
-    let (mut configuration, hardware, mut processing) = unsafe { resolve(config, &radio)? };
+    let (mut configuration, hardware, mut processing, remote) = unsafe { resolve(config, &radio)? };
     profiles.apply(&mut radio, &mut processing);
     apply_native_tuning_configuration(&radio, &mut configuration);
     let gain_values = [
@@ -714,6 +728,7 @@ unsafe fn resolve_request(
         processing,
         radio,
         gains,
+        remote,
     })
 }
 
@@ -743,6 +758,7 @@ unsafe fn resolve(
         ChannelConfiguration,
         HardwarePlan,
         ExplicitNativeProcessingPlan,
+        Option<ResolvedRemoteConfiguration>,
     ),
     Status,
 > {
@@ -866,7 +882,20 @@ unsafe fn resolve(
             ][index];
         }
     }
-    let hardware = native_hardware_plan(&channel, &physical);
+    let remote = ResolvedRemoteConfiguration::from_document(
+        &document,
+        "rpt_advanced.conf",
+        node,
+        &channel.station,
+    )
+    .map_err(|_| Status::InvalidConfiguration)?;
+    let mut hardware = native_hardware_plan(&channel, &physical);
+    if remote
+        .as_ref()
+        .is_some_and(|remote| remote.audio_source == usbradioplus_core::RemoteAudioSource::Alsa)
+    {
+        hardware.cm119 = None;
+    }
     let receive_ctcss_mask = match radio.receive.signaling {
         ReceiveSignaling::Ctcss(ctcss)
             if radio.qualification.subaudible_source == SubaudibleSource::Dsp =>
@@ -891,5 +920,6 @@ unsafe fn resolve(
             receive_ctcss_mask,
             transmit_dcs: matches!(radio.transmit.signaling, TransmitSignaling::Dcs(_)),
         },
+        remote,
     ))
 }
