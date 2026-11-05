@@ -1,3 +1,12 @@
+usbradioplus (0.1.0~alpha28-1) unstable; urgency=medium
+
+  * Share Hamlib and parallel remote-base control across radio hosts.
+  * Configure RF limits, independent signaling, memories and scan lists.
+  * Retain radio generations through asynchronous activation and rollback.
+  * Install versioned remote providers and the remote-base operating guide.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Thu, 05 Nov 2026 12:18:44 -0600
+
 usbradioplus (0.1.0~alpha27-1) unstable; urgency=medium
 
   * Share native radio configuration, maintenance and physical diagnostics.
