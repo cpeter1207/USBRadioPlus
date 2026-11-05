@@ -126,8 +126,42 @@ fn setting(value: &Setting) -> Value {
         "value_kind":value.value_kind,"units":value.units,"decimal_places":value.decimal_places,
         "minimum":value.minimum,"maximum":value.maximum,"choices":value.choices})
 }
+
+/// Expose only physically observed fields; defaults in the raw snapshot are
+/// never presented as radio readings. The mask remains owned by this bridge.
+fn observations(value: &Value, mask: u64) -> Value {
+    let mut result = serde_json::Map::new();
+    for (name, bit) in [
+        ("rx_hz", 0),
+        ("tx_hz", 1),
+        ("mode", 2),
+        ("bandwidth_hz", 3),
+        ("rx_vfo", 4),
+        ("tx_vfo", 5),
+        ("offset_hz", 6),
+        ("rit_hz", 7),
+        ("xit_hz", 8),
+        ("power_mw", 9),
+        ("encode", 10),
+        ("decode", 11),
+        ("channel", 12),
+        ("split", 13),
+        ("rit_enabled", 14),
+        ("xit_enabled", 15),
+    ] {
+        if mask & (1 << bit) != 0 {
+            result.insert(name.into(), value[name].clone());
+        }
+    }
+    if result.is_empty() {
+        Value::Null
+    } else {
+        Value::Object(result)
+    }
+}
 fn scan(value: Option<&raw::RptAdvRemoteScanSnapshot>) -> Value {
     value.map_or(Value::Null, |value| json!({"flags":value.flags,"list":value.list,"memory":value.current_memory,
+        "running":value.flags & 1 != 0,"paused":value.flags & 2 != 0,
         "deadline_ms":value.next_deadline_ms,"dwell_ms":value.dwell_ms,"resume_delay_ms":value.resume_delay_ms,"skipped":value.skipped}))
 }
 fn error(value: RemoteRequestError) -> Value {
@@ -174,6 +208,10 @@ fn reply(result: Result<RemoteReply, RemoteRequestError>) -> Value {
             ) {
                 (Ok(requested), Ok(applied), Ok(observed)) => {
                     json!({"kind":"status","flags":snapshot.flags,
+                    "tx_inhibited":snapshot.flags & raw::RPTADV_REMOTE_INHIBITED != 0,
+                    "receive_permitted":snapshot.flags & raw::RPTADV_REMOTE_RECEIVE_PERMITTED != 0,
+                    "serviced_ptt":if snapshot.flags & raw::RPTADV_REMOTE_PTT_APPLIED != 0 { json!(snapshot.flags & raw::RPTADV_REMOTE_PTT_HIGH != 0) } else { Value::Null },
+                    "observed_values":if snapshot.flags & raw::RPTADV_REMOTE_OBSERVED != 0 { observations(&observed, snapshot.observed_fields) } else { Value::Null },
                     "requested":requested,"applied":if snapshot.flags & 1 != 0 { applied } else { Value::Null },
                     "observed":if snapshot.flags & 2 != 0 { observed } else { Value::Null },
                     "observed_fields":snapshot.observed_fields,"failure_code":snapshot.failure_code,
@@ -315,6 +353,18 @@ mod tests {
         assert_eq!(value["requested"]["power_mw"], 2500);
         assert_eq!(value["requested"]["encode"]["ctcss_tenths_hz"], 1148);
         assert!(value["applied"].is_null() && value["observed"].is_null());
+        assert!(value["observed_values"].is_null());
+        snapshot.flags = raw::RPTADV_REMOTE_OBSERVED | raw::RPTADV_REMOTE_INHIBITED;
+        snapshot.observed = snapshot.requested;
+        snapshot.observed_fields = 1;
+        let value = reply(Ok(RemoteReply::Status {
+            snapshot: Box::new(snapshot),
+            scan: None,
+        }));
+        assert_eq!(value["observed_values"]["rx_hz"], 146_520_000);
+        assert!(value["observed_values"].get("tx_hz").is_none());
+        assert_eq!(value["tx_inhibited"], true);
+        assert!(value["serviced_ptt"].is_null());
         let list = RemoteScanList {
             selector: 3,
             name: "local \"channels\"".into(),
