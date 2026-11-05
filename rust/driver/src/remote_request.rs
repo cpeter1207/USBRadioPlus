@@ -284,11 +284,11 @@ pub fn prepare_remote_operation(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::DriverConfiguration;
 
-    fn configuration() -> ResolvedRemoteConfiguration {
+    pub(crate) fn configuration() -> ResolvedRemoteConfiguration {
         let document = DriverConfiguration::parse("test", "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM,USB\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n").unwrap();
         let mut configuration = document.remote("524950").unwrap().clone();
         configuration.offset_magnitude_hz = Some(600_000);
