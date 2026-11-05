@@ -74,8 +74,12 @@ impl StationUpdatePreparation {
 
     /// Prepare forward/rollback updates without accessing a live station owner.
     pub fn prepare(self, plan: StationPlan) -> Result<StationUpdate, StationUpdateError> {
+        let plan = plan
+            .retain_remote_operating(&self.previous)
+            .map_err(StationUpdateError::Preparation)?;
         // StationPlan::new gives RX and TX the same immutable frame maximum.
         if plan.hardware() != self.previous.hardware()
+            || plan.remote_configuration() != self.previous.remote_configuration()
             || plan.transport() != self.previous.transport()
             || plan.radio().maximum_receive_frame_count
                 != self.previous.radio().maximum_receive_frame_count

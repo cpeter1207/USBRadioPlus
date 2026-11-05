@@ -25,6 +25,24 @@ fn dcs(value: RemoteSignal) -> Result<DcsCode, RadioError> {
 }
 
 impl StationPlan {
+    /// Preserve live CAT-owned signaling/mode on an unrelated file/audio edit.
+    /// A deliberate remote tune carries its own state and is never overwritten.
+    pub(crate) fn retain_remote_operating(
+        self,
+        current: &StationPlan,
+    ) -> Result<Self, StationPreparationError> {
+        if self.remote_configuration().is_some()
+            && self.remote_configuration() == current.remote_configuration()
+            && self.remote_operating.is_none()
+        {
+            if let Some(state) = &current.remote_operating {
+                return self
+                    .with_remote_carrier(current.configuration().station.receive.cos_assignment)
+                    .with_remote_signaling(state, current.radio().qualification.subaudible_source);
+            }
+        }
+        Ok(self)
+    }
     /// Retain the selected carrier provider in both configuration and the radio
     /// plan, so later tune updates cannot revert it to the original DSP input.
     pub fn with_remote_carrier(self, carrier: usbradioplus_core::CarrierSource) -> Self {
@@ -129,9 +147,11 @@ impl StationPlan {
             radio.transmit.signaling,
             usbradioplus_radio::TransmitSignaling::Dcs(_)
         );
-        Ok(self
+        let mut plan = self
             .with_radio_configuration(configuration, radio)
-            .with_explicit_processing(processing))
+            .with_explicit_processing(processing);
+        plan.remote_operating = Some(state.clone());
+        Ok(plan)
     }
 }
 
@@ -158,6 +178,47 @@ mod tests {
             },
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn remote_reload_keeps_operating_signaling_and_adopts_new_audio_gains() {
+        use usbradioplus_core::{ConfigDocument, ResolvedRemoteConfiguration};
+        let (original, _) = prepared(crate::ControllerTransport::RptAdvanced, 4).into_parts();
+        let document = ConfigDocument::new(
+            "[remote_base usb]\nenabled=yes\nbackend=parallel_channel\naudio_source=alsa\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nchannel=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n",
+        );
+        let definition = ResolvedRemoteConfiguration::from_document(
+            &document,
+            "test",
+            "usb",
+            &original.configuration().station,
+        )
+        .unwrap()
+        .unwrap();
+        let initial = original.with_remote_configuration(Some(definition));
+        assert!(initial.hardware().cm119.is_none());
+        let current = initial
+            .clone()
+            .with_remote_carrier(usbradioplus_core::CarrierSource::External)
+            .with_remote_signaling(&state(), SubaudibleSource::Disabled)
+            .unwrap();
+        let mut changed = initial.configuration().clone();
+        changed.station.hardware.output_a_gain_db += 3.0;
+        let next = initial
+            .clone()
+            .with_radio_configuration(changed, *initial.radio())
+            .retain_remote_operating(&current)
+            .unwrap();
+        assert_eq!(
+            next.radio().receive.signaling,
+            current.radio().receive.signaling
+        );
+        assert_eq!(next.radio().qualification, current.radio().qualification);
+        assert_eq!(
+            next.configuration().station.hardware.output_a_gain_db,
+            initial.configuration().station.hardware.output_a_gain_db + 3.0
+        );
+        assert!(next.remote_configuration().is_some());
     }
 
     #[test]

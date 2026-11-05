@@ -284,7 +284,8 @@ pub(crate) unsafe extern "C" fn create(
             apply_native_radio_tuning(&configuration, &mut radio);
         }
         let plan =
-            StationPlan::native("native", configuration, hardware.clone(), radio, processing);
+            StationPlan::native("native", configuration, hardware.clone(), radio, processing)
+                .with_remote_configuration(remote.clone());
         let factory = NativeProcessingFactory::new_explicit(
             graph,
             denoise,
@@ -599,7 +600,8 @@ pub(crate) unsafe extern "C" fn prepare_update(
         {
             apply_native_radio_tuning(&configuration, &mut radio);
         }
-        let plan = StationPlan::native("native", configuration, hardware, radio, processing);
+        let plan = StationPlan::native("native", configuration, hardware, radio, processing)
+            .with_remote_configuration(remote);
         let prepared = station
             .runtime
             .snapshot_update(&station.control, &station.factory, station.radio_provider)

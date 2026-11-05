@@ -828,6 +828,7 @@ impl HardwareStation {
     pub fn supports_live_update(&self, plan: &StationPlan) -> bool {
         let current = self.control.plan();
         current.transport() == plan.transport()
+            && current.remote_configuration() == plan.remote_configuration()
             && current.hardware() == plan.hardware()
             && current.configuration().station.hardware.eeprom_enabled
                 == plan.configuration().station.hardware.eeprom_enabled

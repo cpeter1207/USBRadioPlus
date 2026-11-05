@@ -121,6 +121,48 @@ fn native_descriptor_rejects_missing_request_and_clears_handle() {
     assert!(descriptor.native_destroy.is_some());
 }
 
+#[test]
+fn asl_reservation_admits_remote_providers_before_hardware() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let source = b"[usb]\n[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_NOT_REAL\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    let driver = create_driver(&context, source);
+    let args = reserve_args(URP_AST_TRANSPORT_APP_RPT);
+    let mut channel = ptr::null_mut();
+    // SAFETY: this test owns the driver and serializes all reservation/cleanup calls.
+    let result = unsafe {
+        let result = channel_reserve(driver, &args, &mut channel);
+        if !channel.is_null() {
+            channel_destroy(channel);
+        }
+        driver_destroy(driver);
+        result
+    };
+    assert_eq!(result, URP_AST_SETUP_FAILED);
+}
+
+#[test]
+fn remote_only_reload_rejects_unavailable_model_without_stopping_audio() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    let source = b"[usb]\n[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_NOT_REAL\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    // SAFETY: this test retains and serializes both owners through abort and destroy.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        let lifecycle = provider_support::audio_lifecycle();
+        assert_eq!(stage_reload(driver, source), URP_AST_OK);
+        assert_eq!(prepare_reload(channel), URP_AST_SETUP_FAILED);
+        assert_eq!(provider_support::audio_lifecycle(), lifecycle);
+        assert_eq!(driver_reload_finish(driver, 0), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}
+
 use std::cell::RefCell;
 use std::ffi::CStr;
 

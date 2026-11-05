@@ -39,7 +39,8 @@ use usbradioplus_core::{AsteriskConfig, JitterBufferImplementation};
 use usbradioplus_driver::{
     ConfigurationRegistry, ControllerConfiguration, DriverConfiguration, HardwareInput,
     HardwareInputEvent, HardwareMixer, HardwarePreflight, HardwareStation, HardwareStationError,
-    HardwareTransientState, LinkProcessingFactory, StationFactory, StationProviders,
+    HardwareTransientState, LinkProcessingFactory, RemoteSetup, RemoteSetupError, StationFactory,
+    StationProviders,
 };
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_gpio::{EepromImage, GpioAdapter};
@@ -49,7 +50,7 @@ use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_samplerate::SampleRateAdapter;
 /// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
 pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
-use usbradioplus_station::{StationMedia, StationUpdate, StationUpdateError, hardware_plan};
+use usbradioplus_station::{StationMedia, StationPlan, StationUpdate, StationUpdateError};
 
 const ABI_VERSION: u32 = 1;
 const MAXIMUM_FRAME_COUNT: u32 = 960;
@@ -1057,6 +1058,7 @@ struct ChannelHandle {
 }
 
 struct ChannelControl {
+    remote: Option<RemotePreparation>,
     media: Option<StationMedia>,
     preflight: Option<HardwarePreflight>,
     hardware: Option<HardwareStation>,
@@ -1085,6 +1087,7 @@ enum PreparedChannelReload {
 }
 
 struct PreparedChannelReplacement {
+    remote: Option<RemotePreparation>,
     media: StationMedia,
     preflight: HardwarePreflight,
     jitter: UrpAstJitterConfig,
@@ -1101,11 +1104,27 @@ enum PreviousChannelGeneration {
     Prepared {
         media: Box<StationMedia>,
         preflight: HardwarePreflight,
+        remote: Option<RemotePreparation>,
     },
     Hardware {
         hardware: HardwareStation,
         transient: Option<HardwareTransientState>,
     },
+}
+
+type RemotePreparation = (RemoteSetup, usbradioplus_station::RemoteDspControl);
+
+fn prepare_remote(plan: &StationPlan) -> Result<Option<RemotePreparation>, RemoteSetupError> {
+    plan.remote_configuration()
+        .map(|configuration| {
+            RemoteSetup::prepare(
+                configuration.clone(),
+                plan.hardware().clone(),
+                plan.configuration().station.receive.cos_assignment,
+                plan.radio().qualification.subaudible_source,
+            )
+        })
+        .transpose()
 }
 
 struct RetainedControllerState {
@@ -1762,10 +1781,18 @@ unsafe extern "C" fn channel_reserve(
             }
         }
         let generation = driver.0.station_generation.fetch_add(1, Ordering::Relaxed);
-        let plan = hardware_plan(channel.config());
+        let remote_configuration = snapshot.remote(name).cloned();
+        let plan = driver
+            .0
+            .factory
+            .plan(channel.clone(), generation, controller)
+            .map_err(|error| reservation_setup_failure(&driver.0, &reservation, error))?
+            .with_remote_configuration(remote_configuration.clone());
+        let remote = prepare_remote(&plan)
+            .map_err(|error| reservation_setup_failure(&driver.0, &reservation, error))?;
         let eeprom_enabled = channel.config().station.hardware.eeprom_enabled;
         let preflight = match HardwareStation::preflight(
-            &plan,
+            plan.hardware(),
             eeprom_enabled,
             driver.0.audio,
             driver.0.gpio,
@@ -1777,12 +1804,13 @@ unsafe extern "C" fn channel_reserve(
         };
         let mut channel = channel;
         preflight.apply_startup_tuning(channel.config_mut());
-        let media = match driver.0.factory.prepare(channel, generation, controller) {
+        let mut media = match driver.0.factory.prepare(channel, generation, controller) {
             Ok(media) => media,
             Err(error) => {
                 return Err(reservation_setup_failure(&driver.0, &reservation, error));
             }
         };
+        media.plan = media.plan.with_remote_configuration(remote_configuration);
         let (program, consumer) =
             LatestHandoff::split(HANDOFF_SLOTS).map_err(|_| Status::SetupFailed)?;
         let handle = Box::new(ChannelHandle {
@@ -1792,6 +1820,7 @@ unsafe extern "C" fn channel_reserve(
             mode,
             program: UnsafeCell::new(program),
             control: UnsafeCell::new(ChannelControl {
+                remote,
                 media: Some(media),
                 preflight: Some(preflight),
                 hardware: None,
@@ -1837,6 +1866,11 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
             channel.log_error(&error.to_string());
             Status::SetupFailed
         })?;
+        if let Some((setup, dsp)) = control.remote.take() {
+            hardware
+                .bind_remote(setup, dsp)
+                .map_err(|error| command_error(channel, error))?;
+        }
         let result = hardware.start().map_err(|error| {
             channel.log_error(&error.to_string());
             Status::SetupFailed
@@ -1921,6 +1955,7 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
             .ok_or(Status::NotReady)?;
+        let remote_configuration = configuration.remote(&channel.reservation).cloned();
         let mut configuration = configuration
             .channel(&channel.reservation)
             .cloned()
@@ -1938,6 +1973,8 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
             .snapshot()
             .channel(&channel.reservation)
             .is_some_and(|current| current.config() == configuration.config())
+            && driver.configuration.snapshot().remote(&channel.reservation)
+                == remote_configuration.as_ref()
         {
             control.reload = Some(PreparedChannelReload::Unchanged);
             return Ok(());
@@ -1967,11 +2004,13 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
                 .as_ref()
                 .expect("running channel owns hardware")
                 .preserve_startup_tuning(previous.config(), configuration.config_mut());
-            let candidate = channel.setup_result(driver.factory.plan(
-                configuration.clone(),
-                station_generation,
-                controller,
-            ))?;
+            let candidate = channel
+                .setup_result(driver.factory.plan(
+                    configuration.clone(),
+                    station_generation,
+                    controller,
+                ))?
+                .with_remote_configuration(remote_configuration.clone());
             if let Some(hardware) = control
                 .hardware
                 .as_ref()
@@ -1994,12 +2033,24 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
                 return Err(Status::ReloadPending);
             }
         }
-        let plan = hardware_plan(configuration.config());
+        let plan = channel
+            .setup_result(driver.factory.plan(
+                configuration.clone(),
+                station_generation,
+                controller,
+            ))?
+            .with_remote_configuration(remote_configuration.clone());
+        let remote = prepare_remote(&plan).map_err(|error| command_error(channel, error))?;
         let eeprom_enabled = configuration.config().station.hardware.eeprom_enabled;
         let preflight = if let Some(hardware) = control.hardware.as_ref() {
-            hardware.preflight_replacement(&plan, eeprom_enabled, driver.audio, driver.gpio)
+            hardware.preflight_replacement(
+                plan.hardware(),
+                eeprom_enabled,
+                driver.audio,
+                driver.gpio,
+            )
         } else {
-            HardwareStation::preflight(&plan, eeprom_enabled, driver.audio, driver.gpio)
+            HardwareStation::preflight(plan.hardware(), eeprom_enabled, driver.audio, driver.gpio)
         }
         .map_err(|error| {
             channel.log_error(&error.to_string());
@@ -2013,6 +2064,7 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
                 channel.log_error(&error.to_string());
                 Status::SetupFailed
             })?;
+        media.plan = media.plan.with_remote_configuration(remote_configuration);
         if let Some(direct) = control.direct {
             // SAFETY: reload retains the original attachment lifetime and stops
             // the previous PortAudio generation before starting its replacement.
@@ -2020,6 +2072,7 @@ unsafe extern "C" fn channel_reload_prepare(channel: *mut c_void) -> c_int {
         }
         control.reload = Some(PreparedChannelReload::Replacement(Box::new(
             PreparedChannelReplacement {
+                remote,
                 media,
                 preflight,
                 jitter,
@@ -2094,9 +2147,11 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             let media = control.media.take().ok_or(Status::NotReady)?;
             let preflight = control.preflight.take().ok_or(Status::NotReady)?;
             let jitter = control.jitter;
+            let remote = control.remote.take();
             retained.apply_to_controller(&mut prepared.media.controller);
             control.media = Some(prepared.media);
             control.preflight = Some(prepared.preflight);
+            control.remote = prepared.remote;
             control.jitter = prepared.jitter;
             *channel
                 .rollback
@@ -2105,6 +2160,7 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
                 previous: PreviousChannelGeneration::Prepared {
                     media: Box::new(media),
                     preflight,
+                    remote,
                 },
                 jitter,
             });
@@ -2159,13 +2215,20 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
         }
         let retained = RetainedControllerState::capture(control.controller()?);
         let mut previous = control.hardware.take().ok_or(Status::NotReady)?;
+        let remote = prepared.remote.take();
         let replacement = HardwareStation::open_preflighted(
             prepared.media,
             channel.driver().audio,
             channel.driver().gpio,
             MAXIMUM_FRAME_COUNT,
             prepared.preflight,
-        );
+        )
+        .and_then(|mut hardware| {
+            if let Some((setup, dsp)) = remote {
+                hardware.bind_remote(setup, dsp)?;
+            }
+            Ok(hardware)
+        });
         let mut replacement = match replacement {
             Ok(replacement) => replacement,
             Err(error) => {
@@ -2280,9 +2343,14 @@ unsafe extern "C" fn channel_reload_finish(channel: *mut c_void, commit: u32) ->
         control.jitter = adopted.jitter;
         match adopted.previous {
             PreviousChannelGeneration::Unchanged | PreviousChannelGeneration::Live => Ok(()),
-            PreviousChannelGeneration::Prepared { media, preflight } => {
+            PreviousChannelGeneration::Prepared {
+                media,
+                preflight,
+                remote,
+            } => {
                 control.media = Some(*media);
                 control.preflight = Some(preflight);
+                control.remote = remote;
                 Ok(())
             }
             PreviousChannelGeneration::Hardware {
@@ -2603,7 +2671,8 @@ unsafe extern "C" fn channel_service(channel: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (channel, control) = unsafe { channel_control(channel)? };
-        if let Some(hardware) = control.hardware.as_ref() {
+        if let Some(hardware) = control.hardware.as_mut() {
+            channel.driver().factory.service_remote(hardware);
             while let Some(event) = hardware.take_input_event() {
                 channel
                     .driver()
