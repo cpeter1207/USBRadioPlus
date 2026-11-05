@@ -161,8 +161,11 @@ fn observations(value: &Value, mask: u64) -> Value {
 }
 fn scan(value: Option<&raw::RptAdvRemoteScanSnapshot>) -> Value {
     value.map_or(Value::Null, |value| json!({"flags":value.flags,"list":value.list,"memory":value.current_memory,
-        "running":value.flags & 1 != 0,"paused":value.flags & 2 != 0,
-        "deadline_ms":value.next_deadline_ms,"dwell_ms":value.dwell_ms,"resume_delay_ms":value.resume_delay_ms,"skipped":value.skipped}))
+        "running":value.flags & 1 != 0,"paused":value.flags & 2 != 0,"activity_hold":value.flags & 4 != 0,
+        "direction":value.direction,"priority":(value.priority != 0).then_some(value.priority),
+        "failed_memory":(value.failed_memory != 0).then_some(value.failed_memory),
+        "last_error":(value.flags & 16 != 0).then_some(value.last_error),
+        "deadline_ms":(value.flags & 8 != 0).then_some(value.next_deadline_ms),"dwell_ms":value.dwell_ms,"resume_delay_ms":value.resume_delay_ms,"skipped":value.skipped}))
 }
 fn error(value: RemoteRequestError) -> Value {
     let (reason, code) = match value {
@@ -329,6 +332,31 @@ mod tests {
             );
             api.remote_destroy.unwrap()(ptr::null_mut());
         }
+    }
+
+    #[test]
+    fn remote_scan_status_retains_failure_and_activity_hold() {
+        use super::*;
+        // SAFETY: the scan snapshot is a complete fixed scalar record.
+        let mut snapshot: raw::RptAdvRemoteScanSnapshot = unsafe { std::mem::zeroed() };
+        snapshot.flags = 1 | 4 | 8 | 16;
+        snapshot.list = 7;
+        snapshot.direction = 1;
+        snapshot.failed_memory = 2;
+        snapshot.last_error = -42;
+        snapshot.priority = 3;
+        snapshot.next_deadline_ms = 9000;
+        let value = scan(Some(&snapshot));
+        for (name, expected) in [
+            ("direction", 1),
+            ("failed_memory", 2),
+            ("last_error", -42),
+            ("priority", 3),
+            ("deadline_ms", 9000),
+        ] {
+            assert_eq!(value[name], expected, "{name}");
+        }
+        assert_eq!(value["activity_hold"], true);
     }
 
     #[test]

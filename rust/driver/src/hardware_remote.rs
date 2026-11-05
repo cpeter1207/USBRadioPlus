@@ -34,6 +34,10 @@ fn receive_allowed(engine: bool, mode: u32, duplex: bool, physical: Option<bool>
     engine && (matches!(mode, 1 | 9 | 10) || duplex || physical == Some(false))
 }
 
+fn physical_busy(physical: Option<bool>) -> bool {
+    physical != Some(false)
+}
+
 fn dsp_failure(error: usbradioplus_station::RemoteDspError) -> CallError {
     use usbradioplus_station::RemoteDspError;
     // Bridge-owned causes are distinct from portable engine and Hamlib codes:
@@ -227,11 +231,11 @@ impl RemoteGeneration {
         let source = self.owner.pending_source();
         let activity = worker.state.remote_activity();
         let physical = worker.state.remote_signals();
-        let flags = (u32::from(activity.local_receiving) * raw::RPTADV_REMOTE_LOCAL_RX)
+        let mut flags = (u32::from(activity.local_receiving) * raw::RPTADV_REMOTE_LOCAL_RX)
             | (u32::from(activity.linked_receiving) * raw::RPTADV_REMOTE_LINK_RX)
             | (u32::from(activity.transmit_requested) * raw::RPTADV_REMOTE_REQUEST_PTT)
             | (u32::from(worker.state.outputs().logical_ptt) * raw::RPTADV_REMOTE_RENDERED_PTT)
-            | (u32::from(physical.physical_ptt == Some(true)) * raw::RPTADV_REMOTE_PHYSICAL_PTT);
+            | (u32::from(physical_busy(physical.physical_ptt)) * raw::RPTADV_REMOTE_PHYSICAL_PTT);
         let wiring = self.wiring();
         let mut backend = PhysicalBackend {
             setup: &self.setup,
@@ -245,6 +249,12 @@ impl RemoteGeneration {
             queue: &self.queue,
             source,
         };
+        // The engine's cached serviced state cannot establish physical safety
+        // after an observation failure. Retry confirmation on this same owner.
+        if physical.physical_ptt.is_none() {
+            backend.set_ptt(false)?;
+            flags &= !raw::RPTADV_REMOTE_PHYSICAL_PTT;
+        }
         let result = self.owner.service(
             worker.now_ms(),
             raw::RptAdvRemoteActivity {
@@ -630,6 +640,12 @@ impl RemoteDevice for PhysicalBackend<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unknown_physical_ptt_blocks_new_rf_work() {
+        assert!(physical_busy(None));
+        assert!(physical_busy(Some(true)));
+        assert!(!physical_busy(Some(false)));
+    }
     #[test]
     fn non_fm_half_duplex_receive_waits_for_confirmed_physical_unkey() {
         for mode in [1, 3] {

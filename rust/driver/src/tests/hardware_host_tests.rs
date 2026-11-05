@@ -2036,6 +2036,7 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
     // The dummy rig starts with RFPOWER zero, outside its declared TX range.
     // Set an explicit memory power just as an actual configured radio requires.
     configuration.memories[0].state.power_mw = Some(5000);
+    configuration.ptt_source = Some("usb".into());
     let (setup, control) = RemoteSetup::prepare(
         configuration,
         station.control().plan().hardware().clone(),
@@ -2081,6 +2082,52 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
     }
     assert!(matches!(result, Ok(RemoteReply::Applied)));
     assert_eq!(station.maintenance.service.remote_error(), 0);
+    // Lose physical confirmation after the engine has cached a serviced OFF.
+    // A subsequent RF change must wait, even if the logical PTT never changed.
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    state.publish_remote_signals(usbradioplus_station::RemoteHardwareSignals {
+        ptt_selected: true,
+        physical_ptt: None,
+        ..Default::default()
+    });
+    operation.magnitude = 146_530_000;
+    let waiting = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_millis(150);
+    let early = loop {
+        factory.service_remote(&mut station);
+        // SAFETY: both fake callback contexts remain owned by the running station.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(completion) = waiting.take_completion() {
+            break Some(completion);
+        }
+        if Instant::now() >= deadline {
+            break None;
+        }
+        thread::sleep(Duration::from_millis(2));
+    };
+    GPIO_APPLIED_PTT.store(u32::MAX, Ordering::Release);
+    assert!(early.is_none(), "retuned with physical PTT unknown");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        factory.service_remote(&mut station);
+        // SAFETY: same live fake stream and callback contexts.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(completion) = waiting.take_completion() {
+            assert!(matches!(completion, Ok(RemoteReply::Applied)));
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "did not recover after confirmed OFF"
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
     station.stop().unwrap();
 }
 

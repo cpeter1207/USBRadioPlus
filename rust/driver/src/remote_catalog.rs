@@ -12,6 +12,9 @@ pub(crate) fn controller_catalog(
     if let Some(ptt) = settings.iter_mut().find(|setting| setting.selector == 20) {
         ptt.writable = false;
     }
+    if let Some(power) = settings.iter_mut().find(|setting| setting.selector == 11) {
+        power.readable &= caps.readback_fields & 512 != 0;
+    }
     for (selector, name, kind, units, places, minimum, maximum, mask) in [
         (12, "encode_ctcss", 4, 1, 1, 500, 3000, 0),
         (13, "decode_ctcss", 4, 1, 1, 500, 3000, 0),
@@ -94,6 +97,35 @@ pub(crate) fn signal_value(state: &raw::RptAdvRemoteState, selector: u32) -> Opt
 mod tests {
     use super::*;
     use usbradioplus_remote::{SelectedCapabilities, Setting, raw};
+
+    #[test]
+    fn catalog_power_readback_requires_observed_transmit_context() {
+        let power = Setting {
+            selector: 11,
+            name: "power".into(),
+            readable: true,
+            writable: true,
+            value_kind: 2,
+            units: 2,
+            decimal_places: 0,
+            minimum: 0,
+            maximum: 10000,
+            choices: vec![],
+        };
+        for (fields, readable) in [(0, false), (512, true)] {
+            let caps = SelectedCapabilities {
+                readback_fields: fields,
+                ..Default::default()
+            };
+            let catalog = controller_catalog(vec![power.clone()], &caps);
+            let actual = catalog
+                .iter()
+                .find(|setting| setting.selector == 11)
+                .unwrap();
+            assert_eq!(actual.readable, readable);
+            assert!(actual.writable);
+        }
+    }
 
     #[test]
     fn remote_catalog_exposes_dsp_signaling_without_private_or_unbounded_ptt_writes() {
