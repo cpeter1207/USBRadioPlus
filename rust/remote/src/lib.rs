@@ -161,6 +161,7 @@ unsafe fn admit_hamlib(
         || api.choice.is_none() || api.get.is_none() || api.set.is_none()
         || api.transport_budget_ms.is_none() || api.range.is_none()
         || api.set_mode_width.is_none() || api.set_split_vfos.is_none() || api.set_power_mw.is_none()
+        || api.set_split_mode_width.is_none() || api.get_power_mw.is_none()
     {
         return Err(ProviderError::Incompatible);
     }
@@ -172,6 +173,8 @@ mod tests;
 
 mod hamlib;
 pub use hamlib::{CallError, HamlibRig, Setting};
+mod operating;
+pub use operating::HamlibOperating;
 mod session;
 pub use session::RemoteSession;
 mod configuration;

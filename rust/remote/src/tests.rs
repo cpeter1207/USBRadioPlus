@@ -91,18 +91,7 @@ fn hamlib_dynamic_client_preserves_its_separate_boundary() {
 
 #[test]
 fn hamlib_owned_client_keeps_one_thread_and_complete_state_calls() {
-    let provider = std::sync::Arc::new(HamlibProvider::load().unwrap());
-    // SAFETY: the C configuration contains only scalar fields and nullable pointers.
-    let mut config: raw::rptadv_hamlib_config = unsafe { std::mem::zeroed() };
-    config.struct_size = size_of::<raw::rptadv_hamlib_config>();
-    config.abi_version = 1;
-    config.model = raw::rptadv_hamlib_string {
-        data: b"RIG_MODEL_DUMMY".as_ptr().cast(),
-        size: 15,
-    };
-    config.timeout_ms = 100;
-    // SAFETY: all configuration spans remain readable through the synchronous open.
-    let mut rig = unsafe { HamlibRig::open(provider, &config) }.unwrap();
+    let mut rig = dummy_rig();
     rig.set(1, 146_520_000).unwrap();
     rig.set_mode_width(3, 2400).unwrap();
     rig.set_split_vfos(1, true, 2).unwrap();
@@ -133,6 +122,69 @@ fn hamlib_owned_client_keeps_one_thread_and_complete_state_calls() {
     );
     rig.close().unwrap();
     assert!(rig.get(1).is_err());
+}
+
+fn dummy_rig() -> HamlibRig {
+    let provider = std::sync::Arc::new(HamlibProvider::load().unwrap());
+    // SAFETY: the C configuration contains only scalar fields and nullable pointers.
+    let mut config: raw::rptadv_hamlib_config = unsafe { std::mem::zeroed() };
+    config.struct_size = size_of::<raw::rptadv_hamlib_config>();
+    config.abi_version = 1;
+    config.model = raw::rptadv_hamlib_string {
+        data: b"RIG_MODEL_DUMMY".as_ptr().cast(),
+        size: 15,
+    };
+    config.timeout_ms = 100;
+    // SAFETY: all configuration spans remain readable through the synchronous open.
+    unsafe { HamlibRig::open(provider, &config) }.unwrap()
+}
+
+#[test]
+fn hamlib_operating_bridge_applies_complete_state_and_reports_real_readback() {
+    let mut bridge = HamlibOperating::new(dummy_rig()).unwrap();
+    // SAFETY: the complete operating record contains only scalar fields.
+    let mut state: raw::RptAdvRemoteState = unsafe { std::mem::zeroed() };
+    state.receive_hz = 146520000;
+    state.transmit_hz = state.receive_hz;
+    state.flags = 1;
+    state.mode = 1;
+    state.encode.source = 1;
+    state.decode.source = 1;
+    bridge.apply(&state, || false).unwrap();
+    let readback = bridge.read(&state, || false).unwrap();
+    assert_eq!(readback.receive_hz, state.receive_hz);
+    assert_eq!(readback.mode, 1);
+    assert!(readback.bandwidth_hz > 0);
+    assert_ne!(bridge.readback_fields() & 1, 0);
+    state.flags |= 8;
+    state.receive_vfo = 1;
+    state.transmit_vfo = 2;
+    state.transmit_hz = 146940000;
+    bridge.apply(&state, || false).unwrap();
+    let readback = bridge.read(&state, || false).unwrap();
+    assert_eq!(readback.transmit_hz, state.transmit_hz);
+    assert_ne!(readback.flags & 8, 0);
+}
+
+#[test]
+fn hamlib_operating_bridge_rejects_unsupported_signaling_before_retune() {
+    let mut bridge = HamlibOperating::new(dummy_rig()).unwrap();
+    bridge.rig().set(1, 146520000).unwrap();
+    // SAFETY: the complete operating record contains only scalar fields.
+    let mut state: raw::RptAdvRemoteState = unsafe { std::mem::zeroed() };
+    state.receive_hz = 146940000;
+    state.transmit_hz = state.receive_hz;
+    state.mode = 1;
+    state.flags = 1;
+    state.encode.source = 3;
+    state.encode.enabled = 1;
+    state.encode.dcs_code = 0o023;
+    assert_eq!(bridge.apply(&state, || false), Err(CallError(-6)));
+    assert_eq!(bridge.rig().get(1), Ok(146520000));
+    state.encode.enabled = 0;
+    state.encode.source = 0;
+    assert_eq!(bridge.apply(&state, || true), Err(CallError(-10)));
+    assert_eq!(bridge.rig().get(1), Ok(146520000));
 }
 
 #[test]

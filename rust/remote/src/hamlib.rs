@@ -130,6 +130,27 @@ impl HamlibRig {
             )
         })
     }
+    /// Program split TX mode/passband only after physical unkey and split routing.
+    pub fn set_split_mode_width(&mut self, mode: i64, width: u32) -> Result<(), CallError> {
+        // SAFETY: this retained unique owner supplies complete typed operands.
+        check(unsafe {
+            self.provider.api().set_split_mode_width.unwrap()(self.context.as_ptr(), mode, width)
+        })
+    }
+    /// Convert actual RFPOWER using actual effective transmit frequency/mode.
+    pub fn get_power_mw(&mut self, transmit_hz: u64, mode: i64) -> Result<u32, CallError> {
+        let mut power = 0;
+        // SAFETY: the retained owner and writable scalar remain live through the call.
+        check(unsafe {
+            self.provider.api().get_power_mw.unwrap()(
+                self.context.as_ptr(),
+                transmit_hz,
+                mode,
+                &mut power,
+            )
+        })?;
+        Ok(power)
+    }
     /// Copy every typed setting and discrete choice; no borrowed name escapes.
     pub fn settings(&self) -> Result<Vec<Setting>, CallError> {
         let mut result = Vec::new();
