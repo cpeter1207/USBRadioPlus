@@ -1,6 +1,7 @@
 //! One remote-base configuration resolver for channel and standalone hosts.
 
 use crate::{ConfigDocument, CtcssSource, DcsCode, DcsPolarity, SignalingMethod, StationConfig};
+use crate::{ResolutionWarning, ResolutionWarningKind};
 use std::{collections::BTreeMap, fmt};
 
 /// Explicit physical control backend; parallel operations retain their existing owner.
@@ -178,8 +179,8 @@ pub struct ResolvedRemoteConfiguration {
     pub scan_presets_ms: [Option<u64>; 3],
     /// Maximum duration of the admitted manual tune operation.
     pub tune_duration_ms: u64,
-    /// Unknown option names, retained for the existing warning presentation.
-    pub unknown_options: Vec<(String, String)>,
+    /// Shared unknown-value/inheritance diagnostics, with transport values redacted.
+    pub warnings: Vec<ResolutionWarning>,
 }
 
 impl fmt::Debug for ResolvedRemoteConfiguration {
@@ -223,13 +224,21 @@ struct Values<'a> {
 }
 
 impl Values<'_> {
-    fn unknown(&self, allowed: &[&str], transport: bool) -> Vec<(String, String)> {
+    fn unknown(&self, allowed: &[&str], transport: bool) -> Vec<ResolutionWarning> {
         self.values
             .keys()
             .filter(|key| {
                 !(allowed.contains(&key.as_str()) || transport && key.starts_with("hamlib_option_"))
             })
-            .map(|key| (self.section.clone(), key.clone()))
+            .map(|key| {
+                warning(
+                    self.source,
+                    &self.section,
+                    key,
+                    ResolutionWarningKind::UnknownOption,
+                    "ignored",
+                )
+            })
             .collect()
     }
     fn error(&self, key: &str) -> RemoteConfigurationError {
@@ -417,15 +426,7 @@ fn station_signal(station: &StationConfig, encode: bool) -> RemoteSignal {
         SignalingMethod::Ctcss => RemoteSignal {
             source,
             enabled: source != RemoteSignalSource::Disabled,
-            tone_tenths_hz: if encode {
-                u32::from(station.ctcss.transmit_default.tenths_hz())
-            } else {
-                station
-                    .ctcss
-                    .receive_frequencies
-                    .first()
-                    .map_or(0, |tone| u32::from(tone.tenths_hz()))
-            },
+            tone_tenths_hz: station_tone(station, encode),
             ..RemoteSignal::default()
         },
         SignalingMethod::Dcs => {
@@ -442,7 +443,10 @@ fn station_signal(station: &StationConfig, encode: bool) -> RemoteSignal {
                 ..RemoteSignal::default()
             }
         }
-        _ => RemoteSignal::default(),
+        _ => RemoteSignal {
+            tone_tenths_hz: station_tone(station, encode),
+            ..RemoteSignal::default()
+        },
     }
 }
 
@@ -455,12 +459,16 @@ impl ResolvedRemoteConfiguration {
         node: &str,
         station: &StationConfig,
     ) -> Result<Option<Self>, RemoteConfigurationError> {
-        let mut global = section_values(document, source, "remote_base")?;
-        global.extend(section_values(
+        let mut warnings = Vec::new();
+        let mut global = defaults(BASE_DEFAULTS);
+        overlay(document, source, "remote_base", &mut global, &mut warnings)?;
+        overlay(
             document,
             source,
             &format!("remote_base {node}"),
-        )?);
+            &mut global,
+            &mut warnings,
+        )?;
         let values = Values {
             source,
             section: format!("remote_base {node}"),
@@ -532,7 +540,7 @@ impl ResolvedRemoteConfiguration {
         let encode = signal(&values, true, station_signal(station, true))?;
         let decode = signal(&values, false, station_signal(station, false))?;
         let mut memories = Vec::<RemoteMemory>::new();
-        let mut unknown_options = values.unknown(BASE_KEYS, true);
+        warnings.extend(values.unknown(BASE_KEYS, true));
         for section in document.section_names() {
             let mut words = section.splitn(3, char::is_whitespace);
             if !words
@@ -547,10 +555,18 @@ impl ResolvedRemoteConfiguration {
                 .filter(|name| !name.is_empty())
                 .ok_or_else(|| values.error("memory name"))?
                 .to_owned();
+            let mut memory_values = defaults(MEMORY_DEFAULTS);
+            overlay(
+                document,
+                source,
+                &section,
+                &mut memory_values,
+                &mut warnings,
+            )?;
             let memory = Values {
                 source,
                 section: section.clone(),
-                values: section_values(document, source, &section)?,
+                values: memory_values,
             };
             let selector = memory.number("selector", 0)?;
             if selector == 0 || memories.iter().any(|old| old.selector == selector) {
@@ -574,7 +590,7 @@ impl ResolvedRemoteConfiguration {
             if channel.is_some_and(|value| value > 15) {
                 return Err(memory.error("channel"));
             }
-            unknown_options.extend(memory.unknown(MEMORY_KEYS, false));
+            warnings.extend(memory.unknown(MEMORY_KEYS, false));
             memories.push(RemoteMemory {
                 selector,
                 name,
@@ -618,10 +634,12 @@ impl ResolvedRemoteConfiguration {
                 .filter(|name| !name.is_empty())
                 .ok_or_else(|| values.error("scan name"))?
                 .to_owned();
+            let mut scan_values = defaults(SCAN_DEFAULTS);
+            overlay(document, source, &section, &mut scan_values, &mut warnings)?;
             let scan = Values {
                 source,
                 section: section.clone(),
-                values: section_values(document, source, &section)?,
+                values: scan_values,
             };
             let selector = scan.number("selector", 0)?;
             if selector == 0 || scan_lists.iter().any(|old| old.selector == selector) {
@@ -644,7 +662,7 @@ impl ResolvedRemoteConfiguration {
             {
                 return Err(scan.error("timing/priority"));
             }
-            unknown_options.extend(scan.unknown(SCAN_KEYS, false));
+            warnings.extend(scan.unknown(SCAN_KEYS, false));
             scan_lists.push(RemoteScanList {
                 selector,
                 name,
@@ -713,7 +731,7 @@ impl ResolvedRemoteConfiguration {
                 values.optional("scan_fast_ms")?,
             ],
             tune_duration_ms,
-            unknown_options,
+            warnings,
         }))
     }
 }
@@ -751,6 +769,143 @@ fn section_values(
     }
     Ok(normalized)
 }
+
+fn station_tone(station: &StationConfig, encode: bool) -> u32 {
+    if encode {
+        u32::from(station.ctcss.transmit_default.tenths_hz())
+    } else {
+        station
+            .ctcss
+            .receive_frequencies
+            .first()
+            .map_or(0, |tone| u32::from(tone.tenths_hz()))
+    }
+}
+
+fn defaults(values: &[(&str, &str)]) -> BTreeMap<String, String> {
+    values
+        .iter()
+        .map(|(name, value)| ((*name).into(), (*value).into()))
+        .collect()
+}
+
+fn warning(
+    source: &str,
+    section: &str,
+    key: &str,
+    kind: ResolutionWarningKind,
+    fallback: &str,
+) -> ResolutionWarning {
+    ResolutionWarning {
+        source: source.into(),
+        section: section.into(),
+        name: key.into(),
+        kind,
+        supplied_value: "<redacted>".into(),
+        fallback: fallback.into(),
+        reason: "remote-base setting was not applied".into(),
+    }
+}
+
+fn overlay(
+    document: &ConfigDocument,
+    source: &str,
+    section: &str,
+    inherited: &mut BTreeMap<String, String>,
+    warnings: &mut Vec<ResolutionWarning>,
+) -> Result<(), RemoteConfigurationError> {
+    for (key, value) in section_values(document, source, section)? {
+        let optional_default = key.starts_with("ctcss_")
+            || key.starts_with("dcs_")
+            || matches!(
+                key.as_str(),
+                "power_low_w"
+                    | "power_medium_w"
+                    | "power_high_w"
+                    | "scan_slow_ms"
+                    | "scan_medium_ms"
+                    | "scan_fast_ms"
+            );
+        if !valid_value(&key, &value) && (inherited.contains_key(&key) || optional_default) {
+            warnings.push(warning(
+                source,
+                section,
+                &key,
+                ResolutionWarningKind::InvalidValue,
+                "inherited/default",
+            ));
+        } else {
+            inherited.insert(key, value);
+        }
+    }
+    Ok(())
+}
+
+fn valid_value(key: &str, value: &str) -> bool {
+    match key {
+        "enabled" => bool_value(value).is_some(),
+        "audio_source" => matches!(value, "cm119" | "usb"),
+        "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
+        "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
+        "dtmf_prefix" => !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()),
+        "timeout_ms" => value
+            .parse::<u32>()
+            .is_ok_and(|value| (1..=10000).contains(&value)),
+        "retries" => value.parse::<u32>().is_ok_and(|value| value <= 10),
+        "timeout_retries" => value.parse::<u32>().is_ok_and(|value| value <= 100),
+        "poll_interval_ms" | "dwell_ms" | "scan_slow_ms" | "scan_medium_ms" | "scan_fast_ms" => {
+            value.parse::<u64>().is_ok_and(|value| value > 0)
+        }
+        "resume_delay_ms" | "settle_ms" => value.parse::<u64>().is_ok(),
+        "tune_duration_ms" => value
+            .parse::<u64>()
+            .is_ok_and(|value| (1..=5000).contains(&value)),
+        "mode" => mode(value).is_some(),
+        "receive_vfo" | "transmit_vfo" => {
+            matches!(value, "current" | "A" | "B" | "main" | "sub" | "memory")
+        }
+        "bandwidth_hz" => value.parse::<u32>().is_ok(),
+        "offset_hz" | "rit_hz" | "xit_hz" => value.parse::<i64>().is_ok(),
+        "ctcss_encode_hz" | "ctcss_decode_hz" => {
+            scaled(value, 1).is_some_and(|value| (500..=3000).contains(&value))
+        }
+        "dcs_encode_code" | "dcs_decode_code" => value.parse::<DcsCode>().is_ok(),
+        "ctcss_encode_source"
+        | "ctcss_decode_source"
+        | "dcs_encode_source"
+        | "dcs_decode_source" => self::source(value).is_some(),
+        "power_low_w" | "power_medium_w" | "power_high_w" | "max_power_w" | "power_w" => {
+            scaled(value, 3).is_some()
+        }
+        _ => true,
+    }
+}
+
+const BASE_DEFAULTS: &[(&str, &str)] = &[
+    ("enabled", "no"),
+    ("audio_source", "cm119"),
+    ("dtmf_access", "locked"),
+    ("dtmf_prefix", "6"),
+    ("timeout_ms", "500"),
+    ("retries", "2"),
+    ("timeout_retries", "0"),
+    ("poll_interval_ms", "500"),
+    ("tune_duration_ms", "1000"),
+];
+const MEMORY_DEFAULTS: &[(&str, &str)] = &[
+    ("mode", "FM"),
+    ("bandwidth_hz", "0"),
+    ("receive_vfo", "current"),
+    ("transmit_vfo", "current"),
+    ("offset_hz", "0"),
+    ("rit_hz", "0"),
+    ("xit_hz", "0"),
+];
+const SCAN_DEFAULTS: &[(&str, &str)] = &[
+    ("dwell_ms", "500"),
+    ("resume_delay_ms", "2000"),
+    ("settle_ms", "0"),
+];
 
 const BASE_KEYS: &[&str] = &[
     "enabled",

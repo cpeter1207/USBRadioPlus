@@ -48,8 +48,6 @@ fn remote_configuration_rejects_unsafe_or_unresolvable_definitions() {
             "rx_frequency_hz=146520000",
             "rx_frequency_hz=not-a-frequency",
         ),
-        ("poll_interval_ms=600", "poll_interval_ms=0"),
-        ("ctcss_encode_hz=114.8", "ctcss_encode_hz=114.88"),
     ] {
         let document = ConfigDocument::new(CONFIG.replace(old, new));
         assert!(
@@ -118,7 +116,7 @@ fn remote_configuration_normalizes_each_layer_and_reports_unknown_keys() {
     .unwrap()
     .unwrap();
     assert_eq!(config.poll_interval_ms, 200);
-    assert_eq!(config.unknown_options.len(), 3);
+    assert_eq!(config.warnings.len(), 3);
 }
 
 #[test]
@@ -136,4 +134,35 @@ fn remote_configuration_debug_never_exposes_transport_credentials() {
     .unwrap()
     .unwrap();
     assert!(!format!("{config:?}").contains("redacted-secret-fixture"));
+}
+
+#[test]
+fn remote_configuration_invalid_values_warn_and_keep_safe_inherited_defaults() {
+    let text = CONFIG
+        .replace("poll_interval_ms=600", "poll_interval_ms=0")
+        .replace("dwell_ms=500", "dwell_ms=0")
+        .replace("ctcss_encode_hz=114.8", "ctcss_encode_hz=114.88");
+    let config = ResolvedRemoteConfiguration::from_document(
+        &ConfigDocument::new(text),
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(config.poll_interval_ms, 500);
+    assert_eq!(config.scan_lists[0].dwell_ms, 500);
+    assert_eq!(config.memories[0].state.encode.tone_tenths_hz, 1000);
+    assert_eq!(config.warnings.len(), 3);
+    let text = CONFIG.replace("enabled=yes", "enabled=yes\npoll_interval_ms=0");
+    let config = ResolvedRemoteConfiguration::from_document(
+        &ConfigDocument::new(text),
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(config.poll_interval_ms, 600);
+    assert_eq!(config.warnings.len(), 1);
 }
