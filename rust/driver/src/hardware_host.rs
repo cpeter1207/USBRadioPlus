@@ -779,6 +779,12 @@ impl HardwareStation {
         audio.and(hardware)
     }
 
+    /// Stop callbacks, then poll safe physical retirement without waiting for CAT.
+    pub fn poll_stop(&mut self) -> Result<bool, HardwareStationError> {
+        self.runtime.stop().map_err(HardwareStationError::Audio)?;
+        self.maintenance.poll_stop()
+    }
+
     /// Quiesce audio and hardware, then release the audio device for reload.
     ///
     /// The service is joined and GPIO fail-safe unkeyed before stream destruction.
@@ -1458,6 +1464,13 @@ impl HardwareMaintenance {
     pub fn stop(&mut self) -> Result<(), HardwareStationError> {
         self.clear_manual_requests();
         self.service.stop()
+    }
+
+    /// Retain this owner while a physical operation finishes and safe outputs
+    /// are confirmed. This never waits for the service thread to exit.
+    pub fn poll_stop(&mut self) -> Result<bool, HardwareStationError> {
+        self.clear_manual_requests();
+        self.service.poll_stop()
     }
 
     /// Release temporary tuner intent while direct controller callbacks retain
@@ -3304,6 +3317,7 @@ impl ServiceWorker {
                 }
             }
         }
+        let remote_managed = remote.is_some();
         if let Some(mut remote) = remote {
             loop {
                 if devices.is_none() {
@@ -3334,11 +3348,20 @@ impl ServiceWorker {
             }
         }
         outputs.retire_site();
-        let failure = devices.as_mut().and_then(|current| {
-            current
-                .close_outputs(self.parallel.as_ref(), &mut outputs)
-                .err()
-        });
+        let failure = loop {
+            let failure = devices.as_mut().and_then(|current| {
+                current
+                    .close_outputs(self.parallel.as_ref(), &mut outputs)
+                    .err()
+            });
+            if !remote_managed || failure.is_none() {
+                break failure;
+            }
+            self.statistics
+                .failure(failure.expect("failed remote retirement retains its owner"));
+            self.publish_site(&outputs);
+            thread::park_timeout(RETRY_INTERVAL);
+        };
         self.publish_site(&outputs);
         if let Some(failure) = failure {
             self.statistics.failure(failure);

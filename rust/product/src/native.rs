@@ -168,6 +168,21 @@ impl NativeStation {
         let audio = self.runtime.stop();
         let hardware = self.maintenance.stop();
         audio.map_err(|_| Status::SetupFailed)?;
+        self.finish_stopped_update()?;
+        hardware.map_err(|_| Status::SetupFailed)
+    }
+
+    fn poll_stop(&mut self) -> Result<bool, Status> {
+        self.runtime.stop().map_err(|_| Status::SetupFailed)?;
+        let done = self
+            .maintenance
+            .poll_stop()
+            .map_err(|_| Status::SetupFailed)?;
+        self.finish_stopped_update()?;
+        Ok(done)
+    }
+
+    fn finish_stopped_update(&mut self) -> Result<(), Status> {
         if self.pending.is_some() {
             // Successful stop quiesces both owners. The common mailbox drains
             // any unacknowledged forward slot before restoring its reverse.
@@ -179,7 +194,7 @@ impl NativeStation {
                 .map_err(|_| Status::SetupFailed)?;
             self.pending = None;
         }
-        hardware.map_err(|_| Status::SetupFailed)
+        Ok(())
     }
 }
 
@@ -369,6 +384,19 @@ pub(crate) unsafe extern "C" fn stop(handle: *mut c_void) -> c_int {
         unsafe { handle.cast::<NativeStation>().as_mut() }
             .ok_or(Status::InvalidArgument)?
             .stop()
+    })
+}
+
+pub(crate) unsafe extern "C" fn quiesce(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller retains this owner until retirement succeeds.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        if station.poll_stop()? {
+            Ok(())
+        } else {
+            Err(Status::ReloadPending)
+        }
     })
 }
 

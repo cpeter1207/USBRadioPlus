@@ -803,12 +803,18 @@ pub struct UrpAstDescriptor {
     >,
     /// Revoke and release a ticket without waiting for the physical owner.
     pub remote_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// Poll safe retirement. ReloadPending retains the native handle and callbacks.
+    pub native_quiesce: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Poll the same retirement on the serialized ASL taskprocessor.
+    pub channel_quiesce: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_quiesce: Some(native::quiesce),
+    channel_quiesce: Some(channel_quiesce),
     native_remote_submit: Some(remote::native_submit),
     channel_remote_submit: Some(remote::channel_submit),
     remote_source: Some(remote::source),
@@ -1918,6 +1924,24 @@ unsafe extern "C" fn channel_stop(channel: *mut c_void) -> c_int {
             control.running = false;
         }
         result
+    })
+}
+
+unsafe extern "C" fn channel_quiesce(channel: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the existing taskprocessor serializes the live channel owner.
+        let (_, control) = unsafe { channel_control(channel)? };
+        let done = control
+            .hardware
+            .as_mut()
+            .map_or(Ok(true), HardwareStation::poll_stop)
+            .map_err(|_| Status::SetupFailed)?;
+        control.running = false;
+        if done {
+            Ok(())
+        } else {
+            Err(Status::ReloadPending)
+        }
     })
 }
 

@@ -1333,6 +1333,11 @@ typedef struct UrpAstDescriptor {
 	int (*remote_take)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context);
 	/** Revoke and release after source/take calls stop; never waits for CAT. */
 	void (*remote_destroy)(void *ticket);
+	/** Poll safe physical retirement after stopping callbacks. Zero permits
+	 * native_destroy; ReloadPending or any error retains handle and contexts. */
+	int (*native_quiesce)(void *native);
+	/** Same retirement on the channel's serialized taskprocessor. */
+	int (*channel_quiesce)(void *channel);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

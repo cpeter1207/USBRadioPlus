@@ -212,6 +212,12 @@ fn native_service_advances_only_the_existing_control_owner() {
     // SAFETY: creation transfers this sole live handle; the null case retains no owner.
     unsafe {
         assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_quiesce.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_quiesce.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_quiesce.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
         assert_eq!(
             api.native_service.unwrap()(ptr::null_mut()),
             URP_AST_INVALID_ARGUMENT
