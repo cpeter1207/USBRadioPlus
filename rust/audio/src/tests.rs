@@ -13,6 +13,7 @@ static RECEIVES: AtomicU32 = AtomicU32::new(0);
 static TRANSMITS: AtomicU32 = AtomicU32::new(0);
 static PARTIAL_STREAM: AtomicPtr<u8> = AtomicPtr::new(std::ptr::null_mut());
 static PARTIAL_MIXER: AtomicPtr<u32> = AtomicPtr::new(std::ptr::null_mut());
+static STREAM_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 unsafe extern "C" fn stream_create(
     config: *const RawStreamConfig,
@@ -386,6 +387,7 @@ fn selector() -> DeviceSelector {
 
 #[test]
 fn stream_forwards_independent_input_and_output_buffer_requests() {
+    let _guard = STREAM_LOCK.lock().unwrap();
     let mut config = stream_config(480, 960);
     config.extra_input_buffer_milliseconds = 20;
     config.extra_output_buffer_milliseconds = 35;
@@ -561,6 +563,7 @@ fn every_required_descriptor_entry_is_validated() {
 
 #[test]
 fn stream_lifecycle_timing_and_statistics_are_owned() {
+    let _guard = STREAM_LOCK.lock().unwrap();
     STARTS.store(0, Ordering::Relaxed);
     STOPS.store(0, Ordering::Relaxed);
     DESTROYS.store(0, Ordering::Relaxed);
@@ -666,6 +669,7 @@ fn invalid_policies_strings_and_adapter_results_are_rejected() {
 
 #[test]
 fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
+    let _guard = STREAM_LOCK.lock().unwrap();
     let mut wrong_name = VALID;
     wrong_name.capability_name = c"wrong".as_ptr();
     assert_eq!(

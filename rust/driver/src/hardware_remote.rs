@@ -7,7 +7,8 @@ use crate::{
 use usbradioplus_core::{CarrierSource, RemoteBackend};
 use usbradioplus_radio::SubaudibleSource;
 use usbradioplus_remote::{
-    CallError, HamlibOperating, OperatingIo, SelectedCapabilities, operating_configuration, raw,
+    CallError, HamlibOperating, OperatingIo, SelectedCapabilities, Setting,
+    operating_configuration, raw,
 };
 use usbradioplus_station::{RemoteHardwareSignals, RemoteRadioControl};
 
@@ -38,6 +39,33 @@ fn physical_busy(physical: Option<bool>) -> bool {
     physical != Some(false)
 }
 
+/// Re-read cancellation between native calls; do not snapshot it before CAT I/O.
+fn physical_cancelled(
+    worker: &ServiceWorker,
+    queue: &RemoteQueue,
+    source: Option<&RemoteSourceLease>,
+) -> bool {
+    worker.stop.load(Ordering::Acquire)
+        || queue.has_urgent()
+        || source.is_some_and(|source| !source.source().valid)
+}
+
+fn confirm_ptt(actual: i64, keyed: bool) -> Result<(), CallError> {
+    if (actual != 0) == keyed {
+        Ok(())
+    } else {
+        Err(CallError(-1101))
+    }
+}
+
+fn first_cause(current: CallError, recorded: i32) -> CallError {
+    if recorded == 0 {
+        current
+    } else {
+        CallError(recorded)
+    }
+}
+
 fn dsp_failure(error: usbradioplus_station::RemoteDspError) -> CallError {
     use usbradioplus_station::RemoteDspError;
     // Bridge-owned causes are distinct from portable engine and Hamlib codes:
@@ -60,6 +88,23 @@ fn cover(range: raw::rptadv_hamlib_range) -> raw::RptAdvRemoteCoverage {
             | (u32::from(range.maximum_power_mw >= 0) << 1),
         minimum_power_mw: range.minimum_power_mw.max(0) as u32,
         maximum_power_mw: range.maximum_power_mw.max(0) as u32,
+    }
+}
+
+fn writable(settings: &[Setting], selector: u32) -> bool {
+    settings
+        .iter()
+        .any(|setting| setting.selector == selector && setting.writable)
+}
+
+/// Tone programming and enable controls are independent backend capabilities.
+fn add_rig_controls(caps: &mut SelectedCapabilities, settings: &[Setting]) {
+    caps.power_mw = writable(settings, 11);
+    if writable(settings, 12) && writable(settings, 16) {
+        caps.encode_sources |= 1 << 3;
+    }
+    if writable(settings, 13) && writable(settings, 17) {
+        caps.decode_control_sources |= 1 << 3;
     }
 }
 
@@ -119,18 +164,7 @@ impl RemoteGeneration {
                     .iter()
                     .fold(0, |mask, range| mask | range.mode_mask);
                 caps.readback_fields = rig.readback_fields();
-                let writable = |selector| {
-                    settings
-                        .iter()
-                        .any(|setting| setting.selector == selector && setting.writable)
-                };
-                caps.power_mw = writable(11);
-                if writable(12) && writable(16) {
-                    caps.encode_sources |= 1 << 3;
-                }
-                if writable(13) && writable(17) {
-                    caps.decode_control_sources |= 1 << 3;
-                }
+                add_rig_controls(&mut caps, &settings);
             } else {
                 // Channel frequency metadata is declared by its configuration. The
                 // backend applies only a configured channel; it cannot tune a VFO.
@@ -171,17 +205,10 @@ impl RemoteGeneration {
                         worker.statistics.failure(error);
                         failure(error)
                     });
-                    let cat = match &mut rig {
-                        Some(rig)
-                            if rig
-                                .settings()
-                                .iter()
-                                .any(|setting| setting.selector == 20 && setting.writable) =>
-                        {
-                            rig.rig().set(20, 0)
-                        }
-                        _ => Ok(()),
-                    };
+                    let cat = rig
+                        .as_mut()
+                        .filter(|rig| writable(rig.settings(), 20))
+                        .map_or(Ok(()), |rig| rig.rig().set(20, 0));
                     if gpio.and(cat).is_ok() {
                         break;
                     }
@@ -301,11 +328,7 @@ impl RemoteGeneration {
         });
         if let Err(error) = result {
             outputs.set_encoder(false);
-            return Err(if snapshot.failure_code != 0 {
-                CallError(snapshot.failure_code)
-            } else {
-                error
-            });
+            return Err(first_cause(error, snapshot.failure_code));
         }
         let encode = self.current.encode;
         outputs.set_encoder(
@@ -314,7 +337,7 @@ impl RemoteGeneration {
                 && activity.ctcss_requested
                 && worker.state.remote_control().transmit_permitted,
         );
-        if encode.source == 3 || encode.control_source == 3 {
+        if encode.source == 3 {
             let enabled = encode.enabled != 0
                 && activity.ctcss_requested
                 && worker.state.remote_control().transmit_permitted;
@@ -327,7 +350,11 @@ impl RemoteGeneration {
                 self.encode_gate = Some(enabled);
             }
         }
-        if snapshot.flags & raw::RPTADV_REMOTE_APPLIED != 0 {
+        // An allowed front-panel observation can set APPLIED while startup's
+        // RF/DSP transaction is still pending. Only a completed commit is ready.
+        if snapshot.flags & (raw::RPTADV_REMOTE_APPLIED | raw::RPTADV_REMOTE_PENDING)
+            == raw::RPTADV_REMOTE_APPLIED
+        {
             self.queue.mark_ready();
         }
         Ok(())
@@ -361,13 +388,8 @@ impl RemoteGeneration {
         });
         let rig = if self.wiring.ptt == RemotePttSource::Rig {
             let rig = self.rig.as_mut().ok_or(CallError(-6))?.rig();
-            rig.set(20, 0).and_then(|()| {
-                if rig.get(20)? == 0 {
-                    Ok(())
-                } else {
-                    Err(CallError(-1101))
-                }
-            })
+            rig.set(20, 0)
+                .and_then(|()| confirm_ptt(rig.get(20)?, false))
         } else {
             Ok(())
         };
@@ -386,6 +408,12 @@ impl RemoteGeneration {
         outputs: &mut OutputState,
     ) -> Result<(), CallError> {
         self.owner.retire()?;
+        // Hamlib close consumes its handle even on error. Taking it below is
+        // possible only after confirmed OFF, so a retry is already safe/done.
+        // Parallel backends have no rig from birth and still need GPIO unkey.
+        if self.setup.configuration().backend == RemoteBackend::Hamlib && self.rig.is_none() {
+            return Ok(());
+        }
         self.unkey(worker, devices, outputs)?;
         if let Some(mut rig) = self.rig.take() {
             rig.rig().close()?;
@@ -408,16 +436,6 @@ struct PhysicalBackend<'a> {
     queue: &'a RemoteQueue,
     source: Option<RemoteSourceLease>,
 }
-impl PhysicalBackend<'_> {
-    fn cancelled(&self) -> bool {
-        self.worker.stop.load(Ordering::Acquire)
-            || self.queue.has_urgent()
-            || self
-                .source
-                .as_ref()
-                .is_some_and(|source| !source.source().valid)
-    }
-}
 impl OperatingIo for PhysicalBackend<'_> {
     fn read_state(&mut self) -> Result<raw::RptAdvRemoteState, CallError> {
         let worker = self.worker;
@@ -426,11 +444,7 @@ impl OperatingIo for PhysicalBackend<'_> {
         self.rig
             .as_mut()
             .ok_or(CallError(-6))?
-            .read(self.current, || {
-                worker.stop.load(Ordering::Acquire)
-                    || queue.has_urgent()
-                    || source.is_some_and(|source| !source.source().valid)
-            })
+            .read(self.current, || physical_cancelled(worker, queue, source))
     }
     fn apply_state(&mut self, state: &raw::RptAdvRemoteState) -> Result<(), CallError> {
         self.worker
@@ -439,25 +453,21 @@ impl OperatingIo for PhysicalBackend<'_> {
                 enabled: true,
                 ..Default::default()
             });
-        if self.cancelled() {
+        if physical_cancelled(self.worker, self.queue, self.source.as_ref()) {
             return Err(CallError(-10));
         }
         let worker = self.worker;
         let queue = self.queue;
         let source = self.source.as_ref();
-        let cancelled = || {
-            worker.stop.load(Ordering::Acquire)
-                || queue.has_urgent()
-                || source.is_some_and(|source| !source.source().valid)
-        };
+        let cancelled = || physical_cancelled(worker, queue, source);
         if let Some(rig) = &mut self.rig {
             rig.apply(state, cancelled)?;
             *self.encode_gate = None;
         } else {
             // These transports have FM/channel/frequency control only. Never
             // acknowledge an RF control the existing hardware cannot program.
-            if state.mode != 1
-                || state.bandwidth_hz != 0
+            // FM is already enforced by the admitted parallel capability mask.
+            if state.bandwidth_hz != 0
                 || state.receive_vfo != 0
                 || state.transmit_vfo != 0
                 || state.rit_hz != 0
@@ -466,54 +476,47 @@ impl OperatingIo for PhysicalBackend<'_> {
             {
                 return Err(CallError(-6));
             }
-            match self.setup.configuration().backend {
-                RemoteBackend::ParallelChannel => {
-                    if state.flags & 4 == 0
-                        || !self.setup.configuration().memories.iter().any(|memory| {
-                            memory.state.channel == Some(state.channel as u8)
-                                && memory.state.receive_hz == state.receive_hz
-                                && memory.state.transmit_hz.unwrap_or(0) == state.transmit_hz
-                                && memory.state.offset_hz == state.offset_hz
-                        })
-                    {
-                        return Err(CallError(-6));
-                    }
-                    self.outputs
-                        .select_channel(
-                            state.channel.try_into().map_err(|_| CallError(-6))?,
-                            self.devices,
-                        )
-                        .map_err(failure)?;
+            // A live Hamlib generation always owns a rig; only parallel remains.
+            if self.setup.configuration().backend == RemoteBackend::ParallelChannel {
+                if !self.setup.configuration().memories.iter().any(|memory| {
+                    memory.state.channel == Some(state.channel as u8)
+                        && memory.state.receive_hz == state.receive_hz
+                        && memory.state.transmit_hz.unwrap_or(0) == state.transmit_hz
+                        && memory.state.offset_hz == state.offset_hz
+                }) {
+                    return Err(CallError(-6));
                 }
-                RemoteBackend::ParallelRtx => {
-                    let transmit = if state.flags & 1 == 0 {
-                        0
-                    } else {
-                        state
-                            .transmit_hz
-                            .checked_add_signed(state.offset_hz)
-                            .ok_or(CallError(-6))?
-                    };
-                    if !crate::remote_hardware::rtx_frequencies_representable(
-                        state.receive_hz,
-                        transmit,
-                    ) {
-                        return Err(CallError(-6));
-                    }
-                    self.outputs
-                        .configure_remote_radio(RemoteRadio {
-                            receive_hz: state.receive_hz.try_into().map_err(|_| CallError(-6))?,
-                            transmit_hz: transmit.try_into().map_err(|_| CallError(-6))?,
-                            receive_ctcss: None,
-                            transmit_ctcss: None,
-                            high_power: false,
-                        })
-                        .map_err(failure)?;
-                    self.outputs
-                        .service_remote_radio(self.devices, false)
-                        .map_err(failure)?;
+                self.outputs
+                    .select_channel(state.channel as u8, self.devices)
+                    .map_err(failure)?;
+            } else {
+                let transmit = if state.flags & 1 == 0 {
+                    0
+                } else {
+                    state
+                        .transmit_hz
+                        .checked_add_signed(state.offset_hz)
+                        .expect("Core admitted the effective transmit frequency")
+                };
+                if !crate::remote_hardware::rtx_frequencies_representable(
+                    state.receive_hz,
+                    transmit,
+                ) {
+                    return Err(CallError(-6));
                 }
-                RemoteBackend::Hamlib => return Err(CallError(-6)),
+                self.outputs
+                    .configure_remote_radio(RemoteRadio {
+                        // The verified RTX register range fits u32.
+                        receive_hz: state.receive_hz as u32,
+                        transmit_hz: transmit as u32,
+                        receive_ctcss: None,
+                        transmit_ctcss: None,
+                        high_power: false,
+                    })
+                    .map_err(failure)?;
+                self.outputs
+                    .service_remote_radio(self.devices, false)
+                    .map_err(failure)?;
             }
         }
         self.setup
@@ -553,13 +556,8 @@ impl OperatingIo for PhysicalBackend<'_> {
         }
         let rig = if self.wiring.ptt == RemotePttSource::Rig {
             let rig = self.rig.as_mut().ok_or(CallError(-6))?.rig();
-            rig.set(20, i64::from(keyed)).and_then(|()| {
-                if (rig.get(20)? != 0) == keyed {
-                    Ok(())
-                } else {
-                    Err(CallError(-1101))
-                }
-            })
+            rig.set(20, i64::from(keyed))
+                .and_then(|()| confirm_ptt(rig.get(20)?, keyed))
         } else {
             Ok(())
         };
@@ -641,26 +639,5 @@ impl RemoteDevice for PhysicalBackend<'_> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn unknown_physical_ptt_blocks_new_rf_work() {
-        assert!(physical_busy(None));
-        assert!(physical_busy(Some(true)));
-        assert!(!physical_busy(Some(false)));
-    }
-    #[test]
-    fn non_fm_half_duplex_receive_waits_for_confirmed_physical_unkey() {
-        for mode in [1, 3] {
-            for duplex in [false, true] {
-                for physical in [None, Some(false), Some(true)] {
-                    assert_eq!(
-                        receive_allowed(true, mode, duplex, physical),
-                        mode == 1 || duplex || physical == Some(false)
-                    );
-                    assert!(!receive_allowed(false, mode, duplex, physical));
-                }
-            }
-        }
-    }
-}
+#[path = "tests/hardware_remote_tests.rs"]
+mod tests;

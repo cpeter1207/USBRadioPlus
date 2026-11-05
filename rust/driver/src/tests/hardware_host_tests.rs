@@ -22,7 +22,7 @@ static TEST_LOCK: Mutex<()> = Mutex::new(());
 static GPIO_INPUTS: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_INPUTS: AtomicU32 = AtomicU32::new(0);
 static PTT: AtomicU32 = AtomicU32::new(0);
-static FAILURE: AtomicU32 = AtomicU32::new(0);
+pub(super) static FAILURE: AtomicU32 = AtomicU32::new(0);
 static MIXER_PATHS_MODE: AtomicU32 = AtomicU32::new(0);
 static DEVICE_INTERFACE_MODE: AtomicU32 = AtomicU32::new(0);
 static EEPROM_FLAGS: AtomicU32 = AtomicU32::new(3);
@@ -58,7 +58,7 @@ const FAIL_PARALLEL_OPEN: u32 = 11;
 const FAIL_CM119_PUBLISH: u32 = 12;
 const FAIL_CM119_SERVICE: u32 = 13;
 const FAIL_CM119_INPUTS: u32 = 14;
-const FAIL_CM119_STATISTICS: u32 = 15;
+pub(super) const FAIL_CM119_STATISTICS: u32 = 15;
 const FAIL_EEPROM_READ: u32 = 16;
 const FAIL_EEPROM_WRITE: u32 = 17;
 const FAIL_CM119_PULSE: u32 = 18;
@@ -87,7 +87,7 @@ fn fail_once(code: u32) -> bool {
         .is_ok()
 }
 
-fn reset_test_state() {
+pub(super) fn reset_test_state() {
     GPIO_INPUTS.store(0, Ordering::Release);
     PARALLEL_INPUTS.store(0, Ordering::Release);
     PTT.store(0, Ordering::Release);
@@ -116,7 +116,7 @@ fn reset_test_state() {
     PARALLEL_REMOTE_RECEIVE.store(0, Ordering::Release);
 }
 
-fn test_guard() -> std::sync::MutexGuard<'static, ()> {
+pub(super) fn test_guard() -> std::sync::MutexGuard<'static, ()> {
     TEST_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -1773,7 +1773,7 @@ fn audio_provider() -> AudioProvider {
     unsafe { AudioProvider::from_raw_descriptor(ptr::from_ref(&AUDIO_DESCRIPTOR).cast()) }.unwrap()
 }
 
-fn gpio_provider() -> GpioAdapter {
+pub(super) fn gpio_provider() -> GpioAdapter {
     // SAFETY: the descriptor and every referenced function have process lifetime.
     unsafe { GpioAdapter::from_raw(ptr::from_ref(&GPIO_DESCRIPTOR).cast()) }.unwrap()
 }
@@ -1935,7 +1935,7 @@ fn app_rpt_local_repeat_change_requires_hardware_handoff() {
     assert!(!station.supports_live_update(&changed));
 }
 
-fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan) {
+pub(super) fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan) {
     let channel = resolved_hardware_channel();
     let mut plan = hardware_plan(channel.config());
     if !with_parallel {
@@ -1984,6 +1984,11 @@ fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
     generation
         .retire(&worker, &mut devices, &mut outputs)
         .unwrap();
+    assert_eq!(
+        generation.retire(&worker, &mut devices, &mut outputs),
+        Ok(()),
+        "a consumed CAT handle must not leave retirement stuck"
+    );
 }
 
 #[test]
@@ -2023,6 +2028,63 @@ fn remote_generation_keeps_audio_closed_when_dsp_owner_is_gone() {
     generation
         .retire(&worker, &mut devices, &mut outputs)
         .unwrap();
+}
+
+#[test]
+fn rejected_remote_generation_retries_physical_off_and_returns_its_original_cause() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{CarrierSource, RemoteBackend};
+    let _guard = test_guard();
+    for backend in [RemoteBackend::Hamlib, RemoteBackend::ParallelChannel] {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(backend == RemoteBackend::ParallelChannel);
+        let mut configuration = configuration();
+        configuration.backend = backend;
+        configuration.ptt_source = Some("usb".into());
+        if backend == RemoteBackend::Hamlib {
+            // The rig opens, then explicit unavailable COR rejects admission.
+            configuration.cor_source = Some("parallel".into());
+        } else {
+            plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+            configuration.memories[0].state.channel = Some(7);
+            // Policy permits USB, but the selected channel hardware is FM-only.
+            configuration.memories[0].state.mode = 3;
+        }
+        let (setup, _control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        FAILURE.store(FAIL_CM119_STATISTICS, Ordering::Release);
+        let error = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .err();
+        assert_eq!(
+            error,
+            Some(usbradioplus_remote::CallError(
+                if backend == RemoteBackend::Hamlib {
+                    -6
+                } else {
+                    -2
+                }
+            ))
+        );
+        assert_eq!(FAILURE.load(Ordering::Acquire), 0);
+        assert_eq!(PTT.load(Ordering::Acquire), 0);
+        assert!(!state.remote_control().transmit_permitted);
+    }
 }
 
 #[test]
@@ -2147,6 +2209,241 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
     assert_eq!(station.maintenance.service.remote_ready(), Err(-1101));
 }
 
+fn remote_station_command(
+    station: &mut HardwareStation,
+    factory: &StationFactory,
+    operation: usbradioplus_core::remote_operation::RemoteOperation,
+) -> Result<crate::RemoteReply, crate::RemoteRequestError> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while station.maintenance.service.remote_ready() == Ok(false) {
+        factory.service_remote(station);
+        assert_eq!(
+            // SAFETY: the fixture retains the fake stream and both callback contexts.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        assert!(
+            Instant::now() < deadline,
+            "remote activation did not finish"
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(true));
+    let ticket = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    loop {
+        factory.service_remote(station);
+        assert_eq!(
+            // SAFETY: the fixture retains the fake stream and both callback contexts.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        if let Some(result) = ticket.take_completion() {
+            return result;
+        }
+        let state = station.maintenance.hardware_state();
+        let activity = state.remote_activity();
+        assert!(
+            Instant::now() < deadline,
+            "operation {} stalled: fault={} local={} linked={} requested={} physical={:?}",
+            operation.operation,
+            station.maintenance.service.remote_error(),
+            activity.local_receiving,
+            activity.linked_receiving,
+            activity.transmit_requested,
+            state.remote_signals().physical_ptt,
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
+}
+
+#[test]
+fn remote_station_observes_power_changes_modes_and_bounds_manual_tune_with_both_ptt_sources() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource,
+        remote_operation::{RemoteOperation as O, RemoteOperationKind as K},
+    };
+    let _guard = test_guard();
+    crate::test_support::follow_radio_ptt_for_current_test();
+    for ptt_source in ["usb", "hamlib"] {
+        reset_test_state();
+        let mut station = open_hardware_station();
+        let factory = StationFactory::new(
+            station_providers(graph_provider(), sample_rate_adapter()),
+            "agc.so",
+            960,
+        )
+        .unwrap();
+        let mut configuration = configuration();
+        configuration.memories[0].state.power_mw = Some(5000);
+        configuration.ptt_source = Some(ptt_source.into());
+        configuration.tune_duration_ms = 50;
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            station.control().plan().hardware().clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        station.bind_remote(setup, control).unwrap();
+        station.start().unwrap();
+        for selector in [1, 11] {
+            let mut operation = O::new(K::GetSetting);
+            operation.selector = selector;
+            let result = remote_station_command(&mut station, &factory, operation)
+                .unwrap_or_else(|error| panic!("setting {selector}: {error:?}"));
+            assert!(matches!(result, RemoteReply::Value { .. }));
+        }
+        for (kind, selector) in [
+            (K::PowerPreset, 2),
+            (K::Mode, 3),
+            (K::Mode, 1),
+            (K::Tune, 0),
+        ] {
+            let mut operation = O::new(kind);
+            operation.selector = selector;
+            let result = remote_station_command(&mut station, &factory, operation)
+                .unwrap_or_else(|error| panic!("{kind:?}: {error:?}"));
+            assert!(matches!(result, RemoteReply::Applied));
+        }
+        station.stop().unwrap();
+        assert_eq!(
+            station
+                .maintenance
+                .hardware_state()
+                .remote_signals()
+                .physical_ptt,
+            Some(false)
+        );
+    }
+}
+
+#[test]
+fn remote_station_gates_rig_and_external_encode_independently_of_decode_programming() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource, RemoteEncoderOutput, RemoteSignal, RemoteSignalSource as S,
+        remote_operation::{RemoteOperation as O, RemoteOperationKind as K},
+    };
+    let _guard = test_guard();
+    for case in 0..6 {
+        reset_test_state();
+        let source = ConfigDocument::new("[usb]\n[hardware]\nhardware_gpio_6_mode=out0\n");
+        let channel =
+            ResolvedChannelConfiguration::from_document(&source, "radio.conf", "usb").unwrap();
+        let mut station = open_configured_hardware_station(channel);
+        let factory = StationFactory::new(
+            station_providers(graph_provider(), sample_rate_adapter()),
+            "agc.so",
+            960,
+        )
+        .unwrap();
+        let mut configuration = configuration();
+        configuration.memories[0].state.power_mw = Some(5000);
+        configuration.poll_interval_ms = 1;
+        configuration.cor_source = Some(
+            if matches!(case, 0 | 4) {
+                "hamlib"
+            } else {
+                "open"
+            }
+            .into(),
+        );
+        configuration.memories[0].state.encode = RemoteSignal {
+            source: match case {
+                0 | 4 => S::Rig,
+                3 => S::Dsp,
+                _ => S::External,
+            },
+            enabled: case < 4,
+            tone_tenths_hz: 1148,
+            ..RemoteSignal::default()
+        };
+        if matches!(case, 1 | 2 | 5) {
+            configuration.external_encode_output =
+                Some(RemoteEncoderOutput::Usb(GpioPin::new(6).unwrap()));
+            configuration.external_encode_inverted = case == 2;
+        }
+        if case != 3 {
+            configuration.memories[0].state.decode = RemoteSignal {
+                source: S::External,
+                control_source: (case == 0).then_some(S::Rig),
+                enabled: true,
+                tone_tenths_hz: 1148,
+                ..RemoteSignal::default()
+            };
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            station.control().plan().hardware().clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig {
+                subaudible_source: if case == 3 {
+                    usbradioplus_radio::SubaudibleSource::Disabled
+                } else {
+                    usbradioplus_radio::SubaudibleSource::Usb
+                },
+                ..usbradioplus_radio::QualificationConfig::default()
+            },
+        )
+        .unwrap();
+        station.bind_remote(setup, control).unwrap();
+        station.start().unwrap();
+        for requested in [false, true, true, false] {
+            station.set_ctcss_inhibited(!requested);
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                let reply = remote_station_command(&mut station, &factory, O::new(K::Status))
+                    .unwrap_or_else(|error| panic!("tone case {case}: {error:?}"));
+                let RemoteReply::Status { snapshot, .. } = reply else {
+                    panic!("status response expected");
+                };
+                assert_eq!(snapshot.applied.encode.enabled, u32::from(case < 4));
+                let observed = match case {
+                    1 | 2 | 5 => {
+                        (GPIO_FINAL_BYTE.load(Ordering::Acquire) & 0x20 != 0)
+                            == ((requested && case < 4) != (case == 2))
+                    }
+                    _ => {
+                        station
+                            .maintenance
+                            .hardware_state()
+                            .remote_activity()
+                            .ctcss_requested
+                            == requested
+                    }
+                };
+                if observed {
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "encode case {case} did not follow {requested}"
+                );
+            }
+        }
+        assert_eq!(
+            station
+                .maintenance
+                .hardware_state()
+                .remote_control()
+                .local_unqualified_open,
+            case == 3
+        );
+        station.stop().unwrap();
+        if matches!(case, 1 | 2 | 5) {
+            assert_eq!(
+                GPIO_FINAL_BYTE.load(Ordering::Acquire) & 0x20 != 0,
+                case == 2
+            );
+        }
+    }
+}
+
 #[test]
 fn native_selection_preserves_physical_layout_profile_and_identity_without_tuning() {
     use usbradioplus_audio::{ChannelCount, SelectionPolicy};
@@ -2201,6 +2498,123 @@ fn native_selection_preserves_physical_layout_profile_and_identity_without_tunin
         }
     }
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn remote_parallel_composition_rejects_unprogrammable_fields_and_preserves_io_failures() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{CarrierSource, RemoteBackend};
+    use usbradioplus_remote::CallError;
+    let _guard = test_guard();
+    for case in 0..11 {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(true);
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        let mut configuration = configuration();
+        configuration.backend = RemoteBackend::ParallelChannel;
+        configuration.ptt_source = Some("usb".into());
+        let memory = &mut configuration.memories[0].state;
+        memory.channel = Some(7);
+        match case {
+            1 => memory.bandwidth_hz = 2400,
+            2 => memory.receive_vfo = 1,
+            3 => memory.transmit_vfo = 1,
+            4 => memory.rit_hz = 10,
+            5 => memory.xit_hz = 10,
+            6 => memory.split = true,
+            7 => memory.rit_enabled = true,
+            8 => memory.xit_enabled = true,
+            9 => {
+                memory.transmit_hz = None;
+                memory.power_mw = Some(5000);
+            }
+            _ => {}
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        // A valid hardware write reaches the missing DSP owner; unsupported
+        // hardware fields and failed writes must stop before that exchange.
+        drop(control);
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        let mut generation = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .unwrap();
+        if case == 10 {
+            FAILURE.store(FAIL_SELECT_CHANNEL, Ordering::Release);
+        }
+        assert_eq!(
+            generation.service(&worker, &mut devices, &mut outputs),
+            Err(CallError(match case {
+                0 | 6 => -1102,
+                10 => -1101,
+                _ => -6,
+            })),
+            "channel case {case}"
+        );
+        assert!(!state.remote_control().transmit_permitted);
+        generation
+            .retire(&worker, &mut devices, &mut outputs)
+            .unwrap();
+    }
+    for case in 0..3 {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(true);
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        plan.parallel.as_mut().unwrap().ptt_mask = 8;
+        let mut configuration = configuration();
+        configuration.backend = RemoteBackend::ParallelRtx;
+        configuration.ptt_source = Some("parallel".into());
+        if case == 1 {
+            configuration.memories[0].state.transmit_hz = None;
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        drop(control);
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        let mut generation = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .unwrap();
+        if case == 2 {
+            FAILURE.store(FAIL_PROGRAM_REMOTE, Ordering::Release);
+        }
+        assert_eq!(
+            generation.service(&worker, &mut devices, &mut outputs),
+            Err(CallError(if case == 2 { -1101 } else { -1102 })),
+            "RTX case {case}"
+        );
+        assert!(!state.remote_control().transmit_permitted);
+        generation
+            .retire(&worker, &mut devices, &mut outputs)
+            .unwrap();
+    }
 }
 
 #[test]
@@ -3753,7 +4167,7 @@ fn external_encoder_owns_its_pin_and_closes_inactive_for_both_polarities() {
     }
 }
 
-fn service_worker(
+pub(super) fn service_worker(
     plan: &HardwarePlan,
     selected: &SelectedHardwarePlan,
     state: SharedHardwareState,
@@ -3805,7 +4219,10 @@ fn hardware_service(eeprom_enabled: bool, with_parallel: bool) -> HardwareServic
 }
 
 fn open_hardware_station() -> HardwareStation {
-    let mut channel = resolved_hardware_channel();
+    open_configured_hardware_station(resolved_hardware_channel())
+}
+
+fn open_configured_hardware_station(mut channel: ResolvedChannelConfiguration) -> HardwareStation {
     let preflight = HardwareStation::preflight(
         &hardware_plan(channel.config()),
         true,

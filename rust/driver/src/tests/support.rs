@@ -13,6 +13,33 @@ use crate::StationProviders;
 const OK: c_int = 0;
 const GRAPH_WARMUP_BLOCKS: usize = 8;
 
+pub(crate) fn setting(
+    selector: u32,
+    readable: bool,
+    writable: bool,
+) -> usbradioplus_remote::Setting {
+    usbradioplus_remote::Setting {
+        selector,
+        name: "test".into(),
+        readable,
+        writable,
+        value_kind: 1,
+        units: 0,
+        decimal_places: 0,
+        minimum: 0,
+        maximum: 1,
+        choices: vec![],
+    }
+}
+
+thread_local! {
+    static RADIO_FOLLOWS_PTT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+pub(crate) fn follow_radio_ptt_for_current_test() {
+    RADIO_FOLLOWS_PTT.set(true);
+}
+
 #[repr(C)]
 struct GraphConfig {
     struct_size: u32,
@@ -371,6 +398,7 @@ struct RadioConfigPrefix {
 
 struct RadioState {
     generation_id: u64,
+    follows_ptt: bool,
 }
 
 #[repr(C)]
@@ -460,6 +488,7 @@ unsafe extern "C" fn radio_create(
     unsafe {
         *output = Box::into_raw(Box::new(RadioState {
             generation_id: (*config.cast::<RadioConfigPrefix>()).generation_id,
+            follows_ptt: RADIO_FOLLOWS_PTT.get(),
         }))
         .cast()
     };
@@ -482,7 +511,8 @@ unsafe extern "C" fn radio_receive(
     _controls: *const c_void,
     result: *mut c_void,
 ) -> c_int {
-    // SAFETY: The fake handle and result destination originate from the radio wrapper.
+    // SAFETY: The radio wrapper supplies the fake handle, complete transmit
+    // controls and writable result destination for this synchronous callback.
     unsafe {
         result
             .cast::<RadioReceiveResult>()
@@ -504,17 +534,25 @@ unsafe extern "C" fn radio_transmit(
     handle: *mut c_void,
     _output: *mut f32,
     frames: u32,
-    _controls: *const c_void,
+    controls: *const c_void,
     result: *mut c_void,
 ) -> c_int {
     // SAFETY: The fake handle and result destination originate from the radio wrapper.
     unsafe {
+        let radio = &*handle.cast::<RadioState>();
+        // The radio ABI starts transmit controls with u32 external_ptt_request.
+        let keyed = if radio.follows_ptt {
+            controls.cast::<u32>().read()
+        } else {
+            0
+        };
         result
             .cast::<RadioTransmitResult>()
             .write(RadioTransmitResult {
-                generation_id: (*handle.cast::<RadioState>()).generation_id,
+                generation_id: radio.generation_id,
                 frame_count: frames,
-                transmitter_state: 0,
+                logical_ptt: keyed,
+                transmitter_state: i32::from(keyed != 0),
                 program_ring: RadioRingObservation {
                     ratio: 1.0,
                     ..RadioRingObservation::default()

@@ -328,7 +328,7 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
     }
     let callbacks = crate::DirectCallbacks {
         struct_size: size_of::<crate::DirectCallbacks>() as u32,
-        abi_version: 3,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
         receive_context: ptr::from_mut(&mut received).cast(),
         receive: Some(receive),
         transmit_context: ptr::from_mut(&mut transmitted).cast(),
@@ -429,7 +429,7 @@ fn native_failed_render_and_oversized_callback_clear_key_and_output() {
         };
         let callbacks = crate::DirectCallbacks {
             struct_size: size_of::<crate::DirectCallbacks>() as u32,
-            abi_version: 3,
+            abi_version: crate::DirectCallbacks::ABI_VERSION,
             receive_context: ptr::from_mut(&mut capture).cast(),
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
