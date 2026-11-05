@@ -175,6 +175,21 @@ impl StationPlan {
         self
     }
 
+    /// Replace effective radio settings while retaining the selected hardware,
+    /// transport, buffering, and exact processing profile/raw-graph ownership.
+    /// Preparation and mailbox admission still validate callback bounds and the
+    /// original generation. Device changes use the existing device-handoff path.
+    #[must_use]
+    pub fn with_radio_configuration(
+        mut self,
+        configuration: ChannelConfiguration,
+        radio: SessionConfig,
+    ) -> Self {
+        self.configuration = configuration;
+        self.radio = radio;
+        self
+    }
+
     /// Prepare and warm the plan's selected processing outside audio callbacks.
     ///
     /// This is the only external-provider operation in station preparation.

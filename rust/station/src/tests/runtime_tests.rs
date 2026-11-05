@@ -1,5 +1,35 @@
 use super::*;
 
+#[test]
+fn remote_radio_plan_update_preserves_physical_and_processing_ownership() {
+    for transport in [
+        crate::ControllerTransport::AppRpt,
+        crate::ControllerTransport::RptAdvanced,
+    ] {
+        let (plan, _) = prepared(transport, 24).into_parts();
+        let mut exact = plan.processing().clone();
+        exact.local = None;
+        exact.receive_graph = "highpass=f=60".to_owned();
+        exact.transmit_graph = "volume=-2dB".to_owned();
+        let original = plan.with_explicit_processing(exact);
+        let mut configuration = original.configuration().clone();
+        configuration.station.ctcss.receive_frequencies.clear();
+        let mut radio = *original.radio();
+        radio.generation_id += 1;
+        radio.receive.signaling = usbradioplus_radio::ReceiveSignaling::Disabled;
+        let next = original
+            .clone()
+            .with_radio_configuration(configuration.clone(), radio);
+        assert_eq!(next.configuration(), &configuration);
+        assert_eq!(next.radio(), &radio);
+        assert_eq!(next.channel(), original.channel());
+        assert_eq!(next.transport(), original.transport());
+        assert_eq!(next.hardware(), original.hardware());
+        assert_eq!(next.program_ring(), original.program_ring());
+        assert_eq!(next.processing(), original.processing());
+    }
+}
+
 use std::cell::Cell;
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
