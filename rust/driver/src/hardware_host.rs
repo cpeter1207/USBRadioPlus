@@ -11,6 +11,7 @@ use crate::hardware_site::{
     SiteBank, SiteBankState, SiteCache, SiteDigitalBinding, SiteDigitalRequest,
     SiteDigitalSnapshot, SiteError,
 };
+use crate::remote_hardware::{PhysicalPttControl, RemotePttSource};
 use std::cell::{Cell, RefCell, RefMut};
 use std::fmt;
 use std::sync::Arc;
@@ -2166,6 +2167,14 @@ impl HardwareService {
         self.site_clock = Instant::now();
         let worker = ServiceWorker {
             native: self.native,
+            ptt_control: Cell::new(if self.state.remote_control().enabled {
+                PhysicalPttControl::Remote {
+                    selected: None,
+                    key: false,
+                }
+            } else {
+                PhysicalPttControl::Ordinary
+            }),
             provider: self.provider,
             selected: self.selected.clone(),
             parallel: self.parallel.clone(),
@@ -2983,6 +2992,7 @@ fn apply_persistent(value: &mut u8, bit: u8, request: OutputRequest) {
 
 struct ServiceWorker {
     native: bool,
+    ptt_control: Cell<PhysicalPttControl>,
     provider: GpioAdapter,
     selected: SelectedHardwarePlan,
     parallel: Option<ParallelPlan>,
@@ -2998,6 +3008,9 @@ struct ServiceWorker {
 }
 
 impl ServiceWorker {
+    fn ptt_for(&self, source: RemotePttSource, rendered: bool) -> bool {
+        self.ptt_control.get().key_for(source, rendered)
+    }
     fn now_ms(&self) -> u64 {
         self.clock.elapsed().as_millis().min(u128::from(u64::MAX)) as u64
     }
@@ -3204,7 +3217,7 @@ fn service_once(
     if let Some(device) = &devices.cm119 {
         device
             .publish_outputs(Cm119Outputs {
-                ptt_asserted: radio.logical_ptt,
+                ptt_asserted: worker.ptt_for(RemotePttSource::Usb, radio.logical_ptt),
                 gpio_output_mask: outputs.cm119,
             })
             .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
@@ -3212,7 +3225,12 @@ fn service_once(
     }
     let snapshot = devices.cm119_snapshot()?;
     observe_cm119(outputs, snapshot, worker.now_ms());
-    let parallel = service_parallel_once(devices, outputs, worker, radio.logical_ptt)?;
+    let parallel = service_parallel_once(
+        devices,
+        outputs,
+        worker,
+        worker.ptt_for(RemotePttSource::Parallel, radio.logical_ptt),
+    )?;
     worker
         .state
         .publish_inputs(collected_inputs(devices, worker, snapshot, parallel)?);
@@ -3333,7 +3351,12 @@ fn service_native_once(
     let ready = snapshots
         .as_ref()
         .is_ok_and(|snapshot| snapshot.is_none_or(|(inputs, _)| inputs.online));
-    let parallel = service_parallel_once(devices, outputs, worker, ready && logical_ptt);
+    let parallel = service_parallel_once(
+        devices,
+        outputs,
+        worker,
+        ready && worker.ptt_for(RemotePttSource::Parallel, logical_ptt),
+    );
     let mut inputs = if ready {
         collected_inputs(
             devices,
@@ -3346,7 +3369,7 @@ fn service_native_once(
     };
     if let Some(device) = &devices.cm119 {
         let requested = Cm119Outputs {
-            ptt_asserted: ready && logical_ptt,
+            ptt_asserted: ready && worker.ptt_for(RemotePttSource::Usb, logical_ptt),
             gpio_output_mask: outputs.cm119,
         };
         if outputs.native_outputs != Some(requested) {

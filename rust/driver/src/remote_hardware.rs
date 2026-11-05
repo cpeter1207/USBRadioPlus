@@ -17,6 +17,25 @@ pub enum RemotePttSource {
     Parallel,
 }
 
+/// Worker-local output routing. Audio only publishes demand; a remote owner
+/// services one selected output, keeping every other dedicated PTT inactive.
+#[derive(Clone, Copy)]
+pub(crate) enum PhysicalPttControl {
+    Ordinary,
+    Remote {
+        selected: Option<RemotePttSource>,
+        key: bool,
+    },
+}
+impl PhysicalPttControl {
+    pub(crate) fn key_for(self, source: RemotePttSource, rendered: bool) -> bool {
+        match self {
+            Self::Ordinary => rendered,
+            Self::Remote { selected, key } => selected == Some(source) && key,
+        }
+    }
+}
+
 /// Effective signal ownership. A failed observation never changes these choices.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RemotePhysicalWiring {
@@ -234,5 +253,28 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn remote_ptt_routing_never_mirrors_to_an_unselected_output() {
+        assert!(PhysicalPttControl::Ordinary.key_for(RemotePttSource::Usb, true));
+        assert!(PhysicalPttControl::Ordinary.key_for(RemotePttSource::Parallel, true));
+        for (selected, key) in [
+            (None, false),
+            (Some(RemotePttSource::Rig), true),
+            (Some(RemotePttSource::Usb), true),
+            (Some(RemotePttSource::Parallel), true),
+            (Some(RemotePttSource::Usb), false),
+        ] {
+            let routing = PhysicalPttControl::Remote { selected, key };
+            assert_eq!(
+                routing.key_for(RemotePttSource::Usb, true),
+                key && selected == Some(RemotePttSource::Usb)
+            );
+            assert_eq!(
+                routing.key_for(RemotePttSource::Parallel, true),
+                key && selected == Some(RemotePttSource::Parallel)
+            );
+        }
     }
 }

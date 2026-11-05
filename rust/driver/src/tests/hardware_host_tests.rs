@@ -3412,6 +3412,7 @@ fn service_worker(
     (
         ServiceWorker {
             native: false,
+            ptt_control: Cell::new(PhysicalPttControl::Ordinary),
             provider: gpio_provider(),
             selected: selected.clone(),
             parallel: plan.parallel.clone(),
