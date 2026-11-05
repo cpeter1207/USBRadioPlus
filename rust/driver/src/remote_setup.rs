@@ -44,10 +44,13 @@ impl RemoteSetup {
     /// original-control DSP pump separately; move only setup to the worker.
     pub fn prepare(
         configuration: ResolvedRemoteConfiguration,
-        plan: HardwarePlan,
+        mut plan: HardwarePlan,
         carrier: CarrierSource,
         external_decode: SubaudibleSource,
     ) -> Result<(Self, RemoteDspControl), RemoteSetupError> {
+        if configuration.audio_source == usbradioplus_core::RemoteAudioSource::Alsa {
+            plan.cm119 = None;
+        }
         let engine = Arc::new(RemoteProvider::load().map_err(RemoteSetupError::Provider)?);
         let hamlib = if configuration.backend == RemoteBackend::Hamlib {
             let provider = Arc::new(HamlibProvider::load().map_err(RemoteSetupError::Provider)?);
@@ -176,5 +179,18 @@ mod tests {
                 -1001
             )))
         ));
+    }
+    #[test]
+    fn remote_setup_generic_audio_has_no_cm119_owner() {
+        let mut config = configuration();
+        config.audio_source = usbradioplus_core::RemoteAudioSource::Alsa;
+        let (setup, _control) = RemoteSetup::prepare(
+            config,
+            plan(),
+            CarrierSource::Dsp,
+            SubaudibleSource::Disabled,
+        )
+        .unwrap();
+        assert!(setup.hardware().cm119.is_none());
     }
 }

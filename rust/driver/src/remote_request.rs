@@ -100,7 +100,10 @@ pub fn prepare_remote_operation(
             if request.state.flags & 1 != 0 {
                 request.state.transmit_hz = operation.magnitude;
             }
-            request.fields = 1 | 2 | 64;
+            // Familiar repeater-offset tuning returns to common/simplex VFO
+            // routing rather than retaining a previously selected split.
+            request.state.flags &= !8;
+            request.fields = 1 | 2 | 64 | (1 << 13);
         }
         Kind::Mode => {
             request.state.mode = operation.selector;
@@ -323,7 +326,8 @@ pub(crate) mod tests {
         frequency.flags = 1;
         let request = core(frequency);
         assert_eq!(request.kind, raw::RptAdvRemoteRequestKind_RPTADV_REMOTE_SET);
-        assert_eq!(request.fields, 1 | 2 | 64);
+        assert_eq!(request.fields, 1 | 2 | 64 | (1 << 13));
+        assert_eq!(request.state.flags & 8, 0);
         assert_eq!(request.state.receive_hz, 146_940_000);
         assert_eq!(request.state.transmit_hz, 146_940_000);
         assert_eq!(request.state.offset_hz, -600_000);

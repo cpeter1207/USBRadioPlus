@@ -901,6 +901,8 @@ struct FakeStream {
     transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
     transmit_context: *mut c_void,
 }
+static LAST_STREAM: std::sync::atomic::AtomicPtr<c_void> =
+    std::sync::atomic::AtomicPtr::new(ptr::null_mut());
 
 struct FakeMixer {
     normalized: u32,
@@ -924,6 +926,7 @@ unsafe extern "C" fn audio_stream_create(
         transmit_context: config.transmit_context,
     }))
     .cast();
+    LAST_STREAM.store(*output, Ordering::Release);
     OK
 }
 
@@ -1934,6 +1937,154 @@ fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan
         .unwrap();
     let selected = plan.select(&selected, 960).unwrap();
     (plan, selected)
+}
+
+#[test]
+fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::CarrierSource;
+    use usbradioplus_radio::SubaudibleSource;
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (setup, _control) = RemoteSetup::prepare(
+        configuration(),
+        plan.clone(),
+        CarrierSource::Dsp,
+        SubaudibleSource::Disabled,
+    )
+    .unwrap();
+    let state = SharedHardwareState::default();
+    let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut generation = remote::RemoteGeneration::open(
+        setup,
+        Arc::new(RemoteQueue::new(4)),
+        &worker,
+        &mut devices,
+        &mut outputs,
+    )
+    .unwrap();
+    assert_eq!(generation.wiring().ptt, RemotePttSource::Rig);
+    generation
+        .unkey(&worker, &mut devices, &mut outputs)
+        .unwrap();
+    assert_eq!(state.remote_signals().physical_ptt, Some(false));
+    assert!(state.remote_signals().ptt_selected);
+    assert!(!state.remote_control().receive_permitted);
+    generation
+        .retire(&worker, &mut devices, &mut outputs)
+        .unwrap();
+}
+
+#[test]
+fn remote_generation_keeps_audio_closed_when_dsp_owner_is_gone() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::CarrierSource;
+    use usbradioplus_radio::SubaudibleSource;
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (setup, control) = RemoteSetup::prepare(
+        configuration(),
+        plan.clone(),
+        CarrierSource::Dsp,
+        SubaudibleSource::Disabled,
+    )
+    .unwrap();
+    drop(control);
+    let state = SharedHardwareState::default();
+    let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut generation = remote::RemoteGeneration::open(
+        setup,
+        Arc::new(RemoteQueue::new(4)),
+        &worker,
+        &mut devices,
+        &mut outputs,
+    )
+    .unwrap();
+    assert_eq!(
+        generation.service(&worker, &mut devices, &mut outputs),
+        Err(usbradioplus_remote::CallError(-1102))
+    );
+    let policy = state.remote_control();
+    assert!(policy.enabled && !policy.receive_permitted && !policy.transmit_permitted);
+    assert_ne!(generation.snapshot().unwrap().failure_code, 0);
+    generation
+        .retire(&worker, &mut devices, &mut outputs)
+        .unwrap();
+}
+
+#[test]
+fn remote_station_services_cat_and_adopts_both_callback_graphs() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource,
+        remote_operation::{RemoteOperation, RemoteOperationKind},
+    };
+    use usbradioplus_radio::SubaudibleSource;
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let mut configuration = configuration();
+    // The dummy rig starts with RFPOWER zero, outside its declared TX range.
+    // Set an explicit memory power just as an actual configured radio requires.
+    configuration.memories[0].state.power_mw = Some(5000);
+    let (setup, control) = RemoteSetup::prepare(
+        configuration,
+        station.control().plan().hardware().clone(),
+        CarrierSource::Dsp,
+        SubaudibleSource::Disabled,
+    )
+    .unwrap();
+    station.bind_remote(setup, control).unwrap();
+    station.start().unwrap();
+    let state = station.maintenance.hardware_state();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !state.remote_control().receive_permitted && Instant::now() < deadline {
+        factory.service_remote(&mut station);
+        // SAFETY: the guarded fake stream and its callback contexts remain owned by station.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(station.maintenance.service.remote_error(), 0);
+    assert!(state.remote_control().receive_permitted);
+    let mut operation = RemoteOperation::new(RemoteOperationKind::Frequency);
+    operation.magnitude = 146_940_000;
+    operation.flags = 2;
+    let ticket = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let result = loop {
+        factory.service_remote(&mut station);
+        // SAFETY: same guarded fake stream; neither callback context has retired.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(result) = ticket.take_completion() {
+            break result;
+        }
+        assert!(Instant::now() < deadline, "remote command did not complete");
+        thread::sleep(Duration::from_millis(2));
+    };
+    if let Err(error) = result {
+        panic!("operating change failed: {error:?}");
+    }
+    assert!(matches!(result, Ok(RemoteReply::Applied)));
+    assert_eq!(station.maintenance.service.remote_error(), 0);
+    station.stop().unwrap();
 }
 
 #[test]
@@ -3482,6 +3633,9 @@ fn service_worker(
             input_sender,
             clock: Instant::now(),
             site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
+            remote: None,
+            remote_queue: None,
+            remote_error: Arc::new(AtomicI32::new(0)),
         },
         command_sender,
         input_receiver,

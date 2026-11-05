@@ -12,6 +12,10 @@ use crate::hardware_site::{
     SiteDigitalSnapshot, SiteError,
 };
 use crate::remote_hardware::{PhysicalPttControl, RemotePttSource};
+use crate::{RemoteQueue, RemoteRequestError, RemoteSetup, RemoteTicket};
+use usbradioplus_core::remote_operation::RemoteOperation;
+#[path = "hardware_remote.rs"]
+mod remote;
 use std::cell::{Cell, RefCell, RefMut};
 use std::fmt;
 use std::sync::Arc;
@@ -108,6 +112,8 @@ pub enum HardwareOperation {
     ConfirmCm119Ptt,
     /// Confirming all serviced parallel PTT bits before remote retune.
     ConfirmParallelPtt,
+    /// Selected remote engine or CAT/DSP owner failure.
+    RemoteControl,
 }
 
 impl HardwareOperation {
@@ -133,6 +139,7 @@ impl HardwareOperation {
             18 => Some(Self::ApplySidetone),
             19 => Some(Self::ConfirmCm119Ptt),
             20 => Some(Self::ConfirmParallelPtt),
+            21 => Some(Self::RemoteControl),
             _ => None,
         }
     }
@@ -161,6 +168,7 @@ impl fmt::Display for HardwareOperation {
             Self::ApplySidetone => "apply CM119 hardware local repeat",
             Self::ConfirmCm119Ptt => "confirm serviced CM119 PTT",
             Self::ConfirmParallelPtt => "confirm serviced parallel PTT",
+            Self::RemoteControl => "service remote radio",
         })
     }
 }
@@ -601,6 +609,7 @@ pub struct HardwareStation {
     runtime: StationRuntime,
     control: StationControlHost,
     maintenance: HardwareMaintenance,
+    remote_dsp: Option<usbradioplus_station::RemoteDspControl>,
 }
 
 impl HardwareStation {
@@ -712,7 +721,30 @@ impl HardwareStation {
             runtime,
             control,
             maintenance,
+            remote_dsp: None,
         })
+    }
+
+    /// Bind the prepared remote composition before either audio callback starts.
+    /// Keep the DSP pump on this original serialized station owner.
+    pub fn bind_remote(
+        &mut self,
+        setup: RemoteSetup,
+        control: usbradioplus_station::RemoteDspControl,
+    ) -> Result<(), HardwareStationError> {
+        self.maintenance.service.bind_remote(setup)?;
+        self.remote_dsp = Some(control);
+        Ok(())
+    }
+
+    pub(crate) fn service_remote(
+        &mut self,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+    ) {
+        if let Some(control) = &mut self.remote_dsp {
+            control.pump(&mut self.runtime, &mut self.control, factory, provider);
+        }
     }
 
     /// Start hardware servicing and then the prepared audio callbacks.
@@ -2071,6 +2103,9 @@ pub struct HardwareService {
     retiring: Option<Box<RetiringDevices>>,
     site: [Arc<SiteCache>; 2],
     site_clock: Instant,
+    remote: Option<Arc<RemoteSetup>>,
+    remote_queue: Option<Arc<RemoteQueue>>,
+    remote_error: Arc<AtomicI32>,
 }
 
 struct HardwareServiceSetup {
@@ -2133,11 +2168,52 @@ impl HardwareService {
             retiring: None,
             site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
             site_clock: Instant::now(),
+            remote: None,
+            remote_queue: None,
+            remote_error: Arc::new(AtomicI32::new(0)),
         }
     }
 
     fn running(&self) -> bool {
         self.worker.is_some()
+    }
+
+    /// Bind pre-admitted libraries while stopped, before starting any audio.
+    /// Actual thread-affine rig/engine contexts open only on the service worker.
+    pub fn bind_remote(&mut self, setup: RemoteSetup) -> Result<(), HardwareStationError> {
+        if self.running() {
+            return Err(HardwareStationError::ControlQueueFull);
+        }
+        self.state
+            .publish_remote_control(usbradioplus_station::RemoteRadioControl {
+                enabled: true,
+                ..Default::default()
+            });
+        self.remote = Some(Arc::new(setup));
+        Ok(())
+    }
+
+    /// Submit without waiting for CAT, DSP adoption or another source's reply.
+    pub fn remote_submit(
+        &self,
+        operation: RemoteOperation,
+        local: bool,
+        active: bool,
+    ) -> Result<RemoteTicket, RemoteRequestError> {
+        let ticket = self
+            .remote_queue
+            .as_ref()
+            .ok_or(RemoteRequestError::Stopped)?
+            .submit(operation, local, active)?;
+        if let Some(worker) = &self.worker {
+            worker.thread().unpark();
+        }
+        Ok(ticket)
+    }
+
+    /// First physical-generation error, preserving the dependency's status code.
+    pub fn remote_error(&self) -> i32 {
+        self.remote_error.load(Ordering::Acquire)
     }
 
     /// Open GPIO and start its single service owner.
@@ -2174,6 +2250,11 @@ impl HardwareService {
         let (sender, receiver) = sync_channel(CONTROL_QUEUE_CAPACITY);
         self.stop.store(false, Ordering::Release);
         self.site_clock = Instant::now();
+        self.remote_error.store(0, Ordering::Release);
+        self.remote_queue = self
+            .remote
+            .as_ref()
+            .map(|_| Arc::new(RemoteQueue::new(CONTROL_QUEUE_CAPACITY)));
         let worker = ServiceWorker {
             native: self.native,
             ptt_control: Cell::new(if self.state.remote_control().enabled {
@@ -2196,6 +2277,9 @@ impl HardwareService {
             input_sender,
             clock: self.site_clock,
             site: self.site.clone(),
+            remote: self.remote.as_ref().map(Arc::clone),
+            remote_queue: self.remote_queue.as_ref().map(Arc::clone),
+            remote_error: Arc::clone(&self.remote_error),
         };
         let setup = outputs.prepare_site(&devices, &worker).and_then(|()| {
             worker.publish_site(&outputs);
@@ -2236,6 +2320,9 @@ impl HardwareService {
     /// Returns a service-worker panic or failed safe-output write. Failed device
     /// retirement retains ownership; a later stop/start retries before reopening.
     pub fn stop(&mut self) -> Result<(), HardwareStationError> {
+        if let Some(queue) = &self.remote_queue {
+            queue.retire();
+        }
         if let Some(worker) = self.worker.take() {
             self.stop.store(true, Ordering::Release);
             worker.thread().unpark();
@@ -3014,9 +3101,24 @@ struct ServiceWorker {
     input_sender: SyncSender<HardwareInputEvent>,
     clock: Instant,
     site: [Arc<SiteCache>; 2],
+    remote: Option<Arc<RemoteSetup>>,
+    remote_queue: Option<Arc<RemoteQueue>>,
+    remote_error: Arc<AtomicI32>,
 }
 
 impl ServiceWorker {
+    fn remote_failed(&self, error: usbradioplus_remote::CallError) {
+        let _ = self
+            .remote_error
+            .compare_exchange(0, error.0, Ordering::AcqRel, Ordering::Acquire);
+        self.statistics
+            .failure_operation(HardwareOperation::RemoteControl);
+        self.state
+            .publish_remote_control(usbradioplus_station::RemoteRadioControl {
+                enabled: true,
+                ..Default::default()
+            });
+    }
     fn ptt_for(&self, source: RemotePttSource, rendered: bool) -> bool {
         self.ptt_control.get().key_for(source, rendered)
     }
@@ -3058,9 +3160,36 @@ impl ServiceWorker {
         } else {
             false
         };
+        let mut remote =
+            self.remote.as_ref().and_then(|setup| {
+                match remote::RemoteGeneration::open(
+                    Arc::clone(setup),
+                    Arc::clone(
+                        self.remote_queue
+                            .as_ref()
+                            .expect("remote setup retains its queue"),
+                    ),
+                    &self,
+                    devices.as_mut().unwrap(),
+                    &mut outputs,
+                ) {
+                    Ok(generation) => Some(generation),
+                    Err(error) => {
+                        self.remote_failed(error);
+                        None
+                    }
+                }
+            });
         while !self.stop.load(Ordering::Acquire) {
             if retiring {
                 let current = devices.as_mut().expect("retirement retains its owner");
+                if let Some(remote) = &mut remote {
+                    if let Err(error) = remote.unkey(&self, current, &mut outputs) {
+                        self.remote_failed(error);
+                        thread::park_timeout(RETRY_INTERVAL);
+                        continue;
+                    }
+                }
                 let result = current.close_outputs(self.parallel.as_ref(), &mut outputs);
                 self.publish_site(&outputs);
                 if let Err(failure) = result {
@@ -3110,6 +3239,14 @@ impl ServiceWorker {
                 }
             }
             let current = devices.as_mut().expect("devices were opened above");
+            if let Some(remote) = &mut remote {
+                if let Err(error) = remote.service(&self, current, &mut outputs) {
+                    self.remote_failed(error);
+                    if let Err(error) = remote.unkey(&self, current, &mut outputs) {
+                        self.remote_failed(error);
+                    }
+                }
+            }
             let result = service_commands(
                 &self.receiver,
                 &mut outputs,
@@ -3125,6 +3262,11 @@ impl ServiceWorker {
                 Ok(()) => thread::park_timeout(self.interval()),
                 Err(failure) => {
                     self.statistics.failure(failure);
+                    if let Some(remote) = &mut remote {
+                        if let Err(error) = remote.unkey(&self, current, &mut outputs) {
+                            self.remote_failed(error);
+                        }
+                    }
                     if self.native {
                         // Native polling already published safe inputs/PTT and keeps its handle.
                         thread::park_timeout(self.interval());
@@ -3133,6 +3275,35 @@ impl ServiceWorker {
                         outputs.retire_site();
                         self.publish_site(&outputs);
                         retiring = true;
+                    }
+                }
+            }
+        }
+        if let Some(mut remote) = remote {
+            loop {
+                if devices.is_none() {
+                    match ServiceDevices::open_at_outputs(
+                        self.provider,
+                        &self.selected,
+                        self.parallel.as_ref(),
+                        &outputs,
+                    ) {
+                        Ok(opened) => devices = Some(opened),
+                        Err(error) => {
+                            self.statistics.failure(error);
+                            thread::park_timeout(RETRY_INTERVAL);
+                            continue;
+                        }
+                    }
+                }
+                let current = devices
+                    .as_mut()
+                    .expect("a remote owner retains GPIO until safe retirement");
+                match remote.retire(&self, current, &mut outputs) {
+                    Ok(()) => break,
+                    Err(error) => {
+                        self.remote_failed(error);
+                        thread::park_timeout(RETRY_INTERVAL);
                     }
                 }
             }
