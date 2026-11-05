@@ -2045,10 +2045,14 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
     )
     .unwrap();
     station.bind_remote(setup, control).unwrap();
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(false));
     station.start().unwrap();
     let state = station.maintenance.hardware_state();
     let deadline = Instant::now() + Duration::from_secs(5);
-    while !state.remote_control().receive_permitted && Instant::now() < deadline {
+    while (!state.remote_control().receive_permitted
+        || station.maintenance.service.remote_ready() != Ok(true))
+        && Instant::now() < deadline
+    {
         factory.service_remote(&mut station);
         // SAFETY: the guarded fake stream and its callback contexts remain owned by station.
         let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
@@ -2057,6 +2061,7 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
     }
     assert_eq!(station.maintenance.service.remote_error(), 0);
     assert!(state.remote_control().receive_permitted);
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(true));
     let mut operation = RemoteOperation::new(RemoteOperationKind::Frequency);
     operation.magnitude = 146_940_000;
     operation.flags = 2;
@@ -2129,6 +2134,8 @@ fn remote_station_services_cat_and_adopts_both_callback_graphs() {
         thread::sleep(Duration::from_millis(2));
     }
     station.stop().unwrap();
+    // The deliberately failed physical-OFF confirmation remains the first cause.
+    assert_eq!(station.maintenance.service.remote_ready(), Err(-1101));
 }
 
 #[test]
